@@ -5,16 +5,12 @@
 
 use crate::git::exec::repo_root;
 use crate::shared_types;
-use crate::storage::credential_store::{
-    get_with_lazy_migration, set_with_cleanup, CredentialStoreError, KeychainStore,
-    SettingsFileStore,
-};
+use crate::storage::credential_store::{CredentialStore, KeychainStore};
 
 use anyhow::Result;
 use serde::{de::DeserializeOwned, Serialize};
-use std::path::PathBuf;
 use std::sync::Arc;
-use tauri::{AppHandle, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_store::{Store, StoreExt};
 
 const STORE_PATH: &str = "settings.json";
@@ -168,21 +164,6 @@ pub fn set_host_attr<R: Runtime>(app: &AppHandle<R>, attr: &str) -> Result<()> {
     Ok(())
 }
 
-/// Reads the host attribute from the legacy file location.
-///
-/// This provides backwards compatibility with older setups that stored
-/// the host name in ~/.config/darwin/host.
-pub fn read_host_attr_from_file() -> Option<String> {
-    let config_home = std::env::var("XDG_CONFIG_HOME")
-        .ok()
-        .map(PathBuf::from)
-        .or_else(|| dirs::home_dir().map(|h| h.join(".config")))?;
-
-    let host_file = config_home.join("darwin").join("host");
-    std::fs::read_to_string(host_file)
-        .ok()
-        .map(|s| s.trim().to_string())
-}
 // =============================================================================
 // evolve metadata
 // =============================================================================
@@ -486,31 +467,13 @@ fn keychain_store_for<R: Runtime>(app: &AppHandle<R>, key: &str) -> KeychainStor
     KeychainStore::new(app.clone(), KEYCHAIN_SERVICE, key)
 }
 
-fn legacy_settings_store<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> SettingsFileStore {
-    let app_for_get = app.clone();
-    let app_for_delete = app.clone();
-
-    SettingsFileStore::new(
-        key,
-        move || {
-            get_string_pref_raw(&app_for_get, key)
-                .map_err(|e| CredentialStoreError::Storage(e.to_string()))
-        },
-        move || {
-            delete_pref_raw(&app_for_delete, key)
-                .map_err(|e| CredentialStoreError::Storage(e.to_string()))
-        },
-    )
-}
-
 fn get_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> Result<Option<String>> {
     if e2e_mock_system_enabled() {
         return get_string_pref_raw(app, key);
     }
 
     let keychain = keychain_store_for(app, key);
-    let legacy = legacy_settings_store(app, key);
-    get_with_lazy_migration(&keychain, &legacy).map_err(anyhow::Error::from)
+    keychain.get().map_err(anyhow::Error::from)
 }
 
 fn set_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str, value: &str) -> Result<()> {
@@ -519,12 +482,7 @@ fn set_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str, value: &st
     }
 
     let keychain = keychain_store_for(app, key);
-    let legacy = legacy_settings_store(app, key);
-    set_with_cleanup(&keychain, &legacy, value).map_err(anyhow::Error::from)
-}
-
-fn get_usize_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<usize>> {
-    get_json_pref(app, key)
+    keychain.set(value).map_err(anyhow::Error::from)
 }
 
 pub fn get_bool_pref<R: Runtime>(app: &AppHandle<R>, key: &str, default: bool) -> Result<bool> {
@@ -536,28 +494,79 @@ pub fn set_bool_pref<R: Runtime>(app: &AppHandle<R>, key: &str, value: bool) -> 
 }
 
 // =============================================================================
-// Evolution Limits
+// Evolution Limits — repo-scoped (sync via user's nix config repo)
 // =============================================================================
+//
+// These knobs live under `<config_dir>/.nixmac/settings.json` so they ride
+// along with the user's nix repo across machines. The matching `Configurable`
+// struct lives at `evolve/config.rs`. Both reads and writes go through the
+// same repo store so the UI form and the agent loop see the same value.
 
-/// Gets the maximum iterations for evolution (default: 25).
+fn get_repo_store<R: Runtime>(
+    app: &AppHandle<R>,
+) -> Result<std::sync::Arc<tauri_plugin_store::Store<R>>> {
+    let path = crate::storage::configurable_scope::repo_store_path(app)?;
+    let store = app.store(&path)?;
+    Ok(store)
+}
+
+/// Gets the maximum iterations for evolution (default: 25). Repo-scoped.
 pub fn get_max_iterations<R: Runtime>(app: &AppHandle<R>) -> Result<usize> {
-    Ok(get_usize_pref(app, "maxIterations")?.unwrap_or(DEFAULT_MAX_ITERATIONS))
+    if let Some(limits) =
+        app.try_state::<crate::state::slice::Slice<crate::evolve::config::EvolutionLimits>>()
+    {
+        return Ok(limits.read_sync().max_iterations);
+    }
+
+    let value = get_repo_store(app)
+        .ok()
+        .and_then(|s| s.get("maxIterations"))
+        .and_then(|v| serde_json::from_value::<usize>(v).ok())
+        .unwrap_or(DEFAULT_MAX_ITERATIONS);
+    Ok(value)
 }
 
 pub fn set_max_iterations<R: Runtime>(app: &AppHandle<R>, max: usize) -> Result<()> {
-    let store = get_store(app)?;
+    if let Some(limits) =
+        app.try_state::<crate::state::slice::Slice<crate::evolve::config::EvolutionLimits>>()
+    {
+        let mut limits = limits.write_sync(app);
+        limits.max_iterations = max;
+        return Ok(());
+    }
+
+    let store = get_repo_store(app)?;
     store.set("maxIterations", serde_json::json!(max));
     store.save()?;
     Ok(())
 }
 
-/// Gets the maximum build attempts for evolution (default: 5).
+/// Gets the maximum build attempts for evolution (default: 5). Repo-scoped.
 pub fn get_max_build_attempts<R: Runtime>(app: &AppHandle<R>) -> Result<usize> {
-    Ok(get_usize_pref(app, "maxBuildAttempts")?.unwrap_or(5))
+    if let Some(limits) =
+        app.try_state::<crate::state::slice::Slice<crate::evolve::config::EvolutionLimits>>()
+    {
+        return Ok(limits.read_sync().max_build_attempts);
+    }
+
+    let value = get_repo_store(app)
+        .ok()
+        .and_then(|s| s.get("maxBuildAttempts"))
+        .and_then(|v| serde_json::from_value::<usize>(v).ok())
+        .unwrap_or(5);
+    Ok(value)
 }
 
 pub fn set_max_build_attempts<R: Runtime>(app: &AppHandle<R>, max: usize) -> Result<()> {
-    let store = get_store(app)?;
+    if let Some(limits) =
+        app.try_state::<crate::state::slice::Slice<crate::evolve::config::EvolutionLimits>>()
+    {
+        let mut limits = limits.write_sync(app);
+        limits.max_build_attempts = max;
+        return Ok(());
+    }
+
+    let store = get_repo_store(app)?;
     store.set("maxBuildAttempts", serde_json::json!(max));
     store.save()?;
     Ok(())

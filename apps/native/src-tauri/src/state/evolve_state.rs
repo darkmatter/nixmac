@@ -1,12 +1,14 @@
 //! Persisted evolve state — drives widget step routing.
 
 use anyhow::Result;
-use tauri::{AppHandle, Runtime};
-use tauri_plugin_store::StoreExt;
+use serde_json::Value;
+use std::sync::Arc;
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 
 use crate::evolve::session_chat_memory_store;
 use crate::shared_types::{EvolutionState, EvolveState, EvolveStep};
 use crate::sqlite_types::Change;
+use crate::state::slice::{AppDataJson, Persistence, Slice};
 
 impl EvolveState {
     pub fn recompute_step(&mut self, is_built: bool, has_changes: bool) {
@@ -22,27 +24,58 @@ impl EvolveState {
 }
 
 const EVOLVE_STATE_PATH: &str = "evolve-state.json";
-const EVOLVE_STATE_KEY: &str = "evolveState";
+pub const EVOLVE_STATE_CHANGED_EVENT: &str = "evolve_state_changed";
 
 fn clear_chat_memory_if_begin(
     step: &EvolveStep,
     preserve_for_conversational_begin: bool,
     clear_fn: impl FnOnce(),
 ) {
+    // WHY this lives in `set()` rather than `clear()`:
+    // `clear()` resets to Begin but is not called on every transition back to
+    // Begin (e.g. Evolve → Begin when evolution_id is cleared but committable
+    // is still true). Placing the memory purge here ensures it fires on ALL
+    // routes into Begin, not just the explicit "clear" path.
     if *step == EvolveStep::Begin && !preserve_for_conversational_begin {
         clear_fn();
     }
 }
 
+fn deserialize_persisted_state(value: Value) -> Option<EvolveState> {
+    serde_json::from_value(value).ok()
+}
+
+fn load_from_persistence(persistence: &dyn Persistence) -> Result<EvolveState> {
+    Ok(persistence
+        .load()?
+        .and_then(deserialize_persisted_state)
+        .unwrap_or_default())
+}
+
+fn persist_without_managed_slice<R: Runtime>(
+    app: &AppHandle<R>,
+    state: &EvolveState,
+) -> Result<()> {
+    let persistence = AppDataJson::for_app(app, EVOLVE_STATE_PATH)?;
+    persistence.flush(&serde_json::to_value(state)?)?;
+    let _ = app.emit(EVOLVE_STATE_CHANGED_EVENT, state);
+    Ok(())
+}
+
+pub fn load_slice<R: Runtime>(app: &AppHandle<R>) -> Result<Slice<EvolveState>> {
+    let persistence = Arc::new(AppDataJson::for_app(app, EVOLVE_STATE_PATH)?);
+    let initial = load_from_persistence(persistence.as_ref())?;
+    Ok(Slice::new(EVOLVE_STATE_CHANGED_EVENT, initial, persistence))
+}
+
 /// Load the persisted evolve state, returning `EvolveState::default()` if absent or corrupt.
 pub fn get<R: Runtime>(app: &AppHandle<R>) -> Result<EvolveState> {
-    let store = app.store(EVOLVE_STATE_PATH)?;
-    if let Some(val) = store.get(EVOLVE_STATE_KEY) {
-        if let Ok(state) = serde_json::from_value::<EvolveState>(val.clone()) {
-            return Ok(state);
-        }
+    if let Some(slice) = app.try_state::<Slice<EvolveState>>() {
+        return Ok(slice.read_sync().clone());
     }
-    Ok(EvolveState::default())
+
+    let persistence = AppDataJson::for_app(app, EVOLVE_STATE_PATH)?;
+    load_from_persistence(&persistence)
 }
 
 /// Recompute `step` and `committable` from build and git states.
@@ -66,9 +99,13 @@ pub fn set<R: Runtime>(
             Some(EvolutionState::Conversational)
         );
 
-    let store = app.store(EVOLVE_STATE_PATH)?;
-    store.set(EVOLVE_STATE_KEY, serde_json::to_value(&state)?);
-    store.save()?;
+    if let Some(slice) = app.try_state::<Slice<EvolveState>>() {
+        let mut guard = slice.write_sync(app);
+        *guard = state.clone();
+        drop(guard);
+    } else {
+        persist_without_managed_slice(app, &state)?;
+    }
 
     // Clear conversational thread memory whenever routing returns to Begin.
     // Doing this can prevent weird conversations where the model references past context
@@ -91,6 +128,7 @@ pub fn clear<R: Runtime>(app: &AppHandle<R>) -> Result<EvolveState> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     #[test]
     fn clear_chat_memory_if_begin_calls_clear() {
@@ -149,5 +187,24 @@ mod tests {
 
         assert_eq!(state.step, EvolveStep::Begin);
         assert!(cleared);
+    }
+
+    #[test]
+    fn deserialize_persisted_state_accepts_direct_slice_file() {
+        let state = deserialize_persisted_state(json!({
+            "evolutionId": 12,
+            "currentChangesetId": null,
+            "committable": true,
+            "backupBranch": null,
+            "rollbackBranch": null,
+            "rollbackStorePath": null,
+            "rollbackChangesetId": null,
+            "step": "commit",
+            "lastEvolutionState": null
+        }))
+        .expect("direct state deserializes");
+
+        assert_eq!(state.evolution_id, Some(12));
+        assert_eq!(state.step, EvolveStep::Commit);
     }
 }
