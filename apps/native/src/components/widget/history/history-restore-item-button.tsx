@@ -1,7 +1,7 @@
 import { Loader2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 
 interface HistoryRestoreItemButtonProps {
   hash: string;
@@ -14,7 +14,7 @@ export function HistoryRestoreItemButton({
   isRestoring = false,
   onRequestRestore,
 }: HistoryRestoreItemButtonProps) {
-  const uncommittedChanges = useWidgetStore((s) => (s.gitStatus?.files?.length ?? 0) > 0);
+  const uncommittedChanges = useViewModel((s) => (s.git?.files?.length ?? 0) > 0);
 
   return (
     <Button

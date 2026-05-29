@@ -4,7 +4,7 @@ import type { HistoryItem } from "@/ipc/types";
 import { cn } from "@/lib/utils";
 import { buildColorMap } from "@/components/widget/utils";
 import type { ColorMap } from "@/components/widget/utils";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 
 type ActionType = "current" | "base" | "build" | "restore" | "preview";
 
@@ -19,7 +19,7 @@ interface UseHistoryCardResult {
 
 export function useHistoryCard(item: HistoryItem, isPreview = false): UseHistoryCardResult {
   const [expanded, setExpanded] = useState(false);
-  const isHead = useWidgetStore((s) => s.gitStatus?.headCommitHash === item.hash);
+  const isHead = useViewModel((s) => s.git?.headCommitHash === item.hash);
 
   const colorMap = item.changeMap ? buildColorMap(item.changeMap) : new Map();
 

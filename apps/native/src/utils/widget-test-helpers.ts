@@ -5,7 +5,9 @@
 
 import { refreshGitStatus } from "@/hooks/use-git-operations";
 import { loadEvolveState } from "@/hooks/use-widget-initialization";
+import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
+import { mirrorChangeMapState } from "@/viewmodel/change-map";
 
 interface WidgetTestHelpers {
   /**
@@ -23,7 +25,7 @@ interface WidgetTestHelpers {
    */
   getPromptHistory: () => string[];
   /**
-   * Returns the current changeMap from the store serialized as JSON, for
+   * Returns the current change map serialized as JSON, for
    * comparison across browser.execute boundaries.
    */
   getChangeMap: () => string;
@@ -55,7 +57,7 @@ export function setupWidgetTestHelpers() {
       return [...(useWidgetStore.getState().promptHistory ?? [])];
     },
     getChangeMap: () => {
-      return JSON.stringify(useWidgetStore.getState().changeMap);
+      return JSON.stringify(useViewModel.getState().changeMap);
     },
     resetForTest: () => {
       const state = useWidgetStore.getState();
@@ -65,7 +67,7 @@ export function setupWidgetTestHelpers() {
       state.clearEvolveEvents();
       state.setConversationalResponse(null);
       state.setCommitMessageSuggestion(null);
-      state.setChangeMap(null);
+      mirrorChangeMapState(null);
       state.setError(null);
       state.clearRebuild();
     },

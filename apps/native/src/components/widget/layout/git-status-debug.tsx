@@ -9,7 +9,7 @@
 // - Do not add fields that are not on the GitStatus type.
 
 import { useState } from "react";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 
 function Bool({ label, value }: { label: string; value: boolean | undefined }) {
   if (value === undefined || !value) {
@@ -44,7 +44,7 @@ function FieldRow({ label, display, full }: { label: string; display: string; fu
 
 export function GitStatusDebug() {
   const [expanded, setExpanded] = useState(false);
-  const gitStatus = useWidgetStore((s) => s.gitStatus);
+  const gitStatus = useViewModel((s) => s.git);
 
   if (!gitStatus) {
     return (
