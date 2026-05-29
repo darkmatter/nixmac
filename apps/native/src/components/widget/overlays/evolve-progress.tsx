@@ -23,7 +23,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { tauriAPI } from "@/ipc/api";
-import type { EvolveEvent, EvolveEventType } from "@/stores/widget-store";
+import type { EvolveEvent, EvolveEventType } from "@/ipc/types";
 
 // =============================================================================
 // Types

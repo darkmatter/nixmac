@@ -1,5 +1,5 @@
 import { filesystemViewEnabled } from "@/lib/flags";
-import type { WidgetState, WidgetStep } from "@/stores/widget-store";
+import type { WidgetState, WidgetStep } from "@/types/ui";
 import { FilePen, FilePlus, FileX, FileCode, type LucideIcon } from "lucide-react";
 
 export function computeCurrentStep(state: WidgetState): WidgetStep {

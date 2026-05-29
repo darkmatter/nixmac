@@ -11,31 +11,8 @@
 // Inside `__mocks__`, the relative import resolves to the un-mocked
 // original module — that's the manual-mock contract Storybook
 // inherits from Vitest.
-import { createWidgetStore as createRealWidgetStore, type WidgetState } from "@/stores/widget-store.impl";
-
-export type {
-  EvolveEvent,
-  EvolveEventType,
-  EvolveState,
-  GitFileStatus,
-  GitStatus,
-  PermissionsState,
-  UpdateChannel,
-} from "@/stores/widget-store.impl";
-
-export type {
-  BoolPrefKey,
-  ConfirmPrefKey,
-  RebuildContext,
-  RebuildErrorType,
-  RebuildLine,
-  RebuildState,
-  SettingsTab,
-  WidgetState,
-  WidgetStep,
-} from "@/stores/widget-store.impl";
-
-export { initialRebuildState } from "@/stores/widget-store.impl";
+import { createWidgetStore as createRealWidgetStore } from "@/stores/widget-store.impl";
+import type { WidgetState } from "@/types/ui";
 
 // =============================================================================
 // Bypass invariants — these never drift from "all granted, all installed."
@@ -118,7 +95,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
 export const useWidgetStore = createWidgetStore();
 
 import { computeCurrentStep } from "@/components/widget/utils";
-import type { WidgetStep } from "@/stores/widget-store.impl";
+import type { WidgetStep } from "@/types/ui";
 
 export function useCurrentStep(): WidgetStep {
   return useWidgetStore((state) => computeCurrentStep(state));

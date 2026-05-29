@@ -1,4 +1,5 @@
-import { useWidgetStore, type RebuildContext } from "@/stores/widget-store";
+import { useWidgetStore } from "@/stores/widget-store";
+import type { RebuildContext } from "@/types/ui";
 import { tauriAPI, ipcRenderer } from "@/ipc/api";
 import type {
   DarwinApplyDataEvent,

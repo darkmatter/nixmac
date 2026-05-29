@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { cn } from "@/lib/utils";
-import { type SettingsTab, useWidgetStore } from "@/stores/widget-store";
+import { useWidgetStore } from "@/stores/widget-store";
+import type { SettingsTab } from "@/types/ui";
 import { DEFAULT_MAX_ITERATIONS } from "@/lib/constants";
 import { tauriAPI } from "@/ipc/api";
 import { useForm } from "@tanstack/react-form";

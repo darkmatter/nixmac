@@ -1,6 +1,6 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
-import type { EvolveState } from "@/stores/widget-store";
+import type { EvolveState } from "@/ipc/types";
 import { useWidgetStore } from "@/stores/widget-store";
 import { fn } from "storybook/test";
 import { useEffect } from "react";
