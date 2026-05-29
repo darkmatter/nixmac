@@ -90,7 +90,6 @@ fn main() {
         .register::<shared_types::NixInstallErrorType>()
         .register::<shared_types::NixInstallProgressEvent>()
         .register::<shared_types::NixInstallEndEvent>()
-        .register::<shared_types::NixDarwinRebuildEndEvent>()
         .register::<shared_types::RebuildErrorType>()
         .register::<shared_types::DarwinApplyDataEvent>()
         .register::<shared_types::DarwinApplySummaryEvent>()

@@ -92,13 +92,6 @@ pub async fn nix_check() -> Result<shared_types::NixCheckResult, String> {
 }
 
 #[tauri::command]
-pub async fn darwin_rebuild_prefetch(app: AppHandle) -> Result<shared_types::OkResult, String> {
-    nix::prefetch_darwin_rebuild_stream(&app)
-        .map_err(|e| capture_err("darwin_rebuild_prefetch", e))?;
-    Ok(shared_types::OkResult::yes())
-}
-
-#[tauri::command]
 pub async fn nix_install_start(app: AppHandle) -> Result<shared_types::OkResult, String> {
     nix::install_nix_stream(&app).map_err(|e| capture_err("nix_install_start", e))?;
     Ok(shared_types::OkResult::yes())

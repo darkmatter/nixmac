@@ -162,53 +162,6 @@ pub fn get_nix_version() -> Option<String> {
     }
 }
 
-/// Prefetches darwin-rebuild by running `nix build --no-link nix-darwin/master#darwin-rebuild`.
-/// This caches the derivation in the nix store so the `nix run` fallback in darwin.rs is fast.
-/// Emits `nix:darwin-rebuild:end` with `{ ok: bool, error?: string }` on completion.
-pub fn prefetch_darwin_rebuild_stream(app: &AppHandle) -> Result<()> {
-    info!("[nix] prefetch_darwin_rebuild_stream called");
-
-    let app_handle = app.clone();
-
-    // All emit calls below are fire-and-forget: background thread; window may not be
-    // listening. Tauri emit returns Err only when no listeners are registered.
-    std::thread::spawn(move || {
-        let result = Command::new("nix")
-            .args(["build", "--no-link", "nix-darwin/master#darwin-rebuild"])
-            .env("PATH", get_nix_path_with_login_shell())
-            .env("NIX_CONFIG", "experimental-features = nix-command flakes")
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output();
-
-        match result {
-            Ok(output) if output.status.success() => {
-                info!("[nix] darwin-rebuild prefetch succeeded");
-                let _ =
-                    app_handle.emit("nix:darwin-rebuild:end", serde_json::json!({ "ok": true }));
-            }
-            Ok(output) => {
-                let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-                error!("[nix] darwin-rebuild prefetch failed: {}", stderr);
-                let _ = app_handle.emit(
-                    "nix:darwin-rebuild:end",
-                    serde_json::json!({ "ok": false, "error": stderr }),
-                );
-            }
-            Err(e) => {
-                error!("[nix] darwin-rebuild prefetch error: {}", e);
-                let _ = app_handle.emit(
-                    "nix:darwin-rebuild:end",
-                    serde_json::json!({ "ok": false, "error": e.to_string() }),
-                );
-            }
-        }
-    });
-
-    info!("[nix] prefetch_darwin_rebuild_stream started background thread");
-    Ok(())
-}
-
 pub fn install_nix_stream(app: &AppHandle) -> Result<()> {
     info!("[nix] install_nix_stream called");
 

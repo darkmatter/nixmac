@@ -950,19 +950,6 @@ version: string | null;
 darwinRebuildAvailable: boolean }
 
 /**
- * Payload for `nix:darwin-rebuild:end`.
- */
-export type NixDarwinRebuildEndEvent = { 
-/**
- * Whether nix-darwin setup completed successfully.
- */
-ok: boolean; 
-/**
- * Human-readable failure message.
- */
-error: string | null }
-
-/**
  * Payload for `nix:install:end`.
  */
 export type NixInstallEndEvent = { 

@@ -514,7 +514,6 @@ fn run_gui_mode(
             commands::evolve_state::routing_state_clear,
             commands::apply::nix_check,
             commands::apply::nix_install_start,
-            commands::apply::darwin_rebuild_prefetch,
             commands::apply::flake_list_hosts,
             commands::config::flake_exists,
             commands::config::bootstrap_default_config,
