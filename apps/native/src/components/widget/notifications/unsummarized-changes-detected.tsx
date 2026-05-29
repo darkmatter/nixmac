@@ -2,11 +2,12 @@
 
 import { ConfigDirBadge } from "@/components/widget/badges/config-dir-badge";
 import { AnalyzeCurrentButton } from "@/components/widget/summaries/analyze-current-button";
+import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 
 export function UnsummarizedChangesDetected() {
   const configDir = useWidgetStore((s) => s.configDir);
-  const changeMap = useWidgetStore((s) => s.changeMap);
+  const changeMap = useViewModel((s) => s.changeMap);
   if (!changeMap) return null;
   const hasUnsummarized = changeMap?.unsummarizedHashes.length
   if (!hasUnsummarized) return null
