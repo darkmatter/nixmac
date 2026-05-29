@@ -10,9 +10,11 @@ import type {
   CommitResult,
   Config as DarwinConfig,
   ConfigEditApplyResult,
+  ConfigurableSchema,
   EvolveCancelResult,
   EvolutionResult,
   EvolveState,
+  ExportResult,
   FeedbackMetadata,
   FeedbackShareOptions,
   FileDiffContents,
@@ -20,6 +22,7 @@ import type {
   GitStatus,
   HomebrewState,
   HistoryItem,
+  ImportResult,
   NixCheckResult,
   OkResult,
   Permission,
@@ -31,10 +34,10 @@ import type {
   SetDirResult,
   SystemDefault,
   SystemDefaultsScan,
-  UiPrefs as DarwinPrefs,
-  UiPrefsUpdate as DarwinPrefsUpdate,
   UpdateInfo,
 } from "@/ipc/types";
+import { getCachedPrefs, setPrefs } from "./preferences";
+
 
 export const tauriAPI = {
   config: {
@@ -110,8 +113,18 @@ export const tauriAPI = {
     clearTauriState: () => invoke<void>("developer_clear_tauri_state"),
   },
   ui: {
-    getPrefs: () => invoke<DarwinPrefs>("ui_get_prefs"),
-    setPrefs: (prefs: Partial<DarwinPrefsUpdate>) => invoke<OkResult>("ui_set_prefs", { prefs }),
+    getPrefs: getCachedPrefs,
+    setPrefs,
+  },
+  settings: {
+    export: (includeSecrets: boolean) =>
+      invoke<ExportResult | null>("settings_export", { includeSecrets }),
+    import: () => invoke<ImportResult | null>("settings_import"),
+  },
+  devConfigs: {
+    list: () => invoke<ConfigurableSchema[]>("dev_configs_list"),
+    set: (structName: string, key: string, value: unknown) =>
+      invoke<void>("dev_config_set", { structName, key, value }),
   },
   models: {
     getCached: (provider: string) => invoke<string[] | null>("get_cached_models", { provider }),

@@ -1,0 +1,91 @@
+import type { UiPrefs } from "@/ipc/types";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  invoke: vi.fn(),
+  listen: vi.fn(),
+  once: vi.fn(),
+  checkFullDiskAccessPermission: vi.fn(),
+  requestFullDiskAccessPermission: vi.fn(),
+}));
+
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: mocks.invoke,
+}));
+
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: mocks.listen,
+  once: mocks.once,
+}));
+
+vi.mock("tauri-plugin-macos-permissions-api", () => ({
+  checkFullDiskAccessPermission: mocks.checkFullDiskAccessPermission,
+  requestFullDiskAccessPermission: mocks.requestFullDiskAccessPermission,
+}));
+
+const prefs = (overrides: Partial<UiPrefs> = {}): UiPrefs =>
+  ({
+    openrouterApiKey: "openrouter-secret",
+    openaiApiKey: "openai-secret",
+    ollamaApiBaseUrl: null,
+    vllmApiBaseUrl: null,
+    vllmApiKey: null,
+    summaryProvider: "openrouter",
+    summaryModel: "openai/gpt-4o-mini",
+    evolveProvider: "openrouter",
+    evolveModel: "anthropic/claude-sonnet-4",
+    maxIterations: 25,
+    maxBuildAttempts: 5,
+    sendDiagnostics: false,
+    confirmBuild: true,
+    confirmClear: true,
+    confirmRollback: true,
+    autoSummarizeOnFocus: false,
+    scanHomebrewOnStartup: true,
+    defaultToDiffTab: false,
+    developerMode: false,
+    pinnedVersion: null,
+    updateChannel: "stable",
+    ...overrides,
+  }) as UiPrefs;
+
+describe("tauriAPI.ui.getPrefs", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+  });
+
+  it("coalesces concurrent preference reads into one backend command", async () => {
+    const loaded = prefs();
+    mocks.invoke.mockResolvedValueOnce(loaded);
+    const { tauriAPI } = await import("./api");
+
+    const [first, second] = await Promise.all([tauriAPI.ui.getPrefs(), tauriAPI.ui.getPrefs()]);
+
+    expect(first).toBe(loaded);
+    expect(second).toBe(loaded);
+    expect(mocks.invoke).toHaveBeenCalledTimes(1);
+    expect(mocks.invoke).toHaveBeenCalledWith("ui_get_prefs");
+  });
+
+  it("reuses loaded preferences until a write invalidates the cache", async () => {
+    const initial = prefs();
+    const afterWrite = prefs({ developerMode: true });
+    mocks.invoke
+      .mockResolvedValueOnce(initial)
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce(afterWrite);
+    const { tauriAPI } = await import("./api");
+
+    await expect(tauriAPI.ui.getPrefs()).resolves.toBe(initial);
+    await expect(tauriAPI.ui.getPrefs()).resolves.toBe(initial);
+    await expect(tauriAPI.ui.setPrefs({ developerMode: true })).resolves.toEqual({ ok: true });
+    await expect(tauriAPI.ui.getPrefs()).resolves.toBe(afterWrite);
+
+    expect(mocks.invoke).toHaveBeenNthCalledWith(1, "ui_get_prefs");
+    expect(mocks.invoke).toHaveBeenNthCalledWith(2, "ui_set_prefs", {
+      prefs: { developerMode: true },
+    });
+    expect(mocks.invoke).toHaveBeenNthCalledWith(3, "ui_get_prefs");
+  });
+});
