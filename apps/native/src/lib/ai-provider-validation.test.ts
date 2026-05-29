@@ -33,4 +33,21 @@ describe("getProviderConfigInvalidReason", () => {
       ),
     ).toBeNull();
   });
+
+  it("requires explicit local model names", () => {
+    expect(getProviderConfigInvalidReason("ollama", EMPTY_PREFS, NO_CLI_TOOLS, "")).toBe(
+      "No model set",
+    );
+    expect(
+      getProviderConfigInvalidReason("ollama", EMPTY_PREFS, NO_CLI_TOOLS, " local "),
+    ).toBeNull();
+    expect(
+      getProviderConfigInvalidReason(
+        "vllm",
+        { ...EMPTY_PREFS, vllmApiBaseUrl: "http://localhost:8000" },
+        NO_CLI_TOOLS,
+        "   ",
+      ),
+    ).toBe("No model set");
+  });
 });
