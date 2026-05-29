@@ -1,7 +1,23 @@
 import { Badge } from "@/components/ui/badge";
 import type { ChangeWithRichType } from "@/components/widget/utils";
-import { useWidgetStore } from "@/stores/widget-store";
-import { countDiffLineStats, DiffLineStatsBadge } from "./diff-line-stats";
+import { useViewModel } from "@/stores/view-model";
+
+function getDiffBody(diff: string): string[] {
+  const lines = diff.split("\n");
+  const hunkStart = lines.findIndex((l) => l.startsWith("@@"));
+  return hunkStart >= 0 ? lines.slice(hunkStart + 1) : [];
+}
+
+function countAddedRemoved(diff: string): { added: number; removed: number } {
+  const body = getDiffBody(diff);
+  let added = 0;
+  let removed = 0;
+  for (const line of body) {
+    if (line.startsWith("+") && !line.startsWith("+++")) added++;
+    else if (line.startsWith("-") && !line.startsWith("---")) removed++;
+  }
+  return { added, removed };
+}
 
 interface HunkPillProps {
   change: ChangeWithRichType;
@@ -9,9 +25,9 @@ interface HunkPillProps {
   onClick: () => void;
 }
 
-// Clicking a hunk pill opens the file and scrolls the diff editor to that hunk.
-export function HunkPill({ change, showCounts = true, onClick }: HunkPillProps) {
-  const changeMap = useWidgetStore((s) => s.changeMap);
+// Badge shown in a file header for a single change: displays the summary title if available, otherwise +N/-M counts. Clicking scrolls the diff editor to that hunk.
+export function HunkPill({ change, onClick }: HunkPillProps) {
+  const changeMap = useViewModel((s) => s.changeMap);
 
   let summaryTitle: string | null = null;
   if (changeMap) {

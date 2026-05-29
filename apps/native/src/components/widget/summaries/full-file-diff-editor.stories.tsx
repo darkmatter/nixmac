@@ -1,6 +1,6 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 import type { ChangeWithRichType } from "@/components/widget/utils";
 import type { FileDiffContents } from "@/ipc/types";
 import { useEffect, useState } from "react";
@@ -105,7 +105,7 @@ const changeMap = {
 
 function WithStore({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    useWidgetStore.getState().setChangeMap(changeMap);
+    useViewModel.setState({ changeMap });
   }, []);
   return <div className="w-[560px]">{children}</div>;
 }
