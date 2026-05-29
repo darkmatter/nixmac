@@ -153,10 +153,6 @@ pub struct EvolveState {
     pub evolution_id: Option<i64>,
     /// Active changeset id for the current repo state.
     pub current_changeset_id: Option<i64>,
-    /// Maintained for compatibility.
-    #[serde(skip_serializing)]
-    #[allow(dead_code)]
-    pub changeset_at_build: Option<i64>,
     /// Whether the current state has been successfully built and can be committed.
     pub committable: bool,
     /// Branch used to reset repo state on evolve failure.
@@ -182,7 +178,6 @@ impl Default for EvolveState {
         Self {
             evolution_id: None,
             current_changeset_id: None,
-            changeset_at_build: None,
             committable: false,
             backup_branch: None,
             rollback_branch: None,

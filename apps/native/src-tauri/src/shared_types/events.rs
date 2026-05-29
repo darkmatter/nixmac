@@ -1,9 +1,15 @@
+//! Tauri event payload types emitted from Rust to the frontend.
+//!
+//! Each struct is the typed payload for a specific event name (e.g.
+//! `nix:install:progress` → `NixInstallProgressEvent`). The frontend
+//! registers listeners via `ipcRenderer.on` and receives these as
+//! `event.payload`. Fields use `camelCase` serialization to match the
+//! TypeScript convention on the other side of the IPC boundary.
+
 #![allow(dead_code)]
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
-
-use super::git::SemanticChangeMap;
 
 /// Phase emitted during Nix installation/setup.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -130,14 +136,6 @@ pub struct DarwinApplyEndEvent {
     pub error: Option<String>,
     /// Path to the captured rebuild log, when available.
     pub log_file: Option<String>,
-}
-
-/// Payload for `summarizer:update`.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct SummarizerUpdateEvent {
-    /// Latest semantic change map after a queued summary update.
-    pub semantic_map: SemanticChangeMap,
 }
 
 /// Payload for `rust:panic`.

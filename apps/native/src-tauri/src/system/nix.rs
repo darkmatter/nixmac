@@ -90,11 +90,7 @@ pub fn get_nix_path_with_login_shell() -> String {
 }
 
 pub fn determine_host_attr<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<String> {
-    if let Ok(Some(attr)) = crate::storage::store::get_host_attr(app) {
-        return Some(attr);
-    }
-
-    None
+    crate::storage::store::get_host_attr(app).ok().flatten()
 }
 
 pub fn list_darwin_hosts(config_dir: &str) -> Result<Vec<String>> {
