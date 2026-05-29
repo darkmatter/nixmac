@@ -48,7 +48,7 @@
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        treefmtEval = treefmt.evalModule pkgs ./treefmt.nix;
+        treefmtEval = treefmt.lib.evalModule pkgs ./treefmt.nix;
       in
       {
         # Add your own packages here
