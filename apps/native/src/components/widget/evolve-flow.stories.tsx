@@ -1,5 +1,6 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
+import { useUiStore } from "@/stores/ui-store";
 import { useWidgetStore } from "@/stores/widget-store";
 import type {
   Change,
@@ -163,7 +164,9 @@ const mockEvolveEvents: EvolveEvent[] = [
 
 function WidgetWithState({ storeState }: { storeState: Record<string, unknown> }) {
   useEffect(() => {
-    useWidgetStore.setState(storeState);
+    const { evolvePrompt, ...rest } = storeState;
+    useWidgetStore.setState(rest);
+    if (evolvePrompt !== undefined) useUiStore.setState({ evolvePrompt });
   }, [storeState]);
 
   return <DarwinWidget />;
@@ -175,6 +178,8 @@ function AnimatedEvolveFlow() {
   useEffect(() => {
     useWidgetStore.setState({
       evolveState: evolveStateBegin,
+    });
+    useUiStore.setState({
       evolvePrompt: "Add system monitoring tools like htop and btop",
     });
 

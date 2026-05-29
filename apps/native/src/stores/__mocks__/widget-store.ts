@@ -11,8 +11,12 @@
 // Inside `__mocks__`, the relative import resolves to the un-mocked
 // original module — that's the manual-mock contract Storybook
 // inherits from Vitest.
-import { createWidgetStore as createRealWidgetStore } from "@/stores/widget-store.impl";
-import type { WidgetState } from "@/types/ui";
+import {
+  createWidgetStore as createRealWidgetStore,
+  type WidgetStore,
+} from "@/stores/widget-store.impl";
+
+type WidgetState = WidgetStore;
 
 // =============================================================================
 // Bypass invariants — these never drift from "all granted, all installed."
@@ -62,12 +66,11 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     host: real.getState().host || "Demo-MacBook-Pro",
   });
 
-  // Replace the dialog-opening actions with no-ops so a transient JS error
-  // can't trigger FeedbackDialog (which has render edge cases that obscure
-  // the component under review).
+  // Clamp the setup-invariant setters so stories can never knock the bypass
+  // values back to "not installed / not granted." Dialog-opening actions
+  // (setFeedbackOpen / openFeedback) live on useFeedbackStore now and are
+  // mocked separately in __mocks__/feedback-store.ts.
   real.setState({
-    setFeedbackOpen: () => undefined,
-    openFeedback: () => undefined,
     setNixInstalled: () => real.setState({ nixInstalled: true }),
     setDarwinRebuildAvailable: () => real.setState({ darwinRebuildAvailable: true }),
     setPermissionsChecked: () => real.setState({ permissionsChecked: true }),
@@ -95,8 +98,11 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
 export const useWidgetStore = createWidgetStore();
 
 import { computeCurrentStep } from "@/components/widget/utils";
-import type { WidgetStep } from "@/types/ui";
+import type { WidgetStep } from "@/components/widget/utils";
+import { useUiStore } from "@/stores/ui-store";
 
 export function useCurrentStep(): WidgetStep {
-  return useWidgetStore((state) => computeCurrentStep(state));
+  const widgetState = useWidgetStore();
+  const uiState = useUiStore();
+  return computeCurrentStep({ ...widgetState, ...uiState });
 }

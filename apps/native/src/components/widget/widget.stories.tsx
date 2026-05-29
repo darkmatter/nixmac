@@ -1,7 +1,9 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
-import { useWidgetStore } from "@/stores/widget-store";
 import type { EvolveEvent, GitStatus, SemanticChangeMap } from "@/ipc/types";
+import { useFeedbackStore } from "@/stores/feedback-store";
+import { useUiStore } from "@/stores/ui-store";
+import { useWidgetStore } from "@/stores/widget-store";
 import type React from "react";
 import { useEffect } from "react";
 import { DarwinWidget } from "./widget";
@@ -144,7 +146,8 @@ const mockChangeMap: SemanticChangeMap = {
       summary: {
         id: 1,
         title: "System Settings (4)",
-        description: "Dock autohide, Finder path bar, trackpad tap-to-click, +1 more",
+        description:
+          "Dock autohide, Finder path bar, trackpad tap-to-click, +1 more",
         status: "DONE",
         createdAt: 0,
       },
@@ -218,17 +221,29 @@ function StoryWidget({ storeState }: { storeState?: StoreState }) {
     const store = useWidgetStore.getState();
 
     // Set store state
-    if (storeState?.configDir !== undefined) store.setConfigDir(storeState.configDir);
+    if (storeState?.configDir !== undefined)
+      store.setConfigDir(storeState.configDir);
     if (storeState?.hosts !== undefined) store.setHosts(storeState.hosts);
     if (storeState?.host !== undefined) store.setHost(storeState.host);
-    if (storeState?.gitStatus !== undefined) store.setGitStatus(storeState.gitStatus);
-    if (storeState?.changeMap !== undefined) store.setChangeMap(storeState.changeMap);
-    if (storeState?.evolvePrompt !== undefined) store.setEvolvePrompt(storeState.evolvePrompt);
+    if (storeState?.gitStatus !== undefined)
+      store.setGitStatus(storeState.gitStatus);
+    if (storeState?.changeMap !== undefined)
+      store.setChangeMap(storeState.changeMap);
+    if (storeState?.evolvePrompt !== undefined)
+      useUiStore.getState().setEvolvePrompt(storeState.evolvePrompt);
     if (storeState?.isProcessing !== undefined)
-      store.setProcessing(storeState.isProcessing, storeState.processingAction || null);
-    if (storeState?.isGenerating !== undefined) store.setGenerating(storeState.isGenerating);
-    if (storeState?.settingsOpen !== undefined) store.setSettingsOpen(storeState.settingsOpen);
-    if (storeState?.error !== undefined) store.setError(storeState.error);
+      useUiStore
+        .getState()
+        .setProcessing(
+          storeState.isProcessing,
+          storeState.processingAction || null,
+        );
+    if (storeState?.isGenerating !== undefined)
+      store.setGenerating(storeState.isGenerating);
+    if (storeState?.settingsOpen !== undefined)
+      useUiStore.getState().setSettingsOpen(storeState.settingsOpen);
+    if (storeState?.error !== undefined)
+      useFeedbackStore.getState().setError(storeState.error);
 
     if (storeState?.evolveEvents !== undefined) {
       store.clearEvolveEvents();
@@ -400,7 +415,8 @@ export const Applying = meta.story({
         gitStatus: mockGitStatus,
         isProcessing: true,
         processingAction: "apply",
-        consoleLogs: "> Running darwin-rebuild switch...\nbuilding the system configuration...\n",
+        consoleLogs:
+          "> Running darwin-rebuild switch...\nbuilding the system configuration...\n",
       }}
     />
   ),
@@ -438,7 +454,8 @@ export const Committing = meta.story({
         gitStatus: mockGitStatus,
         isProcessing: true,
         processingAction: "commit",
-        consoleLogs: '> Committing: "feat(darwin): add vim and configure git"\n',
+        consoleLogs:
+          '> Committing: "feat(darwin): add vim and configure git"\n',
       }}
     />
   ),
@@ -657,4 +674,3 @@ export const OnboardingWithPermissions = meta.story({
     ),
   ],
 });
-

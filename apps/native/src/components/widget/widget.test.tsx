@@ -1,3 +1,5 @@
+import { useFeedbackStore } from "@/stores/feedback-store";
+import { useUiStore } from "@/stores/ui-store";
 import { useWidgetStore } from "@/stores/widget-store";
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -64,10 +66,10 @@ describe("DarwinWidget", () => {
     store.setHosts(["Test-MacBook"]);
     store.setHost("Test-MacBook");
     store.setGitStatus(null);
-    store.setEvolvePrompt("");
-    store.setProcessing(false);
+    useUiStore.getState().setEvolvePrompt("");
+    useUiStore.getState().setProcessing(false);
     store.setGenerating(false);
-    store.setError(null);
+    useFeedbackStore.getState().setError(null);
     store.clearEvolveEvents();
     store.clearLogs();
   });
@@ -104,8 +106,7 @@ describe("DarwinWidget", () => {
   });
 
   it("renders with error message", () => {
-    const store = useWidgetStore.getState();
-    store.setError("Test error message");
+    useFeedbackStore.getState().setError("Test error message");
 
     const { container } = render(<DarwinWidget />);
     expect(container).toBeTruthy();

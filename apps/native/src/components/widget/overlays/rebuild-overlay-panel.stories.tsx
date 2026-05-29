@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import React, { useEffect } from "react";
 import { RebuildOverlayPanel } from "@/components/widget/overlays/rebuild-overlay-panel";
 import { useWidgetStore } from "@/stores/widget-store";
-import type { RebuildLine, RebuildState } from "@/types/ui";
+import type { RebuildLine, RebuildState } from "@/stores/slices/rebuild";
 
 /**
  * Decorator that sets the widget store's rebuild state before rendering.
