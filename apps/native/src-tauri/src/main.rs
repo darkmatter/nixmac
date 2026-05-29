@@ -464,6 +464,7 @@ fn run_gui_mode(
         .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_upload::init())
         .plugin(tauri_plugin_macos_permissions::init())
+        .manage(state::slice::SliceRegistry::default())
         .invoke_handler(tauri::generate_handler![
             // Configuration
             commands::config::config_get,
