@@ -1,10 +1,10 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 
 import preview from "#storybook/preview";
-import { useWidgetStore } from "@/stores/widget-store";
+import { DeveloperTab } from "@/components/widget/settings/developer-tab";
+import { usePrefStore } from "@/stores/pref-store";
 import type React from "react";
 import { useEffect } from "react";
-import { DeveloperTab } from "@/components/widget/settings/developer-tab";
 
 const meta = preview.meta({
   title: "Settings/DeveloperTab",
@@ -29,7 +29,11 @@ export const Unpinned = meta.story({
   decorators: [
     (Story: React.ComponentType) => {
       useEffect(() => {
-        useWidgetStore.setState({ developerMode: true, pinnedVersion: null, updateChannel: "stable" });
+        usePrefStore.setState({
+          developerMode: true,
+          pinnedVersion: null,
+          updateChannel: "stable",
+        });
       }, []);
       return <Story />;
     },
@@ -41,7 +45,11 @@ export const PinnedToPastVersion = meta.story({
   decorators: [
     (Story: React.ComponentType) => {
       useEffect(() => {
-        useWidgetStore.setState({ developerMode: true, pinnedVersion: "0.21.0", updateChannel: "develop" });
+        usePrefStore.setState({
+          developerMode: true,
+          pinnedVersion: "0.21.0",
+          updateChannel: "develop",
+        });
       }, []);
       return <Story />;
     },

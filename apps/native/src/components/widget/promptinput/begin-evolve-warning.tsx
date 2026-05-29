@@ -14,6 +14,7 @@ import { ConfigDirBadge } from "@/components/widget/badges/config-dir-badge";
 import { useEvolve } from "@/hooks/use-evolve";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useRollback } from "@/hooks/use-rollback";
+import { useUiStore } from "@/stores/ui-store";
 import { useWidgetStore } from "@/stores/widget-store";
 import { Loader2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -29,7 +30,7 @@ type BuildCheckStatus = "checking" | "passed" | "failed";
 
 export function BeginEvolveWarning({ open, onOpenChange, handleEvolve }: BeginEvolveWarningProps) {
   const gitStatus = useWidgetStore((s) => s.gitStatus);
-  const evolvePrompt = useWidgetStore((s) => s.evolvePrompt);
+  const evolvePrompt = useUiStore((s) => s.evolvePrompt);
   const configDir = useWidgetStore((s) => s.configDir);
   const files = gitStatus?.files ?? [];
 

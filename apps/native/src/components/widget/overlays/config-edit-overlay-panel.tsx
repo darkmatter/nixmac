@@ -1,5 +1,6 @@
 "use client";
 
+import { useUiStore } from "@/stores/ui-store";
 import { useWidgetStore } from "@/stores/widget-store";
 import { Loader2 } from "lucide-react";
 
@@ -9,8 +10,8 @@ import { Loader2 } from "lucide-react";
  * `rebuild.isRunning` takes over with richer progress UI.
  */
 export function ConfigEditOverlayPanel() {
-  const isProcessing = useWidgetStore((s) => s.isProcessing);
-  const processingAction = useWidgetStore((s) => s.processingAction);
+  const isProcessing = useUiStore((s) => s.isProcessing);
+  const processingAction = useUiStore((s) => s.processingAction);
   const rebuildRunning = useWidgetStore((s) => s.rebuild.isRunning);
 
   if (!(isProcessing && processingAction === "apply") || rebuildRunning) {

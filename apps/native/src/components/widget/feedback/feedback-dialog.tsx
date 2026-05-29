@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
 import * as Sentry from "@sentry/react";
+import { useEffect, useState } from "react";
 
-import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -10,12 +11,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -23,10 +21,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Lightbulb, Bug, MessageCircle, Info, Loader2 } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Feedback as FeedbackModel, FeedbackType, ShareOptions } from "@/types/feedback";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { tauriAPI } from "@/ipc/api";
+import { useFeedbackStore } from "@/stores/feedback-store";
+import { useCurrentStep } from "@/stores/widget-store";
+import {
+  Feedback as FeedbackModel,
+  FeedbackType,
+  ShareOptions,
+} from "@/types/feedback";
+import { Bug, Info, Lightbulb, Loader2, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 
 const DEFAULT_SHARE_OPTIONS: ShareOptions = {
@@ -274,22 +283,28 @@ function shouldShowAppLogs(
 }
 
 export function FeedbackDialog() {
-  const feedbackOpen = useWidgetStore((s) => s.feedbackOpen);
-  const setFeedbackOpen = useWidgetStore((s) => s.setFeedbackOpen);
-  const feedbackTypeOverride = useWidgetStore((s) => s.feedbackTypeOverride);
-  const feedbackInitialText = useWidgetStore((s) => s.feedbackInitialText);
-  const panicDetails = useWidgetStore((s) => s.panicDetails);
-  const setFeedbackTypeOverride = useWidgetStore((s) => s.setFeedbackTypeOverride);
+  const feedbackOpen = useFeedbackStore((s) => s.feedbackOpen);
+  const setFeedbackOpen = useFeedbackStore((s) => s.setFeedbackOpen);
+  const feedbackTypeOverride = useFeedbackStore((s) => s.feedbackTypeOverride);
+  const feedbackInitialText = useFeedbackStore((s) => s.feedbackInitialText);
+  const panicDetails = useFeedbackStore((s) => s.panicDetails);
+  const setFeedbackTypeOverride = useFeedbackStore(
+    (s) => s.setFeedbackTypeOverride,
+  );
   const step = useCurrentStep();
-  const mainWindowError = useWidgetStore((s) => s.error) ?? undefined;
+  const mainWindowError = useFeedbackStore((s) => s.error) ?? undefined;
 
-  const [feedbackType, setFeedbackType] = useState<FeedbackType>(FeedbackType.Suggestion);
+  const [feedbackType, setFeedbackType] = useState<FeedbackType>(
+    FeedbackType.Suggestion,
+  );
   const [feedbackText, setFeedbackText] = useState("");
   const [expectedText, setExpectedText] = useState("");
   const [email, setEmail] = useState("");
   const [promptHistory, setPromptHistory] = useState<string[]>([]);
   const [relatedPrompt, setRelatedPrompt] = useState("");
-  const [shareOptions, setShareOptions] = useState<ShareOptions>(DEFAULT_SHARE_OPTIONS);
+  const [shareOptions, setShareOptions] = useState<ShareOptions>(
+    DEFAULT_SHARE_OPTIONS,
+  );
   const [submitting, setSubmitting] = useState(false);
   const showSentryDebugButton = import.meta.env.DEV;
 
@@ -330,7 +345,10 @@ export function FeedbackDialog() {
   useEffect(() => {
     if (!feedbackOpen) return;
 
-    if (feedbackType === FeedbackType.Suggestion || feedbackType === FeedbackType.General) {
+    if (
+      feedbackType === FeedbackType.Suggestion ||
+      feedbackType === FeedbackType.General
+    ) {
       setShareOptions((prev) => ({ ...prev, evolutionLog: false }));
     } else if (
       feedbackType === FeedbackType.Bug ||
@@ -351,7 +369,10 @@ export function FeedbackDialog() {
     setRelatedPrompt("");
     setShareOptions(DEFAULT_SHARE_OPTIONS);
     setFeedbackTypeOverride(null);
-    useWidgetStore.setState({ feedbackInitialText: null, panicDetails: null });
+    useFeedbackStore.setState({
+      feedbackInitialText: null,
+      panicDetails: null,
+    });
   };
 
   const handleSubmit = async () => {
@@ -360,9 +381,14 @@ export function FeedbackDialog() {
 
     let sentSuccessfully = false;
     try {
-      let metadata: Awaited<ReturnType<typeof tauriAPI.feedback.gatherMetadata>> | null = null;
+      let metadata: Awaited<
+        ReturnType<typeof tauriAPI.feedback.gatherMetadata>
+      > | null = null;
       try {
-        metadata = await tauriAPI.feedback.gatherMetadata(feedbackType, shareOptions);
+        metadata = await tauriAPI.feedback.gatherMetadata(
+          feedbackType,
+          shareOptions,
+        );
       } catch (err) {
         // eslint-disable-next-line no-console
         console.warn("Failed to gather feedback metadata:", err);
@@ -371,17 +397,21 @@ export function FeedbackDialog() {
       // Build a typed Feedback model and log it (replace with submission later)
       const modelType = feedbackType;
       const relatedPromptText =
-        (feedbackType === FeedbackType.Issue || feedbackType === FeedbackType.Error) &&
+        (feedbackType === FeedbackType.Issue ||
+          feedbackType === FeedbackType.Error) &&
         relatedPrompt
           ? relatedPrompt
           : undefined;
-      const selectedPromptText = shareOptions.lastPrompt ? relatedPromptText : undefined;
+      const selectedPromptText = shareOptions.lastPrompt
+        ? relatedPromptText
+        : undefined;
 
       const feedbackModel = new FeedbackModel({
         type: modelType,
         text: feedbackText,
         email: email || undefined,
-        expectedText: feedbackType === FeedbackType.Bug ? expectedText : undefined,
+        expectedText:
+          feedbackType === FeedbackType.Bug ? expectedText : undefined,
         share: shareOptions,
         // artifact fields left empty for now; will be populated by caller when collecting logs
         lastPromptText: selectedPromptText,
@@ -394,7 +424,10 @@ export function FeedbackDialog() {
         buildErrorOutput: metadata?.buildErrorOutput ?? undefined,
         flakeInputsSnapshot: metadata?.flakeInputsSnapshot ?? undefined,
         appLogsContent: metadata?.appLogsContent ?? undefined,
-        panicDetails: feedbackType === FeedbackType.Error ? (panicDetails ?? undefined) : undefined,
+        panicDetails:
+          feedbackType === FeedbackType.Error
+            ? (panicDetails ?? undefined)
+            : undefined,
       });
 
       const validation = feedbackModel.validate();
@@ -408,7 +441,9 @@ export function FeedbackDialog() {
       if (sent) {
         toast.success("Thanks — feedback sent");
       } else {
-        toast.info("Failed to send, we'll try again next time you open the app.");
+        toast.info(
+          "Failed to send, we'll try again next time you open the app.",
+        );
       }
       sentSuccessfully = true;
     } finally {
@@ -449,7 +484,9 @@ export function FeedbackDialog() {
       console.warn("[debug_sentry_event] Failed to invoke Rust command:", err);
     }
 
-    toast.success(`Sent debug Sentry events${eventId ? ` (frontend: ${eventId})` : ""}`);
+    toast.success(
+      `Sent debug Sentry events${eventId ? ` (frontend: ${eventId})` : ""}`,
+    );
   };
 
   const getTextboxLabel = () => {
@@ -471,7 +508,11 @@ export function FeedbackDialog() {
   const isIssue = feedbackType === FeedbackType.Issue;
   const isError = feedbackType === FeedbackType.Error;
   const isReportMode = isIssue || isError;
-  const dialogTitle = isIssue ? "Report an issue" : isError ? "Report an error" : "Give feedback";
+  const dialogTitle = isIssue
+    ? "Report an issue"
+    : isError
+      ? "Report an error"
+      : "Give feedback";
   const hasAutoFilledError = feedbackInitialText && isError;
   const dialogDescription = hasAutoFilledError
     ? "An error was detected. The details have been pre-filled below. Please review and submit to help us fix this issue."
@@ -490,7 +531,9 @@ export function FeedbackDialog() {
     >
       <DialogContent className="max-w-2xl h-[85vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className={hasAutoFilledError ? "flex items-center gap-2" : ""}>
+          <DialogTitle
+            className={hasAutoFilledError ? "flex items-center gap-2" : ""}
+          >
             {hasAutoFilledError && <span className="text-red-500">⚠️</span>}
             {dialogTitle}
           </DialogTitle>
@@ -504,23 +547,33 @@ export function FeedbackDialog() {
               <Label className="text-muted-foreground">TYPE</Label>
               <RadioGroup
                 value={feedbackType}
-                onValueChange={(value: string) => setFeedbackType(value as FeedbackType)}
+                onValueChange={(value: string) =>
+                  setFeedbackType(value as FeedbackType)
+                }
                 className="grid grid-cols-3 gap-4"
               >
                 <Label
                   className={`flex cursor-pointer flex-row items-center gap-3 rounded-lg border border-input bg-transparent p-3 hover:bg-accent transition-opacity ${
-                    feedbackType === FeedbackType.Suggestion ? "opacity-100" : "opacity-40"
+                    feedbackType === FeedbackType.Suggestion
+                      ? "opacity-100"
+                      : "opacity-40"
                   }`}
                   htmlFor="suggestion"
                 >
-                  <RadioGroupItem className="sr-only" value="suggestion" id="suggestion" />
+                  <RadioGroupItem
+                    className="sr-only"
+                    value="suggestion"
+                    id="suggestion"
+                  />
                   <Lightbulb className="h-5 w-5 text-muted-foreground" />
                   <span className="font-medium text-sm">Suggestion</span>
                 </Label>
 
                 <Label
                   className={`flex cursor-pointer flex-row items-center gap-3 rounded-lg border border-input bg-transparent p-3 hover:bg-accent transition-opacity ${
-                    feedbackType === FeedbackType.Bug ? "opacity-100" : "opacity-40"
+                    feedbackType === FeedbackType.Bug
+                      ? "opacity-100"
+                      : "opacity-40"
                   }`}
                   htmlFor="bug"
                 >
@@ -531,11 +584,17 @@ export function FeedbackDialog() {
 
                 <Label
                   className={`flex cursor-pointer flex-row items-center gap-3 rounded-lg border border-input bg-transparent p-3 hover:bg-accent transition-opacity ${
-                    feedbackType === FeedbackType.General ? "opacity-100" : "opacity-40"
+                    feedbackType === FeedbackType.General
+                      ? "opacity-100"
+                      : "opacity-40"
                   }`}
                   htmlFor="general"
                 >
-                  <RadioGroupItem className="sr-only" value="general" id="general" />
+                  <RadioGroupItem
+                    className="sr-only"
+                    value="general"
+                    id="general"
+                  />
                   <MessageCircle className="h-5 w-5 text-muted-foreground" />
                   <span className="font-medium text-sm">General</span>
                 </Label>
@@ -619,7 +678,11 @@ export function FeedbackDialog() {
           <div className="space-y-2">
             <Label className="text-foreground">SHARE WITH THE TEAM</Label>
             <div className="space-y-2 max-h-[28vh] overflow-y-auto pr-2">
-              {shouldShowCurrentAppState(feedbackType, step, mainWindowError) && (
+              {shouldShowCurrentAppState(
+                feedbackType,
+                step,
+                mainWindowError,
+              ) && (
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="share-app-state"
@@ -759,7 +822,11 @@ export function FeedbackDialog() {
                 </div>
               )}
 
-              {shouldShowChangedNixFiles(feedbackType, step, mainWindowError) && (
+              {shouldShowChangedNixFiles(
+                feedbackType,
+                step,
+                mainWindowError,
+              ) && (
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="share-changed-nix-files"
@@ -794,7 +861,11 @@ export function FeedbackDialog() {
                 </div>
               )}
 
-              {shouldShowAiProviderModelInfo(feedbackType, step, mainWindowError) && (
+              {shouldShowAiProviderModelInfo(
+                feedbackType,
+                step,
+                mainWindowError,
+              ) && (
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="share-ai-provider-model-info"
@@ -829,7 +900,11 @@ export function FeedbackDialog() {
                 </div>
               )}
 
-              {shouldShowBuildErrorOutput(feedbackType, step, mainWindowError) && (
+              {shouldShowBuildErrorOutput(
+                feedbackType,
+                step,
+                mainWindowError,
+              ) && (
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="share-build-error-output"
@@ -864,7 +939,11 @@ export function FeedbackDialog() {
                 </div>
               )}
 
-              {shouldShowFlakeInputsSnapshot(feedbackType, step, mainWindowError) && (
+              {shouldShowFlakeInputsSnapshot(
+                feedbackType,
+                step,
+                mainWindowError,
+              ) && (
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="share-flake-inputs-snapshot"
@@ -939,14 +1018,22 @@ export function FeedbackDialog() {
 
         <DialogFooter>
           {showSentryDebugButton && (
-            <Button variant="secondary" onClick={handleDebugSentryEvent} disabled={submitting}>
+            <Button
+              variant="secondary"
+              onClick={handleDebugSentryEvent}
+              disabled={submitting}
+            >
               Send Sentry Debug Event
             </Button>
           )}
           <Button variant="outline" onClick={handleClose} disabled={submitting}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={submitting} aria-label="Send feedback">
+          <Button
+            onClick={handleSubmit}
+            disabled={submitting}
+            aria-label="Send feedback"
+          >
             {submitting ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : isReportMode ? (

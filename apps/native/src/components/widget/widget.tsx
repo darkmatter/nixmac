@@ -1,28 +1,29 @@
 "use client";
 
+import { FeedbackDialog } from "@/components/widget/feedback/feedback-dialog";
+import { ReportIssueButton } from "@/components/widget/feedback/report-issue-button";
+import { Console } from "@/components/widget/layout/console";
+import { ErrorMessage } from "@/components/widget/layout/error-message";
+import { Header } from "@/components/widget/layout/header";
+import { StepContentWrapper } from "@/components/widget/layout/step-content-wrapper";
+import { Stepper } from "@/components/widget/layout/stepper";
+import { UpdateBanner } from "@/components/widget/layout/update-banner";
 import { ConfigEditOverlayPanel } from "@/components/widget/overlays/config-edit-overlay-panel";
 import { EditorPanel } from "@/components/widget/overlays/editor-panel";
 import { EvolveOverlayPanel } from "@/components/widget/overlays/evolve-overlay-panel";
 import { RebuildOverlayPanel } from "@/components/widget/overlays/rebuild-overlay-panel";
-import { Console } from "@/components/widget/layout/console";
-import { ErrorMessage } from "@/components/widget/layout/error-message";
-import { FeedbackDialog } from "@/components/widget/feedback/feedback-dialog";
-import { Header } from "@/components/widget/layout/header";
-import { ReportIssueButton } from "@/components/widget/feedback/report-issue-button";
 import { SettingsDialog } from "@/components/widget/settings/settings-dialog";
-import { StepContentWrapper } from "@/components/widget/layout/step-content-wrapper";
-import { Stepper } from "@/components/widget/layout/stepper";
 import {
-    BeginStep,
-    CommitStep,
-    EvolveStep,
-    FilesystemStep,
-    HistoryStep,
-    ManualCommitStep,
-    ManualEvolveStep,
-    NixSetupStep,
-    PermissionsStep,
-    SetupStep,
+  BeginStep,
+  CommitStep,
+  EvolveStep,
+  FilesystemStep,
+  HistoryStep,
+  ManualCommitStep,
+  ManualEvolveStep,
+  NixSetupStep,
+  PermissionsStep,
+  SetupStep,
 } from "@/components/widget/steps";
 import { surfaceRecoveryReport } from "@/hooks/use-feedback-on-recovery";
 import { useGitOperations } from "@/hooks/use-git-operations";
@@ -31,14 +32,19 @@ import { usePanicHandler } from "@/hooks/use-panic-handler";
 import { usePermissions } from "@/hooks/use-permissions";
 import { usePrefs } from "@/hooks/use-prefs";
 import { usePromptHistory } from "@/hooks/use-prompt-history";
-import { useTrayEvents } from "@/hooks/use-tray-events";
 import { useQueueSummarizer } from "@/hooks/use-queue-summarizer";
-import { useWatcher } from "@/hooks/use-watcher";
-import { loadConfig, loadHosts, loadEvolveState } from "@/hooks/use-widget-initialization";
 import { useSummary } from "@/hooks/use-summary";
+import { useTrayEvents } from "@/hooks/use-tray-events";
+import { useWatcher } from "@/hooks/use-watcher";
+import {
+  loadConfig,
+  loadEvolveState,
+  loadHosts,
+} from "@/hooks/use-widget-initialization";
 import { markBootStage } from "@/lib/boot-diagnostics";
+import { useFeedbackStore } from "@/stores/feedback-store";
+import { useUiStore } from "@/stores/ui-store";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
-import { UpdateBanner } from "@/components/widget/layout/update-banner";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
 import { setupWidgetTestHelpers } from "@/utils/widget-test-helpers";
 import { useEffect } from "react";
@@ -79,17 +85,23 @@ export function DarwinWidget() {
   // Skips during IME composition — Esc cancels the candidate, not the modal.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
+      if (
+        e.key !== "Escape" ||
+        e.defaultPrevented ||
+        e.isComposing ||
+        e.keyCode === 229
+      )
+        return;
       const {
         settingsOpen,
         showHistory,
         showFilesystem,
         isProcessing,
-        isGenerating,
         setSettingsOpen,
         setShowHistory,
         setShowFilesystem,
-      } = useWidgetStore.getState();
+      } = useUiStore.getState();
+      const { isGenerating } = useWidgetStore.getState();
       if (settingsOpen) {
         e.preventDefault();
         setSettingsOpen(false);
@@ -119,7 +131,9 @@ export function DarwinWidget() {
         await findChangeMap();
         refreshPromptHistory();
       } catch (e: unknown) {
-        useWidgetStore.getState().setError((e as Error)?.message || String(e));
+        useFeedbackStore
+          .getState()
+          .setError((e as Error)?.message || String(e));
       }
 
       surfaceRecoveryReport();

@@ -1,16 +1,18 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUpdater } from "@/hooks/use-updater";
 import { tauriAPI } from "@/ipc/api";
 import type { UpdateChannel } from "@/ipc/types";
-import { useUpdater } from "@/hooks/use-updater";
+import { usePrefStore } from "@/stores/pref-store";
+import { useUiStore } from "@/stores/ui-store";
+import { useWidgetStore } from "@/stores/widget-store";
 import { getVersion } from "@tauri-apps/api/app";
 import {
   AlertTriangle,
   DatabaseZap,
   Download,
-  GitBranch,
   Eraser,
+  GitBranch,
   History,
   Pin,
   RotateCcw,
@@ -21,10 +23,10 @@ const VERSION_PATTERN = /^[0-9]+(?:\.[0-9]+){0,2}(?:-[a-zA-Z0-9.-]+)?$/;
 
 export function DeveloperTab() {
   const { installVersion, relaunch, clearPinnedVersion } = useUpdater();
-  const pinnedVersion = useWidgetStore((s) => s.pinnedVersion);
-  const setPinnedVersion = useWidgetStore((s) => s.setPinnedVersion);
-  const updateChannel = useWidgetStore((s) => s.updateChannel);
-  const setUpdateChannel = useWidgetStore((s) => s.setUpdateChannel);
+  const pinnedVersion = usePrefStore((s) => s.pinnedVersion);
+  const setPinnedVersion = usePrefStore((s) => s.setPinnedVersion);
+  const updateChannel = usePrefStore((s) => s.updateChannel);
+  const setUpdateChannel = usePrefStore((s) => s.setUpdateChannel);
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);
   const [versionInput, setVersionInput] = useState("");
   const [installing, setInstalling] = useState(false);
@@ -33,7 +35,9 @@ export function DeveloperTab() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    getVersion().then(setCurrentVersion).catch(() => setCurrentVersion("unknown"));
+    getVersion()
+      .then(setCurrentVersion)
+      .catch(() => setCurrentVersion("unknown"));
   }, []);
 
   const handleInstall = async () => {
@@ -68,7 +72,9 @@ export function DeveloperTab() {
     try {
       await clearPinnedVersion();
       setPinnedVersion(null);
-      setStatusMessage("Cleared pinned version. The auto-updater will check for the latest on next launch.");
+      setStatusMessage(
+        "Cleared pinned version. The auto-updater will check for the latest on next launch.",
+      );
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : String(err));
     }
@@ -83,7 +89,7 @@ export function DeveloperTab() {
       setStatusMessage(
         channel === "stable"
           ? "Using stable updates from main."
-          : "Using develop updates. The next auto-update check will read the develop channel."
+          : "Using develop updates. The next auto-update check will read the develop channel.",
       );
     } catch (err) {
       setUpdateChannel(previous);
@@ -93,7 +99,9 @@ export function DeveloperTab() {
 
   const handleClearTauriState = async () => {
     if (
-      !window.confirm("Clear Tauri stores? This resets saved settings, routing state, build state, and caches.")
+      !window.confirm(
+        "Clear Tauri stores? This resets saved settings, routing state, build state, and caches.",
+      )
     ) {
       return;
     }
@@ -105,9 +113,9 @@ export function DeveloperTab() {
       await tauriAPI.debug.clearTauriState();
       useWidgetStore.getState().setEvolveState(null);
       useWidgetStore.getState().setGitStatus(null);
-      useWidgetStore.getState().setPromptHistory([]);
+      useUiStore.getState().setPromptHistory([]);
       useWidgetStore.getState().setExternalBuildDetected(false);
-      useWidgetStore.getState().setPinnedVersion(null);
+      usePrefStore.getState().setPinnedVersion(null);
       setStatusMessage(
         "Cleared Tauri stores: settings.json, evolve-state.json, and build-state.json. Relaunch or reopen settings to reload defaults.",
       );
@@ -122,7 +130,7 @@ export function DeveloperTab() {
     const store = useWidgetStore.getState();
     store.clearLogs();
     store.clearEvolveEvents();
-    store.clearPreview();
+    store.setChangeMap(null);
     store.clearRebuild();
     store.setConversationalResponse(null);
     store.setCommitMessageSuggestion(null);
@@ -133,7 +141,7 @@ export function DeveloperTab() {
   const handleDisableDeveloper = async () => {
     try {
       await tauriAPI.ui.setPrefs({ developerMode: false });
-      useWidgetStore.getState().setDeveloperMode(false);
+      usePrefStore.getState().setDeveloperMode(false);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : String(err));
     }
@@ -144,7 +152,8 @@ export function DeveloperTab() {
       <div>
         <h2 className="mb-1 font-semibold text-base">Developer</h2>
         <p className="text-muted-foreground text-xs">
-          Hidden tools for debugging and bisecting regressions. Don't use these unless you know what you're doing.
+          Hidden tools for debugging and bisecting regressions. Don't use these
+          unless you know what you're doing.
         </p>
       </div>
 
@@ -154,10 +163,13 @@ export function DeveloperTab() {
           <div className="space-y-1">
             <div className="font-medium text-foreground">Heads up</div>
             <div className="text-muted-foreground">
-              Installing a past version replaces your current <code className="rounded bg-muted px-1">.app</code>{" "}
-              bundle on disk. The version number you enter must match an existing release at{" "}
-              <code className="rounded bg-muted px-1">releases.nixmac.com</code>. Bisecting only works in release
-              builds — the dev binary doesn't ship the updater plugin.
+              Installing a past version replaces your current{" "}
+              <code className="rounded bg-muted px-1">.app</code> bundle on
+              disk. The version number you enter must match an existing release
+              at{" "}
+              <code className="rounded bg-muted px-1">releases.nixmac.com</code>
+              . Bisecting only works in release builds — the dev binary doesn't
+              ship the updater plugin.
             </div>
           </div>
         </div>
@@ -171,9 +183,11 @@ export function DeveloperTab() {
         </div>
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Stable follows releases from <code className="rounded bg-muted px-1">main</code>. Develop follows signed
-            release-mode builds from <code className="rounded bg-muted px-1">develop</code>. Version pins override the
-            selected channel until you resume auto-update.
+            Stable follows releases from{" "}
+            <code className="rounded bg-muted px-1">main</code>. Develop follows
+            signed release-mode builds from{" "}
+            <code className="rounded bg-muted px-1">develop</code>. Version pins
+            override the selected channel until you resume auto-update.
           </p>
           <div className="grid grid-cols-2 gap-2">
             {(["stable", "develop"] as const).map((channel) => {
@@ -192,7 +206,10 @@ export function DeveloperTab() {
             })}
           </div>
           <div className="text-xs text-muted-foreground">
-            Current channel: <code className="rounded bg-muted px-1 font-mono">{updateChannel}</code>
+            Current channel:{" "}
+            <code className="rounded bg-muted px-1 font-mono">
+              {updateChannel}
+            </code>
           </div>
         </div>
       </div>
@@ -206,8 +223,11 @@ export function DeveloperTab() {
         {pinnedVersion ? (
           <div className="space-y-2">
             <div className="text-xs text-muted-foreground">
-              Pinned to <code className="rounded bg-muted px-1 font-mono">v{pinnedVersion}</code>. The silent
-              update check on launch is suppressed while pinned.
+              Pinned to{" "}
+              <code className="rounded bg-muted px-1 font-mono">
+                v{pinnedVersion}
+              </code>
+              . The silent update check on launch is suppressed while pinned.
             </div>
             <Button onClick={handleClearPin} size="sm" variant="outline">
               <RotateCcw className="mr-2 h-3.5 w-3.5" />
@@ -229,10 +249,13 @@ export function DeveloperTab() {
         </div>
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
-            Enter a version that exists in the release bucket (look at <code className="rounded bg-muted px-1">git tag</code>{" "}
-            for valid values). The signed bundle is downloaded from{" "}
-            <code className="rounded bg-muted px-1 font-mono">releases.nixmac.com/&lt;version&gt;/</code>, verified, and
-            installed.
+            Enter a version that exists in the release bucket (look at{" "}
+            <code className="rounded bg-muted px-1">git tag</code> for valid
+            values). The signed bundle is downloaded from{" "}
+            <code className="rounded bg-muted px-1 font-mono">
+              releases.nixmac.com/&lt;version&gt;/
+            </code>
+            , verified, and installed.
           </p>
           <div className="flex items-center gap-2">
             <Input
@@ -258,11 +281,18 @@ export function DeveloperTab() {
         </div>
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Reset saved Tauri plugin-store data when the widget gets stuck in the wrong step or cached data looks stale.
-            This clears saved settings, routing state, build state, prompt history, and model caches.
+            Reset saved Tauri plugin-store data when the widget gets stuck in
+            the wrong step or cached data looks stale. This clears saved
+            settings, routing state, build state, prompt history, and model
+            caches.
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={handleClearTauriState} disabled={clearingState} size="sm" variant="outline">
+            <Button
+              onClick={handleClearTauriState}
+              disabled={clearingState}
+              size="sm"
+              variant="outline"
+            >
               <DatabaseZap className="mr-2 h-3.5 w-3.5" />
               {clearingState ? "Clearing…" : "Clear Tauri state"}
             </Button>
@@ -276,7 +306,9 @@ export function DeveloperTab() {
 
       {(statusMessage || errorMessage) && (
         <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs">
-          {statusMessage && <div className="text-muted-foreground">{statusMessage}</div>}
+          {statusMessage && (
+            <div className="text-muted-foreground">{statusMessage}</div>
+          )}
           {errorMessage && <div className="text-red-400">{errorMessage}</div>}
         </div>
       )}

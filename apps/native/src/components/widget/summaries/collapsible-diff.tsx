@@ -8,7 +8,7 @@ import {
   getShortFilename,
   type ChangeWithRichType,
 } from "@/components/widget/utils";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiStore } from "@/stores/ui-store";
 import { ChevronRight, Pencil } from "lucide-react";
 
 interface CollapsibleDiffProps {
@@ -66,7 +66,7 @@ export function CollapsibleDiff({
             className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             onClick={(e) => {
               e.stopPropagation();
-              useWidgetStore.setState({ editingFile: change.filename });
+              useUiStore.setState({ editingFile: change.filename });
             }}
             title="Edit file"
           >

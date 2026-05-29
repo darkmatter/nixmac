@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react";
 import { tauriAPI } from "@/ipc/api";
 import type { UpdateInfo } from "@/ipc/types";
-import { useWidgetStore } from "@/stores/widget-store";
+import { usePrefStore } from "@/stores/pref-store";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface UpdateState {
   /** Whether we're currently checking for updates */
@@ -37,8 +37,8 @@ export function useUpdater() {
   const [state, setState] = useState<UpdateState>(initialState);
   const checkedRef = useRef(false);
   const isDevMode = import.meta.env.DEV;
-  const pinnedVersion = useWidgetStore((s) => s.pinnedVersion);
-  const updateChannel = useWidgetStore((s) => s.updateChannel);
+  const pinnedVersion = usePrefStore((s) => s.pinnedVersion);
+  const updateChannel = usePrefStore((s) => s.updateChannel);
 
   const checkForUpdates = useCallback(async () => {
     setState((s) => ({ ...s, checking: true, error: null }));
@@ -57,14 +57,17 @@ export function useUpdater() {
       }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      const isPluginMissing = errMsg.includes("plugin updater not found") ||
-                              errMsg.includes("plugin not found");
+      const isPluginMissing =
+        errMsg.includes("plugin updater not found") ||
+        errMsg.includes("plugin not found");
 
       if (isDevMode || isPluginMissing) {
         // Suppress errors when the updater plugin isn't registered (NIXMAC_DISABLE_UPDATER=1)
         // or in dev mode where it's always noisy.
         if (isPluginMissing) {
-          console.debug("[updater] plugin not registered, skipping update check");
+          console.debug(
+            "[updater] plugin not registered, skipping update check",
+          );
         }
         setState((s) => ({
           ...s,
@@ -148,7 +151,11 @@ export function useUpdater() {
 
     if (pinnedVersion) {
       checkedRef.current = true;
-      console.debug("[updater] silent check suppressed (pinned to", pinnedVersion, ")");
+      console.debug(
+        "[updater] silent check suppressed (pinned to",
+        pinnedVersion,
+        ")",
+      );
       return;
     }
 
@@ -159,7 +166,11 @@ export function useUpdater() {
         if (cancelled || checkedRef.current) return;
         if (prefs?.pinnedVersion) {
           checkedRef.current = true;
-          console.debug("[updater] silent check suppressed (pinned to", prefs.pinnedVersion, ")");
+          console.debug(
+            "[updater] silent check suppressed (pinned to",
+            prefs.pinnedVersion,
+            ")",
+          );
           return;
         }
       } catch {

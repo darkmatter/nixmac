@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiStore } from "@/stores/ui-store";
 
 import { FILES, SECTIONS, type FsFile, type SectionId } from "./data";
 import { FileList } from "./file-list";
@@ -20,9 +20,9 @@ interface FilesystemStepProps {
 }
 
 export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
-  const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
-  const setShowFilesystem = useWidgetStore((s) => s.setShowFilesystem);
-  const targetSection = useWidgetStore((s) => s.filesystemTargetSection);
+  const setEvolvePrompt = useUiStore((s) => s.setEvolvePrompt);
+  const setShowFilesystem = useUiStore((s) => s.setShowFilesystem);
+  const targetSection = useUiStore((s) => s.filesystemTargetSection);
 
   // Honor an upstream "open at section X" intent (e.g. the Untracked
   // banner's View button passes "manage"). Default to System.
@@ -37,7 +37,7 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
   // (which passes no section) returns to the user's last view.
   useEffect(() => {
     if (targetSection) {
-      useWidgetStore.setState({ filesystemTargetSection: null });
+      useUiStore.setState({ filesystemTargetSection: null });
     }
     // Run only on mount — see effect of targetSection changing handled
     // by the lifecycle below (the view is unmounted between openings).

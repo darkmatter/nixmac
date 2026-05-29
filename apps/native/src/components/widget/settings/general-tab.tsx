@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -7,14 +6,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { BootstrapConfig } from "@/components/widget/controls/bootstrap-config";
 import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
-import { getWebSiteUrl } from "@/lib/env";
-import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
+import { getWebSiteUrl } from "@/lib/env";
+import { usePrefStore } from "@/stores/pref-store";
+import type { AnyFieldApi } from "@tanstack/react-form";
 import { getVersion } from "@tauri-apps/api/app";
 import { open } from "@tauri-apps/plugin-shell";
-import type { AnyFieldApi } from "@tanstack/react-form";
 import { ExternalLink } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -37,7 +37,10 @@ async function openExternalUrl(url: string) {
   try {
     await open(url);
   } catch (error) {
-    console.warn("Failed to open external URL with Tauri shell; falling back to browser window.", error);
+    console.warn(
+      "Failed to open external URL with Tauri shell; falling back to browser window.",
+      error,
+    );
     window.open(url, "_blank");
   }
 }
@@ -58,7 +61,10 @@ export function GeneralTab({
         <h2 className="mb-4 font-semibold text-base">General</h2>
         <div className="space-y-4">
           {/* Config Directory */}
-          <DirectoryPicker label="Configuration Directory" subLabel="Holds your nix-darwin flake" />
+          <DirectoryPicker
+            label="Configuration Directory"
+            subLabel="Holds your nix-darwin flake"
+          />
 
           {/* Host Selection or Bootstrap */}
           {hasFlake ? (
@@ -77,7 +83,11 @@ export function GeneralTab({
                     ))}
                   </SelectContent>
                 </Select>
-                <Button onClick={handleRefreshHosts} size="sm" variant="outline">
+                <Button
+                  onClick={handleRefreshHosts}
+                  size="sm"
+                  variant="outline"
+                >
                   Refresh
                 </Button>
               </div>
@@ -87,16 +97,22 @@ export function GeneralTab({
             </div>
           ) : (
             configDir && (
-              <BootstrapConfig label="Configuration" onSuccess={() => setSettingsOpen(false)} />
+              <BootstrapConfig
+                label="Configuration"
+                onSuccess={() => setSettingsOpen(false)}
+              />
             )
           )}
 
           {/* Diagnostics */}
           <div className="flex items-center justify-between rounded-lg border border-border p-3">
             <div className="space-y-0.5">
-              <div className="font-medium text-sm">Send diagnostics to the nixmac team</div>
+              <div className="font-medium text-sm">
+                Send diagnostics to the nixmac team
+              </div>
               <div className="text-muted-foreground text-xs">
-                Share anonymized crash and error reports to improve stability. Restart required.
+                Share anonymized crash and error reports to improve stability.
+                Restart required.
                 <div>
                   <button
                     type="button"
@@ -158,15 +174,17 @@ export function GeneralTab({
  * keeps the developer panel out of the regular UI without an env-var dance.
  */
 function VersionRow() {
-  const developerMode = useWidgetStore((s) => s.developerMode);
-  const setDeveloperMode = useWidgetStore((s) => s.setDeveloperMode);
+  const developerMode = usePrefStore((s) => s.developerMode);
+  const setDeveloperMode = usePrefStore((s) => s.setDeveloperMode);
   const [version, setVersion] = useState<string | null>(null);
   const [tapHint, setTapHint] = useState<string | null>(null);
   const tapCountRef = useRef(0);
   const tapTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    getVersion().then(setVersion).catch(() => setVersion("unknown"));
+    getVersion()
+      .then(setVersion)
+      .catch(() => setVersion("unknown"));
   }, []);
 
   const handleVersionTap = async () => {
@@ -192,7 +210,9 @@ function VersionRow() {
       return;
     }
     if (remaining <= 3) {
-      setTapHint(`${remaining} more tap${remaining === 1 ? "" : "s"} to enable Developer settings`);
+      setTapHint(
+        `${remaining} more tap${remaining === 1 ? "" : "s"} to enable Developer settings`,
+      );
     }
   };
 
@@ -217,7 +237,11 @@ function VersionRow() {
           title={developerMode ? "Developer mode is enabled" : undefined}
         >
           {version ?? "…"}
-          {developerMode && <span className="ml-2 text-[10px] uppercase tracking-wide text-primary">dev</span>}
+          {developerMode && (
+            <span className="ml-2 text-[10px] uppercase tracking-wide text-primary">
+              dev
+            </span>
+          )}
         </button>
       </div>
       {tapHint && !developerMode && (

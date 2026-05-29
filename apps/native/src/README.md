@@ -18,9 +18,14 @@ Hooks in `hooks/` sit between components and `ipc/api.ts`. Each hook owns a slic
 
 ## App State
 
-`widget-store.ts` is a Zustand store that holds widget step routing, git status, evolve state, UI preferences, and shared flags. Most hooks read from and write to this store.
+`stores/` holds four Zustand stores, each scoped to a single concern:
 
-Components read from this store directly when possible to minimize prop-drilling.
+- `widget-store.ts` (composed from slices in `stores/slices/`) — backend-mirrored ViewModel state: setup, config, evolve state, git status, rebuild progress, history, summary, console logs.
+- `ui-store.ts` — UI navigation and ephemeral interaction state (settings panel, processing flags, evolve prompt draft, prompt history, filesystem/editor view toggles).
+- `feedback-store.ts` — error banner + feedback dialog state + captured panic payload.
+- `pref-store.ts` — persisted user preferences (confirmation prompts, developer mode, update channel, etc.) — hydrated from / written through to the Tauri prefs store on the Rust side.
+
+Hooks read from and write to whichever store(s) they need. Components read directly to minimize prop-drilling.
 
 ## Preview Indicator
 

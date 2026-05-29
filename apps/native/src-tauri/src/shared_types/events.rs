@@ -63,16 +63,6 @@ pub struct NixInstallEndEvent {
     pub error: Option<String>,
 }
 
-/// Payload for `nix:darwin-rebuild:end`.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct NixDarwinRebuildEndEvent {
-    /// Whether nix-darwin setup completed successfully.
-    pub ok: bool,
-    /// Human-readable failure message.
-    pub error: Option<String>,
-}
-
 /// Known rebuild/activation failure categories.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "snake_case")]

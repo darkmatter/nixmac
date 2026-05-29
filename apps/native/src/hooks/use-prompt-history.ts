@@ -1,5 +1,5 @@
-import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
+import { useUiStore } from "@/stores/ui-store";
 
 /**
  * Hook for managing prompt history.
@@ -11,7 +11,7 @@ const refreshPromptHistory = async (prompt?: string) => {
   }
   tauriAPI.promptHistory
     .get()
-    .then((history) => useWidgetStore.getState().setPromptHistory(history))
+    .then((history) => useUiStore.getState().setPromptHistory(history))
     .catch(console.error);
 };
 

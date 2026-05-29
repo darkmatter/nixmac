@@ -307,10 +307,6 @@ export const storybookTauriAPI = {
       emit("nix:install:end", { ok: true, code: 0, darwin_rebuild_available: true });
       return okResult();
     },
-    prefetchDarwinRebuild: async () => {
-      emit("nix:darwin-rebuild:end", { ok: true });
-      return okResult();
-    },
   },
   flake: {
     listHosts: async () => [...defaultHosts],

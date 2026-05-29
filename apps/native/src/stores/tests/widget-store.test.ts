@@ -1,10 +1,8 @@
 import type { EvolveEvent, GitStatus } from "@/ipc/types";
+import { initialRebuildSubstate as initialRebuildState } from "@/stores/slices/rebuild";
+import type { RebuildLine } from "@/stores/slices/rebuild";
 import { describe, expect, it } from "vitest";
-import {
-  createWidgetStore,
-  initialRebuildState,
-  type RebuildLine,
-} from "./widget-store";
+import { createWidgetStore } from "@/stores/widget-store";
 
 // ---------------------------------------------------------------------------
 // createWidgetStore() — factory + initial state
@@ -22,18 +20,11 @@ describe("createWidgetStore — initial state", () => {
     expect(s.permissionsState).toBeNull();
     expect(s.nixInstalled).toBeNull();
     expect(s.darwinRebuildAvailable).toBeNull();
-    expect(s.isProcessing).toBe(false);
-    expect(s.processingAction).toBeNull();
     expect(s.evolveEvents).toEqual([]);
     expect(s.consoleLogs).toBe("");
     expect(s.rebuild).toEqual(initialRebuildState);
     // recommendedPrompt distinguishes "never fetched" (undefined) from "none" (null).
     expect(s.recommendedPrompt).toBeUndefined();
-    // confirmation prefs default on for safety.
-    expect(s.confirmBuild).toBe(true);
-    expect(s.confirmClear).toBe(true);
-    expect(s.confirmRollback).toBe(true);
-    expect(s.scanHomebrewOnStartup).toBe(true);
     // analyzing-hash set starts empty but is an actual Set.
     expect(s.analyzingHistoryForHashes).toBeInstanceOf(Set);
     expect(s.analyzingHistoryForHashes.size).toBe(0);
@@ -52,7 +43,6 @@ describe("createWidgetStore — initial state", () => {
     expect(s.host).toBe("mbp");
     expect(s.permissionsChecked).toBe(true);
     // Unrelated defaults are preserved.
-    expect(s.evolvePrompt).toBe("");
     expect(s.rebuild).toEqual(initialRebuildState);
   });
 
@@ -83,14 +73,6 @@ describe("widget store — simple setters", () => {
     expect(s.host).toBe("one");
   });
 
-  it("setError stores the message and can clear it with null", () => {
-    const store = createWidgetStore();
-    store.getState().setError("boom");
-    expect(store.getState().error).toBe("boom");
-    store.getState().setError(null);
-    expect(store.getState().error).toBeNull();
-  });
-
   it("setGitStatus stores the provided git status", () => {
     const store = createWidgetStore();
     const gitStatus: GitStatus = {
@@ -99,68 +81,6 @@ describe("widget store — simple setters", () => {
     } as unknown as GitStatus;
     store.getState().setGitStatus(gitStatus);
     expect(store.getState().gitStatus).toBe(gitStatus);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// setProcessing — clears action when not processing
-// ---------------------------------------------------------------------------
-
-describe("setProcessing", () => {
-  it("sets isProcessing=true with the provided action", () => {
-    const store = createWidgetStore();
-    store.getState().setProcessing(true, "evolve");
-    const s = store.getState();
-    expect(s.isProcessing).toBe(true);
-    expect(s.processingAction).toBe("evolve");
-  });
-
-  it("clears processingAction to null when isProcessing=false, regardless of the 2nd arg", () => {
-    const store = createWidgetStore();
-    store.getState().setProcessing(true, "apply");
-    store.getState().setProcessing(false, "apply");
-    const s = store.getState();
-    expect(s.isProcessing).toBe(false);
-    expect(s.processingAction).toBeNull();
-  });
-
-  it("defaults action to null when omitted", () => {
-    const store = createWidgetStore();
-    store.getState().setProcessing(true);
-    expect(store.getState().processingAction).toBeNull();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Confirmation preferences
-// ---------------------------------------------------------------------------
-
-describe("confirmation preferences", () => {
-  it("setBoolPref updates only the targeted key", () => {
-    const store = createWidgetStore();
-    store.getState().setBoolPref("confirmBuild", false);
-    const s = store.getState();
-    expect(s.confirmBuild).toBe(false);
-    expect(s.confirmClear).toBe(true);
-    expect(s.confirmRollback).toBe(true);
-  });
-
-  it("initConfirmPrefs fills missing keys with true", () => {
-    const store = createWidgetStore();
-    store.getState().initConfirmPrefs({ confirmBuild: false });
-    const s = store.getState();
-    expect(s.confirmBuild).toBe(false);
-    // missing keys -> default true
-    expect(s.confirmClear).toBe(true);
-    expect(s.confirmRollback).toBe(true);
-  });
-
-  it("setBoolPref toggles scanHomebrewOnStartup", () => {
-    const store = createWidgetStore();
-    store.getState().setBoolPref("scanHomebrewOnStartup", false);
-    const s = store.getState();
-    expect(s.scanHomebrewOnStartup).toBe(false);
-    expect(s.confirmBuild).toBe(true);
   });
 });
 
@@ -305,33 +225,4 @@ describe("rebuild lifecycle", () => {
     store.getState().clearRebuild();
     expect(store.getState().rebuild).toEqual(initialRebuildState);
   });
-});
-
-// ---------------------------------------------------------------------------
-// UI helpers
-// ---------------------------------------------------------------------------
-
-describe("UI helpers", () => {
-  it("setSettingsOpen toggles and stores the active tab", () => {
-    const store = createWidgetStore();
-    store.getState().setSettingsOpen(true, "api-keys");
-    let s = store.getState();
-    expect(s.settingsOpen).toBe(true);
-    expect(s.settingsActiveTab).toBe("api-keys");
-
-    store.getState().setSettingsOpen(false);
-    s = store.getState();
-    expect(s.settingsOpen).toBe(false);
-    expect(s.settingsActiveTab).toBeNull();
-  });
-
-  it("openFeedback seeds type + initial text and opens the panel", () => {
-    const store = createWidgetStore();
-    store.getState().openFeedback("bug" as never, "something broke");
-    const s = store.getState();
-    expect(s.feedbackOpen).toBe(true);
-    expect(s.feedbackTypeOverride).toBe("bug");
-    expect(s.feedbackInitialText).toBe("something broke");
-  });
-
 });

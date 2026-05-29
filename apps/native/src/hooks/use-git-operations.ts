@@ -1,13 +1,17 @@
 import { loadHosts } from "@/hooks/use-widget-initialization";
-import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
+import { useFeedbackStore } from "@/stores/feedback-store";
+import { useUiStore } from "@/stores/ui-store";
+import { useWidgetStore } from "@/stores/widget-store";
 import { toast } from "sonner";
 
 /**
  * Hook for git operations.
  * Provides functions for refreshing git status and stashing changes.
  */
-export const prefetchFileDiffContents = async (status: { changes: { filename: string }[] } | null) => {
+export const prefetchFileDiffContents = async (
+  status: { changes: { filename: string }[] } | null,
+) => {
   const setFileDiffContents = useWidgetStore.getState().setFileDiffContents;
   if (!status) {
     setFileDiffContents({});
@@ -38,7 +42,7 @@ export const refreshGitStatus = async (options?: { cache?: boolean }) => {
     return status;
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
-    useWidgetStore.getState().setError(msg);
+    useFeedbackStore.getState().setError(msg);
     if (msg.includes("is not a git repository")) {
       useWidgetStore.getState().setHosts([]);
     } else {
@@ -55,7 +59,7 @@ const getInitialStatus = async () => {
     useWidgetStore.getState().setGitStatus(currentStatus);
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
-    useWidgetStore.getState().setError(msg);
+    useFeedbackStore.getState().setError(msg);
     if (msg.includes("is not a git repository")) {
       useWidgetStore.getState().setHosts([]);
     } else {
@@ -77,24 +81,23 @@ const gitStash = async () => {
 
 const handleCommit = async ({ message }: { message: string }) => {
   const store = useWidgetStore.getState();
-  store.setProcessing(true, "merge");
+  useUiStore.getState().setProcessing(true, "merge");
   store.appendLog(`\n> Committing changes...\n`);
 
   try {
     const result = await tauriAPI.git.commit(message);
     useWidgetStore.getState().appendLog("✓ Committed successfully\n");
-    useWidgetStore.getState().setError(null);
+    useFeedbackStore.getState().setError(null);
     toast.success("Committed successfully");
-    useWidgetStore.getState().clearPreview();
     useWidgetStore.getState().setChangeMap(null);
     useWidgetStore.getState().setEvolveState(result.evolveState);
     await refreshGitStatus();
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
-    useWidgetStore.getState().setError(msg);
+    useFeedbackStore.getState().setError(msg);
     useWidgetStore.getState().appendLog(`✗ Error: ${msg}\n`);
   } finally {
-    useWidgetStore.getState().setProcessing(false);
+    useUiStore.getState().setProcessing(false);
   }
 };
 

@@ -1,17 +1,27 @@
 import { Button } from "@/components/ui/button";
-import { useDarwinConfig } from "@/hooks/use-darwin-config";
-import { cn } from "@/lib/utils";
-import { type SettingsTab, useWidgetStore } from "@/stores/widget-store";
-import { DEFAULT_MAX_ITERATIONS } from "@/lib/constants";
-import { tauriAPI } from "@/ipc/api";
-import { useForm } from "@tanstack/react-form";
-import { Bot, FolderOpen, Key, Settings2, SlidersHorizontal, Wrench } from "lucide-react";
-import { Suspense, useEffect, useRef, useState } from "react";
 import { AiModelsTab } from "@/components/widget/settings/ai-models-tab";
 import { ApiKeysTab } from "@/components/widget/settings/api-keys-tab";
 import { DeveloperTab } from "@/components/widget/settings/developer-tab";
 import { GeneralTab } from "@/components/widget/settings/general-tab";
 import { PreferencesTab } from "@/components/widget/settings/preferences-tab";
+import { useDarwinConfig } from "@/hooks/use-darwin-config";
+import { tauriAPI } from "@/ipc/api";
+import { DEFAULT_MAX_ITERATIONS } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+import { usePrefStore } from "@/stores/pref-store";
+import { useUiStore } from "@/stores/ui-store";
+import type { SettingsTab } from "@/stores/ui-store";
+import { useWidgetStore } from "@/stores/widget-store";
+import { useForm } from "@tanstack/react-form";
+import {
+  Bot,
+  FolderOpen,
+  Key,
+  Settings2,
+  SlidersHorizontal,
+  Wrench,
+} from "lucide-react";
+import { Suspense, useEffect, useRef, useState } from "react";
 type ApiKeyStatus = "idle" | "verifying" | "valid" | "invalid";
 
 function normalizeProvider(provider?: string | null) {
@@ -48,12 +58,9 @@ export function SettingsDialog() {
     settingsOpen: isOpen,
     settingsActiveTab,
     setSettingsOpen,
-    configDir,
-    hosts,
-    host,
-    setHosts,
-    developerMode,
-  } = useWidgetStore();
+  } = useUiStore();
+  const { configDir, hosts, host, setHosts } = useWidgetStore();
+  const developerMode = usePrefStore((s) => s.developerMode);
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
 
   // Deep-link to a specific tab when requested, otherwise reset to general
@@ -69,7 +76,8 @@ export function SettingsDialog() {
       setActiveTab("general");
     }
   }, [developerMode, activeTab]);
-  const [openrouterKeyStatus, setOpenrouterKeyStatus] = useState<ApiKeyStatus>("idle");
+  const [openrouterKeyStatus, setOpenrouterKeyStatus] =
+    useState<ApiKeyStatus>("idle");
   const openrouterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { saveHost } = useDarwinConfig();
@@ -145,11 +153,26 @@ export function SettingsDialog() {
           form.setFieldValue("ollamaApiBaseUrl", prefs.ollamaApiBaseUrl ?? "");
           form.setFieldValue("vllmApiBaseUrl", prefs.vllmApiBaseUrl ?? "");
           form.setFieldValue("vllmApiKey", prefs.vllmApiKey ?? "");
-          form.setFieldValue("summaryProvider", normalizeProvider(prefs.summaryProvider));
-          form.setFieldValue("summaryModel", prefs.summaryModel ?? "openai/gpt-4o-mini");
-          form.setFieldValue("evolveProvider", normalizeProvider(prefs.evolveProvider));
-          form.setFieldValue("evolveModel", prefs.evolveModel ?? "anthropic/claude-sonnet-4");
-          form.setFieldValue("maxIterations", prefs.maxIterations ?? DEFAULT_MAX_ITERATIONS);
+          form.setFieldValue(
+            "summaryProvider",
+            normalizeProvider(prefs.summaryProvider),
+          );
+          form.setFieldValue(
+            "summaryModel",
+            prefs.summaryModel ?? "openai/gpt-4o-mini",
+          );
+          form.setFieldValue(
+            "evolveProvider",
+            normalizeProvider(prefs.evolveProvider),
+          );
+          form.setFieldValue(
+            "evolveModel",
+            prefs.evolveModel ?? "anthropic/claude-sonnet-4",
+          );
+          form.setFieldValue(
+            "maxIterations",
+            prefs.maxIterations ?? DEFAULT_MAX_ITERATIONS,
+          );
           form.setFieldValue("maxBuildAttempts", prefs.maxBuildAttempts ?? 5);
           form.setFieldValue("sendDiagnostics", prefs.sendDiagnostics ?? false);
 
@@ -179,7 +202,10 @@ export function SettingsDialog() {
 
   return (
     <Suspense fallback={<div>loading...</div>}>
-      <div className="fixed inset-0 z-[40] flex items-center justify-center" data-tauri-no-drag>
+      <div
+        className="fixed inset-0 z-[40] flex items-center justify-center"
+        data-tauri-no-drag
+      >
         <button
           aria-label="Close settings"
           className="absolute inset-0 bg-black/40"
@@ -309,12 +335,18 @@ export function SettingsDialog() {
                                     {(maxBuildAttemptsField) => (
                                       <AiModelsTab
                                         evolveModelField={evolveModelField}
-                                        evolveProviderField={evolveProviderField}
+                                        evolveProviderField={
+                                          evolveProviderField
+                                        }
                                         form={form}
                                         summaryModelField={summaryModelField}
-                                        summaryProviderField={summaryProviderField}
+                                        summaryProviderField={
+                                          summaryProviderField
+                                        }
                                         maxIterationsField={maxIterationsField}
-                                        maxBuildAttemptsField={maxBuildAttemptsField}
+                                        maxBuildAttemptsField={
+                                          maxBuildAttemptsField
+                                        }
                                       />
                                     )}
                                   </form.Field>

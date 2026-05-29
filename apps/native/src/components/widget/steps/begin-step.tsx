@@ -5,11 +5,11 @@ import { UntrackedBanner } from "@/components/widget/filesystem/untracked-banner
 import { GetStartedMessage } from "@/components/widget/layout/get-started-message";
 import { PromptInputSection } from "@/components/widget/promptinput/prompt-input-section";
 import { filesystemViewEnabled } from "@/lib/flags";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiStore } from "@/stores/ui-store";
 
 export function BeginStep() {
-  const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
-  const setShowFilesystem = useWidgetStore((s) => s.setShowFilesystem);
+  const setEvolvePrompt = useUiStore((s) => s.setEvolvePrompt);
+  const setShowFilesystem = useUiStore((s) => s.setShowFilesystem);
 
   return (
     <>

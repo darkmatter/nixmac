@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useUiStore } from "@/stores/ui-store";
 import { useWidgetStore } from "@/stores/widget-store";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useHistory } from "@/hooks/use-history";
@@ -191,7 +192,7 @@ export function useHistoryRestore(
   onUncommittedChanges: () => void,
 ): HistoryRestoreResult {
   const { loadHistory } = useHistory();
-  const setProcessing = useWidgetStore((state) => state.setProcessing);
+  const setProcessing = useUiStore((state) => state.setProcessing);
   const setGitStatus = useWidgetStore((state) => state.setGitStatus);
   const gitStatus = useWidgetStore((state) => state.gitStatus);
   const { triggerRebuild } = useRebuildStream();

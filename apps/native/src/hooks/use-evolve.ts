@@ -1,9 +1,10 @@
-import { EVOLUTION_CANCELLED_MSG } from "@/lib/constants";
-import { useWidgetStore } from "@/stores/widget-store";
-import { EVOLVE_EVENT_CHANNEL } from "@/lib/constants";
-import { tauriAPI, ipcRenderer } from "@/ipc/api";
+import { ipcRenderer, tauriAPI } from "@/ipc/api";
 import type { EvolveEvent } from "@/ipc/types";
+import { EVOLUTION_CANCELLED_MSG, EVOLVE_EVENT_CHANNEL } from "@/lib/constants";
 import { formatDurationMs } from "@/lib/utils";
+import { useFeedbackStore } from "@/stores/feedback-store";
+import { useUiStore } from "@/stores/ui-store";
+import { useWidgetStore } from "@/stores/widget-store";
 import { toast } from "sonner";
 
 /**
@@ -32,17 +33,16 @@ const refreshPromptHistory = async (prompt?: string) => {
   }
   tauriAPI.promptHistory
     .get()
-    .then((history) => useWidgetStore.getState().setPromptHistory(history))
+    .then((history) => useUiStore.getState().setPromptHistory(history))
     .catch(console.error);
 };
 
 const findChangeMap = async (): Promise<void> => {
-  const { setChangeMap, setSummaryAvailable } = useWidgetStore.getState();
+  const { setChangeMap } = useWidgetStore.getState();
   try {
     const map = await tauriAPI.summarizedChanges.findChangeMap();
     if (map) {
       setChangeMap(map);
-      setSummaryAvailable(map.groups.length > 0 || map.singles.length > 0);
     }
   } catch (e) {
     console.error("[SemanticChangeMap] error", e);
@@ -52,37 +52,40 @@ const findChangeMap = async (): Promise<void> => {
 const handleEvolve = async () => {
   // Get fresh state each time
   const store = useWidgetStore.getState();
-  if (!store.evolvePrompt.trim()) {
+  const uiStore = useUiStore.getState();
+  if (!uiStore.evolvePrompt.trim()) {
     return;
   }
 
-  await refreshPromptHistory(store.evolvePrompt.trim());
+  await refreshPromptHistory(uiStore.evolvePrompt.trim());
 
-  store.setProcessing(true, "evolve");
+  uiStore.setProcessing(true, "evolve");
   store.setGenerating(true);
-  store.setError(null);
+  useFeedbackStore.getState().setError(null);
   store.setExternalBuildDetected(false);
   store.clearEvolveEvents();
   store.clearLogs();
-  store.clearPreview();
   store.setConversationalResponse(null);
   store.setEvolutionTelemetry(null);
-  store.appendLog(`\n> Evolving: "${store.evolvePrompt}"\n`);
+  store.appendLog(`\n> Evolving: "${uiStore.evolvePrompt}"\n`);
 
   // Set up evolve event listener
-  const unlistenEvolve = await ipcRenderer.on<EvolveEvent>(EVOLVE_EVENT_CHANNEL, (event) => {
-    if (event.payload) {
-      useWidgetStore.getState().appendEvolveEvent(event.payload);
-      if (event.payload.raw) {
-        useWidgetStore.getState().appendLog(`${event.payload.raw}\n`);
+  const unlistenEvolve = await ipcRenderer.on<EvolveEvent>(
+    EVOLVE_EVENT_CHANNEL,
+    (event) => {
+      if (event.payload) {
+        useWidgetStore.getState().appendEvolveEvent(event.payload);
+        if (event.payload.raw) {
+          useWidgetStore.getState().appendLog(`${event.payload.raw}\n`);
+        }
       }
-    }
-  });
+    },
+  );
 
   try {
     // Run the unified evolution workflow
     // Backend handles: AI + summary + branch + commit + DB
-    const result = await tauriAPI.darwin.evolve(store.evolvePrompt);
+    const result = await tauriAPI.darwin.evolve(uiStore.evolvePrompt);
     const isConversational = result?.telemetry?.state === "conversational";
 
     const telemetry = result?.telemetry;
@@ -96,9 +99,9 @@ const handleEvolve = async () => {
     }
 
     if (isConversational) {
-      useWidgetStore.getState().setConversationalResponse(result.conversationalResponse ?? null);
-    } else {
-      store.setSummaryAvailable(true);
+      useWidgetStore
+        .getState()
+        .setConversationalResponse(result.conversationalResponse ?? null);
     }
     if (result?.gitStatus) {
       useWidgetStore.getState().setGitStatus(result.gitStatus);
@@ -110,7 +113,7 @@ const handleEvolve = async () => {
       useWidgetStore.getState().setChangeMap(result.changeMap);
     }
 
-    store.setEvolvePrompt("");
+    useUiStore.getState().setEvolvePrompt("");
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
     // User-initiated cancellation isn't an error — backup still ran, so refresh
@@ -126,13 +129,13 @@ const handleEvolve = async () => {
         stack: (e as Error)?.stack,
         timestamp: new Date().toISOString(),
       });
-      useWidgetStore.getState().setError(msg);
+      useFeedbackStore.getState().setError(msg);
       useWidgetStore.getState().appendLog(`✗ Error: ${msg}\n`);
     }
     await findChangeMap();
   } finally {
     useWidgetStore.getState().setGenerating(false);
-    useWidgetStore.getState().setProcessing(false, "evolve");
+    useUiStore.getState().setProcessing(false, "evolve");
     unlistenEvolve();
   }
 };

@@ -9,24 +9,28 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiStore } from "@/stores/ui-store";
 import { ClockIcon } from "lucide-react";
 import { useState } from "react";
 
 export function PromptHistoryBadge() {
-  const history = useWidgetStore((s) => s.promptHistory);
-  const evolvePrompt = useWidgetStore((s) => s.evolvePrompt);
-  const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
-  const isProcessing = useWidgetStore((s) => s.isProcessing);
-  const processingAction = useWidgetStore((s) => s.processingAction);
+  const history = useUiStore((s) => s.promptHistory);
+  const evolvePrompt = useUiStore((s) => s.evolvePrompt);
+  const setEvolvePrompt = useUiStore((s) => s.setEvolvePrompt);
+  const isProcessing = useUiStore((s) => s.isProcessing);
+  const processingAction = useUiStore((s) => s.processingAction);
 
   const disabled = isProcessing && processingAction === "evolve";
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
-  if (!(history?.length)) {
+  if (!history?.length) {
     return null;
   }
 

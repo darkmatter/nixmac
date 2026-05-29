@@ -1,8 +1,25 @@
 import { filesystemViewEnabled } from "@/lib/flags";
-import type { WidgetState, WidgetStep } from "@/stores/widget-store";
+import type { ConfigState } from "@/stores/slices/config";
+import type { EvolveSliceState } from "@/stores/slices/evolve";
+import type { SetupState } from "@/stores/slices/setup";
+import type { UiState } from "@/stores/ui-store";
 import { FilePen, FilePlus, FileX, FileCode, type LucideIcon } from "lucide-react";
 
-export function computeCurrentStep(state: WidgetState): WidgetStep {
+export type WidgetStep =
+  | "permissions"
+  | "nix-setup"
+  | "setup"
+  | "begin"
+  | "evolve"
+  | "commit"
+  | "manualEvolve"
+  | "manualCommit"
+  | "history"
+  | "filesystem";
+
+type ComputeStepInput = ConfigState & SetupState & UiState & EvolveSliceState;
+
+export function computeCurrentStep(state: ComputeStepInput): WidgetStep {
   const hasConfigDir = !!state.configDir;
   const hasHost = !!state.host && state.hosts.includes(state.host);
   const permissionsCheckedAndIncomplete =

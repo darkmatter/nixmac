@@ -1,8 +1,10 @@
-import { useWidgetStore } from "@/stores/widget-store";
-import type { WatcherEvent } from "@/ipc/types";
-import { ipcRenderer } from "@/ipc/api";
-import { useRef } from "react";
 import { useHistory } from "@/hooks/use-history";
+import { ipcRenderer } from "@/ipc/api";
+import type { WatcherEvent } from "@/ipc/types";
+import { useFeedbackStore } from "@/stores/feedback-store";
+import { useUiStore } from "@/stores/ui-store";
+import { useWidgetStore } from "@/stores/widget-store";
+import { useRef } from "react";
 
 /**
  * Hook that provides a function to start watching git status changes.
@@ -21,10 +23,16 @@ export function useWatcher() {
     const gitStatusSub = ipcRenderer.on<WatcherEvent>(
       "git:status-changed",
       (event) => {
-        const { error, gitStatus, changeMap, evolveState, externalBuildDetected } = event.payload;
+        const {
+          error,
+          gitStatus,
+          changeMap,
+          evolveState,
+          externalBuildDetected,
+        } = event.payload;
 
         if (error) {
-          useWidgetStore.getState().setError(error);
+          useFeedbackStore.getState().setError(error);
           if (error.includes("is not a git repository")) {
             useWidgetStore.getState().setHosts([]);
           }
@@ -32,7 +40,8 @@ export function useWatcher() {
         }
 
         const store = useWidgetStore.getState();
-        if (!store.isProcessing && !store.isGenerating) {
+        const ui = useUiStore.getState();
+        if (!ui.isProcessing && !store.isGenerating) {
           store.setGitStatus(gitStatus ?? null);
           if (changeMap) {
             store.setChangeMap(changeMap);
@@ -41,11 +50,11 @@ export function useWatcher() {
             store.setEvolveState(evolveState);
           }
           store.setExternalBuildDetected(externalBuildDetected);
-          if (store.showHistory) {
+          if (ui.showHistory) {
             loadHistory();
           }
         }
-      }
+      },
     );
 
     // Store unlisten for cleanup
