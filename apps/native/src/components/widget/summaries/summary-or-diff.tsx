@@ -10,6 +10,7 @@ import { SummaryItems } from "@/components/widget/summaries/summary-items";
 import { prefetchFileDiffContents } from "@/hooks/use-git-operations";
 import { useSummary } from "@/hooks/use-summary";
 import { cn } from "@/lib/utils";
+import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { Change } from "@/ipc/types";
 import { Dna, Wrench } from "lucide-react";
@@ -21,9 +22,9 @@ interface SummaryOrDiffProps {
 }
 
 export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
-  const gitStatus = useWidgetStore((s) => s.gitStatus);
-  const changeMap = useWidgetStore((s) => s.changeMap);
-  const evolveState = useWidgetStore((s) => s.evolveState);
+  const gitStatus = useViewModel((s) => s.git);
+  const changeMap = useViewModel((s) => s.changeMap);
+  const evolveState = useViewModel((s) => s.evolve);
   const defaultToDiffTab = useWidgetStore((s) => s.defaultToDiffTab);
   const { summarizeOnFocus } = useSummary();
   const [activeTab, setActiveTab] = useState(defaultToDiffTab ? "diff" : "summary");
@@ -41,7 +42,7 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   );
 
   useEffect(() => {
-    prefetchFileDiffContents(useWidgetStore.getState().gitStatus);
+    prefetchFileDiffContents(useViewModel.getState().git);
   }, [fileDiffKey]);
 
   if (!gitStatus || !evolveState || evolveState.step === "begin") {
