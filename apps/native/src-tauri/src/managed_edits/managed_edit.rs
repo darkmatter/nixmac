@@ -56,7 +56,6 @@ pub fn prepare_managed_edit(app: &AppHandle) -> Result<ManagedEditContext> {
         shared_types::EvolveState {
             evolution_id: Some(evolution_id),
             current_changeset_id: None,
-            changeset_at_build: None,
             committable: false,
             backup_branch,
             rollback_branch,
