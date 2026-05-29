@@ -1,6 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import { danger, fail, markdown, message, warn } from "danger";
 
+// Danger should point reviewers at useful context without becoming the most
+// brittle required check in the stack. Keep subjective process checks advisory
+// and reserve hard failures for changes that are objectively unsafe to merge.
+
 // ---------------------------------------------------------------------------
 // PR snapshot
 // ---------------------------------------------------------------------------
@@ -138,8 +142,8 @@ function checkUiComponentStories(): void {
   }
 
   if (missing.length > 0) {
-    fail(
-      `New UI components were added without a Storybook story. Add a sibling \`*.stories.tsx\` file:\n${codeBlock(missing)}`,
+    warn(
+      `New UI components were added without a Storybook story. Consider adding a sibling \`*.stories.tsx\` file:\n${codeBlock(missing)}`,
     );
   }
 }
@@ -184,8 +188,8 @@ function checkRustModuleTests(): void {
   }
 
   if (missing.length > 0) {
-    fail(
-      `New Rust modules were added without tests. Add a \`#[cfg(test)] mod tests { … }\` block or a file under \`apps/native/src-tauri/tests/\`:\n${codeBlock(missing)}`,
+    warn(
+      `New Rust modules were added without tests. Consider adding a \`#[cfg(test)] mod tests { ... }\` block or a file under \`apps/native/src-tauri/tests/\`:\n${codeBlock(missing)}`,
     );
   }
 }
@@ -276,7 +280,7 @@ function checkTestPlan(): void {
   }
 
   if (!flags.hasTestPlan) {
-    fail(
+    warn(
       "PR description is missing a `## Test Plan` (or `## Testing Instructions`) section. " +
         "Add one describing how a reviewer can verify your change, or tag the PR `#trivial` if no testing is needed.",
     );
@@ -290,7 +294,7 @@ function checkTestPlan(): void {
     ?.trim();
 
   if (!section || section.length < 10) {
-    fail(
+    warn(
       "Your `## Test Plan` section is empty. Describe the steps a reviewer should take to verify this change.",
     );
   }
@@ -303,10 +307,7 @@ function checkPrHygiene(): void {
   if (body.length < 30 && !flags.isTrivial) {
     warn("This PR has a very short description. Add some context for reviewers.");
   }
-  if (!pr.assignee) {
-    warn("Please assign this PR to someone (usually yourself).");
-  }
-  if (pr.additions + pr.deletions > 500) {
+  if (pr.additions + pr.deletions > 1500) {
     warn(
       `:exclamation: Big PR (${pr.additions + pr.deletions} lines changed). Consider splitting it into smaller, focused changes.`,
     );
@@ -388,7 +389,7 @@ function checkDocsDrift(): void {
   const noDocsNeeded = body.includes("[x] No docs update needed");
 
   if (!docsUpdated && !noDocsNeeded) {
-    fail(
+    warn(
       "This PR touches behavior-sensitive code that is documented in " +
         "[darkmatter/nixmac-web](https://github.com/darkmatter/nixmac-web). " +
         "Please either:\n" +
