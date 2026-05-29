@@ -24,7 +24,7 @@ pub mod lifecycle;
 pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
 use crate::evolve::utils::{escape_user_query, format_duration_secs, short_hash};
-use crate::git::exec::repo_root;
+use crate::git::query::repo_root;
 // Re-export public API
 use crate::shared_types::EvolutionState;
 use crate::system::nix;
