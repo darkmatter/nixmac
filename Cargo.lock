@@ -1016,6 +1016,7 @@ dependencies = [
  "configurable-derive",
  "serde",
  "serde_json",
+ "specta",
  "tauri",
  "tauri-plugin-store",
 ]
