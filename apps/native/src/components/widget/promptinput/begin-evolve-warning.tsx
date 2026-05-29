@@ -14,6 +14,7 @@ import { ConfigDirBadge } from "@/components/widget/badges/config-dir-badge";
 import { useEvolve } from "@/hooks/use-evolve";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useRollback } from "@/hooks/use-rollback";
+import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import { Loader2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -28,7 +29,7 @@ interface BeginEvolveWarningProps {
 type BuildCheckStatus = "checking" | "passed" | "failed";
 
 export function BeginEvolveWarning({ open, onOpenChange, handleEvolve }: BeginEvolveWarningProps) {
-  const gitStatus = useWidgetStore((s) => s.gitStatus);
+  const gitStatus = useViewModel((s) => s.git);
   const evolvePrompt = useWidgetStore((s) => s.evolvePrompt);
   const configDir = useWidgetStore((s) => s.configDir);
   const files = gitStatus?.files ?? [];
@@ -57,7 +58,7 @@ export function BeginEvolveWarning({ open, onOpenChange, handleEvolve }: BeginEv
 
   const handleDiscard = async () => {
     await handleRollback();
-    const newFiles = useWidgetStore.getState().gitStatus?.files?.length ?? 1;
+    const newFiles = useViewModel.getState().git?.files?.length ?? 1;
     if (newFiles === 0) {
       toast.success("Changes discarded");
     } else {

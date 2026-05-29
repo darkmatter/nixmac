@@ -9,6 +9,10 @@ import {
 import { useWidgetStore } from "@/stores/widget-store";
 import type { SystemDefault, SystemDefaultsScan } from "@/ipc/types";
 import { tauriAPI } from "@/ipc/api";
+import { useViewModel } from "@/stores/view-model";
+import { mirrorChangeMapState } from "@/viewmodel/change-map";
+import { mirrorEvolveState } from "@/viewmodel/evolve";
+import { mirrorGitState } from "@/viewmodel/git";
 import { Monitor, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -42,7 +46,7 @@ function formatValue(value: string): string {
  * Appears in the prompt badge row when non-default settings are detected.
  */
 export function SystemDefaultsCTA() {
-  const evolveState = useWidgetStore((s) => s.evolveState);
+  const evolveState = useViewModel((s) => s.evolve);
   const [scan, setScan] = useState<SystemDefaultsScan | null>(null);
   const [applying, setApplying] = useState(false);
   const [open, setOpen] = useState(false);
@@ -79,9 +83,9 @@ export function SystemDefaultsCTA() {
 
     try {
       const result = await tauriAPI.scanner.applyDefaults(defaults);
-      useWidgetStore.getState().setEvolveState(result.evolveState);
-      useWidgetStore.getState().setChangeMap(result.changeMap);
-      useWidgetStore.getState().setGitStatus(result.gitStatus);
+      mirrorEvolveState(result.evolveState);
+      mirrorChangeMapState(result.changeMap);
+      mirrorGitState(result.gitStatus);
       // Invalidate recommended prompt — settings changed
       useWidgetStore.getState().setRecommendedPrompt(undefined);
     } catch (e: unknown) {

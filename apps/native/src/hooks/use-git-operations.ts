@@ -1,6 +1,9 @@
 import { loadHosts } from "@/hooks/use-widget-initialization";
 import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
+import { mirrorChangeMapState } from "@/viewmodel/change-map";
+import { mirrorEvolveState } from "@/viewmodel/evolve";
+import { mirrorGitState } from "@/viewmodel/git";
 import { toast } from "sonner";
 
 /**
@@ -33,7 +36,7 @@ export const refreshGitStatus = async (options?: { cache?: boolean }) => {
       ? await tauriAPI.git.statusAndCache()
       : await tauriAPI.git.status();
 
-    useWidgetStore.getState().setGitStatus(status);
+    mirrorGitState(status);
 
     return status;
   } catch (e: unknown) {
@@ -52,7 +55,7 @@ export const refreshGitStatus = async (options?: { cache?: boolean }) => {
 const getInitialStatus = async () => {
   try {
     const currentStatus = await tauriAPI.git.statusAndCache();
-    useWidgetStore.getState().setGitStatus(currentStatus);
+    mirrorGitState(currentStatus);
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
     useWidgetStore.getState().setError(msg);
@@ -85,9 +88,8 @@ const handleCommit = async ({ message }: { message: string }) => {
     useWidgetStore.getState().appendLog("✓ Committed successfully\n");
     useWidgetStore.getState().setError(null);
     toast.success("Committed successfully");
-    useWidgetStore.getState().clearPreview();
-    useWidgetStore.getState().setChangeMap(null);
-    useWidgetStore.getState().setEvolveState(result.evolveState);
+    mirrorChangeMapState(null);
+    mirrorEvolveState(result.evolveState);
     await refreshGitStatus();
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);

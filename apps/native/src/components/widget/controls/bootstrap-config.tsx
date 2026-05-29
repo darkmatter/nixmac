@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
+import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 import { AlertCircle, GitCommit, Sparkles } from "lucide-react";
@@ -18,7 +19,7 @@ export function BootstrapConfig({ label, onSuccess }: BootstrapConfigProps) {
   const [localError, setLocalError] = useState<string | null>(null);
   const { bootstrap, isBootstrapping } = useDarwinConfig();
   const configDir = useWidgetStore((state) => state.configDir);
-  const gitStatus = useWidgetStore((state) => state.gitStatus);
+  const gitStatus = useViewModel((state) => state.git);
   const [flakeExists, setFlakeExists] = useState(false);
 
   useEffect(() => {

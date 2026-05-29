@@ -1,6 +1,7 @@
 import type { RefObject } from "react";
 import { Eraser } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import { ConfigDirBadge } from "@/components/widget/badges/config-dir-badge";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,7 @@ export function UncommittedChangesDetected({
   isFlashing,
   onOpenDialog,
 }: UncommittedChangesDetectedProps) {
-  const gitStatus = useWidgetStore((s) => s.gitStatus);
+  const gitStatus = useViewModel((s) => s.git);
   const configDir = useWidgetStore((s) => s.configDir);
   const fileCount = gitStatus?.files?.length ?? 0;
 

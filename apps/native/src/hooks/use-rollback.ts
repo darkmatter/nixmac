@@ -2,6 +2,9 @@ import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useSummary } from "@/hooks/use-summary";
+import { useViewModel } from "@/stores/view-model";
+import { mirrorEvolveState } from "@/viewmodel/evolve";
+import { mirrorGitState } from "@/viewmodel/git";
 
 /**
  * Hook for discarding changes and restoring the working tree to its pre-evolution state.
@@ -12,15 +15,15 @@ export function useRollback() {
 
   const handleRollback = async () => {
     const store = useWidgetStore.getState();
-    const wasCommittable = store.evolveState?.committable === true;
+    const wasCommittable = useViewModel.getState().evolve?.committable === true;
 
     store.setProcessing(true, "cancel");
     store.appendLog("\n> Discarding changes...\n");
 
     try {
       const result = await tauriAPI.darwin.rollbackErase();
-      store.setGitStatus(result.gitStatus);
-      store.setEvolveState(result.evolveState);
+      mirrorGitState(result.gitStatus);
+      mirrorEvolveState(result.evolveState);
       store.setEvolvePrompt("");
       store.appendLog("✓ Changes discarded\n");
 
@@ -34,10 +37,10 @@ export function useRollback() {
               result.rollbackChangesetId,
             );
             if (finalResult?.gitStatus) {
-              useWidgetStore.getState().setGitStatus(finalResult.gitStatus);
+              mirrorGitState(finalResult.gitStatus);
             }
             if (finalResult?.evolveState) {
-              useWidgetStore.getState().setEvolveState(finalResult.evolveState);
+              mirrorEvolveState(finalResult.evolveState);
             }
           },
         });

@@ -32,13 +32,12 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { usePrefs } from "@/hooks/use-prefs";
 import { usePromptHistory } from "@/hooks/use-prompt-history";
 import { useTrayEvents } from "@/hooks/use-tray-events";
-import { useQueueSummarizer } from "@/hooks/use-queue-summarizer";
-import { useWatcher } from "@/hooks/use-watcher";
 import { loadConfig, loadHosts, loadEvolveState } from "@/hooks/use-widget-initialization";
 import { useSummary } from "@/hooks/use-summary";
 import { markBootStage } from "@/lib/boot-diagnostics";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { UpdateBanner } from "@/components/widget/layout/update-banner";
+import { startViewModelSync } from "@/viewmodel";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
 import { setupWidgetTestHelpers } from "@/utils/widget-test-helpers";
 import { useEffect } from "react";
@@ -56,8 +55,6 @@ export function DarwinWidget() {
   const { checkPermissions } = usePermissions();
   const { loadPrefs } = usePrefs();
   const { refreshPromptHistory } = usePromptHistory();
-  const { startWatching } = useWatcher();
-  const { queueForSummaries } = useQueueSummarizer();
   const { findChangeMap } = useSummary();
 
   // Set up panic handler to catch Rust crashes and show feedback dialog
@@ -107,6 +104,9 @@ export function DarwinWidget() {
 
   // Load initial data once on mount, then start watching for changes
   useEffect(() => {
+    let cancelled = false;
+    let stopViewModelSync: (() => void) | null = null;
+
     (async () => {
       try {
         await checkPermissions();
@@ -118,14 +118,25 @@ export function DarwinWidget() {
         await loadPrefs();
         await findChangeMap();
         refreshPromptHistory();
+
+        const stop = await startViewModelSync();
+        if (cancelled) {
+          stop();
+        } else {
+          stopViewModelSync = stop;
+        }
       } catch (e: unknown) {
         useWidgetStore.getState().setError((e as Error)?.message || String(e));
       }
 
+      if (cancelled) return;
       surfaceRecoveryReport();
-      startWatching();
-      queueForSummaries();
     })();
+
+    return () => {
+      cancelled = true;
+      stopViewModelSync?.();
+    };
   }, []);
 
   // Routing mechanism
