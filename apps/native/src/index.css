@@ -74,27 +74,27 @@
     @apply text-foreground;
   }
 
-  /* Monaco diff text colors (emerald-400 / red-400) */
+  /* Monaco diff text colors (Minted added / deleted) */
   .nixmac-line-added,
   .nixmac-line-added * {
-    color: #34d399 !important;
+    color: #9ff0e3 !important;
   }
   /* Deleted lines in inline diff are rendered as view zones, not model lines */
   .monaco-editor .view-zones .view-line,
   .monaco-editor .view-zones .view-line * {
-    color: #f87171 !important;
+    color: #f09fad !important;
   }
 
   /* Diff gutter +/- indicator colors (match line text) */
   .monaco-diff-editor .codicon-diff-insert,
   .monaco-diff-editor .margin .insert-sign {
-    background: #34d39930;
-    color: #34d399 !important;
+    background: #9ff0e330;
+    color: #9ff0e3 !important;
   }
   .monaco-diff-editor .codicon-diff-remove,
   .monaco-diff-editor .margin .delete-sign {
-    background: #f8717130;
-    color: #f87171 !important;
+    background: #f09fad30;
+    color: #f09fad !important;
   }
   /* Hide the bleeding delete indicator inside the margin overlay */
   .monaco-editor .margin-view-overlays .cldr.delete-sign.codicon-diff-remove,
@@ -102,14 +102,20 @@
     display: none !important;
   }
 
-  /* Monaco scrollbar matching nixmac style */
+  /* Give Monaco diff diagnostics and the right edge a little breathing room. */
+  [data-testid="monaco-diff-view"] {
+    box-sizing: border-box;
+    padding-right: 2px;
+  }
+
+  /* Monaco scrollbar matching Minted style */
   .monaco-scrollable-element > .scrollbar.vertical > .slider {
-    background: hsl(173 80% 75% / 0.6) !important;
+    background: #9ff0e399 !important;
     border-radius: 4px !important;
   }
   .monaco-scrollable-element > .scrollbar.vertical > .slider:hover,
   .monaco-scrollable-element > .scrollbar.vertical.active > .slider {
-    background: hsl(173 80% 75%) !important;
+    background: #9ff0e3 !important;
   }
 
   /* Scrollbar styling */

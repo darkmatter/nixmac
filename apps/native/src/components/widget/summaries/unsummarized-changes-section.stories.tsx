@@ -1,5 +1,6 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
+import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { ChangeWithRichType } from "@/components/widget/utils";
 import type { SemanticChangeMap } from "@/ipc/types";
@@ -105,7 +106,7 @@ function setup({
 }) {
   useEffect(() => {
     const store = useWidgetStore.getState();
-    store.setChangeMap(changeMap);
+    useViewModel.setState({ changeMap });
     store.setConfigDir(configDir);
   }, []);
 
