@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
+import { mirrorChangeMapState } from "@/viewmodel/change-map";
 import { tauriAPI } from "@/ipc/api";
 import type { UpdateChannel } from "@/ipc/types";
 import { useUpdater } from "@/hooks/use-updater";
@@ -103,10 +105,15 @@ export function DeveloperTab() {
     setClearingState(true);
     try {
       await tauriAPI.debug.clearTauriState();
-      useWidgetStore.getState().setEvolveState(null);
-      useWidgetStore.getState().setGitStatus(null);
+      useViewModel.setState((state) => ({
+        evolve: null,
+        git: null,
+        build: {
+          ...state.build,
+          externalBuildDetected: false,
+        },
+      }));
       useWidgetStore.getState().setPromptHistory([]);
-      useWidgetStore.getState().setExternalBuildDetected(false);
       useWidgetStore.getState().setPinnedVersion(null);
       setStatusMessage(
         "Cleared Tauri stores: settings.json, evolve-state.json, and build-state.json. Relaunch or reopen settings to reload defaults.",
@@ -122,7 +129,7 @@ export function DeveloperTab() {
     const store = useWidgetStore.getState();
     store.clearLogs();
     store.clearEvolveEvents();
-    store.clearPreview();
+    mirrorChangeMapState(null);
     store.clearRebuild();
     store.setConversationalResponse(null);
     store.setCommitMessageSuggestion(null);

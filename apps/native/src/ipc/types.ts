@@ -240,6 +240,54 @@ gitStatus: GitStatus;
 evolveState: EvolveState }
 
 /**
+ * Per-field description rendered into a UI control.
+ */
+export type ConfigField = { 
+/**
+ * Key as written to the underlying store (typically camelCase).
+ */
+key: string; 
+/**
+ * Human-readable label rendered above the input.
+ */
+label: string; 
+/**
+ * Optional help text (rendered as a tooltip / "info" icon).
+ */
+help?: string | null; 
+/**
+ * What control to render.
+ */
+ty: FieldType; 
+/**
+ * Default if the store has no value yet.
+ */
+default: JsonValue; 
+/**
+ * Current value loaded from the store.
+ */
+current: JsonValue }
+
+/**
+ * One section in the auto-rendered settings panel — corresponds to one
+ * `#[derive(Configurable)]` struct.
+ */
+export type ConfigurableSchema = { 
+/**
+ * Unique stable identifier (struct's Rust name). Used by `set_field` to
+ * dispatch to the right registered configurable.
+ */
+name: string; 
+/**
+ * Title shown above the section in the UI.
+ */
+displayName: string; 
+/**
+ * Optional one-line description shown under the title.
+ */
+description?: string | null; fields: ConfigField[] }
+
+/**
  * Payload for `darwin:apply:data`.
  */
 export type DarwinApplyDataEvent = { 
@@ -311,39 +359,7 @@ ok: boolean;
  */
 message: string }
 
-export type Evolution = { id: string; createdAt: number; state: EvolutionState; prompt: string; edits: FileEdit[]; commitHash: string | null; summary: string | null; 
-/**
- * Full message history for context
- */
-messages: JsonValue[]; 
-/**
- * Agent's thinking/reasoning log
- */
-thinking: ThinkingEntry[]; 
-/**
- * Tool call activity log
- */
-toolCalls: ToolCallRecord[]; 
-/**
- * Total tokens used
- */
-totalTokens: number; 
-/**
- * Number of iterations
- */
-iterations: number; 
-/**
- * Number of build attempts
- */
-buildAttempts: number; 
-/**
- * AI-generated summary of changes for preview
- */
-changesSummary: string | null; 
-/**
- * AI-generated commit message suggestion
- */
-suggestedCommitMessage: string | null }
+export type EnumVariant = { value: string; label: string }
 
 /**
  * Evolution failure payload with partial telemetry.
@@ -634,6 +650,12 @@ export type EvolveStep =
 "manualCommit"
 
 /**
+ * Result of a successful settings export. Returned to the frontend so it can
+ * show the file path and the count of skipped sensitive keys.
+ */
+export type ExportResult = { path: string; keysWritten: number; keysSkipped: string[] }
+
+/**
  * AI provider/model info and usage signals.
  */
 export type FeedbackAiProviderModelInfo = { 
@@ -723,7 +745,7 @@ usageStats: FeedbackUsageStats | null;
 /**
  * Captured evolution log content.
  */
-evolutionLogContent: Evolution | null; 
+evolutionLogContent: string | null; 
 /**
  * Diff for changed Nix files at submission time.
  */
@@ -875,11 +897,30 @@ lastComputedAt: string | null;
 extra: JsonValue | null }
 
 /**
+ * What kind of control should render this field.
+ */
+export type FieldType = 
+/**
+ * Numeric input with optional min/max/step.
+ */
+{ kind: "number"; min?: number | null; max?: number | null; step?: number | null } | 
+/**
+ * Toggle / checkbox.
+ */
+{ kind: "boolean" } | 
+/**
+ * Single-line text or multi-line textarea when `multiline = true`.
+ */
+{ kind: "string"; multiline: boolean } | 
+/**
+ * Select / dropdown of pre-declared options.
+ */
+{ kind: "enum"; variants: EnumVariant[] }
+
+/**
  * HEAD content vs working-tree content for a file, used by the diff tab Monaco DiffEditor.
  */
 export type FileDiffContents = { original: string; modified: string }
-
-export type FileEdit = { path: string; search: string; replace: string }
 
 /**
  * Result of a successful `finalize_apply` or `finalize_rollback` command.
@@ -906,6 +947,19 @@ path: string;
  * Parsed status category for this file.
  */
 changeType: ChangeType }
+
+/**
+ * Latest git status slice emitted by the git status watcher.
+ */
+export type GitState = { 
+/**
+ * Latest git status snapshot, if it could be read.
+ */
+gitStatus: GitStatus | null; 
+/**
+ * True when a build outside nixmac was detected.
+ */
+externalBuildDetected: boolean }
 
 /**
  * Comprehensive git repository status.
@@ -1037,6 +1091,11 @@ source: string | null;
  * Unix timestamp when this state was last collected.
  */
 lastChecked: number }
+
+/**
+ * Result of a successful settings import.
+ */
+export type ImportResult = { path: string; keysImported: number }
 
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
 
@@ -1426,15 +1485,6 @@ changes: SummarizedChange[];
 missedHashes: string[] }
 
 /**
- * Payload for `summarizer:update`.
- */
-export type SummarizerUpdateEvent = { 
-/**
- * Latest semantic change map after a queued summary update.
- */
-semanticMap: SemanticChangeMap }
-
-/**
  * A single macOS system default that differs from the factory value.
  */
 export type SystemDefault = { 
@@ -1471,56 +1521,6 @@ defaults: SystemDefault[];
  * Number of defaults keys scanned.
  */
 totalScanned: number }
-
-/**
- * A single thinking entry from the agent's reasoning process
- */
-export type ThinkingEntry = { 
-/**
- * When this thought occurred (ms since evolution start)
- */
-timestampMs: number; 
-/**
- * The iteration number when this thought occurred
- */
-iteration: number; 
-/**
- * Category of thinking (planning, analysis, debugging, etc.)
- */
-category: string; 
-/**
- * The actual thought content
- */
-content: string }
-
-/**
- * A tool call record for the activity log
- */
-export type ToolCallRecord = { 
-/**
- * When this tool was called (ms since evolution start)
- */
-timestampMs: number; 
-/**
- * The iteration number
- */
-iteration: number; 
-/**
- * Tool name
- */
-tool: string; 
-/**
- * Tool arguments (simplified)
- */
-argsSummary: string; 
-/**
- * Result summary
- */
-resultSummary: string; 
-/**
- * Whether the call succeeded
- */
-success: boolean }
 
 /**
  * User interface preferences (synced to settings.json via tauri-plugin-store).
@@ -1738,29 +1738,4 @@ version: string;
  * Release notes from the channel manifest, when available.
  */
 notes: string | null }
-
-/**
- * Event payload emitted by the git status watcher.
- */
-export type WatcherEvent = { 
-/**
- * Latest git status snapshot, if it could be read.
- */
-gitStatus: GitStatus | null; 
-/**
- * Latest summarized change map, when summary data is available.
- */
-changeMap: SemanticChangeMap | null; 
-/**
- * Latest evolve routing state derived from the snapshot.
- */
-evolveState: EvolveState | null; 
-/**
- * Error message when the watcher failed to refresh state.
- */
-error: string | null; 
-/**
- * True when a build outside nixmac was detected.
- */
-externalBuildDetected: boolean }
 
