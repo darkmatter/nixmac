@@ -95,7 +95,6 @@ export interface WidgetState {
 
   // nix-darwin (darwin-rebuild availability)
   darwinRebuildAvailable: boolean | null; // null = not checked yet
-  darwinRebuildPrefetching: boolean;
 
   // Evolve state derived from backend source of truth
   evolveState: EvolveState | null;
@@ -131,7 +130,6 @@ export interface WidgetState {
   analyzingHistoryForHashes: Set<string>;
 
   // UI
-  summaryAvailable: boolean;
   isSummarizing: boolean;
   isGenerating: boolean;
   settingsOpen: boolean;
@@ -199,7 +197,6 @@ export interface WidgetActions {
   ) => void;
   setNixDownloadProgress: (progress: { downloaded: number; total: number } | null) => void;
   setDarwinRebuildAvailable: (available: boolean | null) => void;
-  setDarwinRebuildPrefetching: (prefetching: boolean) => void;
   setEvolveState: (state: EvolveState | null) => void;
   setExternalBuildDetected: (detected: boolean) => void;
   setGitStatus: (status: GitStatus | null) => void;
@@ -221,7 +218,6 @@ export interface WidgetActions {
     details: { message: string; location?: string; backtrace?: string; timestamp: string } | null,
   ) => void;
   setPromptHistory: (history: string[]) => void;
-  setSummaryAvailable: (available: boolean) => void;
   setRecommendedPrompt: (prompt: RecommendedPrompt | null | undefined) => void;
 
   // History
@@ -245,7 +241,6 @@ export interface WidgetActions {
   // Client-side state (NOT from server)
   setSummarizing: (summarizing: boolean) => void;
   setGenerating: (generating: boolean) => void;
-  clearPreview: () => void;
   setFeedbackTypeOverride: (type: FeedbackType | null) => void;
   openFeedback: (type?: FeedbackType, initialText?: string) => void;
 

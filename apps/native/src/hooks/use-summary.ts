@@ -5,12 +5,11 @@ import { tauriAPI } from "@/ipc/api";
  * Hook for fetching and managing the AI-generated summary of changes.
  */
 const findChangeMap = async (): Promise<void> => {
-  const { setChangeMap, setSummaryAvailable } = useWidgetStore.getState();
+  const { setChangeMap } = useWidgetStore.getState();
   try {
     const map = await tauriAPI.summarizedChanges.findChangeMap();
     if (map) {
       setChangeMap(map);
-      setSummaryAvailable(map.groups.length > 0 || map.singles.length > 0);
     }
   } catch (e) {
     console.error("[SemanticChangeMap] error", e);
@@ -29,12 +28,11 @@ const generateCommitMessage = async () => {
 };
 
 const generateCurrentSummary = async () => {
-  const { setSummarizing, setChangeMap, setSummaryAvailable } = useWidgetStore.getState();
+  const { setSummarizing, setChangeMap } = useWidgetStore.getState();
   setSummarizing(true);
   try {
     const map = await tauriAPI.summarizedChanges.summarizeCurrent();
     setChangeMap(map);
-    setSummaryAvailable(map.groups.length > 0 || map.singles.length > 0);
   } finally {
     setSummarizing(false);
   }

@@ -32,7 +32,6 @@ const initialWidgetState: WidgetState = {
 
   // nix-darwin
   darwinRebuildAvailable: null,
-  darwinRebuildPrefetching: false,
 
   // Routing state
   evolveState: null,
@@ -57,7 +56,6 @@ const initialWidgetState: WidgetState = {
   analyzingHistoryForHashes: new Set<string>(),
 
   changeMap: null,
-  summaryAvailable: false,
 
   // Commit message suggestion
   commitMessageSuggestion: null,
@@ -142,7 +140,6 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
         processingAction: isProcessing ? action : null,
       }),
     setChangeMap: (changeMap) => set({ changeMap }),
-    setSummaryAvailable: (summaryAvailable) => set({ summaryAvailable }),
     setBoolPref: (key: BoolPrefKey, value: boolean) => set({ [key]: value }),
     initConfirmPrefs: (prefs: Partial<Record<ConfirmPrefKey, boolean>>) =>
       set({
@@ -192,14 +189,8 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setNixInstallPhase: (nixInstallPhase) => set({ nixInstallPhase }),
     setNixDownloadProgress: (nixDownloadProgress) => set({ nixDownloadProgress }),
     setDarwinRebuildAvailable: (darwinRebuildAvailable) => set({ darwinRebuildAvailable }),
-    setDarwinRebuildPrefetching: (darwinRebuildPrefetching) => set({ darwinRebuildPrefetching }),
     setSummarizing: (isSummarizing) => set({ isSummarizing }),
     setGenerating: (isGenerating) => set({ isGenerating }),
-    clearPreview: () =>
-      set({
-        changeMap: null,
-        summaryAvailable: false,
-      }),
 
     // Console
     appendLog: (text) => set((state) => ({ consoleLogs: state.consoleLogs + text })),

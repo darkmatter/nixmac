@@ -1,7 +1,6 @@
 import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI, ipcRenderer } from "@/ipc/api";
 import type {
-  NixDarwinRebuildEndEvent,
   NixInstallEndEvent,
   NixInstallProgressEvent,
 } from "@/ipc/types";
@@ -66,33 +65,6 @@ const installNix = async () => {
     }
 };
 
-const prefetchDarwinRebuild = async () => {
-    const store = useWidgetStore.getState();
-    store.setDarwinRebuildPrefetching(true);
-    store.setError(null);
-
-    const unlistenEnd = await ipcRenderer.on<NixDarwinRebuildEndEvent>("nix:darwin-rebuild:end", (event) => {
-      const current = useWidgetStore.getState();
-      current.setDarwinRebuildPrefetching(false);
-      current.setDarwinRebuildAvailable(event.payload.ok);
-
-      if (!event.payload.ok) {
-        current.setError(event.payload.error ?? "Failed to set up nix-darwin.");
-      }
-
-      unlistenEnd();
-    });
-
-    try {
-      await tauriAPI.nix.prefetchDarwinRebuild();
-    } catch (e: unknown) {
-      const msg = (e as Error)?.message || String(e);
-      store.setDarwinRebuildPrefetching(false);
-      store.setError(msg);
-      unlistenEnd();
-    }
-};
-
 export function useNixInstall() {
-  return { checkNix, installNix, prefetchDarwinRebuild };
+  return { checkNix, installNix };
 }

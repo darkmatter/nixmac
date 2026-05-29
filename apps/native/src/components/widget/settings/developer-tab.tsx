@@ -122,7 +122,7 @@ export function DeveloperTab() {
     const store = useWidgetStore.getState();
     store.clearLogs();
     store.clearEvolveEvents();
-    store.clearPreview();
+    store.setChangeMap(null);
     store.clearRebuild();
     store.setConversationalResponse(null);
     store.setCommitMessageSuggestion(null);

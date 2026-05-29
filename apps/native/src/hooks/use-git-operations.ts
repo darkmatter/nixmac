@@ -85,7 +85,6 @@ const handleCommit = async ({ message }: { message: string }) => {
     useWidgetStore.getState().appendLog("✓ Committed successfully\n");
     useWidgetStore.getState().setError(null);
     toast.success("Committed successfully");
-    useWidgetStore.getState().clearPreview();
     useWidgetStore.getState().setChangeMap(null);
     useWidgetStore.getState().setEvolveState(result.evolveState);
     await refreshGitStatus();

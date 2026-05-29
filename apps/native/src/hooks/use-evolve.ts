@@ -37,12 +37,11 @@ const refreshPromptHistory = async (prompt?: string) => {
 };
 
 const findChangeMap = async (): Promise<void> => {
-  const { setChangeMap, setSummaryAvailable } = useWidgetStore.getState();
+  const { setChangeMap } = useWidgetStore.getState();
   try {
     const map = await tauriAPI.summarizedChanges.findChangeMap();
     if (map) {
       setChangeMap(map);
-      setSummaryAvailable(map.groups.length > 0 || map.singles.length > 0);
     }
   } catch (e) {
     console.error("[SemanticChangeMap] error", e);
@@ -64,7 +63,6 @@ const handleEvolve = async () => {
   store.setExternalBuildDetected(false);
   store.clearEvolveEvents();
   store.clearLogs();
-  store.clearPreview();
   store.setConversationalResponse(null);
   store.setEvolutionTelemetry(null);
   store.appendLog(`\n> Evolving: "${store.evolvePrompt}"\n`);
@@ -97,8 +95,6 @@ const handleEvolve = async () => {
 
     if (isConversational) {
       useWidgetStore.getState().setConversationalResponse(result.conversationalResponse ?? null);
-    } else {
-      store.setSummaryAvailable(true);
     }
     if (result?.gitStatus) {
       useWidgetStore.getState().setGitStatus(result.gitStatus);
