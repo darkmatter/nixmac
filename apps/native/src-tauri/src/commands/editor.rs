@@ -1,4 +1,4 @@
-use crate::{editor, shared_types};
+use crate::editor;
 use tauri::AppHandle;
 
 /// Read a file relative to the config directory.
@@ -15,12 +15,6 @@ pub async fn editor_write_file(
     content: String,
 ) -> Result<(), String> {
     editor::write_file(&app, &rel_path, &content).await
-}
-
-/// List files in the config directory.
-#[tauri::command]
-pub async fn editor_list_files(app: AppHandle) -> Result<Vec<shared_types::FileEntry>, String> {
-    editor::list_files(&app).await
 }
 
 /// Start the nixd LSP server.

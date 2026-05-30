@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { toast } from "sonner";
 import { useWidgetStore } from "@/stores/widget-store";
-import type { RustPanicEvent } from "@/tauri-api";
+import type { RustPanicEvent } from "@/ipc/types";
 import { FeedbackType } from "@/types/feedback";
 
 export function usePanicHandler() {

@@ -1,18 +1,37 @@
 import { loadHosts } from "@/hooks/use-widget-initialization";
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 import { toast } from "sonner";
 
 /**
  * Hook for git operations.
  * Provides functions for refreshing git status and stashing changes.
  */
-const refreshGitStatus = async (options?: { cache?: boolean }) => {
+export const prefetchFileDiffContents = async (status: { changes: { filename: string }[] } | null) => {
+  const setFileDiffContents = useWidgetStore.getState().setFileDiffContents;
+  if (!status) {
+    setFileDiffContents({});
+    return;
+  }
+  const filenames = [...new Set(status.changes.map((c) => c.filename))];
+  if (filenames.length === 0) {
+    setFileDiffContents({});
+    return;
+  }
+  try {
+    const result = await tauriAPI.git.fileDiffContents(filenames);
+    setFileDiffContents(result ?? {});
+  } catch {
+    setFileDiffContents({});
+  }
+};
+
+export const refreshGitStatus = async (options?: { cache?: boolean }) => {
   try {
     const shouldCache = options?.cache === true;
     const status = shouldCache
-      ? await darwinAPI.git.statusAndCache()
-      : await darwinAPI.git.status();
+      ? await tauriAPI.git.statusAndCache()
+      : await tauriAPI.git.status();
 
     useWidgetStore.getState().setGitStatus(status);
 
@@ -32,7 +51,7 @@ const refreshGitStatus = async (options?: { cache?: boolean }) => {
 // runs on widget mount once, to get the current git status
 const getInitialStatus = async () => {
   try {
-    const currentStatus = await darwinAPI.git.statusAndCache();
+    const currentStatus = await tauriAPI.git.statusAndCache();
     useWidgetStore.getState().setGitStatus(currentStatus);
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
@@ -48,7 +67,7 @@ const getInitialStatus = async () => {
 
 const gitStash = async () => {
   try {
-    await darwinAPI.git.stash("stashed changes from nixmac");
+    await tauriAPI.git.stash("stashed changes from nixmac");
     const status = await refreshGitStatus();
     return status;
   } catch {
@@ -62,7 +81,7 @@ const handleCommit = async ({ message }: { message: string }) => {
   store.appendLog(`\n> Committing changes...\n`);
 
   try {
-    const result = await darwinAPI.git.commit(message);
+    const result = await tauriAPI.git.commit(message);
     useWidgetStore.getState().appendLog("✓ Committed successfully\n");
     useWidgetStore.getState().setError(null);
     toast.success("Committed successfully");

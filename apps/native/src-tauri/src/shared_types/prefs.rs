@@ -1,6 +1,15 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+/// Auto-update channel selected for release-mode builds.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum UpdateChannel {
+    #[default]
+    Stable,
+    Develop,
+}
+
 /// User interface preferences (synced to settings.json via tauri-plugin-store).
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -39,10 +48,14 @@ pub struct UiPrefs {
     pub auto_summarize_on_focus: bool,
     /// Whether Homebrew state should be scanned on app startup.
     pub scan_homebrew_on_startup: bool,
+    /// Whether the change view defaults to the Diff tab instead of Summary.
+    pub default_to_diff_tab: bool,
     /// Whether developer-only UI/actions are enabled.
     pub developer_mode: bool,
     /// Version pinned by the user, when update pinning is active.
     pub pinned_version: Option<String>,
+    /// Auto-update channel used when no explicit version pin is active.
+    pub update_channel: UpdateChannel,
 }
 
 /// Partial update to UI preferences — every field is optional so the caller
@@ -84,6 +97,8 @@ pub struct UiPrefsUpdate {
     pub auto_summarize_on_focus: Option<bool>,
     /// Startup Homebrew scan preference update.
     pub scan_homebrew_on_startup: Option<bool>,
+    /// Default-to-diff-tab preference update.
+    pub default_to_diff_tab: Option<bool>,
     /// Developer mode preference update.
     pub developer_mode: Option<bool>,
     /// `None` -> field not sent; `Some(None)` -> clear the pinned version.
@@ -93,6 +108,20 @@ pub struct UiPrefsUpdate {
         with = "double_option"
     )]
     pub pinned_version: Option<Option<String>>,
+    /// Auto-update channel preference update.
+    pub update_channel: Option<UpdateChannel>,
+}
+
+/// Lightweight update metadata returned by the channel-aware updater command.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateInfo {
+    /// Channel whose manifest produced this update.
+    pub channel: UpdateChannel,
+    /// Version advertised by the channel manifest.
+    pub version: String,
+    /// Release notes from the channel manifest, when available.
+    pub notes: Option<String>,
 }
 
 #[allow(dead_code)]

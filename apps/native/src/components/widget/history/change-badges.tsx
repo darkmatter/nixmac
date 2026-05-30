@@ -2,7 +2,7 @@ import { ChangeBadge } from "@/components/widget/badges/change-badge";
 import { FilenameBadge } from "@/components/widget/badges/filename-badge";
 import { BadgeList } from "@/components/widget/badges/badge-list";
 import type { ColorMap } from "@/components/widget/utils";
-import type { Change, SemanticChangeMap } from "@/types/shared";
+import type { Change, SemanticChangeMap } from "@/ipc/types";
 
 interface ChangeBadgesProps {
   changeMap: SemanticChangeMap | null;

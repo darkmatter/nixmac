@@ -1,6 +1,6 @@
 import type { CategoryStyle } from "@/components/widget/utils";
 import { getShortFilename } from "@/components/widget/utils";
-import type { ChangeWithSummary } from "@/types/shared";
+import type { ChangeWithSummary } from "@/ipc/types";
 import { cn } from "@/lib/utils";
 
 interface OwnSummaryItemProps {

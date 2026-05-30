@@ -101,6 +101,12 @@ pub struct EvolveState {
     pub rollback_changeset_id: Option<i64>,
     /// UI step derived from the routing state.
     pub step: EvolveStep,
+    /// Last terminal state observed for this routing session.
+    ///
+    /// This supports transition-sensitive behavior when returning to Begin
+    /// and maybe some other useful things in the future.
+    #[serde(default)]
+    pub last_evolution_state: Option<EvolutionState>,
 }
 
 impl Default for EvolveState {
@@ -115,6 +121,7 @@ impl Default for EvolveState {
             rollback_store_path: None,
             rollback_changeset_id: None,
             step: EvolveStep::Begin,
+            last_evolution_state: None,
         }
     }
 }

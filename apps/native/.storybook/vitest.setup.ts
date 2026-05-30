@@ -31,7 +31,19 @@ function normalizeSnapshotRoot(root: Element): string {
     editor.appendChild(placeholder);
   }
 
-  return normalizeAnimations(clone.innerHTML);
+  for (const editor of clone.querySelectorAll(".monaco-diff-editor, .monaco-editor")) {
+    editor.replaceChildren();
+    const placeholder = document.createElement("div");
+    placeholder.setAttribute("data-slot", "monaco-editor-placeholder");
+    editor.appendChild(placeholder);
+  }
+
+  let html = normalizeAnimations(clone.innerHTML);
+  // Monaco assigns auto-incrementing model IDs that vary by test-suite order.
+  html = html.replace(/inmemory:\/\/model\/\d+/g, "inmemory://model/N");
+  // data-keybinding-context values are similarly auto-incremented.
+  html = html.replace(/data-keybinding-context="\d+"/g, 'data-keybinding-context="N"');
+  return html;
 }
 
 // Automatically snapshot every story after it renders

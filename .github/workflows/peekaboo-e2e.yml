@@ -1,22 +1,6 @@
 name: Peekaboo E2E
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - 'package.json'
-      - 'bun.lock'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'flake.nix'
-      - 'flake.lock'
-      - 'devenv.nix'
-      - 'devenv.lock'
-      - 'apps/native/**'
-      - 'tests/e2e/**'
-      - 'tools/computer-use-e2e/**'
-      - '.github/workflows/build.yaml'
-      - '.github/workflows/peekaboo-e2e.yml'
   workflow_dispatch:
     inputs:
       build_attempts:
@@ -243,7 +227,7 @@ jobs:
           for ((attempt = 1; attempt <= BUILD_ATTEMPTS; attempt += 1)); do
             if bun install --frozen-lockfile && \
               cd apps/native && \
-              VITE_NIXMAC_SKIP_PERMISSIONS=true ./node_modules/.bin/tauri build \
+              VITE_NIXMAC_SKIP_PERMISSIONS=true VITE_NIXMAC_E2E_MODE=true ./node_modules/.bin/tauri build \
                 --debug \
                 --bundles app \
                 --no-sign \

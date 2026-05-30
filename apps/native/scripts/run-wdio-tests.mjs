@@ -15,6 +15,7 @@ const suites = [
   { name: 'conversational', config: path.resolve(E2E_DIR, 'wdio.conversational.conf.mjs') },
   { name: 'discard', config: path.resolve(E2E_DIR, 'wdio.discard.conf.mjs') },
   { name: 'modify', config: path.resolve(E2E_DIR, 'wdio.modify.conf.mjs') },
+  { name: 'manual-changes', config: path.resolve(E2E_DIR, 'wdio.manual-changes.conf.mjs') },
   { name: 'onboarding', config: path.resolve(E2E_DIR, 'wdio.onboarding.conf.mjs') },
 ];
 

@@ -2,7 +2,7 @@
 
 import { EvolveProgress } from "@/components/widget/overlays/evolve-progress";
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 
 /**
  * Overlay panel that shows evolution progress.
@@ -14,7 +14,7 @@ export function EvolveOverlayPanel() {
 
   const handleStopEvolution = async () => {
     try {
-      await darwinAPI.darwin.evolveCancel();
+      await tauriAPI.darwin.evolveCancel();
       useWidgetStore.setState({ isGenerating: false, evolveEvents: [] });
     } catch (e) {
       console.error("Failed to cancel evolution:", e);

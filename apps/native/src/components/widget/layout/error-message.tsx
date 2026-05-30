@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { EVOLUTION_CANCELLED_MSG } from "@/lib/constants";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { FeedbackType } from "@/types/feedback";
 import { Settings } from "lucide-react";
@@ -31,7 +32,7 @@ export function ErrorMessage() {
   const isSuppressedError =
     isDismissed ||
     step === "setup" ||
-    ((step === "evolve" || step === "begin") && error?.includes("cancelled by user"));
+    ((step === "evolve" || step === "begin") && error?.includes(EVOLUTION_CANCELLED_MSG));
 
   if (!error || isSuppressedError) {
     return null;

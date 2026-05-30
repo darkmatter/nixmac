@@ -431,12 +431,6 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
     }
 }
 
-/// Check if all required permissions are granted
-pub fn all_required_permissions_granted() -> bool {
-    let state: PermissionsState = check_all_permissions();
-    state.all_required_granted
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -5,6 +5,8 @@ use serde_json::Value;
 use std::sync::OnceLock;
 use tauri::{AppHandle, Manager};
 
+use crate::commands::debug::TimerGuard;
+
 static SECRET_SCANNER: OnceLock<SecretScanner> = OnceLock::new();
 
 #[derive(Deserialize)]
@@ -27,6 +29,7 @@ impl SecretScanner {
     /// Initialize the scanner singleton using the bundled Gitleaks file.
     pub fn global(app_handle: &AppHandle) -> &'static Self {
         SECRET_SCANNER.get_or_init(|| {
+            let _timer = TimerGuard::new("SecretScanner::global");
             let resource_path = app_handle
                 .path()
                 .resource_dir()
@@ -50,6 +53,7 @@ impl SecretScanner {
             let toml_content = std::fs::read_to_string(resource_path)
                 .expect("Could not read gitleaks.toml from bundle");
 
+            log::info!("[secret_scanner] initialized secrets scanner");
             Self::from_toml(&toml_content)
         })
     }

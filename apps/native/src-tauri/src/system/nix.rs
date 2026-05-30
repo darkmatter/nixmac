@@ -26,7 +26,7 @@
 
 use anyhow::Result;
 use log::{error, info};
-use serde_json::Value;
+
 use std::io::{Read as _, Write as _};
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
@@ -95,31 +95,6 @@ pub fn determine_host_attr<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Opti
     }
 
     crate::storage::store::read_host_attr_from_file()
-}
-
-pub fn evaluate_installed_apps(config_dir: &str, host_attr: &str) -> Result<Vec<Value>> {
-    let attr = format!(
-        ".#darwinConfigurations.{}.config.environment.systemPackages",
-        host_attr
-    );
-
-    let output = Command::new("nix")
-        .args(["eval", "--json", &attr])
-        .current_dir(config_dir)
-        .env("PATH", get_nix_path())
-        .env("NIX_CONFIG", "experimental-features = nix-command flakes")
-        .output()?;
-
-    if !output.status.success() {
-        anyhow::bail!(
-            "Failed to evaluate installed apps: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-
-    let stdout = String::from_utf8(output.stdout)?;
-    let apps: Vec<Value> = serde_json::from_str(&stdout)?;
-    Ok(apps)
 }
 
 pub fn list_darwin_hosts(config_dir: &str) -> Result<Vec<String>> {
