@@ -54,6 +54,37 @@ const matches = (predicate: (file: string) => boolean) => (files: readonly strin
 const codeBlock = (files: readonly string[]): string =>
   files.map((f) => `- \`${f}\``).join("\n");
 
+const TEST_PLAN_HEADING_RE =
+  /(^|\n)#{2,3}\s*(test plan|testing instructions|how to test)\b/i;
+const NO_TEST_PLAN_NEEDED_RE =
+  /^\s*-\s*\[[xX]\]\s*No test plan needed\b/im;
+const TEST_PLAN_PLACEHOLDER_RE =
+  /^\s*-\s*\[[ xX]\]\s*No test plan needed\b.*$/gim;
+
+function getTestPlanSection(): string {
+  if (!TEST_PLAN_HEADING_RE.test(body)) {
+    return "";
+  }
+
+  return (
+    body
+      .split(TEST_PLAN_HEADING_RE)
+      .pop()
+      ?.split(/\n#{2,3}\s/)[0]
+      ?.trim() ?? ""
+  );
+}
+
+function getSubstantiveTestPlanText(section: string): string {
+  return section
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(TEST_PLAN_PLACEHOLDER_RE, "")
+    .trim();
+}
+
+const testPlanSection = getTestPlanSection();
+const substantiveTestPlan = getSubstantiveTestPlanText(testPlanSection);
+
 // ---------------------------------------------------------------------------
 // Boolean flags — derived once and reused everywhere
 // ---------------------------------------------------------------------------
@@ -68,8 +99,9 @@ const flags = {
   isDraft: pr.draft === true,
   isWip: /\bWIP\b|^\s*\[wip\]/i.test(title),
   isTrivial: /#trivial\b/i.test(body),
-  hasTestPlan:
-    /(^|\n)#{2,3}\s*(test plan|testing instructions|how to test)\b/i.test(body),
+  hasTestPlanSection: TEST_PLAN_HEADING_RE.test(body),
+  hasTestPlan: substantiveTestPlan.length >= 10,
+  noTestPlanNeeded: NO_TEST_PLAN_NEEDED_RE.test(testPlanSection),
   hasNewUiComponents: newUiComponents.length > 0,
   hasNewStories: newStories.length > 0,
   hasNewRustModules: newRustModules.length > 0,
@@ -101,6 +133,7 @@ function postOverview(): void {
 | Files | ${created.length} added, ${modified.length} modified, ${deleted.length} deleted |
 | Draft / WIP | ${tick(flags.isDraft || flags.isWip)} |
 | Has Test Plan | ${tick(flags.hasTestPlan)} |
+| No Test Plan Needed | ${tick(flags.noTestPlanNeeded)} |
 | New UI components | ${tick(flags.hasNewUiComponents)} ${flags.hasNewUiComponents ? `(${newUiComponents.length})` : ""} |
 | New Storybook stories | ${tick(flags.hasNewStories)} ${flags.hasNewStories ? `(${newStories.length})` : ""} |
 | New Rust modules | ${tick(flags.hasNewRustModules)} ${flags.hasNewRustModules ? `(${newRustModules.length})` : ""} |
@@ -275,27 +308,22 @@ ${rows}
 // ---------------------------------------------------------------------------
 
 function checkTestPlan(): void {
-  if (flags.isTrivial) {
+  if (flags.isTrivial || flags.noTestPlanNeeded) {
+    return;
+  }
+
+  if (!flags.hasTestPlanSection) {
+    warn(
+      "PR description is missing a `## Test Plan` (or `## Testing Instructions`) section. " +
+        "Add one describing how a reviewer can verify your change, or check `No test plan needed` if no testing is needed.",
+    );
     return;
   }
 
   if (!flags.hasTestPlan) {
     warn(
-      "PR description is missing a `## Test Plan` (or `## Testing Instructions`) section. " +
-        "Add one describing how a reviewer can verify your change, or tag the PR `#trivial` if no testing is needed.",
-    );
-    return;
-  }
-
-  const section = body
-    .split(/(^|\n)#{2,3}\s*(test plan|testing instructions|how to test)\b/i)
-    .pop()
-    ?.split(/\n#{2,3}\s/)[0]
-    ?.trim();
-
-  if (!section || section.length < 10) {
-    warn(
-      "Your `## Test Plan` section is empty. Describe the steps a reviewer should take to verify this change.",
+      "Your `## Test Plan` section is empty or only contains placeholder text. " +
+        "Describe the steps a reviewer should take to verify this change, or check `No test plan needed`.",
     );
   }
 }
