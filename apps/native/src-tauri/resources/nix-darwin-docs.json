@@ -378,6 +378,12 @@
     "option_type": "one of “none”, “check”, “uninstall”, “zap”"
   },
   {
+    "option_path": "homebrew.onActivation.extraEnv",
+    "anchor_id": "opt-homebrew.onActivation.extraEnv",
+    "summary": "Extra environment variables to set when nix-darwin invokes brew bundle [install] during system activation.",
+    "option_type": "attribute set of string"
+  },
+  {
     "option_path": "homebrew.onActivation.extraFlags",
     "anchor_id": "opt-homebrew.onActivation.extraFlags",
     "summary": "Extra flags to pass to brew bundle [install] during nix-darwin system activation.",
@@ -1197,6 +1203,12 @@
     "option_path": "programs.tmux.iTerm2",
     "anchor_id": "opt-programs.tmux.iTerm2",
     "summary": "Cater to iTerm2 and its tmux integration, as appropriate.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.tmux.reverseSplitBindings",
+    "anchor_id": "opt-programs.tmux.reverseSplitBindings",
+    "summary": "Whether to reverse the % and \" split-window key bindings emitted by the tmux module.",
     "option_type": "boolean"
   },
   {
@@ -3114,10 +3126,70 @@
     "option_type": "null or boolean"
   },
   {
-    "option_path": "system.defaults.NSGlobalDomain",
+    "option_path": "system.defaults.NSGlobalDomain.com.apple.keyboard.fnState",
     "anchor_id": "opt-system.defaults.NSGlobalDomain._com.apple.keyboard.fnState_",
     "summary": "Use F1, F2, etc. keys as standard function keys.",
     "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.com.apple.mouse.tapBehavior",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain._com.apple.mouse.tapBehavior_",
+    "summary": "Configures the trackpad tap behavior. Mode 1 enables tap to click.",
+    "option_type": "null or value 1 (singular enum)"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.com.apple.sound.beep.feedback",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain._com.apple.sound.beep.feedback_",
+    "summary": "Apple menu > System Preferences > Sound",
+    "option_type": "null or signed integer"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.com.apple.sound.beep.volume",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain._com.apple.sound.beep.volume_",
+    "summary": "Apple menu > System Preferences > Sound",
+    "option_type": "null or floating point number"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.com.apple.springing.delay",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain._com.apple.springing.delay_",
+    "summary": "Set the spring loading delay for directories. The default is given in the example.",
+    "option_type": "null or floating point number"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.com.apple.springing.enabled",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain._com.apple.springing.enabled_",
+    "summary": "Whether to enable spring loading (expose) for directories.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.com.apple.swipescrolldirection",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain._com.apple.swipescrolldirection_",
+    "summary": "Whether to enable “Natural” scrolling direction. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.com.apple.trackpad.enableSecondaryClick",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain._com.apple.trackpad.enableSecondaryClick_",
+    "summary": "Whether to enable trackpad secondary click. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.com.apple.trackpad.forceClick",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain._com.apple.trackpad.forceClick_",
+    "summary": "Whether to enable trackpad force click.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.com.apple.trackpad.scaling",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain._com.apple.trackpad.scaling_",
+    "summary": "Configures the trackpad tracking speed (0 to 3). The default is “1”.",
+    "option_type": "null or floating point number"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.com.apple.trackpad.trackpadCornerClickBehavior",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain._com.apple.trackpad.trackpadCornerClickBehavior_",
+    "summary": "Configures the trackpad corner click behavior. Mode 1 enables right click.",
+    "option_type": "null or value 1 (singular enum)"
   },
   {
     "option_path": "system.defaults.SoftwareUpdate.AutomaticallyInstallMacOSUpdates",
@@ -3999,7 +4071,7 @@
     "option_path": "system.stateVersion",
     "anchor_id": "opt-system.stateVersion",
     "summary": "Every once in a while, a new nix-darwin release may change configuration defaults in a way incompatible with stateful data. For instance, if the default version of PostgreSQL changes, the new version will probably be unable to read your existing databases. To prevent such breakage, you can set the value of this option to the nix-darwin release with which you want to be compatible. The effect is that nix-darwin will option defaults corresponding to the specified release (such as using an older version of PostgreSQL).",
-    "option_type": "integer between 1 and 6 (both inclusive)"
+    "option_type": "integer between 1 and 7 (both inclusive)"
   },
   {
     "option_path": "system.tools.darwin-option.enable",

@@ -11,14 +11,20 @@ pub struct OllamaProvider {
     client: reqwest::Client,
     base_url: String,
     model: String,
+    record_chat_logs: bool,
 }
 
 impl OllamaProvider {
     pub fn new(base_url: String, model: String) -> Self {
+        let record_chat_logs = crate::state::completion_log::init_recording(
+            "evolve_provider_chat",
+            "evolve provider",
+        );
         Self {
             client: reqwest::Client::new(),
             base_url: base_url.trim_end_matches('/').to_string(),
             model,
+            record_chat_logs,
         }
     }
 }
@@ -64,7 +70,7 @@ struct OllamaToolFunction {
     parameters: serde_json::Value,
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 #[allow(dead_code)] // some fields may be unused
 struct ChatResponse {
     model: String,
@@ -103,6 +109,15 @@ impl AiProvider for OllamaProvider {
                 tools: ollama_tools.clone(),
             };
 
+            crate::state::completion_log::append_event_jsonl(
+                self.record_chat_logs,
+                "evolve_provider_chat",
+                "ollama",
+                "request",
+                &request,
+            )
+            .await;
+
             let response = self
                 .client
                 .post(&url)
@@ -120,6 +135,18 @@ impl AiProvider for OllamaProvider {
 
                 let should_retry = retry_attempt < DEFAULT_RETRY_ATTEMPTS
                     && is_ollama_tool_call_parse_error(status, &error_text);
+
+                crate::state::completion_log::append_event_jsonl(
+                    self.record_chat_logs,
+                    "evolve_provider_chat",
+                    "ollama",
+                    "response_error",
+                    &serde_json::json!({
+                        "status": status.as_u16(),
+                        "body": error_text.clone(),
+                    }),
+                )
+                .await;
 
                 if should_retry {
                     retry_attempt += 1;
@@ -142,6 +169,15 @@ impl AiProvider for OllamaProvider {
                 .json()
                 .await
                 .map_err(|e| ProviderError::Other(anyhow!(e)))?;
+
+            crate::state::completion_log::append_event_jsonl(
+                self.record_chat_logs,
+                "evolve_provider_chat",
+                "ollama",
+                "response",
+                &chat_response,
+            )
+            .await;
 
             // Debug: Log the raw response to understand what we're getting
             log::debug!(

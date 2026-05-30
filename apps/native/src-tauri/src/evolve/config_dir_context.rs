@@ -8,7 +8,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const MAX_RENDERED_ENTRIES: usize = 500;
-const DEFAULT_MAX_DEPTH: usize = 6;
+
+/// The max depth we travel starting at the nix config directory.
+/// You get the number of levels from the repo root "for free".
+const MAX_CONFIG_DIR_DEPTH: usize = 6;
 
 const ALLOWED_FILE_NAMES: &[&str] = &[
     "default.nix",
@@ -26,111 +29,128 @@ const ALLOWED_EXTENSIONS: &[&str] = &[
 ];
 
 #[derive(Clone, Debug)]
-struct EntryView {
+struct DirEntryView {
     name: String,
     path: PathBuf,
     is_dir: bool,
 }
 
-pub fn format_config_dir_context(config_dir: &str) -> Result<String> {
-    format_config_dir_context_with_max_depth(config_dir, DEFAULT_MAX_DEPTH)
+fn calc_max_depth(repo_root: &Path, config_dir: &str) -> usize {
+    // Max depth should be the default config dir depth + the number of levels (if any)
+    // between the repo root and the config dir. For example, if the config dir is at my/repo/nix/os,
+    // then the max depth should be 6 (default) + 2 (nix/os) = 8.
+    let config_dir_path = Path::new(config_dir);
+    let relative_depth = config_dir_path
+        .strip_prefix(repo_root)
+        .map(|relative_path| relative_path.components().count())
+        .unwrap_or(0);
+
+    MAX_CONFIG_DIR_DEPTH + relative_depth
 }
 
-// This will generate a directory structure ASCII artwork like
-// CONFIG_DIR/
-// ├── file1.txt
-// ├── file2.txt
-// ├── dir1/
-// │   ├── file3.txt
-// etc.
+pub fn format_config_dir_context(repo_root: &Path, config_dir: &str) -> Result<String> {
+    format_config_dir_context_with_max_depth(
+        repo_root,
+        config_dir,
+        calc_max_depth(repo_root, config_dir),
+    )
+}
+
+// Returns a flattened list of repo-root-relative file paths under config_dir,
+// one path per line.
 pub fn format_config_dir_context_with_max_depth(
+    repo_root: &Path,
     config_dir: &str,
     max_depth: usize,
 ) -> Result<String> {
-    let root = Path::new(config_dir);
-    if !root.exists() {
+    let config_dir_path = Path::new(config_dir);
+    if !config_dir_path.exists() {
         return Err(anyhow::anyhow!("config_dir does not exist: {}", config_dir));
     }
-    if !root.is_dir() {
+    if !config_dir_path.is_dir() {
         return Err(anyhow::anyhow!(
             "config_dir is not a directory: {}",
             config_dir
         ));
     }
 
-    let gitignore = load_gitignore_matcher(root)?;
-    let mut output = String::from("CONFIG_DIR/\n");
+    // Use the repo root for the ignore base since we may have ignored things at a higher level than the nix config dir.
+    let gitignore = load_gitignore_matcher(repo_root)?;
+
+    let mut output_paths = Vec::new();
     let mut rendered_entries = 0usize;
-    render_dir(
-        root,
-        root,
+    collect_file_paths(
+        repo_root,
+        config_dir_path,
         gitignore.as_ref(),
-        "",
         0,
         max_depth,
-        &mut output,
+        &mut output_paths,
         &mut rendered_entries,
     )?;
-    Ok(output.trim_end().to_string())
+
+    output_paths.sort();
+    Ok(output_paths.join("\n"))
 }
 
 #[allow(clippy::too_many_arguments)]
-fn render_dir(
-    root: &Path,
+fn collect_file_paths(
+    repo_root: &Path,
     dir: &Path,
     gitignore: Option<&Gitignore>,
-    prefix: &str,
     depth: usize,
     max_depth: usize,
-    output: &mut String,
+    output_paths: &mut Vec<String>,
     rendered_entries: &mut usize,
 ) -> Result<()> {
-    let mut entries = collect_filtered_entries(root, dir, gitignore)?;
-
+    let mut entries = collect_filtered_entries(repo_root, dir, gitignore)?;
     entries.sort_by(|a, b| a.name.cmp(&b.name));
 
-    for (index, entry) in entries.iter().enumerate() {
+    for entry in entries {
+        // If a parent or earlier sibling already caused truncation, stop immediately.
         if *rendered_entries >= MAX_RENDERED_ENTRIES {
-            let connector = if index + 1 == entries.len() {
-                "└── "
-            } else {
-                "├── "
-            };
-            output.push_str(prefix);
-            output.push_str(connector);
-            output.push_str("... (truncated)\n");
-            break;
+            return Ok(());
         }
 
-        let is_last = index + 1 == entries.len();
-        let connector = if is_last { "└── " } else { "├── " };
-
-        output.push_str(prefix);
-        output.push_str(connector);
-        output.push_str(&entry.name);
         if entry.is_dir {
-            output.push('/');
+            if depth < max_depth {
+                collect_file_paths(
+                    repo_root,
+                    &entry.path,
+                    gitignore,
+                    depth + 1,
+                    max_depth,
+                    output_paths,
+                    rendered_entries,
+                )?;
+                // If the recursive call hit the limit and added the truncation marker,
+                // propagate the early return so ancestors don't add duplicates.
+                if *rendered_entries >= MAX_RENDERED_ENTRIES {
+                    return Ok(());
+                }
+            }
+            continue;
         }
-        output.push('\n');
 
+        let relative_for_output = entry.path.strip_prefix(repo_root).with_context(|| {
+            format!(
+                "failed to strip repo root prefix '{}' from '{}'",
+                repo_root.display(),
+                entry.path.display()
+            )
+        })?;
+        let rendered_path = format!(
+            "{}",
+            relative_for_output.to_string_lossy().replace('\\', "/")
+        );
+        output_paths.push(rendered_path);
         *rendered_entries += 1;
 
-        if entry.is_dir && depth < max_depth {
-            let child_prefix = if is_last {
-                format!("{}    ", prefix)
-            } else {
-                format!("{}│   ", prefix)
-            };
-            render_dir(
-                root,
-                &entry.path,
-                gitignore,
-                &child_prefix,
-                depth + 1,
-                max_depth,
-                output,
-                rendered_entries,
-            )?;
+        // If we've just reached the limit, append a single truncation marker and
+        // return so that parent callers don't add duplicates.
+        if *rendered_entries >= MAX_RENDERED_ENTRIES {
+            output_paths.push("... (truncated)".to_string());
+            return Ok(());
         }
     }
 
@@ -138,10 +158,10 @@ fn render_dir(
 }
 
 fn collect_filtered_entries(
-    root: &Path,
+    repo_root: &Path,
     dir: &Path,
     gitignore: Option<&Gitignore>,
-) -> Result<Vec<EntryView>> {
+) -> Result<Vec<DirEntryView>> {
     let mut out = Vec::new();
     for entry in
         fs::read_dir(dir).with_context(|| format!("failed to read directory: {}", dir.display()))?
@@ -154,15 +174,19 @@ fn collect_filtered_entries(
         let name = entry.file_name().to_string_lossy().to_string();
         let path = entry.path();
 
-        let relative = path
-            .strip_prefix(root)
-            .with_context(|| format!("failed to strip root prefix from {}", path.display()))?;
+        let relative_for_gitignore = path.strip_prefix(repo_root).with_context(|| {
+            format!(
+                "failed to strip repo root prefix '{}' from '{}'",
+                repo_root.display(),
+                path.display()
+            )
+        })?;
 
         if should_skip_name(&name) {
             continue;
         }
 
-        if is_ignored_by_matcher(gitignore, relative, file_type.is_dir()) {
+        if is_ignored_by_matcher(gitignore, relative_for_gitignore, file_type.is_dir()) {
             continue;
         }
 
@@ -170,7 +194,7 @@ fn collect_filtered_entries(
             continue;
         }
 
-        out.push(EntryView {
+        out.push(DirEntryView {
             name,
             path,
             is_dir: file_type.is_dir(),
@@ -201,42 +225,66 @@ fn is_allowed_file(name: &str, path: &Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
     use tempfile::tempdir;
 
     #[test]
-    fn prints_config_dir_context_for_inspection() -> Result<()> {
-        const TEST_CONFIG_DIR_RELATIVE: &str = "../templates/nix-darwin-determinate";
-        let test_config_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join(TEST_CONFIG_DIR_RELATIVE);
-
-        // If you want to test with your actual config dir, you can replace the above with something like:
-        //let test_config_dir = Path::new("/Users/me/.darwin");
+    fn returns_repo_relative_flat_paths_when_config_is_nested() -> Result<()> {
+        let tmp = tempdir()?;
+        let repo_root = tmp.path().join("repo");
+        let config_dir = repo_root.join("nix/os");
+        fs::create_dir_all(config_dir.join("modules/darwin"))?;
+        fs::write(config_dir.join("flake.nix"), "{ }")?;
+        fs::write(config_dir.join("modules/darwin/default.nix"), "{ }")?;
 
         let context = format_config_dir_context(
-            test_config_dir
-                .to_str()
-                .context("test config dir path is not valid UTF-8")?,
+            &repo_root,
+            config_dir.to_str().context("utf-8 config path")?,
         )?;
-        println!("{context}");
 
-        // Verify it starts with the right context key
+        assert!(context.contains("nix/os/flake.nix"), "context: {context}");
         assert!(
-            context.starts_with("CONFIG_DIR/"),
-            "context should start with CONFIG_DIR/"
+            context.contains("nix/os/modules/darwin/default.nix"),
+            "context: {context}"
         );
         Ok(())
     }
 
     #[test]
-    fn excludes_files_ignored_by_root_gitignore() -> Result<()> {
+    fn returns_root_relative_flat_paths_when_repo_root_and_config_dir_are_same() -> Result<()> {
         let tmp = tempdir()?;
-        fs::write(tmp.path().join(".gitignore"), "secret.txt\n")?;
-        fs::write(tmp.path().join("visible.txt"), "hello")?;
-        fs::write(tmp.path().join("secret.txt"), "hidden")?;
+        let repo_root = tmp.path().join("repo");
+        fs::create_dir_all(repo_root.join("modules"))?;
+        fs::write(repo_root.join("flake.nix"), "{ }")?;
+        fs::write(repo_root.join("modules/default.nix"), "{ }")?;
 
-        let context = format_config_dir_context(tmp.path().to_str().context("utf-8 path")?)?;
+        let context = format_config_dir_context(
+            &repo_root,
+            repo_root.to_str().context("utf-8 config path")?,
+        )?;
 
-        assert!(context.contains("visible.txt"), "context: {context}");
+        assert!(context.contains("flake.nix"), "context: {context}");
+        assert!(
+            context.contains("modules/default.nix"),
+            "context: {context}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn excludes_files_ignored_by_repo_root_gitignore_with_nested_path_rule() -> Result<()> {
+        let tmp = tempdir()?;
+        let repo_root = tmp.path().join("repo");
+        let config_dir = repo_root.join("nix/os");
+        fs::create_dir_all(&config_dir)?;
+
+        fs::write(repo_root.join(".gitignore"), "nix/os/secret.txt\n")?;
+        fs::write(config_dir.join("visible.txt"), "hello")?;
+        fs::write(config_dir.join("secret.txt"), "hidden")?;
+
+        let context =
+            format_config_dir_context(&repo_root, config_dir.to_str().context("utf-8 path")?)?;
+
+        assert!(context.contains("nix/os/visible.txt"), "context: {context}");
         assert!(!context.contains("secret.txt"), "context: {context}");
         Ok(())
     }
@@ -244,16 +292,56 @@ mod tests {
     #[test]
     fn excludes_files_ignored_by_subdir_gitignore() -> Result<()> {
         let tmp = tempdir()?;
-        fs::create_dir_all(tmp.path().join("nested"))?;
-        fs::write(tmp.path().join("nested/.gitignore"), "secret.txt\n")?;
-        fs::write(tmp.path().join("nested/visible.txt"), "hello")?;
-        fs::write(tmp.path().join("nested/secret.txt"), "hidden")?;
+        let repo_root = tmp.path().join("repo");
+        let config_dir = repo_root.join("nix/os");
+        fs::create_dir_all(config_dir.join("nested"))?;
+        fs::write(config_dir.join("nested/.gitignore"), "secret.txt\n")?;
+        fs::write(config_dir.join("nested/visible.txt"), "hello")?;
+        fs::write(config_dir.join("nested/secret.txt"), "hidden")?;
 
-        let context = format_config_dir_context(tmp.path().to_str().context("utf-8 path")?)?;
+        let context =
+            format_config_dir_context(&repo_root, config_dir.to_str().context("utf-8 path")?)?;
 
-        assert!(context.contains("nested/"), "context: {context}");
-        assert!(context.contains("visible.txt"), "context: {context}");
+        assert!(
+            context.contains("nix/os/nested/visible.txt"),
+            "context: {context}"
+        );
         assert!(!context.contains("secret.txt"), "context: {context}");
         Ok(())
+    }
+
+    #[test]
+    fn does_not_render_files_outside_config_dir() -> Result<()> {
+        let tmp = tempdir()?;
+        let repo_root = tmp.path().join("repo");
+        let config_dir = repo_root.join("nix/os");
+        fs::create_dir_all(&config_dir)?;
+
+        fs::write(repo_root.join("outside.md"), "outside")?;
+        fs::write(config_dir.join("inside.md"), "inside")?;
+
+        let context =
+            format_config_dir_context(&repo_root, config_dir.to_str().context("utf-8 path")?)?;
+
+        assert!(context.contains("nix/os/inside.md"), "context: {context}");
+        assert!(!context.contains("outside.md"), "context: {context}");
+        Ok(())
+    }
+
+    #[test]
+    fn calc_max_depth_same_dir() {
+        let repo_root = Path::new("/repo");
+        let config_dir = "/repo";
+        assert_eq!(calc_max_depth(repo_root, config_dir), MAX_CONFIG_DIR_DEPTH);
+    }
+
+    #[test]
+    fn calc_max_depth_nested_dir() {
+        let repo_root = Path::new("/repo");
+        let config_dir = "/repo/nix/os";
+        assert_eq!(
+            calc_max_depth(repo_root, config_dir),
+            MAX_CONFIG_DIR_DEPTH + 2
+        );
     }
 }

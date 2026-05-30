@@ -3,6 +3,8 @@ import { useWidgetStore } from "@/stores/widget-store";
 import { EVOLVE_EVENT_CHANNEL } from "@/lib/constants";
 import { tauriAPI, ipcRenderer } from "@/ipc/api";
 import type { EvolveEvent } from "@/ipc/types";
+import { formatDurationMs } from "@/lib/utils";
+import { toast } from "sonner";
 
 /**
  * Hook for the evolution operation.
@@ -63,6 +65,7 @@ const handleEvolve = async () => {
   store.clearEvolveEvents();
   store.clearLogs();
   store.setConversationalResponse(null);
+  store.setEvolutionTelemetry(null);
   store.appendLog(`\n> Evolving: "${store.evolvePrompt}"\n`);
 
   // Set up evolve event listener
@@ -81,7 +84,15 @@ const handleEvolve = async () => {
     const result = await tauriAPI.darwin.evolve(store.evolvePrompt);
     const isConversational = result?.telemetry?.state === "conversational";
 
-    useWidgetStore.getState().appendLog("✓ Evolution complete\n");
+    const telemetry = result?.telemetry;
+    const completionMsg = telemetry
+      ? `✓ Evolution complete in ${formatDurationMs(telemetry.durationMs)} and ${telemetry.iterations} iteration${telemetry.iterations === 1 ? "" : "s"}\n`
+      : "✓ Evolution complete\n";
+    useWidgetStore.getState().appendLog(completionMsg);
+    toast.success(completionMsg);
+    if (telemetry) {
+      useWidgetStore.getState().setEvolutionTelemetry(telemetry);
+    }
 
     if (isConversational) {
       useWidgetStore.getState().setConversationalResponse(result.conversationalResponse ?? null);
