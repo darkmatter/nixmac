@@ -2,7 +2,8 @@ import { Button } from "@/components/ui/button";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { cn } from "@/lib/utils";
 import { type SettingsTab, useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI, DEFAULT_MAX_ITERATIONS } from "@/tauri-api";
+import { DEFAULT_MAX_ITERATIONS } from "@/lib/constants";
+import { tauriAPI } from "@/ipc/api";
 import { useForm } from "@tanstack/react-form";
 import { Bot, FolderOpen, Key, Settings2, SlidersHorizontal, Wrench } from "lucide-react";
 import { Suspense, useEffect, useRef, useState } from "react";
@@ -76,7 +77,7 @@ export function SettingsDialog() {
   const verifyOpenrouterKey = async (key: string) => {
     if (!key) {
       setOpenrouterKeyStatus("idle");
-      await darwinAPI.ui.setPrefs({ openrouterApiKey: "" });
+      await tauriAPI.ui.setPrefs({ openrouterApiKey: "" });
       return;
     }
 
@@ -91,7 +92,7 @@ export function SettingsDialog() {
 
       if (response.ok) {
         setOpenrouterKeyStatus("valid");
-        await darwinAPI.ui.setPrefs({ openrouterApiKey: key });
+        await tauriAPI.ui.setPrefs({ openrouterApiKey: key });
       } else {
         setOpenrouterKeyStatus("invalid");
       }
@@ -102,17 +103,17 @@ export function SettingsDialog() {
   };
 
   const saveOllamaUrl = async (url: string) => {
-    await darwinAPI.ui.setPrefs({ ollamaApiBaseUrl: url });
+    await tauriAPI.ui.setPrefs({ ollamaApiBaseUrl: url });
     // Clear cached Ollama models when the base URL changes
-    await darwinAPI.models.clearCached("ollama");
+    await tauriAPI.models.clearCached("ollama");
   };
 
   const saveVllmUrl = async (url: string) => {
-    await darwinAPI.ui.setPrefs({ vllmApiBaseUrl: url });
+    await tauriAPI.ui.setPrefs({ vllmApiBaseUrl: url });
   };
 
   const saveVllmKey = async (key: string) => {
-    await darwinAPI.ui.setPrefs({ vllmApiKey: key });
+    await tauriAPI.ui.setPrefs({ vllmApiKey: key });
   };
 
   const form = useForm({
@@ -137,7 +138,7 @@ export function SettingsDialog() {
   useEffect(() => {
     const loadPrefs = async () => {
       try {
-        const prefs = await darwinAPI.ui.getPrefs();
+        const prefs = await tauriAPI.ui.getPrefs();
         if (prefs) {
           form.setFieldValue("openrouterApiKey", prefs.openrouterApiKey ?? "");
           form.setFieldValue("openaiApiKey", prefs.openaiApiKey ?? "");
@@ -165,7 +166,7 @@ export function SettingsDialog() {
 
   const handleRefreshHosts = async () => {
     try {
-      const hs = await darwinAPI.flake.listHosts();
+      const hs = await tauriAPI.flake.listHosts();
       setHosts(hs);
     } catch (e) {
       console.error("Failed to refresh hosts:", e);

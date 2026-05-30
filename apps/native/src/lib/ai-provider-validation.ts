@@ -1,4 +1,4 @@
-import type { CliToolsState, DarwinPrefs } from "@/tauri-api";
+import type { CliToolsState, UiPrefs as DarwinPrefs } from "@/ipc/types";
 
 const CLI_PROVIDER_VALUES = ["claude", "codex", "opencode"] as const;
 

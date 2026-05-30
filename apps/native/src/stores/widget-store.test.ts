@@ -1,4 +1,4 @@
-import type { EvolveEvent, GitStatus } from "@/tauri-api";
+import type { EvolveEvent, GitStatus } from "@/ipc/types";
 import { describe, expect, it } from "vitest";
 import {
   createWidgetStore,

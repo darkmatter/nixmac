@@ -13,12 +13,9 @@ import type {
   EvolveCancelResult,
   EvolutionResult,
   EvolveState,
-  FeedbackAiProviderModelInfo,
-  FeedbackFlakeInputsSnapshot,
-  FeedbackPanicDetails,
+  FeedbackMetadata,
   FeedbackShareOptions,
-  FeedbackSystemInfo,
-  FileEntry,
+  FileDiffContents,
   FinalizeApplyResult,
   GitStatus,
   HomebrewState,
@@ -36,98 +33,10 @@ import type {
   SystemDefaultsScan,
   UiPrefs as DarwinPrefs,
   UiPrefsUpdate as DarwinPrefsUpdate,
-} from "./types/shared";
+  UpdateInfo,
+} from "@/ipc/types";
 
-export type {
-  BuildCheckResult,
-  ChangeType,
-  CliToolsState,
-  CommitResult,
-  Config as DarwinConfig,
-  ConfigChangedEvent,
-  ConfigEditApplyResult,
-  DarwinApplyDataEvent,
-  DarwinApplyEndEvent,
-  DarwinApplySummaryEvent,
-  EvolveCancelResult,
-  EvolveEvent,
-  EvolveEventType,
-  EvolutionFailureResult,
-  EvolutionResult,
-  EvolutionState,
-  EvolutionTelemetry,
-  EvolveState,
-  EvolveStep,
-  FeedbackAiProviderModelInfo,
-  FeedbackFlakeInputEntry,
-  FeedbackFlakeInputsSnapshot,
-  FeedbackMetadataRequest,
-  FeedbackPanicDetails,
-  FeedbackShareOptions,
-  FeedbackSystemInfo,
-  FileEntry,
-  FinalizeApplyResult,
-  GitFileStatus,
-  GitStatus,
-  HomebrewState,
-  HistoryItem,
-  NixCheckResult,
-  NixDarwinRebuildEndEvent,
-  NixInstallEndEvent,
-  NixInstallErrorType,
-  NixInstallPhase,
-  NixInstallProgressEvent,
-  OkResult,
-  Permission,
-  PermissionStatus,
-  PermissionsState,
-  PreviewIndicatorState,
-  RecommendedPrompt,
-  RebuildErrorType,
-  SemanticChangeMap,
-  SetDirResult,
-  SummarizerUpdateEvent,
-  SummarizedChangeSet,
-  RustPanicEvent,
-  SystemDefault,
-  SystemDefaultsScan,
-  UiPrefs as DarwinPrefs,
-  UiPrefsUpdate as DarwinPrefsUpdate,
-  WatcherEvent,
-} from "./types/shared";
-export type { Change, Commit } from "./types/sqlite";
-
-export const DEFAULT_MAX_ITERATIONS = 25;
-
-// =============================================================================
-// Feedback Types
-// =============================================================================
-
-export interface FeedbackUsageStats {
-  totalEvolutions?: number;
-  successRate?: number;
-  avgIterations?: number;
-  lastComputedAt?: string;
-  extra?: Record<string, unknown>;
-}
-
-export interface FeedbackMetadata {
-  currentAppStateSnapshot?: unknown;
-  systemInfo?: FeedbackSystemInfo;
-  usageStats?: FeedbackUsageStats;
-  evolutionLogContent?: string;
-  changedNixFilesDiff?: string;
-  aiProviderModelInfo?: FeedbackAiProviderModelInfo;
-  buildErrorOutput?: string;
-  flakeInputsSnapshot?: FeedbackFlakeInputsSnapshot;
-  appLogsContent?: string;
-  panicDetails?: FeedbackPanicDetails;
-}
-
-export const EVOLVE_EVENT_CHANNEL = "darwin:evolve:event";
-export const CONFIG_CHANGED_CHANNEL = "config:changed";
-
-export const darwinAPI = {
+export const tauriAPI = {
   config: {
     get: () => invoke<DarwinConfig>("config_get"),
     setDir: (dir: string) => invoke<SetDirResult>("config_set_dir", { dir }),
@@ -138,9 +47,9 @@ export const darwinAPI = {
   git: {
     status: () => invoke<GitStatus>("git_status"),
     statusAndCache: () => invoke<GitStatus>("git_status_and_cache"),
-    cached: () => invoke<GitStatus | null>("git_cached"),
     commit: (message: string) => invoke<CommitResult>("git_commit", { message }),
     stash: (message: string) => invoke<OkResult>("git_stash", { message }),
+    fileDiffContents: (filenames: string[]) => invoke<Record<string, FileDiffContents>>("git_file_diff_contents", { filenames }),
   },
   darwin: {
     evolve: (description: string) => invoke<EvolutionResult>("darwin_evolve", { description }),
@@ -152,7 +61,6 @@ export const darwinAPI = {
       invoke<OkResult>("darwin_apply_stream_start", { hostOverride }),
     activateStorePath: (storePath: string) =>
       invoke<OkResult>("darwin_activate_store_path", { storePath }),
-    applyStreamCancel: () => invoke<OkResult>("darwin_apply_stream_cancel"),
     finalizeApply: () => invoke<FinalizeApplyResult>("finalize_apply"),
     finalizeRollback: (storePath: string | null, changesetId: number | null) =>
       invoke<FinalizeApplyResult>("finalize_rollback", { storePath, changesetId }),
@@ -168,11 +76,9 @@ export const darwinAPI = {
   },
   flake: {
     listHosts: () => invoke<string[]>("flake_list_hosts"),
-    installedApps: () => invoke<unknown[]>("flake_installed_apps"),
     exists: () => invoke<boolean>("flake_exists"),
     existsAt: (dir: string) => invoke<boolean>("flake_exists_at", { dir }),
     bootstrapDefault: (hostname: string) => invoke<void>("bootstrap_default_config", { hostname }),
-    finalizeFlakeLock: () => invoke<OkResult>("finalize_flake_lock"),
   },
   path: {
     exists: (dir: string) => invoke<boolean>("path_exists", { dir }),
@@ -200,6 +106,8 @@ export const darwinAPI = {
         stage,
         clientTimestampUnixMs: clientTimestampUnixMs ?? null,
       }),
+    sentryEvent: () => invoke<void>("debug_sentry_event"),
+    clearTauriState: () => invoke<void>("developer_clear_tauri_state"),
   },
   ui: {
     getPrefs: () => invoke<DarwinPrefs>("ui_get_prefs"),
@@ -238,7 +146,6 @@ export const darwinAPI = {
   permissions: {
     checkAll: () => invoke<PermissionsState>("permissions_check_all"),
     request: (permissionId: string) => invoke<Permission>("permissions_request", { permissionId }),
-    allRequiredGranted: () => invoke<boolean>("permissions_all_required_granted"),
     // macOS-specific permission checks via tauri-plugin-macos-permissions
     checkFullDiskAccess: () => checkFullDiskAccessPermission(),
     requestFullDiskAccess: () => requestFullDiskAccessPermission(),
@@ -259,7 +166,6 @@ export const darwinAPI = {
     readFile: (relPath: string) => invoke<string>("editor_read_file", { relPath }),
     writeFile: (relPath: string, content: string) =>
       invoke<void>("editor_write_file", { relPath, content }),
-    listFiles: () => invoke<FileEntry[]>("editor_list_files"),
   },
 
   lsp: {
@@ -272,6 +178,14 @@ export const darwinAPI = {
     getStateDiff: () => invoke<HomebrewState>("homebrew_get_state_diff"),
     applyDiff: (diff: HomebrewState) => invoke<ConfigEditApplyResult>("homebrew_apply_diff", { diff }),
   },
+
+  updater: {
+    checkUpdate: () => invoke<UpdateInfo | null>("check_update"),
+    installUpdate: () => invoke<void>("install_update"),
+    installVersion: (version: string) => invoke<void>("install_version", { version }),
+    relaunch: () => invoke<void>("relaunch_after_update"),
+    clearPinnedVersion: () => invoke<void>("clear_pinned_version"),
+  },
 };
 
 export const ipcRenderer = {
@@ -281,20 +195,12 @@ export const ipcRenderer = {
     once<T>(channel, listener),
 };
 
-// const w = new Window("lol");
-// w.once("tauri://window-created", (event) => {
-//   console.log(event);
-// });
-// w.once("tauri://destroyed", (event) => {
-//   console.log(event);
-// });
-
 declare global {
   interface Window {
-    darwinAPI?: typeof darwinAPI;
-    __NIXMAC__?: typeof darwinAPI;
+    tauriAPI?: typeof tauriAPI;
+    __NIXMAC__?: typeof tauriAPI;
   }
 }
 
-window.__NIXMAC__ = darwinAPI;
-window.darwinAPI = darwinAPI;
+window.__NIXMAC__ = tauriAPI;
+window.tauriAPI = tauriAPI;

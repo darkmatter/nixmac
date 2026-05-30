@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import * as Sentry from "@sentry/react";
-import { invoke } from "@tauri-apps/api/core";
+
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import {
   Dialog,
@@ -26,7 +26,7 @@ import {
 import { Lightbulb, Bug, MessageCircle, Info, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Feedback as FeedbackModel, FeedbackType, ShareOptions } from "@/types/feedback";
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 import { toast } from "sonner";
 
 const DEFAULT_SHARE_OPTIONS: ShareOptions = {
@@ -298,7 +298,7 @@ export function FeedbackDialog() {
       return;
     }
 
-    darwinAPI.promptHistory.get().then(setPromptHistory).catch(console.error);
+    tauriAPI.promptHistory.get().then(setPromptHistory).catch(console.error);
   }, [feedbackOpen]);
 
   useEffect(() => {
@@ -360,9 +360,9 @@ export function FeedbackDialog() {
 
     let sentSuccessfully = false;
     try {
-      let metadata: Awaited<ReturnType<typeof darwinAPI.feedback.gatherMetadata>> | null = null;
+      let metadata: Awaited<ReturnType<typeof tauriAPI.feedback.gatherMetadata>> | null = null;
       try {
-        metadata = await darwinAPI.feedback.gatherMetadata(feedbackType, shareOptions);
+        metadata = await tauriAPI.feedback.gatherMetadata(feedbackType, shareOptions);
       } catch (err) {
         // eslint-disable-next-line no-console
         console.warn("Failed to gather feedback metadata:", err);
@@ -385,15 +385,15 @@ export function FeedbackDialog() {
         share: shareOptions,
         // artifact fields left empty for now; will be populated by caller when collecting logs
         lastPromptText: selectedPromptText,
-        currentAppStateSnapshot: metadata?.currentAppStateSnapshot,
-        systemInfo: metadata?.systemInfo,
-        usageStats: metadata?.usageStats,
-        evolutionLogContent: metadata?.evolutionLogContent,
-        changedNixFilesDiff: metadata?.changedNixFilesDiff,
-        aiProviderModelInfo: metadata?.aiProviderModelInfo,
-        buildErrorOutput: metadata?.buildErrorOutput,
-        flakeInputsSnapshot: metadata?.flakeInputsSnapshot,
-        appLogsContent: metadata?.appLogsContent,
+        currentAppStateSnapshot: metadata?.currentAppStateSnapshot ?? undefined,
+        systemInfo: metadata?.systemInfo ?? undefined,
+        usageStats: metadata?.usageStats ?? undefined,
+        evolutionLogContent: metadata?.evolutionLogContent ?? undefined,
+        changedNixFilesDiff: metadata?.changedNixFilesDiff ?? undefined,
+        aiProviderModelInfo: metadata?.aiProviderModelInfo ?? undefined,
+        buildErrorOutput: metadata?.buildErrorOutput ?? undefined,
+        flakeInputsSnapshot: metadata?.flakeInputsSnapshot ?? undefined,
+        appLogsContent: metadata?.appLogsContent ?? undefined,
         panicDetails: feedbackType === FeedbackType.Error ? (panicDetails ?? undefined) : undefined,
       });
 
@@ -403,7 +403,7 @@ export function FeedbackDialog() {
       }
 
       const json = JSON.stringify(feedbackModel.toJSON());
-      const sent = await darwinAPI.feedback.submit(json);
+      const sent = await tauriAPI.feedback.submit(json);
 
       if (sent) {
         toast.success("Thanks — feedback sent");
@@ -443,7 +443,7 @@ export function FeedbackDialog() {
 
     // Also send from Rust backend
     try {
-      await invoke("debug_sentry_event");
+      await tauriAPI.debug.sentryEvent();
     } catch (err) {
       // eslint-disable-next-line no-console
       console.warn("[debug_sentry_event] Failed to invoke Rust command:", err);

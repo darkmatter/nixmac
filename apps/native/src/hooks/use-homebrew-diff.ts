@@ -1,8 +1,8 @@
 "use client";
 
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 import { useWidgetStore } from "@/stores/widget-store";
-import type { HomebrewState } from "@/types/shared";
+import type { HomebrewState } from "@/ipc/types";
 import { useCallback, useEffect, useState } from "react";
 
 const TWENTY_MINUTES_SECS = 20 * 60;
@@ -29,7 +29,7 @@ export function useHomebrewDiff(enabled = true) {
   const refresh = useCallback(() => {
     setIsLoading(true);
     setError(null);
-    darwinAPI.homebrew
+    tauriAPI.homebrew
       .getStateDiff()
       .then(setDiff)
       .catch((e: unknown) => setError(String(e)))
@@ -54,7 +54,7 @@ export function useHomebrewDiff(enabled = true) {
     setIsApplying(true);
     store.setProcessing(true, "apply");
     try {
-      const result = await darwinAPI.homebrew.applyDiff(diff);
+      const result = await tauriAPI.homebrew.applyDiff(diff);
       store.setEvolveState(result.evolveState);
       store.setChangeMap(result.changeMap);
       store.setGitStatus(result.gitStatus);

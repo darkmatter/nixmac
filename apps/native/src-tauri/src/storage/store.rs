@@ -3,6 +3,7 @@
 //! Settings are stored in a JSON file managed by tauri-plugin-store.
 //! This provides a simple key-value interface for preferences.
 
+use crate::git::exec::repo_root;
 use crate::shared_types;
 use crate::storage::credential_store::{
     get_with_lazy_migration, set_with_cleanup, CredentialStoreError, KeychainStore,
@@ -10,6 +11,7 @@ use crate::storage::credential_store::{
 };
 
 use anyhow::Result;
+use serde::{de::DeserializeOwned, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::{AppHandle, Runtime};
@@ -34,9 +36,13 @@ pub const AUTO_SUMMARIZE_ON_FOCUS_KEY: &str = "autoSummarizeOnFocus";
 // Startup scan preference keys
 pub const SCAN_HOMEBREW_ON_STARTUP_KEY: &str = "scanHomebrewOnStartup";
 
+// Default-tab preference keys
+pub const DEFAULT_TO_DIFF_TAB_KEY: &str = "defaultToDiffTab";
+
 // Developer-mode preference keys
 pub const DEVELOPER_MODE_KEY: &str = "developerMode";
 pub const PINNED_VERSION_KEY: &str = "pinnedVersion";
+pub const UPDATE_CHANNEL_KEY: &str = "updateChannel";
 
 pub const DEFAULT_MAX_ITERATIONS: usize = 25;
 const KEYCHAIN_SERVICE: &str = "com.darkmatter.nixmac";
@@ -80,9 +86,41 @@ pub fn get_config_dir<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
     Ok(home.join(".darwin").to_string_lossy().to_string())
 }
 
+/// Gets the git repository root for the current workspace.
+///
+/// If not stored, it is derived from configDir using `git rev-parse`,
+/// then cached into the store for future use.
+pub fn get_repo_root<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
+    // Currently for E2E we only support the git repo being the same as the config dir, so we can skip the git call and just return the config dir.
+    if let Some(dir) = e2e_env_value("NIXMAC_E2E_CONFIG_DIR") {
+        return Ok(dir);
+    }
+
+    let store = get_store(app)?;
+
+    // 1. Fast path: use stored value
+    if let Some(root) = store.get("repoRoot") {
+        if let Some(root_str) = root.as_str() {
+            return Ok(root_str.to_string());
+        }
+    }
+
+    // 2. Fallback: derive from configDir
+    let config_dir = get_config_dir(app)?;
+    let repo_root = repo_root(&config_dir);
+
+    // 3. Persist for future calls
+    store.set("repoRoot", serde_json::json!(&repo_root));
+    store.save()?;
+
+    Ok(repo_root.to_string_lossy().to_string())
+}
+
 pub fn set_config_dir<R: Runtime>(app: &AppHandle<R>, dir: &str) -> Result<()> {
     let store = get_store(app)?;
+    let repo_root = repo_root(dir);
     store.set("configDir", serde_json::json!(dir));
+    store.set("repoRoot", serde_json::json!(repo_root));
     store.save()?;
     Ok(())
 }
@@ -90,6 +128,14 @@ pub fn set_config_dir<R: Runtime>(app: &AppHandle<R>, dir: &str) -> Result<()> {
 /// Creates the config directory if it doesn't exist and returns the path.
 pub fn ensure_config_dir_exists<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
     let dir = get_config_dir(app)?;
+    std::fs::create_dir_all(&dir)?;
+    Ok(dir)
+}
+
+/// Creates the git repository root directory if it doesn't exist and returns the path.
+/// It DOES NOT init the repository.
+pub fn ensure_git_repo_folder<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
+    let dir = get_repo_root(app)?;
     std::fs::create_dir_all(&dir)?;
     Ok(dir)
 }
@@ -351,6 +397,32 @@ fn get_string_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<S
     get_string_pref_raw(app, key)
 }
 
+/// Reads a value from the store and deserializes it into `T`.
+///
+/// Returns `Ok(None)` both when the key is absent and when stored JSON fails to
+/// deserialize (e.g. after a schema change). Callers that want a default in the
+/// failure case can use [`get_json_pref_or`]. If you add a required field to `T`,
+/// existing stores will silently fall back to the default — use `#[serde(default)]`
+/// on new fields to preserve forward-compatibility.
+pub fn get_json_pref<R, T>(app: &AppHandle<R>, key: &str) -> Result<Option<T>>
+where
+    R: Runtime,
+    T: DeserializeOwned,
+{
+    let store = get_store(app)?;
+    Ok(store
+        .get(key)
+        .and_then(|value| serde_json::from_value(value.clone()).ok()))
+}
+
+pub fn get_json_pref_or<R, T>(app: &AppHandle<R>, key: &str, default: T) -> Result<T>
+where
+    R: Runtime,
+    T: DeserializeOwned,
+{
+    Ok(get_json_pref(app, key)?.unwrap_or(default))
+}
+
 fn get_string_pref_raw<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<String>> {
     let store = get_store(app)?;
     if let Some(val) = store.get(key) {
@@ -374,11 +446,19 @@ pub fn get_string_pref_public<R: Runtime>(app: &AppHandle<R>, key: &str) -> Resu
     get_string_pref_raw(app, key)
 }
 
-pub fn set_string_pref<R: Runtime>(app: &AppHandle<R>, key: &str, value: &str) -> Result<()> {
+pub fn set_json_pref<R, T>(app: &AppHandle<R>, key: &str, value: &T) -> Result<()>
+where
+    R: Runtime,
+    T: Serialize + ?Sized,
+{
     let store = get_store(app)?;
-    store.set(key, serde_json::json!(value));
+    store.set(key, serde_json::to_value(value)?);
     store.save()?;
     Ok(())
+}
+
+pub fn set_string_pref<R: Runtime>(app: &AppHandle<R>, key: &str, value: &str) -> Result<()> {
+    set_json_pref(app, key, value)
 }
 
 pub fn delete_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()> {
@@ -444,30 +524,15 @@ fn set_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str, value: &st
 }
 
 fn get_usize_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<usize>> {
-    let store = get_store(app)?;
-    if let Some(val) = store.get(key) {
-        if let Some(n) = val.as_u64() {
-            return Ok(Some(n as usize));
-        }
-    }
-    Ok(None)
+    get_json_pref(app, key)
 }
 
 pub fn get_bool_pref<R: Runtime>(app: &AppHandle<R>, key: &str, default: bool) -> Result<bool> {
-    let store = get_store(app)?;
-    if let Some(val) = store.get(key) {
-        if let Some(b) = val.as_bool() {
-            return Ok(b);
-        }
-    }
-    Ok(default)
+    get_json_pref_or(app, key, default)
 }
 
 pub fn set_bool_pref<R: Runtime>(app: &AppHandle<R>, key: &str, value: bool) -> Result<()> {
-    let store = get_store(app)?;
-    store.set(key, serde_json::json!(value));
-    store.save()?;
-    Ok(())
+    set_json_pref(app, key, &value)
 }
 
 // =============================================================================

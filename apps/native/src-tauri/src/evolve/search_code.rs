@@ -11,7 +11,7 @@ const MAX_SEARCH_RESULTS: usize = 50;
 
 /// Execute a code search using ripgrep with a grep fallback.
 pub fn execute_search_code(
-    config_dir: &str,
+    base: &Path,
     pattern: &str,
     file_pattern: Option<&str>,
     gitignore: Option<&Gitignore>,
@@ -55,7 +55,7 @@ pub fn execute_search_code(
         cmd.arg("--glob").arg(fp);
     }
 
-    match cmd.current_dir(config_dir).output() {
+    match cmd.current_dir(base).output() {
         Ok(out) => {
             let status = out.status;
             if status.success() {
@@ -95,11 +95,7 @@ pub fn execute_search_code(
             for d in super::IGNORED_DIRS {
                 grep_cmd.arg(format!("--exclude-dir={}", d));
             }
-            let output = grep_cmd
-                .arg(pattern)
-                .arg(".")
-                .current_dir(config_dir)
-                .output()?;
+            let output = grep_cmd.arg(pattern).arg(".").current_dir(base).output()?;
             let stdout = String::from_utf8_lossy(&output.stdout);
             let filtered = filter_grep_matches(&stdout, gitignore);
             if filtered.trim().is_empty() {
@@ -207,19 +203,15 @@ mod tests {
 
     #[test]
     fn search_code_skips_files_ignored_by_base_gitignore() {
-        let tmp = tempdir().expect("tempdir");
-        fs::write(tmp.path().join(".gitignore"), "secret.txt\n").expect("write .gitignore");
-        fs::write(tmp.path().join("visible.txt"), "NEEDLE").expect("write visible file");
-        fs::write(tmp.path().join("secret.txt"), "NEEDLE").expect("write secret file");
-        let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
+        let binding = tempdir().expect("tempdir");
+        let tmp = binding.path();
+        fs::write(tmp.join(".gitignore"), "secret.txt\n").expect("write .gitignore");
+        fs::write(tmp.join("visible.txt"), "NEEDLE").expect("write visible file");
+        fs::write(tmp.join("secret.txt"), "NEEDLE").expect("write secret file");
+        let gitignore_matcher = load_gitignore_matcher(tmp).expect("load matcher");
 
-        let output = execute_search_code(
-            tmp.path().to_str().expect("utf-8 path"),
-            "NEEDLE",
-            None,
-            gitignore_matcher.as_ref(),
-        )
-        .expect("search should succeed");
+        let output = execute_search_code(tmp, "NEEDLE", None, gitignore_matcher.as_ref())
+            .expect("search should succeed");
 
         assert!(output.contains("visible.txt"), "output: {output}");
         assert!(!output.contains("secret.txt"), "output: {output}");
@@ -227,13 +219,14 @@ mod tests {
 
     #[test]
     fn search_code_respects_gitignore_even_with_file_pattern() {
-        let tmp = tempdir().expect("tempdir");
-        fs::write(tmp.path().join(".gitignore"), "secret.txt\n").expect("write .gitignore");
-        fs::write(tmp.path().join("secret.txt"), "NEEDLE").expect("write secret file");
-        let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
+        let binding = tempdir().expect("tempdir");
+        let tmp = binding.path();
+        fs::write(tmp.join(".gitignore"), "secret.txt\n").expect("write .gitignore");
+        fs::write(tmp.join("secret.txt"), "NEEDLE").expect("write secret file");
+        let gitignore_matcher = load_gitignore_matcher(tmp).expect("load matcher");
 
         let output = execute_search_code(
-            tmp.path().to_str().expect("utf-8 path"),
+            tmp,
             "NEEDLE",
             Some("secret.txt"),
             gitignore_matcher.as_ref(),
@@ -245,23 +238,16 @@ mod tests {
 
     #[test]
     fn search_code_skips_files_ignored_by_subdir_gitignore() {
-        let tmp = tempdir().expect("tempdir");
-        fs::create_dir_all(tmp.path().join("nested")).expect("make nested dir");
-        fs::write(tmp.path().join("nested/.gitignore"), "secret.txt\n")
-            .expect("write nested .gitignore");
-        fs::write(tmp.path().join("nested/visible.txt"), "NEEDLE")
-            .expect("write nested visible file");
-        fs::write(tmp.path().join("nested/secret.txt"), "NEEDLE")
-            .expect("write nested secret file");
-        let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
+        let binding = tempdir().expect("tempdir");
+        let tmp = binding.path();
+        fs::create_dir_all(tmp.join("nested")).expect("make nested dir");
+        fs::write(tmp.join("nested/.gitignore"), "secret.txt\n").expect("write nested .gitignore");
+        fs::write(tmp.join("nested/visible.txt"), "NEEDLE").expect("write nested visible file");
+        fs::write(tmp.join("nested/secret.txt"), "NEEDLE").expect("write nested secret file");
+        let gitignore_matcher = load_gitignore_matcher(tmp).expect("load matcher");
 
-        let output = execute_search_code(
-            tmp.path().to_str().expect("utf-8 path"),
-            "NEEDLE",
-            None,
-            gitignore_matcher.as_ref(),
-        )
-        .expect("search should succeed");
+        let output = execute_search_code(tmp, "NEEDLE", None, gitignore_matcher.as_ref())
+            .expect("search should succeed");
 
         assert!(output.contains("nested/visible.txt"), "output: {output}");
         assert!(!output.contains("nested/secret.txt"), "output: {output}");

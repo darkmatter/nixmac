@@ -43,9 +43,9 @@ Provider abstraction layer for chat completions. **Not** evolve-specific.
 ### `commands/` — Tauri IPC handlers
 
 Thin `#[tauri::command]` handlers that the frontend calls via `invoke()`.
-Each file (config, apply, evolve, git, rollback, summarize, homebrew, feedback, ui_prefs, permissions, system_defaults, cli_tool, updater, editor, evolve_state, peek, debug) delegates to the corresponding backend module.
+Each file (apply, cli_tool, config, debug, editor, evolve, evolve_state, feedback, git, homebrew, peek, permissions, rollback, summarize, system_defaults, ui_prefs, updater) delegates to the corresponding backend module. `helpers.rs` contains shared command utilities.
 
-**Called by:** Tauri invoke handler in main.rs; primary callers are the TypeScript frontend
+**Called by:** Tauri invoke handler in `main.rs`. All frontend calls go through `ipc/api.ts` in the TypeScript layer.
 
 ### `db/` — SQLite persistence
 

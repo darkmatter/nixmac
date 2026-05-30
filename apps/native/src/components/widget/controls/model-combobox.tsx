@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 
 interface ModelComboboxProps {
   provider: "openrouter" | "openai" | "ollama" | "vllm" | "opencode";
@@ -81,12 +81,12 @@ async function fetchFreshModels(provider: ModelProvider): Promise<string[]> {
     return fetchOpenRouterModels();
   }
   if (provider === "ollama") {
-    const prefs = await darwinAPI.ui.getPrefs();
+    const prefs = await tauriAPI.ui.getPrefs();
     const baseUrl = prefs?.ollamaApiBaseUrl || undefined;
     return fetchOllamaModels(baseUrl);
   }
   if (provider === "opencode") {
-    return darwinAPI.cli.listModels("opencode");
+    return tauriAPI.cli.listModels("opencode");
   }
   return [];
 }
@@ -97,7 +97,7 @@ async function loadProviderModels(
 ) {
   // First try to load from cache
   try {
-    const cached = await darwinAPI.models.getCached(provider);
+    const cached = await tauriAPI.models.getCached(provider);
     if (cached && cached.length > 0) {
       applyModels(cached);
     }
@@ -117,7 +117,7 @@ async function loadProviderModels(
     // Cache the models when we got any
     if (freshModels.length > 0) {
       try {
-        await darwinAPI.models.setCached(provider, freshModels);
+        await tauriAPI.models.setCached(provider, freshModels);
       } catch {
         // Ignore cache errors
       }

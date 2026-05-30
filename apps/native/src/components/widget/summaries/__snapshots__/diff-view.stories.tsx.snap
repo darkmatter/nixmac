@@ -1,0 +1,5 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Default 1`] = `"<div class="monaco-alert" role="alert" aria-atomic="true"></div><div class="monaco-alert" role="alert" aria-atomic="true"></div><div class="monaco-status" aria-live="polite" aria-atomic="true"></div><div class="monaco-status" aria-live="polite" aria-atomic="true"></div>"`;
+
+exports[`Identical 1`] = `"<div class="w-[560px]"><section data-testid="monaco-diff-view" style="display: flex; position: relative; text-align: initial; width: 100%; height: 152px;"><div data-keybinding-context="N" style="width: 100%;"><div class="monaco-diff-editor" style="position: relative; height: 100%;"><div data-slot="monaco-editor-placeholder"></div></div></div></section></div>"`;

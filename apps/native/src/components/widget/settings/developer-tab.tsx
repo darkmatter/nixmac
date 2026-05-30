@@ -1,13 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI } from "@/tauri-api";
-import { invoke } from "@tauri-apps/api/core";
+import { tauriAPI } from "@/ipc/api";
+import type { UpdateChannel } from "@/ipc/types";
+import { useUpdater } from "@/hooks/use-updater";
 import { getVersion } from "@tauri-apps/api/app";
 import {
   AlertTriangle,
   DatabaseZap,
   Download,
+  GitBranch,
   Eraser,
   History,
   Pin,
@@ -18,8 +20,11 @@ import { useEffect, useState } from "react";
 const VERSION_PATTERN = /^[0-9]+(?:\.[0-9]+){0,2}(?:-[a-zA-Z0-9.-]+)?$/;
 
 export function DeveloperTab() {
+  const { installVersion, relaunch, clearPinnedVersion } = useUpdater();
   const pinnedVersion = useWidgetStore((s) => s.pinnedVersion);
   const setPinnedVersion = useWidgetStore((s) => s.setPinnedVersion);
+  const updateChannel = useWidgetStore((s) => s.updateChannel);
+  const setUpdateChannel = useWidgetStore((s) => s.setUpdateChannel);
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);
   const [versionInput, setVersionInput] = useState("");
   const [installing, setInstalling] = useState(false);
@@ -46,12 +51,11 @@ export function DeveloperTab() {
     setStatusMessage(`Fetching v${target}…`);
     setInstalling(true);
     try {
-      await invoke("install_version", { version: target });
+      await installVersion(target);
       // Sync local store immediately — persistence already happened on the Rust side.
       setPinnedVersion(target);
       setStatusMessage(`Installed v${target}. Relaunching…`);
-      // Reuse the same relaunch path the production updater uses.
-      await invoke("relaunch_after_update");
+      await relaunch();
     } catch (err) {
       setStatusMessage(null);
       setErrorMessage(err instanceof Error ? err.message : String(err));
@@ -62,10 +66,27 @@ export function DeveloperTab() {
   const handleClearPin = async () => {
     setErrorMessage(null);
     try {
-      await invoke("clear_pinned_version");
+      await clearPinnedVersion();
       setPinnedVersion(null);
       setStatusMessage("Cleared pinned version. The auto-updater will check for the latest on next launch.");
     } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const handleSetChannel = async (channel: UpdateChannel) => {
+    const previous = updateChannel;
+    setErrorMessage(null);
+    setUpdateChannel(channel);
+    try {
+      await tauriAPI.ui.setPrefs({ updateChannel: channel });
+      setStatusMessage(
+        channel === "stable"
+          ? "Using stable updates from main."
+          : "Using develop updates. The next auto-update check will read the develop channel."
+      );
+    } catch (err) {
+      setUpdateChannel(previous);
       setErrorMessage(err instanceof Error ? err.message : String(err));
     }
   };
@@ -81,7 +102,7 @@ export function DeveloperTab() {
     setStatusMessage(null);
     setClearingState(true);
     try {
-      await invoke("developer_clear_tauri_state");
+      await tauriAPI.debug.clearTauriState();
       useWidgetStore.getState().setEvolveState(null);
       useWidgetStore.getState().setGitStatus(null);
       useWidgetStore.getState().setPromptHistory([]);
@@ -111,7 +132,7 @@ export function DeveloperTab() {
 
   const handleDisableDeveloper = async () => {
     try {
-      await darwinAPI.ui.setPrefs({ developerMode: false });
+      await tauriAPI.ui.setPrefs({ developerMode: false });
       useWidgetStore.getState().setDeveloperMode(false);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : String(err));
@@ -138,6 +159,40 @@ export function DeveloperTab() {
               <code className="rounded bg-muted px-1">releases.nixmac.com</code>. Bisecting only works in release
               builds — the dev binary doesn't ship the updater plugin.
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Update channel */}
+      <div className="rounded-lg border border-border p-3">
+        <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+          <GitBranch className="h-3.5 w-3.5" />
+          Update channel
+        </div>
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Stable follows releases from <code className="rounded bg-muted px-1">main</code>. Develop follows signed
+            release-mode builds from <code className="rounded bg-muted px-1">develop</code>. Version pins override the
+            selected channel until you resume auto-update.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {(["stable", "develop"] as const).map((channel) => {
+              const selected = updateChannel === channel;
+              return (
+                <Button
+                  key={channel}
+                  type="button"
+                  size="sm"
+                  variant={selected ? "default" : "outline"}
+                  onClick={() => handleSetChannel(channel)}
+                >
+                  {channel === "stable" ? "Stable" : "Develop"}
+                </Button>
+              );
+            })}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Current channel: <code className="rounded bg-muted px-1 font-mono">{updateChannel}</code>
           </div>
         </div>
       </div>

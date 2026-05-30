@@ -1,14 +1,17 @@
 import { computeCurrentStep } from "@/components/widget/utils";
+import { FeedbackType } from "@/types/feedback";
 import type {
+  EvolutionTelemetry,
   EvolveEvent,
   EvolveState,
+  FileDiffContents,
   GitStatus,
   HistoryItem,
   PermissionsState,
   RecommendedPrompt,
-} from "@/tauri-api";
-import { FeedbackType } from "@/types/feedback";
-import type { SemanticChangeMap } from "@/types/shared";
+  SemanticChangeMap,
+  UpdateChannel,
+} from "@/ipc/types";
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 export type {
@@ -18,7 +21,8 @@ export type {
   GitFileStatus,
   GitStatus,
   PermissionsState,
-} from "@/tauri-api";
+  UpdateChannel,
+} from "@/ipc/types";
 
 // =============================================================================
 // Types
@@ -31,7 +35,7 @@ export type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences" |
 export type WidgetStep = "permissions" | "nix-setup" | "setup" | "begin" | "evolve" | "commit" | "manualEvolve" | "manualCommit" | "history" | "filesystem";
 type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
 export type ConfirmPrefKey = "confirmBuild" | "confirmClear" | "confirmRollback";
-export type BoolPrefKey = ConfirmPrefKey | "autoSummarizeOnFocus" | "scanHomebrewOnStartup";
+export type BoolPrefKey = ConfirmPrefKey | "autoSummarizeOnFocus" | "scanHomebrewOnStartup" | "defaultToDiffTab";
 
 // Rebuild state for showing progress inline in the widget
 export type RebuildErrorType =
@@ -91,6 +95,7 @@ export interface WidgetState {
 
   // Git (from backend)
   gitStatus: GitStatus | null;
+  fileDiffContents: Record<string, FileDiffContents>;
   // Evolution
   evolvePrompt: string;
   isProcessing: boolean;
@@ -98,6 +103,7 @@ export interface WidgetState {
   evolveEvents: EvolveEvent[];
   promptHistory: string[];
   conversationalResponse: string | null;
+  evolutionTelemetry: EvolutionTelemetry | null;
 
   changeMap: SemanticChangeMap | null;
 
@@ -155,9 +161,13 @@ export interface WidgetState {
   // Startup scanning preferences
   scanHomebrewOnStartup: boolean;
 
+  // Default-tab preference
+  defaultToDiffTab: boolean;
+
   // Developer mode (hidden settings panel for bisecting / pinning to a past release)
   developerMode: boolean;
   pinnedVersion: string | null;
+  updateChannel: UpdateChannel;
 
   // Editor
   editingFile: string | null;
@@ -184,6 +194,7 @@ interface WidgetActions {
   setEvolveState: (state: EvolveState | null) => void;
   setExternalBuildDetected: (detected: boolean) => void;
   setGitStatus: (status: GitStatus | null) => void;
+  setFileDiffContents: (contents: Record<string, FileDiffContents>) => void;
   setEvolvePrompt: (prompt: string) => void;
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
   setChangeMap: (map: SemanticChangeMap | null) => void;
@@ -220,6 +231,7 @@ interface WidgetActions {
   // Developer mode
   setDeveloperMode: (value: boolean) => void;
   setPinnedVersion: (value: string | null) => void;
+  setUpdateChannel: (value: UpdateChannel) => void;
 
   // Client-side state (NOT from server)
   setSummarizing: (summarizing: boolean) => void;
@@ -235,6 +247,7 @@ interface WidgetActions {
   // Evolve events
   appendEvolveEvent: (event: EvolveEvent) => void;
   clearEvolveEvents: () => void;
+  setEvolutionTelemetry: (telemetry: EvolutionTelemetry | null) => void;
 
   setConversationalResponse: (response: string | null) => void;
 
@@ -293,6 +306,7 @@ const initialWidgetState: WidgetState = {
 
   // Git
   gitStatus: null,
+  fileDiffContents: {},
 
   // Evolution
   evolvePrompt: "",
@@ -301,6 +315,7 @@ const initialWidgetState: WidgetState = {
   evolveEvents: [],
   promptHistory: [],
   conversationalResponse: null,
+  evolutionTelemetry: null,
 
   // History
   history: [],
@@ -347,9 +362,13 @@ const initialWidgetState: WidgetState = {
   // Startup scanning preferences
   scanHomebrewOnStartup: true,
 
+  // Default-tab preference
+  defaultToDiffTab: false,
+
   // Developer mode
   developerMode: false,
   pinnedVersion: null,
+  updateChannel: "stable",
 
   // Editor
   editingFile: null,
@@ -381,6 +400,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setEvolveState: (evolveState) => set({ evolveState: evolveState }),
     setExternalBuildDetected: (externalBuildDetected) => set({ externalBuildDetected }),
     setGitStatus: (gitStatus) => set({ gitStatus }),
+    setFileDiffContents: (fileDiffContents) => set({ fileDiffContents }),
     setEvolvePrompt: (evolvePrompt) => set({ evolvePrompt }),
     setProcessing: (isProcessing, action = null) =>
       set({
@@ -399,6 +419,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setAutoSummarizeOnFocus: (value) => set({ autoSummarizeOnFocus: value }),
     setDeveloperMode: (value) => set({ developerMode: value }),
     setPinnedVersion: (value) => set({ pinnedVersion: value }),
+    setUpdateChannel: (value) => set({ updateChannel: value }),
     setHistory: (history) => set({ history }),
     setHistoryLoading: (historyLoading) => set({ historyLoading }),
     addAnalyzingHistoryHash: (hash) =>
@@ -454,6 +475,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     appendEvolveEvent: (event) =>
       set((state) => ({ evolveEvents: [...state.evolveEvents, event] })),
     clearEvolveEvents: () => set({ evolveEvents: [] }),
+    setEvolutionTelemetry: (evolutionTelemetry) => set({ evolutionTelemetry }),
 
     // Conversational response
     setConversationalResponse: (conversationalResponse) => set({ conversationalResponse }),

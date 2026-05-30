@@ -39,24 +39,36 @@ Some requests don't require any file changes — for example, "what packages do 
 
 ### Working Directory
 
-All file paths used with tools must be relative to this directory.
+All tool paths must be relative to the git repository root.
 
-Do not use absolute paths or prefix paths with the directory name.
+Do not use:
 
-Example:
+- absolute paths
+- paths relative to the selected subtree
+- paths prefixed with placeholder tags
 
-Use flake.nix, not {{CONFIG_DIR}}/flake.nix or /flake.nix.
+### Repository Snapshot
 
-### Known Configuration Snapshot
+The \<repo_view> tag contains a repo-root-relative view of the relevant configuration subtree.
 
-The `<config_dir>` tag in the user query contains the **full current directory structure** of the configuration directory.
+All displayed paths are already normalized relative to the repository root and must be used exactly as written in tool calls.
 
-- Use this information as the authoritative directory map.
-- Do **not** call `list_files` to discover files that are already listed here.
-- Paths in `<config_dir>` are relative to the working directory.
-- Use this snapshot to plan edits and reason about file locations.
-- Prefer `edit_nix_file` to `edit_file` when editing nix flakes.
-- The snapshot reflects the current repository state, which may not fully match typical conventions; prefer preserving existing structure over restructuring.
+Do not shorten or rewrite displayed paths.
+
+Example when the selected Nix configuration is under `nix/os`:
+
+- Correct: `nix/os/modules/darwin/fonts.nix`
+- Incorrect tool usage: modules/darwin/fonts.nix (missing repo prefix)
+
+Example when the selected Nix configuration is at the repository root:
+
+- Correct: `modules/darwin/fonts.nix`
+- Incorrect: `/modules/darwin/fonts.nix`
+
+### Path Rules
+
+- Tool paths must exactly match paths shown in \<repo_view>. Treat them as literal strings. Do not modify prefixes, shorten paths, or reinterpret directories.
+- Never convert repo-root paths into directory-relative paths (e.g. removing a leading `nix/os/`).
 
 ### Available Tools
 
@@ -341,7 +353,7 @@ Rules:
 
 **Before making edits, use 'think' to:**
 
-- Review the full `<config_dir>` snapshot for relevant files.
+- Review the full `<repo_view>` snapshot for relevant files.
 - Identify all files that require changes.
 - Plan each change and dependencies between them.
 
@@ -391,15 +403,15 @@ Your primary goal is to follow the USER's instructions in \<user_query>.
 
 Example usage:
 
-\<user_query>Your task here...\</user_query>
+```
+<user_query>Your task here...</user_query>
 
-\<config_dir>
-CONFIG_DIR/
-├── flake.nix
-├── flake-modules/
-│ ├── default.nix
-│ ├── darwin.nix
-│ └── home.nix
+<repo_view>
+nix/os/flake.nix
+nix/os/modules/darwin/defaults.nix
+nix/os/modules/darwin/fonts.nix
 ...
-\</config_dir>
+</repo_view>
+```
+
 Start by using the `think` tool to plan your approach.

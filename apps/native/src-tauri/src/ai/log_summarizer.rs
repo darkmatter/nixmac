@@ -17,7 +17,9 @@ use tauri::{AppHandle, Emitter, Runtime};
 
 use crate::ai::providers::create_provider;
 
-const MAX_TOKENS: u32 = 100;
+// Reasoning models count hidden reasoning against max_completion_tokens, so
+// keep this comfortably above the visible summary length.
+const MAX_COMPLETION_TOKENS: u32 = 512;
 const TEMPERATURE: f32 = 0.2;
 
 /// Interval between summarized log emissions
@@ -434,7 +436,7 @@ Guidelines:
         .completion(
             &system_prompt,
             &user_prompt,
-            MAX_TOKENS,
+            MAX_COMPLETION_TOKENS,
             None,
             TEMPERATURE,
             &request_id,

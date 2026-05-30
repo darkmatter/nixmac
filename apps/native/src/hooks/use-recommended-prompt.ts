@@ -1,12 +1,12 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 import { useEffect } from "react";
 
 export function useRecommendedPrompt() {
   const recommendation = useWidgetStore((s) => s.recommendedPrompt);
 
   const refresh = () => {
-    darwinAPI.scanner
+    tauriAPI.scanner
       .getRecommendedPrompt()
       .then((result) => {
         useWidgetStore.getState().setRecommendedPrompt(result);

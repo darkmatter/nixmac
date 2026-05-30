@@ -3,6 +3,8 @@
  * Exposed on window.__testWidget so WDIO tests can call them via browser.execute.
  */
 
+import { refreshGitStatus } from "@/hooks/use-git-operations";
+import { loadEvolveState } from "@/hooks/use-widget-initialization";
 import { useWidgetStore } from "@/stores/widget-store";
 
 interface WidgetTestHelpers {
@@ -29,6 +31,13 @@ interface WidgetTestHelpers {
    * Reset transient client-side widget state between e2e tests.
    */
   resetForTest: () => void;
+  /**
+   * Re-run git_status and recompute evolve routing state against the live
+   * config repo, writing both to the store. Used by tests that mutate the
+   * on-disk repo and need the widget to pick up the new state without leaning
+   * on filesystem-watcher timing.
+   */
+  refreshGitStatus: () => Promise<void>;
 }
 
 export function setupWidgetTestHelpers() {
@@ -59,6 +68,10 @@ export function setupWidgetTestHelpers() {
       state.setChangeMap(null);
       state.setError(null);
       state.clearRebuild();
+    },
+    refreshGitStatus: async () => {
+      await refreshGitStatus();
+      await loadEvolveState();
     },
   };
 
