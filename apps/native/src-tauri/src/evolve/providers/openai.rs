@@ -20,7 +20,7 @@ use reqwest::StatusCode;
 pub struct OpenAIProvider {
     client: Client<OpenAIConfig>,
     model: String,
-    record_completions: bool,
+    record_chat_logs: bool,
 }
 
 impl OpenAIProvider {
@@ -29,14 +29,12 @@ impl OpenAIProvider {
             .with_api_key(api_key)
             .with_api_base(api_base);
         let client = Client::with_config(config);
-        let record_completions = crate::state::completion_log::init_recording(
-            "evolve_provider_completions",
-            "evolve provider",
-        );
+        let record_chat_logs =
+            crate::state::completion_log::init_recording("evolve_provider_chat", "evolve provider");
         Self {
             client,
             model,
-            record_completions,
+            record_chat_logs,
         }
     }
 }
@@ -72,6 +70,15 @@ impl AiProvider for OpenAIProvider {
             .build()
             .map_err(|e| ProviderError::Other(anyhow!(e)))?;
 
+        crate::state::completion_log::append_event_jsonl(
+            self.record_chat_logs,
+            "evolve_provider_chat",
+            "openai-compatible",
+            "request",
+            &request,
+        )
+        .await;
+
         let response = self
             .client
             .chat()
@@ -79,9 +86,11 @@ impl AiProvider for OpenAIProvider {
             .await
             .map_err(normalize_openai_error)?;
 
-        crate::state::completion_log::append_jsonl(
-            self.record_completions,
-            "evolve_provider_completions",
+        crate::state::completion_log::append_event_jsonl(
+            self.record_chat_logs,
+            "evolve_provider_chat",
+            "openai-compatible",
+            "response",
             &response,
         )
         .await;

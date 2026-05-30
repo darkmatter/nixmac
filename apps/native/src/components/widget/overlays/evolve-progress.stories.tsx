@@ -1,7 +1,7 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import type React from "react";
 import preview from "#storybook/preview";
-import type { EvolveEvent } from "@/tauri-api";
+import type { EvolveEvent } from "@/ipc/types";
 import { EvolveProgress } from "@/components/widget/overlays/evolve-progress";
 
 // =============================================================================

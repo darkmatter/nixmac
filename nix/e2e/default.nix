@@ -13,12 +13,6 @@ let
   };
   ensureDependencies = ''
     ${pkgs.bun}/bin/bun install
-
-    if ! command -v tauri-wd >/dev/null 2>&1; then
-      cd ${tauriDir}
-      ${pkgs.cargo}/bin/cargo install tauri-webdriver-automation
-      cd ${nativeDir}
-    fi
   '';
 in
 lib.mkMerge [

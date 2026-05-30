@@ -1,4 +1,5 @@
-import { darwinAPI, type PreviewIndicatorState } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
+import type { PreviewIndicatorState } from "@/ipc/types";
 
 /**
  * Hook for updating the preview indicator window.
@@ -6,7 +7,7 @@ import { darwinAPI, type PreviewIndicatorState } from "@/tauri-api";
  * and the main window is collapsed.
  */
 const updatePreviewIndicator = async (params: {
-  gitStatus: Awaited<ReturnType<typeof darwinAPI.git.status>> | null;
+  gitStatus: Awaited<ReturnType<typeof tauriAPI.git.status>> | null;
   summaryText: string | null;
   isLoading: boolean;
   additions?: number;
@@ -27,7 +28,7 @@ const updatePreviewIndicator = async (params: {
     isLoading: params.isLoading,
   };
 
-  await darwinAPI.previewIndicator.update(state).catch(() => {
+  await tauriAPI.previewIndicator.update(state).catch(() => {
     // Ignore errors - window might not exist yet
   });
 };

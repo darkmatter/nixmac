@@ -1,11 +1,10 @@
 import { useWidgetStore, type RebuildContext } from "@/stores/widget-store";
-import {
-  darwinAPI,
-  ipcRenderer,
-  type DarwinApplyDataEvent,
-  type DarwinApplyEndEvent,
-  type DarwinApplySummaryEvent,
-} from "@/tauri-api";
+import { tauriAPI, ipcRenderer } from "@/ipc/api";
+import type {
+  DarwinApplyDataEvent,
+  DarwinApplyEndEvent,
+  DarwinApplySummaryEvent,
+} from "@/ipc/types";
 import { useRef } from "react";
 import { useGitOperations } from "./use-git-operations";
 
@@ -89,7 +88,7 @@ export function useRebuildStream() {
         // Handle Full Disk Access error
         if (event.payload.error_type === "full_disk_access") {
           try {
-            const permissionsState = await darwinAPI.permissions.checkAll();
+            const permissionsState = await tauriAPI.permissions.checkAll();
             const updatedPermissions = permissionsState.permissions.map((p) =>
               p.id === "full-disk" ? { ...p, status: "denied" as const, required: true } : p,
             );
@@ -132,9 +131,9 @@ export function useRebuildStream() {
 
       try {
         if (options.storePath) {
-          await darwinAPI.darwin.activateStorePath(options.storePath);
+          await tauriAPI.darwin.activateStorePath(options.storePath);
         } else {
-          await darwinAPI.darwin.applyStreamStart();
+          await tauriAPI.darwin.applyStreamStart();
         }
       } catch (e: unknown) {
         const msg = (e as Error)?.message || String(e);

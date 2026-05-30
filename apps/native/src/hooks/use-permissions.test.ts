@@ -1,4 +1,4 @@
-import type { PermissionsState } from "@/tauri-api";
+import type { PermissionsState } from "@/ipc/types";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -38,8 +38,8 @@ const mockCheckFullDiskAccess = vi.fn();
 const mockSetPermissionsState = vi.fn();
 const mockSetPermissionsChecked = vi.fn();
 
-vi.mock("@/tauri-api", () => ({
-  darwinAPI: {
+vi.mock("@/ipc/api", () => ({
+  tauriAPI: {
     permissions: {
       checkAll: (...args: unknown[]) => mockCheckAll(...args),
       checkFullDiskAccess: (...args: unknown[]) => mockCheckFullDiskAccess(...args),

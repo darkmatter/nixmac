@@ -84,10 +84,11 @@ mod tests {
 
     #[test]
     fn test_tilde_with_subdir() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore = crate::test_support::EnvVarRestore::capture(&["HOME"]);
+
         let tmp = tempfile::tempdir().expect("create tempdir");
         let home = tmp.path().to_path_buf();
-
-        let orig_home = std::env::var_os("HOME");
         std::env::set_var("HOME", &home);
 
         let got = normalize_dir_input("~/my/config/dir").expect("normalize ~/my/config/dir");
@@ -96,13 +97,6 @@ mod tests {
             "~/my/config/dir should resolve to home/my/config/dir, got: {}",
             got.display()
         );
-
-        // cleanup
-        if let Some(h) = orig_home {
-            std::env::set_var("HOME", h);
-        } else {
-            std::env::remove_var("HOME");
-        }
     }
 
     #[test]

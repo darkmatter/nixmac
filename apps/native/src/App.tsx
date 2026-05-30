@@ -1,5 +1,5 @@
 import { DarwinWidget } from "@/components/widget/widget";
-import { bootBreadcrumb, clearBootStage, markBootStage } from "@/lib/e2e-boot-diagnostics";
+import { bootBreadcrumb, clearBootStage, markBootStage } from "@/lib/boot-diagnostics";
 import { useEffect } from "react";
 import { Toaster } from "sonner";
 
