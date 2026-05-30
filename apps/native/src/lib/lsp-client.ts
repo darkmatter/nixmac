@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { tauriAPI } from "@/ipc/api";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 interface JsonRpcRequest {
@@ -30,6 +30,7 @@ export class NixdLspClient {
     { resolve: (value: unknown) => void; reject: (reason: unknown) => void }
   >();
   private unlisten: UnlistenFn | null = null;
+  private unlistenExit: UnlistenFn | null = null;
   private notificationHandlers: NotificationHandler[] = [];
   private _running = false;
 
@@ -40,11 +41,15 @@ export class NixdLspClient {
   async start(configDir: string): Promise<void> {
     if (this._running) return;
 
-    await invoke("lsp_start");
+    await tauriAPI.lsp.start();
 
     // Listen for messages from nixd via Tauri events
     this.unlisten = await listen<string>("lsp:message", (event) => {
       this.handleMessage(event.payload);
+    });
+
+    this.unlistenExit = await listen("lsp:exit", () => {
+      this.markDead();
     });
 
     this._running = true;
@@ -82,13 +87,15 @@ export class NixdLspClient {
     }
 
     try {
-      await invoke("lsp_stop");
+      await tauriAPI.lsp.stop();
     } catch {
       // Best effort
     }
 
     this.unlisten?.();
     this.unlisten = null;
+    this.unlistenExit?.();
+    this.unlistenExit = null;
     this._running = false;
     this.pending.clear();
   }
@@ -101,15 +108,29 @@ export class NixdLspClient {
       this.pending.set(id, { resolve, reject });
     });
 
-    await invoke("lsp_send", { message: JSON.stringify(request) });
+    await tauriAPI.lsp.send(JSON.stringify(request)).catch((e) => {
+      this.pending.delete(id);
+      if (String(e).includes("Broken pipe")) this.markDead();
+      throw e;
+    });
     return promise;
   }
 
   sendNotification(method: string, params: unknown): void {
     const notification: JsonRpcNotification = { jsonrpc: "2.0", method, params };
-    invoke("lsp_send", { message: JSON.stringify(notification) }).catch((e) => {
+    tauriAPI.lsp.send(JSON.stringify(notification)).catch((e: unknown) => {
       console.warn("[lsp-client] Failed to send notification:", e);
+      if (String(e).includes("Broken pipe")) this.markDead();
     });
+  }
+
+  private markDead(): void {
+    this._running = false;
+    this.unlisten?.();
+    this.unlisten = null;
+    this.unlistenExit?.();
+    this.unlistenExit = null;
+    this.pending.clear();
   }
 
   onNotification(handler: NotificationHandler): () => void {

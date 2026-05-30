@@ -74,6 +74,44 @@
     @apply text-foreground;
   }
 
+  /* Monaco diff text colors (emerald-400 / red-400) */
+  .nixmac-line-added,
+  .nixmac-line-added * {
+    color: #34d399 !important;
+  }
+  /* Deleted lines in inline diff are rendered as view zones, not model lines */
+  .monaco-editor .view-zones .view-line,
+  .monaco-editor .view-zones .view-line * {
+    color: #f87171 !important;
+  }
+
+  /* Diff gutter +/- indicator colors (match line text) */
+  .monaco-diff-editor .codicon-diff-insert,
+  .monaco-diff-editor .margin .insert-sign {
+    background: #34d39930;
+    color: #34d399 !important;
+  }
+  .monaco-diff-editor .codicon-diff-remove,
+  .monaco-diff-editor .margin .delete-sign {
+    background: #f8717130;
+    color: #f87171 !important;
+  }
+  /* Hide the bleeding delete indicator inside the margin overlay */
+  .monaco-editor .margin-view-overlays .cldr.delete-sign.codicon-diff-remove,
+  .monaco-editor .margin-view-overlays .cmdr.gutter-delete {
+    display: none !important;
+  }
+
+  /* Monaco scrollbar matching nixmac style */
+  .monaco-scrollable-element > .scrollbar.vertical > .slider {
+    background: hsl(173 80% 75% / 0.6) !important;
+    border-radius: 4px !important;
+  }
+  .monaco-scrollable-element > .scrollbar.vertical > .slider:hover,
+  .monaco-scrollable-element > .scrollbar.vertical.active > .slider {
+    background: hsl(173 80% 75%) !important;
+  }
+
   /* Scrollbar styling */
   ::-webkit-scrollbar {
     width: 8px;

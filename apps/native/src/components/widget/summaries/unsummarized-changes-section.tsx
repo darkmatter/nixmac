@@ -30,7 +30,7 @@ export function UnsummarizedChangesSection({
         <div className="flex flex-wrap  items-center">
           {displayedChanges.map((item) => (
             <UnsummarizedChange
-              key={item.oldFilename ?? item.filename}
+              key={item.hash}
               {...item}
             />
           ))}

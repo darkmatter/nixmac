@@ -20,6 +20,7 @@ export type {
   GitFileStatus,
   GitStatus,
   PermissionsState,
+  UpdateChannel,
 } from "@/stores/widget-store.impl";
 
 export type {

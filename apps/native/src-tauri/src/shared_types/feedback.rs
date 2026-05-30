@@ -43,8 +43,7 @@ pub struct FeedbackSystemInfo {
 }
 
 /// Aggregated usage stats for feedback.
-#[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedbackUsageStats {
     /// Number of evolutions recorded locally.
@@ -117,8 +116,7 @@ pub struct FeedbackMetadataRequest {
 }
 
 /// Metadata collected for feedback submission based on user opt-in.
-#[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedbackMetadata {
     /// Current frontend/store snapshot, represented as arbitrary JSON.

@@ -8,14 +8,20 @@ pub struct OllamaClient {
     client: reqwest::Client,
     base_url: String,
     model: String,
+    record_chat_logs: bool,
 }
 
 impl OllamaClient {
     pub fn new(base_url: &str, model: &str) -> Self {
+        let record_chat_logs = crate::state::completion_log::init_recording(
+            "summary_provider_chat",
+            "summary provider",
+        );
         Self {
             client: reqwest::Client::new(),
             base_url: base_url.to_string(),
             model: model.to_string(),
+            record_chat_logs,
         }
     }
 }
@@ -44,14 +50,14 @@ struct OllamaOptions {
     num_ctx: Option<u32>,
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 struct OllamaResponse {
     message: OllamaMessageResponse,
     eval_count: Option<u32>,
     prompt_eval_count: Option<u32>,
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 struct OllamaMessageResponse {
     content: String,
 }
@@ -94,6 +100,15 @@ impl ChatCompletionProvider for OllamaClient {
             format: None,
         };
 
+        crate::state::completion_log::append_event_jsonl(
+            self.record_chat_logs,
+            "summary_provider_chat",
+            "ollama",
+            "request",
+            &request,
+        )
+        .await;
+
         debug!(
             "Requesting completion from {} [id: {}]",
             self.model, request_id
@@ -101,11 +116,31 @@ impl ChatCompletionProvider for OllamaClient {
         let response = self.client.post(&url).json(&request).send().await?;
 
         if !response.status().is_success() {
+            let status = response.status();
             let error_text = response.text().await?;
+            crate::state::completion_log::append_event_jsonl(
+                self.record_chat_logs,
+                "summary_provider_chat",
+                "ollama",
+                "response_error",
+                &serde_json::json!({
+                    "status": status.as_u16(),
+                    "body": error_text.clone(),
+                }),
+            )
+            .await;
             return Err(anyhow::anyhow!("Ollama API error: {}", error_text));
         }
 
         let r: OllamaResponse = response.json().await?;
+        crate::state::completion_log::append_event_jsonl(
+            self.record_chat_logs,
+            "summary_provider_chat",
+            "ollama",
+            "response",
+            &r,
+        )
+        .await;
         Ok((
             r.message.content,
             TokenUsage {
@@ -155,14 +190,43 @@ impl ChatCompletionProvider for OllamaClient {
             format: Some("json"),
         };
 
+        crate::state::completion_log::append_event_jsonl(
+            self.record_chat_logs,
+            "summary_provider_chat",
+            "ollama",
+            "request",
+            &request,
+        )
+        .await;
+
         let response = self.client.post(&url).json(&request).send().await?;
 
         if !response.status().is_success() {
+            let status = response.status();
             let error_text = response.text().await?;
+            crate::state::completion_log::append_event_jsonl(
+                self.record_chat_logs,
+                "summary_provider_chat",
+                "ollama",
+                "response_error",
+                &serde_json::json!({
+                    "status": status.as_u16(),
+                    "body": error_text.clone(),
+                }),
+            )
+            .await;
             return Err(anyhow::anyhow!("Ollama API error: {}", error_text));
         }
 
         let r: OllamaResponse = response.json().await?;
+        crate::state::completion_log::append_event_jsonl(
+            self.record_chat_logs,
+            "summary_provider_chat",
+            "ollama",
+            "response",
+            &r,
+        )
+        .await;
         log::info!(
             "json_completion done: in={:?} out={:?} [id: {}]",
             r.prompt_eval_count,

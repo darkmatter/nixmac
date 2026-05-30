@@ -11,14 +11,14 @@ pub async fn darwin_evolve(
     evolve::session_control::set_evolve_cancelled(false);
 
     let result =
-        match evolve::lifecycle::backup_evolve_and_record_changeset(&app, &description).await {
+        match evolve::lifecycle::backup_evolve_and_record_changeset(&app, &description, None).await
+        {
             Ok(result) => result,
             Err(failure) => {
                 let is_cancelled = evolve::session_control::is_evolve_cancelled()
                     || failure
                         .error
-                        .to_ascii_lowercase()
-                        .contains("cancelled by user");
+                        .contains(evolve::session_control::EVOLUTION_CANCELLED_MSG);
 
                 if is_cancelled {
                     log::info!(

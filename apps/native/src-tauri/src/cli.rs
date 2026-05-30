@@ -207,7 +207,14 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
 
     // DO IT!
     println!("Starting evolution with prompt: {}", prompt);
-    let outcome = crate::evolve::lifecycle::backup_evolve_and_record_changeset(app, &prompt).await;
+    // Disable tools that require user input in the middle of evolution, since we won't be able to respond to questions in CLI mode.
+    let banned_tools = ["ask_user"];
+    let outcome = crate::evolve::lifecycle::backup_evolve_and_record_changeset(
+        app,
+        &prompt,
+        Some(&banned_tools),
+    )
+    .await;
 
     let (ok, output_value, failure_message) = match outcome {
         Ok(output) => {
