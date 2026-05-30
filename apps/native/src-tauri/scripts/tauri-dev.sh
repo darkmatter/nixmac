@@ -16,18 +16,18 @@ mkdir -p "$stamp_dir"
 
 input_hash="$({
   cat src/sqlite_types.rs
-  cat src/shared_types.rs
+  find src/shared_types.rs src/shared_types -type f -name '*.rs' | sort | xargs cat
   cat examples/specta_gen_ts.rs
 } | shasum -a 256 | awk '{print $1}')"
 
-if [ ! -f ../src/types/sqlite.ts ]; then
+if [ ! -f ../src/ipc/sqlite.ts ]; then
   needs_regen=true
-  reasons+=("missing ../src/types/sqlite.ts")
+  reasons+=("missing ../src/ipc/sqlite.ts")
 fi
 
-if [ ! -f ../src/types/shared.ts ]; then
+if [ ! -f ../src/ipc/types.ts ]; then
   needs_regen=true
-  reasons+=("missing ../src/types/shared.ts")
+  reasons+=("missing ../src/ipc/types.ts")
 fi
 
 if [ ! -f "$stamp_file" ]; then
