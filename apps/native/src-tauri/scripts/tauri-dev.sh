@@ -16,7 +16,7 @@ mkdir -p "$stamp_dir"
 
 input_hash="$({
   cat src/sqlite_types.rs
-  cat src/shared_types.rs
+  find src/shared_types.rs src/shared_types -type f -name '*.rs' | sort | xargs cat
   cat examples/specta_gen_ts.rs
 } | shasum -a 256 | awk '{print $1}')"
 
