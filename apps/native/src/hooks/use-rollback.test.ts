@@ -1,4 +1,4 @@
-import type { EvolveState, GitStatus } from "@/tauri-api";
+import type { EvolveState, GitStatus } from "@/ipc/types";
 import { useWidgetStore } from "@/stores/widget-store";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -11,8 +11,8 @@ const mocks = vi.hoisted(() => ({
   triggerRebuild: vi.fn(),
 }));
 
-vi.mock("@/tauri-api", () => ({
-  darwinAPI: {
+vi.mock("@/ipc/api", () => ({
+  tauriAPI: {
     darwin: {
       finalizeRollback: mocks.finalizeRollback,
       rollbackErase: mocks.rollbackErase,
