@@ -10,9 +10,9 @@ use crate::{git, shared_types};
 async fn prepare(
     app: &AppHandle,
 ) -> Result<(crate::shared_types::GitStatus, shared_types::EvolveState)> {
-    let config_dir =
-        store::ensure_config_dir_exists(app).context("Failed to get config directory")?;
-    let final_status = git::status(&config_dir).context("Failed to get final git status")?;
+    let repo_root =
+        store::ensure_git_repo_folder(app).context("Failed to get git repository root")?;
+    let final_status = git::status(&repo_root).context("Failed to get final git status")?;
     // fire-and-forget: best-effort cache update. `final_status` is returned directly
     // to the caller; a store write failure here must not abort the finalization.
     let _ = store::set_cached_git_status(app, &final_status);

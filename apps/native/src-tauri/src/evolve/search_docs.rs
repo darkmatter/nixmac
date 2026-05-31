@@ -98,8 +98,6 @@ struct DocsIndex {
 }
 
 pub fn initialize_docs_index() {
-    let _timer = TimerGuard::new("initialize_docs_index");
-
     let mut guard = match DOCS_INDEX.write() {
         Ok(g) => g,
         Err(poisoned) => poisoned.into_inner(),
@@ -108,6 +106,8 @@ pub fn initialize_docs_index() {
     if guard.is_some() {
         return;
     }
+
+    let _timer = TimerGuard::new("initialize_docs_index");
 
     let mut entries = parse_entries(NIX_DARWIN_DOCS_JSON, DocsSource::NixDarwin);
     let darwin_count = entries.len();

@@ -29,7 +29,7 @@ fn normalize_completion_error(e: OpenAIError) -> anyhow::Error {
 pub struct OpenAIClient {
     client: Client<OpenAIConfig>,
     model: String,
-    record_completions: bool,
+    record_chat_logs: bool,
 }
 
 impl OpenAIClient {
@@ -38,14 +38,14 @@ impl OpenAIClient {
             .with_api_key(api_key)
             .with_api_base(base_url);
         let client = Client::with_config(config);
-        let record_completions = crate::state::completion_log::init_recording(
-            "summary_provider_completions",
+        let record_chat_logs = crate::state::completion_log::init_recording(
+            "summary_provider_chat",
             "summary provider",
         );
         Self {
             client,
             model: model.to_string(),
-            record_completions,
+            record_chat_logs,
         }
     }
 }
@@ -81,6 +81,15 @@ impl ChatCompletionProvider for OpenAIClient {
             .temperature(temperature)
             .build()?;
 
+        crate::state::completion_log::append_event_jsonl(
+            self.record_chat_logs,
+            "summary_provider_chat",
+            "openai-compatible",
+            "request",
+            &request,
+        )
+        .await;
+
         debug!(
             "Requesting completion from {} [id: {}]",
             self.model, request_id
@@ -91,9 +100,11 @@ impl ChatCompletionProvider for OpenAIClient {
             .create(request)
             .await
             .map_err(normalize_completion_error)?;
-        crate::state::completion_log::append_jsonl(
-            self.record_completions,
-            "summary_provider_completions",
+        crate::state::completion_log::append_event_jsonl(
+            self.record_chat_logs,
+            "summary_provider_chat",
+            "openai-compatible",
+            "response",
             &response,
         )
         .await;
@@ -142,6 +153,15 @@ impl ChatCompletionProvider for OpenAIClient {
             .response_format(ResponseFormat::JsonObject)
             .build()?;
 
+        crate::state::completion_log::append_event_jsonl(
+            self.record_chat_logs,
+            "summary_provider_chat",
+            "openai-compatible",
+            "request",
+            &request,
+        )
+        .await;
+
         debug!(
             "Requesting JSON completion from {} [id: {}]",
             self.model, request_id
@@ -152,9 +172,11 @@ impl ChatCompletionProvider for OpenAIClient {
             .create(request)
             .await
             .map_err(normalize_completion_error)?;
-        crate::state::completion_log::append_jsonl(
-            self.record_completions,
-            "summary_provider_completions",
+        crate::state::completion_log::append_event_jsonl(
+            self.record_chat_logs,
+            "summary_provider_chat",
+            "openai-compatible",
+            "response",
             &response,
         )
         .await;
