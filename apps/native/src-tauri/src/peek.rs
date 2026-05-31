@@ -495,6 +495,7 @@ pub fn create_preview_indicator_window<R: Runtime>(app: &AppHandle<R>) -> Result
         logical_height
     );
 
+    #[cfg_attr(not(target_os = "macos"), allow(unused_variables))]
     let window = WebviewWindowBuilder::new(
         app,
         "preview-indicator",
