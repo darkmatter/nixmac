@@ -9,6 +9,8 @@
 #[path = "../src/sqlite_types.rs"]
 mod sqlite_types;
 
+// This module can cause false-positive dead-code warnings since it's only used for type generation.
+#[allow(dead_code)]
 #[path = "../src/shared_types.rs"]
 mod shared_types;
 
@@ -53,6 +55,10 @@ fn main() {
         .register::<shared_types::FeedbackPanicDetails>()
         .register::<shared_types::EvolveEvent>()
         .register::<shared_types::EvolveEventType>()
+        .register::<shared_types::FileEdit>()
+        .register::<shared_types::ThinkingEntry>()
+        .register::<shared_types::ToolCallRecord>()
+        .register::<shared_types::Evolution>()
         .register::<shared_types::HomebrewState>()
         .register::<shared_types::SummarizedChange>()
         .register::<shared_types::SummarizedChangeSet>()

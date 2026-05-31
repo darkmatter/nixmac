@@ -4,6 +4,7 @@ use crate::evolve::edit_nix_file::{apply_semantic_edit, nix_quote_values};
 use crate::evolve::ensure_secret::{execute_ensure_secret, EnsureSecretResult};
 use crate::evolve::search_packages::SearchPackageResult;
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
+use crate::shared_types::FileEdit;
 
 use super::file_ops::{
     apply_file_edits, ensure_path_under_base, join_in_dir, resolve_existing_path_in_dir,
@@ -16,7 +17,6 @@ use super::search_docs::{
     max_limit as search_docs_max_limit, DocsSource,
 };
 use super::search_packages::execute_search_packages;
-use super::types::FileEdit;
 use super::utils::normalize_relative_path;
 
 use anyhow::{anyhow, Context, Result};
