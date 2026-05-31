@@ -200,13 +200,26 @@ def build_docs(soup: BeautifulSoup) -> List[Dict[str, Optional[str]]]:
 			option_text = None
 			for code in dt.find_all("code"):
 				txt = code.get_text().strip()
+				# Direct match for straightforward dotted option names
 				if OPTION_RE.match(txt):
 					option_text = txt
 					break
+				# Some options include quoted attribute keys, e.g.
+				# system.defaults.NSGlobalDomain."com.apple.sound.beep.feedback"
+				# Try removing surrounding quotes from quoted segments and re-check.
+				unquoted = re.sub(r'"([^"]+)"', r"\1", txt)
+				if OPTION_RE.match(unquoted):
+					option_text = unquoted
+					break
 
-			# fallback: search dt text for dotted pattern
+			# fallback: search dt text for dotted pattern (also try unquoting quoted segments)
 			if not option_text:
-				m = re.search(r"[a-zA-Z0-9_][-a-zA-Z0-9_]*(?:\.[a-zA-Z0-9_][-a-zA-Z0-9_]*)+", dt.get_text())
+				dt_txt = dt.get_text()
+				m = re.search(r"[a-zA-Z0-9_][-a-zA-Z0-9_]*(?:\.[a-zA-Z0-9_][-a-zA-Z0-9_]*)+", dt_txt)
+				if not m:
+					# try unquoting quoted parts and search again
+					unq = re.sub(r'"([^"]+)"', r"\1", dt_txt)
+					m = re.search(r"[a-zA-Z0-9_][-a-zA-Z0-9_]*(?:\.[a-zA-Z0-9_][-a-zA-Z0-9_]*)+", unq)
 				if m:
 					option_text = m.group(0)
 

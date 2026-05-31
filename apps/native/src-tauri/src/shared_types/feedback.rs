@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use specta::Type;
 
+use crate::shared_types::Evolution;
+
 /// Options indicating which feedback artifacts the user allows sharing.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -126,7 +128,7 @@ pub struct FeedbackMetadata {
     /// Aggregated local usage statistics.
     pub usage_stats: Option<FeedbackUsageStats>,
     /// Captured evolution log content.
-    pub evolution_log_content: Option<String>,
+    pub evolution_log_content: Option<Evolution>,
     /// Diff for changed Nix files at submission time.
     pub changed_nix_files_diff: Option<String>,
     /// AI provider/model metadata for the related run.

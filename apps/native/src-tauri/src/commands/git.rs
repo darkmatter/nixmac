@@ -10,8 +10,7 @@ pub async fn git_file_diff_contents(
     app: AppHandle,
     filenames: Vec<String>,
 ) -> Result<std::collections::HashMap<String, shared_types::FileDiffContents>, String> {
-    let dir =
-        store::get_config_dir(&app).map_err(|e| capture_err("git_file_diff_contents", e))?;
+    let dir = store::get_repo_root(&app).map_err(|e| capture_err("git_file_diff_contents", e))?;
     Ok(filenames
         .into_iter()
         .map(|f| {
@@ -21,10 +20,10 @@ pub async fn git_file_diff_contents(
         .collect())
 }
 
-/// Returns the current git status of the config directory.
+/// Returns the current git status of the repo.
 #[tauri::command]
 pub async fn git_status(app: AppHandle) -> Result<shared_types::GitStatus, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_status", e))?;
+    let dir = store::ensure_git_repo_folder(&app).map_err(|e| capture_err("git_status", e))?;
     let status = git::status(&dir).map_err(|e| capture_err("git_status", e))?;
     Ok(status)
 }
@@ -32,8 +31,8 @@ pub async fn git_status(app: AppHandle) -> Result<shared_types::GitStatus, Strin
 /// Returns the current git status and caches it for later comparison.
 #[tauri::command]
 pub async fn git_status_and_cache(app: AppHandle) -> Result<shared_types::GitStatus, String> {
-    let dir = store::ensure_config_dir_exists(&app)
-        .map_err(|e| capture_err("git_status_and_cache", e))?;
+    let dir =
+        store::ensure_git_repo_folder(&app).map_err(|e| capture_err("git_status_and_cache", e))?;
     let status =
         git::status_and_cache(&dir, &app).map_err(|e| capture_err("git_status_and_cache", e))?;
     Ok(status)
@@ -45,7 +44,7 @@ pub async fn git_commit(
     app: AppHandle,
     message: String,
 ) -> Result<shared_types::CommitResult, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_commit", e))?;
+    let dir = store::ensure_git_repo_folder(&app).map_err(|e| capture_err("git_commit", e))?;
     let commit_info = git::commit_all(&dir, &message).map_err(|e| capture_err("git_commit", e))?;
 
     if let Err(e) = git::tag_commit(
@@ -101,7 +100,7 @@ pub async fn git_commit(
 /// Stashes all uncommitted changes with the given message.
 #[tauri::command]
 pub async fn git_stash(app: AppHandle, message: String) -> Result<shared_types::OkResult, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_stash", e))?;
+    let dir = store::ensure_git_repo_folder(&app).map_err(|e| capture_err("git_stash", e))?;
     git::stash(&dir, &message).map_err(|e| capture_err("git_stash", e))?;
     Ok(shared_types::OkResult::yes())
 }

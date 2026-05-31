@@ -39,11 +39,13 @@ export function useRollback() {
             if (finalResult?.evolveState) {
               useWidgetStore.getState().setEvolveState(finalResult.evolveState);
             }
+            await findChangeMap();
           },
         });
+      } else {
+        await findChangeMap();
+        useWidgetStore.getState().setProcessing(false);
       }
-      await findChangeMap();
-      useWidgetStore.getState().setProcessing(false);
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
       useWidgetStore.getState().setError(msg);
