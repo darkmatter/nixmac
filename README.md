@@ -128,7 +128,7 @@ and run the app from `/target` via:
 
 ```sh
 cd ../..
-open -a "Instruments" ./target/profiling/nixmax
+open -a "Instruments" ./target/profiling/nixmac
 ```
 
 Or start `../../target/profiling/nixmac` manually to get past the startup overhead, start Instruments, and attach to the process.
