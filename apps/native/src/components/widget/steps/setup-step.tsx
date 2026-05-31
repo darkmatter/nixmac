@@ -30,6 +30,7 @@ export function SetupStep() {
 
   const hasConfigDir = Boolean(configDir) && configDirConfirmed;
   const hasHosts = hasConfigDir && hosts.length > 0;
+  const effectiveHost = selectedHost || host;
 
   return (
     <div className="flex flex-col items-center justify-center space-y-6 py-8">
@@ -60,7 +61,7 @@ export function SetupStep() {
               <label className="font-medium text-foreground text-sm">
                 2. Configuration
               </label>
-              <Select onValueChange={setSelectedHost} value={host || undefined}>
+              <Select onValueChange={setSelectedHost} value={effectiveHost || undefined}>
                 <SelectTrigger className="w-full" id="host-select">
                   <SelectValue placeholder="Choose a host configuration" />
                 </SelectTrigger>
@@ -82,7 +83,7 @@ export function SetupStep() {
           ) : (
             <BootstrapConfig label="2. Configuration" />
           )}
-          <Button onClick={() => saveHost(selectedHost)}>
+          <Button disabled={!effectiveHost} onClick={() => saveHost(effectiveHost)}>
             Next
           </Button>
         </div>

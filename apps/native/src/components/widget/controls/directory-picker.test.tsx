@@ -188,7 +188,9 @@ describe("<DirectoryPicker>", () => {
     typeAndBlur(screen.getByLabelText("Config directory"), "/Users/me/.darwin");
 
     await waitFor(() => {
-      expect(useWidgetStore.getState().configDir).toBe("/Users/me/.darwin");
+      const state = useWidgetStore.getState();
+      expect(state.configDir).toBe("/Users/me/.darwin");
+      expect(state.hosts).toEqual(["mbp"]);
     });
 
     expect(useWidgetStore.getState().configDir).toBe("/Users/me/.darwin");
