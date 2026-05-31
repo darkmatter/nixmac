@@ -729,12 +729,6 @@ fn run_gui_mode(
                     .visible(true)
                     .always_on_top(false)
                     .visible_on_all_workspaces(true)
-                    .hidden_title(!e2e_opaque_window)
-                    .title_bar_style(if e2e_opaque_window {
-                        tauri::TitleBarStyle::Visible
-                    } else {
-                        tauri::TitleBarStyle::Overlay
-                    })
                     .on_page_load(move |window, payload| {
                         log::debug!(
                             "main webview page load {:?}: {}",
@@ -757,6 +751,17 @@ fn run_gui_mode(
                             }
                         }
                     });
+
+            #[cfg(target_os = "macos")]
+            {
+                main_window_builder = main_window_builder
+                    .hidden_title(!e2e_opaque_window)
+                    .title_bar_style(if e2e_opaque_window {
+                        tauri::TitleBarStyle::Visible
+                    } else {
+                        tauri::TitleBarStyle::Overlay
+                    });
+            }
 
             if e2e_opaque_window {
                 main_window_builder = main_window_builder
@@ -905,11 +910,14 @@ fn run_gui_mode(
             }
 
             // Click Nixmac icon to show
-            if let RunEvent::Reopen { .. } = &event {
-                if let Some(window) = app_handle.get_webview_window("main") {
-                    // fire-and-forget: show/set_focus fail only on destroyed window.
-                    let _ = window.show();
-                    let _ = window.set_focus();
+            #[cfg(target_os = "macos")]
+            {
+                if let RunEvent::Reopen { .. } = &event {
+                    if let Some(window) = app_handle.get_webview_window("main") {
+                        // fire-and-forget: show/set_focus fail only on destroyed window.
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    }
                 }
             }
         });
