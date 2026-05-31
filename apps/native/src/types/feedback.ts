@@ -1,4 +1,5 @@
 import type {
+  Evolution,
   FeedbackAiProviderModelInfo,
   FeedbackFlakeInputsSnapshot,
   FeedbackSystemInfo,
@@ -78,7 +79,7 @@ interface FeedbackPayload {
   /** Structured usage statistics when available */
   usageStats?: UsageStats;
   usageStatsSnapshot?: unknown;
-  evolutionLogContent?: string;
+  evolutionLogContent?: Evolution;
   changedNixFilesDiff?: string;
   aiProviderModelInfo?: AiProviderModelInfo;
   buildErrorOutput?: string;
@@ -118,7 +119,7 @@ export class Feedback {
   // Optional collected artifacts (populated later by caller)
   public lastPromptText?: string;
   public currentAppStateSnapshot?: unknown;
-  public evolutionLogContent?: string;
+  public evolutionLogContent?: Evolution;
   public changedNixFilesDiff?: string;
   public aiProviderModelInfo?: AiProviderModelInfo;
   public buildErrorOutput?: string;

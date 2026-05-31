@@ -3,7 +3,7 @@
 //! Settings are stored in a JSON file managed by tauri-plugin-store.
 //! This provides a simple key-value interface for preferences.
 
-use crate::git::exec::repo_root;
+use crate::git::query::repo_root;
 use crate::shared_types;
 use crate::storage::credential_store::{
     get_with_lazy_migration, set_with_cleanup, CredentialStoreError, KeychainStore,
