@@ -78,12 +78,23 @@ fn e2e_skip_permissions_enabled() -> bool {
     cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_SKIP_PERMISSIONS")
 }
 
+#[cfg(debug_assertions)]
 fn vite_skip_permissions_enabled() -> bool {
     cfg!(debug_assertions)
         && std::env::var("VITE_NIXMAC_SKIP_PERMISSIONS")
             .ok()
             .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
             .unwrap_or(false)
+}
+
+#[cfg(not(debug_assertions))]
+fn e2e_skip_permissions_enabled() -> bool {
+    false
+}
+
+#[cfg(not(debug_assertions))]
+fn vite_skip_permissions_enabled() -> bool {
+    false
 }
 
 fn granted_folder_permission(id: &str, name: &str, description: &str) -> Permission {
