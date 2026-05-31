@@ -3,6 +3,7 @@ import {
   categorizeRenamed,
   getModStartLine,
   inferChangeType,
+  newFileContentFromDiffs,
   summarizeChangesByFile,
 } from "@/components/widget/utils";
 import { describe, expect, it } from "vitest";
@@ -160,5 +161,25 @@ describe("getModStartLine", () => {
   it("returns null for a malformed header", () => {
     expect(getModStartLine("not a diff")).toBeNull();
     expect(getModStartLine("@@ malformed @@")).toBeNull();
+  });
+});
+
+describe("newFileContentFromDiffs", () => {
+  it("reconstructs added content from a hunk-only new-file diff", () => {
+    expect(newFileContentFromDiffs([
+      "@@ -0,0 +1,4 @@\n+{ config, pkgs, ... }:\n+\n+{\n+  programs.zsh.enable = true;\n+}",
+    ])).toBe("{ config, pkgs, ... }:\n\n{\n  programs.zsh.enable = true;\n}");
+  });
+
+  it("ignores diff metadata when reconstructing full new-file diffs", () => {
+    expect(newFileContentFromDiffs([
+      "diff --git a/modules/home/shell.nix b/modules/home/shell.nix\nnew file mode 100644\n--- /dev/null\n+++ b/modules/home/shell.nix\n@@ -0,0 +1,2 @@\n+line one\n+line two",
+    ])).toBe("line one\nline two");
+  });
+
+  it("returns null for edited-file diffs", () => {
+    expect(newFileContentFromDiffs([
+      "@@ -3,2 +3,2 @@\n-old\n+new",
+    ])).toBeNull();
   });
 });

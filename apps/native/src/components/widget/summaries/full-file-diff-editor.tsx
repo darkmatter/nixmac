@@ -1,4 +1,9 @@
-import { getModStartLine, getShortFilename, type ChangeWithRichType } from "@/components/widget/utils";
+import {
+  getModStartLine,
+  getShortFilename,
+  newFileContentFromDiffs,
+  type ChangeWithRichType,
+} from "@/components/widget/utils";
 import type { FileDiffContents } from "@/ipc/types";
 import type { editor } from "monaco-editor";
 import { useRef } from "react";
@@ -62,6 +67,13 @@ export function FullFileDiffEditor({ filename, changes, contents, isOpen, onOpen
   };
 
   const changeType = displayChange.changeType;
+  const fallbackNewFileContents = changeType === "new"
+    ? newFileContentFromDiffs(changes.map((change) => change.diff))
+    : null;
+  const displayContents =
+    changeType === "new" && fallbackNewFileContents !== null && (!contents || contents.modified === "")
+      ? { original: "", modified: fallbackNewFileContents }
+      : contents;
 
   return (
     <CollapsibleDiff
@@ -76,11 +88,11 @@ export function FullFileDiffEditor({ filename, changes, contents, isOpen, onOpen
         </>
       }
     >
-      {contents ? (
+      {displayContents ? (
         changeType === "new" ? (
-          <FileView contents={contents} filename={filename} />
+          <FileView contents={displayContents} filename={filename} />
         ) : (
-          <DiffView contents={contents} filename={filename} onMount={handleMount} />
+          <DiffView contents={displayContents} filename={filename} onMount={handleMount} />
         )
       ) : (
         <div className="flex items-center justify-center py-8 text-muted-foreground text-xs">
