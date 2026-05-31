@@ -89,6 +89,7 @@ fn is_dir_safe_for_bootstrap(path: &Path) -> Result<bool, String> {
     let entries: Vec<_> = fs::read_dir(path)
         .map_err(|e| format!("Failed to read directory: {}", e))?
         .filter_map(|e| e.ok())
+        .filter(|entry| entry.file_name().to_str() != Some(".DS_Store"))
         .collect();
 
     // Empty directory is safe
@@ -290,5 +291,22 @@ mod tests {
     fn test_detect_darwin_platform() {
         let platform = detect_darwin_platform();
         assert!(platform == "aarch64-darwin" || platform == "x86_64-darwin");
+    }
+
+    #[test]
+    fn bootstrap_safety_ignores_finder_metadata() {
+        let temp = tempfile::tempdir().expect("create temp dir");
+        fs::write(temp.path().join(".DS_Store"), "").expect("create finder metadata");
+
+        assert!(is_dir_safe_for_bootstrap(temp.path()).expect("check directory"));
+    }
+
+    #[test]
+    fn bootstrap_safety_allows_git_with_finder_metadata() {
+        let temp = tempfile::tempdir().expect("create temp dir");
+        fs::create_dir_all(temp.path().join(".git")).expect("create git dir");
+        fs::write(temp.path().join(".DS_Store"), "").expect("create finder metadata");
+
+        assert!(is_dir_safe_for_bootstrap(temp.path()).expect("check directory"));
     }
 }

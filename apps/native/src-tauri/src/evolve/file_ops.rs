@@ -5,6 +5,8 @@
 //!
 //! Uses OpenAI function calling to generate structured file edits.
 
+use crate::shared_types::FileEdit;
+
 use super::gitignore::is_ignored_by_matcher;
 use super::utils::normalize_relative_path;
 use ignore::gitignore::Gitignore;
@@ -371,7 +373,7 @@ pub(crate) fn validate_file_content(file_path: &str, content: &str) -> anyhow::R
 
 pub fn apply_file_edits(
     base: &Path,
-    edit: &super::types::FileEdit,
+    edit: &FileEdit,
     gitignore_matcher: Option<&Gitignore>,
 ) -> anyhow::Result<()> {
     reject_gitignored_edit_path(base, &edit.path, "apply file edit", gitignore_matcher)?;
@@ -461,7 +463,7 @@ fn reject_gitignored_edit_path(
 mod tests {
     use super::{apply_file_edits, rewrite_existing_file_in_dir};
     use crate::evolve::gitignore::load_gitignore_matcher;
-    use crate::evolve::types::FileEdit;
+    use crate::shared_types::FileEdit;
     use std::fs;
 
     #[test]
