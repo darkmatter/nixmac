@@ -87,6 +87,8 @@ objc = "0.2"
 
 [dev-dependencies]
 mockall = "0.14.0"
+# `test` feature unlocks tauri::test::mock_builder for unit-testing AppHandle-dependent code.
+tauri = { version = "2", features = ["test"] }
 
 [dependencies.tera]
 version = "1"
