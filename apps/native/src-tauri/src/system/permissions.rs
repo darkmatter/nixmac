@@ -78,6 +78,7 @@ fn e2e_skip_permissions_enabled() -> bool {
     cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_SKIP_PERMISSIONS")
 }
 
+#[cfg(debug_assertions)]
 fn vite_skip_permissions_enabled() -> bool {
     cfg!(debug_assertions)
         && std::env::var("VITE_NIXMAC_SKIP_PERMISSIONS")
@@ -89,11 +90,6 @@ fn vite_skip_permissions_enabled() -> bool {
 #[cfg(not(debug_assertions))]
 fn e2e_skip_permissions_enabled() -> bool {
     false
-}
-
-#[cfg(debug_assertions)]
-fn vite_skip_permissions_enabled() -> bool {
-    std::env::var("VITE_NIXMAC_SKIP_PERMISSIONS").is_ok()
 }
 
 #[cfg(not(debug_assertions))]
