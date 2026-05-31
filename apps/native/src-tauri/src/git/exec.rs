@@ -525,6 +525,10 @@ pub fn create_evolution_backup(
     evolution_id: Option<i64>,
     changeset_id: i64,
 ) -> Result<Option<String>> {
+    if !has_head_commit(repo_path) {
+        return Ok(None);
+    }
+
     let branch_name = format!(
         "nixmac-evolve/evolution{}-changeset{}",
         evolution_id.unwrap_or(0),
