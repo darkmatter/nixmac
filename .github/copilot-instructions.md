@@ -148,9 +148,9 @@ async fn json_completion(&self, ...) -> Result<(String, TokenUsage)>
 ## Common pitfalls
 
 1. **Do not run `bun run desktop:build` or `tauri build`** in the agent — they require macOS.
-1. **Do not modify `ops/secrets/`** without sops; the files are encrypted with age.
-1. **Do not use `npm` or `yarn`** — this project uses Bun exclusively.
-1. **Do not add `unused` imports** — they are compile errors (`unused = "deny"`).
-1. When adding a new Rust source file, declare it with `mod` in its **parent `mod.rs`**, not in `main.rs` (unless it is a new top-level domain module).
-1. When adding or changing a Tauri command, update the corresponding TypeScript types in `apps/native/src/ipc/types.ts` (or regenerate via specta).
-1. The `biome.json` `files.includes` list is explicit — new `apps/**` and `packages/**` files are covered automatically, but files outside those paths need to be added manually.
+2. **Do not modify `ops/secrets/`** without sops; the files are encrypted with age.
+3. **Do not use `npm` or `yarn`** — this project uses Bun exclusively.
+4. **Do not add `unused` imports** — they are compile errors (`unused = "deny"`).
+5. When adding a new Rust source file, declare it with `mod` in its **parent `mod.rs`**, not in `main.rs` (unless it is a new top-level domain module).
+6. When adding or changing a Tauri command, update the corresponding TypeScript types in `apps/native/src/ipc/types.ts` (or regenerate via specta).
+7. The `biome.json` `files.includes` list is explicit — new `apps/**` and `packages/**` files are covered automatically, but files outside those paths need to be added manually.
