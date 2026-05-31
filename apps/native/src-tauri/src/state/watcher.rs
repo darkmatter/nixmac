@@ -5,7 +5,7 @@
 //! which is kept in sync by both this watcher and the evolution/summarize handlers.
 
 use crate::shared_types::WatcherEvent;
-use crate::state::{build_state, evolve_state};
+use crate::state::{build_state, drift_notifications, evolve_state};
 use crate::storage::store;
 use crate::{db, git, summarize};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -116,17 +116,16 @@ where
                                     // fire-and-forget: cache update in polling loop.
                                     evolve_state::set(&app_handle, es, &status.changes).ok()
                                 });
+                            let event = WatcherEvent {
+                                git_status: Some(status.clone()),
+                                change_map: Some(change_map),
+                                evolve_state: evolve_state_updated,
+                                error: None,
+                                external_build_detected,
+                            };
                             // fire-and-forget: frontend event delivery; window may not be connected.
-                            let _ = app_handle.emit(
-                                "git:status-changed",
-                                WatcherEvent {
-                                    git_status: Some(status.clone()),
-                                    change_map: Some(change_map),
-                                    evolve_state: evolve_state_updated,
-                                    error: None,
-                                    external_build_detected,
-                                },
-                            );
+                            let _ = app_handle.emit("git:status-changed", event.clone());
+                            drift_notifications::maybe_notify(&event);
                             // fire-and-forget: git status cache write; watcher holds the live value.
                             let _ = store::set_cached_git_status(&app_handle, &status);
                         }
