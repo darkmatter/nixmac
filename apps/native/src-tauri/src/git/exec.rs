@@ -1,9 +1,18 @@
-//! Git operations for tracking and recording configuration changes.
-
+/// Git execution layer (CLI AUTHORITY)
+///
+/// This module uses `git_command()` exclusively.
+///
+/// Rules:
+/// - This layer relies on REAL Git behavior
+/// - Must preserve CLI semantics exactly
+/// - Includes hooks suppression + identity injection
+/// - May modify filesystem, index, HEAD, refs
+use crate::git::is_repo;
+use crate::git::query::{get_head_sha, has_head_commit, repo_root};
 use crate::shared_types::{GitFileStatus, GitStatus};
 use anyhow::{Context, Result};
 use std::ffi::OsStr;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Component, Path};
 use std::process::{Command, Output};
 use tauri::AppHandle;
 
@@ -40,7 +49,25 @@ impl GitCommand {
     }
 }
 
-/// Identity and hooks injected so nixmac doesn't inherit user's config
+/// Identity + hooks injection layer (CLI boundary enforcement)
+///
+/// IMPORTANT: This cannot be meaningfully replicated with `git2`,
+/// the Rust library which doesn't require shelling out to a process.
+///
+/// The functions that call this wrapper intentionally use the Git CLI to enforce:
+/// - deterministic identity (user.name / user.email)
+/// - disabled commit signing (GPG)
+/// - disabled hooks execution (core.hooksPath=/dev/null)
+/// - controlled environment PATH resolution
+///
+/// These behaviors are part of the *Git process environment*, not the
+/// repository object model.
+///
+/// `git2` does NOT support:
+/// - per-command environment mutation equivalent to `-c` CLI overrides
+/// - hooksPath / hook suppression semantics
+/// - GPG signing configuration via execution context
+/// - PATH-based toolchain isolation
 fn git_command() -> GitCommand {
     let mut cmd = Command::new("git");
     cmd.env("PATH", crate::system::nix::get_nix_path());
@@ -55,16 +82,6 @@ fn git_command() -> GitCommand {
         "core.hooksPath=/dev/null",
     ]);
     GitCommand(cmd)
-}
-
-/// Checks if a directory is inside a git repository.
-pub fn is_repo(dir: &str) -> bool {
-    git_command()
-        .args(["rev-parse", "--is-inside-work-tree"])
-        .current_dir(dir)
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
 }
 
 /// Initializes a git repo with a .gitignore for Nix projects. Call explicitly during setup only.
@@ -92,15 +109,6 @@ fn require_repo(dir: &str) -> Result<()> {
     Ok(())
 }
 
-/// Returns true when HEAD resolves to an existing commit.
-fn has_head_commit(dir: &str) -> bool {
-    git_command()
-        .args(["rev-parse", "--verify", "HEAD"])
-        .current_dir(dir)
-        .output()
-        .is_ok()
-}
-
 /// Full diff vs HEAD, including tracked changes and untracked files as diffs.
 pub fn get_full_diff(dir: &str) -> Result<String> {
     let mut diff = get_tracked_diff(dir, None)?;
@@ -113,21 +121,6 @@ pub fn get_nix_diff(dir: &str) -> Result<String> {
     let mut diff = get_tracked_diff(dir, Some("*.nix"))?;
     append_untracked_diffs(&mut diff, dir, Some("*.nix"))?;
     Ok(diff)
-}
-
-/// Gets the git repository root directory for `dir`, or `dir` if not in a repo.
-/// Used for resolving file paths for the benefit of tools and git operations.
-pub fn repo_root(dir: &str) -> PathBuf {
-    match git_command()
-        .args(["rev-parse", "--show-toplevel"])
-        .current_dir(dir)
-        .output()
-    {
-        Ok(output) if output.status.success() => {
-            PathBuf::from(String::from_utf8_lossy(&output.stdout).trim().to_string())
-        }
-        _ => PathBuf::from(dir),
-    }
 }
 
 fn is_safe_repo_relative_path(filename: &str) -> bool {
@@ -288,42 +281,10 @@ fn parse_files_from_diff(diff: &str) -> Vec<GitFileStatus> {
     files
 }
 
-/// Gets the SHA of any ref (branch name, tag, or symbolic ref like HEAD).
-pub fn get_ref_sha(dir: &str, ref_name: &str) -> Option<String> {
-    let output = git_command()
-        .args(["rev-parse", ref_name])
-        .current_dir(dir)
-        .output()
-        .ok()?;
-
-    Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
-}
-
-/// Gets the SHA of the current HEAD commit.
-fn get_head_sha(dir: &str) -> Option<String> {
-    get_ref_sha(dir, "HEAD")
-}
-
-/// Returns the current branch name (None if detached HEAD)
-pub fn current_branch(dir: &str) -> Option<String> {
-    let output = git_command()
-        .args(["rev-parse", "--abbrev-ref", "HEAD"])
-        .current_dir(dir)
-        .output()
-        .ok()?;
-
-    let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if branch != "HEAD" {
-        Some(branch)
-    } else {
-        None
-    }
-}
-
 /// Comprehensive git status against HEAD.
 pub fn status(dir: &str) -> Result<GitStatus> {
     require_repo(dir)?;
-    let branch = current_branch(dir);
+    let branch = super::current_branch(dir);
 
     let diff = get_full_diff(dir)?;
     let (additions, deletions) = count_diff_changes(&diff);
@@ -542,22 +503,6 @@ pub fn restore_all(dir: &str) -> Result<()> {
     Ok(())
 }
 
-/// Returns all tags for `hash`.
-pub fn read_tags(dir: &str, hash: &str) -> Vec<String> {
-    let Ok(output) = git_command()
-        .args(["tag", "--points-at", hash])
-        .current_dir(dir)
-        .output()
-    else {
-        return vec![];
-    };
-    String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .filter(|l| !l.is_empty())
-        .map(str::to_owned)
-        .collect()
-}
-
 /// Git tags (any ref or hash) `target`, `force = true` overwrites.
 pub fn tag_commit(dir: &str, tag: &str, target: &str, force: bool) -> Result<()> {
     let mut args = vec!["tag"];
@@ -580,6 +525,10 @@ pub fn create_evolution_backup(
     evolution_id: Option<i64>,
     changeset_id: i64,
 ) -> Result<Option<String>> {
+    if !has_head_commit(repo_path) {
+        return Ok(None);
+    }
+
     let branch_name = format!(
         "nixmac-evolve/evolution{}-changeset{}",
         evolution_id.unwrap_or(0),
@@ -629,6 +578,20 @@ pub fn create_evolution_backup(
 
 /// Restore working tree to the content of a specific branch ref.
 /// Replaces the current index with the branch's tree, then checks out the working tree.
+///
+/// NOTE that this would be harder to implement in git2 because:
+/// - git2 does NOT expose “plumbing-level” commands like `read-tree` or
+///   `checkout-index` as direct APIs.
+/// - The closest primitive is `repo.reset(ResetType::Hard)`, which combines
+///   index + working tree updates, but does NOT include untracked file cleanup.
+/// - `git clean -fd` is not implemented in git2 because it is inherently
+///   a filesystem operation driven by ignore rules and user policy, not just
+///   Git object model state.
+///
+/// Therefore a full equivalent would require:
+/// - resolving the ref → commit → tree (via revparse + peel)
+/// - performing a hard reset (tracked files)
+/// - manually walking the filesystem to delete untracked files/dirs
 pub fn restore_from_branch_ref(repo_path: &str, ref_name: &str) -> Result<()> {
     git_command()
         .args(["read-tree", ref_name])
@@ -663,6 +626,8 @@ pub fn delete_backup_branch(repo_path: &str, branch_name: &str) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use crate::git::current_branch;
+
     use super::*;
     use std::fs;
     use std::path::Path;
@@ -689,7 +654,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let repo_dir = temp_dir.path().join("repo");
         init_repo(&repo_dir.to_string_lossy()).unwrap();
-        assert!(is_repo(&repo_dir.to_string_lossy()));
+        assert!(super::is_repo(&repo_dir.to_string_lossy()));
     }
 
     #[test]

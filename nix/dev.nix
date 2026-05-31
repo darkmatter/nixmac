@@ -38,6 +38,7 @@ lib.mkIf (! config.container.isBuilding) {
     pkgs.lldb
     pkgs.llvmPackages.bintools
     (pkgs.callPackage ./pkgs/tauri-wd.nix { })
+    pkgs.tart
   ]
   ++ lib.optionals (builtins.getEnv "_PROFILE" == "development") [
     pkgs.starship

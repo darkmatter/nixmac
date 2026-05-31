@@ -239,6 +239,40 @@ ok: boolean;
  */
 message: string }
 
+export type Evolution = { id: string; createdAt: number; state: EvolutionState; prompt: string; edits: FileEdit[]; commitHash: string | null; summary: string | null; 
+/**
+ * Full message history for context
+ */
+messages: JsonValue[]; 
+/**
+ * Agent's thinking/reasoning log
+ */
+thinking: ThinkingEntry[]; 
+/**
+ * Tool call activity log
+ */
+toolCalls: ToolCallRecord[]; 
+/**
+ * Total tokens used
+ */
+totalTokens: number; 
+/**
+ * Number of iterations
+ */
+iterations: number; 
+/**
+ * Number of build attempts
+ */
+buildAttempts: number; 
+/**
+ * AI-generated summary of changes for preview
+ */
+changesSummary: string | null; 
+/**
+ * AI-generated commit message suggestion
+ */
+suggestedCommitMessage: string | null }
+
 /**
  * Evolution failure payload with partial telemetry.
  */
@@ -617,7 +651,7 @@ usageStats: FeedbackUsageStats | null;
 /**
  * Captured evolution log content.
  */
-evolutionLogContent: string | null; 
+evolutionLogContent: Evolution | null; 
 /**
  * Diff for changed Nix files at submission time.
  */
@@ -772,6 +806,8 @@ extra: JsonValue | null }
  * HEAD content vs working-tree content for a file, used by the diff tab Monaco DiffEditor.
  */
 export type FileDiffContents = { original: string; modified: string }
+
+export type FileEdit = { path: string; search: string; replace: string }
 
 /**
  * Result of a successful `finalize_apply` or `finalize_rollback` command.
@@ -1363,6 +1399,56 @@ defaults: SystemDefault[];
  * Number of defaults keys scanned.
  */
 totalScanned: number }
+
+/**
+ * A single thinking entry from the agent's reasoning process
+ */
+export type ThinkingEntry = { 
+/**
+ * When this thought occurred (ms since evolution start)
+ */
+timestampMs: number; 
+/**
+ * The iteration number when this thought occurred
+ */
+iteration: number; 
+/**
+ * Category of thinking (planning, analysis, debugging, etc.)
+ */
+category: string; 
+/**
+ * The actual thought content
+ */
+content: string }
+
+/**
+ * A tool call record for the activity log
+ */
+export type ToolCallRecord = { 
+/**
+ * When this tool was called (ms since evolution start)
+ */
+timestampMs: number; 
+/**
+ * The iteration number
+ */
+iteration: number; 
+/**
+ * Tool name
+ */
+tool: string; 
+/**
+ * Tool arguments (simplified)
+ */
+argsSummary: string; 
+/**
+ * Result summary
+ */
+resultSummary: string; 
+/**
+ * Whether the call succeeded
+ */
+success: boolean }
 
 /**
  * User interface preferences (synced to settings.json via tauri-plugin-store).
