@@ -115,6 +115,24 @@ bun run dev:server     # API server at http://localhost:3000
 bun run dev:native     # Tauri desktop app
 ```
 
+### Profiling (Rust-side)
+
+You should have Xcode installed.
+
+```sh
+cd apps/native
+bunx tauri build -- --profile profiling
+```
+
+and run the app from `/target` via:
+
+```sh
+cd ../..
+open -a "Instruments" ./target/profiling/nixmac
+```
+
+Or start `../../target/profiling/nixmac` manually to get past the startup overhead, start Instruments, and attach to the process.
+
 ### Setting Up nix-darwin
 
 If you don't already have a nix-darwin configuration:

@@ -8,7 +8,6 @@ import {
   InputGroupText,
   InputGroupTextarea,
 } from "@/components/ui/input-group";
-import { BeginEvolveWarning } from "@/components/widget/promptinput/begin-evolve-warning";
 import { MacRecommendationChip } from "@/components/widget/promptinput/mac-recommendation-chip";
 import { HomebrewBadge } from "@/components/widget/promptinput/homebrew-badge";
 import { PromptHistoryBadge } from "@/components/widget/promptinput/prompt-history-badge";
@@ -35,7 +34,6 @@ export function PromptInput() {
   const settingsOpen = useWidgetStore((s) => s.settingsOpen);
   const setSettingsOpen = useWidgetStore((s) => s.setSettingsOpen);
   const { handleEvolve, evolveFromManual } = useEvolve();
-  const [warningOpen, setWarningOpen] = useState(false);
   const [providerErrors, setProviderErrors] = useState<{ evolve: string | null; summary: string | null }>({
     evolve: null,
     summary: null,
@@ -127,7 +125,6 @@ export function PromptInput() {
 
   return (
     <div className="space-y-3 flex-col min-h-24">
-      <BeginEvolveWarning open={warningOpen} onOpenChange={setWarningOpen} handleEvolve={handleEvolve} />
       <InputGroup className="bg-background flex-col min-h-24">
         <InputGroupTextarea
           id="evolve-prompt-input"

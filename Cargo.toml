@@ -2,3 +2,6 @@
 members = ["apps/native/src-tauri"]
 resolver = "2"
 
+[profile.profiling]
+inherits = "release"
+debug = true

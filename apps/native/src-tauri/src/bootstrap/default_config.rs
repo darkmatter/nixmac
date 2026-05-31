@@ -138,7 +138,7 @@ fn resolve_template_path(app: &AppHandle) -> Result<std::path::PathBuf, String> 
 /// Creates a new nix-darwin configuration from the bundled template.
 ///
 /// This function:
-/// 1. Validates the target directory is empty (safety check)
+/// 1. Uses an existing flake.nix as user-provided config when present
 /// 2. Copies template files, processing .nix files to replace placeholders
 /// 3. Initializes a git repository
 /// 4. Creates an initial commit (without flake.lock)
@@ -255,5 +255,33 @@ mod tests {
     fn test_detect_darwin_platform() {
         let platform = detect_darwin_platform();
         assert!(platform == "aarch64-darwin" || platform == "x86_64-darwin");
+    }
+
+    #[test]
+    fn copy_template_dir_overwrites_partial_files_on_retry() {
+        let src = tempfile::tempdir().expect("create source temp dir");
+        let dest = tempfile::tempdir().expect("create dest temp dir");
+
+        fs::write(
+            src.path().join("flake.nix"),
+            "host = \"HOSTNAME_PLACEHOLDER\"; platform = \"PLATFORM_PLACEHOLDER\"; user = \"USERNAME_PLACEHOLDER\";",
+        )
+        .expect("write source flake");
+        fs::write(dest.path().join("flake.nix"), "partial copy").expect("write partial flake");
+
+        copy_template_dir(
+            src.path(),
+            dest.path(),
+            "macbook",
+            "aarch64-darwin",
+            "alice",
+        )
+        .expect("copy template");
+
+        let copied = fs::read_to_string(dest.path().join("flake.nix")).expect("read copied flake");
+        assert_eq!(
+            copied,
+            "host = \"macbook\"; platform = \"aarch64-darwin\"; user = \"alice\";"
+        );
     }
 }

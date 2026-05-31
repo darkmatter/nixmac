@@ -4,7 +4,7 @@
   config,
   ...
 }:
-lib.mkIf (!(config.container.isBuilding or false)) {
+lib.mkIf (! config.container.isBuilding) {
   # Dev-only packages (excluded from container builds by conditional import).
   packages = [
     pkgs.rustPackages.rustc
@@ -37,6 +37,8 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     pkgs.apple-sdk_15
     pkgs.lldb
     pkgs.llvmPackages.bintools
+    (pkgs.callPackage ./pkgs/tauri-wd.nix { })
+    pkgs.tart
   ]
   ++ lib.optionals (builtins.getEnv "_PROFILE" == "development") [
     pkgs.starship
