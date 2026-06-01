@@ -42,7 +42,7 @@ interface EventItemProps {
 }
 
 function parseTokenCount(value: string): number {
-  return Number.parseInt(value.replaceAll(",", ""), 10);
+  return Number.parseInt(value.replace(/,/g, ""), 10);
 }
 
 function getTokenProgress(events: EvolveEvent[]): { total: number; budget: number | null } | null {
