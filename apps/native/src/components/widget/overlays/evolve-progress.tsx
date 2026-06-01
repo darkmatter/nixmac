@@ -236,6 +236,21 @@ function EventItem({ event, isLatest }: EventItemProps) {
 // =============================================================================
 
 function parseQuestionChoices(raw: string): string[] | null {
+  const jsonMatch = raw.match(/\nChoicesJson: (.+)\nChoices: /);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[1]);
+      if (
+        Array.isArray(parsed) &&
+        parsed.every((choice) => typeof choice === "string")
+      ) {
+        return parsed;
+      }
+    } catch {
+      // Fall back to the legacy comma-separated format below.
+    }
+  }
+
   const match = raw.match(/\nChoices: (.+)$/);
   if (!match) return null;
   return match[1].split(", ").filter(Boolean);
