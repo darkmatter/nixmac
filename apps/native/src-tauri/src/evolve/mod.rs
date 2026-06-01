@@ -57,6 +57,10 @@ use providers::{AiProvider, CliProvider, OllamaProvider, OpenAIProvider, Provide
 
 use self::types::FileEdit;
 
+fn normalize_max_output_tokens(value: usize) -> u32 {
+    value.max(1).min(u32::MAX as usize) as u32
+}
+
 /// Return short hex prefix for correlation of error messages without risking sensitive content exposure.
 fn short_hash(s: &str) -> String {
     let mut h = Sha256::new();
@@ -358,6 +362,9 @@ pub async fn generate_evolution<R: Runtime>(
     info!("📝 Prompt: {}", prompt);
 
     let store_model = store::get_evolve_model(app).ok().flatten();
+    let max_output_tokens =
+        store::get_max_output_tokens(app).unwrap_or(store::DEFAULT_MAX_OUTPUT_TOKENS);
+    let max_output_tokens_for_request = normalize_max_output_tokens(max_output_tokens);
 
     // Select provider implementation
     let provider: Arc<dyn AiProvider> = if provider_type == "ollama" {
@@ -370,10 +377,14 @@ pub async fn generate_evolution<R: Runtime>(
             .or_else(|| std::env::var("OLLAMA_API_BASE").ok())
             .unwrap_or_else(|| DEFAULT_OLLAMA_API_BASE.to_string());
         info!(
-            "Using Ollama provider | Model: {} | URL: {}",
-            model, base_url
+            "Using Ollama provider | Model: {} | URL: {} | Max output tokens: {}",
+            model, base_url, max_output_tokens_for_request
         );
-        Arc::new(OllamaProvider::new(base_url, model))
+        Arc::new(OllamaProvider::new(
+            base_url,
+            model,
+            max_output_tokens_for_request,
+        ))
     } else if matches!(provider_type.as_str(), "claude" | "codex" | "opencode") {
         let tool = match provider_type.as_str() {
             "claude" => crate::ai::providers::cli::CliTool::Claude,
@@ -395,8 +406,16 @@ pub async fn generate_evolution<R: Runtime>(
             .or_else(|| std::env::var("VLLM_API_BASE").ok())
             .ok_or_else(|| anyhow!("No vLLM base URL configured. Please set it in Settings."))?;
         let api_key = store::get_effective_vllm_api_key(app)?.unwrap_or_else(|| "none".to_string());
-        info!("Using vLLM provider | Model: {} | URL: {}", model, base_url);
-        Arc::new(OpenAIProvider::new(api_key, base_url, model))
+        info!(
+            "Using vLLM provider | Model: {} | URL: {} | Max output tokens: {}",
+            model, base_url, max_output_tokens_for_request
+        );
+        Arc::new(OpenAIProvider::new(
+            api_key,
+            base_url,
+            model,
+            max_output_tokens_for_request,
+        ))
     } else {
         let (api_key, base_url) = store::get_effective_openai_compatible_credential(app)?
             .ok_or_else(|| {
@@ -417,8 +436,16 @@ pub async fn generate_evolution<R: Runtime>(
         } else {
             "OpenAI"
         };
-        info!("Using {} provider | Model: {}", provider_name, model);
-        Arc::new(OpenAIProvider::new(api_key, base_url.to_string(), model))
+        info!(
+            "Using {} provider | Model: {} | Max output tokens: {}",
+            provider_name, model, max_output_tokens_for_request
+        );
+        Arc::new(OpenAIProvider::new(
+            api_key,
+            base_url.to_string(),
+            model,
+            max_output_tokens_for_request,
+        ))
     };
 
     // Emit start event
@@ -446,11 +473,12 @@ pub async fn generate_evolution<R: Runtime>(
     let max_build_attempts =
         store::get_max_build_attempts(app).unwrap_or(DEFAULT_MAX_BUILD_ATTEMPTS);
     info!(
-        "Limits: max_iterations={}, max_iterations_before_edit={} ({}%), max_build_attempts={}",
+        "Limits: max_iterations={}, max_iterations_before_edit={} ({}%), max_build_attempts={}, max_output_tokens={}",
         max_iterations,
         max_iterations_before_edit,
         MAX_ITERATIONS_BEFORE_EDIT_PERCENT,
-        max_build_attempts
+        max_build_attempts,
+        max_output_tokens
     );
 
     let tools = create_tools(banned_tools);

@@ -20,11 +20,12 @@ use reqwest::StatusCode;
 pub struct OpenAIProvider {
     client: Client<OpenAIConfig>,
     model: String,
+    max_output_tokens: u32,
     record_completions: bool,
 }
 
 impl OpenAIProvider {
-    pub fn new(api_key: String, api_base: String, model: String) -> Self {
+    pub fn new(api_key: String, api_base: String, model: String, max_output_tokens: u32) -> Self {
         let config = OpenAIConfig::new()
             .with_api_key(api_key)
             .with_api_base(api_base);
@@ -36,6 +37,7 @@ impl OpenAIProvider {
         Self {
             client,
             model,
+            max_output_tokens,
             record_completions,
         }
     }
@@ -62,11 +64,7 @@ impl AiProvider for OpenAIProvider {
             .tools(openai_tools)
             .temperature(0.2);
 
-        // Some models support this, others don't. For OpenAI/Claude it is usually supported/required for long checks.
-        // But let's check if we can make it optional or robust.
-        // For now, hardcode max_tokens as in original mod.rs
-        // const MAX_TOKENS: u32 = 65_000;
-        request_builder.max_completion_tokens(65000u32);
+        request_builder.max_completion_tokens(self.max_output_tokens);
 
         let request = request_builder
             .build()

@@ -24,6 +24,7 @@ pub struct EvolveConfig {
     pub prompt: String,
     pub config: Option<PathBuf>,
     pub max_iterations: Option<usize>,
+    pub max_output_tokens: Option<usize>,
     pub evolve_provider: Option<String>,
     pub evolve_model: Option<String>,
     pub summary_provider: Option<String>,
@@ -57,6 +58,10 @@ pub enum Commands {
         /// Maximum iterations for the evolution
         #[arg(short, long)]
         max_iterations: Option<usize>,
+
+        /// Maximum output tokens requested per evolution model call
+        #[arg(long)]
+        max_output_tokens: Option<usize>,
 
         /// Provider for evolution (e.g., openai, openrouter, ollama)
         #[arg(long)]
@@ -102,6 +107,7 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
         prompt,
         config,
         max_iterations,
+        max_output_tokens,
         evolve_provider,
         evolve_model,
         summary_provider,
@@ -192,11 +198,21 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
         None => crate::storage::store::get_max_iterations(app)
             .unwrap_or(crate::storage::store::DEFAULT_MAX_ITERATIONS),
     };
+    let effective_max_output_tokens: usize = match max_output_tokens {
+        Some(v) => v,
+        None => crate::storage::store::get_max_output_tokens(app)
+            .unwrap_or(crate::storage::store::DEFAULT_MAX_OUTPUT_TOKENS),
+    };
 
     // Max iterations
     if let Some(iterations) = max_iterations {
         crate::storage::store::set_max_iterations(app, iterations)
             .map_err(|e| format!("Failed to set max iterations: {}", e))?;
+    }
+
+    if let Some(output_tokens) = max_output_tokens {
+        crate::storage::store::set_max_output_tokens(app, output_tokens)
+            .map_err(|e| format!("Failed to set max output tokens: {}", e))?;
     }
 
     // Host
@@ -256,6 +272,7 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
             "state": state_str,
             "prompt": prompt,
             "maxIterations": effective_max_iterations,
+            "maxOutputTokens": effective_max_output_tokens,
             "evolveProvider": effective_evolve_provider,
             "evolveModel": effective_evolve_model,
             "summaryProvider": effective_summary_provider,

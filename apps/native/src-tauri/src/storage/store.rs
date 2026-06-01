@@ -44,6 +44,7 @@ pub const PINNED_VERSION_KEY: &str = "pinnedVersion";
 pub const UPDATE_CHANNEL_KEY: &str = "updateChannel";
 
 pub const DEFAULT_MAX_ITERATIONS: usize = 25;
+pub const DEFAULT_MAX_OUTPUT_TOKENS: usize = 32_768;
 const KEYCHAIN_SERVICE: &str = "com.darkmatter.nixmac";
 
 fn e2e_mock_system_enabled() -> bool {
@@ -518,6 +519,18 @@ pub fn get_max_build_attempts<R: Runtime>(app: &AppHandle<R>) -> Result<usize> {
 pub fn set_max_build_attempts<R: Runtime>(app: &AppHandle<R>, max: usize) -> Result<()> {
     let store = get_store(app)?;
     store.set("maxBuildAttempts", serde_json::json!(max));
+    store.save()?;
+    Ok(())
+}
+
+/// Gets the maximum output tokens requested per evolution model call.
+pub fn get_max_output_tokens<R: Runtime>(app: &AppHandle<R>) -> Result<usize> {
+    Ok(get_usize_pref(app, "maxOutputTokens")?.unwrap_or(DEFAULT_MAX_OUTPUT_TOKENS))
+}
+
+pub fn set_max_output_tokens<R: Runtime>(app: &AppHandle<R>, max: usize) -> Result<()> {
+    let store = get_store(app)?;
+    store.set("maxOutputTokens", serde_json::json!(max));
     store.save()?;
     Ok(())
 }
