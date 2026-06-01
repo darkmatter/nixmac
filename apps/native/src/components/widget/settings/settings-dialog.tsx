@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { cn } from "@/lib/utils";
 import { type SettingsTab, useWidgetStore } from "@/stores/widget-store";
-import { DEFAULT_MAX_ITERATIONS } from "@/lib/constants";
+import { DEFAULT_MAX_TOKEN_BUDGET } from "@/lib/constants";
 import { tauriAPI } from "@/ipc/api";
 import { useForm } from "@tanstack/react-form";
 import { Bot, FolderOpen, Key, Settings2, SlidersHorizontal, Wrench } from "lucide-react";
@@ -127,7 +127,7 @@ export function SettingsDialog() {
       summaryModel: "openai/gpt-4o-mini",
       evolveProvider: "openrouter",
       evolveModel: "anthropic/claude-sonnet-4",
-      maxIterations: DEFAULT_MAX_ITERATIONS,
+      maxTokenBudget: DEFAULT_MAX_TOKEN_BUDGET,
       maxBuildAttempts: 5,
       sendDiagnostics: false,
     },
@@ -149,7 +149,7 @@ export function SettingsDialog() {
           form.setFieldValue("summaryModel", prefs.summaryModel ?? "openai/gpt-4o-mini");
           form.setFieldValue("evolveProvider", normalizeProvider(prefs.evolveProvider));
           form.setFieldValue("evolveModel", prefs.evolveModel ?? "anthropic/claude-sonnet-4");
-          form.setFieldValue("maxIterations", prefs.maxIterations ?? DEFAULT_MAX_ITERATIONS);
+          form.setFieldValue("maxTokenBudget", prefs.maxTokenBudget ?? DEFAULT_MAX_TOKEN_BUDGET);
           form.setFieldValue("maxBuildAttempts", prefs.maxBuildAttempts ?? 5);
           form.setFieldValue("sendDiagnostics", prefs.sendDiagnostics ?? false);
 
@@ -303,8 +303,8 @@ export function SettingsDialog() {
                         {(summaryProviderField) => (
                           <form.Field name="summaryModel">
                             {(summaryModelField) => (
-                              <form.Field name="maxIterations">
-                                {(maxIterationsField) => (
+                              <form.Field name="maxTokenBudget">
+                                {(maxTokenBudgetField) => (
                                   <form.Field name="maxBuildAttempts">
                                     {(maxBuildAttemptsField) => (
                                       <AiModelsTab
@@ -313,7 +313,7 @@ export function SettingsDialog() {
                                         form={form}
                                         summaryModelField={summaryModelField}
                                         summaryProviderField={summaryProviderField}
-                                        maxIterationsField={maxIterationsField}
+                                        maxTokenBudgetField={maxTokenBudgetField}
                                         maxBuildAttemptsField={maxBuildAttemptsField}
                                       />
                                     )}

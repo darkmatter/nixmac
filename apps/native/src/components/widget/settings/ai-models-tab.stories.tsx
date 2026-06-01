@@ -8,7 +8,7 @@ type ModelValues = {
   evolveModel: string;
   summaryProvider: string;
   summaryModel: string;
-  maxIterations: number;
+  maxTokenBudget: number;
   maxBuildAttempts: number;
   openrouterApiKey: string;
   openaiApiKey: string;
@@ -21,7 +21,7 @@ function AiModelsTabFixture() {
     evolveModel: "",
     summaryProvider: "claude",
     summaryModel: "",
-    maxIterations: 25,
+    maxTokenBudget: 50_000,
     maxBuildAttempts: 5,
     openrouterApiKey: "",
     openaiApiKey: "",
@@ -54,7 +54,7 @@ function AiModelsTabFixture() {
         evolveProviderField={field("evolveProvider")}
         form={form as any}
         maxBuildAttemptsField={field("maxBuildAttempts")}
-        maxIterationsField={field("maxIterations")}
+        maxTokenBudgetField={field("maxTokenBudget")}
         summaryModelField={field("summaryModel")}
         summaryProviderField={field("summaryProvider")}
       />

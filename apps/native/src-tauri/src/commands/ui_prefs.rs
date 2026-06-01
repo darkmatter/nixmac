@@ -29,6 +29,8 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, Strin
 
     let max_iterations =
         Some(store::get_max_iterations(&app).unwrap_or(store::DEFAULT_MAX_ITERATIONS));
+    let max_token_budget =
+        Some(store::get_max_token_budget(&app).unwrap_or(store::DEFAULT_MAX_TOKEN_BUDGET));
     let max_build_attempts = Some(store::get_max_build_attempts(&app).unwrap_or(5));
     let ollama_api_base_url: Option<String> =
         wrap_result_and_capture_err("ui_get_prefs", store::get_ollama_api_base_url(&app))?;
@@ -88,6 +90,7 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, Strin
         summary_model,
 
         max_iterations,
+        max_token_budget,
         max_build_attempts,
 
         ollama_api_base_url,
@@ -138,6 +141,10 @@ pub async fn ui_set_prefs(
     }
     if let Some(max_iterations) = prefs.max_iterations {
         store::set_max_iterations(&app, max_iterations)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
+    }
+    if let Some(max_token_budget) = prefs.max_token_budget {
+        store::set_max_token_budget(&app, max_token_budget)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(max_build_attempts) = prefs.max_build_attempts {

@@ -201,7 +201,7 @@ function hasSettingsGeneralEvidence(text) {
 }
 
 function hasSettingsAIModelsEvidence(text) {
-  return hasSettingsFrameEvidence(text) && countMatches(text, [/heading AI Models/i, /Evolution Model/i, /Summary Model/i, /\bProvider\b/i, /Model Name/i, /Max Iterations/i, /Max Build Attempts/i]) >= 3;
+  return hasSettingsFrameEvidence(text) && countMatches(text, [/heading AI Models/i, /Evolution Model/i, /Summary Model/i, /\bProvider\b/i, /Model Name/i, /Token Budget/i, /Max Build Attempts/i]) >= 3;
 }
 
 function hasSettingsAPIKeysEvidence(text) {

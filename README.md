@@ -166,7 +166,7 @@ nixmac evolve "install ripgrep and fd"
 # With options
 nixmac evolve "enable Touch ID for sudo" \
   --config ~/.darwin \
-  --max-iterations 10 \
+  --max-token-budget 50000 \
   --evolve-provider ollama \
   --evolve-model qwen3-coder:30b
 
