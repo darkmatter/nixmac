@@ -213,7 +213,15 @@ impl EvolveEvent {
         choices: &Option<Vec<String>>,
     ) -> Self {
         let raw = match choices {
-            Some(c) => format!("{}\nChoices: {}", question, c.join(", ")),
+            Some(c) => {
+                let choices_json = serde_json::to_string(c).unwrap_or_else(|_| "[]".to_string());
+                format!(
+                    "{}\nChoicesJson: {}\nChoices: {}",
+                    question,
+                    choices_json,
+                    c.join(", ")
+                )
+            }
             None => question.to_string(),
         };
         Self::new(
