@@ -17,6 +17,9 @@ vi.mock("@/ipc/api", () => ({
       read: vi.fn().mockResolvedValue({ configDir: "/Users/test/nixmac" }),
       listHosts: vi.fn().mockResolvedValue(["Test-MacBook"]),
     },
+    scanner: {
+      getRecommendedPrompt: vi.fn().mockResolvedValue(null),
+    },
   },
   ipcRenderer: {
     on: vi.fn().mockReturnValue(Promise.resolve(() => {})),
