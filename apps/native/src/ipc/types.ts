@@ -1405,9 +1405,13 @@ evolveProvider: string | null;
  */
 evolveModel: string | null; 
 /**
- * Maximum agent iterations per evolution.
+ * Legacy maximum agent iterations per evolution.
  */
 maxIterations: number | null; 
+/**
+ * Maximum provider-reported tokens per evolution.
+ */
+maxTokenBudget: number | null;
 /**
  * Maximum build attempts per evolution.
  */
@@ -1483,9 +1487,13 @@ summaryProvider: string | null;
  */
 summaryModel: string | null; 
 /**
- * Maximum iteration count update.
+ * Legacy maximum iteration count update.
  */
 maxIterations: number | null; 
+/**
+ * Maximum token budget update.
+ */
+maxTokenBudget: number | null;
 /**
  * Maximum build-attempt count update.
  */

@@ -51,7 +51,7 @@ nixmac_pp_seed_local_validation_settings() {
             summaryProvider: "vllm",
             evolveModel: "gpt-oss-120b",
             summaryModel: "gpt-oss-120b",
-            maxIterations: 1,
+            maxTokenBudget: 50000,
             maxBuildAttempts: 1,
             sendDiagnostics: false,
             confirmBuild: true,

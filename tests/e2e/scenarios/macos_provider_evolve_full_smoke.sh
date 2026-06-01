@@ -279,7 +279,7 @@ scenario_seed_settings() {
             summaryModel: "nixmac-e2e-provider",
             vllmApiBaseUrl: $providerBaseUrl,
             vllmApiKey: "e2e",
-            maxIterations: 3,
+            maxTokenBudget: 50000,
             maxBuildAttempts: 1,
             sendDiagnostics: false,
             confirmBuild: false,

@@ -268,9 +268,9 @@ const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 const DEFAULT_MAX_BUILD_ATTEMPTS: usize = 5;
 
-// Percentage of max_iterations after which we require at least one edit/build_check.
-// Example: with max_iterations=50 and this set to 75, threshold is 37 iterations.
-const MAX_ITERATIONS_BEFORE_EDIT_PERCENT: usize = 75;
+// Percentage of the token budget after which we require at least one edit/build_check.
+// Example: with maxTokenBudget=50,000 and this set to 75, threshold is 37,500 tokens.
+const MAX_TOKEN_BUDGET_BEFORE_EDIT_PERCENT: u32 = 75;
 
 // Applied separately to stdout and stderr. So when thinking about tokens,
 // the effective output limit could be up to double this if both are long.
@@ -437,20 +437,24 @@ pub async fn generate_evolution<R: Runtime>(
         EvolveEvent::info(start_time, None, &format!("Target host: {}", host_attr)),
     );
 
-    // Read configurable limits from store
-    let max_iterations = store::get_max_iterations(app).unwrap_or(store::DEFAULT_MAX_ITERATIONS);
-    let max_iterations_before_edit = std::cmp::max(
+    // Read configurable limits from store.
+    let legacy_max_iterations =
+        store::get_max_iterations(app).unwrap_or(store::DEFAULT_MAX_ITERATIONS);
+    let max_token_budget =
+        store::get_max_token_budget(app).unwrap_or(store::DEFAULT_MAX_TOKEN_BUDGET);
+    let max_tokens_before_edit = std::cmp::max(
         1,
-        (max_iterations * MAX_ITERATIONS_BEFORE_EDIT_PERCENT) / 100,
+        (max_token_budget * MAX_TOKEN_BUDGET_BEFORE_EDIT_PERCENT) / 100,
     );
     let max_build_attempts =
         store::get_max_build_attempts(app).unwrap_or(DEFAULT_MAX_BUILD_ATTEMPTS);
     info!(
-        "Limits: max_iterations={}, max_iterations_before_edit={} ({}%), max_build_attempts={}",
-        max_iterations,
-        max_iterations_before_edit,
-        MAX_ITERATIONS_BEFORE_EDIT_PERCENT,
-        max_build_attempts
+        "Limits: max_token_budget={}, max_tokens_before_edit={} ({}%), max_build_attempts={}, legacy_max_iterations={}",
+        max_token_budget,
+        max_tokens_before_edit,
+        MAX_TOKEN_BUDGET_BEFORE_EDIT_PERCENT,
+        max_build_attempts,
+        legacy_max_iterations,
     );
 
     let tools = create_tools(banned_tools);
@@ -464,6 +468,7 @@ pub async fn generate_evolution<R: Runtime>(
     let mut build_attempts: usize = 0;
     let mut build_verified = false;
     let mut total_tokens: u32 = 0;
+    let mut token_usage_observed = false;
     let chat_memory_store = session_chat_memory_store();
 
     // Restore only persisted conversational history (user/assistant, NOT tool)
@@ -659,14 +664,21 @@ pub async fn generate_evolution<R: Runtime>(
 
         // Track token usage
         if let Some(usage) = &response.usage {
-            total_tokens += usage.total;
+            token_usage_observed = true;
+            total_tokens = total_tokens.saturating_add(usage.total);
             info!(
-                "📊 Tokens | this_call: {} (in={}, out={}) | total_session: {}",
-                usage.total, usage.input, usage.output, total_tokens
+                "📊 Tokens | this_call: {} (in={}, out={}) | total_session: {}/{}",
+                usage.total, usage.input, usage.output, total_tokens, max_token_budget
             );
             emit_evolve_event(
                 app,
-                EvolveEvent::api_response(start_time, iteration, usage.total),
+                EvolveEvent::api_response(
+                    start_time,
+                    iteration,
+                    usage.total,
+                    total_tokens,
+                    max_token_budget,
+                ),
             );
         }
 
@@ -1010,27 +1022,58 @@ Do not invent tool names and do not place tool invocations in assistant content.
             break;
         }
 
-        // Safety limits -- Max Iterations Before Edit Check
-        if iteration == max_iterations_before_edit && !made_edit_or_build_check {
+        // Safety limits -- Max Token Budget
+        if total_tokens >= max_token_budget {
             warn!(
-                "⚠️ No edit or build_check by iteration {} - agent not making progress",
-                max_iterations_before_edit
+                "⚠️ Evolution reached token budget ({}/{}) - aborting",
+                total_tokens, max_token_budget
             );
             evolution.state = EvolutionState::Failed;
-            let message = format!(
-                "I've analyzed your configuration for {} iterations but haven't started making concrete changes yet. \
-This suggests I'm having difficulty understanding what modifications you'd like. \
-Could you provide more specific guidance on what aspects of your configuration need adjustment?",
-                max_iterations_before_edit
+            let stop_reason = format!(
+                "Token budget exhausted ({} of {} tokens)",
+                total_tokens, max_token_budget
             );
             emit_evolve_event(
                 app,
-                EvolveEvent::error(
-                    start_time,
-                    Some(iteration),
-                    &format!("Maximum iterations exceeded ({})", max_iterations),
-                    &format!("Maximum iterations exceeded ({})", max_iterations),
+                EvolveEvent::error(start_time, Some(iteration), &stop_reason, &stop_reason),
+            );
+            // Track failure
+            if let Err(e) = statistics::record_evolution_failure(app, iteration) {
+                warn!("Failed to record evolution failure stats: {}", e);
+            }
+            return Err(EvolutionRunError::from_state(
+                format!(
+                    "Evolution stopped because the token budget was exhausted ({} of {} tokens)",
+                    total_tokens, max_token_budget
                 ),
+                &evolution,
+                iteration,
+                build_attempts,
+                total_tokens,
+            )
+            .into());
+        }
+
+        // Safety limits -- Token Budget Before Edit Check
+        if total_tokens >= max_tokens_before_edit && !made_edit_or_build_check {
+            warn!(
+                "⚠️ No edit or build_check after {} tokens - agent not making progress",
+                total_tokens
+            );
+            evolution.state = EvolutionState::Failed;
+            let message = format!(
+                "I've analyzed your configuration for {} tokens but haven't started making concrete changes yet. \
+This suggests I'm having difficulty understanding what modifications you'd like. \
+Could you provide more specific guidance on what aspects of your configuration need adjustment?",
+                total_tokens
+            );
+            let stop_reason = format!(
+                "No concrete progress after {} of {} token budget",
+                total_tokens, max_token_budget
+            );
+            emit_evolve_event(
+                app,
+                EvolveEvent::error(start_time, Some(iteration), &stop_reason, &stop_reason),
             );
             // Track failure
             if let Err(e) = statistics::record_evolution_failure(app, iteration) {
@@ -1046,28 +1089,27 @@ Could you provide more specific guidance on what aspects of your configuration n
             .into());
         }
 
-        // Safety limits -- Max Iterations
-        if iteration >= max_iterations {
+        // Safety limits -- Unmetered Provider Fallback
+        if !token_usage_observed && iteration >= legacy_max_iterations {
             warn!(
-                "⚠️ Evolution exceeded maximum iterations ({}) - aborting",
-                max_iterations
+                "⚠️ Provider has not reported token usage after {} calls - aborting",
+                legacy_max_iterations
             );
             evolution.state = EvolutionState::Failed;
+            let stop_reason = format!(
+                "Provider did not report token usage; stopped after {} unmetered AI calls",
+                legacy_max_iterations
+            );
             emit_evolve_event(
                 app,
-                EvolveEvent::error(
-                    start_time,
-                    Some(iteration),
-                    &format!("Maximum iterations exceeded ({})", max_iterations),
-                    &format!("Maximum iterations exceeded ({})", max_iterations),
-                ),
+                EvolveEvent::error(start_time, Some(iteration), &stop_reason, &stop_reason),
             );
             // Track failure
             if let Err(e) = statistics::record_evolution_failure(app, iteration) {
                 warn!("Failed to record evolution failure stats: {}", e);
             }
             return Err(EvolutionRunError::from_state(
-                format!("Evolution exceeded maximum iterations ({})", max_iterations),
+                stop_reason,
                 &evolution,
                 iteration,
                 build_attempts,
