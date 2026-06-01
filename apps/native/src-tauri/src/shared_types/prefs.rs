@@ -36,6 +36,8 @@ pub struct UiPrefs {
     pub max_iterations: Option<usize>,
     /// Maximum build attempts per evolution.
     pub max_build_attempts: Option<usize>,
+    /// Maximum output tokens requested per evolution model call.
+    pub max_output_tokens: Option<usize>,
     /// Whether diagnostic feedback may be sent.
     pub send_diagnostics: bool,
     /// Whether to confirm before running build/apply.
@@ -79,6 +81,8 @@ pub struct UiPrefsUpdate {
     pub max_iterations: Option<usize>,
     /// Maximum build-attempt count update.
     pub max_build_attempts: Option<usize>,
+    /// Maximum output token count update.
+    pub max_output_tokens: Option<usize>,
     /// Ollama base URL update.
     pub ollama_api_base_url: Option<String>,
     /// vLLM base URL update.

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
 import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/ai-provider-validation";
-import { DEFAULT_MAX_ITERATIONS } from "@/lib/constants";
+import { DEFAULT_MAX_ITERATIONS, DEFAULT_MAX_OUTPUT_TOKENS } from "@/lib/constants";
 import { tauriAPI } from "@/ipc/api";
 import type { CliToolsState } from "@/ipc/types";
 import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
@@ -29,6 +29,8 @@ interface AiModelsTabProps {
   maxIterationsField: AnyFieldApi;
   // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
   maxBuildAttemptsField: AnyFieldApi;
+  // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
+  maxOutputTokensField: AnyFieldApi;
   // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
   form: ReactFormExtendedApi<any, any, any, any, any, any, any, any, any, any, any, any>;
 }
@@ -108,6 +110,7 @@ export function AiModelsTab({
   summaryModelField,
   maxIterationsField,
   maxBuildAttemptsField,
+  maxOutputTokensField,
   form,
 }: AiModelsTabProps) {
   const cliStatus = useCliToolStatus();
@@ -379,6 +382,49 @@ export function AiModelsTab({
                     await tauriAPI.ui.setPrefs({ maxIterations: value });
                   }}
                   onBlur={maxIterationsField.handleBlur}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <label
+                    className="text-xs font-medium text-muted-foreground"
+                    htmlFor="maxOutputTokens"
+                  >
+                    Max output tokens
+                  </label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="inline-flex h-4 w-4 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground/70"
+                        aria-label="Max output tokens info"
+                      >
+                        <Info className="h-3.5 w-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-xs text-xs">
+                      <p>Completion tokens requested from the evolution model.</p>
+                      <p className="mt-1">
+                        Default: {DEFAULT_MAX_OUTPUT_TOKENS}. Lower this if local vLLM rejects
+                        requests for exceeding the model context window.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <Input
+                  id="maxOutputTokens"
+                  type="number"
+                  min={1024}
+                  max={262144}
+                  step={1024}
+                  value={maxOutputTokensField.state.value}
+                  onChange={async (e) => {
+                    const value =
+                      Number.parseInt(e.target.value, 10) || DEFAULT_MAX_OUTPUT_TOKENS;
+                    maxOutputTokensField.handleChange(value);
+                    await tauriAPI.ui.setPrefs({ maxOutputTokens: value });
+                  }}
+                  onBlur={maxOutputTokensField.handleBlur}
                 />
               </div>
               <div className="space-y-2">

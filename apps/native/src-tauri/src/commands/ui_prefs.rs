@@ -30,6 +30,8 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, Strin
     let max_iterations =
         Some(store::get_max_iterations(&app).unwrap_or(store::DEFAULT_MAX_ITERATIONS));
     let max_build_attempts = Some(store::get_max_build_attempts(&app).unwrap_or(5));
+    let max_output_tokens =
+        Some(store::get_max_output_tokens(&app).unwrap_or(store::DEFAULT_MAX_OUTPUT_TOKENS));
     let ollama_api_base_url: Option<String> =
         wrap_result_and_capture_err("ui_get_prefs", store::get_ollama_api_base_url(&app))?;
     let vllm_api_base_url: Option<String> =
@@ -89,6 +91,7 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, Strin
 
         max_iterations,
         max_build_attempts,
+        max_output_tokens,
 
         ollama_api_base_url,
         vllm_api_base_url,
@@ -142,6 +145,10 @@ pub async fn ui_set_prefs(
     }
     if let Some(max_build_attempts) = prefs.max_build_attempts {
         store::set_max_build_attempts(&app, max_build_attempts)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
+    }
+    if let Some(max_output_tokens) = prefs.max_output_tokens {
+        store::set_max_output_tokens(&app, max_output_tokens)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(ollama_api_base_url) = prefs.ollama_api_base_url {

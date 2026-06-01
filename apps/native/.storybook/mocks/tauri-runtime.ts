@@ -60,6 +60,7 @@ const prefs = {
   evolveModel: "gpt-5",
   maxIterations: 25,
   maxBuildAttempts: 3,
+  maxOutputTokens: 32768,
   sendDiagnostics: true,
   confirmBuild: false,
   confirmClear: false,
