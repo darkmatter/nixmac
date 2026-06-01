@@ -10,13 +10,16 @@ pub enum UpdateChannel {
     Develop,
 }
 
-/// User interface preferences (synced to settings.json via tauri-plugin-store).
+/// User interface preferences.
+///
+/// Non-secret fields are synced to settings.json via tauri-plugin-store. API
+/// keys are loaded from the encrypted app secrets blob.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct UiPrefs {
-    /// OpenRouter API key stored in local app preferences.
+    /// OpenRouter API key stored in encrypted app secrets.
     pub openrouter_api_key: Option<String>,
-    /// OpenAI API key stored in local app preferences.
+    /// OpenAI API key stored in encrypted app secrets.
     pub openai_api_key: Option<String>,
     /// Base URL for Ollama-compatible local models.
     pub ollama_api_base_url: Option<String>,

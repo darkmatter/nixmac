@@ -83,6 +83,7 @@ pub async fn developer_clear_tauri_state(app: AppHandle) -> Result<(), String> {
     }
 
     clear_tauri_store(&app, "settings.json")?;
+    store::delete_secret_blob_file(&app).map_err(|e| e.to_string())?;
     clear_tauri_store(&app, "evolve-state.json")?;
     clear_tauri_store(&app, "build-state.json")?;
     Ok(())

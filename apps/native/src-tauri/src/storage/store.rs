@@ -5,11 +5,20 @@
 
 use crate::git::query::repo_root;
 use crate::shared_types;
-use crate::storage::credential_store::{CredentialStore, KeychainStore};
+use crate::storage::{
+    credential_store::{CredentialStore, CredentialStoreError, KeychainStore, SettingsFileStore},
+    secret_blob::{
+        decode_data_key, decrypt_payload, encrypt_payload, generate_encoded_data_key,
+        SecretBlobPayload,
+    },
+};
 
-use anyhow::Result;
+use anyhow::{anyhow, Context, Result};
+use once_cell::sync::Lazy;
 use serde::{de::DeserializeOwned, Serialize};
-use std::sync::Arc;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_store::{Store, StoreExt};
 
@@ -44,6 +53,18 @@ pub const DEFAULT_MAX_ITERATIONS: usize = 25;
 pub const DEFAULT_MAX_OUTPUT_TOKENS: usize = 32_768;
 pub const DEFAULT_MAX_TOKEN_BUDGET: u32 = 50_000;
 const KEYCHAIN_SERVICE: &str = "com.darkmatter.nixmac";
+const SECRET_DATA_KEY_ACCOUNT: &str = "appSecretsDataKey.v1";
+const SECRET_BLOB_FILE: &str = "app-secrets.v1.json";
+const SECRET_PREF_KEYS: &[&str] = &["openrouterApiKey", "openaiApiKey", "vllmApiKey"];
+
+#[derive(Clone)]
+struct SecretBlobState {
+    blob_path: PathBuf,
+    data_key: [u8; 32],
+    payload: SecretBlobPayload,
+}
+
+static SECRET_BLOB_CACHE: Lazy<Mutex<Option<SecretBlobState>>> = Lazy::new(|| Mutex::new(None));
 
 fn e2e_mock_system_enabled() -> bool {
     cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_MOCK_SYSTEM")
@@ -457,7 +478,7 @@ where
 {
     // If the env var is set, return it immediately without touching the keychain.
     // This avoids OS keychain prompts in dev/CI workflows where credentials are
-    // injected via environment. Migration from settings.json → keychain will
+    // injected via environment. Migration into the encrypted secrets blob will
     // happen the first time the app runs without the env var set.
     if let Some(value) = env_value {
         return Ok(Some(value));
@@ -469,13 +490,235 @@ fn keychain_store_for<R: Runtime>(app: &AppHandle<R>, key: &str) -> KeychainStor
     KeychainStore::new(app.clone(), KEYCHAIN_SERVICE, key)
 }
 
+fn data_key_store_for<R: Runtime>(app: &AppHandle<R>) -> KeychainStore<R> {
+    KeychainStore::new(app.clone(), KEYCHAIN_SERVICE, SECRET_DATA_KEY_ACCOUNT)
+}
+
+fn legacy_settings_store<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> SettingsFileStore {
+    let app_for_get = app.clone();
+    let app_for_delete = app.clone();
+
+    SettingsFileStore::new(
+        key,
+        move || {
+            get_string_pref_raw(&app_for_get, key)
+                .map_err(|e| CredentialStoreError::Storage(e.to_string()))
+        },
+        move || {
+            delete_pref_raw(&app_for_delete, key)
+                .map_err(|e| CredentialStoreError::Storage(e.to_string()))
+        },
+    )
+}
+
+fn secret_blob_path<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf> {
+    let app_data = app
+        .path()
+        .app_data_dir()
+        .context("failed to resolve app data directory for encrypted secrets")?;
+    fs::create_dir_all(&app_data)?;
+    Ok(app_data.join(SECRET_BLOB_FILE))
+}
+
+fn lock_secret_blob_cache() -> Result<std::sync::MutexGuard<'static, Option<SecretBlobState>>> {
+    SECRET_BLOB_CACHE
+        .lock()
+        .map_err(|_| anyhow!("secret blob cache lock poisoned"))
+}
+
+fn read_or_create_data_key<R: Runtime>(
+    key_store: &KeychainStore<R>,
+    blob_exists: bool,
+) -> Result<[u8; 32]> {
+    match key_store.get().map_err(anyhow::Error::from)? {
+        Some(encoded) => decode_data_key(&encoded).map_err(anyhow::Error::from),
+        None if blob_exists => Err(anyhow!(
+            "encrypted secrets blob exists but the keychain data key is missing"
+        )),
+        None => {
+            let encoded = generate_encoded_data_key();
+            key_store.set(&encoded).map_err(anyhow::Error::from)?;
+            decode_data_key(&encoded).map_err(anyhow::Error::from)
+        }
+    }
+}
+
+fn read_secret_blob_state<R: Runtime>(
+    app: &AppHandle<R>,
+    blob_path: &Path,
+) -> Result<SecretBlobState> {
+    let blob_exists = blob_path.exists();
+    let data_key = read_or_create_data_key(&data_key_store_for(app), blob_exists)?;
+    let payload = if blob_exists {
+        let encrypted = fs::read_to_string(blob_path)
+            .with_context(|| format!("failed to read encrypted secrets blob at {blob_path:?}"))?;
+        decrypt_payload(&encrypted, &data_key).map_err(anyhow::Error::from)?
+    } else {
+        SecretBlobPayload::default()
+    };
+
+    Ok(SecretBlobState {
+        blob_path: blob_path.to_path_buf(),
+        data_key,
+        payload,
+    })
+}
+
+fn persist_secret_blob_state(state: &SecretBlobState) -> Result<()> {
+    if let Some(parent) = state.blob_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let encrypted =
+        encrypt_payload(&state.payload, &state.data_key).map_err(anyhow::Error::from)?;
+    let temp_path = state.blob_path.with_extension("json.tmp");
+    fs::write(&temp_path, format!("{encrypted}\n"))
+        .with_context(|| format!("failed to write encrypted secrets blob at {temp_path:?}"))?;
+    fs::rename(&temp_path, &state.blob_path).with_context(|| {
+        format!(
+            "failed to replace encrypted secrets blob at {:?}",
+            state.blob_path
+        )
+    })?;
+    Ok(())
+}
+
+struct LegacyMigration {
+    payload_changed: bool,
+    old_keychain_scan_complete: bool,
+}
+
+fn merge_legacy_secrets<R: Runtime>(
+    app: &AppHandle<R>,
+    payload: &mut SecretBlobPayload,
+) -> Result<LegacyMigration> {
+    if payload.legacy_keychain_migration_complete {
+        return Ok(LegacyMigration {
+            payload_changed: false,
+            old_keychain_scan_complete: true,
+        });
+    }
+
+    let mut payload_changed = false;
+    let mut old_keychain_scan_complete = true;
+    for &key in SECRET_PREF_KEYS {
+        if payload.secrets.contains_key(key) {
+            continue;
+        }
+        let old_keychain = keychain_store_for(app, key);
+        match old_keychain.get() {
+            Ok(Some(value)) => {
+                payload.secrets.insert(key.to_string(), value);
+                payload_changed = true;
+            }
+            Ok(None) => {}
+            Err(err) => {
+                old_keychain_scan_complete = false;
+                log::warn!(
+                    "Failed to inspect legacy per-key keychain item {} during secret blob migration: {}",
+                    key,
+                    err
+                );
+            }
+        }
+    }
+
+    for &key in SECRET_PREF_KEYS {
+        if payload.secrets.contains_key(key) {
+            continue;
+        }
+        let Some(value) = get_string_pref_raw(app, key)? else {
+            continue;
+        };
+        payload.secrets.insert(key.to_string(), value);
+        payload_changed = true;
+    }
+
+    Ok(LegacyMigration {
+        payload_changed,
+        old_keychain_scan_complete,
+    })
+}
+
+fn cleanup_legacy_secret_stores<R: Runtime>(app: &AppHandle<R>) -> bool {
+    let mut cleanup_complete = true;
+    for &key in SECRET_PREF_KEYS {
+        let legacy = legacy_settings_store(app, key);
+        if let Err(err) = legacy.delete() {
+            cleanup_complete = false;
+            log::warn!(
+                "Failed to remove legacy plaintext secret {} after blob migration: {}",
+                key,
+                err
+            );
+        }
+
+        let old_keychain = keychain_store_for(app, key);
+        if let Err(err) = old_keychain.delete() {
+            cleanup_complete = false;
+            log::warn!(
+                "Failed to remove legacy per-key keychain item {} after blob migration: {}",
+                key,
+                err
+            );
+        }
+    }
+    cleanup_complete
+}
+
+fn load_secret_blob_state<R: Runtime>(app: &AppHandle<R>) -> Result<SecretBlobState> {
+    let blob_path = secret_blob_path(app)?;
+    if let Some(cached) = lock_secret_blob_cache()?
+        .as_ref()
+        .filter(|state| state.blob_path == blob_path)
+        .cloned()
+    {
+        return Ok(cached);
+    }
+
+    let mut state = read_secret_blob_state(app, &blob_path)?;
+    let migration = merge_legacy_secrets(app, &mut state.payload)?;
+
+    if migration.payload_changed {
+        persist_secret_blob_state(&state)?;
+    }
+
+    if migration.old_keychain_scan_complete && cleanup_legacy_secret_stores(app) {
+        if !state.payload.legacy_keychain_migration_complete {
+            state.payload.legacy_keychain_migration_complete = true;
+            persist_secret_blob_state(&state)?;
+        }
+    }
+
+    *lock_secret_blob_cache()? = Some(state.clone());
+    Ok(state)
+}
+
+fn cache_secret_blob_state(state: SecretBlobState) -> Result<()> {
+    *lock_secret_blob_cache()? = Some(state);
+    Ok(())
+}
+
+pub fn clear_secret_blob_cache() -> Result<()> {
+    *lock_secret_blob_cache()? = None;
+    Ok(())
+}
+
+pub fn delete_secret_blob_file<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
+    let blob_path = secret_blob_path(app)?;
+    if blob_path.exists() {
+        fs::remove_file(&blob_path)
+            .with_context(|| format!("failed to remove encrypted secrets blob at {blob_path:?}"))?;
+    }
+    clear_secret_blob_cache()
+}
+
 fn get_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> Result<Option<String>> {
     if e2e_mock_system_enabled() {
         return get_string_pref_raw(app, key);
     }
 
-    let keychain = keychain_store_for(app, key);
-    keychain.get().map_err(anyhow::Error::from)
+    let state = load_secret_blob_state(app)?;
+    Ok(state.payload.secrets.get(key).cloned())
 }
 
 fn set_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str, value: &str) -> Result<()> {
@@ -483,8 +726,35 @@ fn set_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str, value: &st
         return set_string_pref(app, key, value);
     }
 
-    let keychain = keychain_store_for(app, key);
-    keychain.set(value).map_err(anyhow::Error::from)
+    let mut state = load_secret_blob_state(app)?;
+    state
+        .payload
+        .secrets
+        .insert(key.to_string(), value.to_string());
+    persist_secret_blob_state(&state)?;
+    cache_secret_blob_state(state)?;
+
+    let legacy = legacy_settings_store(app, key);
+    if let Err(err) = legacy.delete() {
+        log::warn!(
+            "Failed to remove legacy plaintext secret {} after blob write: {}",
+            key,
+            err
+        );
+    }
+    let old_keychain = keychain_store_for(app, key);
+    if let Err(err) = old_keychain.delete() {
+        log::warn!(
+            "Failed to remove legacy per-key keychain item {} after blob write: {}",
+            key,
+            err
+        );
+    }
+    Ok(())
+}
+
+fn get_usize_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<usize>> {
+    get_json_pref(app, key)
 }
 
 pub fn get_bool_pref<R: Runtime>(app: &AppHandle<R>, key: &str, default: bool) -> Result<bool> {
