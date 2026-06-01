@@ -17,7 +17,7 @@ import { DiffLineStatsBadge, sumDiffLineStats } from "./diff-line-stats";
 interface FullFileDiffEditorProps {
   filename: string;
   changes: ChangeWithRichType[];
-  contents?: FileDiffContents;
+  contents?: FileDiffContents | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -105,6 +105,10 @@ export function FullFileDiffEditor({ filename, changes, contents, isOpen, onOpen
         ) : (
           <DiffView contents={displayContents} filename={filename} onMount={handleMount} />
         )
+      ) : contents === null ? (
+        <div className="flex items-center justify-center py-8 text-muted-foreground text-xs">
+          Unable to load diff contents.
+        </div>
       ) : (
         <div className="flex items-center justify-center py-8 text-muted-foreground text-xs">
           Loading...
