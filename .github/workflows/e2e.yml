@@ -37,7 +37,7 @@ jobs:
   # --- Determine which scenarios to run ---
   resolve-scenarios:
     name: Resolve scenarios
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     outputs:
       scenarios: ${{ steps.resolve.outputs.scenarios }}
       branch: ${{ steps.ref.outputs.branch }}
@@ -77,7 +77,7 @@ jobs:
   e2e-test:
     name: "E2E: ${{ matrix.scenario }}"
     needs: resolve-scenarios
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 20
     # The MacInCloud host is a single shared mutable desktop. Serialize remote
     # E2E jobs across workflows; keep stale-run cancellation at workflow level.

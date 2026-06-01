@@ -13,7 +13,7 @@ concurrency:
 jobs:
   storybook-tests:
     name: Storybook Snapshot Tests
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 15
     permissions:
       contents: read
