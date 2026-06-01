@@ -41,6 +41,46 @@ interface EventItemProps {
   isLatest: boolean;
 }
 
+function parseTokenCount(value: string): number {
+  return Number.parseInt(value.replaceAll(",", ""), 10);
+}
+
+function getTokenProgress(events: EvolveEvent[]): { total: number; budget: number | null } | null {
+  let total = 0;
+  let budget: number | null = null;
+  let sawTokenEvent = false;
+
+  for (const event of events) {
+    if (event.eventType !== "apiResponse") {
+      continue;
+    }
+
+    const totalMatch = event.raw.match(/total tokens:\s*([\d,]+)\s*\/\s*([\d,]+)/i);
+    if (totalMatch) {
+      total = parseTokenCount(totalMatch[1]);
+      budget = parseTokenCount(totalMatch[2]);
+      sawTokenEvent = true;
+      continue;
+    }
+
+    const tokenMatch = event.raw.match(/tokens used:\s*([\d,]+)/i);
+    if (tokenMatch) {
+      total += parseTokenCount(tokenMatch[1]);
+      sawTokenEvent = true;
+    }
+  }
+
+  return sawTokenEvent ? { total, budget } : null;
+}
+
+function formatTokenProgress(progress: { total: number; budget: number | null }): string {
+  const total = progress.total.toLocaleString();
+  if (progress.budget === null) {
+    return `${total} tokens`;
+  }
+  return `${total} / ${progress.budget.toLocaleString()} tokens`;
+}
+
 // =============================================================================
 // Event Icon Mapping
 // =============================================================================
@@ -376,6 +416,7 @@ export function EvolveProgress({
   };
 
   const isAnalyzing = isGenerating && events[events.length - 1]?.eventType === "summarizing";
+  const tokenProgress = getTokenProgress(events);
 
   if (events.length === 0 && !isGenerating) {
     return null;
@@ -399,6 +440,11 @@ export function EvolveProgress({
           <span className="text-muted-foreground text-xs">
             {events.length} event{events.length !== 1 ? "s" : ""}
           </span>
+          {tokenProgress && (
+            <span className="rounded bg-muted/50 px-1.5 py-0.5 font-mono text-muted-foreground text-xs">
+              {formatTokenProgress(tokenProgress)}
+            </span>
+          )}
           {isGenerating && onStop && (
             <button
               className="flex items-center gap-1 rounded-md bg-red-500/20 px-2 py-1 text-red-400 text-xs transition-colors hover:bg-red-500/30"

@@ -59,6 +59,7 @@ const prefs = {
   evolveProvider: "openai",
   evolveModel: "gpt-5",
   maxIterations: 25,
+  maxTokenBudget: 50_000,
   maxBuildAttempts: 3,
   maxOutputTokens: 32768,
   sendDiagnostics: true,

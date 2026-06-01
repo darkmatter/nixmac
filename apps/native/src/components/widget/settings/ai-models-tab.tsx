@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
 import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/ai-provider-validation";
-import { DEFAULT_MAX_ITERATIONS, DEFAULT_MAX_OUTPUT_TOKENS } from "@/lib/constants";
+import { DEFAULT_MAX_OUTPUT_TOKENS, DEFAULT_MAX_TOKEN_BUDGET } from "@/lib/constants";
 import { tauriAPI } from "@/ipc/api";
 import type { CliToolsState } from "@/ipc/types";
 import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
@@ -26,7 +26,7 @@ interface AiModelsTabProps {
   // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
   summaryModelField: AnyFieldApi;
   // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
-  maxIterationsField: AnyFieldApi;
+  maxTokenBudgetField: AnyFieldApi;
   // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
   maxBuildAttemptsField: AnyFieldApi;
   // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
@@ -108,7 +108,7 @@ export function AiModelsTab({
   evolveModelField,
   summaryProviderField,
   summaryModelField,
-  maxIterationsField,
+  maxTokenBudgetField,
   maxBuildAttemptsField,
   maxOutputTokensField,
   form,
@@ -341,49 +341,50 @@ export function AiModelsTab({
           <div className="space-y-4 pt-4 border-t border-border">
             <h3 className="font-medium text-sm">Evolution Limits</h3>
             <p className="text-muted-foreground text-xs">
-              Control how long the AI will try before giving up
+              Control the token budget and build retry ceiling for each evolution
             </p>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <label
                     className="text-xs font-medium text-muted-foreground"
-                    htmlFor="maxIterations"
+                    htmlFor="maxTokenBudget"
                   >
-                    Max Iterations
+                    Token Budget
                   </label>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
                         type="button"
                         className="inline-flex h-4 w-4 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground/70"
-                        aria-label="Max iterations info"
+                        aria-label="Token budget info"
                       >
                         <Info className="h-3.5 w-3.5" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="right" className="max-w-xs text-xs">
-                      <p>API calls before stopping (default: {DEFAULT_MAX_ITERATIONS}).</p>
+                      <p>Provider-reported tokens before stopping (default: {DEFAULT_MAX_TOKEN_BUDGET.toLocaleString()}).</p>
                       <p className="mt-1">
                         Lower = faster/cheaper, may not finish complex changes.
                         <br />
-                        Higher = more thorough, uses more API calls.
+                        Higher = more thorough, uses more model tokens.
                       </p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
                 <Input
-                  id="maxIterations"
+                  id="maxTokenBudget"
                   type="number"
-                  min={10}
-                  max={200}
-                  value={maxIterationsField.state.value}
+                  min={1000}
+                  max={1_000_000}
+                  step={1000}
+                  value={maxTokenBudgetField.state.value}
                   onChange={async (e) => {
-                    const value = Number.parseInt(e.target.value, 10) || DEFAULT_MAX_ITERATIONS;
-                    maxIterationsField.handleChange(value);
-                    await tauriAPI.ui.setPrefs({ maxIterations: value });
+                    const value = Number.parseInt(e.target.value, 10) || DEFAULT_MAX_TOKEN_BUDGET;
+                    maxTokenBudgetField.handleChange(value);
+                    await tauriAPI.ui.setPrefs({ maxTokenBudget: value });
                   }}
-                  onBlur={maxIterationsField.handleBlur}
+                  onBlur={maxTokenBudgetField.handleBlur}
                 />
               </div>
               <div className="space-y-2">
