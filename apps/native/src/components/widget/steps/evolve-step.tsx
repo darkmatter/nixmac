@@ -27,7 +27,7 @@ export function EvolveStep() {
           className="text-muted-foreground hover:text-foreground"
           confirmPrefKey="confirmClear"
           onConfirm={handleRollback}
-          message="Discard all current changes?"
+          message="Discard these changes? Your Nix config will not be modified."
           color="amber"
           data-testid="evolve-discard-button"
         >
