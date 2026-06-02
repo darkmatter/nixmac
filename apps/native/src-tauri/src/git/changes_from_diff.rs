@@ -1,12 +1,4 @@
-//! Parses a unified diff into per-hunk [`Change`] structs.
-//!
-//! Each file × hunk pair becomes one [`Change`]. The hash is deterministic:
-//! `SHA-256(filename \0 full_hunk_text)` computed before truncation, so
-//! identical changes across commits are naturally deduplicated even when the
-//! stored `diff` excerpt is the same for two distinct hunks.
-//!
-//! `Change.diff` is capped at [`DIFF_EXCERPT_LINES`] for storage/display.
-//! `Change.line_count` preserves the full hunk size.
+//! Profiles diff hash helpers and utilities for building the `Change` records used in summarization.
 
 use crate::sqlite_types::Change;
 /// Characters retained when hashes are shortened for model prompts.

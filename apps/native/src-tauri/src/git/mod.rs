@@ -30,14 +30,24 @@ pub struct FileDiff {
     pub line_count: i64,
 }
 
-pub fn is_sensitive_or_opaque(filename: &str, is_binary: bool) -> bool {
+/// Heuristic to determine if a file diff is sensitive or opaque, and thus should be hidden from summaries and diff displays.
+/// This is not perfect but aims to catch common cases like lockfiles, secrets, large binary blobs, and minified files.
+///
+/// Specific things to look for:
+/// - Filenames that suggest secrets (e.g. containing "secret" or ending with .token)
+/// - Filenames that suggest lockfiles (e.g. ending with .lock or specific known lockfile names)
+/// - Filenames that suggest minified files (e.g. ending with .min.js or .js.map)
+/// - Diffs that contain PEM blocks (e.g. "-----BEGIN RSA PRIVATE KEY-----")
+/// - Diffs that contain SOPS encrypted values (e.g. "ENC[")
+/// - Diffs that are very long and look like base64-encoded blobs
+pub fn is_sensitive_or_opaque(filename: &str, diff: &str, is_binary: bool) -> bool {
     if is_binary {
         return true;
     }
 
     let basename = filename.rsplit('/').next().unwrap_or(filename);
 
-    // Lock files
+    // locks
     if filename.ends_with(".lock")
         || filename.ends_with(".lockb")
         || matches!(
@@ -48,7 +58,7 @@ pub fn is_sensitive_or_opaque(filename: &str, is_binary: bool) -> bool {
         return true;
     }
 
-    // Credentials / secrets
+    // secrets
     if filename.ends_with(".token")
         || filename.ends_with(".age")
         || filename.starts_with("secrets/")
@@ -57,7 +67,7 @@ pub fn is_sensitive_or_opaque(filename: &str, is_binary: bool) -> bool {
         return true;
     }
 
-    // Source maps / minified artifacts
+    // maps / minified
     if filename.ends_with(".js.map")
         || filename.ends_with(".ts.map")
         || filename.ends_with(".min.js")
@@ -66,17 +76,31 @@ pub fn is_sensitive_or_opaque(filename: &str, is_binary: bool) -> bool {
         return true;
     }
 
-    // Raycast extensions
+    // raycast
     if filename.contains("/raycast/extensions/") {
         return true;
     }
 
-    false
-}
+    // PEM / keys
+    if diff.contains("-----BEGIN ") {
+        return true;
+    }
 
-fn is_sensitive_or_opaque_delta(delta: &git2::DiffDelta, filename: &str) -> bool {
-    let is_binary = delta.flags().contains(git2::DiffFlags::BINARY);
-    is_sensitive_or_opaque(filename, is_binary)
+    // SOPS
+    if diff.contains("ENC[") {
+        return true;
+    }
+
+    // opaque blobs
+    diff.lines().any(|line| {
+        let stripped = line.trim_start_matches(['+', '-', ' ']);
+        stripped.len() > 200
+            && stripped.chars().all(|c| {
+                matches!(c,
+                    'A'..='Z' | 'a'..='z' | '0'..='9' | '+' | '/' | '=' | '\r'
+                )
+            })
+    })
 }
 
 pub fn file_diff_to_change(diff: FileDiff, created_at: i64, should_truncate: bool) -> Change {
@@ -166,21 +190,41 @@ mod tests {
 
     #[test]
     fn detects_lock_files() {
-        assert!(is_sensitive_or_opaque("package-lock.json", false));
+        assert!(is_sensitive_or_opaque("package-lock.json", "", false));
     }
 
     #[test]
     fn detects_secrets() {
-        assert!(is_sensitive_or_opaque("secrets/api.token", false));
+        assert!(is_sensitive_or_opaque("secrets/api.token", "", false));
     }
 
     #[test]
     fn detects_binary() {
-        assert!(is_sensitive_or_opaque("image.png", true));
+        assert!(is_sensitive_or_opaque("image.png", "", true));
     }
 
     #[test]
     fn allows_normal_files() {
-        assert!(!is_sensitive_or_opaque("src/lib.rs", false));
+        assert!(!is_sensitive_or_opaque("src/lib.rs", "", false));
+    }
+
+    #[test]
+    fn detects_pem() {
+        let diff = "diff --git a/secret.pem b/secret.pem\nindex e3b0c4..d1e8f7 100644\n--- a/secret.pem\n+++ b/secret.pem\n@@ -0,0 +1,5 @@\n+-----BEGIN RSA PRIVATE KEY-----\n+MIIEogIBAAKCAQEA...\n+-----END RSA PRIVATE KEY-----";
+        assert!(is_sensitive_or_opaque("secret.pem", diff, false));
+    }
+
+    #[test]
+    fn detects_sops() {
+        let diff = "diff --git a/config.enc.yaml b/config.enc.yaml\nindex e3b0c4..d1e8f7 100644\n--- a/config.enc.yaml\n+++ b/config.enc.yaml\n@@ -0,0 +1,5 @@\n+apiVersion: v1\n+kind: Secret\n+metadata:\n+  name: mysecret\n+data:\n+  config.yaml: ENC[AES256_GCM,data:...]";
+        assert!(is_sensitive_or_opaque("config.enc.yaml", diff, false));
+    }
+
+    #[test]
+    fn detects_long_base64_blob() {
+        let blob = "A".repeat(250);
+        let diff = format!("+{}", blob);
+
+        assert!(is_sensitive_or_opaque("foo.txt", &diff, false));
     }
 }

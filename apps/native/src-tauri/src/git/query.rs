@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use tauri::AppHandle;
 
 use crate::{
-    git::{file_diff_to_change, init::require_repo, FileDiff},
+    git::{file_diff_to_change, init::require_repo, is_sensitive_or_opaque, FileDiff},
     shared_types::{ChangeType, GitFileStatus, GitStatus},
 };
 
@@ -13,6 +13,7 @@ use crate::{
 struct FileState {
     diff: String,
     line_count: i64,
+    is_binary: bool,
     last_hunk_key: Option<(usize, usize)>,
 }
 
@@ -194,7 +195,7 @@ pub fn read_tags(dir: &str, hash: &str) -> Vec<String> {
 /// the structured list of changes for summarization and the full diff string for clients that need it.
 pub fn status(dir: &str) -> Result<GitStatus> {
     require_repo(dir)?;
-    let repo = git2::Repository::open(dir)?;
+    let repo = git2::Repository::discover(dir)?;
 
     let branch = super::current_branch(dir);
 
@@ -216,9 +217,11 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     // ------------------------------------------------------------
     let mut diff_opts = default_diff_opts();
     let diff = repo.diff_tree_to_workdir_with_index(head_tree.as_ref(), Some(&mut diff_opts))?;
+    let stats = diff.stats()?;
 
-    let mut additions = 0;
-    let mut deletions = 0;
+    let additions = stats.insertions();
+    let deletions = stats.deletions();
+
     let mut files = Vec::new();
 
     // ------------------------------------------------------------
@@ -238,16 +241,6 @@ pub fn status(dir: &str) -> Result<GitStatus> {
                 path,
                 change_type: map_change_type(delta.status()),
             });
-
-            match delta.status() {
-                git2::Delta::Added => additions += 1,
-                git2::Delta::Deleted => deletions += 1,
-                git2::Delta::Modified => {
-                    additions += 1;
-                    deletions += 1;
-                }
-                _ => {}
-            }
 
             true
         },
@@ -303,7 +296,7 @@ pub fn cache_status<R: tauri::Runtime>(app: &AppHandle<R>, status: &GitStatus) -
 
 /// Gets the FileDiffs that represent the evolution results between two commits.
 pub fn commit_diff(dir: &str, parent_hash: &str, commit_hash: &str) -> Result<Vec<FileDiff>> {
-    let repo = Repository::open(dir)?;
+    let repo = Repository::discover(dir)?;
 
     let parent = repo.find_commit(Oid::from_str(parent_hash)?)?;
     let commit = repo.find_commit(Oid::from_str(commit_hash)?)?;
@@ -341,16 +334,6 @@ fn run_diff_engine(diff: git2::Diff) -> Result<Vec<FileDiff>> {
                 .path()
                 .map(|p| p.to_string_lossy().into_owned());
 
-            let filename = new_path
-                .as_deref()
-                .or(old_path.as_deref())
-                .unwrap_or("")
-                .to_string();
-
-            if crate::git::is_sensitive_or_opaque_delta(&delta, &filename) {
-                return true;
-            }
-
             files.push(FileDiff {
                 old_path: old_path.clone(),
                 new_path: new_path.clone(),
@@ -381,6 +364,7 @@ fn run_diff_engine(diff: git2::Diff) -> Result<Vec<FileDiff>> {
             diff: String::new(),
             line_count: 0,
             last_hunk_key: None,
+            is_binary: delta.flags().contains(git2::DiffFlags::BINARY),
         });
 
         let content = std::str::from_utf8(line.content()).unwrap_or_default();
@@ -429,10 +413,12 @@ fn run_diff_engine(diff: git2::Diff) -> Result<Vec<FileDiff>> {
     })?;
 
     // -------------------------
-    // 3. Merge pass
+    // 3. Merge and filter-sensitive files pass
     // Now merge the structured delta info with the patch text and line counts to produce final FileDiffs.
     // -------------------------
-    for f in &mut files {
+    let mut result = Vec::new();
+
+    for f in files {
         let key = f
             .new_path
             .as_deref()
@@ -440,12 +426,20 @@ fn run_diff_engine(diff: git2::Diff) -> Result<Vec<FileDiff>> {
             .unwrap_or("");
 
         if let Some(s) = state.remove(key) {
-            f.diff = s.diff;
-            f.line_count = s.line_count;
+            if is_sensitive_or_opaque(key, &s.diff, s.is_binary) {
+                continue;
+            }
+
+            result.push(FileDiff {
+                old_path: f.old_path,
+                new_path: f.new_path,
+                diff: s.diff,
+                line_count: s.line_count,
+            });
         }
     }
 
-    Ok(files)
+    Ok(result)
 }
 
 #[cfg(test)]
