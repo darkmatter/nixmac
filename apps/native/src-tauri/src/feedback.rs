@@ -4,10 +4,11 @@
 //! from the frontend.
 //! All collection respects the ShareOptions flags provided by the user.
 
+use crate::git::status;
 use crate::shared_types::Evolution;
 use crate::storage::store;
 use crate::system::{nix, secret_scanner};
-use crate::{git, types};
+use crate::types;
 use anyhow::{Context, Result};
 use chrono::Utc;
 use log::{debug, warn};
@@ -275,17 +276,35 @@ pub fn gather_ai_provider_model_info(
     })
 }
 
-/// Gather a git diff containing only .nix file changes (including untracked).
+/// Gets a diff containing only .nix files (including untracked .nix files).
+fn get_nix_diff(dir: &str) -> Result<String> {
+    let status = status(dir)?;
+
+    Ok(status
+        .changes
+        .iter()
+        .filter(|c| c.filename.ends_with(".nix"))
+        .map(|c| {
+            format!(
+                "file: {}\nlines: {}\ndiff:\n{}\n\n",
+                c.filename, c.line_count, c.diff
+            )
+        })
+        .collect::<String>())
+}
+
+/// Gather a diff-like summary containing only .nix file changes (including untracked).
 ///
-/// Note: this depends on git status/diff; it will be empty when there are no
-/// changes, or if the repo hasn't been initialized.
-pub fn gather_changed_nix_files_diff(app: &AppHandle) -> Option<String> {
+/// Note: this is assembled from the structured git status change list; it is not a raw `git diff` patch.
+/// It will be empty when there are no changes, or if the repo hasn't been initialized.
     let config_dir = store::get_config_dir(app).ok()?;
-    let diff = git::get_nix_diff(&config_dir).ok()?;
+    let diff = get_nix_diff(&config_dir).ok()?;
     if diff.trim().is_empty() {
         None
     } else {
-        // Will be redacted in gather_metadata
+        // The status diff is already somewhat scrubbed for sensitive files by
+        // the changelist system, but for this purpose the diff will be further
+        // redacted by gather_metadata
         Some(diff)
     }
 }
@@ -742,9 +761,17 @@ pub fn gather_metadata(
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
     use super::{redact_metadata_with_scanner, types};
-    use crate::{shared_types::Evolution, system::secret_scanner::SecretScanner};
+    use crate::{
+        feedback::get_nix_diff,
+        git::{commit_all, init::init_repo},
+        shared_types::Evolution,
+        system::secret_scanner::SecretScanner,
+    };
     use serde_json::json;
+    use tempfile::TempDir;
 
     fn test_scanner() -> SecretScanner {
         let toml = r#"
@@ -924,5 +951,70 @@ regex = "token=([A-Za-z0-9]+)"
         std::env::set_var("VITE_SERVER_URL", "");
         std::env::set_var("SUBMITTED_FEEDBACK_DSN", "");
         assert!(super::get_feedback_url().is_err());
+    }
+
+    #[test]
+    fn test_get_nix_diff_includes_tracked_nix() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+
+        // Now make a change to the tracked flake.nix file
+        fs::write(repo_dir.join("flake.nix"), "{ changed = true; }").unwrap();
+
+        let diff = get_nix_diff(&repo_dir_str).unwrap();
+        assert!(
+            diff.contains("flake.nix"),
+            "tracked .nix file should appear in diff"
+        );
+    }
+
+    #[test]
+    fn test_get_nix_diff_excludes_non_nix_untracked() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+
+        // Make some changes.
+        fs::write(repo_dir.join("config.nix"), "{ }").unwrap();
+        fs::write(repo_dir.join("readme.txt"), "hello").unwrap();
+
+        let diff = get_nix_diff(&repo_dir_str).unwrap();
+
+        assert!(
+            diff.contains("config.nix"),
+            ".nix untracked file should appear"
+        );
+        assert!(
+            !diff.contains("readme.txt"),
+            "non-.nix file should be excluded"
+        );
+    }
+
+    #[test]
+    fn test_get_nix_diff_excludes_gitignored_nix_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join(".gitignore"), "secret.nix\n").unwrap();
+        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+        fs::write(repo_dir.join("secret.nix"), "{ password = \"123\"; }").unwrap();
+
+        let diff = get_nix_diff(&repo_dir_str).unwrap();
+        assert!(
+            !diff.contains("secret.nix"),
+            "gitignored .nix file must not appear in diff"
+        );
     }
 }
