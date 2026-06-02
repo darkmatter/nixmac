@@ -1,7 +1,8 @@
 "use client";
 
-import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
+import { useViewModel } from "@/stores/view-model";
+import { mirrorEvolveState } from "@/viewmodel/evolve";
 import { useState } from "react";
 import { GitStatusDebug } from "@/components/widget/layout/git-status-debug";
 
@@ -9,7 +10,7 @@ import { GitStatusDebug } from "@/components/widget/layout/git-status-debug";
  * Debug overlay for development - shows current widget state
  */
 export function DebugOverlay() {
-  const evolveState = useWidgetStore((s) => s.evolveState);
+  const evolveState = useViewModel((s) => s.evolve);
   const [visible, setVisible] = useState(true);
 
   if (!visible) {
@@ -47,7 +48,7 @@ export function DebugOverlay() {
       </div>
       <button
         className="pointer-events-auto rounded bg-black/80 px-2 py-1 font-mono text-xs text-rose-400/60 hover:text-rose-400"
-        onClick={() => tauriAPI.evolveState.clear().then((s) => useWidgetStore.getState().setEvolveState(s))}
+        onClick={() => tauriAPI.evolveState.clear().then(mirrorEvolveState)}
         style={{ backdropFilter: "blur(4px)" }}
         type="button"
       >

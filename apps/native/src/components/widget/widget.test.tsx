@@ -1,3 +1,4 @@
+import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -63,7 +64,7 @@ describe("DarwinWidget", () => {
     store.setConfigDir("/Users/test/nixmac");
     store.setHosts(["Test-MacBook"]);
     store.setHost("Test-MacBook");
-    store.setGitStatus(null);
+    useViewModel.setState({ git: null });
     store.setEvolvePrompt("");
     store.setProcessing(false);
     store.setGenerating(false);
@@ -87,16 +88,17 @@ describe("DarwinWidget", () => {
   });
 
   it("renders evolving step with git changes", () => {
-    const store = useWidgetStore.getState();
-    store.setGitStatus({
-      files: [{ path: "test.nix", changeType: "edited" }],
-      branch: null,
-      diff: "",
-      additions: 0,
-      deletions: 0,
-      headCommitHash: null,
-      cleanHead: false,
-      changes: [],
+    useViewModel.setState({
+      git: {
+        files: [{ path: "test.nix", changeType: "edited" }],
+        branch: null,
+        diff: "",
+        additions: 0,
+        deletions: 0,
+        headCommitHash: null,
+        cleanHead: false,
+        changes: [],
+      },
     });
 
     const { container } = render(<DarwinWidget />);

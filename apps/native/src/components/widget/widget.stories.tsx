@@ -1,6 +1,7 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
 import type { EvolveEvent, GitStatus } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { SemanticChangeMap } from "@/ipc/types";
 import type React from "react";
@@ -222,8 +223,8 @@ function StoryWidget({ storeState }: { storeState?: StoreState }) {
     if (storeState?.configDir !== undefined) store.setConfigDir(storeState.configDir);
     if (storeState?.hosts !== undefined) store.setHosts(storeState.hosts);
     if (storeState?.host !== undefined) store.setHost(storeState.host);
-    if (storeState?.gitStatus !== undefined) store.setGitStatus(storeState.gitStatus);
-    if (storeState?.changeMap !== undefined) store.setChangeMap(storeState.changeMap);
+    if (storeState?.gitStatus !== undefined) useViewModel.setState({ git: storeState.gitStatus });
+    if (storeState?.changeMap !== undefined) useViewModel.setState({ changeMap: storeState.changeMap });
     if (storeState?.evolvePrompt !== undefined) store.setEvolvePrompt(storeState.evolvePrompt);
     if (storeState?.isProcessing !== undefined)
       store.setProcessing(storeState.isProcessing, storeState.processingAction || null);
@@ -658,4 +659,3 @@ export const OnboardingWithPermissions = meta.story({
     ),
   ],
 });
-

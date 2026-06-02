@@ -1,5 +1,6 @@
 import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
+import { mirrorEvolveState } from "@/viewmodel/evolve";
 
 
 type Config = {
@@ -24,7 +25,7 @@ export async function loadConfig() {
 export async function loadEvolveState() {
   try {
     const evolveState = await tauriAPI.evolveState.get();
-    useWidgetStore.getState().setEvolveState(evolveState);
+    mirrorEvolveState(evolveState);
   } catch {
     // Non-fatal — evolve state defaults to Begin if unavailable.
   }

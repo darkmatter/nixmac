@@ -1,7 +1,7 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
 import type { EvolveState } from "@/stores/widget-store";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 import { fn } from "storybook/test";
 import { useEffect } from "react";
 import { ExternalBuildDetected } from "@/components/widget/notifications/external-build-detected";
@@ -47,9 +47,13 @@ function setup({
   evolveState: EvolveState | null;
 }) {
   useEffect(() => {
-    const store = useWidgetStore.getState();
-    store.setExternalBuildDetected(externalBuildDetected);
-    store.setEvolveState(evolveState);
+    useViewModel.setState((state) => ({
+      evolve: evolveState,
+      build: {
+        ...state.build,
+        externalBuildDetected,
+      },
+    }));
   }, [externalBuildDetected, evolveState]);
 
   return (

@@ -14,6 +14,7 @@ import { PromptHistoryBadge } from "@/components/widget/promptinput/prompt-histo
 import { SystemDefaultsCTA } from "@/components/widget/promptinput/system-defaults-cta";
 import { useEvolve } from "@/hooks/use-evolve";
 import { getProviderConfigInvalidReason } from "@/lib/ai-provider-validation";
+import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 import { ArrowUpIcon } from "lucide-react";
@@ -29,8 +30,8 @@ export function PromptInput() {
   const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
   const isProcessing = useWidgetStore((s) => s.isProcessing);
   const processingAction = useWidgetStore((s) => s.processingAction);
-  const evolveState = useWidgetStore((s) => s.evolveState);
-  const gitStatus = useWidgetStore((s) => s.gitStatus);
+  const evolveState = useViewModel((s) => s.evolve);
+  const gitStatus = useViewModel((s) => s.git);
   const settingsOpen = useWidgetStore((s) => s.settingsOpen);
   const setSettingsOpen = useWidgetStore((s) => s.setSettingsOpen);
   const { handleEvolve, evolveFromManual } = useEvolve();
