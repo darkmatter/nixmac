@@ -327,7 +327,16 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                     .plugin(tauri_plugin_store::Builder::default().build())
                     .plugin(tauri_plugin_keyring::init())
                     .invoke_handler(tauri::generate_handler![])
-                    .setup(|_app| Ok(()))
+                    .setup(|app| {
+                        app.manage(state::preferences::load_global_slice(app.handle())?);
+                        app.manage(evolve::config::load_slice(app.handle())?);
+                        evolve::config::register_slice_config(
+                            &app.state::<state::slice::SliceRegistry>(),
+                        )?;
+                        app.manage(state::evolve_state::load_slice(app.handle())?);
+                        app.manage(summarize::queue_summarizer::start_worker(app.handle())?);
+                        Ok(())
+                    })
                     .build(context)
                 {
                     Ok(app) => app,
@@ -464,6 +473,9 @@ fn run_gui_mode(
         .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_upload::init())
         .plugin(tauri_plugin_macos_permissions::init())
+        // Configurable slices register here during setup so dev settings
+        // commands can update typed state without opening store files directly.
+        .manage(state::slice::SliceRegistry::default())
         .invoke_handler(tauri::generate_handler![
             // Configuration
             commands::config::config_get,
@@ -527,6 +539,12 @@ fn run_gui_mode(
             // UI preferences
             commands::ui_prefs::ui_get_prefs,
             commands::ui_prefs::ui_set_prefs,
+            // Settings backup/restore (developer-mode only)
+            commands::settings_io::settings_export,
+            commands::settings_io::settings_import,
+            // Configurable registry (auto-UI for dev settings)
+            commands::dev_configs::dev_configs_list,
+            commands::dev_configs::dev_config_set,
             // Model cache
             commands::ui_prefs::get_cached_models,
             commands::ui_prefs::set_cached_models,
@@ -572,6 +590,12 @@ fn run_gui_mode(
 
             // Set up panic handler to catch crashes and show feedback dialog
             panic_handler::setup_panic_hook(handle.clone());
+
+            app.manage(state::preferences::load_global_slice(handle)?);
+            app.manage(evolve::config::load_slice(handle)?);
+            evolve::config::register_slice_config(&app.state::<state::slice::SliceRegistry>())?;
+            app.manage(state::evolve_state::load_slice(handle)?);
+            app.manage(summarize::queue_summarizer::start_worker(handle)?);
 
             // Initialize SQLite database
             let db_handle = handle.clone();
@@ -694,9 +718,9 @@ fn run_gui_mode(
             let initial_width = 800.0;
             let initial_height = 800.0;
             let min_width = 400.0;
-            let max_width = 1000.0;
+            let max_width = 2000.0;
             let min_height = 400.0;
-            let max_height = 900.0;
+            let max_height = 1800.0;
             let e2e_opaque_window = e2e_opaque_window_enabled();
             let e2e_solid_capture = e2e_solid_capture_enabled();
             let e2e_css_capture = e2e_solid_capture || e2e_opaque_window;

@@ -10,9 +10,7 @@ use tauri_plugin_dialog::DialogExt;
 #[tauri::command]
 pub async fn config_get(app: AppHandle) -> Result<types::Config, String> {
     let config_dir = store::get_config_dir(&app).map_err(|e| capture_err("config_get", e))?;
-    let host_attr = store::get_host_attr(&app)
-        .map_err(|e| capture_err("config_get", e))?
-        .or_else(store::read_host_attr_from_file);
+    let host_attr = store::get_host_attr(&app).map_err(|e| capture_err("config_get", e))?;
 
     Ok(types::Config {
         config_dir,
