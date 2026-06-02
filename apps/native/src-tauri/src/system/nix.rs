@@ -234,7 +234,8 @@ pub fn install_nix_stream(app: &AppHandle) -> Result<()> {
     Ok(())
 }
 
-const DETERMINATE_PKG_URL: &str = "https://install.determinate.systems/determinate-pkg/stable/Universal";
+const DETERMINATE_PKG_URL: &str =
+    "https://install.determinate.systems/determinate-pkg/stable/Universal";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct NixPkgInstaller {
@@ -258,7 +259,10 @@ fn nix_pkg_installer_for_arch(arch: &str) -> Result<NixPkgInstaller> {
             url: DETERMINATE_PKG_URL,
             file_name: "Determinate Nix x86_64-darwin.pkg",
         }),
-        other => anyhow::bail!("Unsupported macOS architecture for Nix installer: {}", other),
+        other => anyhow::bail!(
+            "Unsupported macOS architecture for Nix installer: {}",
+            other
+        ),
     }
 }
 
@@ -304,7 +308,9 @@ fn run_pkg_installer(pkg_path: &Path) -> Result<PkgInstallResult> {
     let output = Command::new("osascript")
         .args(["-e", &osascript_cmd])
         .output()
-        .map_err(|e| anyhow::anyhow!("Failed to run macOS installer authorization prompt: {}", e))?;
+        .map_err(|e| {
+            anyhow::anyhow!("Failed to run macOS installer authorization prompt: {}", e)
+        })?;
 
     Ok(PkgInstallResult {
         success: output.status.success(),
@@ -483,7 +489,10 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
         };
 
         // Run the .pkg with macOS native administrator authentication (Touch ID / admin dialog).
-        info!("[nix] Installing .pkg for {}: {:?}", installer.platform, pkg_path);
+        info!(
+            "[nix] Installing .pkg for {}: {:?}",
+            installer.platform, pkg_path
+        );
         let _ = app.emit(
             "nix:install:progress",
             serde_json::json!({ "phase": "waiting-for-installer" }),
