@@ -108,7 +108,7 @@ pub async fn finalize_managed_edit(
 
     let change_map = summarize::group_existing::from_change_sets(change_sets);
     let git_status =
-        git::status_and_cache(&context.dir, app).context("Failed to get git status")?;
+        git::query::status_and_cache(&context.dir, app).context("Failed to get git status")?;
 
     Ok(shared_types::ConfigEditApplyResult {
         ok: true,
