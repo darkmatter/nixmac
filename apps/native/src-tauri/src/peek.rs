@@ -517,6 +517,9 @@ pub fn create_preview_indicator_window<R: Runtime>(app: &AppHandle<R>) -> Result
     .build()
     .map_err(|e| e.to_string())?;
 
+    #[cfg(not(target_os = "macos"))]
+    let _ = &window;
+
     // Disable shadow and set as utility panel (prevents grouping with main window)
     #[cfg(target_os = "macos")]
     {

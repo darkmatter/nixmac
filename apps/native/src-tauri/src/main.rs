@@ -729,6 +729,11 @@ fn run_gui_mode(
                     .visible(true)
                     .always_on_top(false)
                     .visible_on_all_workspaces(true)
+                    .title_bar_style(if e2e_opaque_window {
+                        tauri::TitleBarStyle::Visible
+                    } else {
+                        tauri::TitleBarStyle::Overlay
+                    })
                     .on_page_load(move |window, payload| {
                         log::debug!(
                             "main webview page load {:?}: {}",
@@ -754,13 +759,7 @@ fn run_gui_mode(
 
             #[cfg(target_os = "macos")]
             {
-                main_window_builder = main_window_builder
-                    .hidden_title(!e2e_opaque_window)
-                    .title_bar_style(if e2e_opaque_window {
-                        tauri::TitleBarStyle::Visible
-                    } else {
-                        tauri::TitleBarStyle::Overlay
-                    });
+                main_window_builder = main_window_builder.hidden_title(!e2e_opaque_window);
             }
 
             if e2e_opaque_window {
@@ -865,7 +864,7 @@ fn run_gui_mode(
             main_window.on_window_event(move |event| {
                 if let WindowEvent::Focused(focused) = event {
                     if let Ok(config_dir) = store::get_config_dir(&handle_for_focus) {
-                        let interval_ms = if *focused { 2500 } else { 15000 };
+                        let interval_ms = if focused { 2500 } else { 15000 };
                         watcher::start_watching(handle_for_focus.clone(), config_dir, interval_ms);
                     }
                 }
@@ -909,9 +908,9 @@ fn run_gui_mode(
                 }
             }
 
-            // Click Nixmac icon to show
             #[cfg(target_os = "macos")]
             {
+                // Click Nixmac icon to show
                 if let RunEvent::Reopen { .. } = &event {
                     if let Some(window) = app_handle.get_webview_window("main") {
                         // fire-and-forget: show/set_focus fail only on destroyed window.
