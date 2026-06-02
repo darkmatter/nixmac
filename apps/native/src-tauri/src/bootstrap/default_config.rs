@@ -204,6 +204,17 @@ pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
         return Ok(());
     }
 
+    // Safety check: only proceed if directory is empty or git-only.
+    // This prevents accidentally overwriting an existing non-empty directory.
+    if !is_dir_safe_for_bootstrap(dest_path)
+        .map_err(|e| format!("Failed to check bootstrap safety: {}", e))?
+    {
+        return Err(format!(
+            "Target directory '{}' is not empty. Remove existing files before bootstrapping.",
+            dest_path.display()
+        ));
+    }
+
     let platform = detect_darwin_platform();
     let username = std::env::var("USER").unwrap_or_else(|_| "unknown".to_string());
     let template_path = resolve_template_path(app)?;
