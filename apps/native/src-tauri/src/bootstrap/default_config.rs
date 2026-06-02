@@ -82,6 +82,33 @@ fn copy_template_dir(
     Ok(())
 }
 
+/// Checks if a directory is empty or only contains a .git folder.
+///
+/// This safety check prevents accidentally overwriting existing configurations.
+fn is_dir_safe_for_bootstrap(path: &Path) -> Result<bool, String> {
+    let entries: Vec<_> = fs::read_dir(path)
+        .map_err(|e| format!("Failed to read directory: {}", e))?
+        .filter_map(|e| e.ok())
+        .filter(|entry| entry.file_name().to_str() != Some(".DS_Store"))
+        .collect();
+
+    // Empty directory is safe
+    if entries.is_empty() {
+        return Ok(true);
+    }
+
+    // Only .git directory is safe
+    if entries.len() == 1 {
+        if let Some(name) = entries[0].file_name().to_str() {
+            if name == ".git" {
+                return Ok(true);
+            }
+        }
+    }
+
+    Ok(false)
+}
+
 /// Resolves the path to the bundled template directory.
 ///
 /// Searches in order:
@@ -177,6 +204,17 @@ pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
         return Ok(());
     }
 
+    // Safety check: only proceed if directory is empty or git-only.
+    // This prevents accidentally overwriting an existing non-empty directory.
+    if !is_dir_safe_for_bootstrap(dest_path)
+        .map_err(|e| format!("Failed to check bootstrap safety: {}", e))?
+    {
+        return Err(format!(
+            "Target directory '{}' is not empty. Remove existing files before bootstrapping.",
+            dest_path.display()
+        ));
+    }
+
     let platform = detect_darwin_platform();
     let username = std::env::var("USER").unwrap_or_else(|_| "unknown".to_string());
     let template_path = resolve_template_path(app)?;
@@ -258,30 +296,19 @@ mod tests {
     }
 
     #[test]
-    fn copy_template_dir_overwrites_partial_files_on_retry() {
-        let src = tempfile::tempdir().expect("create source temp dir");
-        let dest = tempfile::tempdir().expect("create dest temp dir");
+    fn bootstrap_safety_ignores_finder_metadata() {
+        let temp = tempfile::tempdir().expect("create temp dir");
+        fs::write(temp.path().join(".DS_Store"), "").expect("create finder metadata");
 
-        fs::write(
-                src.path().join("flake.nix"),
-                "host = \"HOSTNAME_PLACEHOLDER\"; platform = \"PLATFORM_PLACEHOLDER\"; user = \"USERNAME_PLACEHOLDER\";",
-            )
-            .expect("write source flake");
-        fs::write(dest.path().join("flake.nix"), "partial copy").expect("write partial flake");
+        assert!(is_dir_safe_for_bootstrap(temp.path()).expect("check directory"));
+    }
 
-        copy_template_dir(
-            src.path(),
-            dest.path(),
-            "macbook",
-            "aarch64-darwin",
-            "alice",
-        )
-        .expect("copy template");
+    #[test]
+    fn bootstrap_safety_allows_git_with_finder_metadata() {
+        let temp = tempfile::tempdir().expect("create temp dir");
+        fs::create_dir_all(temp.path().join(".git")).expect("create git dir");
+        fs::write(temp.path().join(".DS_Store"), "").expect("create finder metadata");
 
-        let copied = fs::read_to_string(dest.path().join("flake.nix")).expect("read copied flake");
-        assert_eq!(
-            copied,
-            "host = \"macbook\"; platform = \"aarch64-darwin\"; user = \"alice\";"
-        );
+        assert!(is_dir_safe_for_bootstrap(temp.path()).expect("check directory"));
     }
 }

@@ -2,6 +2,7 @@
 
 mod age;
 mod chat_memory;
+mod config;
 mod config_dir_context;
 pub(crate) mod edit_nix_file;
 mod ensure_secret;
@@ -318,7 +319,6 @@ fn log_api_error(
 // Use OpenRouter with Claude for evolution - better reasoning without strict content policies
 const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
-const DEFAULT_MAX_BUILD_ATTEMPTS: usize = 5;
 
 // Percentage of max_iterations after which we require at least one edit/build_check.
 // Example: with max_iterations=50 and this set to 75, threshold is 37 iterations.
@@ -644,14 +644,17 @@ pub async fn generate_evolution<R: Runtime>(
         EvolveEvent::info(start_time, None, &format!("Target host: {}", host_attr)),
     );
 
-    // Read configurable limits from store
-    let max_iterations = store::get_max_iterations(app).unwrap_or(store::DEFAULT_MAX_ITERATIONS);
+    // Read configurable limits from store (hot-reloaded on every run).
+    let config::EvolutionLimits {
+        max_iterations,
+        max_build_attempts,
+    } = config::EvolutionLimits::load(app)
+        .inspect_err(|e| warn!("EvolutionLimits::load failed ({e}); using defaults"))
+        .unwrap_or_default();
     let max_iterations_before_edit = std::cmp::max(
         1,
         (max_iterations * MAX_ITERATIONS_BEFORE_EDIT_PERCENT) / 100,
     );
-    let max_build_attempts =
-        store::get_max_build_attempts(app).unwrap_or(DEFAULT_MAX_BUILD_ATTEMPTS);
     info!(
         "Limits: max_iterations={}, max_iterations_before_edit={} ({}%), max_build_attempts={}",
         max_iterations,
@@ -1134,6 +1137,7 @@ pub async fn generate_evolution<R: Runtime>(
                                 &mut evolution,
                                 &mut build_verified,
                                 &mut build_attempts,
+                                max_build_attempts,
                                 &host_attr,
                                 start_time,
                                 iteration,
@@ -1543,6 +1547,7 @@ fn process_tool_result(
     evolution: &mut Evolution,
     build_verified: &mut bool,
     build_attempts: &mut usize,
+    max_build_attempts: usize,
     host_attr: &str,
     start_time: i64,
     iteration: usize,
@@ -1698,7 +1703,7 @@ fn process_tool_result(
             } else {
                 warn!(
                     "❌ BUILD CHECK FAILED (attempt {}/{})",
-                    build_attempts, DEFAULT_MAX_BUILD_ATTEMPTS
+                    build_attempts, max_build_attempts
                 );
 
                 // Prefer logging stderr first since that's usually where Nix errors live.

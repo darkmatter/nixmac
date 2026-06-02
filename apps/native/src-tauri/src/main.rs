@@ -754,13 +754,14 @@ fn run_gui_mode(
 
             #[cfg(target_os = "macos")]
             {
-                main_window_builder = main_window_builder
-                    .hidden_title(!e2e_opaque_window)
-                    .title_bar_style(if e2e_opaque_window {
-                        tauri::TitleBarStyle::Visible
-                    } else {
-                        tauri::TitleBarStyle::Overlay
-                    });
+                main_window_builder =
+                    main_window_builder
+                        .hidden_title(!e2e_opaque_window)
+                        .title_bar_style(if e2e_opaque_window {
+                            tauri::TitleBarStyle::Visible
+                        } else {
+                            tauri::TitleBarStyle::Overlay
+                        });
             }
 
             if e2e_opaque_window {
@@ -909,9 +910,9 @@ fn run_gui_mode(
                 }
             }
 
-            // Click Nixmac icon to show
             #[cfg(target_os = "macos")]
             {
+                // Click Nixmac icon to show
                 if let RunEvent::Reopen { .. } = &event {
                     if let Some(window) = app_handle.get_webview_window("main") {
                         // fire-and-forget: show/set_focus fail only on destroyed window.
