@@ -34,6 +34,7 @@ fn default_diff_opts() -> DiffOptions {
     opts.interhunk_lines(INTERHUNK_LINES);
     opts.include_untracked(true);
     opts.recurse_untracked_dirs(true);
+    opts.show_untracked_content(true);
     opts
 }
 
