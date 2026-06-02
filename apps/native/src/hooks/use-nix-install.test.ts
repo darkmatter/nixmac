@@ -22,8 +22,8 @@ vi.mock("@/stores/widget-store", () => ({
 }));
 
 function installEndPayload(
-  overrides: Partial<NixInstallEndEvent["payload"]>,
-): NixInstallEndEvent["payload"] {
+  overrides: Partial<NixInstallEndEvent>,
+): NixInstallEndEvent {
   return {
     ok: false,
     code: -1,

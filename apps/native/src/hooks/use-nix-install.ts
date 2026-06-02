@@ -8,7 +8,7 @@ import type {
 
 const MANUAL_INSTALL_URL = "https://determinate.systems/nix-installer/";
 
-export function getNixInstallErrorMessage(payload: NixInstallEndEvent["payload"]): string {
+export function getNixInstallErrorMessage(payload: NixInstallEndEvent): string {
   const detail = payload.error?.trim();
   const fallback = `Installation failed. Retry the install, or install Nix manually from ${MANUAL_INSTALL_URL}.`;
 
