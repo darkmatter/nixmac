@@ -28,6 +28,7 @@ use anyhow::Result;
 use log::{error, info};
 
 use std::io::{Read as _, Write as _};
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 use tauri::{AppHandle, Emitter};
@@ -233,25 +234,146 @@ pub fn install_nix_stream(app: &AppHandle) -> Result<()> {
     Ok(())
 }
 
-const PKG_DOWNLOAD_URL: &str =
-    "https://install.determinate.systems/determinate-pkg/stable/Universal";
+const DETERMINATE_PKG_URL: &str = "https://install.determinate.systems/determinate-pkg/stable/Universal";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct NixPkgInstaller {
+    platform: &'static str,
+    url: &'static str,
+    file_name: &'static str,
+}
+
+fn nix_pkg_installer_for_arch(arch: &str) -> Result<NixPkgInstaller> {
+    match arch {
+        // Determinate currently publishes one signed macOS .pkg that supports both
+        // Apple Silicon and Intel. Keep the platform explicit so logs/tests prove
+        // the onboarding flow selected a supported Darwin target before download.
+        "aarch64" | "arm64" => Ok(NixPkgInstaller {
+            platform: "aarch64-darwin",
+            url: DETERMINATE_PKG_URL,
+            file_name: "Determinate Nix aarch64-darwin.pkg",
+        }),
+        "x86_64" => Ok(NixPkgInstaller {
+            platform: "x86_64-darwin",
+            url: DETERMINATE_PKG_URL,
+            file_name: "Determinate Nix x86_64-darwin.pkg",
+        }),
+        other => anyhow::bail!("Unsupported macOS architecture for Nix installer: {}", other),
+    }
+}
+
+fn current_nix_pkg_installer() -> Result<NixPkgInstaller> {
+    nix_pkg_installer_for_arch(std::env::consts::ARCH)
+}
+
+#[derive(Debug)]
+struct PkgInstallResult {
+    success: bool,
+    code: i32,
+    stdout: String,
+    stderr: String,
+}
+
+fn shell_single_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
+
+fn escape_applescript_string(value: &str) -> String {
+    value.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+fn build_pkg_installer_shell_script(pkg_path: &Path) -> String {
+    let pkg_path = pkg_path.to_string_lossy();
+    format!(
+        "set -e\n\
+         PKG_PATH={}\n\
+         /usr/sbin/installer -pkg \"$PKG_PATH\" -target / 2>&1",
+        shell_single_quote(&pkg_path)
+    )
+}
+
+fn run_pkg_installer(pkg_path: &Path) -> Result<PkgInstallResult> {
+    let shell_script = build_pkg_installer_shell_script(pkg_path);
+    let escaped_script = escape_applescript_string(&shell_script);
+    let osascript_cmd = format!(
+        "do shell script \"{}\" with administrator privileges",
+        escaped_script
+    );
+
+    info!("[nix] Running .pkg installer with native macOS administrator authentication");
+    let output = Command::new("osascript")
+        .args(["-e", &osascript_cmd])
+        .output()
+        .map_err(|e| anyhow::anyhow!("Failed to run macOS installer authorization prompt: {}", e))?;
+
+    Ok(PkgInstallResult {
+        success: output.status.success(),
+        code: output.status.code().unwrap_or(-1),
+        stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+        stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+    })
+}
+
+fn classify_pkg_install_error(result: &PkgInstallResult) -> String {
+    let details = [result.stdout.trim(), result.stderr.trim()]
+        .into_iter()
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n");
+    let details_lower = details.to_lowercase();
+
+    if details_lower.contains("user canceled") || details_lower.contains("user cancelled") {
+        return "Nix installation was cancelled. Retry the install and approve the macOS administrator prompt, or install Nix manually from https://determinate.systems/nix-installer/.".to_string();
+    }
+
+    const AUTH_DENIED_PHRASES: &[&str] = &[
+        "authorization failed",
+        "not authorized",
+        "authorization denied",
+        "not permitted",
+        "you do not have permission",
+        "authentication failed",
+        "is not an administrator",
+    ];
+    if AUTH_DENIED_PHRASES
+        .iter()
+        .any(|phrase| details_lower.contains(phrase))
+    {
+        return "Administrator authorization was denied. Retry the install with an admin account or install Nix manually from https://determinate.systems/nix-installer/.".to_string();
+    }
+
+    if details.is_empty() {
+        format!(
+            "The Nix .pkg installer failed with exit code {}. Retry the install, or install Nix manually from https://determinate.systems/nix-installer/.",
+            result.code
+        )
+    } else {
+        format!(
+            "The Nix .pkg installer failed with exit code {}. Retry the install, or install Nix manually from https://determinate.systems/nix-installer/.\n\nDetails:\n{}",
+            result.code, details
+        )
+    }
+}
 
 /// Downloads the Determinate Nix .pkg installer with progress reporting.
 ///
 /// Emits `nix:install:progress` events with `phase: "downloading"` and
 /// `downloaded`/`total` byte counts so the frontend can show a progress bar.
-fn download_nix_pkg(app: &AppHandle) -> Result<std::path::PathBuf> {
-    info!("[nix] Downloading .pkg from {}", PKG_DOWNLOAD_URL);
+fn download_nix_pkg(app: &AppHandle, installer: &NixPkgInstaller) -> Result<PathBuf> {
+    info!(
+        "[nix] Downloading .pkg for {} from {}",
+        installer.platform, installer.url
+    );
 
     let client = reqwest::blocking::Client::new();
-    let mut response = client.get(PKG_DOWNLOAD_URL).send()?;
+    let mut response = client.get(installer.url).send()?;
 
     if !response.status().is_success() {
         anyhow::bail!("Download failed with status {}", response.status());
     }
 
     let total = response.content_length().unwrap_or(0);
-    let pkg_path = std::env::temp_dir().join("Determinate Nix.pkg");
+    let pkg_path = std::env::temp_dir().join(installer.file_name);
     let mut file = std::fs::File::create(&pkg_path)?;
     let mut downloaded: u64 = 0;
     let mut buffer = [0u8; 65536];
@@ -322,13 +444,29 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
     }
 
     if !nix_installed {
-        // Phase 1: Download .pkg and open with macOS Installer.app
+        // Phase 1: Download .pkg and install it with native macOS authentication.
         let _ = app.emit(
             "nix:install:progress",
             serde_json::json!({ "phase": "downloading", "downloaded": 0, "total": 0 }),
         );
 
-        let pkg_path = match download_nix_pkg(app) {
+        let installer = match current_nix_pkg_installer() {
+            Ok(installer) => installer,
+            Err(e) => {
+                app.emit(
+                    "nix:install:end",
+                    serde_json::json!({
+                        "ok": false,
+                        "code": -1,
+                        "error_type": "installer_failed",
+                        "error": format!("Failed to select a Nix installer package: {}. Install Nix manually from https://determinate.systems/nix-installer/ or contact support.", e),
+                    }),
+                )?;
+                return Ok(());
+            }
+        };
+
+        let pkg_path = match download_nix_pkg(app, &installer) {
             Ok(path) => path,
             Err(e) => {
                 app.emit(
@@ -344,26 +482,51 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
             }
         };
 
-        // Open the .pkg with macOS Installer.app
-        info!("[nix] Opening .pkg with macOS Installer: {:?}", pkg_path);
+        // Run the .pkg with macOS native administrator authentication (Touch ID / admin dialog).
+        info!("[nix] Installing .pkg for {}: {:?}", installer.platform, pkg_path);
         let _ = app.emit(
             "nix:install:progress",
             serde_json::json!({ "phase": "waiting-for-installer" }),
         );
 
-        if let Err(e) = Command::new("open").arg(&pkg_path).status() {
-            // fire-and-forget cleanup: temp pkg may not exist if open() aborted early.
-            let _ = std::fs::remove_file(&pkg_path);
-            app.emit(
-                "nix:install:end",
-                serde_json::json!({
-                    "ok": false,
-                    "code": -1,
-                    "error_type": "installer_failed",
-                    "error": format!("Failed to open installer: {}", e),
-                }),
-            )?;
-            return Ok(());
+        match run_pkg_installer(&pkg_path) {
+            Ok(result) if result.success => {
+                info!(
+                    "[nix] .pkg installer completed successfully for {}",
+                    installer.platform
+                );
+            }
+            Ok(result) => {
+                let error = classify_pkg_install_error(&result);
+                error!(
+                    "[nix] .pkg installer failed for {} (code={}): {}",
+                    installer.platform, result.code, error
+                );
+                let _ = std::fs::remove_file(&pkg_path);
+                app.emit(
+                    "nix:install:end",
+                    serde_json::json!({
+                        "ok": false,
+                        "code": result.code,
+                        "error_type": "installer_failed",
+                        "error": error,
+                    }),
+                )?;
+                return Ok(());
+            }
+            Err(e) => {
+                let _ = std::fs::remove_file(&pkg_path);
+                app.emit(
+                    "nix:install:end",
+                    serde_json::json!({
+                        "ok": false,
+                        "code": -1,
+                        "error_type": "installer_failed",
+                        "error": format!("Failed to run the macOS Nix installer: {}. Retry the install, or install Nix manually from https://determinate.systems/nix-installer/.", e),
+                    }),
+                )?;
+                return Ok(());
+            }
         }
 
         // Start the 5-minute deadline for nix installation (download time doesn't count)
@@ -512,4 +675,49 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
         }),
     )?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn selects_supported_darwin_pkg_targets_by_architecture() {
+        let apple_silicon = nix_pkg_installer_for_arch("aarch64").unwrap();
+        assert_eq!(apple_silicon.platform, "aarch64-darwin");
+        assert_eq!(apple_silicon.url, DETERMINATE_PKG_URL);
+        assert!(apple_silicon.file_name.contains("aarch64-darwin"));
+
+        let intel = nix_pkg_installer_for_arch("x86_64").unwrap();
+        assert_eq!(intel.platform, "x86_64-darwin");
+        assert_eq!(intel.url, DETERMINATE_PKG_URL);
+        assert!(intel.file_name.contains("x86_64-darwin"));
+
+        assert!(nix_pkg_installer_for_arch("powerpc").is_err());
+    }
+
+    #[test]
+    fn builds_native_pkg_installer_script_with_escaped_path() {
+        let script = build_pkg_installer_shell_script(Path::new(
+            "/tmp/nixmac's installer/Determinate Nix.pkg",
+        ));
+
+        assert!(script.contains("/usr/sbin/installer -pkg \"$PKG_PATH\" -target / 2>&1"));
+        assert!(script.contains("PKG_PATH='/tmp/nixmac'\\''s installer/Determinate Nix.pkg'"));
+    }
+
+    #[test]
+    fn classifies_cancelled_pkg_install_with_retry_guidance() {
+        let result = PkgInstallResult {
+            success: false,
+            code: -128,
+            stdout: String::new(),
+            stderr: "execution error: User canceled. (-128)".to_string(),
+        };
+
+        let message = classify_pkg_install_error(&result);
+        assert!(message.contains("cancelled"));
+        assert!(message.contains("Retry"));
+        assert!(message.contains("https://determinate.systems/nix-installer/"));
+    }
 }

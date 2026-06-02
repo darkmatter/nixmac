@@ -6,6 +6,28 @@ import type {
   NixInstallProgressEvent,
 } from "@/ipc/types";
 
+const MANUAL_INSTALL_URL = "https://determinate.systems/nix-installer/";
+
+export function getNixInstallErrorMessage(payload: NixInstallEndEvent["payload"]): string {
+  const detail = payload.error?.trim();
+  const fallback = `Installation failed. Retry the install, or install Nix manually from ${MANUAL_INSTALL_URL}.`;
+
+  switch (payload.error_type) {
+    case "download_failed":
+      return `${detail ?? "Failed to download the Nix installer."} Check your internet connection and try again, or install Nix manually from ${MANUAL_INSTALL_URL}.`;
+    case "installer_failed":
+      return detail ?? `The macOS installer did not complete. Retry and approve the native admin prompt, or install Nix manually from ${MANUAL_INSTALL_URL}.`;
+    case "timeout":
+      return `${detail ?? "Nix installation timed out."} Check whether the macOS installer prompt is still open, then retry or install Nix manually from ${MANUAL_INSTALL_URL}.`;
+    case "darwin_rebuild":
+      return `${detail ?? "Nix installed, but nix-darwin setup failed."} Retry setup from nixmac, or install nix-darwin manually after installing Nix.`;
+    case "internal":
+      return detail ? `${detail} Retry the install, or install Nix manually from ${MANUAL_INSTALL_URL}.` : fallback;
+    default:
+      return detail ?? fallback;
+  }
+}
+
 const checkNix = async () => {
     try {
       const result = await tauriAPI.nix.check();
@@ -44,9 +66,7 @@ const installNix = async () => {
       current.setDarwinRebuildAvailable(event.payload.darwin_rebuild_available ?? false);
 
       if (!event.payload.ok) {
-        current.setError(
-          event.payload.error ?? "Installation failed. Please install manually.",
-        );
+        current.setError(getNixInstallErrorMessage(event.payload));
       }
 
       unlistenProgress();

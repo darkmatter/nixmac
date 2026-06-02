@@ -96,7 +96,7 @@ export function NixSetupStep() {
                   <p className="text-muted-foreground text-sm">
                     {nixInstalled
                       ? "nix-darwin needs to be set up. Click below to continue."
-                      : "Nix is not installed on this system. Click below to install it using the standard macOS installer."}
+                      : "Nix is not installed on this system. Click below to install it with the macOS package installer and native administrator authentication."}
                   </p>
                   <Button onClick={installNix} className="w-full">
                     <Download className="mr-2 h-4 w-4" />
@@ -133,10 +133,10 @@ export function NixSetupStep() {
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Waiting for installation to complete...
+                Running macOS package installer...
               </div>
               <p className="text-center text-muted-foreground text-xs">
-                Follow the instructions in the Installer window. This page will update automatically.
+                Approve the macOS administrator prompt if it appears. This page will update automatically.
               </p>
             </div>
           )}
@@ -178,7 +178,7 @@ export function NixSetupStep() {
                 className="flex items-center justify-center gap-1 text-muted-foreground text-xs hover:text-foreground"
               >
                 <ExternalLink className="h-3 w-3" />
-                Determinate Systems Installer
+                Manual Nix install docs
               </a>
             </div>
           )}
