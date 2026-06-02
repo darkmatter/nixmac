@@ -866,7 +866,7 @@ fn run_gui_mode(
             main_window.on_window_event(move |event| {
                 if let WindowEvent::Focused(focused) = event {
                     if let Ok(config_dir) = store::get_config_dir(&handle_for_focus) {
-                        let interval_ms = if focused { 2500 } else { 15000 };
+                        let interval_ms = if *focused { 2500 } else { 15000 };
                         watcher::start_watching(handle_for_focus.clone(), config_dir, interval_ms);
                     }
                 }

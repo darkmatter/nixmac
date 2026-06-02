@@ -13,6 +13,15 @@ pub struct EvolutionLimits {
     pub max_build_attempts: usize,
 }
 
+impl Default for EvolutionLimits {
+    fn default() -> Self {
+        Self {
+            max_iterations: 25,
+            max_build_attempts: 5,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::EvolutionLimits;
