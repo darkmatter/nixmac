@@ -371,8 +371,16 @@ fn run_diff_engine(diff: git2::Diff) -> Result<Vec<FileDiff>> {
 
         let entry = file_diff_text.entry(filename.clone()).or_default();
 
-        entry.push(line.origin());
-        entry.push_str(std::str::from_utf8(line.content()).unwrap_or_default());
+        let content = std::str::from_utf8(line.content()).unwrap_or_default();
+
+        match line.origin() {
+            '+' | '-' | ' ' => {
+                entry.push(line.origin());
+            }
+            _ => {}
+        }
+
+        entry.push_str(content);
 
         if matches!(line.origin(), '+' | '-') {
             *file_line_counts.entry(filename).or_default() += 1;
