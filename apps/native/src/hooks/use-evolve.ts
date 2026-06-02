@@ -4,6 +4,10 @@ import { EVOLVE_EVENT_CHANNEL } from "@/lib/constants";
 import { tauriAPI, ipcRenderer } from "@/ipc/api";
 import type { EvolveEvent } from "@/ipc/types";
 import { formatDurationMs } from "@/lib/utils";
+import { useViewModel } from "@/stores/view-model";
+import { mirrorChangeMapState } from "@/viewmodel/change-map";
+import { mirrorEvolveState } from "@/viewmodel/evolve";
+import { mirrorGitState } from "@/viewmodel/git";
 import { toast } from "sonner";
 
 /**
@@ -37,12 +41,10 @@ const refreshPromptHistory = async (prompt?: string) => {
 };
 
 const findChangeMap = async (): Promise<void> => {
-  const { setChangeMap, setSummaryAvailable } = useWidgetStore.getState();
   try {
     const map = await tauriAPI.summarizedChanges.findChangeMap();
     if (map) {
-      setChangeMap(map);
-      setSummaryAvailable(map.groups.length > 0 || map.singles.length > 0);
+      mirrorChangeMapState(map);
     }
   } catch (e) {
     console.error("[SemanticChangeMap] error", e);
@@ -61,9 +63,10 @@ const handleEvolve = async () => {
   store.setProcessing(true, "evolve");
   store.setGenerating(true);
   store.setError(null);
-  store.setExternalBuildDetected(false);
+  mirrorGitState(useViewModel.getState().git, false);
   store.clearEvolveEvents();
   store.clearLogs();
+  mirrorChangeMapState(null);
   store.setConversationalResponse(null);
   store.setEvolutionTelemetry(null);
   store.appendLog(`\n> Evolving: "${store.evolvePrompt}"\n`);
@@ -96,17 +99,15 @@ const handleEvolve = async () => {
 
     if (isConversational) {
       useWidgetStore.getState().setConversationalResponse(result.conversationalResponse ?? null);
-    } else {
-      store.setSummaryAvailable(true);
     }
     if (result?.gitStatus) {
-      useWidgetStore.getState().setGitStatus(result.gitStatus);
+      mirrorGitState(result.gitStatus);
     }
     if (result?.evolveState) {
-      useWidgetStore.getState().setEvolveState(result.evolveState);
+      mirrorEvolveState(result.evolveState);
     }
     if (!isConversational && result?.changeMap) {
-      useWidgetStore.getState().setChangeMap(result.changeMap);
+      mirrorChangeMapState(result.changeMap);
     }
 
     store.setEvolvePrompt("");

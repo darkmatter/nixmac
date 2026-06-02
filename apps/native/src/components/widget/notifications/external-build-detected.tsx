@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { Hammer } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 import { useApply } from "@/hooks/use-apply";
 
 export function ExternalBuildDetected() {
-  const externalBuildDetected = useWidgetStore((s) => s.externalBuildDetected);
+  const externalBuildDetected = useViewModel((s) => s.build.externalBuildDetected);
   const { handleManualBuildConfirm } = useApply();
   const [isPending, setIsPending] = useState(false);
 

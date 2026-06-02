@@ -1,12 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { AnalyzeButton } from "@/components/widget/summaries/analyze-button";
 import { useHistory } from "@/hooks/use-history";
+import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import { Dna, Square } from "lucide-react";
 
 // Generates commit (if need be) and summary metadata for history items that are missing it.
 export function AnalyzeHistoryButton() {
-  const history = useWidgetStore((state) => state.history);
+  const history = useViewModel((state) => state.history);
   const analyzingSize = useWidgetStore(
     (state) => state.analyzingHistoryForHashes.size,
   );

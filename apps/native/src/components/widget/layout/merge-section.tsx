@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useSummary } from "@/hooks/use-summary";
+import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import { GitMerge, Loader2 } from "lucide-react";
 import { useEffect } from "react";
@@ -12,7 +13,7 @@ export function MergeSection() {
   const isProcessing = useWidgetStore((s) => s.isProcessing);
   const processingAction = useWidgetStore((s) => s.processingAction);
   const commitMessageSuggestion = useWidgetStore((s) => s.commitMessageSuggestion);
-  const changeMap = useWidgetStore((s) => s.changeMap);
+  const changeMap = useViewModel((s) => s.changeMap);
 
   const { handleCommit } = useGitOperations();
   const { generateCommitMessage } = useSummary();

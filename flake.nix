@@ -29,6 +29,7 @@
     # For pure flake evaluation in CI and nix flake show/check.
     stackpanel-root.url = "file+file:///dev/null";
     stackpanel-root.flake = false;
+    treefmt.url = "github:numtide/treefmt-nix";
   };
 
   outputs =
@@ -36,6 +37,7 @@
       self,
       nixpkgs,
       flake-utils,
+      treefmt,
       stackpanel,
       ...
     }@inputs:
@@ -46,10 +48,12 @@
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+        treefmtEval = treefmt.lib.evalModule pkgs ./treefmt.nix;
       in
       {
         # Add your own packages here
         packages.hello = pkgs.hello;
+        formatter = treefmtEval.config.build.wrapper;
       }
     );
 }
