@@ -8,6 +8,14 @@ use crate::{
     shared_types::{ChangeType, GitFileStatus, GitStatus},
 };
 
+/// Used to track the state of a file as we build up its diff, since git2 processing
+/// uses the metadata and content in separate passes.
+struct FileState {
+    diff: String,
+    line_count: i64,
+    last_hunk_key: Option<(usize, usize)>,
+}
+
 /// Interhunk lines controls whether nearby changes are grouped together in the same hunk.
 /// It's normally 0 by default in the git CLI but we'll use 1 to be more aggressive about grouping
 /// nearby changes together, which should help with summarization quality (our main use case).
@@ -314,16 +322,12 @@ pub fn commit_diff(dir: &str, parent_hash: &str, commit_hash: &str) -> Result<Ve
 
 /// Internal helper function to run the "diff engine" (delta + patch parsing) and produce structured FileDiffs.
 fn run_diff_engine(diff: git2::Diff) -> Result<Vec<FileDiff>> {
-    let mut pending: Vec<FileDiff> = Vec::new();
+    let mut files: Vec<FileDiff> = Vec::new();
 
-    // We only use this map for patch assembly
-    let mut file_diff_text: std::collections::HashMap<String, String> =
-        std::collections::HashMap::new();
-    let mut file_line_counts: std::collections::HashMap<String, i64> =
-        std::collections::HashMap::new();
+    let mut state: std::collections::HashMap<String, FileState> = std::collections::HashMap::new();
 
     // -------------------------
-    // 1. Delta pass (structure)
+    // 1. Delta pass (file metadata)
     // First we iterate over the deltas to get file-level metadata and filter out sensitive/opaque files.
     // -------------------------
     diff.foreach(
@@ -337,13 +341,17 @@ fn run_diff_engine(diff: git2::Diff) -> Result<Vec<FileDiff>> {
                 .path()
                 .map(|p| p.to_string_lossy().into_owned());
 
-            let filename = new_path.as_deref().or(old_path.as_deref()).unwrap_or("");
+            let filename = new_path
+                .as_deref()
+                .or(old_path.as_deref())
+                .unwrap_or("")
+                .to_string();
 
-            if crate::git::is_sensitive_or_opaque_delta(&delta, filename) {
+            if crate::git::is_sensitive_or_opaque_delta(&delta, &filename) {
                 return true;
             }
 
-            pending.push(FileDiff {
+            files.push(FileDiff {
                 old_path: old_path.clone(),
                 new_path: new_path.clone(),
                 diff: String::new(),
@@ -361,29 +369,60 @@ fn run_diff_engine(diff: git2::Diff) -> Result<Vec<FileDiff>> {
     // 2. Patch pass (content)
     // For individual file diffs, assemble the full patch text and line count by matching on file paths.
     // -------------------------
-    diff.print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
-        let filename = _delta
+    diff.print(git2::DiffFormat::Patch, |delta, hunk, line| {
+        let filename = delta
             .new_file()
             .path()
-            .or_else(|| _delta.old_file().path())
+            .or_else(|| delta.old_file().path())
             .map(|p| p.to_string_lossy().into_owned())
             .unwrap_or_default();
 
-        let entry = file_diff_text.entry(filename.clone()).or_default();
+        let entry = state.entry(filename).or_insert(FileState {
+            diff: String::new(),
+            line_count: 0,
+            last_hunk_key: None,
+        });
 
         let content = std::str::from_utf8(line.content()).unwrap_or_default();
 
-        match line.origin() {
-            '+' | '-' | ' ' => {
-                entry.push(line.origin());
+        // -----------------------------------
+        // Insert hunk header (once per hunk)
+        // -----------------------------------
+        if let Some(h) = hunk {
+            let key: (usize, usize) = (h.old_start() as usize, h.new_start() as usize);
+
+            if entry.last_hunk_key != Some(key) {
+                entry.last_hunk_key = Some(key);
+
+                entry.diff.push_str(&format!(
+                    "@@ -{},{} +{},{} @@\n",
+                    h.old_start(),
+                    h.old_lines(),
+                    h.new_start(),
+                    h.new_lines()
+                ));
             }
-            _ => {}
         }
 
-        entry.push_str(content);
-
-        if matches!(line.origin(), '+' | '-') {
-            *file_line_counts.entry(filename).or_default() += 1;
+        // -----------------------------------
+        // Actual line content (with origin prefix if necessary)
+        // -----------------------------------
+        match line.origin() {
+            '+' => {
+                entry.diff.push('+');
+                entry.diff.push_str(content);
+                entry.line_count += 1;
+            }
+            '-' => {
+                entry.diff.push('-');
+                entry.diff.push_str(content);
+                entry.line_count += 1;
+            }
+            ' ' => {
+                entry.diff.push(' ');
+                entry.diff.push_str(content);
+            }
+            _ => {}
         }
 
         true
@@ -393,18 +432,20 @@ fn run_diff_engine(diff: git2::Diff) -> Result<Vec<FileDiff>> {
     // 3. Merge pass
     // Now merge the structured delta info with the patch text and line counts to produce final FileDiffs.
     // -------------------------
-    for file in &mut pending {
-        let key = file
+    for f in &mut files {
+        let key = f
             .new_path
             .as_deref()
-            .or(file.old_path.as_deref())
+            .or(f.old_path.as_deref())
             .unwrap_or("");
 
-        file.diff = file_diff_text.remove(key).unwrap_or_default();
-        file.line_count = *file_line_counts.get(key).unwrap_or(&0);
+        if let Some(s) = state.remove(key) {
+            f.diff = s.diff;
+            f.line_count = s.line_count;
+        }
     }
 
-    Ok(pending)
+    Ok(files)
 }
 
 #[cfg(test)]
