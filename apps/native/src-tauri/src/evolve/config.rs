@@ -25,14 +25,27 @@ impl Default for EvolutionLimits {
 #[cfg(test)]
 mod tests {
     use super::EvolutionLimits;
+    use std::sync::{Mutex, MutexGuard, OnceLock};
     use tauri::test::{mock_builder, mock_context, noop_assets};
     use tauri_plugin_store::StoreExt;
 
+    fn store_guard() -> MutexGuard<'static, ()> {
+        static STORE_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        STORE_LOCK
+            .get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
     fn mock_app() -> tauri::App<tauri::test::MockRuntime> {
-        mock_builder()
+        let app = mock_builder()
             .plugin(tauri_plugin_store::Builder::default().build())
             .build(mock_context(noop_assets()))
-            .expect("failed to build mock tauri app")
+            .expect("failed to build mock tauri app");
+        let store = app.store("settings.json").expect("store should open");
+        store.clear();
+        store.save().expect("store should save");
+        app
     }
 
     // An empty store must fall back to the per-field `#[config(default = ...)]`
@@ -40,6 +53,7 @@ mod tests {
     // own hardcoded fallback in mod.rs (25 iterations / 5 build attempts).
     #[test]
     fn load_returns_documented_defaults_when_store_is_empty() {
+        let _store_guard = store_guard();
         let app = mock_app();
 
         let limits = EvolutionLimits::load(app.handle()).expect("load should succeed");
@@ -52,6 +66,7 @@ mod tests {
     // proving the dev-settings hot-reload path the struct documents actually works.
     #[test]
     fn load_prefers_stored_values_over_defaults() {
+        let _store_guard = store_guard();
         let app = mock_app();
         let store = app.store("settings.json").expect("store should open");
         store.set("maxIterations", serde_json::json!(50));
@@ -67,6 +82,7 @@ mod tests {
     // default rather than erroring, matching `read_field`'s deserialize-or-none.
     #[test]
     fn load_falls_back_to_default_on_type_mismatch() {
+        let _store_guard = store_guard();
         let app = mock_app();
         let store = app.store("settings.json").expect("store should open");
         store.set("maxIterations", serde_json::json!("not-a-number"));
