@@ -179,7 +179,6 @@ fn resolve_template_path(app: &AppHandle) -> Result<std::path::PathBuf, String> 
 ///
 /// # Errors
 /// Returns an error if:
-/// - The target directory is not empty
 /// - Template directory cannot be found
 /// - File operations fail
 /// - Git commands fail
@@ -191,7 +190,7 @@ pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
     // If a flake.nix already exists, just make the initial git commit without
     // copying any template files (the user brought their own config).
     if dest_path.join("flake.nix").exists() {
-        git::init_repo(&dir).map_err(|e| format!("Failed to init git: {}", e))?;
+        git::init::init_repo(&dir).map_err(|e| format!("Failed to init git: {}", e))?;
         let info = git::commit_all(&dir, "chore: initial nix-darwin configuration")
             .map_err(|e| format!("Failed to commit: {}", e))?;
         if let Err(e) = git::tag_commit(
@@ -205,12 +204,15 @@ pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
         return Ok(());
     }
 
-    // Safety check: only proceed if directory is empty or contains only .git
-    if !is_dir_safe_for_bootstrap(dest_path)? {
-        return Err(
-            "Directory is not empty. Please use an empty directory or a directory containing a flake.nix."
-                .to_string(),
-        );
+    // Safety check: only proceed if directory is empty or git-only.
+    // This prevents accidentally overwriting an existing non-empty directory.
+    if !is_dir_safe_for_bootstrap(dest_path)
+        .map_err(|e| format!("Failed to check bootstrap safety: {}", e))?
+    {
+        return Err(format!(
+            "Target directory '{}' is not empty. Remove existing files before bootstrapping.",
+            dest_path.display()
+        ));
     }
 
     let platform = detect_darwin_platform();
@@ -223,7 +225,7 @@ pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
     copy_template_dir(&template_path, dest_path, hostname, platform, &username)?;
 
     // Initialize git repository and commit templates (without flake.lock)
-    git::init_repo(&dir).map_err(|e| format!("Failed to init git: {}", e))?;
+    git::init::init_repo(&dir).map_err(|e| format!("Failed to init git: {}", e))?;
     let info = git::commit_all(&dir, "chore: initial nix-darwin configuration")
         .map_err(|e| format!("Failed to commit: {}", e))?;
     if let Err(e) = git::tag_commit(

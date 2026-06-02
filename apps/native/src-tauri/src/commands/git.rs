@@ -33,8 +33,8 @@ pub async fn git_status(app: AppHandle) -> Result<shared_types::GitStatus, Strin
 pub async fn git_status_and_cache(app: AppHandle) -> Result<shared_types::GitStatus, String> {
     let dir =
         store::ensure_git_repo_folder(&app).map_err(|e| capture_err("git_status_and_cache", e))?;
-    let status =
-        git::status_and_cache(&dir, &app).map_err(|e| capture_err("git_status_and_cache", e))?;
+    let status = git::query::status_and_cache(&dir, &app)
+        .map_err(|e| capture_err("git_status_and_cache", e))?;
     Ok(status)
 }
 

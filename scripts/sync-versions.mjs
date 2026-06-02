@@ -50,7 +50,8 @@ function updateToml(filePath) {
   const abs = resolve(root, filePath);
   const original = readFileSync(abs, "utf-8");
   // Match the first standalone `version = "..."` line (the [package] section)
-  const pattern = /^(version\s*=\s*)"[^"]*"/m;
+  // Allow optional leading whitespace for indented TOML style (e.g. `  version = "..."`).
+  const pattern = /^(\s*version\s*=\s*)"[^"]*"/m;
   if (!pattern.test(original)) {
     console.warn(`  ⚠️  ${filePath} — no version field found to update`);
     process.exitCode = 1;

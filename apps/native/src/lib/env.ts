@@ -29,7 +29,8 @@ const raw = Schema.decodeUnknownSync(Settings)(import.meta.env);
 
 export const settings: SettingsType = {
   VITE_SERVER_URL: raw.VITE_SERVER_URL,
-  NIX_INSTALLED_OVERRIDE: raw.NIX_INSTALLED_OVERRIDE === "true" ? true : undefined,
+  NIX_INSTALLED_OVERRIDE:
+    raw.NIX_INSTALLED_OVERRIDE === "true" ? true : undefined,
 };
 
 // Helper to resolve the public website URL used by the native/web apps.

@@ -495,6 +495,7 @@ pub fn create_preview_indicator_window<R: Runtime>(app: &AppHandle<R>) -> Result
         logical_height
     );
 
+    #[cfg_attr(not(target_os = "macos"), allow(unused_variables))]
     let window = WebviewWindowBuilder::new(
         app,
         "preview-indicator",
@@ -515,6 +516,9 @@ pub fn create_preview_indicator_window<R: Runtime>(app: &AppHandle<R>) -> Result
     .skip_taskbar(true)
     .build()
     .map_err(|e| e.to_string())?;
+
+    #[cfg(not(target_os = "macos"))]
+    let _ = &window;
 
     // Disable shadow and set as utility panel (prevents grouping with main window)
     #[cfg(target_os = "macos")]
