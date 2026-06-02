@@ -125,7 +125,7 @@ Shared "managed edit" pattern (prepare, apply, finalize into review flow).
 
 - `build_state.rs` — Last successful nix-darwin build (store path, changeset, commit hash)
 - `evolve_state.rs` — Frontend step-routing state machine (Begin/Evolve/Commit/ManualEvolve/ManualCommit)
-- `watcher.rs` — Polls git status at a configurable interval, emits `WatcherEvent` to frontend
+- `watcher.rs` — Polls git status at a configurable interval and emits slice update events to frontend
 - `completion_log.rs` — Records AI completion responses to daily JSONL files
 
 **Called by:** commands, rebuild, evolve/lifecycle, main.rs (watcher startup)

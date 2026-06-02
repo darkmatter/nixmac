@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use std::path::Path;
-use tauri::{AppHandle, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 
 use crate::shared_types::SemanticChangeMap;
 use crate::sqlite_types::Change;
@@ -86,13 +86,18 @@ pub async fn analyze<R: Runtime>(
     )?;
 
     if !queued_ids.is_empty() {
-        let app2 = app.clone();
-        let db2 = db_path.to_path_buf();
-        tauri::async_runtime::spawn(async move {
-            // fire-and-forget: background summarization. Failure is logged internally by
-            // queue_summarizer; the caller has already persisted the changeset ids.
-            let _ = crate::summarize::queue_summarizer::process(Some(queued_ids), app2, db2).await;
-        });
+        if let Some(summarizer) =
+            app.try_state::<crate::summarize::queue_summarizer::SummarizerState>()
+        {
+            summarizer.enqueue_ids(queued_ids).await?;
+        } else {
+            crate::summarize::queue_summarizer::process(
+                Some(queued_ids),
+                app.clone(),
+                db_path.to_path_buf(),
+            )
+            .await?;
+        }
     }
 
     Ok(Some(change_set_id))

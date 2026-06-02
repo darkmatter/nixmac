@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import type { ChangeWithRichType } from "@/components/widget/utils";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 
 function getDiffBody(diff: string): string[] {
   const lines = diff.split("\n");
@@ -26,7 +26,7 @@ interface HunkPillProps {
 
 // Badge shown in a file header for a single change: displays the summary title if available, otherwise +N/-M counts. Clicking scrolls the diff editor to that hunk.
 export function HunkPill({ change, onClick }: HunkPillProps) {
-  const changeMap = useWidgetStore((s) => s.changeMap);
+  const changeMap = useViewModel((s) => s.changeMap);
 
   let summaryTitle: string | null = null;
   if (changeMap) {
