@@ -119,4 +119,3 @@ pub struct RecommendedPrompt {
     /// Prompt text suggested to the user.
     pub prompt_text: String,
 }
-

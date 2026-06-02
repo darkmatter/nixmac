@@ -16,10 +16,8 @@ pub struct OllamaProvider {
 
 impl OllamaProvider {
     pub fn new(base_url: String, model: String) -> Self {
-        let record_chat_logs = crate::state::completion_log::init_recording(
-            "evolve_provider_chat",
-            "evolve provider",
-        );
+        let record_chat_logs =
+            crate::state::completion_log::init_recording("evolve_provider_chat", "evolve provider");
         Self {
             client: reqwest::Client::new(),
             base_url: base_url.trim_end_matches('/').to_string(),
