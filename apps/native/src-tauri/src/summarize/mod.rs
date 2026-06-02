@@ -15,9 +15,6 @@ pub mod token_budgets;
 use anyhow::Result;
 use tauri::{AppHandle, Runtime};
 
-/// Generate a changeset for the current state.
-/// Fresh if no existing changes are found, or evolved using existing changes as context.
-/// Returns the changeset id, or `None` if no new changes required summarization.
 pub async fn new_changeset<R: Runtime>(
     app: &AppHandle<R>,
     evolution_id: Option<i64>,
@@ -25,23 +22,18 @@ pub async fn new_changeset<R: Runtime>(
     let db_path = crate::db::get_db_path(app)?;
     let config_dir = crate::storage::store::get_config_dir(app)?;
 
-    let diff = crate::git::status(&config_dir)?.diff;
-    if diff.is_empty() {
+    let status = crate::git::status(&config_dir)?;
+
+    let all_changes = status.changes;
+    if all_changes.is_empty() {
         return Ok(None);
     }
-
-    let now = crate::utils::unix_now();
-    // Truncated diffs — content capped at DIFF_EXCERPT_LINES, sufficient for placement
-    let all_changes = crate::git::changes_from_diff::changes_from_diff(&diff, now, true);
 
     let existing = find_existing::for_current_state(&db_path, &config_dir)?;
 
     if !existing.iter().any(|e| e.change_set.is_some()) {
-        let (_, changes): (Vec<_>, Vec<_>) = all_changes
-            .into_iter()
-            .partition(crate::git::changes_from_diff::is_sensitive_or_opaque);
         return pipelines::fresh_changeset::analyze(
-            changes,
+            all_changes,
             app,
             &db_path,
             None,
@@ -52,7 +44,6 @@ pub async fn new_changeset<R: Runtime>(
         .await;
     }
 
-    // Extract before `from_change_sets` moves `existing`.
     let existing_id = existing
         .iter()
         .filter_map(|e| e.change_set.as_ref().map(|cs| cs.id))

@@ -33,17 +33,18 @@ pub async fn get_history<R: Runtime>(
                 .flatten()
         });
 
-        let raw_changes = git_commits
+        let raw_changes: Vec<crate::sqlite_types::Change> = git_commits
             .get(i + 1)
             .and_then(|parent| {
-                crate::git::commit_diff(&config_dir, &parent.hash, &git_commit.hash)
+                crate::git::query::commit_diff(&config_dir, &parent.hash, &git_commit.hash)
                     .ok()
-                    .map(|diff| {
-                        crate::git::changes_from_diff::changes_from_diff(
-                            &diff,
-                            git_commit.created_at,
-                            true,
-                        )
+                    .map(|file_diffs| {
+                        file_diffs
+                            .into_iter()
+                            .map(|d| {
+                                crate::git::file_diff_to_change(d, git_commit.created_at, true)
+                            })
+                            .collect::<Vec<_>>()
                     })
             })
             .unwrap_or_default();
@@ -54,11 +55,7 @@ pub async fn get_history<R: Runtime>(
         };
 
         let (change_map, unsummarized_hashes) = if let Some(ref parent) = parent_db {
-            let diff_hashes: Vec<String> = raw_changes
-                .iter()
-                .filter(|c| !crate::git::changes_from_diff::is_sensitive_or_opaque(c))
-                .map(|c| c.hash.clone())
-                .collect();
+            let diff_hashes: Vec<String> = raw_changes.iter().map(|c| c.hash.clone()).collect();
             match crate::summarize::find_existing::by_base_with_hashes(
                 &db_path,
                 parent.id,

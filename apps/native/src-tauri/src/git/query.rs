@@ -1,3 +1,45 @@
+use anyhow::Result;
+use git2::{DiffOptions, Oid, Repository};
+use std::path::PathBuf;
+use tauri::AppHandle;
+
+use crate::{
+    git::{file_diff_to_change, init::require_repo, FileDiff},
+    shared_types::{ChangeType, GitFileStatus, GitStatus},
+};
+
+/// Interhunk lines controls whether nearby changes are grouped together in the same hunk.
+/// It's normally 0 by default in the git CLI but we'll use 1 to be more aggressive about grouping
+/// nearby changes together, which should help with summarization quality (our main use case).
+const INTERHUNK_LINES: u32 = 1;
+
+/// Context lines controls how many unchanged lines are included around each change.
+/// It's normally 3 by default in the git CLI but we'll increase it a bit to give
+/// the agent more context for summarization, especially for changes in the middle of files.
+const CONTEXT_LINES: u32 = 5;
+
+fn default_diff_opts() -> DiffOptions {
+    let mut opts = DiffOptions::new();
+    opts.show_binary(true);
+    opts.context_lines(CONTEXT_LINES);
+    opts.interhunk_lines(INTERHUNK_LINES);
+    opts.include_untracked(true);
+    opts.recurse_untracked_dirs(true);
+    opts
+}
+
+/// Map git2 change types to our internal representation.
+fn map_change_type(delta: git2::Delta) -> ChangeType {
+    match delta {
+        git2::Delta::Added => ChangeType::New,
+        git2::Delta::Deleted => ChangeType::Removed,
+        git2::Delta::Modified => ChangeType::Edited,
+        git2::Delta::Renamed => ChangeType::Renamed,
+        git2::Delta::Copied => ChangeType::Renamed,
+        _ => ChangeType::Edited,
+    }
+}
+
 /// Git query layer (SAFE)
 ///
 /// This module uses git2 exclusively.
@@ -10,7 +52,6 @@
 ///
 /// Basically, only things that don't depend on git porcelain output and/or
 /// git CLI semantics.
-use std::path::PathBuf;
 
 /// Gets the git repository root directory for `dir`, or `dir` if not in a repo.
 /// Used for resolving file paths for the benefit of tools and git operations.
@@ -25,17 +66,6 @@ pub fn repo_root(dir: &str) -> PathBuf {
         }
         Err(_) => PathBuf::from(dir),
     }
-}
-
-/// Returns true if `dir` is inside a non-bare Git working tree.
-/// This behaves similarly to:
-///     git rev-parse --is-inside-work-tree
-///
-/// The key point is that a bare repository does not have a working tree.
-pub fn is_repo(dir: &str) -> bool {
-    git2::Repository::discover(dir)
-        .map(|repo| repo.workdir().is_some())
-        .unwrap_or(false)
 }
 
 /// Returns the current branch name (None if detached HEAD or not a repo).
@@ -152,8 +182,227 @@ pub fn read_tags(dir: &str, hash: &str) -> Vec<String> {
     tags
 }
 
+/// Gets the current git status of the repo including
+/// the structured list of changes for summarization and the full diff string for clients that need it.
+pub fn status(dir: &str) -> Result<GitStatus> {
+    require_repo(dir)?;
+    let repo = git2::Repository::open(dir)?;
+
+    let branch = super::current_branch(dir);
+
+    let head_commit_hash = repo
+        .head()
+        .ok()
+        .and_then(|h| h.target())
+        .map(|oid| oid.to_string());
+
+    let head_tree = repo
+        .head()
+        .ok()
+        .and_then(|h| h.peel_to_commit().ok())
+        .map(|c| c.tree().ok())
+        .flatten();
+
+    // ------------------------------------------------------------
+    // Get the raw diff object for HEAD vs working directory, including untracked files.
+    // ------------------------------------------------------------
+    let mut diff_opts = default_diff_opts();
+    let diff = repo.diff_tree_to_workdir_with_index(head_tree.as_ref(), Some(&mut diff_opts))?;
+
+    let mut additions = 0;
+    let mut deletions = 0;
+    let mut files = Vec::new();
+
+    // ------------------------------------------------------------
+    // Get the file-level metadata for the changed files,
+    // and also compute aggregate stats like total additions/deletions.
+    // ------------------------------------------------------------
+    diff.foreach(
+        &mut |delta, _| {
+            let path = delta
+                .new_file()
+                .path()
+                .or_else(|| delta.old_file().path())
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_default();
+
+            files.push(GitFileStatus {
+                path,
+                change_type: map_change_type(delta.status()),
+            });
+
+            match delta.status() {
+                git2::Delta::Added => additions += 1,
+                git2::Delta::Deleted => deletions += 1,
+                git2::Delta::Modified => {
+                    additions += 1;
+                    deletions += 1;
+                }
+                _ => {}
+            }
+
+            true
+        },
+        None,
+        None,
+        None,
+    )?;
+
+    // ------------------------------------------------------------
+    // Get the full patch string, the summarizer needs it.
+    // ------------------------------------------------------------
+    let mut diff_string = String::new();
+    diff.print(git2::DiffFormat::Patch, |_d, _h, line| {
+        diff_string.push_str(std::str::from_utf8(line.content()).unwrap_or_default());
+        true
+    })?;
+
+    // ------------------------------------------------------------
+    // Reuse the existing diff engine for structured FileDiffs.
+    // ------------------------------------------------------------
+    let changes = run_diff_engine(diff)?;
+
+    // ------------------------------------------------------------
+    // Compute final state
+    // ------------------------------------------------------------
+    let clean_head = files.is_empty();
+
+    Ok(GitStatus {
+        files,
+        branch,
+        additions,
+        deletions,
+        head_commit_hash,
+        clean_head,
+        changes: changes
+            .into_iter()
+            .map(|d| file_diff_to_change(d, 0, false))
+            .collect(),
+        diff: diff_string,
+    })
+}
+
+/// Gets status and caches it to loop in watcher
+pub fn status_and_cache<R: tauri::Runtime>(dir: &str, app: &AppHandle<R>) -> Result<GitStatus> {
+    let status = status(dir)?;
+    cache_status(app, &status)?;
+    Ok(status)
+}
+
+pub fn cache_status<R: tauri::Runtime>(app: &AppHandle<R>, status: &GitStatus) -> Result<()> {
+    crate::storage::store::set_cached_git_status(app, status)
+}
+
+/// Gets the FileDiffs that represent the evolution results between two commits.
+pub fn commit_diff(dir: &str, parent_hash: &str, commit_hash: &str) -> Result<Vec<FileDiff>> {
+    let repo = Repository::open(dir)?;
+
+    let parent = repo.find_commit(Oid::from_str(parent_hash)?)?;
+    let commit = repo.find_commit(Oid::from_str(commit_hash)?)?;
+
+    let parent_tree = parent.tree()?;
+    let commit_tree = commit.tree()?;
+
+    let diff = repo.diff_tree_to_tree(
+        Some(&parent_tree),
+        Some(&commit_tree),
+        Some(&mut default_diff_opts()),
+    )?;
+
+    return run_diff_engine(diff);
+}
+
+/// Internal helper function to run the "diff engine" (delta + patch parsing) and produce structured FileDiffs.
+fn run_diff_engine(diff: git2::Diff) -> Result<Vec<FileDiff>> {
+    let mut pending: Vec<FileDiff> = Vec::new();
+
+    // We only use this map for patch assembly
+    let mut file_diff_text: std::collections::HashMap<String, String> =
+        std::collections::HashMap::new();
+    let mut file_line_counts: std::collections::HashMap<String, i64> =
+        std::collections::HashMap::new();
+
+    // -------------------------
+    // 1. Delta pass (structure)
+    // First we iterate over the deltas to get file-level metadata and filter out sensitive/opaque files.
+    // -------------------------
+    diff.foreach(
+        &mut |delta, _| {
+            let old_path = delta
+                .old_file()
+                .path()
+                .map(|p| p.to_string_lossy().into_owned());
+            let new_path = delta
+                .new_file()
+                .path()
+                .map(|p| p.to_string_lossy().into_owned());
+
+            let filename = new_path.as_deref().or(old_path.as_deref()).unwrap_or("");
+
+            if crate::git::is_sensitive_or_opaque_delta(&delta, filename) {
+                return true;
+            }
+
+            pending.push(FileDiff {
+                old_path: old_path.clone(),
+                new_path: new_path.clone(),
+                diff: String::new(),
+                line_count: 0,
+            });
+
+            true
+        },
+        None,
+        None,
+        None,
+    )?;
+
+    // -------------------------
+    // 2. Patch pass (content)
+    // For individual file diffs, assemble the full patch text and line count by matching on file paths.
+    // -------------------------
+    diff.print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
+        let filename = _delta
+            .new_file()
+            .path()
+            .or_else(|| _delta.old_file().path())
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_default();
+
+        let entry = file_diff_text.entry(filename.clone()).or_default();
+
+        entry.push(line.origin());
+        entry.push_str(std::str::from_utf8(line.content()).unwrap_or_default());
+
+        if matches!(line.origin(), '+' | '-') {
+            *file_line_counts.entry(filename).or_default() += 1;
+        }
+
+        true
+    })?;
+
+    // -------------------------
+    // 3. Merge pass
+    // Now merge the structured delta info with the patch text and line counts to produce final FileDiffs.
+    // -------------------------
+    for file in &mut pending {
+        let key = file
+            .new_path
+            .as_deref()
+            .or(file.old_path.as_deref())
+            .unwrap_or("");
+
+        file.diff = file_diff_text.remove(key).unwrap_or_default();
+        file.line_count = *file_line_counts.get(key).unwrap_or(&0);
+    }
+
+    Ok(pending)
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::git::init::init_repo;
+
     use super::*;
     use std::fs;
     use std::path::Path;
@@ -202,25 +451,6 @@ mod tests {
     }
 
     #[test]
-    fn is_repo_detects_nested_worktree_path() {
-        let (temp, _) = repo_with_initial_commit();
-        let nested = temp.path().join("nested");
-        fs::create_dir_all(&nested).expect("create nested dir");
-
-        assert!(is_repo(&nested.to_string_lossy()));
-    }
-
-    #[test]
-    fn is_repo_false_for_non_repo_and_bare_repo() {
-        let temp = TempDir::new().expect("create temp dir");
-        assert!(!is_repo(&temp.path().to_string_lossy()));
-
-        let bare_dir = temp.path().join("bare.git");
-        git2::Repository::init_bare(&bare_dir).expect("init bare repo");
-        assert!(!is_repo(&bare_dir.to_string_lossy()));
-    }
-
-    #[test]
     fn repo_root_returns_input_for_bare_repo() {
         let temp = TempDir::new().expect("create temp dir");
         let bare_dir = temp.path().join("bare.git");
@@ -260,6 +490,23 @@ mod tests {
         assert_eq!(get_ref_sha(&path, "HEAD"), Some(commit_id.to_string()));
         assert_eq!(get_head_sha(&path), Some(commit_id.to_string()));
         assert_eq!(get_ref_sha(&path, "does-not-exist"), None);
+    }
+
+    #[test]
+    fn get_head_sha_unborn_branch_is_none() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path();
+
+        let repo = git2::Repository::init(path).unwrap();
+
+        // explicitly create a branch so HEAD exists but is unborn
+        repo.set_head("refs/heads/main").unwrap();
+
+        let repo_path = path.to_string_lossy().to_string();
+
+        let head = get_head_sha(&repo_path);
+
+        assert_eq!(head, None);
     }
 
     #[test]
@@ -381,5 +628,107 @@ mod tests {
 
         let missing_oid = "0000000000000000000000000000000000000001";
         assert!(read_tags(&path, missing_oid).is_empty());
+    }
+
+    #[test]
+    fn test_status() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+        // commit_all to materialize a branch
+        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
+        crate::git::commit_all(&repo_dir_str, "chore: initial nix-darwin configuration").unwrap();
+        // Now add an uncommitted change to inspect.
+        fs::write(repo_dir.join("flake.nix"), "{ inputs = {}; }").unwrap();
+        let status = status(&repo_dir_str).unwrap();
+        assert!(!status.files.is_empty());
+        assert!(status.branch.is_some());
+    }
+
+    #[test]
+    fn test_status_without_head_commit_with_untracked_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
+
+        let status = status(&repo_dir_str).unwrap();
+        assert!(!status.clean_head);
+        assert!(status.head_commit_hash.is_none());
+        assert!(status.files.iter().any(|f| f.path == "flake.nix"));
+    }
+
+    #[test]
+    fn test_status_without_head_commit_with_staged_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
+
+        // Equivalent to: git add -A
+        let repo = git2::Repository::open(&repo_dir).unwrap();
+        let mut index = repo.index().unwrap();
+        index
+            .add_all(["."], git2::IndexAddOption::DEFAULT, None)
+            .unwrap();
+        index.write().unwrap();
+
+        let status = status(&repo_dir_str).unwrap();
+
+        assert!(!status.clean_head);
+        assert!(status.head_commit_hash.is_none());
+        assert!(status.files.iter().any(|f| f.path == "flake.nix"));
+    }
+
+    #[test]
+    fn test_status_includes_untracked_file_from_nested_config_dir() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+
+        init_repo(&repo_dir_str).unwrap();
+
+        let config_dir = repo_dir.join("nixmac");
+        fs::create_dir_all(&config_dir).unwrap();
+        fs::write(config_dir.join("flake.nix"), "{ }").unwrap();
+
+        let status = status(&repo_dir_str).unwrap();
+
+        assert!(!status.clean_head);
+        assert!(status.head_commit_hash.is_none());
+        assert!(status.files.iter().any(|f| f.path == "nixmac/flake.nix"));
+    }
+
+    #[test]
+    fn test_status_excludes_gitignored_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join(".gitignore"), "secret.txt\n").unwrap();
+        fs::write(repo_dir.join("secret.txt"), "top secret\n").unwrap();
+
+        let status = status(&repo_dir_str).unwrap();
+
+        assert!(status.files.iter().all(|f| f.path != "secret.txt"));
+    }
+
+    #[test]
+    fn test_map_change_type() {
+        assert_eq!(map_change_type(git2::Delta::Added), ChangeType::New);
+        assert_eq!(map_change_type(git2::Delta::Deleted), ChangeType::Removed);
+        assert_eq!(map_change_type(git2::Delta::Modified), ChangeType::Edited);
+        assert_eq!(map_change_type(git2::Delta::Renamed), ChangeType::Renamed);
+        assert_eq!(map_change_type(git2::Delta::Copied), ChangeType::Renamed);
+        // Other types should default to Edited
+        assert_eq!(map_change_type(git2::Delta::Unmodified), ChangeType::Edited);
     }
 }
