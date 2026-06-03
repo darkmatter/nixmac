@@ -68,7 +68,7 @@ pub async fn new_changeset<R: Runtime>(
     }
 
     let Some(base_commit_id) =
-        crate::db::commits::store_head_commit_in_pool(&pool, &config_dir, None)?
+        crate::db::commits::store_head_commit(&pool, &config_dir, None)?
     else {
         return Ok(None);
     };

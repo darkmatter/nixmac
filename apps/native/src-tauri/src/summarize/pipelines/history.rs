@@ -30,7 +30,7 @@ pub async fn from_commit_times_number<R: Runtime>(
 
     let mut db_ids: Vec<i64> = Vec::with_capacity(commits.len());
     for commit in &commits {
-        let id = crate::db::commits::upsert_commit_in_pool(
+        let id = crate::db::commits::upsert_commit(
             &pool,
             &commit.hash,
             &commit.tree_hash,

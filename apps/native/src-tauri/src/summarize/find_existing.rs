@@ -56,7 +56,7 @@ pub fn for_current_state(pool: &DbPool, dir: &str) -> Result<Vec<FoundSetForCurr
 
     let diff_hashes: Vec<String> = status.changes.iter().map(|c| c.hash.clone()).collect();
 
-    let Some(commit) = crate::db::commits::get_commit_by_hash_in_pool(pool, head_hash)? else {
+    let Some(commit) = crate::db::commits::get_commit_by_hash(pool, head_hash)? else {
         // DB has no record for this commit — surface all hashes as missed
         return Ok(vec![FoundSetForCurrent {
             change_set: None,

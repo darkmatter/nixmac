@@ -120,7 +120,7 @@ pub fn record_build<R: Runtime>(app: &AppHandle<R>, git_status: &GitStatus) -> R
     let pool = app.state::<crate::db::DbPool>();
 
     let build_changeset_id = if !git_status.changes.is_empty() {
-        let base_id = crate::db::commits::store_head_commit_in_pool(&pool, &config_dir, None)?
+        let base_id = crate::db::commits::store_head_commit(&pool, &config_dir, None)?
             .ok_or_else(|| anyhow::anyhow!("missing HEAD commit while recording build state"))?;
         Some(crate::db::store_bare_changeset::store(
             &pool,

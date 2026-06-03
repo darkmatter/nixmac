@@ -38,7 +38,7 @@ impl From<CommitRow> for crate::sqlite_types::Commit {
 }
 
 /// Insert a commit through the managed Diesel pool, returning its id.
-pub fn upsert_commit_in_pool(
+pub fn upsert_commit(
     pool: &DbPool,
     hash: &str,
     tree_hash: &str,
@@ -75,7 +75,7 @@ pub fn upsert_commit_in_pool(
 }
 
 /// Returns the full commit row for a given hash through the managed Diesel pool.
-pub fn get_commit_by_hash_in_pool(
+pub fn get_commit_by_hash(
     pool: &DbPool,
     hash: &str,
 ) -> Result<Option<crate::sqlite_types::Commit>> {
@@ -90,7 +90,7 @@ pub fn get_commit_by_hash_in_pool(
 }
 
 /// Passes through `existing` if `Some`; otherwise resolves HEAD from git and upserts it.
-pub fn store_head_commit_in_pool(
+pub fn store_head_commit(
     pool: &DbPool,
     config_dir: &str,
     existing: Option<i64>,
@@ -105,7 +105,7 @@ pub fn store_head_commit_in_pool(
         return Ok(None);
     };
     let now = crate::utils::unix_now();
-    Ok(Some(upsert_commit_in_pool(
+    Ok(Some(upsert_commit(
         pool, &hash, &tree_hash, None, now,
     )?))
 }
@@ -121,10 +121,10 @@ mod tests {
         let pool = crate::db::init_pool_at_path(&db_path).await.unwrap();
 
         let first_id =
-            upsert_commit_in_pool(&pool, "abc123", "tree123", Some("message"), 123).unwrap();
+            upsert_commit(&pool, "abc123", "tree123", Some("message"), 123).unwrap();
         let second_id =
-            upsert_commit_in_pool(&pool, "abc123", "tree123", Some("message"), 123).unwrap();
-        let commit = get_commit_by_hash_in_pool(&pool, "abc123")
+            upsert_commit(&pool, "abc123", "tree123", Some("message"), 123).unwrap();
+        let commit = get_commit_by_hash(&pool, "abc123")
             .unwrap()
             .unwrap();
 
