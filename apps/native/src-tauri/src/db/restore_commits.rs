@@ -5,29 +5,51 @@
 //! copy the origin changeset rather than triggering a fresh summarization run.
 
 use anyhow::Result;
-use rusqlite::Connection;
-use std::path::Path;
+use diesel::prelude::*;
+
+use crate::db::tables::restore_commits;
+use crate::db::DbPool;
 
 /// Record that `commit_hash` is a restore of `origin_hash`.
-pub fn insert(db_path: &Path, commit_hash: &str, origin_hash: &str) -> Result<()> {
-    let conn = Connection::open(db_path)?;
-    conn.execute(
-        "INSERT OR REPLACE INTO restore_commits (commit_hash, origin_hash) VALUES (?1, ?2)",
-        (commit_hash, origin_hash),
-    )?;
+pub fn insert(pool: &DbPool, commit_hash: &str, origin_hash: &str) -> Result<()> {
+    let mut conn = pool.get()?;
+    diesel::replace_into(restore_commits::table)
+        .values((
+            restore_commits::commit_hash.eq(commit_hash),
+            restore_commits::origin_hash.eq(origin_hash),
+        ))
+        .execute(&mut conn)?;
     Ok(())
 }
 
 /// Return the origin hash for `commit_hash`, or `None` if it is not a restore commit.
-pub fn get_origin_hash(db_path: &Path, commit_hash: &str) -> Result<Option<String>> {
-    let conn = Connection::open(db_path)?;
-    match conn.query_row(
-        "SELECT origin_hash FROM restore_commits WHERE commit_hash = ?1",
-        [commit_hash],
-        |row| row.get::<_, String>(0),
-    ) {
-        Ok(hash) => Ok(Some(hash)),
-        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-        Err(e) => Err(e.into()),
+pub fn get_origin_hash(pool: &DbPool, commit_hash: &str) -> Result<Option<String>> {
+    let mut conn = pool.get()?;
+    Ok(restore_commits::table
+        .find(commit_hash)
+        .select(restore_commits::origin_hash)
+        .first::<String>(&mut conn)
+        .optional()?)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn insert_and_get_origin_hash_round_trips() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let db_path = temp_dir.path().join("nixmac.db");
+        let pool = crate::db::init_pool_at_path(&db_path).await.unwrap();
+
+        insert(&pool, "abc", "origin-1").unwrap();
+        // REPLACE: the second insert overwrites the origin
+        insert(&pool, "abc", "origin-2").unwrap();
+
+        assert_eq!(
+            get_origin_hash(&pool, "abc").unwrap(),
+            Some("origin-2".to_string())
+        );
+        assert_eq!(get_origin_hash(&pool, "missing").unwrap(), None);
     }
 }

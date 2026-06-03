@@ -3,13 +3,14 @@
 use anyhow::Result;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use tauri::{AppHandle, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 
 pub async fn get_history<R: Runtime>(
     app: &AppHandle<R>,
 ) -> Result<Vec<crate::shared_types::HistoryItem>> {
     let config_dir = crate::storage::store::get_config_dir(app)?;
     let db_path = crate::db::get_db_path(app)?;
+    let pool = app.state::<crate::db::DbPool>();
 
     let git_commits = crate::git::query::log(&config_dir, "HEAD", None)?;
 
@@ -78,7 +79,7 @@ pub async fn get_history<R: Runtime>(
         };
 
         let origin_hash = if change_map.is_none() {
-            crate::db::restore_commits::get_origin_hash(&db_path, &git_commit.hash)
+            crate::db::restore_commits::get_origin_hash(&pool, &git_commit.hash)
                 .ok()
                 .flatten()
         } else {
