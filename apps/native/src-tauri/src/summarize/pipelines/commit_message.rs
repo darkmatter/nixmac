@@ -6,11 +6,10 @@ use tauri::{AppHandle, Manager, Runtime};
 use crate::summarize::{build_prompt, find_existing, group_existing, model_calls};
 
 pub async fn generate<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
-    let db_path = crate::db::get_db_path(app)?;
     let config_dir = crate::storage::store::get_config_dir(app)?;
     let pool = app.state::<crate::db::DbPool>();
 
-    let change_sets = find_existing::for_current_state(&pool, &db_path, &config_dir)?;
+    let change_sets = find_existing::for_current_state(&pool, &config_dir)?;
     let map = group_existing::from_change_sets(change_sets);
 
     if map.groups.is_empty() && map.singles.is_empty() {

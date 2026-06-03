@@ -77,13 +77,12 @@ pub fn current_state_built<R: Runtime>(app: &AppHandle<R>, current_changes: &[Ch
     match state.changeset_id {
         None => current_changes.is_empty(),
         Some(id) => {
-            let Ok(db_path) = crate::db::get_db_path(app) else {
+            let pool = app.state::<crate::db::DbPool>();
+            let Ok(mut conn) = pool.get() else {
                 return false;
             };
-            let Ok(conn) = rusqlite::Connection::open(&db_path) else {
-                return false;
-            };
-            let Ok(stored_hashes) = crate::db::changesets::fetch_hashes_for_changeset(&conn, id)
+            let Ok(stored_hashes) =
+                crate::db::changesets::fetch_hashes_for_changeset(&mut conn, id)
             else {
                 return false;
             };
@@ -117,7 +116,6 @@ pub fn set_active_build<R: Runtime>(
 
 /// Compute build state with a "bare" changeset to verify it
 pub fn record_build<R: Runtime>(app: &AppHandle<R>, git_status: &GitStatus) -> Result<()> {
-    let db_path = crate::db::get_db_path(app)?;
     let config_dir = crate::storage::store::get_config_dir(app)?;
     let pool = app.state::<crate::db::DbPool>();
 
@@ -125,7 +123,7 @@ pub fn record_build<R: Runtime>(app: &AppHandle<R>, git_status: &GitStatus) -> R
         let base_id = crate::db::commits::store_head_commit_in_pool(&pool, &config_dir, None)?
             .ok_or_else(|| anyhow::anyhow!("missing HEAD commit while recording build state"))?;
         Some(crate::db::store_bare_changeset::store(
-            &db_path,
+            &pool,
             base_id,
             &git_status.changes,
         )?)

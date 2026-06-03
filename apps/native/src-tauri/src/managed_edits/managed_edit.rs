@@ -9,14 +9,12 @@ use crate::{db, git, shared_types, summarize};
 
 pub struct ManagedEditContext {
     pub dir: String,
-    pub db_path: std::path::PathBuf,
     pub evolution_id: i64,
     pub evolve_state: shared_types::EvolveState,
 }
 
 pub fn prepare_managed_edit(app: &AppHandle) -> Result<ManagedEditContext> {
     let dir = store::ensure_config_dir_exists(app).context("Failed to get config directory")?;
-    let db_path = db::get_db_path(app).context("Failed to get DB path")?;
     let pre_edit_status =
         git::status(&dir).context("Failed to get pre-edit working tree status")?;
 
@@ -71,7 +69,6 @@ pub fn prepare_managed_edit(app: &AppHandle) -> Result<ManagedEditContext> {
 
     Ok(ManagedEditContext {
         dir,
-        db_path,
         evolution_id,
         evolve_state,
     })
@@ -103,12 +100,8 @@ pub async fn finalize_managed_edit(
     }
 
     let pool = app.state::<db::DbPool>();
-    let change_sets = summarize::find_existing::for_current_state(
-        &pool,
-        context.db_path.as_path(),
-        &context.dir,
-    )
-    .unwrap_or_default();
+    let change_sets =
+        summarize::find_existing::for_current_state(&pool, &context.dir).unwrap_or_default();
 
     let change_map = summarize::group_existing::from_change_sets(change_sets);
     let git_status =

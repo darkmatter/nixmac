@@ -9,7 +9,6 @@ pub async fn get_history<R: Runtime>(
     app: &AppHandle<R>,
 ) -> Result<Vec<crate::shared_types::HistoryItem>> {
     let config_dir = crate::storage::store::get_config_dir(app)?;
-    let db_path = crate::db::get_db_path(app)?;
     let pool = app.state::<crate::db::DbPool>();
 
     let git_commits = crate::git::query::log(&config_dir, "HEAD", None)?;
@@ -58,7 +57,7 @@ pub async fn get_history<R: Runtime>(
         let (change_map, unsummarized_hashes) = if let Some(ref parent) = parent_db {
             let diff_hashes: Vec<String> = raw_changes.iter().map(|c| c.hash.clone()).collect();
             match crate::summarize::find_existing::by_base_with_hashes(
-                &db_path,
+                &pool,
                 parent.id,
                 &diff_hashes,
             ) {

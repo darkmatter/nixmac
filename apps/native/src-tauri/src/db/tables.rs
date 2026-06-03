@@ -35,7 +35,7 @@ diesel::table! {
         hash -> Text,
         filename -> Text,
         diff -> Text,
-        line_count -> Integer,
+        line_count -> BigInt,
         created_at -> BigInt,
         own_summary_id -> Nullable<BigInt>,
     }
@@ -71,7 +71,7 @@ diesel::table! {
     queued_summaries (id) {
         id -> BigInt,
         status -> Text,
-        attempted_count -> Integer,
+        attempted_count -> BigInt,
         prompt -> Text,
         model_response -> Nullable<Text>,
         group_summary_id -> Nullable<BigInt>,

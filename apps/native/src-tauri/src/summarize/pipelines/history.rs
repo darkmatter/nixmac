@@ -11,7 +11,6 @@ pub async fn from_commit_times_number<R: Runtime>(
     number: usize,
 ) -> Result<()> {
     let config_dir = crate::storage::store::get_config_dir(app)?;
-    let db_path = crate::db::get_db_path(app)?;
     let pool = app.state::<crate::db::DbPool>();
 
     let all_commits = crate::git::query::log(&config_dir, "HEAD", None)?;
@@ -59,7 +58,7 @@ pub async fn from_commit_times_number<R: Runtime>(
         let diff_hashes: Vec<String> = all_changes.iter().map(|c| c.hash.clone()).collect();
 
         let found = crate::summarize::find_existing::by_base_with_hashes(
-            &db_path,
+            &pool,
             base_commit_id,
             &diff_hashes,
         )?;
@@ -87,7 +86,6 @@ pub async fn from_commit_times_number<R: Runtime>(
                 semantic_map,
                 missed_changes,
                 app,
-                &db_path,
                 Some(commit_id),
                 base_commit_id,
                 commits[i].message.as_deref(),
@@ -106,7 +104,6 @@ pub async fn from_commit_times_number<R: Runtime>(
             if let Err(e) = super::fresh_changeset::analyze(
                 all_changes,
                 app,
-                &db_path,
                 Some(commit_id),
                 Some(base_commit_id),
                 commits[i].message.as_deref(),

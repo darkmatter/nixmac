@@ -19,7 +19,6 @@ pub async fn new_changeset<R: Runtime>(
     app: &AppHandle<R>,
     evolution_id: Option<i64>,
 ) -> Result<Option<i64>> {
-    let db_path = crate::db::get_db_path(app)?;
     let config_dir = crate::storage::store::get_config_dir(app)?;
     let pool = app.state::<crate::db::DbPool>();
 
@@ -30,13 +29,12 @@ pub async fn new_changeset<R: Runtime>(
         return Ok(None);
     }
 
-    let existing = find_existing::for_current_state(&pool, &db_path, &config_dir)?;
+    let existing = find_existing::for_current_state(&pool, &config_dir)?;
 
     if !existing.iter().any(|e| e.change_set.is_some()) {
         return pipelines::fresh_changeset::analyze(
             all_changes,
             app,
-            &db_path,
             None,
             None,
             None,
@@ -79,7 +77,6 @@ pub async fn new_changeset<R: Runtime>(
         semantic_map,
         missed_changes,
         app,
-        &db_path,
         None,
         base_commit_id,
         None,

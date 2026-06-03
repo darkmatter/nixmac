@@ -105,14 +105,8 @@ where
 
                         if current_json != cached_json || external_build_detected {
                             let pool = app_handle.state::<db::DbPool>();
-                            let change_map = db::get_db_path(&app_handle)
+                            let change_map = summarize::find_existing::for_current_state(&pool, dir)
                                 .ok()
-                                .and_then(|db_path| {
-                                    summarize::find_existing::for_current_state(
-                                        &pool, &db_path, dir,
-                                    )
-                                    .ok()
-                                })
                                 .map(summarize::group_existing::from_change_sets)
                                 .unwrap_or_default();
                             // Side-effect: refresh the evolve slice. The slice write-guard
