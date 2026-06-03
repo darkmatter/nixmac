@@ -5,4 +5,4 @@ Below are the new changes you'll summarize. Each change includes these fields wh
 - **lines** — affected line count
 - **diff** — the patch hunk
 
-Use these fields to infer concise Titles and short Descriptions.
+Use these fields to infer concise Titles and short Descriptions. Only summarize what is visible in the provided hunks; do not imply whole-file or full-change intent unless the hunk supports it.

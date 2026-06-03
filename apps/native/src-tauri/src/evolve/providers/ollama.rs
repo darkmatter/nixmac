@@ -11,17 +11,19 @@ pub struct OllamaProvider {
     client: reqwest::Client,
     base_url: String,
     model: String,
+    max_output_tokens: u32,
     record_chat_logs: bool,
 }
 
 impl OllamaProvider {
-    pub fn new(base_url: String, model: String) -> Self {
+    pub fn new(base_url: String, model: String, max_output_tokens: u32) -> Self {
         let record_chat_logs =
             crate::state::completion_log::init_recording("evolve_provider_chat", "evolve provider");
         Self {
             client: reqwest::Client::new(),
             base_url: base_url.trim_end_matches('/').to_string(),
             model,
+            max_output_tokens,
             record_chat_logs,
         }
     }
@@ -32,8 +34,14 @@ struct ChatRequest {
     model: String,
     messages: Vec<OllamaMessage>,
     stream: bool,
+    options: OllamaOptions,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     tools: Vec<OllamaTool>,
+}
+
+#[derive(Clone, Serialize)]
+struct OllamaOptions {
+    num_predict: u32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -104,6 +112,9 @@ impl AiProvider for OllamaProvider {
                 model: self.model.clone(),
                 messages: ollama_messages.clone(),
                 stream: false,
+                options: OllamaOptions {
+                    num_predict: self.max_output_tokens,
+                },
                 tools: ollama_tools.clone(),
             };
 

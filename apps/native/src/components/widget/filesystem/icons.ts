@@ -29,6 +29,7 @@ const ICON_MAP: Record<FsIconName, LucideIcon> = {
   preferences: Variable,
   secret: ScrollText,
   overlay: Layers,
+  settings: Settings2,
   warn: AlertTriangle,
 };
 

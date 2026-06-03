@@ -302,6 +302,8 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
             prompt,
             config,
             max_iterations,
+            max_output_tokens,
+            max_token_budget,
             evolve_provider,
             evolve_model,
             summary_provider,
@@ -334,7 +336,6 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                             &app.state::<state::slice::SliceRegistry>(),
                         )?;
                         app.manage(state::evolve_state::load_slice(app.handle())?);
-                        app.manage(summarize::queue_summarizer::start_worker(app.handle())?);
                         Ok(())
                     })
                     .build(context)
@@ -358,6 +359,8 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                     prompt,
                     config,
                     max_iterations,
+                    max_output_tokens,
+                    max_token_budget,
                     evolve_provider,
                     evolve_model,
                     summary_provider,
@@ -595,7 +598,6 @@ fn run_gui_mode(
             app.manage(evolve::config::load_slice(handle)?);
             evolve::config::register_slice_config(&app.state::<state::slice::SliceRegistry>())?;
             app.manage(state::evolve_state::load_slice(handle)?);
-            app.manage(summarize::queue_summarizer::start_worker(handle)?);
 
             // Initialize SQLite database
             let db_handle = handle.clone();

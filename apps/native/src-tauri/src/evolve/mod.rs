@@ -98,6 +98,13 @@ struct EvolutionMessage {
     key: Option<String>, // optional key for deduplication or reference (e.g. file path for read_file results)
 }
 
+fn normalize_max_output_tokens(value: usize) -> u32 {
+    value.max(1).min(u32::MAX as usize) as u32
+}
+
+
+/// Return short hex prefix for correlation of error messages without risking sensitive content exposure.
+
 impl EvolutionMessage {
     fn permanent(message: Message, iteration: usize, key: Option<String>) -> Self {
         Self {
@@ -323,9 +330,9 @@ fn log_api_error(
 const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 
-// Percentage of max_iterations after which we require at least one edit/build_check.
-// Example: with max_iterations=50 and this set to 75, threshold is 37 iterations.
-const MAX_ITERATIONS_BEFORE_EDIT_PERCENT: usize = 75;
+// Percentage of the token budget after which we require at least one edit/build_check.
+// Example: with maxTokenBudget=50,000 and this set to 75, threshold is 37,500 tokens.
+const MAX_TOKEN_BUDGET_BEFORE_EDIT_PERCENT: u32 = 75;
 
 // Applied separately to stdout and stderr. So when thinking about tokens,
 // the effective output limit could be up to double this if both are long.
@@ -333,6 +340,26 @@ const BUILD_OUTPUT_MAX_CHARS: usize = 6_000;
 const BUILD_OUTPUT_TAIL_LINES: usize = 80;
 
 const SYSTEM_PROMPT: &str = include_str!("../../prompts/system.md");
+
+fn configured_model(store_model: Option<String>, env_var: &str) -> Option<String> {
+    store_model
+        .and_then(global_utils::non_empty_trimmed_string)
+        .or_else(|| {
+            std::env::var(env_var)
+                .ok()
+                .and_then(global_utils::non_empty_trimmed_string)
+        })
+}
+
+fn require_local_model(
+    provider_name: &str,
+    store_model: Option<String>,
+    env_var: &str,
+) -> Result<String> {
+    configured_model(store_model, env_var).ok_or_else(|| {
+        anyhow!("No {provider_name} model configured. Please select a model in Settings or set {env_var}.")
+    })
+}
 
 /// Build a short single-line preview from the conversation messages to help with
 /// troubleshooting.
@@ -569,52 +596,76 @@ pub async fn generate_evolution<R: Runtime>(
 
     let store_model = store::get_evolve_model(app).ok().flatten();
 
+    // Read configurable limits from the repo-scoped slice. Falls back to defaults
+    // when the slice isn't managed yet (e.g. during onboarding before config_dir
+    // is set).
+    let limits = app
+        .try_state::<crate::state::slice::Slice<config::EvolutionLimits>>()
+        .map(|slice| slice.read_sync().clone())
+        .unwrap_or_else(|| {
+            warn!("EvolutionLimits slice is not managed; using defaults");
+            config::EvolutionLimits::default()
+        });
+    let config::EvolutionLimits {
+        max_iterations: legacy_max_iterations,
+        max_token_budget,
+        max_build_attempts,
+        max_output_tokens,
+    } = limits;
+    let max_output_tokens_for_request = normalize_max_output_tokens(max_output_tokens);
+
     // Select provider implementation
     let provider: Arc<dyn AiProvider> = if provider_type == "ollama" {
-        let model = store_model
-            .or_else(|| std::env::var("EVOLVE_MODEL").ok())
-            .unwrap_or_else(|| "qwen3-coder:30b".to_string());
+        let model = require_local_model("Ollama", store_model, "EVOLVE_MODEL")?;
         let base_url = store::get_ollama_api_base_url(app)
             .ok()
             .flatten()
             .or_else(|| std::env::var("OLLAMA_API_BASE").ok())
             .unwrap_or_else(|| DEFAULT_OLLAMA_API_BASE.to_string());
         info!(
-            "Using Ollama provider | Model: {} | URL: {}",
-            model, base_url
+            "Using Ollama provider | Model: {} | URL: {} | Max output tokens: {}",
+            model, base_url, max_output_tokens_for_request
         );
-        Arc::new(OllamaProvider::new(base_url, model))
+        Arc::new(OllamaProvider::new(
+            base_url,
+            model,
+            max_output_tokens_for_request,
+        ))
     } else if matches!(provider_type.as_str(), "claude" | "codex" | "opencode") {
         let tool = match provider_type.as_str() {
             "claude" => crate::ai::providers::cli::CliTool::Claude,
             "codex" => crate::ai::providers::cli::CliTool::Codex,
             _ => crate::ai::providers::cli::CliTool::OpenCode,
         };
-        let model = store_model
-            .or_else(|| std::env::var("EVOLVE_MODEL").ok())
-            .unwrap_or_else(|| provider_type.clone());
+        let model =
+            configured_model(store_model, "EVOLVE_MODEL").unwrap_or_else(|| provider_type.clone());
         info!("Using CLI provider: {} | Model: {}", provider_type, model);
         Arc::new(CliProvider::new(tool, model))
     } else if provider_type == "vllm" {
-        let model = store_model
-            .or_else(|| std::env::var("EVOLVE_MODEL").ok())
-            .unwrap_or_else(|| "gpt-oss-120b".to_string());
+        let model = require_local_model("vLLM", store_model, "EVOLVE_MODEL")?;
         let base_url = store::get_vllm_api_base_url(app)
             .ok()
             .flatten()
             .or_else(|| std::env::var("VLLM_API_BASE").ok())
             .ok_or_else(|| anyhow!("No vLLM base URL configured. Please set it in Settings."))?;
         let api_key = store::get_effective_vllm_api_key(app)?.unwrap_or_else(|| "none".to_string());
-        info!("Using vLLM provider | Model: {} | URL: {}", model, base_url);
-        Arc::new(OpenAIProvider::new(api_key, base_url, model))
+        info!(
+            "Using vLLM provider | Model: {} | URL: {} | Max output tokens: {}",
+            model, base_url, max_output_tokens_for_request
+        );
+        Arc::new(OpenAIProvider::new(
+            api_key,
+            base_url,
+            model,
+            max_output_tokens_for_request,
+        ))
     } else {
         let (api_key, base_url) = store::get_effective_openai_compatible_credential(app)?
             .ok_or_else(|| {
                 anyhow!("No API key found. Please add your API key in Settings to get started.")
             })?;
 
-        let model = store_model
-            .or_else(|| std::env::var("EVOLVE_MODEL").ok())
+        let model = configured_model(store_model, "EVOLVE_MODEL")
             .unwrap_or_else(|| DEFAULT_MODEL.to_string());
         // Strip OpenRouter-style "openai/" prefix for direct OpenAI usage
         let model = if base_url == store::OPENAI_BASE_URL {
@@ -627,8 +678,16 @@ pub async fn generate_evolution<R: Runtime>(
         } else {
             "OpenAI"
         };
-        info!("Using {} provider | Model: {}", provider_name, model);
-        Arc::new(OpenAIProvider::new(api_key, base_url.to_string(), model))
+        info!(
+            "Using {} provider | Model: {} | Max output tokens: {}",
+            provider_name, model, max_output_tokens_for_request
+        );
+        Arc::new(OpenAIProvider::new(
+            api_key,
+            base_url.to_string(),
+            model,
+            max_output_tokens_for_request,
+        ))
     };
 
     // Emit start event
@@ -647,28 +706,18 @@ pub async fn generate_evolution<R: Runtime>(
         EvolveEvent::info(start_time, None, &format!("Target host: {}", host_attr)),
     );
 
-    // Read configurable limits from the repo-scoped slice.
-    let limits = app
-        .try_state::<crate::state::slice::Slice<config::EvolutionLimits>>()
-        .map(|slice| slice.read_sync().clone())
-        .unwrap_or_else(|| {
-            warn!("EvolutionLimits slice is not managed; using defaults");
-            config::EvolutionLimits::default()
-        });
-    let config::EvolutionLimits {
-        max_iterations,
-        max_build_attempts,
-    } = limits;
-    let max_iterations_before_edit = std::cmp::max(
+    let max_tokens_before_edit = std::cmp::max(
         1,
-        (max_iterations * MAX_ITERATIONS_BEFORE_EDIT_PERCENT) / 100,
+        (max_token_budget * MAX_TOKEN_BUDGET_BEFORE_EDIT_PERCENT) / 100,
     );
     info!(
-        "Limits: max_iterations={}, max_iterations_before_edit={} ({}%), max_build_attempts={}",
-        max_iterations,
-        max_iterations_before_edit,
-        MAX_ITERATIONS_BEFORE_EDIT_PERCENT,
-        max_build_attempts
+        "Limits: max_token_budget={}, max_tokens_before_edit={} ({}%), max_build_attempts={}, legacy_max_iterations={}, max_output_tokens={}",
+        max_token_budget,
+        max_tokens_before_edit,
+        MAX_TOKEN_BUDGET_BEFORE_EDIT_PERCENT,
+        max_build_attempts,
+        legacy_max_iterations,
+        max_output_tokens,
     );
 
     let tools = create_tools(banned_tools);
@@ -682,6 +731,7 @@ pub async fn generate_evolution<R: Runtime>(
     let mut build_attempts: usize = 0;
     let mut build_verified = false;
     let mut total_tokens: u32 = 0;
+    let mut token_usage_observed = false;
     let chat_memory_store = session_chat_memory_store();
 
     // Restore only persisted conversational history (user/assistant, NOT tool)
@@ -886,14 +936,21 @@ pub async fn generate_evolution<R: Runtime>(
 
         // Track token usage
         if let Some(usage) = &response.usage {
-            total_tokens += usage.total;
+            token_usage_observed = true;
+            total_tokens = total_tokens.saturating_add(usage.total);
             info!(
-                "📊 Tokens | this_call: {} (in={}, out={}) | total_session: {}",
-                usage.total, usage.input, usage.output, total_tokens
+                "📊 Tokens | this_call: {} (in={}, out={}) | total_session: {}/{}",
+                usage.total, usage.input, usage.output, total_tokens, max_token_budget
             );
             emit_evolve_event(
                 app,
-                EvolveEvent::api_response(start_time, iteration, usage.total),
+                EvolveEvent::api_response(
+                    start_time,
+                    iteration,
+                    usage.total,
+                    total_tokens,
+                    max_token_budget,
+                ),
             );
         }
 
@@ -1261,27 +1318,58 @@ Do not invent tool names and do not place tool invocations in assistant content.
             break;
         }
 
-        // Safety limits -- Max Iterations Before Edit Check
-        if iteration == max_iterations_before_edit && !(made_edit || made_build_check) {
+        // Safety limits -- Max Token Budget
+        if total_tokens >= max_token_budget {
             warn!(
-                "⚠️ No edit or build_check by iteration {} - agent not making progress",
-                max_iterations_before_edit
+                "⚠️ Evolution reached token budget ({}/{}) - aborting",
+                total_tokens, max_token_budget
             );
             evolution.state = EvolutionState::Failed;
-            let message = format!(
-                "I've analyzed your configuration for {} iterations but haven't started making concrete changes yet. \
-This suggests I'm having difficulty understanding what modifications you'd like. \
-Could you provide more specific guidance on what aspects of your configuration need adjustment?",
-                max_iterations_before_edit
+            let stop_reason = format!(
+                "Token budget exhausted ({} of {} tokens)",
+                total_tokens, max_token_budget
             );
             emit_evolve_event(
                 app,
-                EvolveEvent::error(
-                    start_time,
-                    Some(iteration),
-                    &format!("Maximum iterations exceeded ({})", max_iterations),
-                    &format!("Maximum iterations exceeded ({})", max_iterations),
+                EvolveEvent::error(start_time, Some(iteration), &stop_reason, &stop_reason),
+            );
+            // Track failure
+            if let Err(e) = statistics::record_evolution_failure(app, iteration) {
+                warn!("Failed to record evolution failure stats: {}", e);
+            }
+            return Err(EvolutionRunError::from_state(
+                format!(
+                    "Evolution stopped because the token budget was exhausted ({} of {} tokens)",
+                    total_tokens, max_token_budget
                 ),
+                &evolution,
+                iteration,
+                build_attempts,
+                total_tokens,
+            )
+            .into());
+        }
+
+        // Safety limits -- Token Budget Before Edit Check
+        if total_tokens >= max_tokens_before_edit && !made_edit_or_build_check {
+            warn!(
+                "⚠️ No edit or build_check after {} tokens - agent not making progress",
+                total_tokens
+            );
+            evolution.state = EvolutionState::Failed;
+            let message = format!(
+                "I've analyzed your configuration for {} tokens but haven't started making concrete changes yet. \
+This suggests I'm having difficulty understanding what modifications you'd like. \
+Could you provide more specific guidance on what aspects of your configuration need adjustment?",
+                total_tokens
+            );
+            let stop_reason = format!(
+                "No concrete progress after {} of {} token budget",
+                total_tokens, max_token_budget
+            );
+            emit_evolve_event(
+                app,
+                EvolveEvent::error(start_time, Some(iteration), &stop_reason, &stop_reason),
             );
             // Track failure
             if let Err(e) = statistics::record_evolution_failure(app, iteration) {
@@ -1297,28 +1385,27 @@ Could you provide more specific guidance on what aspects of your configuration n
             .into());
         }
 
-        // Safety limits -- Max Iterations
-        if iteration >= max_iterations {
+        // Safety limits -- Unmetered Provider Fallback
+        if !token_usage_observed && iteration >= legacy_max_iterations {
             warn!(
-                "⚠️ Evolution exceeded maximum iterations ({}) - aborting",
-                max_iterations
+                "⚠️ Provider has not reported token usage after {} calls - aborting",
+                legacy_max_iterations
             );
             evolution.state = EvolutionState::Failed;
+            let stop_reason = format!(
+                "Provider did not report token usage; stopped after {} unmetered AI calls",
+                legacy_max_iterations
+            );
             emit_evolve_event(
                 app,
-                EvolveEvent::error(
-                    start_time,
-                    Some(iteration),
-                    &format!("Maximum iterations exceeded ({})", max_iterations),
-                    &format!("Maximum iterations exceeded ({})", max_iterations),
-                ),
+                EvolveEvent::error(start_time, Some(iteration), &stop_reason, &stop_reason),
             );
             // Track failure
             if let Err(e) = statistics::record_evolution_failure(app, iteration) {
                 warn!("Failed to record evolution failure stats: {}", e);
             }
             return Err(EvolutionRunError::from_state(
-                format!("Evolution exceeded maximum iterations ({})", max_iterations),
+                stop_reason,
                 &evolution,
                 iteration,
                 build_attempts,

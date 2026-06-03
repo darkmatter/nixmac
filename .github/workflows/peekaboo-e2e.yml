@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       build_attempts:
-        description: 'Remote debug build attempts before running Peekaboo'
+        description: "Remote debug build attempts before running Peekaboo"
         required: false
-        default: '2'
+        default: "2"
 
 permissions:
   contents: read
@@ -20,7 +20,7 @@ jobs:
   peekaboo-product-proof:
     name: Peekaboo Product Proof
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: [self-hosted, linux]
     timeout-minutes: 150
     # The MacInCloud host is a single shared mutable desktop. Serialize remote
     # E2E jobs across workflows; keep stale-run cancellation at workflow level.

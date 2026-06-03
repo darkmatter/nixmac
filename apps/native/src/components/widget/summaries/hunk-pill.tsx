@@ -1,38 +1,25 @@
 import { Badge } from "@/components/ui/badge";
 import type { ChangeWithRichType } from "@/components/widget/utils";
 import { useViewModel } from "@/stores/view-model";
-
-function getDiffBody(diff: string): string[] {
-  const lines = diff.split("\n");
-  const hunkStart = lines.findIndex((l) => l.startsWith("@@"));
-  return hunkStart >= 0 ? lines.slice(hunkStart + 1) : [];
-}
-
-function countAddedRemoved(diff: string): { added: number; removed: number } {
-  const body = getDiffBody(diff);
-  let added = 0;
-  let removed = 0;
-  for (const line of body) {
-    if (line.startsWith("+") && !line.startsWith("+++")) added++;
-    else if (line.startsWith("-") && !line.startsWith("---")) removed++;
-  }
-  return { added, removed };
-}
+import { countDiffLineStats, DiffLineStatsBadge } from "./diff-line-stats";
 
 interface HunkPillProps {
   change: ChangeWithRichType;
+  showCounts?: boolean;
   onClick: () => void;
 }
 
-// Badge shown in a file header for a single change: displays the summary title if available, otherwise +N/-M counts. Clicking scrolls the diff editor to that hunk.
-export function HunkPill({ change, onClick }: HunkPillProps) {
+export function HunkPill({ change, showCounts = true, onClick }: HunkPillProps) {
   const changeMap = useViewModel((s) => s.changeMap);
 
   let summaryTitle: string | null = null;
   if (changeMap) {
     for (const group of changeMap.groups) {
       const match = group.changes.find((c) => c.hash === change.hash);
-      if (match) { summaryTitle = match.title; break; }
+      if (match) {
+        summaryTitle = match.title;
+        break;
+      }
     }
     if (!summaryTitle) {
       const match = changeMap.singles.find((c) => c.hash === change.hash);
@@ -40,12 +27,12 @@ export function HunkPill({ change, onClick }: HunkPillProps) {
     }
   }
 
-  const { added, removed } = countAddedRemoved(change.diff);
-  const showCounts = change.changeType === "edited" || change.changeType === "renamed";
-  const label = summaryTitle
-    ?? (showCounts ? [added && `+${added}`, removed && `-${removed}`].filter(Boolean).join(" ") : null);
+  const stats = countDiffLineStats(change.diff);
+  const label = summaryTitle;
 
-  if (!label) return null;
+  if (!label && (!showCounts || (stats.added === 0 && stats.removed === 0))) {
+    return null;
+  }
 
   return (
     <Badge
@@ -55,9 +42,9 @@ export function HunkPill({ change, onClick }: HunkPillProps) {
         e.stopPropagation();
         onClick();
       }}
-      title={label}
+      title={label ?? `${stats.added} additions, ${stats.removed} deletions`}
     >
-      {label}
+      {label ?? <DiffLineStatsBadge stats={stats} />}
     </Badge>
   );
 }

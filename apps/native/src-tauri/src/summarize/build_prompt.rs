@@ -267,6 +267,40 @@ mod tests {
     }
 
     #[test]
+    fn summary_prompts_include_hunk_scope_guardrails() {
+        let change = Change {
+            id: 1,
+            hash: "deadbeef".into(),
+            filename: "foo.nix".into(),
+            diff: "@@ -1 +1 @@\n-foo\n+bar".into(),
+            line_count: 3,
+            created_at: 0,
+            own_summary_id: None,
+        };
+        let existing = vec![SimplifiedChange {
+            hash: "h1".into(),
+            filename: "foo.nix".into(),
+            title: "Foo Setting".into(),
+            description: "Changes foo".into(),
+        }];
+        let new_hashes = vec![change.hash.clone()];
+        let change_refs = vec![&change];
+
+        for prompt in [
+            new_single(&change),
+            new_group(&new_hashes, &change_refs),
+            evolve_group(&existing, &change_refs, &new_hashes),
+        ] {
+            assert!(prompt.contains("not necessarily the full file diff"));
+            assert!(prompt.contains("Only summarize what is visible"));
+            assert!(prompt.contains("instead of guessing broader intent"));
+        }
+
+        let group_prompt = evolve_group(&existing, &change_refs, &new_hashes);
+        assert!(group_prompt.contains("Do not invent a broader intent"));
+    }
+
+    #[test]
     fn new_group_emits_valid_changes_and_group_json() {
         let hashes = vec!["abc123".to_string()];
         let change = Change {

@@ -307,6 +307,38 @@ export function getModStartLine(diff: string): number | null {
   return match ? parseInt(match[1]) : null;
 }
 
+export function newFileContentFromDiffs(diffs: string[]): string | null {
+  const lines: string[] = [];
+  let sawNewFileHunk = false;
+
+  for (const diff of diffs) {
+    let inNewFileHunk = false;
+
+    for (const line of diff.split("\n")) {
+      if (/^@@ -0(?:,0)? \+/.test(line)) {
+        sawNewFileHunk = true;
+        inNewFileHunk = true;
+        continue;
+      }
+
+      if (line.startsWith("@@ ")) {
+        inNewFileHunk = false;
+        continue;
+      }
+
+      if (!inNewFileHunk || line === "\\ No newline at end of file") {
+        continue;
+      }
+
+      if (line.startsWith("+") && !line.startsWith("+++")) {
+        lines.push(line.slice(1));
+      }
+    }
+  }
+
+  return sawNewFileHunk ? lines.join("\n") : null;
+}
+
 export function enrichChanges(changes: Change[]): ChangeWithRichType[] {
   return changes
     .map((c) => ({

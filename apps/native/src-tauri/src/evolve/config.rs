@@ -32,11 +32,20 @@ pub struct EvolutionLimits {
     #[config(
         default = 25,
         key = "maxIterations",
-        label = "Max iterations",
+        label = "Max iterations (legacy)",
         range = 1..=200,
-        help = "API calls before the agent stops. Lower = faster/cheaper but may not finish complex changes.",
+        help = "Legacy iteration cap. Used only when the provider doesn't report token usage; the token budget is the primary stopping rule.",
     )]
     pub max_iterations: usize,
+
+    #[config(
+        default = 50_000,
+        key = "maxTokenBudget",
+        label = "Token budget",
+        range = 1_000..=1_000_000,
+        help = "Provider-reported tokens before stopping. Lower = faster/cheaper, may not finish complex changes.",
+    )]
+    pub max_token_budget: u32,
 
     #[config(
         default = 5,
@@ -46,6 +55,15 @@ pub struct EvolutionLimits {
         help = "Failed builds before giving up on a run.",
     )]
     pub max_build_attempts: usize,
+
+    #[config(
+        default = 32_768,
+        key = "maxOutputTokens",
+        label = "Max output tokens",
+        range = 1_024..=262_144,
+        help = "Completion tokens requested from the evolution model. Lower if a local model rejects requests for exceeding its context window.",
+    )]
+    pub max_output_tokens: usize,
 }
 
 // Matches the `#[config(default = ...)]` values above. Used as the fallback
@@ -56,7 +74,9 @@ impl Default for EvolutionLimits {
     fn default() -> Self {
         Self {
             max_iterations: 25,
+            max_token_budget: 50_000,
             max_build_attempts: 5,
+            max_output_tokens: 32_768,
         }
     }
 }
@@ -93,14 +113,18 @@ mod tests {
         let limits = EvolutionLimits::default();
 
         assert_eq!(limits.max_iterations, 25);
+        assert_eq!(limits.max_token_budget, 50_000);
         assert_eq!(limits.max_build_attempts, 5);
+        assert_eq!(limits.max_output_tokens, 32_768);
     }
 
     #[test]
     fn unknown_fields_do_not_change_limits() {
         let limits: EvolutionLimits = serde_json::from_value(serde_json::json!({
             "maxIterations": 11,
+            "maxTokenBudget": 80_000,
             "maxBuildAttempts": 3,
+            "maxOutputTokens": 16_384,
             "developerMode": true
         }))
         .expect("limits deserialize");
@@ -109,8 +133,23 @@ mod tests {
             limits,
             EvolutionLimits {
                 max_iterations: 11,
+                max_token_budget: 80_000,
                 max_build_attempts: 3,
+                max_output_tokens: 16_384,
             }
         );
+    }
+
+    #[test]
+    fn missing_fields_use_defaults() {
+        let limits: EvolutionLimits = serde_json::from_value(serde_json::json!({
+            "maxIterations": 11,
+        }))
+        .expect("limits deserialize");
+
+        assert_eq!(limits.max_iterations, 11);
+        assert_eq!(limits.max_token_budget, 50_000);
+        assert_eq!(limits.max_build_attempts, 5);
+        assert_eq!(limits.max_output_tokens, 32_768);
     }
 }

@@ -155,11 +155,20 @@ impl EvolveEvent {
         )
     }
 
-    pub(crate) fn api_response(start_time: i64, iter: usize, tokens: u32) -> Self {
+    pub(crate) fn api_response(
+        start_time: i64,
+        iter: usize,
+        tokens: u32,
+        total_tokens: u32,
+        max_token_budget: u32,
+    ) -> Self {
         Self::new(
             EvolveEventType::ApiResponse,
-            format!("Received response | tokens used: {}", tokens),
-            "Received AI response".to_string(),
+            format!(
+                "Received response | tokens used: {} | total tokens: {} / {}",
+                tokens, total_tokens, max_token_budget
+            ),
+            format!("Received AI response ({} tokens)", tokens),
             Some(iter),
             start_time,
         )

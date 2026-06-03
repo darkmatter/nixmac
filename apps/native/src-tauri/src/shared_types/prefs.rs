@@ -32,10 +32,14 @@ pub struct UiPrefs {
     pub evolve_provider: Option<String>,
     /// Model used for AI evolution.
     pub evolve_model: Option<String>,
-    /// Maximum agent iterations per evolution.
+    /// Legacy maximum agent iterations per evolution.
     pub max_iterations: Option<usize>,
+    /// Maximum provider-reported tokens per evolution.
+    pub max_token_budget: Option<u32>,
     /// Maximum build attempts per evolution.
     pub max_build_attempts: Option<usize>,
+    /// Maximum output tokens requested per evolution model call.
+    pub max_output_tokens: Option<usize>,
     /// Whether diagnostic feedback may be sent.
     pub send_diagnostics: bool,
     /// Whether to confirm before running build/apply.
@@ -75,10 +79,14 @@ pub struct UiPrefsUpdate {
     pub summary_provider: Option<String>,
     /// Summary model update.
     pub summary_model: Option<String>,
-    /// Maximum iteration count update.
+    /// Legacy maximum iteration count update.
     pub max_iterations: Option<usize>,
+    /// Maximum token budget update.
+    pub max_token_budget: Option<u32>,
     /// Maximum build-attempt count update.
     pub max_build_attempts: Option<usize>,
+    /// Maximum output token count update.
+    pub max_output_tokens: Option<usize>,
     /// Ollama base URL update.
     pub ollama_api_base_url: Option<String>,
     /// vLLM base URL update.

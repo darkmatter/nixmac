@@ -54,6 +54,7 @@ export type FsIconName =
   | "preferences"
   | "secret"
   | "overlay"
+  | "settings"
   | "warn";
 
 export const SECTIONS: Section[] = [
@@ -295,11 +296,11 @@ creation_rules:
     {
       id: "custom-defaults",
       path: "Custom macOS defaults",
-      title: "8 settings differ from defaults",
+      title: "8 untracked settings",
       description:
         "Preferences you've changed in System Settings. Capture them as code so a fresh install matches.",
-      iconName: "warn",
-      tone: "amber",
+      iconName: "settings",
+      tone: "blue",
       status: "candidate",
       destination: "modules/darwin/defaults.nix",
       scanCommand: "defaults read · diff against profile",
