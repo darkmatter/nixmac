@@ -6,6 +6,7 @@ use tauri_plugin_keyring::KeyringExt;
 use std::sync::Mutex;
 
 #[derive(Debug, thiserror::Error)]
+#[allow(dead_code)]
 pub enum CredentialStoreError {
     #[error("keychain operation failed: {0}")]
     Keychain(String),
@@ -20,6 +21,7 @@ pub enum CredentialStoreError {
 pub trait CredentialStore {
     fn get(&self) -> Result<Option<String>, CredentialStoreError>;
     fn set(&self, value: &str) -> Result<(), CredentialStoreError>;
+    #[allow(dead_code)]
     fn delete(&self) -> Result<(), CredentialStoreError>;
 }
 
@@ -72,6 +74,7 @@ impl<R: Runtime> CredentialStore for KeychainStore<R> {
     }
 }
 
+#[allow(dead_code)]
 fn is_not_found_keyring_error<E: std::fmt::Display + std::fmt::Debug>(err: &E) -> bool {
     let msg = err.to_string().to_ascii_lowercase();
     if msg.contains("no matching entry") || msg.contains("not found") {
@@ -81,6 +84,7 @@ fn is_not_found_keyring_error<E: std::fmt::Display + std::fmt::Debug>(err: &E) -
     format!("{err:?}").to_ascii_lowercase().contains("noentry")
 }
 
+#[allow(dead_code)]
 pub struct SettingsFileStore {
     name: String,
     getter: Arc<dyn Fn() -> Result<Option<String>, CredentialStoreError> + Send + Sync>,
@@ -88,6 +92,7 @@ pub struct SettingsFileStore {
 }
 
 impl SettingsFileStore {
+    #[allow(dead_code)]
     pub fn new<G, D>(name: impl Into<String>, getter: G, deleter: D) -> Self
     where
         G: Fn() -> Result<Option<String>, CredentialStoreError> + Send + Sync + 'static,
@@ -163,6 +168,7 @@ impl CredentialStore for InMemoryStore {
     }
 }
 
+#[allow(dead_code)]
 pub fn get_with_lazy_migration<K, L>(
     keychain: &K,
     legacy: &L,
@@ -225,6 +231,7 @@ where
     Ok(Some(legacy_value))
 }
 
+#[allow(dead_code)]
 pub fn set_with_cleanup<K, L>(
     keychain: &K,
     legacy: &L,
