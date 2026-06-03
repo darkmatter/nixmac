@@ -192,6 +192,39 @@ pub fn read_tags(dir: &str, hash: &str) -> Vec<String> {
     tags
 }
 
+/// Returns commits as Row Type (id = 0), from `start_hash` for `limit` (None for all).
+///
+/// Equivalent CLI:
+///   git log --format=%H%n%T%n%at%n%s [-n <limit>] <start_hash>
+pub fn log(
+    dir: &str,
+    start_hash: &str,
+    limit: Option<usize>,
+) -> Result<Vec<crate::sqlite_types::Commit>> {
+    let repo = Repository::discover(dir)?;
+    let commit = repo.revparse_single(start_hash)?.peel_to_commit()?;
+
+    let mut revwalk = repo.revwalk()?;
+    revwalk.set_sorting(git2::Sort::TIME)?;
+    revwalk.push(commit.id())?;
+
+    let mut commits = Vec::new();
+    for oid in revwalk.take(limit.unwrap_or(usize::MAX)) {
+        let commit = repo.find_commit(oid?)?;
+        let subject = commit.summary().unwrap_or_default().unwrap_or_default();
+
+        commits.push(crate::sqlite_types::Commit {
+            id: 0,
+            hash: commit.id().to_string(),
+            tree_hash: commit.tree_id().to_string(),
+            message: (!subject.is_empty()).then(|| subject.to_string()),
+            created_at: commit.time().seconds(),
+        });
+    }
+
+    Ok(commits)
+}
+
 /// Gets the current git status of the repo including
 /// the structured list of changes for summarization and the full diff string for clients that need it.
 pub fn status(dir: &str) -> Result<GitStatus> {
@@ -473,6 +506,34 @@ mod tests {
         (temp, commit_id)
     }
 
+    fn commit_readme(
+        repo: &git2::Repository,
+        repo_path: &Path,
+        message: &str,
+        timestamp: i64,
+        parent: Option<git2::Oid>,
+    ) -> git2::Oid {
+        fs::write(repo_path.join("README.md"), format!("{message}\n")).expect("write file");
+
+        let mut index = repo.index().expect("open index");
+        index.add_path(Path::new("README.md")).expect("stage file");
+        index.write().expect("write index");
+
+        let tree_id = index.write_tree().expect("write tree");
+        let tree = repo.find_tree(tree_id).expect("find tree");
+        let time = git2::Time::new(timestamp, 0);
+        let sig = git2::Signature::new("nixmac", "nixmac@local", &time).expect("signature");
+
+        if let Some(parent_id) = parent {
+            let parent_commit = repo.find_commit(parent_id).expect("find parent");
+            repo.commit(Some("HEAD"), &sig, &sig, message, &tree, &[&parent_commit])
+                .expect("create commit")
+        } else {
+            repo.commit(Some("HEAD"), &sig, &sig, message, &tree, &[])
+                .expect("create commit")
+        }
+    }
+
     #[test]
     fn repo_root_returns_repo_toplevel_for_nested_path() {
         let (temp, _) = repo_with_initial_commit();
@@ -672,6 +733,32 @@ mod tests {
 
         let missing_oid = "0000000000000000000000000000000000000001";
         assert!(read_tags(&path, missing_oid).is_empty());
+    }
+
+    #[test]
+    fn log_returns_commits_from_start_hash_with_limit() {
+        let temp = TempDir::new().expect("create temp dir");
+        let repo = git2::Repository::init(temp.path()).expect("init repo");
+        let path = temp.path().to_string_lossy().to_string();
+
+        let first_id = commit_readme(&repo, temp.path(), "initial", 100, None);
+        let second_id = commit_readme(&repo, temp.path(), "second", 200, Some(first_id));
+        let third_id = commit_readme(&repo, temp.path(), "third", 300, Some(second_id));
+
+        let commits = log(&path, &third_id.to_string(), Some(2)).expect("read log");
+
+        assert_eq!(commits.len(), 2);
+        assert_eq!(commits[0].hash, third_id.to_string());
+        assert_eq!(commits[0].message, Some("third".to_string()));
+        assert_eq!(commits[0].created_at, 300);
+        assert_eq!(
+            commits[0].tree_hash,
+            repo.find_commit(third_id).unwrap().tree_id().to_string()
+        );
+
+        assert_eq!(commits[1].hash, second_id.to_string());
+        assert_eq!(commits[1].message, Some("second".to_string()));
+        assert_eq!(commits[1].created_at, 200);
     }
 
     #[test]
