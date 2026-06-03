@@ -71,7 +71,6 @@ fn main() {
         .register::<shared_types::ChangeType>()
         .register::<shared_types::GitFileStatus>()
         .register::<shared_types::GitStatus>()
-        .register::<shared_types::GitState>()
         .register::<shared_types::EvolutionState>()
         .register::<shared_types::EvolutionTelemetry>()
         .register::<shared_types::EvolutionResult>()
