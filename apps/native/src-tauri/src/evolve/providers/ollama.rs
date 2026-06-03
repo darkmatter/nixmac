@@ -16,7 +16,7 @@ pub struct OllamaProvider {
 }
 
 impl OllamaProvider {
-    pub fn new(base_url: String, model: String) -> Self {
+    pub fn new(base_url: String, model: String, max_output_tokens: u32) -> Self {
         let record_chat_logs =
             crate::state::completion_log::init_recording("evolve_provider_chat", "evolve provider");
         Self {
