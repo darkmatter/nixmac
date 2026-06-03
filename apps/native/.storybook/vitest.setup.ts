@@ -51,6 +51,10 @@ function normalizeSnapshotRoot(root: Element): string {
   html = html.replace(/inmemory:\/\/model\/\d+/g, "inmemory://model/N");
   // data-keybinding-context values are similarly auto-incremented.
   html = html.replace(/data-keybinding-context="\d+"/g, 'data-keybinding-context="N"');
+  html = html.replace(
+    /<div style="width: 100%;" data-keybinding-context="N">/g,
+    '<div data-keybinding-context="N" style="width: 100%;">'
+  );
   // Monaco includes a platform class (`mac`, `linux`, `windows`) based on the runner.
   html = html.replace(
     /\bmonaco-editor no-user-select (?:mac|linux|windows)\s+/g,
