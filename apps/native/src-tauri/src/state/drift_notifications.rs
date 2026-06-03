@@ -25,12 +25,15 @@ pub fn maybe_notify(event: &WatcherEvent) {
         return;
     };
 
-    if last_notification_id.as_deref() == Some(notification.id.as_str()) {
-        return;
-    }
+if last_notification_id.as_deref() == Some(notification.id.as_str()) {
+    return;
+}
 
+// Don't let the one-shot external-build notification disrupt config-drift deduping.
+if notification.id != "external-build" {
     *last_notification_id = Some(notification.id.clone());
-    drop(last_notification_id);
+}
+drop(last_notification_id);
 
     if let Err(error) = send_native_notification(notification.title, &notification.body) {
         log::warn!("Failed to send drift notification: {error}");
