@@ -84,7 +84,11 @@ jobs:
       # Running `security list-keychain -d user -s <keychain>` before the build
       # replaces the keychain search list and breaks DMG bundling on tag runs.
       - name: Build Tauri app
-        run: bun run desktop:build
+        run: |
+          # unset the certificate and password so the runner can't influence the build
+          export APPLE_SIGNING_IDENTITY="-"
+          unset APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD KEYCHAIN_PASSWORD
+          bun run desktop:build
         shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
