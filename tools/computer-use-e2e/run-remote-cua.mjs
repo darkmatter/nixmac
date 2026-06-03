@@ -1908,7 +1908,7 @@ async function runSuite(args) {
     text = await runConditionalBadgeSaveScenario(client, state, text, 'customizationSaveRollback', {
       name: 'Untracked customizations',
       prefix: 'customization',
-      badgePatterns: [/untracked customization/i, /untracked Mac customization/i],
+      badgePatterns: [/untracked settings?/i],
       absentNoun: 'macOS customizations',
     });
 

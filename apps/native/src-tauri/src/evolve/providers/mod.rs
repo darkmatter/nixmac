@@ -75,6 +75,20 @@ pub enum ProviderError {
     Other(AnyhowError),
 }
 
+fn looks_like_context_window_error(body: &str) -> bool {
+    let body = body.to_ascii_lowercase();
+    (body.contains("context")
+        || body.contains("maximum context")
+        || body.contains("context length"))
+        && (body.contains("max_tokens")
+            || body.contains("max_output_tokens")
+            || body.contains("max tokens")
+            || body.contains("max completion")
+            || body.contains("output tokens")
+            || body.contains("token limit")
+            || body.contains("requested"))
+}
+
 impl ProviderError {
     /// Return a user-friendly error message suitable for display in the UI.
     ///
@@ -85,6 +99,9 @@ impl ProviderError {
     /// `Http { status, body }` before reaching this method.
     pub fn user_message(&self) -> String {
         match self {
+            ProviderError::Http { status, body } if looks_like_context_window_error(body) => {
+                "The AI provider rejected the request because the configured max output tokens exceed the model's context window. Lower Max output tokens in Settings or switch to a model with a larger context window.".to_string()
+            }
             ProviderError::Http { status, .. } => friendly_provider_error(status.as_u16()),
             ProviderError::Other(e) => {
                 let msg = format!("{:#}", e);
@@ -102,5 +119,29 @@ impl ProviderError {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn recognizes_context_window_token_errors() {
+        let body = "This model's maximum context length is 65536 tokens. However, you requested 65000 output tokens.";
+        assert!(looks_like_context_window_error(body));
+    }
+
+    #[test]
+    fn context_window_errors_suggest_token_setting() {
+        let err = ProviderError::Http {
+            status: StatusCode::BAD_REQUEST,
+            body: "maximum context length is 65536 tokens; requested max_tokens is too high"
+                .to_string(),
+        };
+
+        let msg = err.user_message();
+        assert!(msg.contains("Max output tokens"));
+        assert!(msg.contains("Lower"));
     }
 }

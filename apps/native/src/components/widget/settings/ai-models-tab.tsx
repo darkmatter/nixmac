@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
 import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/ai-provider-validation";
-import { DEFAULT_MAX_ITERATIONS } from "@/lib/constants";
+import { DEFAULT_MAX_ITERATIONS, DEFAULT_MAX_OUTPUT_TOKENS } from "@/lib/constants";
 import { tauriAPI } from "@/ipc/api";
 import type { CliToolsState } from "@/ipc/types";
 import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
@@ -30,6 +30,8 @@ interface AiModelsTabProps {
   // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
   maxBuildAttemptsField: AnyFieldApi;
   // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
+  maxOutputTokensField: AnyFieldApi;
+  // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
   form: ReactFormExtendedApi<any, any, any, any, any, any, any, any, any, any, any, any>;
 }
 
@@ -47,7 +49,7 @@ const DEFAULT_EVOLVE_MODEL: Record<string, string> = {
   openrouter: "anthropic/claude-sonnet-4",
   openai: "anthropic/claude-sonnet-4",
   ollama: "",
-  vllm: "gpt-oss-120b",
+  vllm: "",
   claude: "",
   codex: "",
   opencode: "",
@@ -56,8 +58,8 @@ const DEFAULT_EVOLVE_MODEL: Record<string, string> = {
 const DEFAULT_SUMMARY_MODEL: Record<string, string> = {
   openrouter: "openai/gpt-4o-mini",
   openai: "openai/gpt-4o-mini",
-  ollama: "llama3.1",
-  vllm: "gpt-oss-120b",
+  ollama: "",
+  vllm: "",
   claude: "",
   codex: "",
   opencode: "",
@@ -108,6 +110,7 @@ export function AiModelsTab({
   summaryModelField,
   maxIterationsField,
   maxBuildAttemptsField,
+  maxOutputTokensField,
   form,
 }: AiModelsTabProps) {
   const cliStatus = useCliToolStatus();
@@ -140,11 +143,13 @@ export function AiModelsTab({
     evolveProviderField.state.value,
     providerPrefs,
     cliStatus,
+    evolveModelField.state.value,
   );
   const summaryProviderError = getProviderConfigInvalidReason(
     summaryProviderField.state.value,
     providerPrefs,
     cliStatus,
+    summaryModelField.state.value,
   );
 
   return (
@@ -228,9 +233,9 @@ export function AiModelsTab({
                           onBlur={evolveModelField.handleBlur}
                           placeholder={
                             evolveProvider === "ollama"
-                              ? ""
+                              ? "Select an installed Ollama model"
                               : evolveProvider === "vllm"
-                                ? "gpt-oss-120b"
+                                ? "Enter vLLM model name"
                                 : evolveProvider === "opencode"
                                   ? "Leave empty for CLI default"
                                   : "anthropic/claude-sonnet-4"
@@ -316,9 +321,9 @@ export function AiModelsTab({
                           onBlur={summaryModelField.handleBlur}
                           placeholder={
                             summaryProvider === "ollama"
-                              ? "llama3.1"
+                              ? "Select an installed Ollama model"
                               : summaryProvider === "vllm"
-                                ? "gpt-oss-120b"
+                                ? "Enter vLLM model name"
                                 : summaryProvider === "opencode"
                                   ? "Leave empty for CLI default"
                                   : "openai/gpt-4o-mini"
@@ -379,6 +384,49 @@ export function AiModelsTab({
                     await tauriAPI.ui.setPrefs({ maxIterations: value });
                   }}
                   onBlur={maxIterationsField.handleBlur}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <label
+                    className="text-xs font-medium text-muted-foreground"
+                    htmlFor="maxOutputTokens"
+                  >
+                    Max output tokens
+                  </label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="inline-flex h-4 w-4 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground/70"
+                        aria-label="Max output tokens info"
+                      >
+                        <Info className="h-3.5 w-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-xs text-xs">
+                      <p>Completion tokens requested from the evolution model.</p>
+                      <p className="mt-1">
+                        Default: {DEFAULT_MAX_OUTPUT_TOKENS}. Lower this if local vLLM rejects
+                        requests for exceeding the model context window.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <Input
+                  id="maxOutputTokens"
+                  type="number"
+                  min={1024}
+                  max={262144}
+                  step={1024}
+                  value={maxOutputTokensField.state.value}
+                  onChange={async (e) => {
+                    const value =
+                      Number.parseInt(e.target.value, 10) || DEFAULT_MAX_OUTPUT_TOKENS;
+                    maxOutputTokensField.handleChange(value);
+                    await tauriAPI.ui.setPrefs({ maxOutputTokens: value });
+                  }}
+                  onBlur={maxOutputTokensField.handleBlur}
                 />
               </div>
               <div className="space-y-2">

@@ -37,6 +37,15 @@ pub fn normalize_dir_input(input: &str) -> Result<std::path::PathBuf, String> {
     }
 }
 
+pub fn non_empty_trimmed_string(input: impl AsRef<str>) -> Option<String> {
+    let trimmed = input.as_ref().trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
 // Helper to truncate a string in-place without breaking UTF-8 encoding
 // and causing a panic, thereby avoiding annoying AI code review comments
 // about "don't truncate UTF-8 strings".
@@ -56,7 +65,7 @@ pub fn truncate_with_ellipsis(s: &str, max: usize) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::normalize_dir_input;
+    use super::{non_empty_trimmed_string, normalize_dir_input};
 
     #[test]
     fn test_empty_input_returns_err() {
@@ -67,6 +76,16 @@ mod tests {
     fn test_whitespace_only_returns_err() {
         assert!(normalize_dir_input("   ").is_err());
         assert!(normalize_dir_input("\t\n").is_err());
+    }
+
+    #[test]
+    fn test_non_empty_trimmed_string_filters_empty_values() {
+        assert_eq!(
+            non_empty_trimmed_string(" model-name "),
+            Some("model-name".to_string())
+        );
+        assert_eq!(non_empty_trimmed_string("   "), None);
+        assert_eq!(non_empty_trimmed_string(""), None);
     }
 
     #[test]

@@ -33,6 +33,7 @@ export function PromptInput() {
   const gitStatus = useWidgetStore((s) => s.gitStatus);
   const settingsOpen = useWidgetStore((s) => s.settingsOpen);
   const setSettingsOpen = useWidgetStore((s) => s.setSettingsOpen);
+  const [warningOpen, setWarningOpen] = useState(false);
   const { handleEvolve, evolveFromManual } = useEvolve();
   const [providerErrors, setProviderErrors] = useState<{ evolve: string | null; summary: string | null }>({
     evolve: null,
@@ -59,8 +60,18 @@ export function PromptInput() {
 
         if (!cancelled) {
           setProviderErrors({
-            evolve: getProviderConfigInvalidReason(evolveProvider, normalizedPrefs, cliStatus),
-            summary: getProviderConfigInvalidReason(summaryProvider, normalizedPrefs, cliStatus),
+            evolve: getProviderConfigInvalidReason(
+              evolveProvider,
+              normalizedPrefs,
+              cliStatus,
+              prefs?.evolveModel,
+            ),
+            summary: getProviderConfigInvalidReason(
+              summaryProvider,
+              normalizedPrefs,
+              cliStatus,
+              prefs?.summaryModel,
+            ),
           });
         }
       } catch {
@@ -105,7 +116,8 @@ export function PromptInput() {
     if (!evolvePrompt.trim()) return;
     if (promptValidationError) return;
     if (needsResolution) {
-      evolveFromManual();
+      setWarningOpen(true);
+      return;
     }
     handleEvolve();
   };

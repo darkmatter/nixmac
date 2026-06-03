@@ -95,6 +95,16 @@ struct EvolutionMessage {
     key: Option<String>, // optional key for deduplication or reference (e.g. file path for read_file results)
 }
 
+fn normalize_max_output_tokens(value: usize) -> u32 {
+    value.max(1).min(u32::MAX as usize) as u32
+}
+
+/// Return short hex prefix for correlation of error messages without risking sensitive content exposure.
+fn short_hash(s: &str) -> String {
+    let mut h = Sha256::new();
+    h.update(s.as_bytes());
+    hex::encode(h.finalize())[..8].to_string()
+}
 impl EvolutionMessage {
     fn permanent(message: Message, iteration: usize, key: Option<String>) -> Self {
         Self {
@@ -331,6 +341,26 @@ const BUILD_OUTPUT_TAIL_LINES: usize = 80;
 
 const SYSTEM_PROMPT: &str = include_str!("../../prompts/system.md");
 
+fn configured_model(store_model: Option<String>, env_var: &str) -> Option<String> {
+    store_model
+        .and_then(global_utils::non_empty_trimmed_string)
+        .or_else(|| {
+            std::env::var(env_var)
+                .ok()
+                .and_then(global_utils::non_empty_trimmed_string)
+        })
+}
+
+fn require_local_model(
+    provider_name: &str,
+    store_model: Option<String>,
+    env_var: &str,
+) -> Result<String> {
+    configured_model(store_model, env_var).ok_or_else(|| {
+        anyhow!("No {provider_name} model configured. Please select a model in Settings or set {env_var}.")
+    })
+}
+
 /// Build a short single-line preview from the conversation messages to help with
 /// troubleshooting.
 fn build_preview(messages: &[EvolutionMessage]) -> String {
@@ -565,53 +595,62 @@ pub async fn generate_evolution<R: Runtime>(
     info!("📝 Prompt: {}", prompt);
 
     let store_model = store::get_evolve_model(app).ok().flatten();
+    let max_output_tokens =
+        store::get_max_output_tokens(app).unwrap_or(store::DEFAULT_MAX_OUTPUT_TOKENS);
+    let max_output_tokens_for_request = normalize_max_output_tokens(max_output_tokens);
 
     // Select provider implementation
     let provider: Arc<dyn AiProvider> = if provider_type == "ollama" {
-        let model = store_model
-            .or_else(|| std::env::var("EVOLVE_MODEL").ok())
-            .unwrap_or_else(|| "qwen3-coder:30b".to_string());
+        let model = require_local_model("Ollama", store_model, "EVOLVE_MODEL")?;
         let base_url = store::get_ollama_api_base_url(app)
             .ok()
             .flatten()
             .or_else(|| std::env::var("OLLAMA_API_BASE").ok())
             .unwrap_or_else(|| DEFAULT_OLLAMA_API_BASE.to_string());
         info!(
-            "Using Ollama provider | Model: {} | URL: {}",
-            model, base_url
+            "Using Ollama provider | Model: {} | URL: {} | Max output tokens: {}",
+            model, base_url, max_output_tokens_for_request
         );
-        Arc::new(OllamaProvider::new(base_url, model))
+        Arc::new(OllamaProvider::new(
+            base_url,
+            model,
+            max_output_tokens_for_request,
+        ))
     } else if matches!(provider_type.as_str(), "claude" | "codex" | "opencode") {
         let tool = match provider_type.as_str() {
             "claude" => crate::ai::providers::cli::CliTool::Claude,
             "codex" => crate::ai::providers::cli::CliTool::Codex,
             _ => crate::ai::providers::cli::CliTool::OpenCode,
         };
-        let model = store_model
-            .or_else(|| std::env::var("EVOLVE_MODEL").ok())
-            .unwrap_or_else(|| provider_type.clone());
+        let model =
+            configured_model(store_model, "EVOLVE_MODEL").unwrap_or_else(|| provider_type.clone());
         info!("Using CLI provider: {} | Model: {}", provider_type, model);
         Arc::new(CliProvider::new(tool, model))
     } else if provider_type == "vllm" {
-        let model = store_model
-            .or_else(|| std::env::var("EVOLVE_MODEL").ok())
-            .unwrap_or_else(|| "gpt-oss-120b".to_string());
+        let model = require_local_model("vLLM", store_model, "EVOLVE_MODEL")?;
         let base_url = store::get_vllm_api_base_url(app)
             .ok()
             .flatten()
             .or_else(|| std::env::var("VLLM_API_BASE").ok())
             .ok_or_else(|| anyhow!("No vLLM base URL configured. Please set it in Settings."))?;
         let api_key = store::get_effective_vllm_api_key(app)?.unwrap_or_else(|| "none".to_string());
-        info!("Using vLLM provider | Model: {} | URL: {}", model, base_url);
-        Arc::new(OpenAIProvider::new(api_key, base_url, model))
+        info!(
+            "Using vLLM provider | Model: {} | URL: {} | Max output tokens: {}",
+            model, base_url, max_output_tokens_for_request
+        );
+        Arc::new(OpenAIProvider::new(
+            api_key,
+            base_url,
+            model,
+            max_output_tokens_for_request,
+        ))
     } else {
         let (api_key, base_url) = store::get_effective_openai_compatible_credential(app)?
             .ok_or_else(|| {
                 anyhow!("No API key found. Please add your API key in Settings to get started.")
             })?;
 
-        let model = store_model
-            .or_else(|| std::env::var("EVOLVE_MODEL").ok())
+        let model = configured_model(store_model, "EVOLVE_MODEL")
             .unwrap_or_else(|| DEFAULT_MODEL.to_string());
         // Strip OpenRouter-style "openai/" prefix for direct OpenAI usage
         let model = if base_url == store::OPENAI_BASE_URL {
@@ -624,8 +663,16 @@ pub async fn generate_evolution<R: Runtime>(
         } else {
             "OpenAI"
         };
-        info!("Using {} provider | Model: {}", provider_name, model);
-        Arc::new(OpenAIProvider::new(api_key, base_url.to_string(), model))
+        info!(
+            "Using {} provider | Model: {} | Max output tokens: {}",
+            provider_name, model, max_output_tokens_for_request
+        );
+        Arc::new(OpenAIProvider::new(
+            api_key,
+            base_url.to_string(),
+            model,
+            max_output_tokens_for_request,
+        ))
     };
 
     // Emit start event
@@ -656,11 +703,12 @@ pub async fn generate_evolution<R: Runtime>(
         (max_iterations * MAX_ITERATIONS_BEFORE_EDIT_PERCENT) / 100,
     );
     info!(
-        "Limits: max_iterations={}, max_iterations_before_edit={} ({}%), max_build_attempts={}",
+        "Limits: max_iterations={}, max_iterations_before_edit={} ({}%), max_build_attempts={}, max_output_tokens={}",
         max_iterations,
         max_iterations_before_edit,
         MAX_ITERATIONS_BEFORE_EDIT_PERCENT,
-        max_build_attempts
+        max_build_attempts,
+        max_output_tokens
     );
 
     let tools = create_tools(banned_tools);

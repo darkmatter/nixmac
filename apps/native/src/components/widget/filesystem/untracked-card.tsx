@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, Braces, MessageSquarePlus } from "lucide-react";
+import { Braces, MessageSquarePlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-import type { CandidateItem, FsFile } from "./data";
+import type { CandidateItem, FileTone, FsFile } from "./data";
 import { highlightNixLine } from "./highlight";
+import { resolveIcon } from "./icons";
 import { seedForUntrackedItem, seedForUntrackedSection } from "./seed-prompt";
 
 interface UntrackedCardProps {
@@ -17,16 +18,60 @@ interface UntrackedCardProps {
   onTrack: (seed: string) => void;
 }
 
+const CARD_TONE_CLASSES: Record<
+  FileTone,
+  { border: string; gradient: string; icon: string; divider: string }
+> = {
+  amber: {
+    border: "border-amber-500/30",
+    gradient: "from-amber-500/[0.06] to-amber-500/[0.02]",
+    icon: "text-amber-400",
+    divider: "border-amber-500/20",
+  },
+  blue: {
+    border: "border-sky-500/30",
+    gradient: "from-sky-500/[0.06] to-sky-500/[0.02]",
+    icon: "text-sky-400",
+    divider: "border-sky-500/20",
+  },
+  muted: {
+    border: "border-border",
+    gradient: "from-muted/40 to-muted/20",
+    icon: "text-muted-foreground",
+    divider: "border-border/40",
+  },
+  rose: {
+    border: "border-rose-500/30",
+    gradient: "from-rose-500/[0.06] to-rose-500/[0.02]",
+    icon: "text-rose-400",
+    divider: "border-rose-500/20",
+  },
+  teal: {
+    border: "border-teal-500/30",
+    gradient: "from-teal-500/[0.06] to-teal-500/[0.02]",
+    icon: "text-teal-400",
+    divider: "border-teal-500/20",
+  },
+};
+
 export function UntrackedCard({ file, onTrack }: UntrackedCardProps) {
   const items = useMemo<CandidateItem[]>(() => file.items ?? [], [file.items]);
   const [showSource, setShowSource] = useState(false);
+  const tone = CARD_TONE_CLASSES[file.tone];
+  const Icon = resolveIcon(file.iconName);
 
   if (file.status !== "candidate") return null;
 
   return (
-    <div className="overflow-hidden rounded-lg border border-amber-500/30 bg-gradient-to-b from-amber-500/[0.06] to-amber-500/[0.02]">
+    <div
+      className={cn(
+        "overflow-hidden rounded-lg border bg-gradient-to-b",
+        tone.border,
+        tone.gradient,
+      )}
+    >
       <div className="flex items-start gap-3 px-4 py-3">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+        <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", tone.icon)} />
         <div className="min-w-0 flex-1">
           <div className="font-semibold text-[13px]">{file.title}</div>
           <div className="mt-1 text-[11.5px] text-muted-foreground leading-relaxed">
@@ -64,7 +109,7 @@ export function UntrackedCard({ file, onTrack }: UntrackedCardProps) {
         </div>
       </div>
 
-      <div className="border-amber-500/20 border-t bg-card/30">
+      <div className={cn("border-t bg-card/30", tone.divider)}>
         <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 px-3 py-1.5 font-medium text-[10px] text-muted-foreground uppercase tracking-wider">
           <span>·</span>
           <span>Found · {items.length}</span>

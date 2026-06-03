@@ -10,6 +10,7 @@ export function getProviderConfigInvalidReason(
   provider: string,
   prefs: Pick<DarwinPrefs, "openrouterApiKey" | "openaiApiKey" | "vllmApiBaseUrl">,
   cliStatus: CliToolsState | null | undefined,
+  model?: string | null,
 ): string | null {
   if (isCliProvider(provider) && cliStatus != null) {
     const key = provider as keyof CliToolsState;
@@ -25,7 +26,14 @@ export function getProviderConfigInvalidReason(
   }
 
   if (provider === "vllm") {
-    return prefs.vllmApiBaseUrl?.trim() ? null : "No base URL set";
+    if (!prefs.vllmApiBaseUrl?.trim()) {
+      return "No base URL set";
+    }
+    return model?.trim() ? null : "No model set";
+  }
+
+  if (provider === "ollama") {
+    return model?.trim() ? null : "No model set";
   }
 
   return null;
