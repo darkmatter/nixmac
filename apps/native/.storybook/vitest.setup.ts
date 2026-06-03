@@ -7,7 +7,15 @@ function normalizeAnimations(html: string): string {
   return html
     .replace(/translateY\(([^)]+)\)/g, (_match, val) => {
       const rounded = Math.round(Number.parseFloat(val));
-      const stableOffset = rounded >= 9 && rounded <= 11 ? 10 : rounded;
+      const snapToGrid = (base: number, step: number) => {
+        const candidate = base + Math.round((rounded - base) / step) * step;
+        return Math.abs(rounded - candidate) <= 1 ? candidate : null;
+      };
+      const stableOffset =
+        (Math.abs(rounded - 10) <= 1 ? 10 : null) ??
+        snapToGrid(4, 36) ??
+        snapToGrid(8, 36) ??
+        rounded;
       return `translateY(${stableOffset}px)`;
     })
     .replace(/translateX\(([^)]+)\)/g, (_match, val) => {
@@ -43,6 +51,15 @@ function normalizeSnapshotRoot(root: Element): string {
   html = html.replace(/inmemory:\/\/model\/\d+/g, "inmemory://model/N");
   // data-keybinding-context values are similarly auto-incremented.
   html = html.replace(/data-keybinding-context="\d+"/g, 'data-keybinding-context="N"');
+  // Monaco includes a platform class (`mac`, `linux`, `windows`) based on the runner.
+  html = html.replace(
+    /\bmonaco-editor no-user-select (?:mac|linux|windows)\s+/g,
+    "monaco-editor no-user-select "
+  );
+  html = html.replace(
+    /\bmonaco-editor no-user-select\s+/g,
+    "monaco-editor no-user-select "
+  );
   return html;
 }
 
