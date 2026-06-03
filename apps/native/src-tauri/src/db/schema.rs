@@ -84,6 +84,7 @@ mod tests {
             .unwrap();
         assert_eq!(row_count, 0);
 
-        crate::db::evolutions::upsert(&db_path, None, "feature").unwrap();
+        let pool = rt.block_on(crate::db::init_pool_at_path(&db_path)).unwrap();
+        crate::db::evolutions::upsert(&pool, None, "feature").unwrap();
     }
 }

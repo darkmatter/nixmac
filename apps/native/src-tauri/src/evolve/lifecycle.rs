@@ -7,7 +7,7 @@
 //! All steps are atomic from the frontend's perspective - one call does everything.
 
 use log::info;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 use crate::state::{build_state, evolve_state};
 use crate::storage::store;
@@ -350,18 +350,11 @@ pub async fn store_metadata(
     app: &AppHandle,
     status: &crate::shared_types::GitStatus,
 ) -> (Option<i64>, Option<i64>) {
-    let db_path = match db::get_db_path(app) {
-        Ok(p) => p,
-        Err(e) => {
-            log::error!("[evolution] failed to get db path: {}", e);
-            return (None, None);
-        }
-    };
-
     // Reuse an in-progress evolution (e.g. after adopt-then-evolve); otherwise insert fresh.
     let existing_id = evolve_state::get(app).ok().and_then(|s| s.evolution_id);
+    let pool = app.state::<db::DbPool>();
     let evolution_id = match db::evolutions::upsert(
-        &db_path,
+        &pool,
         existing_id,
         status.branch.as_deref().unwrap_or("unknown"),
     ) {

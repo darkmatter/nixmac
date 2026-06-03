@@ -1,7 +1,7 @@
 //! Reusable managed review helpers for non-AI edits.
 
 use anyhow::{Context, Result};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 use crate::state::{build_state, evolve_state};
 use crate::storage::store;
@@ -25,7 +25,8 @@ pub fn prepare_managed_edit(app: &AppHandle) -> Result<ManagedEditContext> {
 
     let pre_state = evolve_state::get(app).unwrap_or_default();
     let branch = git::current_branch(&dir).unwrap_or_else(|| "main".to_string());
-    let evolution_id = db::evolutions::upsert(&db_path, pre_state.evolution_id, &branch)
+    let pool = app.state::<db::DbPool>();
+    let evolution_id = db::evolutions::upsert(&pool, pre_state.evolution_id, &branch)
         .context("Failed to upsert evolution")?;
 
     let changeset_id = pre_state.current_changeset_id.unwrap_or(0);
