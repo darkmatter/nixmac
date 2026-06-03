@@ -74,6 +74,7 @@ pub fn upsert_commit(
 }
 
 /// Insert a commit through the managed Diesel pool, returning its id.
+#[allow(dead_code)]
 pub fn upsert_commit_in_pool(
     pool: &DbPool,
     hash: &str,

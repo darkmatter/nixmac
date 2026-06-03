@@ -94,7 +94,7 @@ pub fn determine_host_attr<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Opti
         return Some(attr);
     }
 
-    crate::storage::store::read_host_attr_from_file()
+    None
 }
 
 pub fn list_darwin_hosts(config_dir: &str) -> Result<Vec<String>> {
