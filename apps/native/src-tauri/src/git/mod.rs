@@ -10,8 +10,8 @@ mod repo_files;
 // `crate::git::some_fn()` without change.
 #[allow(unused_imports)]
 pub use exec::{
-    checkout_files_at_commit, commit_all, create_evolution_backup, delete_backup_branch,
-    intent_add_untracked, restore_all, restore_from_branch_ref, stash, tag_commit, CommitInfo,
+    checkout_files_at_commit, commit_all, create_evolution_backup, intent_add_untracked,
+    restore_all, restore_from_branch_ref, stash, tag_commit, CommitInfo,
 };
 
 #[allow(unused_imports)]
