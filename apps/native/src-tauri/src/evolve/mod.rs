@@ -1538,6 +1538,16 @@ Do not invent tool names and do not place tool invocations in assistant content.
                 LimitDecision::Continue => {
                     max_iterations += max_iterations_increment;
                     info!("Extending max iterations to {}", max_iterations);
+
+                    // Avoid immediately prompting again this same iteration if build attempts
+                    // are already at/over the current ceiling.
+                    if build_attempts >= max_build_attempts {
+                        max_build_attempts += max_build_attempts_increment;
+                        info!(
+                            "Also extending max build attempts to {}",
+                            max_build_attempts
+                        );
+                    }
                 }
                 LimitDecision::Stop => {
                     finish_after_limit_stop(
