@@ -243,7 +243,9 @@ mod tests {
             &mut skipped,
             serde_json::to_value(EvolutionLimits {
                 max_iterations: 12,
+                max_token_budget: 80_000,
                 max_build_attempts: 4,
+                max_output_tokens: 16_384,
             })
             .unwrap(),
             false,

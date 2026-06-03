@@ -1,5 +1,5 @@
 import { tauriAPI, ipcRenderer } from "@/ipc/api";
-import type { GitState, GitStatus } from "@/ipc/types";
+import type { GitStatus, WatcherEvent } from "@/ipc/types";
 import { useUiState } from "@/stores/ui-state";
 import { useViewModel } from "@/stores/view-model";
 import { refreshHistorySnapshot } from "./history";
@@ -18,9 +18,9 @@ export async function startGitSync(): Promise<() => void> {
   mirrorGitState(await tauriAPI.git.status());
 
   const [stateUnlisten, errorUnlisten] = await Promise.all([
-    ipcRenderer.on<GitState>("git_state_changed", (event) => {
+    ipcRenderer.on<WatcherEvent>("git_state_changed", (event) => {
       const { gitStatus, externalBuildDetected } = event.payload;
-      mirrorGitState(gitStatus, externalBuildDetected);
+      mirrorGitState(gitStatus ?? null, externalBuildDetected);
       void refreshHistorySnapshot();
     }),
     ipcRenderer.on<string>("git_state_error", (event) => {

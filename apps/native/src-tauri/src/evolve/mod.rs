@@ -25,7 +25,7 @@ pub mod lifecycle;
 pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
 use crate::evolve::utils::{escape_user_query, format_duration_secs, short_hash};
-use crate::git::exec::repo_root;
+use crate::git::query::repo_root;
 // Re-export public API
 use crate::shared_types::EvolutionState;
 use crate::system::nix;
@@ -42,7 +42,7 @@ use std::time::Duration;
 use tauri::{AppHandle, Manager, Runtime};
 use tokio::time::sleep;
 use tools::{create_tools, execute_tool, is_editing_tool, ToolResult};
-pub use types::Evolution;
+pub use crate::shared_types::Evolution;
 pub use types::{EvolutionProgress, EvolutionRunError};
 
 use crate::{
@@ -57,7 +57,7 @@ use config_dir_context::format_config_dir_context;
 use messages::Message;
 use providers::{AiProvider, CliProvider, OllamaProvider, OpenAIProvider, ProviderError};
 
-use self::types::FileEdit;
+use crate::shared_types::FileEdit;
 
 /// Strategy for retaining evolution messages in the conversation history for provider context.
 /// This is used to balance keeping important context visible to the model with limiting token usage
@@ -1351,7 +1351,7 @@ Do not invent tool names and do not place tool invocations in assistant content.
         }
 
         // Safety limits -- Token Budget Before Edit Check
-        if total_tokens >= max_tokens_before_edit && !made_edit_or_build_check {
+        if total_tokens >= max_tokens_before_edit && !(made_edit || made_build_check) {
             warn!(
                 "⚠️ No edit or build_check after {} tokens - agent not making progress",
                 total_tokens

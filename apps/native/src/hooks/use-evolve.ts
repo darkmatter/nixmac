@@ -66,7 +66,6 @@ const handleEvolve = async () => {
   mirrorGitState(useViewModel.getState().git, false);
   store.clearEvolveEvents();
   store.clearLogs();
-  mirrorChangeMapState(null);
   store.setConversationalResponse(null);
   store.setEvolutionTelemetry(null);
   store.appendLog(`\n> Evolving: "${store.evolvePrompt}"\n`);

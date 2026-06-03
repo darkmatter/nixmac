@@ -1,5 +1,7 @@
 import type { EvolveState, GitStatus } from "@/ipc/types";
 import { useWidgetStore } from "@/stores/widget-store";
+import { mirrorEvolveState } from "@/viewmodel/evolve";
+import { mirrorGitState } from "@/viewmodel/git";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useRollback } from "./use-rollback";
@@ -86,8 +88,8 @@ describe("useRollback", () => {
 
     const store = useWidgetStore.getState();
     store.setEvolvePrompt("Install vim");
-    store.setEvolveState(committableEvolveState);
-    store.setGitStatus(cleanGitStatus);
+    mirrorEvolveState(committableEvolveState);
+    mirrorGitState(cleanGitStatus);
     store.setProcessing(false);
     store.setGenerating(false);
     store.setError(null);

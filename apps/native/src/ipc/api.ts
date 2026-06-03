@@ -143,12 +143,6 @@ export const tauriAPI = {
     add: (prompt: string) => invoke<OkResult>("add_to_prompt_history", { prompt }),
   },
 
-  devConfigs: {
-    list: () => invoke<ConfigurableSchema[]>("dev_configs_list"),
-    set: (structName: string, key: string, value: unknown) =>
-      invoke<void>("dev_config_set", { structName, key, value }),
-  },
-
   previewIndicator: {
     show: () => invoke<OkResult>("preview_indicator_show"),
     hide: () => invoke<OkResult>("preview_indicator_hide"),
