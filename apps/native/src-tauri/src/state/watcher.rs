@@ -4,7 +4,7 @@
 //! Change detection compares current git status against the persisted store cache,
 //! which is kept in sync by both this watcher and the evolution/summarize handlers.
 
-use crate::shared_types::WatcherEvent;
+use crate::shared_types::GitState;
 use crate::state::{build_state, evolve_state};
 use crate::storage::store;
 use crate::{db, git, summarize};
@@ -111,18 +111,17 @@ where
                                 })
                                 .map(summarize::group_existing::from_change_sets)
                                 .unwrap_or_default();
-                            let evolve_state = evolve_state::get(&app_handle).ok().and_then(|es| {
-                                // fire-and-forget: cache update in polling loop.
-                                evolve_state::set(&app_handle, es, &status.changes).ok()
-                            });
-                            // fire-and-forget: frontend event delivery; window may not be connected.
+                            // Side-effect: refresh the evolve slice. The slice write-guard
+                            // emits `evolve_state_changed` on drop, so no manual emit needed.
+                            if let Ok(es) = evolve_state::get(&app_handle) {
+                                let _ = evolve_state::set(&app_handle, es, &status.changes);
+                            }
+                            // One emit per slice — frontend listens on its dedicated channel.
+                            // fire-and-forget: window may not be connected yet.
                             let _ = app_handle.emit(
                                 "git_state_changed",
-                                WatcherEvent {
+                                GitState {
                                     git_status: Some(status.clone()),
-                                    change_map: Some(change_map.clone()),
-                                    evolve_state,
-                                    error: None,
                                     external_build_detected,
                                 },
                             );

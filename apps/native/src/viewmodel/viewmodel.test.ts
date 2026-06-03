@@ -1,8 +1,8 @@
 import type {
   EvolveState,
+  GitState,
   GitStatus,
   SemanticChangeMap,
-  WatcherEvent,
 } from "@/ipc/types";
 import { useUiState, initialUiState } from "@/stores/ui-state";
 import { useViewModel } from "@/stores/view-model";
@@ -84,11 +84,8 @@ describe("view model sync", () => {
     expect(useViewModel.getState().git).toBe(apiMocks.gitStatus);
 
     const gitStatus = { hasChanges: true, files: [] } as unknown as GitStatus;
-    const event: WatcherEvent = {
+    const event: GitState = {
       gitStatus,
-      changeMap: null,
-      evolveState: null,
-      error: null,
       externalBuildDetected: true,
     };
 

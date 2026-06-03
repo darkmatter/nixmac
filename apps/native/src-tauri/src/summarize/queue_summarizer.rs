@@ -21,7 +21,6 @@ const FAILED_AFTER_TRIES: i64 = 4;
 
 /// Bounded channel depth for the summarizer's mpsc queue. Keeps memory
 /// predictable even if producers enqueue faster than the worker drains.
-#[allow(dead_code)]
 const SUMMARIZER_QUEUE_DEPTH: usize = 32;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -57,7 +56,6 @@ struct HashSummaryPair {
 
 // ── Public entry point ────────────────────────────────────────────────────────
 
-#[allow(dead_code)]
 pub fn start_worker<R: Runtime>(app: &AppHandle<R>) -> Result<SummarizerState> {
     let (tx, rx) = mpsc::channel(SUMMARIZER_QUEUE_DEPTH);
     let app = app.clone();
@@ -76,7 +74,6 @@ pub fn start_worker<R: Runtime>(app: &AppHandle<R>) -> Result<SummarizerState> {
     Ok(SummarizerState { tx })
 }
 
-#[allow(dead_code)]
 async fn worker_loop<F, Fut>(mut rx: mpsc::Receiver<SummarizeJob>, mut handler: F)
 where
     F: FnMut(SummarizeJob) -> Fut,
