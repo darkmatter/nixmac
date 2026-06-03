@@ -25,8 +25,9 @@ pub async fn analyze<R: Runtime>(
     }
 
     let config_dir = crate::storage::store::get_config_dir(app)?;
+    let pool = app.state::<crate::db::DbPool>();
     let Some(base_commit_id) =
-        crate::db::commits::store_head_commit(db_path, &config_dir, base_commit_id)?
+        crate::db::commits::store_head_commit_in_pool(&pool, &config_dir, base_commit_id)?
     else {
         return Ok(None);
     };

@@ -11,7 +11,7 @@ use crate::{db, git, summarize};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
-use tauri::{AppHandle, Emitter, Runtime};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 
 /// Set to `false` by `start_watching` to stop the old thread before starting a new one.
 static WATCHER_ACTIVE: AtomicBool = AtomicBool::new(false);
@@ -104,10 +104,14 @@ where
                         let current_json = serde_json::to_string(&status).ok();
 
                         if current_json != cached_json || external_build_detected {
+                            let pool = app_handle.state::<db::DbPool>();
                             let change_map = db::get_db_path(&app_handle)
                                 .ok()
                                 .and_then(|db_path| {
-                                    summarize::find_existing::for_current_state(&db_path, dir).ok()
+                                    summarize::find_existing::for_current_state(
+                                        &pool, &db_path, dir,
+                                    )
+                                    .ok()
                                 })
                                 .map(summarize::group_existing::from_change_sets)
                                 .unwrap_or_default();

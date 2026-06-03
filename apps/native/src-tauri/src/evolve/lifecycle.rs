@@ -295,9 +295,12 @@ pub async fn backup_evolve_and_record_changeset(
     .unwrap_or_default();
 
     // Build the change map from whatever is now stored in the DB.
+    let pool = app.state::<db::DbPool>();
     let change_map = db::get_db_path(app)
         .ok()
-        .and_then(|db_path| summarize::find_existing::for_current_state(&db_path, &repo_root).ok())
+        .and_then(|db_path| {
+            summarize::find_existing::for_current_state(&pool, &db_path, &repo_root).ok()
+        })
         .map(summarize::group_existing::from_change_sets)
         .unwrap_or_default();
 

@@ -13,7 +13,7 @@ pub mod sumlog;
 pub mod token_budgets;
 
 use anyhow::Result;
-use tauri::{AppHandle, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 
 pub async fn new_changeset<R: Runtime>(
     app: &AppHandle<R>,
@@ -21,6 +21,7 @@ pub async fn new_changeset<R: Runtime>(
 ) -> Result<Option<i64>> {
     let db_path = crate::db::get_db_path(app)?;
     let config_dir = crate::storage::store::get_config_dir(app)?;
+    let pool = app.state::<crate::db::DbPool>();
 
     let status = crate::git::status(&config_dir)?;
 
@@ -29,7 +30,7 @@ pub async fn new_changeset<R: Runtime>(
         return Ok(None);
     }
 
-    let existing = find_existing::for_current_state(&db_path, &config_dir)?;
+    let existing = find_existing::for_current_state(&pool, &db_path, &config_dir)?;
 
     if !existing.iter().any(|e| e.change_set.is_some()) {
         return pipelines::fresh_changeset::analyze(
@@ -68,7 +69,8 @@ pub async fn new_changeset<R: Runtime>(
         return Ok(existing_id);
     }
 
-    let Some(base_commit_id) = crate::db::commits::store_head_commit(&db_path, &config_dir, None)?
+    let Some(base_commit_id) =
+        crate::db::commits::store_head_commit_in_pool(&pool, &config_dir, None)?
     else {
         return Ok(None);
     };

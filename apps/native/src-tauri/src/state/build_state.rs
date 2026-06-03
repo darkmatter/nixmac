@@ -5,7 +5,7 @@
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_store::StoreExt;
 
 use crate::shared_types::GitStatus;
@@ -119,9 +119,10 @@ pub fn set_active_build<R: Runtime>(
 pub fn record_build<R: Runtime>(app: &AppHandle<R>, git_status: &GitStatus) -> Result<()> {
     let db_path = crate::db::get_db_path(app)?;
     let config_dir = crate::storage::store::get_config_dir(app)?;
+    let pool = app.state::<crate::db::DbPool>();
 
     let build_changeset_id = if !git_status.changes.is_empty() {
-        let base_id = crate::db::commits::store_head_commit(&db_path, &config_dir, None)?
+        let base_id = crate::db::commits::store_head_commit_in_pool(&pool, &config_dir, None)?
             .ok_or_else(|| anyhow::anyhow!("missing HEAD commit while recording build state"))?;
         Some(crate::db::store_bare_changeset::store(
             &db_path,

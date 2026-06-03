@@ -20,12 +20,12 @@ pub fn prepare_managed_edit(app: &AppHandle) -> Result<ManagedEditContext> {
     let pre_edit_status =
         git::status(&dir).context("Failed to get pre-edit working tree status")?;
 
-    let _base_commit_id = db::commits::store_head_commit(&db_path, &dir, None)
+    let pool = app.state::<db::DbPool>();
+    let _base_commit_id = db::commits::store_head_commit_in_pool(&pool, &dir, None)
         .context("Failed to store HEAD commit")?;
 
     let pre_state = evolve_state::get(app).unwrap_or_default();
     let branch = git::current_branch(&dir).unwrap_or_else(|| "main".to_string());
-    let pool = app.state::<db::DbPool>();
     let evolution_id = db::evolutions::upsert(&pool, pre_state.evolution_id, &branch)
         .context("Failed to upsert evolution")?;
 
@@ -102,9 +102,13 @@ pub async fn finalize_managed_edit(
         }
     }
 
-    let change_sets =
-        summarize::find_existing::for_current_state(context.db_path.as_path(), &context.dir)
-            .unwrap_or_default();
+    let pool = app.state::<db::DbPool>();
+    let change_sets = summarize::find_existing::for_current_state(
+        &pool,
+        context.db_path.as_path(),
+        &context.dir,
+    )
+    .unwrap_or_default();
 
     let change_map = summarize::group_existing::from_change_sets(change_sets);
     let git_status =

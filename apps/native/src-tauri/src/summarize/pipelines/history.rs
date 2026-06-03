@@ -1,7 +1,7 @@
 //! Pipeline entry point for generating summaries over a historical commit range.
 
 use anyhow::Result;
-use tauri::{AppHandle, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 
 use crate::sqlite_types::Change;
 
@@ -12,6 +12,7 @@ pub async fn from_commit_times_number<R: Runtime>(
 ) -> Result<()> {
     let config_dir = crate::storage::store::get_config_dir(app)?;
     let db_path = crate::db::get_db_path(app)?;
+    let pool = app.state::<crate::db::DbPool>();
 
     let all_commits = crate::git::query::log(&config_dir, "HEAD", None)?;
     let start = match all_commits.iter().position(|c| c.hash == commit_hash) {
@@ -30,8 +31,8 @@ pub async fn from_commit_times_number<R: Runtime>(
 
     let mut db_ids: Vec<i64> = Vec::with_capacity(commits.len());
     for commit in &commits {
-        let id = crate::db::commits::upsert_commit(
-            &db_path,
+        let id = crate::db::commits::upsert_commit_in_pool(
+            &pool,
             &commit.hash,
             &commit.tree_hash,
             commit.message.as_deref(),

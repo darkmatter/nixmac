@@ -26,10 +26,10 @@ pub async fn get_history<R: Runtime>(
 
     for (i, git_commit) in git_commits.iter().enumerate() {
         let db_commit =
-            crate::db::commits::get_commit_by_hash(&db_path, &git_commit.hash).unwrap_or(None);
+            crate::db::commits::get_commit_by_hash_in_pool(&pool, &git_commit.hash).unwrap_or(None);
 
         let parent_db = git_commits.get(i + 1).and_then(|parent| {
-            crate::db::commits::get_commit_by_hash(&db_path, &parent.hash)
+            crate::db::commits::get_commit_by_hash_in_pool(&pool, &parent.hash)
                 .ok()
                 .flatten()
         });

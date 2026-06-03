@@ -6,7 +6,7 @@
 
 use anyhow::{Context, Result};
 use std::path::Path;
-use tauri::{AppHandle, Emitter, Runtime};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tokio::sync::mpsc;
 
 use crate::sqlite_types::QueuedSummary;
@@ -444,7 +444,9 @@ fn serialize_group_response(
 fn emit_update<R: Runtime>(app: &AppHandle<R>, db_path: &Path) {
     let result = (|| -> Result<()> {
         let config_dir = crate::storage::store::get_config_dir(app)?;
-        let change_sets = crate::summarize::find_existing::for_current_state(db_path, &config_dir)?;
+        let pool = app.state::<crate::db::DbPool>();
+        let change_sets =
+            crate::summarize::find_existing::for_current_state(&pool, db_path, &config_dir)?;
         let semantic_map = crate::summarize::group_existing::from_change_sets(change_sets);
         app.emit("change_map_changed", semantic_map)?;
         Ok(())

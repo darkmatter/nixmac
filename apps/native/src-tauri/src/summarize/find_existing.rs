@@ -4,6 +4,7 @@ use anyhow::Result;
 use rusqlite::Connection;
 use std::path::Path;
 
+use crate::db::DbPool;
 use crate::shared_types::{SummarizedChange, SummarizedChangeSet};
 use crate::sqlite_types::ChangeSet;
 use crate::summarize::sumlog as dbg;
@@ -48,7 +49,11 @@ pub fn by_base_with_hashes(
 }
 
 /// Retuns existing summaries for head and missed hashes for unsummarized
-pub fn for_current_state(db_path: &Path, dir: &str) -> Result<Vec<FoundSetForCurrent>> {
+pub fn for_current_state(
+    pool: &DbPool,
+    db_path: &Path,
+    dir: &str,
+) -> Result<Vec<FoundSetForCurrent>> {
     let status = crate::git::status(dir)?;
 
     let Some(head_hash) = status.head_commit_hash.as_deref() else {
@@ -57,7 +62,7 @@ pub fn for_current_state(db_path: &Path, dir: &str) -> Result<Vec<FoundSetForCur
 
     let diff_hashes: Vec<String> = status.changes.iter().map(|c| c.hash.clone()).collect();
 
-    let Some(commit) = crate::db::commits::get_commit_by_hash(db_path, head_hash)? else {
+    let Some(commit) = crate::db::commits::get_commit_by_hash_in_pool(pool, head_hash)? else {
         // DB has no record for this commit — surface all hashes as missed
         return Ok(vec![FoundSetForCurrent {
             change_set: None,
