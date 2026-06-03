@@ -7,6 +7,7 @@ import { HunkPill } from "./hunk-pill";
 import { DiffView } from "./diff-view";
 import { monaco } from "./monaco-setup";
 import { FileView } from "./file-view";
+import { DiffLineStatsBadge, sumDiffLineStats } from "./diff-line-stats";
 
 interface FullFileDiffEditorProps {
   filename: string;
@@ -62,6 +63,7 @@ export function FullFileDiffEditor({ filename, changes, contents, isOpen, onOpen
   };
 
   const changeType = displayChange.changeType;
+  const fileStats = sumDiffLineStats(changes);
 
   return (
     <CollapsibleDiff
@@ -70,8 +72,17 @@ export function FullFileDiffEditor({ filename, changes, contents, isOpen, onOpen
       onToggle={handleToggle}
       headerExtra={
         <>
+          <DiffLineStatsBadge
+            stats={fileStats}
+            className="rounded-full bg-black/20 px-1.5 py-0.5"
+          />
           {changes.map((c, i) => (
-            <HunkPill key={c.hash} change={c} onClick={() => focusChange(i)} />
+            <HunkPill
+              key={c.hash}
+              change={c}
+              showCounts={changes.length > 1}
+              onClick={() => focusChange(i)}
+            />
           ))}
         </>
       }
