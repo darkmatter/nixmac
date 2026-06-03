@@ -10,6 +10,7 @@ import type {
   CommitResult,
   Config as DarwinConfig,
   ConfigEditApplyResult,
+  ConfigurableSchema,
   EvolveCancelResult,
   EvolutionResult,
   EvolveState,
@@ -128,6 +129,12 @@ export const tauriAPI = {
   promptHistory: {
     get: () => invoke<string[]>("get_prompt_history"),
     add: (prompt: string) => invoke<OkResult>("add_to_prompt_history", { prompt }),
+  },
+
+  devConfigs: {
+    list: () => invoke<ConfigurableSchema[]>("dev_configs_list"),
+    set: (structName: string, key: string, value: unknown) =>
+      invoke<void>("dev_config_set", { structName, key, value }),
   },
 
   previewIndicator: {

@@ -3,6 +3,8 @@
 use anyhow::Result;
 use tauri::{AppHandle, Runtime};
 
+use crate::sqlite_types::Change;
+
 pub async fn from_commit_times_number<R: Runtime>(
     app: &AppHandle<R>,
     commit_hash: &str,
@@ -43,14 +45,17 @@ pub async fn from_commit_times_number<R: Runtime>(
         let commit_id = db_ids[i];
         let base_commit_id = db_ids[i + 1];
 
-        let diff = crate::git::commit_diff(&config_dir, &commits[i + 1].hash, &commits[i].hash)?;
-        let now = crate::utils::unix_now();
-        let all_changes = crate::git::changes_from_diff::changes_from_diff(&diff, now, true);
-        let (_, changes): (Vec<_>, Vec<_>) = all_changes
-            .into_iter()
-            .partition(crate::git::changes_from_diff::is_sensitive_or_opaque);
+        let file_diffs =
+            crate::git::query::commit_diff(&config_dir, &commits[i + 1].hash, &commits[i].hash)?;
 
-        let diff_hashes: Vec<String> = changes.iter().map(|c| c.hash.clone()).collect();
+        let now = crate::utils::unix_now();
+
+        let all_changes: Vec<Change> = file_diffs
+            .into_iter()
+            .map(|d| crate::git::file_diff_to_change(d, now, true))
+            .collect();
+
+        let diff_hashes: Vec<String> = all_changes.iter().map(|c| c.hash.clone()).collect();
 
         let found = crate::summarize::find_existing::by_base_with_hashes(
             &db_path,
@@ -73,7 +78,7 @@ pub async fn from_commit_times_number<R: Runtime>(
                 .iter()
                 .map(String::as_str)
                 .collect();
-            let missed_changes: Vec<_> = changes
+            let missed_changes: Vec<_> = all_changes
                 .into_iter()
                 .filter(|c| unsummarized_set.contains(c.hash.as_str()))
                 .collect();
@@ -98,7 +103,7 @@ pub async fn from_commit_times_number<R: Runtime>(
         } else {
             // no changeset yet — run fresh
             if let Err(e) = super::fresh_changeset::analyze(
-                changes,
+                all_changes,
                 app,
                 &db_path,
                 Some(commit_id),

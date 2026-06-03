@@ -6,7 +6,7 @@ import * as Schema from "effect/Schema";
 // (variadic `Literal(...values)`, no `Literals`) and 4.0-beta (single-value
 // `Literal(value)` + plural `Literals(values)`), so neither form source-
 // compiles in both. Plain `Schema.String` works regardless of which version
-// bun's hoisting resolves — relevant because tsc/build sees 4.0-beta from
+// bun's hoisting resolves - relevant because tsc/build sees 4.0-beta from
 // the lockfile while Chromatic's storybook environment can end up resolving
 // 3.x via stale workspace symlinks.
 //

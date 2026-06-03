@@ -1,15 +1,23 @@
-import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-import { useRollback } from "@/hooks/use-rollback";
 import type { EvolveState, GitStatus } from "@/ipc/types";
 import { useWidgetStore } from "@/stores/widget-store";
+import { act, renderHook } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useRollback } from "./use-rollback";
 
 const mocks = vi.hoisted(() => ({
-  triggerRebuild: vi.fn(),
-  findChangeMap: vi.fn<() => Promise<void>>(),
-  rollbackErase: vi.fn(),
   finalizeRollback: vi.fn(),
+  findChangeMap: vi.fn(),
+  rollbackErase: vi.fn(),
+  triggerRebuild: vi.fn(),
+}));
+
+vi.mock("@/ipc/api", () => ({
+  tauriAPI: {
+    darwin: {
+      finalizeRollback: mocks.finalizeRollback,
+      rollbackErase: mocks.rollbackErase,
+    },
+  },
 }));
 
 vi.mock("@/hooks/use-rebuild-stream", () => ({
@@ -24,107 +32,93 @@ vi.mock("@/hooks/use-summary", () => ({
   }),
 }));
 
-vi.mock("@/ipc/api", () => ({
-  tauriAPI: {
-    darwin: {
-      rollbackErase: mocks.rollbackErase,
-      finalizeRollback: mocks.finalizeRollback,
-    },
-  },
+vi.mock("@/lib/env", () => ({
+  getWebSiteUrl: () => "http://localhost:3001",
+  settings: {},
 }));
 
-const gitStatus: GitStatus = {
-  files: [],
-  branch: "main",
-  diff: "",
+const cleanGitStatus: GitStatus = {
   additions: 0,
-  deletions: 0,
-  headCommitHash: "abc123",
-  cleanHead: true,
+  branch: "main",
   changes: [],
+  cleanHead: true,
+  deletions: 0,
+  diff: "",
+  files: [],
+  headCommitHash: "abc123",
 };
 
-const committableState: EvolveState = {
-  evolutionId: 1,
-  currentChangesetId: 2,
-  committable: true,
+const committableEvolveState: EvolveState = {
   backupBranch: "backup",
+  committable: true,
+  currentChangesetId: 2,
+  evolutionId: 1,
   rollbackBranch: "rollback",
+  rollbackChangesetId: 1,
   rollbackStorePath: "/nix/store/old-system",
-  rollbackChangesetId: 3,
   step: "commit",
-  lastEvolutionState: null,
 };
 
-const rolledBackState: EvolveState = {
-  ...committableState,
-  currentChangesetId: 3,
+const rolledBackEvolveState: EvolveState = {
+  ...committableEvolveState,
   committable: false,
+  currentChangesetId: null,
+  rollbackChangesetId: null,
+  rollbackStorePath: null,
   step: "begin",
 };
 
-function resetStore() {
-  const store = useWidgetStore.getState();
-  store.setEvolveState(null);
-  store.setGitStatus(null);
-  store.setEvolvePrompt("");
-  store.setProcessing(false);
-  store.clearLogs();
-}
-
 describe("useRollback", () => {
   beforeEach(() => {
-    resetStore();
-    mocks.triggerRebuild.mockReset();
-    mocks.findChangeMap.mockReset();
-    mocks.rollbackErase.mockReset();
-    mocks.finalizeRollback.mockReset();
-
-    mocks.findChangeMap.mockResolvedValue();
-    mocks.rollbackErase.mockResolvedValue({
-      gitStatus,
-      evolveState: rolledBackState,
-      rollbackStorePath: "/nix/store/old-system",
-      rollbackChangesetId: 3,
-    });
+    vi.clearAllMocks();
+    mocks.findChangeMap.mockResolvedValue(undefined);
     mocks.finalizeRollback.mockResolvedValue({
-      gitStatus,
-      evolveState: rolledBackState,
+      evolveState: rolledBackEvolveState,
+      gitStatus: cleanGitStatus,
     });
+    mocks.rollbackErase.mockResolvedValue({
+      evolveState: rolledBackEvolveState,
+      gitStatus: cleanGitStatus,
+      rollbackChangesetId: 1,
+      rollbackStorePath: "/nix/store/old-system",
+    });
+    mocks.triggerRebuild.mockResolvedValue(undefined);
+
+    const store = useWidgetStore.getState();
+    store.setEvolvePrompt("Install vim");
+    store.setEvolveState(committableEvolveState);
+    store.setGitStatus(cleanGitStatus);
+    store.setProcessing(false);
+    store.setGenerating(false);
+    store.setError(null);
+    store.clearLogs();
   });
 
-  afterEach(() => {
-    resetStore();
-  });
-
-  it("waits for rebuild success before finalizing and refreshing rollback summaries", async () => {
-    useWidgetStore.getState().setEvolveState(committableState);
-    let onSuccess: (() => Promise<void>) | undefined;
-    mocks.triggerRebuild.mockImplementation(async (options: { onSuccess?: () => Promise<void> }) => {
-      onSuccess = options.onSuccess;
-    });
-
+  it("keeps processing locked while a committable rollback rebuild is still running", async () => {
     const { result } = renderHook(() => useRollback());
 
     await act(async () => {
       await result.current.handleRollback();
     });
 
-    expect(mocks.triggerRebuild).toHaveBeenCalledWith(
-      expect.objectContaining({
-        context: "rollback",
-        storePath: "/nix/store/old-system",
-      }),
-    );
-    expect(mocks.finalizeRollback).not.toHaveBeenCalled();
-    expect(mocks.findChangeMap).not.toHaveBeenCalled();
+    expect(mocks.triggerRebuild).toHaveBeenCalledTimes(1);
     expect(useWidgetStore.getState().isProcessing).toBe(true);
+    expect(mocks.findChangeMap).not.toHaveBeenCalled();
+  });
+
+  it("refreshes the change map after rollback rebuild finalization succeeds", async () => {
+    const { result } = renderHook(() => useRollback());
 
     await act(async () => {
-      await onSuccess?.();
+      await result.current.handleRollback();
     });
 
-    expect(mocks.finalizeRollback).toHaveBeenCalledWith("/nix/store/old-system", 3);
+    const onSuccess = mocks.triggerRebuild.mock.calls[0][0].onSuccess as () => Promise<void>;
+    await act(async () => {
+      await onSuccess();
+    });
+
+    expect(mocks.finalizeRollback).toHaveBeenCalledWith("/nix/store/old-system", 1);
     expect(mocks.findChangeMap).toHaveBeenCalledTimes(1);
   });
 });

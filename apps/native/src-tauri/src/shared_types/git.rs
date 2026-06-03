@@ -13,7 +13,7 @@ pub struct FileDiffContents {
 }
 
 /// Type of change for a file in git status.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Type, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum ChangeType {
     /// File was added.

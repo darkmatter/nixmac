@@ -9,6 +9,8 @@
 #[path = "../src/sqlite_types.rs"]
 mod sqlite_types;
 
+// This module can cause false-positive dead-code warnings since it's only used for type generation.
+#[allow(dead_code)]
 #[path = "../src/shared_types.rs"]
 mod shared_types;
 
@@ -53,6 +55,10 @@ fn main() {
         .register::<shared_types::FeedbackPanicDetails>()
         .register::<shared_types::EvolveEvent>()
         .register::<shared_types::EvolveEventType>()
+        .register::<shared_types::FileEdit>()
+        .register::<shared_types::ThinkingEntry>()
+        .register::<shared_types::ToolCallRecord>()
+        .register::<shared_types::Evolution>()
         .register::<shared_types::HomebrewState>()
         .register::<shared_types::SummarizedChange>()
         .register::<shared_types::SummarizedChangeSet>()
@@ -77,6 +83,12 @@ fn main() {
         .register::<shared_types::UiPrefs>()
         .register::<shared_types::FileDiffContents>()
         .register::<shared_types::UiPrefsUpdate>()
+        .register::<shared_types::ExportResult>()
+        .register::<shared_types::ImportResult>()
+        .register::<configurable::ConfigurableSchema>()
+        .register::<configurable::ConfigField>()
+        .register::<configurable::FieldType>()
+        .register::<configurable::EnumVariant>()
         .register::<shared_types::OkResult>()
         .register::<shared_types::NixCheckResult>()
         .register::<shared_types::BuildCheckResult>()
@@ -95,7 +107,6 @@ fn main() {
         .register::<shared_types::DarwinApplyDataEvent>()
         .register::<shared_types::DarwinApplySummaryEvent>()
         .register::<shared_types::DarwinApplyEndEvent>()
-        .register::<shared_types::SummarizerUpdateEvent>()
         .register::<shared_types::RustPanicEvent>()
         .register::<shared_types::ConfigChangedEvent>()
         .register::<shared_types::PreviewIndicatorState>()

@@ -1,12 +1,26 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { SetupStep } from "@/components/widget/steps/setup-step";
-import { useWidgetStore } from "@/stores/widget-store";
+const { mockSaveHost, widgetState } = vi.hoisted(() => ({
+  mockSaveHost: vi.fn<(host: string) => Promise<void>>(),
+  widgetState: {
+    configDir: "",
+    hosts: [] as string[],
+    host: "",
+    error: null as string | null,
+  },
+}));
 
-const mocks = vi.hoisted(() => ({
-  saveHost: vi.fn<(host: string) => Promise<void>>(),
+vi.mock("@/stores/widget-store", () => ({
+  useWidgetStore: <T,>(selector: (state: typeof widgetState) => T) =>
+    selector(widgetState),
+}));
+
+vi.mock("@/hooks/use-darwin-config", () => ({
+  useDarwinConfig: () => ({
+    saveHost: mockSaveHost,
+  }),
 }));
 
 vi.mock("@/components/widget/controls/directory-picker", () => ({
@@ -17,41 +31,29 @@ vi.mock("@/components/widget/controls/bootstrap-config", () => ({
   BootstrapConfig: () => <div data-testid="bootstrap-config" />,
 }));
 
-vi.mock("@/hooks/use-darwin-config", () => ({
-  useDarwinConfig: () => ({
-    saveHost: mocks.saveHost,
-  }),
-}));
-
-function resetStore() {
-  const store = useWidgetStore.getState();
-  store.setConfigDir("");
-  store.setHosts([]);
-  store.setHost("");
-  store.setError(null);
-}
+import { SetupStep } from "./setup-step";
 
 describe("<SetupStep>", () => {
   beforeEach(() => {
-    resetStore();
-    mocks.saveHost.mockResolvedValue();
+    widgetState.configDir = "";
+    widgetState.hosts = [];
+    widgetState.host = "";
+    widgetState.error = null;
+    mockSaveHost.mockReset();
+    mockSaveHost.mockResolvedValue();
   });
 
-  afterEach(() => {
-    resetStore();
-    vi.clearAllMocks();
-  });
-
-  it("saves the displayed host when Next is clicked without reselecting it", () => {
-    const store = useWidgetStore.getState();
-    store.setConfigDir("/Users/me/.config/nix-darwin");
-    store.setHosts(["macbook"]);
-    store.setHost("macbook");
+  it("persists the displayed host when Next is clicked without changing the dropdown", async () => {
+    widgetState.configDir = "/Users/me/.nixmac";
+    widgetState.hosts = ["mbp"];
+    widgetState.host = "mbp";
 
     render(<SetupStep />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    const next = await screen.findByRole("button", { name: "Next" });
+    fireEvent.click(next);
 
-    expect(mocks.saveHost).toHaveBeenCalledWith("macbook");
+    await waitFor(() => expect(mockSaveHost).toHaveBeenCalledWith("mbp"));
+    expect(mockSaveHost).not.toHaveBeenCalledWith("");
   });
 });

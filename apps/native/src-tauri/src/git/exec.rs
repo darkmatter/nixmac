@@ -1,11 +1,17 @@
-//! Git operations for tracking and recording configuration changes.
-
-use crate::shared_types::{GitFileStatus, GitStatus};
+/// Git execution layer (CLI AUTHORITY)
+///
+/// This module uses `git_command()` exclusively.
+///
+/// Rules:
+/// - This layer relies on REAL Git behavior
+/// - Must preserve CLI semantics exactly
+/// - Includes hooks suppression + identity injection
+/// - May modify filesystem, index, HEAD, refs
+use crate::git::query::{get_head_sha, has_head_commit, repo_root};
 use anyhow::{Context, Result};
 use std::ffi::OsStr;
-use std::path::Path;
+use std::path::{Component, Path};
 use std::process::{Command, Output};
-use tauri::AppHandle;
 
 /// Wraps git commands, errs with Stderr on exit with non-zero status
 struct GitCommand(Command);
@@ -40,7 +46,25 @@ impl GitCommand {
     }
 }
 
-/// Identity and hooks injected so nixmac doesn't inherit user's config
+/// Identity + hooks injection layer (CLI boundary enforcement)
+///
+/// IMPORTANT: This cannot be meaningfully replicated with `git2`,
+/// the Rust library which doesn't require shelling out to a process.
+///
+/// The functions that call this wrapper intentionally use the Git CLI to enforce:
+/// - deterministic identity (user.name / user.email)
+/// - disabled commit signing (GPG)
+/// - disabled hooks execution (core.hooksPath=/dev/null)
+/// - controlled environment PATH resolution
+///
+/// These behaviors are part of the *Git process environment*, not the
+/// repository object model.
+///
+/// `git2` does NOT support:
+/// - per-command environment mutation equivalent to `-c` CLI overrides
+/// - hooksPath / hook suppression semantics
+/// - GPG signing configuration via execution context
+/// - PATH-based toolchain isolation
 fn git_command() -> GitCommand {
     let mut cmd = Command::new("git");
     cmd.env("PATH", crate::system::nix::get_nix_path());
@@ -57,57 +81,6 @@ fn git_command() -> GitCommand {
     GitCommand(cmd)
 }
 
-/// Checks if a directory is inside a git repository.
-pub fn is_repo(dir: &str) -> bool {
-    git_command()
-        .args(["rev-parse", "--is-inside-work-tree"])
-        .current_dir(dir)
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
-}
-
-/// Initializes a git repo with a .gitignore for Nix projects. Call explicitly during setup only.
-pub fn init_repo(dir: &str) -> Result<()> {
-    if !is_repo(dir) {
-        std::fs::create_dir_all(dir)?;
-        git_command().args(["init"]).current_dir(dir).output()?;
-
-        let gitignore_path = std::path::Path::new(dir).join(".gitignore");
-        if !gitignore_path.exists() {
-            std::fs::write(
-                gitignore_path,
-                "node_modules\nresult\nrelease\ndist\ndist-electron\n",
-            )?;
-        }
-    }
-    Ok(())
-}
-
-/// Errors if `dir` is not a git repository. Use at the top of functions that require a repo.
-fn require_repo(dir: &str) -> Result<()> {
-    if !is_repo(dir) {
-        anyhow::bail!("'{}' is not a git repository", dir);
-    }
-    Ok(())
-}
-
-/// Returns true when HEAD resolves to an existing commit.
-fn has_head_commit(dir: &str) -> bool {
-    git_command()
-        .args(["rev-parse", "--verify", "HEAD"])
-        .current_dir(dir)
-        .output()
-        .is_ok()
-}
-
-/// Full diff vs HEAD, including tracked changes and untracked files as diffs.
-pub fn get_full_diff(dir: &str) -> Result<String> {
-    let mut diff = get_tracked_diff(dir, None)?;
-    append_untracked_diffs(&mut diff, dir, None)?;
-    Ok(diff)
-}
-
 /// Gets a diff containing only .nix files (including untracked .nix files).
 pub fn get_nix_diff(dir: &str) -> Result<String> {
     let mut diff = get_tracked_diff(dir, Some("*.nix"))?;
@@ -115,13 +88,12 @@ pub fn get_nix_diff(dir: &str) -> Result<String> {
     Ok(diff)
 }
 
-pub fn repo_root(dir: &str) -> String {
-    git_command()
-        .args(["rev-parse", "--show-toplevel"])
-        .current_dir(dir)
-        .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        .unwrap_or_else(|_| dir.to_string())
+fn is_safe_repo_relative_path(filename: &str) -> bool {
+    let path = Path::new(filename);
+    !path.is_absolute()
+        && path
+            .components()
+            .all(|component| matches!(component, Component::Normal(_) | Component::CurDir))
 }
 
 /// Returns (original, modified) file content for a single file: HEAD content and working-tree content.
@@ -133,8 +105,11 @@ pub fn file_diff_contents(dir: &str, filename: &str) -> (String, String) {
         .output()
         .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
         .unwrap_or_default();
-    let modified = std::fs::read_to_string(std::path::Path::new(&repo_root(dir)).join(filename))
-        .unwrap_or_default();
+    let modified = if is_safe_repo_relative_path(filename) {
+        std::fs::read_to_string(repo_root(dir).join(filename)).unwrap_or_default()
+    } else {
+        String::new()
+    };
     (original, modified)
 }
 
@@ -178,14 +153,18 @@ fn append_untracked_diffs(diff: &mut String, dir: &str, path_filter: Option<&str
         args.extend(["--", filter]);
     }
 
-    let untracked_output = git_command().args(&args).current_dir(dir).output()?;
+    let repo_root_dir = repo_root(dir);
+    let untracked_output = git_command()
+        .args(&args)
+        .current_dir(&repo_root_dir)
+        .output()?;
     let untracked_files = String::from_utf8_lossy(&untracked_output.stdout);
 
     for file in untracked_files.lines() {
         if file.is_empty() {
             continue;
         }
-        let file_path = std::path::Path::new(dir).join(file);
+        let file_path = repo_root_dir.join(file);
         if let Ok(contents) = std::fs::read_to_string(&file_path) {
             diff.push_str(&format!("\ndiff --git a/{} b/{}\n", file, file));
             diff.push_str("new file mode 100644\n");
@@ -202,148 +181,13 @@ fn append_untracked_diffs(diff: &mut String, dir: &str, path_filter: Option<&str
     Ok(())
 }
 
-/// Counts additions and deletions from a diff string.
-fn count_diff_changes(diff: &str) -> (usize, usize) {
-    let mut additions = 0;
-    let mut deletions = 0;
-
-    for line in diff.lines() {
-        if line.starts_with("+++") || line.starts_with("---") {
-            continue;
-        }
-        if line.starts_with('+') {
-            additions += 1;
-        } else if line.starts_with('-') {
-            deletions += 1;
-        }
-    }
-
-    (additions, deletions)
-}
-
-/// Parses file info from diffs. Filename and path from diff headers.
-fn parse_files_from_diff(diff: &str) -> Vec<GitFileStatus> {
-    let mut files = Vec::new();
-    let mut current_file: Option<String> = None;
-    let mut current_change_type = crate::shared_types::ChangeType::Edited;
-
-    for line in diff.lines() {
-        // Match "diff --git a/path b/path" - same pattern as diff.tsx
-        if line.starts_with("diff --git a/") {
-            // Save previous file if any
-            if let Some(path) = current_file.take() {
-                files.push(GitFileStatus {
-                    path,
-                    change_type: current_change_type,
-                });
-            }
-
-            // Extract path from "diff --git a/path b/path"
-            // Find " b/" and take everything after it (matching diff.tsx regex group 2)
-            if let Some(b_index) = line.find(" b/") {
-                let path = &line[b_index + 3..]; // Skip " b/"
-                current_file = Some(path.to_string());
-                current_change_type = crate::shared_types::ChangeType::Edited; // Default, may be overridden
-            }
-        }
-        // Detect change type
-        else if line.starts_with("new file mode") {
-            current_change_type = crate::shared_types::ChangeType::New;
-        } else if line.starts_with("deleted file mode") {
-            current_change_type = crate::shared_types::ChangeType::Removed;
-        } else if line.starts_with("rename from") {
-            current_change_type = crate::shared_types::ChangeType::Renamed;
-        }
-    }
-
-    // Pick up last file
-    if let Some(path) = current_file {
-        files.push(GitFileStatus {
-            path,
-            change_type: current_change_type,
-        });
-    }
-
-    files
-}
-
-/// Gets the SHA of any ref (branch name, tag, or symbolic ref like HEAD).
-pub fn get_ref_sha(dir: &str, ref_name: &str) -> Option<String> {
-    let output = git_command()
-        .args(["rev-parse", ref_name])
-        .current_dir(dir)
-        .output()
-        .ok()?;
-
-    Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
-}
-
-/// Gets the SHA of the current HEAD commit.
-fn get_head_sha(dir: &str) -> Option<String> {
-    get_ref_sha(dir, "HEAD")
-}
-
-/// Returns the current branch name (None if detached HEAD)
-pub fn current_branch(dir: &str) -> Option<String> {
-    let output = git_command()
-        .args(["rev-parse", "--abbrev-ref", "HEAD"])
-        .current_dir(dir)
-        .output()
-        .ok()?;
-
-    let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if branch != "HEAD" {
-        Some(branch)
-    } else {
-        None
-    }
-}
-
-/// Comprehensive git status against HEAD.
-pub fn status(dir: &str) -> Result<GitStatus> {
-    require_repo(dir)?;
-    let branch = current_branch(dir);
-
-    let diff = get_full_diff(dir)?;
-    let (additions, deletions) = count_diff_changes(&diff);
-
-    let files = parse_files_from_diff(&diff);
-
-    let head_commit_hash = get_head_sha(dir);
-
-    let clean_head = diff.is_empty();
-
-    let changes = crate::git::changes_from_diff::changes_from_diff(&diff, 0, false);
-
-    Ok(GitStatus {
-        files,
-        branch,
-        diff,
-        additions,
-        deletions,
-        head_commit_hash,
-        clean_head,
-        changes,
-    })
-}
-
-/// Gets status and caches it to loop in watcher
-pub fn status_and_cache<R: tauri::Runtime>(dir: &str, app: &AppHandle<R>) -> Result<GitStatus> {
-    let status = status(dir)?;
-    cache_status(app, &status)?;
-    Ok(status)
-}
-
-pub fn cache_status<R: tauri::Runtime>(app: &AppHandle<R>, status: &GitStatus) -> Result<()> {
-    crate::storage::store::set_cached_git_status(app, status)
-}
-
 /// Registers all untracked files as intent-to-add in the git index.
 /// Makes files visible to `git ls-files` (and therefore Nix flakes)
 pub fn intent_add_untracked(dir: &str) -> Result<()> {
+    let repo_root_dir = repo_root(dir);
     let output = git_command()
         .args(["ls-files", "--others", "--exclude-standard"])
-        .current_dir(dir)
+        .current_dir(&repo_root_dir)
         .output()?;
 
     if !output.status.success() {
@@ -362,7 +206,10 @@ pub fn intent_add_untracked(dir: &str) -> Result<()> {
 
     let mut args = vec!["add", "-N", "--"];
     args.extend(files);
-    let add_output = git_command().args(&args).current_dir(dir).output()?;
+    let add_output = git_command()
+        .args(&args)
+        .current_dir(&repo_root_dir)
+        .output()?;
     if !add_output.status.success() {
         let stderr = String::from_utf8_lossy(&add_output.stderr);
         return Err(anyhow::anyhow!(
@@ -419,15 +266,6 @@ pub fn log(
     }
 
     Ok(commits)
-}
-
-/// Diff between parent_hash and commit_hash.
-pub fn commit_diff(dir: &str, parent_hash: &str, commit_hash: &str) -> Result<String> {
-    let output = git_command()
-        .args(["diff", parent_hash, commit_hash])
-        .current_dir(dir)
-        .output()?;
-    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
 /// Stages all and commits with msg, returns hash and tree hash.
@@ -517,22 +355,6 @@ pub fn restore_all(dir: &str) -> Result<()> {
     Ok(())
 }
 
-/// Returns all tags for `hash`.
-pub fn read_tags(dir: &str, hash: &str) -> Vec<String> {
-    let Ok(output) = git_command()
-        .args(["tag", "--points-at", hash])
-        .current_dir(dir)
-        .output()
-    else {
-        return vec![];
-    };
-    String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .filter(|l| !l.is_empty())
-        .map(str::to_owned)
-        .collect()
-}
-
 /// Git tags (any ref or hash) `target`, `force = true` overwrites.
 pub fn tag_commit(dir: &str, tag: &str, target: &str, force: bool) -> Result<()> {
     let mut args = vec!["tag"];
@@ -555,6 +377,10 @@ pub fn create_evolution_backup(
     evolution_id: Option<i64>,
     changeset_id: i64,
 ) -> Result<Option<String>> {
+    if !has_head_commit(repo_path) {
+        return Ok(None);
+    }
+
     let branch_name = format!(
         "nixmac-evolve/evolution{}-changeset{}",
         evolution_id.unwrap_or(0),
@@ -604,6 +430,20 @@ pub fn create_evolution_backup(
 
 /// Restore working tree to the content of a specific branch ref.
 /// Replaces the current index with the branch's tree, then checks out the working tree.
+///
+/// NOTE that this would be harder to implement in git2 because:
+/// - git2 does NOT expose “plumbing-level” commands like `read-tree` or
+///   `checkout-index` as direct APIs.
+/// - The closest primitive is `repo.reset(ResetType::Hard)`, which combines
+///   index + working tree updates, but does NOT include untracked file cleanup.
+/// - `git clean -fd` is not implemented in git2 because it is inherently
+///   a filesystem operation driven by ignore rules and user policy, not just
+///   Git object model state.
+///
+/// Therefore a full equivalent would require:
+/// - resolving the ref → commit → tree (via revparse + peel)
+/// - performing a hard reset (tracked files)
+/// - manually walking the filesystem to delete untracked files/dirs
 pub fn restore_from_branch_ref(repo_path: &str, ref_name: &str) -> Result<()> {
     git_command()
         .args(["read-tree", ref_name])
@@ -638,6 +478,9 @@ pub fn delete_backup_branch(repo_path: &str, branch_name: &str) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use crate::git::current_branch;
+    use crate::git::init::init_repo;
+
     use super::*;
     use std::fs;
     use std::path::Path;
@@ -658,141 +501,32 @@ mod tests {
         String::from_utf8_lossy(&output.stdout).to_string()
     }
 
-    // mk temp repo
     #[test]
-    fn test_init_repo() {
+    fn test_file_diff_contents_rejects_parent_traversal() {
         let temp_dir = TempDir::new().unwrap();
+        let outside_file = temp_dir.path().join("outside.txt");
+        fs::write(&outside_file, "outside").unwrap();
+
         let repo_dir = temp_dir.path().join("repo");
-        init_repo(&repo_dir.to_string_lossy()).unwrap();
-        assert!(is_repo(&repo_dir.to_string_lossy()));
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        let (original, modified) = file_diff_contents(&repo_dir_str, "../outside.txt");
+        assert!(original.is_empty());
+        assert!(modified.is_empty());
     }
 
     #[test]
-    fn test_status() {
+    fn test_file_diff_contents_reads_safe_relative_path() {
         let temp_dir = TempDir::new().unwrap();
         let repo_dir = temp_dir.path().join("repo");
         let repo_dir_str = repo_dir.to_string_lossy().to_string();
         init_repo(&repo_dir_str).unwrap();
-        // commit_all to materialize a branch
-        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
-        commit_all(&repo_dir_str, "chore: initial nix-darwin configuration").unwrap();
-        // Now add an uncommitted change to inspect.
+
         fs::write(repo_dir.join("flake.nix"), "{ inputs = {}; }").unwrap();
-        let status = status(&repo_dir_str).unwrap();
-        assert!(!status.diff.is_empty());
-        assert!(!status.files.is_empty());
-        assert!(status.branch.is_some());
-    }
 
-    #[test]
-    fn test_status_without_head_commit_with_untracked_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let repo_dir = temp_dir.path().join("repo");
-        let repo_dir_str = repo_dir.to_string_lossy().to_string();
-        init_repo(&repo_dir_str).unwrap();
-
-        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
-
-        let status = status(&repo_dir_str).unwrap();
-        assert!(!status.diff.is_empty());
-        assert!(!status.clean_head);
-        assert!(status.head_commit_hash.is_none());
-        assert!(status.files.iter().any(|f| f.path == "flake.nix"));
-    }
-
-    #[test]
-    fn test_status_without_head_commit_with_staged_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let repo_dir = temp_dir.path().join("repo");
-        let repo_dir_str = repo_dir.to_string_lossy().to_string();
-        init_repo(&repo_dir_str).unwrap();
-
-        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
-        run_git_ok(&repo_dir, &["add", "-A"]);
-
-        let status = status(&repo_dir_str).unwrap();
-        assert!(!status.diff.is_empty());
-        assert!(!status.clean_head);
-        assert!(status.head_commit_hash.is_none());
-        assert!(status.files.iter().any(|f| f.path == "flake.nix"));
-    }
-
-    #[test]
-    fn test_parse_files_from_diff() {
-        let diff = r#"diff --git a/new-file.txt b/new-file.txt
-new file mode 100644
---- /dev/null
-+++ b/new-file.txt
-@@ -0,0 +1 @@
-+hello
-diff --git a/existing.txt b/existing.txt
---- a/existing.txt
-+++ b/existing.txt
-@@ -1 +1 @@
--old
-+new
-diff --git a/removed.txt b/removed.txt
-deleted file mode 100644
---- a/removed.txt
-+++ /dev/null
-@@ -1 +0,0 @@
--goodbye"#;
-
-        let files = parse_files_from_diff(diff);
-        assert_eq!(files.len(), 3);
-        assert_eq!(files[0].path, "new-file.txt");
-        assert!(matches!(
-            files[0].change_type,
-            crate::shared_types::ChangeType::New
-        ));
-        assert_eq!(files[1].path, "existing.txt");
-        assert!(matches!(
-            files[1].change_type,
-            crate::shared_types::ChangeType::Edited
-        ));
-        assert_eq!(files[2].path, "removed.txt");
-        assert!(matches!(
-            files[2].change_type,
-            crate::shared_types::ChangeType::Removed
-        ));
-    }
-
-    #[test]
-    fn test_get_full_diff_includes_untracked_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let repo_dir = temp_dir.path().join("repo");
-        let repo_dir_str = repo_dir.to_string_lossy().to_string();
-        init_repo(&repo_dir_str).unwrap();
-
-        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
-        commit_all(&repo_dir_str, "initial").unwrap();
-        fs::write(repo_dir.join("new.nix"), "{ new = true; }").unwrap();
-
-        let diff = get_full_diff(&repo_dir_str).unwrap();
-        assert!(
-            diff.contains("new.nix"),
-            "untracked file should appear in diff"
-        );
-        assert!(diff.contains("+{ new = true; }"));
-    }
-
-    #[test]
-    fn test_get_full_diff_excludes_gitignored_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let repo_dir = temp_dir.path().join("repo");
-        let repo_dir_str = repo_dir.to_string_lossy().to_string();
-        init_repo(&repo_dir_str).unwrap();
-
-        fs::write(repo_dir.join(".gitignore"), "secret.txt\n").unwrap();
-        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
-        commit_all(&repo_dir_str, "initial").unwrap();
-        fs::write(repo_dir.join("secret.txt"), "password123").unwrap();
-
-        let diff = get_full_diff(&repo_dir_str).unwrap();
-        assert!(
-            !diff.contains("secret.txt"),
-            "gitignored file must not appear in diff"
-        );
+        let (_, modified) = file_diff_contents(&repo_dir_str, "flake.nix");
+        assert_eq!(modified, "{ inputs = {}; }");
     }
 
     #[test]
@@ -982,5 +716,31 @@ deleted file mode 100644
 
         let result = create_evolution_backup(&repo_dir_str, Some(1), 0).unwrap();
         assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_intent_add_untracked_from_nested_config_dir() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let config_dir = repo_dir.join("nix/os");
+        fs::create_dir_all(&config_dir).unwrap();
+
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        let config_dir_str = config_dir.to_string_lossy().to_string();
+
+        init_repo(&repo_dir_str).unwrap();
+        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial commit"]);
+
+        fs::write(repo_dir.join("new.nix"), "{ untracked = true; }\n").unwrap();
+
+        intent_add_untracked(&config_dir_str).unwrap();
+
+        let indexed = run_git_ok(&repo_dir, &["ls-files"]);
+        assert!(
+            indexed.lines().any(|line| line == "new.nix"),
+            "intent-add should index repo-root untracked file when invoked from nested config dir"
+        );
     }
 }
