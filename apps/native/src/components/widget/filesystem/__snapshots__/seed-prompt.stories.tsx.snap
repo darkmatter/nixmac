@@ -3,7 +3,7 @@
 exports[`Banner Seed 1`] = `
 "<pre class="m-0 max-w-[700px] whitespace-pre-wrap rounded-md border border-border bg-card/40 p-3 font-mono text-[11px] text-teal-200 leading-[1.5]">Track everything that isn't in my config yet:
 - 11 apps installed by hand (11 items, would land in modules/darwin/homebrew.nix)
-- 8 settings differ from defaults (8 items, would land in modules/darwin/defaults.nix)
+- 8 untracked settings (8 items, would land in modules/darwin/defaults.nix)
 - 4 apps auto-start at login (4 items, would land in modules/darwin/services.nix)
 </pre>"
 `;

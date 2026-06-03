@@ -9,7 +9,7 @@ import {
 import { useWidgetStore } from "@/stores/widget-store";
 import type { SystemDefault, SystemDefaultsScan } from "@/ipc/types";
 import { tauriAPI } from "@/ipc/api";
-import { Monitor, X } from "lucide-react";
+import { Settings2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const DISMISS_KEY = "nixmac:system-defaults-dismissed";
@@ -35,6 +35,10 @@ function formatValue(value: string): string {
   if (lower === "false" || lower === "0") return "off";
   if (value.length > 24) return `${value.slice(0, 24)}...`;
   return value;
+}
+
+function formatUntrackedSettings(count: number): string {
+  return `${count} untracked setting${count === 1 ? "" : "s"}`;
 }
 
 /**
@@ -107,16 +111,17 @@ export function SystemDefaultsCTA() {
   if (!scan || scan.defaults.length === 0) return null;
 
   const count = scan.defaults.length;
+  const label = formatUntrackedSettings(count);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <BadgeButton
-          icon={Monitor}
+          icon={Settings2}
           badgeVariant="default"
           data-testid="managed-system-defaults-badge"
         >
-          {count} untracked customization{count === 1 ? "" : "s"}
+          {label}
         </BadgeButton>
       </PopoverTrigger>
       <PopoverContent
@@ -126,9 +131,7 @@ export function SystemDefaultsCTA() {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-2.5">
-          <span className="font-medium text-sm">
-            {count} untracked Mac customization{count === 1 ? "" : "s"}
-          </span>
+          <span className="font-medium text-sm">{label}</span>
           <button
             type="button"
             onClick={() => setOpen(false)}

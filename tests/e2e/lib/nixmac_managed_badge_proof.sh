@@ -152,8 +152,8 @@ scenario_open_managed_badge_popover() {
     if [ "$prefix" = "customization" ]; then
         ratio_x="0.775"
         ratio_y="0.595"
-        click_query_text="untracked customization"
-        button_label="untracked customization"
+        click_query_text="untracked setting"
+        button_label="untracked setting"
     fi
 
     if scenario_wait_for_managed_popover "$prefix" 1; then
@@ -237,7 +237,7 @@ scenario_managed_badge_save_rollback() {
     local review_changed_paths committed_changed_paths
 
     if [ "$prefix" = "customization" ]; then
-        visible_badge_pattern="[0-9]+ untracked customization|[0-9]+ untracked Mac customization"
+        visible_badge_pattern="[0-9]+ untracked setting(s)?"
     elif [ "$prefix" = "homebrew" ]; then
         visible_badge_pattern="[0-9]+ untracked Homebrew"
     fi

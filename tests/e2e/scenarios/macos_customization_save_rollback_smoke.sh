@@ -2,7 +2,7 @@
 # =============================================================================
 # Scenario: macos_customization_save_rollback_smoke
 #
-# Focused parity proof for the untracked macOS customizations badge: Add to
+# Focused parity proof for the untracked macOS settings badge: Add to
 # config, Build & Test, Save, and History rollback against a disposable repo.
 # =============================================================================
 
@@ -15,8 +15,8 @@ scenario_test() {
 
     scenario_managed_badge_save_rollback \
         "peekabooCustomizationSaveRollback" \
-        "Untracked customizations" \
-        "untracked customization|untracked Mac customization" \
+        "Untracked settings" \
+        "untracked settings|untracked setting" \
         "customization" \
         "feat(e2e): import untracked macos customizations"
 }
