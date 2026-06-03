@@ -488,30 +488,17 @@ mod tests {
     }
 
     #[test]
-    fn test_check_desktop_access() {
-        let status = check_desktop_access();
-        // Should return some valid status
-        assert!(matches!(
-            status,
-            PermissionStatus::Granted | PermissionStatus::Denied | PermissionStatus::Unknown
-        ));
+    fn check_folder_access_returns_granted_for_existing_directory() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().to_path_buf();
+        assert_eq!(check_folder_access(&path), PermissionStatus::Granted);
     }
 
     #[test]
-    fn test_check_admin_privileges() {
-        let status = check_admin_privileges();
-        // Should return some valid status
-        assert!(matches!(
-            status,
-            PermissionStatus::Granted | PermissionStatus::Denied | PermissionStatus::Unknown
-        ));
-    }
-
-    #[test]
-    fn test_check_all_permissions() {
-        let state = check_all_permissions();
-        assert_eq!(state.permissions.len(), 4);
-        assert!(state.checked_at.is_some());
+    fn check_folder_access_treats_missing_directory_as_granted() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("does-not-exist");
+        assert_eq!(check_folder_access(&path), PermissionStatus::Granted);
     }
 
     #[test]
