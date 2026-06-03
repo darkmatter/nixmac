@@ -12,14 +12,13 @@ pub struct OllamaProvider {
     base_url: String,
     model: String,
     max_output_tokens: u32,
+    record_chat_logs: bool,
 }
 
 impl OllamaProvider {
     pub fn new(base_url: String, model: String, max_output_tokens: u32) -> Self {
-        let record_chat_logs = crate::state::completion_log::init_recording(
-            "evolve_provider_chat",
-            "evolve provider",
-        );
+        let record_chat_logs =
+            crate::state::completion_log::init_recording("evolve_provider_chat", "evolve provider");
         Self {
             client: reqwest::Client::new(),
             base_url: base_url.trim_end_matches('/').to_string(),

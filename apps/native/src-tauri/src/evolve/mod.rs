@@ -100,11 +100,7 @@ fn normalize_max_output_tokens(value: usize) -> u32 {
 }
 
 /// Return short hex prefix for correlation of error messages without risking sensitive content exposure.
-fn short_hash(s: &str) -> String {
-    let mut h = Sha256::new();
-    h.update(s.as_bytes());
-    hex::encode(h.finalize())[..8].to_string()
-}
+
 impl EvolutionMessage {
     fn permanent(message: Message, iteration: usize, key: Option<String>) -> Self {
         Self {

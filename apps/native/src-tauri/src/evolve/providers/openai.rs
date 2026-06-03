@@ -21,7 +21,7 @@ pub struct OpenAIProvider {
     client: Client<OpenAIConfig>,
     model: String,
     max_output_tokens: u32,
-    record_completions: bool,
+
     record_chat_logs: bool,
 }
 
@@ -37,7 +37,6 @@ impl OpenAIProvider {
             client,
             model,
             max_output_tokens,
-            record_completions,
             record_chat_logs,
         }
     }

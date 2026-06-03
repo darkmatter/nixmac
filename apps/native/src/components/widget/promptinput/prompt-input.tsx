@@ -33,8 +33,7 @@ export function PromptInput() {
   const gitStatus = useWidgetStore((s) => s.gitStatus);
   const settingsOpen = useWidgetStore((s) => s.settingsOpen);
   const setSettingsOpen = useWidgetStore((s) => s.setSettingsOpen);
-  const [warningOpen, setWarningOpen] = useState(false);
-  const { handleEvolve, evolveFromManual } = useEvolve();
+  const { handleEvolve  } = useEvolve();
   const [providerErrors, setProviderErrors] = useState<{ evolve: string | null; summary: string | null }>({
     evolve: null,
     summary: null,
@@ -116,7 +115,6 @@ export function PromptInput() {
     if (!evolvePrompt.trim()) return;
     if (promptValidationError) return;
     if (needsResolution) {
-      setWarningOpen(true);
       return;
     }
     handleEvolve();
