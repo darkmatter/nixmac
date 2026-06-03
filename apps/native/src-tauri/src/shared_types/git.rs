@@ -61,15 +61,9 @@ pub struct GitStatus {
 /// Event payload emitted by the git status watcher.
 #[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct WatcherEvent {
+pub struct GitState {
     /// Latest git status snapshot, if it could be read.
     pub git_status: Option<GitStatus>,
-    /// Latest summarized change map, when summary data is available.
-    pub change_map: Option<SemanticChangeMap>,
-    /// Latest evolve routing state derived from the snapshot.
-    pub evolve_state: Option<EvolveState>,
-    /// Error message when the watcher failed to refresh state.
-    pub error: Option<String>,
     /// True when a build outside nixmac was detected.
     pub external_build_detected: bool,
 }
