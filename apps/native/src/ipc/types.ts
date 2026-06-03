@@ -134,6 +134,78 @@ configDir: string;
 hostAttr: string | null }
 
 /**
+ * Per-field description rendered into a UI control.
+ */
+export type ConfigField = { 
+/**
+ * Key as written to the underlying store (typically camelCase).
+ */
+key: string; 
+/**
+ * Human-readable label rendered above the input.
+ */
+label: string; 
+/**
+ * Optional help text (rendered as a tooltip / "info" icon).
+ */
+help?: string | null; 
+/**
+ * What control to render.
+ */
+ty: FieldType; 
+/**
+ * Default if the store has no value yet.
+ */
+default: JsonValue; 
+/**
+ * Current value loaded from the store.
+ */
+current: JsonValue }
+
+/**
+ * One section in the auto-rendered settings panel — corresponds to one
+ * `#[derive(Configurable)]` struct.
+ */
+export type ConfigurableSchema = { 
+/**
+ * Unique stable identifier (struct's Rust name). Used by `set_field` to
+ * dispatch to the right registered configurable.
+ */
+name: string; 
+/**
+ * Title shown above the section in the UI.
+ */
+displayName: string; 
+/**
+ * Optional one-line description shown under the title.
+ */
+description?: string | null; 
+fields: ConfigField[] }
+
+export type EnumVariant = { value: string; label: string }
+
+/**
+ * What kind of control should render this field.
+ */
+export type FieldType = 
+/**
+ * Numeric input with optional min/max/step.
+ */
+{ kind: "number"; min?: number | null; max?: number | null; step?: number | null } | 
+/**
+ * Toggle / checkbox.
+ */
+{ kind: "boolean" } | 
+/**
+ * Single-line text or multi-line textarea when `multiline = true`.
+ */
+{ kind: "string"; multiline: boolean } | 
+/**
+ * Select / dropdown of pre-declared options.
+ */
+{ kind: "enum"; variants: EnumVariant[] }
+
+/**
  * Payload for `config:changed`, when emitted by a filesystem watcher.
  */
 export type ConfigChangedEvent = { 
