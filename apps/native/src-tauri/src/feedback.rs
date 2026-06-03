@@ -293,10 +293,11 @@ fn get_nix_diff(dir: &str) -> Result<String> {
         .collect::<String>())
 }
 
-/// Gather a diff-like summary containing only .nix file changes (including untracked).
+/// Gather a git diff containing only .nix file changes (including untracked).
 ///
-/// Note: this is assembled from the structured git status change list; it is not a raw `git diff` patch.
-/// It will be empty when there are no changes, or if the repo hasn't been initialized.
+/// Note: this depends on git status/diff; it will be empty when there are no
+/// changes, or if the repo hasn't been initialized.
+pub fn gather_changed_nix_files_diff(app: &AppHandle) -> Option<String> {
     let config_dir = store::get_config_dir(app).ok()?;
     let diff = get_nix_diff(&config_dir).ok()?;
     if diff.trim().is_empty() {
