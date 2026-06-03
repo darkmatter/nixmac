@@ -66,6 +66,9 @@ const config: StorybookConfig = {
           ),
         },
       },
+      optimizeDeps: {
+        exclude: ["monaco-editor"],
+      },
     });
     // merged.plugins = withoutMonacoEditorPlugin(merged.plugins) as typeof merged.plugins;
     merged.build ??= {};

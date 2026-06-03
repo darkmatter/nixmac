@@ -6,27 +6,27 @@ beforeAll(preview.composed.beforeAll);
 function normalizeAnimations(html: string): string {
   return html
     .replace(/translateY\(([^)]+)\)/g, (_match, val) => {
-      const rounded = Math.round(Number.parseFloat(val));
-      const snapToGrid = (base: number, step: number) => {
-        const candidate = base + Math.round((rounded - base) / step) * step;
-        return Math.abs(rounded - candidate) <= 1 ? candidate : null;
-      };
-      const stableOffset =
-        (Math.abs(rounded - 10) <= 1 ? 10 : null) ??
-        snapToGrid(4, 36) ??
-        snapToGrid(8, 36) ??
-        rounded;
-      return `translateY(${stableOffset}px)`;
+      if (!Number.isFinite(Number.parseFloat(val))) {
+        return `translateY(${val})`;
+      }
+      return "translateY(0px)";
     })
     .replace(/translateX\(([^)]+)\)/g, (_match, val) => {
       return `translateX(${Math.round(Number.parseFloat(val))}px)`;
     })
     .replace(/scale\(([^)]+)\)/g, (_match, val) => {
-      return `scale(${Math.round(Number.parseFloat(val) * 100) / 100})`;
+      if (!Number.isFinite(Number.parseFloat(val))) {
+        return `scale(${val})`;
+      }
+      return "scale(1)";
     })
     .replace(/opacity:\s*([\d.]+)/g, (_match, val) => {
-      return `opacity: ${Math.round(Number.parseFloat(val) * 100) / 100}`;
-    });
+      if (!Number.isFinite(Number.parseFloat(val))) {
+        return `opacity: ${val}`;
+      }
+      return "opacity: 0";
+    })
+    .replace(/transform:\s*(?:translateY\(0px\)|scale\(1\))/g, "transform: none");
 }
 
 function normalizeSnapshotRoot(root: Element): string {
