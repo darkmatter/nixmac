@@ -19,15 +19,15 @@ on:
       scenario:
         description: 'Scenario to run (or "all")'
         required: false
-        default: 'nix-install'
+        default: "nix-install"
         type: choice
         options:
           - nix-install
           - all
       branch:
-        description: 'Branch to test (defaults to current)'
+        description: "Branch to test (defaults to current)"
         required: false
-        default: ''
+        default: ""
 
 concurrency:
   group: e2e-${{ github.ref }}
@@ -37,7 +37,7 @@ jobs:
   # --- Determine which scenarios to run ---
   resolve-scenarios:
     name: Resolve scenarios
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: [self-hosted, linux]
     outputs:
       scenarios: ${{ steps.resolve.outputs.scenarios }}
       branch: ${{ steps.ref.outputs.branch }}

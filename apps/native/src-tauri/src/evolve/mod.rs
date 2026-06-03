@@ -99,9 +99,6 @@ fn normalize_max_output_tokens(value: usize) -> u32 {
     value.max(1).min(u32::MAX as usize) as u32
 }
 
-fn normalize_max_output_tokens(value: usize) -> u32 {
-    value.max(1).min(u32::MAX as usize) as u32
-}
 
 /// Return short hex prefix for correlation of error messages without risking sensitive content exposure.
 

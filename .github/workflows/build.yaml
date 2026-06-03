@@ -13,7 +13,7 @@ env:
   SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 jobs:
   build:
-    runs-on: blacksmith-6vcpu-macos-15
+    runs-on: [self-hosted, macos-latest]
     permissions:
       contents: write
     steps:
