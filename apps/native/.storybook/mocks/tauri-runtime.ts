@@ -263,7 +263,6 @@ export const storybookTauriAPI = {
     },
     cached: async () => baseGitStatus(),
     commit: async () => ({ hash: "mock123", evolveState: baseEvolveState() }),
-    stash: async () => okResult(),
     fileDiffContents: async (_filenames: string[]) => ({}),
     stageAll: async () => undefined,
     unstageAll: async () => undefined,
