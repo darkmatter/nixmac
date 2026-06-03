@@ -11,7 +11,6 @@ import type {
   Config as DarwinConfig,
   ConfigurableSchema,
   ConfigEditApplyResult,
-  ConfigurableSchema,
   EvolveCancelResult,
   EvolutionResult,
   EvolveState,
