@@ -1413,6 +1413,10 @@ maxIterations: number | null;
  */
 maxBuildAttempts: number | null; 
 /**
+ * Maximum output tokens requested per evolution model call.
+ */
+maxOutputTokens: number | null;
+/**
  * Whether diagnostic feedback may be sent.
  */
 sendDiagnostics: boolean; 
@@ -1490,6 +1494,10 @@ maxIterations: number | null;
  * Maximum build-attempt count update.
  */
 maxBuildAttempts: number | null; 
+/**
+ * Maximum output token count update.
+ */
+maxOutputTokens: number | null;
 /**
  * Ollama base URL update.
  */

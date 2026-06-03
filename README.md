@@ -147,13 +147,22 @@ nixmac uses separate models for **evolution** (config changes via tool use) and 
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `EVOLVE_PROVIDER` | `openrouter` | `openrouter`, `openai`, or `ollama` |
+| `EVOLVE_PROVIDER` | `openrouter` | `openrouter`, `openai`, `ollama`, or `vllm` |
 | `EVOLVE_MODEL` | `anthropic/claude-sonnet-4` | Model for config evolution |
 | `SUMMARY_AI_PROVIDER` | `openrouter` | Provider for summarization |
 | `SUMMARY_MODEL` | `openai/gpt-4o-mini` | Model for summaries |
 | `OLLAMA_API_BASE` | `http://localhost:11434` | Ollama endpoint |
+| `VLLM_API_BASE` | unset | OpenAI-compatible vLLM endpoint, for example `http://localhost:8000/v1` |
+| `VLLM_API_KEY` | unset | Optional vLLM API key |
 
 For fully local operation: `EVOLVE_PROVIDER=ollama SUMMARY_AI_PROVIDER=ollama devenv up`
+
+Evolution calls request up to 32,768 output tokens by default. For self-hosted vLLM,
+open **Settings → AI Models → Evolution Limits** and set **Max output tokens** low enough
+to leave room for the prompt inside your model's context window. For example, a model
+with a 65,536-token context window should use less than 65,536 output tokens; 32,768 is
+a safe starting point for typical prompts. The same value can be set for CLI runs with
+`nixmac evolve --max-output-tokens <tokens>`.
 
 > **Note:** Models under ~70B parameters tend to struggle with the multi-tool evolution workflow.
 
@@ -167,6 +176,7 @@ nixmac evolve "install ripgrep and fd"
 nixmac evolve "enable Touch ID for sudo" \
   --config ~/.darwin \
   --max-iterations 10 \
+  --max-output-tokens 32768 \
   --evolve-provider ollama \
   --evolve-model qwen3-coder:30b
 

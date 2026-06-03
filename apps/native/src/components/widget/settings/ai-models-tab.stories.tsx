@@ -10,6 +10,7 @@ type ModelValues = {
   summaryModel: string;
   maxIterations: number;
   maxBuildAttempts: number;
+  maxOutputTokens: number;
   openrouterApiKey: string;
   openaiApiKey: string;
   vllmApiBaseUrl: string;
@@ -23,6 +24,7 @@ function AiModelsTabFixture() {
     summaryModel: "",
     maxIterations: 25,
     maxBuildAttempts: 5,
+    maxOutputTokens: 32768,
     openrouterApiKey: "",
     openaiApiKey: "",
     vllmApiBaseUrl: "",
@@ -55,6 +57,7 @@ function AiModelsTabFixture() {
         form={form as any}
         maxBuildAttemptsField={field("maxBuildAttempts")}
         maxIterationsField={field("maxIterations")}
+        maxOutputTokensField={field("maxOutputTokens")}
         summaryModelField={field("summaryModel")}
         summaryProviderField={field("summaryProvider")}
       />
