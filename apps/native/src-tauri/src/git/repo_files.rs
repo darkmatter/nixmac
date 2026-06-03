@@ -42,25 +42,16 @@ pub fn head_file_contents(repo: &Repository, path: &Path) -> String {
 
 /// Reads the contents of a file at the given path from the working directory of the repository.
 /// Returns an empty string if the file does not exist on disk.
+/// Symlinks are followed, but only if the resolved target remains inside the repository workdir.
 pub fn workdir_file_contents(repo: &Repository, path: &Path) -> String {
     let Some(workdir) = repo.workdir() else {
         return String::new();
     };
 
-    let full_path = workdir.join(path);
-    let Ok(metadata) = std::fs::symlink_metadata(&full_path) else {
-        return String::new();
-    };
-
-    if metadata.file_type().is_symlink() {
-        return std::fs::read_link(&full_path)
-            .map(|target| target.to_string_lossy().into_owned())
-            .unwrap_or_default();
-    }
-
     let Ok(workdir_canonical) = workdir.canonicalize() else {
         return String::new();
     };
+    let full_path = workdir.join(path);
     let Ok(full_path_canonical) = full_path.canonicalize() else {
         return String::new();
     };
@@ -188,5 +179,35 @@ mod tests {
             workdir_file_contents(&repo, Path::new("../outside.txt")),
             ""
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn workdir_file_contents_follows_symlink_inside_workdir() {
+        let temp = TempDir::new().expect("create temp dir");
+        let repo = Repository::init(temp.path()).expect("init repo");
+
+        fs::write(temp.path().join("target.txt"), "inside\n").expect("write target file");
+        std::os::unix::fs::symlink("target.txt", temp.path().join("link.txt"))
+            .expect("create symlink");
+
+        assert_eq!(
+            workdir_file_contents(&repo, Path::new("link.txt")),
+            "inside\n"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn workdir_file_contents_rejects_symlink_outside_workdir() {
+        let temp = TempDir::new().expect("create temp dir");
+        let repo = Repository::init(temp.path()).expect("init repo");
+        let outside = temp.path().join("../outside.txt");
+        fs::write(&outside, "outside").expect("write outside file");
+
+        std::os::unix::fs::symlink(&outside, temp.path().join("link.txt"))
+            .expect("create symlink");
+
+        assert_eq!(workdir_file_contents(&repo, Path::new("link.txt")), "");
     }
 }
