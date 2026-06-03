@@ -1,52 +1,22 @@
 //! Async background service that drains the `queued_summaries` table.
 //!
-//! Startup creates one `SummarizerState` with an mpsc sender. Producers enqueue
-//! ids through that state instead of spawning their own processors, so only one
-//! worker drains the durable SQLite queue at a time.
+//! Callers spawn this via:
+//! ```ignore
+//! tauri::async_runtime::spawn(queue_summarizer::process(Some(ids), app.clone(), db_path));
+//! ```
+//! The future returns once the queue is empty ("goes dormant").
 
 use anyhow::{Context, Result};
 use std::path::Path;
 use tauri::{AppHandle, Emitter, Runtime};
-use tokio::sync::mpsc;
 
+use crate::shared_types::SummarizerUpdateEvent;
 use crate::sqlite_types::QueuedSummary;
 use crate::summarize::model_output_types::HunkSummary;
 
-/// After this many attempts (including the initial try), a queued summary is
-/// marked failed and its associated change summaries get a permanent failure
-/// marker. The budget is conservative because each retry costs an API call;
-/// persistent failures usually indicate a model or prompt problem that retries
-/// won't fix.
 const FAILED_AFTER_TRIES: i64 = 4;
 
-/// Bounded channel depth for the summarizer's mpsc queue. Keeps memory
-/// predictable even if producers enqueue faster than the worker drains.
-const SUMMARIZER_QUEUE_DEPTH: usize = 32;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SummarizeJob {
-    ids: Option<Vec<i64>>,
-}
-
-impl SummarizeJob {
-    pub fn specific(ids: Vec<i64>) -> Self {
-        Self { ids: Some(ids) }
-    }
-}
-
-#[derive(Clone)]
-pub struct SummarizerState {
-    tx: mpsc::Sender<SummarizeJob>,
-}
-
-impl SummarizerState {
-    pub async fn enqueue_ids(&self, ids: Vec<i64>) -> Result<()> {
-        self.tx
-            .send(SummarizeJob::specific(ids))
-            .await
-            .context("summarizer worker is not running")
-    }
-}
+pub struct QueueSummarizerWorker;
 
 #[derive(serde::Deserialize)]
 struct HashSummaryPair {
@@ -56,32 +26,17 @@ struct HashSummaryPair {
 
 // ── Public entry point ────────────────────────────────────────────────────────
 
-pub fn start_worker<R: Runtime>(app: &AppHandle<R>) -> Result<SummarizerState> {
-    let (tx, rx) = mpsc::channel(SUMMARIZER_QUEUE_DEPTH);
+pub fn start_worker<R: Runtime>(app: &AppHandle<R>) -> Result<QueueSummarizerWorker> {
     let app = app.clone();
     let db_path = crate::db::get_db_path(&app)?;
 
-    tauri::async_runtime::spawn(worker_loop(rx, move |job| {
-        let app = app.clone();
-        let db_path = db_path.clone();
-        async move {
-            if let Err(error) = process(job.ids, app, db_path).await {
-                log::warn!("[queue_summarizer] worker job failed: {error:#}");
-            }
+    tauri::async_runtime::spawn(async move {
+        if let Err(error) = process(None, app, db_path).await {
+            log::warn!("[queue_summarizer] startup drain failed: {error:#}");
         }
-    }));
+    });
 
-    Ok(SummarizerState { tx })
-}
-
-async fn worker_loop<F, Fut>(mut rx: mpsc::Receiver<SummarizeJob>, mut handler: F)
-where
-    F: FnMut(SummarizeJob) -> Fut,
-    Fut: std::future::Future<Output = ()>,
-{
-    while let Some(job) = rx.recv().await {
-        handler(job).await;
-    }
+    Ok(QueueSummarizerWorker)
 }
 
 pub async fn process<R: Runtime>(
@@ -446,7 +401,7 @@ fn emit_update<R: Runtime>(app: &AppHandle<R>, db_path: &Path) {
         let config_dir = crate::storage::store::get_config_dir(app)?;
         let change_sets = crate::summarize::find_existing::for_current_state(db_path, &config_dir)?;
         let semantic_map = crate::summarize::group_existing::from_change_sets(change_sets);
-        app.emit("change_map_changed", semantic_map)?;
+        app.emit("summarizer:update", SummarizerUpdateEvent { semantic_map })?;
         Ok(())
     })();
     if let Err(e) = result {
@@ -565,43 +520,5 @@ mod tests {
         );
         let pairs = vec![pair("a3a0d3", 38), pair("37c4ac", 39)];
         assert!(validate_group_response(&summary, &pairs).is_ok());
-    }
-
-    #[tokio::test]
-    async fn worker_loop_processes_jobs_one_at_a_time() {
-        use std::sync::{
-            atomic::{AtomicUsize, Ordering},
-            Arc,
-        };
-
-        let (tx, rx) = mpsc::channel(8);
-        let in_flight = Arc::new(AtomicUsize::new(0));
-        let max_in_flight = Arc::new(AtomicUsize::new(0));
-        let processed = Arc::new(AtomicUsize::new(0));
-
-        let in_flight_for_worker = in_flight.clone();
-        let max_for_worker = max_in_flight.clone();
-        let processed_for_worker = processed.clone();
-        let worker = tokio::spawn(worker_loop(rx, move |_| {
-            let in_flight = in_flight_for_worker.clone();
-            let max_in_flight = max_for_worker.clone();
-            let processed = processed_for_worker.clone();
-            async move {
-                let current = in_flight.fetch_add(1, Ordering::SeqCst) + 1;
-                max_in_flight.fetch_max(current, Ordering::SeqCst);
-                tokio::task::yield_now().await;
-                processed.fetch_add(1, Ordering::SeqCst);
-                in_flight.fetch_sub(1, Ordering::SeqCst);
-            }
-        }));
-
-        for id in 1..=5 {
-            tx.send(SummarizeJob::specific(vec![id])).await.unwrap();
-        }
-        drop(tx);
-        worker.await.unwrap();
-
-        assert_eq!(processed.load(Ordering::SeqCst), 5);
-        assert_eq!(max_in_flight.load(Ordering::SeqCst), 1);
     }
 }
