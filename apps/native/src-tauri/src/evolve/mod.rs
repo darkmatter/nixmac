@@ -2,7 +2,7 @@
 
 mod age;
 mod chat_memory;
-mod config;
+pub(crate) mod config;
 mod config_dir_context;
 pub(crate) mod edit_nix_file;
 mod ensure_secret;
