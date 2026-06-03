@@ -6,6 +6,10 @@ use crate::shared_types::WatcherEvent;
 
 static LAST_DRIFT_NOTIFICATION_ID: Mutex<Option<String>> = Mutex::new(None);
 
+#[cfg(target_os = "macos")]
+#[link(name = "UserNotifications", kind = "framework")]
+extern "C" {}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct DriftNotification {
     id: String,
@@ -25,15 +29,15 @@ pub fn maybe_notify(event: &WatcherEvent) {
         return;
     };
 
-if last_notification_id.as_deref() == Some(notification.id.as_str()) {
-    return;
-}
+    if last_notification_id.as_deref() == Some(notification.id.as_str()) {
+        return;
+    }
 
-// Don't let the one-shot external-build notification disrupt config-drift deduping.
-if notification.id != "external-build" {
-    *last_notification_id = Some(notification.id.clone());
-}
-drop(last_notification_id);
+    // Don't let the one-shot external-build notification disrupt config-drift deduping.
+    if notification.id != "external-build" {
+        *last_notification_id = Some(notification.id.clone());
+    }
+    drop(last_notification_id);
 
     if let Err(error) = send_native_notification(notification.title, &notification.body) {
         log::warn!("Failed to send drift notification: {error}");
@@ -77,22 +81,29 @@ fn send_native_notification(title: &str, body: &str) -> Result<(), String> {
 
     unsafe {
         let pool = NSAutoreleasePool::new(nil);
-        let notification: id = msg_send![class!(NSUserNotification), new];
+        let content: id = msg_send![class!(UNMutableNotificationContent), new];
         let title = NSString::alloc(nil).init_str(title);
         let body = NSString::alloc(nil).init_str(body);
+        let identifier =
+            NSString::alloc(nil).init_str(&format!("nixmac-drift-{}", uuid::Uuid::new_v4()));
 
-        let _: () = msg_send![notification, setTitle: title];
-        let _: () = msg_send![notification, setInformativeText: body];
+        let _: () = msg_send![content, setTitle: title];
+        let _: () = msg_send![content, setBody: body];
 
-        let center: id = msg_send![
-            class!(NSUserNotificationCenter),
-            defaultUserNotificationCenter
+        let request: id = msg_send![
+            class!(UNNotificationRequest),
+            requestWithIdentifier: identifier
+            content: content
+            trigger: nil
         ];
-        let _: () = msg_send![center, deliverNotification: notification];
 
-        let _: () = msg_send![notification, release];
+        let center: id = msg_send![class!(UNUserNotificationCenter), currentNotificationCenter];
+        let _: () = msg_send![center, addNotificationRequest: request withCompletionHandler: nil];
+
         let _: () = msg_send![title, release];
         let _: () = msg_send![body, release];
+        let _: () = msg_send![identifier, release];
+        let _: () = msg_send![content, release];
         let _: () = msg_send![pool, drain];
     }
 
