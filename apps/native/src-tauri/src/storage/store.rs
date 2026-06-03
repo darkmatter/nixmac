@@ -42,6 +42,7 @@ pub const UPDATE_CHANNEL_KEY: &str = "updateChannel";
 
 pub const DEFAULT_MAX_ITERATIONS: usize = 25;
 pub const DEFAULT_MAX_OUTPUT_TOKENS: usize = 32_768;
+pub const DEFAULT_MAX_TOKEN_BUDGET: u32 = 50_000;
 const KEYCHAIN_SERVICE: &str = "com.darkmatter.nixmac";
 
 fn e2e_mock_system_enabled() -> bool {
@@ -538,6 +539,18 @@ pub fn set_max_iterations<R: Runtime>(app: &AppHandle<R>, max: usize) -> Result<
 
     let store = get_repo_store(app)?;
     store.set("maxIterations", serde_json::json!(max));
+    store.save()?;
+    Ok(())
+}
+
+/// Gets the maximum token budget for evolution (default: 50,000).
+pub fn get_max_token_budget<R: Runtime>(app: &AppHandle<R>) -> Result<u32> {
+    Ok(get_json_pref(app, "maxTokenBudget")?.unwrap_or(DEFAULT_MAX_TOKEN_BUDGET))
+}
+
+pub fn set_max_token_budget<R: Runtime>(app: &AppHandle<R>, max: u32) -> Result<()> {
+    let store = get_store(app)?;
+    store.set("maxTokenBudget", serde_json::json!(max));
     store.save()?;
     Ok(())
 }

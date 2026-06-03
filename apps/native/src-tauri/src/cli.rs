@@ -3,7 +3,7 @@
 //! Usage:
 //!   nixmac evolve "your prompt here"
 //!   nixmac evolve "your prompt" --config /path/to/config
-//!   nixmac evolve "your prompt" --max-iterations 5 --host aarch64-darwin
+//!   nixmac evolve "your prompt" --max-token-budget 50000 --host aarch64-darwin
 //!
 //! NOTE NOTE NOTE: If you pass any CLI arguments corresponding to settings that
 //! come from the app store, those CLI arguments will override the store values
@@ -25,6 +25,7 @@ pub struct EvolveConfig {
     pub config: Option<PathBuf>,
     pub max_iterations: Option<usize>,
     pub max_output_tokens: Option<usize>,
+    pub max_token_budget: Option<u32>,
     pub evolve_provider: Option<String>,
     pub evolve_model: Option<String>,
     pub summary_provider: Option<String>,
@@ -55,13 +56,17 @@ pub enum Commands {
         #[arg(short, long)]
         config: Option<PathBuf>,
 
-        /// Maximum iterations for the evolution
-        #[arg(short, long)]
+        /// Legacy fallback for providers that do not report token usage
+        #[arg(short, long, hide = true)]
         max_iterations: Option<usize>,
 
         /// Maximum output tokens requested per evolution model call
         #[arg(long)]
         max_output_tokens: Option<usize>,
+
+        /// Maximum provider-reported tokens for the evolution
+        #[arg(long)]
+        max_token_budget: Option<u32>,
 
         /// Provider for evolution (e.g., openai, openrouter, ollama)
         #[arg(long)]
@@ -108,6 +113,7 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
         config,
         max_iterations,
         max_output_tokens,
+        max_token_budget,
         evolve_provider,
         evolve_model,
         summary_provider,
@@ -192,7 +198,7 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
         None => crate::storage::store::get_summary_model(app).ok().flatten(),
     };
 
-    // Effective max iterations: prefer CLI value, otherwise read from store (has default)
+    // Effective legacy iteration fallback: prefer CLI value, otherwise read from store (has default)
     let effective_max_iterations: usize = match max_iterations {
         Some(v) => v,
         None => crate::storage::store::get_max_iterations(app)
@@ -204,7 +210,14 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
             .unwrap_or(crate::storage::store::DEFAULT_MAX_OUTPUT_TOKENS),
     };
 
-    // Max iterations
+    // Effective max token budget: prefer CLI value, otherwise read from store (has default)
+    let effective_max_token_budget: u32 = match max_token_budget {
+        Some(v) => v,
+        None => crate::storage::store::get_max_token_budget(app)
+            .unwrap_or(crate::storage::store::DEFAULT_MAX_TOKEN_BUDGET),
+    };
+
+    // Legacy max iterations
     if let Some(iterations) = max_iterations {
         crate::storage::store::set_max_iterations(app, iterations)
             .map_err(|e| format!("Failed to set max iterations: {}", e))?;
@@ -213,6 +226,12 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
     if let Some(output_tokens) = max_output_tokens {
         crate::storage::store::set_max_output_tokens(app, output_tokens)
             .map_err(|e| format!("Failed to set max output tokens: {}", e))?;
+    }
+
+    // Max token budget
+    if let Some(token_budget) = max_token_budget {
+        crate::storage::store::set_max_token_budget(app, token_budget)
+            .map_err(|e| format!("Failed to set max token budget: {}", e))?;
     }
 
     // Host
@@ -273,6 +292,7 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
             "prompt": prompt,
             "maxIterations": effective_max_iterations,
             "maxOutputTokens": effective_max_output_tokens,
+            "maxTokenBudget": effective_max_token_budget,
             "evolveProvider": effective_evolve_provider,
             "evolveModel": effective_evolve_model,
             "summaryProvider": effective_summary_provider,
