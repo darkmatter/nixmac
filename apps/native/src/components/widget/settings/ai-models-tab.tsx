@@ -47,7 +47,7 @@ const DEFAULT_EVOLVE_MODEL: Record<string, string> = {
   openrouter: "anthropic/claude-sonnet-4",
   openai: "anthropic/claude-sonnet-4",
   ollama: "",
-  vllm: "gpt-oss-120b",
+  vllm: "",
   claude: "",
   codex: "",
   opencode: "",
@@ -56,8 +56,8 @@ const DEFAULT_EVOLVE_MODEL: Record<string, string> = {
 const DEFAULT_SUMMARY_MODEL: Record<string, string> = {
   openrouter: "openai/gpt-4o-mini",
   openai: "openai/gpt-4o-mini",
-  ollama: "llama3.1",
-  vllm: "gpt-oss-120b",
+  ollama: "",
+  vllm: "",
   claude: "",
   codex: "",
   opencode: "",
@@ -140,11 +140,13 @@ export function AiModelsTab({
     evolveProviderField.state.value,
     providerPrefs,
     cliStatus,
+    evolveModelField.state.value,
   );
   const summaryProviderError = getProviderConfigInvalidReason(
     summaryProviderField.state.value,
     providerPrefs,
     cliStatus,
+    summaryModelField.state.value,
   );
 
   return (
@@ -228,9 +230,9 @@ export function AiModelsTab({
                           onBlur={evolveModelField.handleBlur}
                           placeholder={
                             evolveProvider === "ollama"
-                              ? ""
+                              ? "Select an installed Ollama model"
                               : evolveProvider === "vllm"
-                                ? "gpt-oss-120b"
+                                ? "Enter vLLM model name"
                                 : evolveProvider === "opencode"
                                   ? "Leave empty for CLI default"
                                   : "anthropic/claude-sonnet-4"
@@ -316,9 +318,9 @@ export function AiModelsTab({
                           onBlur={summaryModelField.handleBlur}
                           placeholder={
                             summaryProvider === "ollama"
-                              ? "llama3.1"
+                              ? "Select an installed Ollama model"
                               : summaryProvider === "vllm"
-                                ? "gpt-oss-120b"
+                                ? "Enter vLLM model name"
                                 : summaryProvider === "opencode"
                                   ? "Leave empty for CLI default"
                                   : "openai/gpt-4o-mini"

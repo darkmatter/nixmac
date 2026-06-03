@@ -62,6 +62,28 @@ pub trait ChatCompletionProvider: Send + Sync {
     }
 }
 
+fn configured_model(store_model: Option<String>, env_var: &str) -> Option<String> {
+    store_model
+        .and_then(crate::utils::non_empty_trimmed_string)
+        .or_else(|| {
+            std::env::var(env_var)
+                .ok()
+                .and_then(crate::utils::non_empty_trimmed_string)
+        })
+}
+
+fn require_local_model(
+    provider_name: &str,
+    store_model: Option<String>,
+    env_var: &str,
+) -> Result<String> {
+    configured_model(store_model, env_var).ok_or_else(|| {
+        anyhow::anyhow!(
+            "No {provider_name} model configured. Please select a model in Settings or set {env_var}."
+        )
+    })
+}
+
 /// Create a provider based on environment configuration
 pub fn create_provider<R: Runtime>(
     app_handle: Option<&AppHandle<R>>,
@@ -85,15 +107,12 @@ pub fn create_provider<R: Runtime>(
                 "codex" => CliTool::Codex,
                 _ => CliTool::OpenCode,
             };
-            let model = store_model
-                .or_else(|| std::env::var("SUMMARY_MODEL").ok())
-                .unwrap_or_else(|| provider.clone());
+            let model =
+                configured_model(store_model, "SUMMARY_MODEL").unwrap_or_else(|| provider.clone());
             Ok(Box::new(CliCompletionClient::new(tool, model)))
         }
         "ollama" => {
-            let model = store_model
-                .or_else(|| std::env::var("SUMMARY_MODEL").ok())
-                .unwrap_or_else(|| "llama3.1".to_string());
+            let model = require_local_model("Ollama", store_model, "SUMMARY_MODEL")?;
 
             let base_url = app_handle
                 .and_then(|app| crate::storage::store::get_ollama_api_base_url(app).ok())
@@ -103,9 +122,7 @@ pub fn create_provider<R: Runtime>(
             Ok(Box::new(OllamaClient::new(&base_url, &model)))
         }
         "vllm" => {
-            let model = store_model
-                .or_else(|| std::env::var("SUMMARY_MODEL").ok())
-                .unwrap_or_else(|| "gpt-oss-120b".to_string());
+            let model = require_local_model("vLLM", store_model, "SUMMARY_MODEL")?;
 
             let base_url = app_handle
                 .and_then(|app| crate::storage::store::get_vllm_api_base_url(app).ok())
@@ -124,8 +141,7 @@ pub fn create_provider<R: Runtime>(
             Ok(Box::new(OpenAIClient::new(&api_key, &base_url, &model)))
         }
         _ => {
-            let model = store_model
-                .or_else(|| std::env::var("SUMMARY_MODEL").ok())
+            let model = configured_model(store_model, "SUMMARY_MODEL")
                 .unwrap_or_else(|| DEFAULT_SUMMARY_MODEL.to_string());
 
             let (key, base_url) = if let Some(app) = app_handle {
