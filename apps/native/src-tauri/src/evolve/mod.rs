@@ -99,10 +99,6 @@ fn normalize_max_output_tokens(value: usize) -> u32 {
     value.max(1).min(u32::MAX as usize) as u32
 }
 
-fn normalize_max_output_tokens(value: usize) -> u32 {
-    value.max(1).min(u32::MAX as usize) as u32
-}
-
 /// Return short hex prefix for correlation of error messages without risking sensitive content exposure.
 
 impl EvolutionMessage {
@@ -859,6 +855,7 @@ pub async fn generate_evolution<R: Runtime>(
     let config::EvolutionLimits {
         mut max_iterations,
         mut max_build_attempts,
+        ..
     } = config::EvolutionLimits::load(app)
         .inspect_err(|e| warn!("EvolutionLimits::load failed ({e}); using defaults"))
         .unwrap_or_default();
@@ -888,6 +885,8 @@ pub async fn generate_evolution<R: Runtime>(
     let allowed_tool_names_display = allowed_tool_names.join(", ");
     let mut evolution = Evolution::new(prompt);
     let mut iteration: usize = 0;
+    let max_token_budget =
+        store::get_max_token_budget(app).unwrap_or(store::DEFAULT_MAX_TOKEN_BUDGET);
     let mut build_attempts: usize = 0;
     let mut build_verified = false;
     let mut total_tokens: u32 = 0;
@@ -1102,7 +1101,7 @@ pub async fn generate_evolution<R: Runtime>(
             );
             emit_evolve_event(
                 app,
-                EvolveEvent::api_response(start_time, iteration, usage.total),
+                EvolveEvent::api_response(start_time, iteration, usage.total, total_tokens, max_token_budget),
             );
         }
 
