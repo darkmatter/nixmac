@@ -17,4 +17,3 @@ pub async fn permissions_request(
     permissions::request_permission(&permission_id)
         .map_err(|e| capture_err("permissions_request", e))
 }
-

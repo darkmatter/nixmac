@@ -8,6 +8,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { countDiffItems, useHomebrewDiff } from "@/hooks/use-homebrew-diff";
+import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import { Package } from "lucide-react";
 
@@ -17,7 +18,7 @@ import { Package } from "lucide-react";
  * the working tree is clean, and there are packages not yet in config.
  */
 export function HomebrewBadge() {
-  const evolveState = useWidgetStore((s) => s.evolveState);
+  const evolveState = useViewModel((s) => s.evolve);
   const prefsLoaded = useWidgetStore((s) => s.prefsLoaded);
   const scanHomebrewOnStartup = useWidgetStore((s) => s.scanHomebrewOnStartup);
   const shouldScan = prefsLoaded && scanHomebrewOnStartup;

@@ -1,6 +1,9 @@
 import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
+import { useViewModel } from "@/stores/view-model";
+import { mirrorEvolveState } from "@/viewmodel/evolve";
+import { mirrorGitState } from "@/viewmodel/git";
 
 /**
  * Hook for the apply/rebuild operation.
@@ -19,12 +22,12 @@ export function useApply() {
       onSuccess: async () => {
         try {
           const result = await tauriAPI.darwin.finalizeApply();
-          useWidgetStore.getState().setExternalBuildDetected(false);
+          mirrorGitState(useViewModel.getState().git, false);
           if (result?.gitStatus) {
-            useWidgetStore.getState().setGitStatus(result.gitStatus);
+            mirrorGitState(result.gitStatus);
           }
           if (result?.evolveState) {
-            useWidgetStore.getState().setEvolveState(result.evolveState);
+            mirrorEvolveState(result.evolveState);
           }
         } catch (e) {
           console.error("Failed to finalize apply:", e);
@@ -47,12 +50,12 @@ export function useApply() {
   const handleManualBuildConfirm = async () => {
     try {
       const result = await tauriAPI.darwin.finalizeApply();
-      useWidgetStore.getState().setExternalBuildDetected(false);
+      mirrorGitState(useViewModel.getState().git, false);
       if (result?.gitStatus) {
-        useWidgetStore.getState().setGitStatus(result.gitStatus);
+        mirrorGitState(result.gitStatus);
       }
       if (result?.evolveState) {
-        useWidgetStore.getState().setEvolveState(result.evolveState);
+        mirrorEvolveState(result.evolveState);
       }
     } catch (e) {
       console.error("Failed to finalize manual build:", e);

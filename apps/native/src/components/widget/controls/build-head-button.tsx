@@ -1,7 +1,7 @@
 import { Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 import { useApply } from "@/hooks/use-apply";
 
 interface BuildHeadButtonProps {
@@ -9,7 +9,7 @@ interface BuildHeadButtonProps {
 }
 
 export function BuildHeadButton({ isRestoring = false }: BuildHeadButtonProps) {
-  const uncommittedChanges = useWidgetStore((s) => (s.gitStatus?.files?.length ?? 0) > 0);
+  const uncommittedChanges = useViewModel((s) => (s.git?.files?.length ?? 0) > 0);
   const { handleHistoryBuild } = useApply();
 
   return (

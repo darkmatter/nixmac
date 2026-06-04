@@ -1,3 +1,14 @@
+//! Auto-update commands backed by Tauri's updater plugin.
+//!
+//! The app ships two release channels — stable and develop — each with its
+//! own manifest URL. The user's channel preference is persisted in the
+//! global preferences slice. In debug builds the updater is a no-op stub
+//! (it misbehaves with unsigned dev bundles).
+//!
+//! After an update, `relaunch_after_update` re-opens the `.app` bundle by
+//! path rather than re-exeing the cached binary, avoiding a race where the
+//! macOS updater moves the old bundle aside between the swap and the relaunch.
+
 use crate::shared_types;
 use tauri::AppHandle;
 
@@ -167,7 +178,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn stable_channel_keeps_legacy_manifest_url() {
+    fn stable_channel_keeps_original_manifest_url() {
         assert_eq!(
             update_manifest_url(shared_types::UpdateChannel::Stable),
             "https://releases.nixmac.com/latest.json"

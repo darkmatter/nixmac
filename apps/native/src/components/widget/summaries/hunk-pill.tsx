@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import type { ChangeWithRichType } from "@/components/widget/utils";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 import { countDiffLineStats, DiffLineStatsBadge } from "./diff-line-stats";
 
 interface HunkPillProps {
@@ -9,9 +9,8 @@ interface HunkPillProps {
   onClick: () => void;
 }
 
-// Clicking a hunk pill opens the file and scrolls the diff editor to that hunk.
 export function HunkPill({ change, showCounts = true, onClick }: HunkPillProps) {
-  const changeMap = useWidgetStore((s) => s.changeMap);
+  const changeMap = useViewModel((s) => s.changeMap);
 
   let summaryTitle: string | null = null;
   if (changeMap) {

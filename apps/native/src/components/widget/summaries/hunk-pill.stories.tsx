@@ -1,6 +1,6 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 import type { ChangeWithRichType } from "@/components/widget/utils";
 import type { SemanticChangeMap } from "@/ipc/types";
 import { useEffect } from "react";
@@ -40,7 +40,7 @@ const changeMap: SemanticChangeMap = {
 
 function WithStore({ change, map }: { change: ChangeWithRichType; map?: SemanticChangeMap }) {
   useEffect(() => {
-    if (map) useWidgetStore.getState().setChangeMap(map);
+    if (map) useViewModel.setState({ changeMap: map });
   }, []);
   return <HunkPill change={change} onClick={() => {}} />;
 }
