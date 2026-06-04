@@ -853,28 +853,27 @@ pub async fn generate_evolution<R: Runtime>(
 
     // Read configurable limits from store (hot-reloaded on every run).
     let config::EvolutionLimits {
-        mut max_iterations,
-        mut max_build_attempts,
-        ..
+        max_build_attempts, ..
     } = config::EvolutionLimits::load(app)
         .inspect_err(|e| warn!("EvolutionLimits::load failed ({e}); using defaults"))
         .unwrap_or_default();
-    let max_iterations_increment = max_iterations.max(1);
-    let max_build_attempts_increment = max_build_attempts.max(1);
-    let mut max_iterations_before_edit = std::cmp::max(
+    let legacy_max_iterations =
+        store::get_max_iterations(app).unwrap_or(store::DEFAULT_MAX_ITERATIONS);
+    let max_token_budget =
+        store::get_max_token_budget(app).unwrap_or(store::DEFAULT_MAX_TOKEN_BUDGET);
+    let max_tokens_before_edit = std::cmp::max(
         1,
         (max_iterations * MAX_ITERATIONS_BEFORE_EDIT_PERCENT) / 100,
     );
     let max_iterations_before_edit_increment = max_iterations_before_edit.max(1);
     let interactive_limit_prompt = !banned_tools.contains(&"ask_user");
     info!(
-        "Limits: max_iterations={}, max_iterations_before_edit={} ({}%), max_build_attempts={}, max_output_tokens={}, interactive_limit_prompt={}",
-        max_iterations,
-        max_iterations_before_edit,
-        MAX_ITERATIONS_BEFORE_EDIT_PERCENT,
+        "Limits: max_token_budget={}, max_tokens_before_edit={} ({}%), max_build_attempts={}, legacy_max_iterations={}",
+        max_token_budget,
+        max_tokens_before_edit,
+        MAX_TOKEN_BUDGET_BEFORE_EDIT_PERCENT,
         max_build_attempts,
-        max_output_tokens,
-        interactive_limit_prompt
+        legacy_max_iterations,
     );
 
     let tools = create_tools(banned_tools);
