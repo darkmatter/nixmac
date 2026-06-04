@@ -1,11 +1,9 @@
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import storybookTest from "@storybook/addon-vitest/vitest-plugin";
 import { defineConfig } from "vitest/config";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(__dirname, "../..");
+const repoRoot = path.resolve(import.meta.dirname, "../..");
 const uiPackageRoot = path.resolve(repoRoot, "packages/ui/src");
 
 // `storybookTest` is async in @storybook/addon-vitest >= 10.3 — must be
@@ -13,7 +11,7 @@ const uiPackageRoot = path.resolve(repoRoot, "packages/ui/src");
 // "Vitest failed to find the runner" / "Failed to fetch dynamically imported
 // module" errors during test runs.
 const storybookPlugins = await storybookTest({
-  configDir: path.join(__dirname, ".storybook"),
+  configDir: path.join(import.meta.dirname, ".storybook"),
 });
 
 export default defineConfig({
@@ -30,7 +28,7 @@ export default defineConfig({
       },
       {
         find: "@",
-        replacement: path.resolve(__dirname, "src"),
+        replacement: path.resolve(import.meta.dirname, "src"),
       },
     ],
   },

@@ -30,7 +30,7 @@ jobs:
       # itself is not the gate for test failures, the test workflow is.
       - name: Generate coverage (native)
         continue-on-error: true
-        run: npx vitest run --project=unit --coverage --coverage.reporter=json-summary --coverage.reporter=text --reporter=basic
+        run: bunx vitest run --project=unit --coverage --coverage.reporter=json-summary --coverage.reporter=text
         working-directory: apps/native
       - name: Run Danger
         run: npx danger ci
