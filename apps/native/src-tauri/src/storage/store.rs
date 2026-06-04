@@ -753,6 +753,7 @@ fn set_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str, value: &st
     Ok(())
 }
 
+#[allow(dead_code)]
 fn get_usize_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<usize>> {
     get_json_pref(app, key)
 }
