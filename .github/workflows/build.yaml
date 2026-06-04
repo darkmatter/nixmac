@@ -50,6 +50,13 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 20
+      - name: Cache bun install
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
       # Decide what kind of build this is:
