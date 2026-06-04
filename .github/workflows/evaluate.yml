@@ -13,6 +13,10 @@ concurrency:
 permissions:
   contents: read
 
+
+env:
+  CARGO_INCREMENTAL: 0
+
 jobs:
   rust-check:
     name: Rust Check

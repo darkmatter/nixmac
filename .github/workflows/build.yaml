@@ -10,6 +10,7 @@ on:
   workflow_dispatch:
 env:
   CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
   SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 jobs:
   optimize_ci:
