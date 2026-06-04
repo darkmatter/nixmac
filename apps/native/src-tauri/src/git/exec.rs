@@ -270,7 +270,7 @@ pub fn checkout_files_at_commit(dir: &str, commit_hash: &str) -> Result<()> {
 /// - Reported untracked files and any now-empty tracked parent directories are
 ///   removed; ignored files are preserved. This requires a bit more sophisticated
 ///   approach (in the helper than `git clean -fd` alone because git2 does not expose
-///   that command with those semantices.
+///   that command with those semantics.
 pub fn restore_all(dir: &str) -> Result<()> {
     let repo = git2::Repository::discover(dir)?;
     let head = repo
@@ -334,7 +334,14 @@ fn remove_untracked(repo: &git2::Repository) -> Result<()> {
         }
     }
 
-    parent_dirs.sort_by_key(|path| std::cmp::Reverse(path.components().count()));
+    // Sort by deeper paths first, then sort lexically so that duplicates
+    // are adjacent and can be deduped while preserving the correct order.
+    parent_dirs.sort_by(|a, b| {
+        b.components()
+            .count()
+            .cmp(&a.components().count())
+            .then_with(|| a.cmp(b))
+    });
     parent_dirs.dedup();
     for dir in parent_dirs {
         // Failure usually means the directory contains a tracked or ignored
