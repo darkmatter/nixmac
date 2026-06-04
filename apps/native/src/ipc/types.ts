@@ -913,6 +913,19 @@ path: string;
 changeType: ChangeType }
 
 /**
+ * Payload emitted on `git_state_changed` by the git status watcher.
+ */
+export type GitState = { 
+/**
+ * Latest git status snapshot, if it could be read.
+ */
+gitStatus: GitStatus | null; 
+/**
+ * True when a build outside nixmac was detected.
+ */
+externalBuildDetected: boolean }
+
+/**
  * Comprehensive git repository status.
  */
 export type GitStatus = { 
@@ -1739,29 +1752,4 @@ version: string;
  * Release notes from the channel manifest, when available.
  */
 notes: string | null }
-
-/**
- * Event payload emitted by the git status watcher.
- */
-export type WatcherEvent = { 
-/**
- * Latest git status snapshot, if it could be read.
- */
-gitStatus: GitStatus | null; 
-/**
- * Latest summarized change map, when summary data is available.
- */
-changeMap: SemanticChangeMap | null; 
-/**
- * Latest evolve routing state derived from the snapshot.
- */
-evolveState: EvolveState | null; 
-/**
- * Error message when the watcher failed to refresh state.
- */
-error: string | null; 
-/**
- * True when a build outside nixmac was detected.
- */
-externalBuildDetected: boolean }
 

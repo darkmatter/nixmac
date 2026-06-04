@@ -1,8 +1,23 @@
 import { filesystemViewEnabled } from "@/lib/flags";
-import type { WidgetState, WidgetStep } from "@/stores/widget-store";
+import type { EvolveState, PermissionsState } from "@/ipc/types";
+import type { WidgetStep } from "@/stores/widget-store";
 import { FilePen, FilePlus, FileX, FileCode, type LucideIcon } from "lucide-react";
 
-export function computeCurrentStep(state: WidgetState): WidgetStep {
+type CurrentStepState = {
+  configDir: string;
+  host: string;
+  hosts: string[];
+  permissionsChecked: boolean;
+  permissionsState: PermissionsState | null;
+  nixInstalled: boolean | null;
+  darwinRebuildAvailable: boolean | null;
+  isBootstrapping: boolean;
+  showHistory: boolean;
+  showFilesystem: boolean;
+  evolveState: EvolveState | null;
+};
+
+export function computeCurrentStep(state: CurrentStepState): WidgetStep {
   const hasConfigDir = !!state.configDir;
   const hasHost = !!state.host && state.hosts.includes(state.host);
   const permissionsCheckedAndIncomplete =

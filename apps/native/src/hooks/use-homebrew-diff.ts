@@ -3,6 +3,9 @@
 import { tauriAPI } from "@/ipc/api";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { HomebrewState } from "@/ipc/types";
+import { mirrorChangeMapState } from "@/viewmodel/change-map";
+import { mirrorEvolveState } from "@/viewmodel/evolve";
+import { mirrorGitState } from "@/viewmodel/git";
 import { useCallback, useEffect, useState } from "react";
 
 const TWENTY_MINUTES_SECS = 20 * 60;
@@ -55,9 +58,9 @@ export function useHomebrewDiff(enabled = true) {
     store.setProcessing(true, "apply");
     try {
       const result = await tauriAPI.homebrew.applyDiff(diff);
-      store.setEvolveState(result.evolveState);
-      store.setChangeMap(result.changeMap);
-      store.setGitStatus(result.gitStatus);
+      mirrorEvolveState(result.evolveState);
+      mirrorChangeMapState(result.changeMap);
+      mirrorGitState(result.gitStatus);
       store.setRecommendedPrompt(undefined);
       // Clear so we re-fetch on next render (the watcher will also advance the step).
       setDiff(null);

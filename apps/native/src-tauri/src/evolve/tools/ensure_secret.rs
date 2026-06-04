@@ -51,7 +51,7 @@ pub(crate) fn definition() -> Tool {
                         "type": {
                             "type": "string",
                             "enum": ["raw", "raw_yaml", "raw-yaml", "envFile", "env_file", "env-file", "yamlMap", "yaml_map", "yaml-map"],
-                            "description": "Skeleton strategy. `env_file` renders value: | with KEY= lines. `yaml_map` renders KEY: \"\" entries. `raw` is accepted for backwards compatibility."
+                            "description": "Skeleton strategy. `env_file` renders value: | with KEY= lines. `yaml_map` renders KEY: \"\" entries. `raw` creates an empty placeholder."
                         },
                         "keys": {
                             "type": "array",

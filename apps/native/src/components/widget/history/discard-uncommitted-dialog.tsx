@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { ConfigDirBadge } from "@/components/widget/badges/config-dir-badge";
 import { useRollback } from "@/hooks/use-rollback";
+import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import { toast } from "sonner";
 
@@ -17,14 +18,14 @@ interface DiscardUncommittedDialogProps {
 }
 
 export function DiscardUncommittedDialog({ open, onOpenChange }: DiscardUncommittedDialogProps) {
-  const gitStatus = useWidgetStore((s) => s.gitStatus);
+  const gitStatus = useViewModel((s) => s.git);
   const configDir = useWidgetStore((s) => s.configDir);
   const files = gitStatus?.files ?? [];
   const { handleRollback } = useRollback();
 
   const handleDiscard = async () => {
     await handleRollback();
-    const remaining = useWidgetStore.getState().gitStatus?.files?.length ?? 1;
+    const remaining = useViewModel.getState().git?.files?.length ?? 1;
     if (remaining === 0) {
       toast.success("Changes discarded");
       onOpenChange(false);

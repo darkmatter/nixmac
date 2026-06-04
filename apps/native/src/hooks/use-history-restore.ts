@@ -4,6 +4,8 @@ import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useHistory } from "@/hooks/use-history";
 import { tauriAPI } from "@/ipc/api";
 import type { HistoryItem } from "@/ipc/types";
+import { useViewModel } from "@/stores/view-model";
+import { mirrorGitState } from "@/viewmodel/git";
 
 // Sentinel hash used to identify the frontend-only preview item.
 export const PREVIEW_ITEM_HASH = "n1xm4c0";
@@ -192,8 +194,7 @@ export function useHistoryRestore(
 ): HistoryRestoreResult {
   const { loadHistory } = useHistory();
   const setProcessing = useWidgetStore((state) => state.setProcessing);
-  const setGitStatus = useWidgetStore((state) => state.setGitStatus);
-  const gitStatus = useWidgetStore((state) => state.gitStatus);
+  const gitStatus = useViewModel((state) => state.git);
   const { triggerRebuild } = useRebuildStream();
 
   const [restoringHash, setRestoringHash] = useState<string | null>(null);
@@ -246,7 +247,7 @@ export function useHistoryRestore(
         context: "rollback",
         onSuccess: async () => {
           const result = await tauriAPI.darwin.finalizeRestore(hash);
-          setGitStatus(result);
+          mirrorGitState(result);
           await loadHistory();
         },
         onFailure: async () => {

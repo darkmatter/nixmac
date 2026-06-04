@@ -66,9 +66,10 @@ fn channel_is_registered(registry_list: &str, channel: &str) -> bool {
     // Split each line by whitespace and check if any token equals "flake:<channel>".
     // Avoids partial matches.
     let channel_pattern = format!("flake:{}", channel);
-    registry_list
-        .lines()
-        .any(|line| line.split_whitespace().any(|token| token == channel_pattern))
+    registry_list.lines().any(|line| {
+        line.split_whitespace()
+            .any(|token| token == channel_pattern)
+    })
 }
 
 /// Search a single channel and return a list of SearchPackageResult
@@ -179,7 +180,10 @@ fn process_channel_results(
             .split('.')
             .next_back()
             .unwrap_or(&result.attr_path);
-        if !structured.iter().any(|item| item.attr_path == result.attr_path) {
+        if !structured
+            .iter()
+            .any(|item| item.attr_path == result.attr_path)
+        {
             structured.push(result);
         }
     }
@@ -204,7 +208,10 @@ fn collect_from_channels(
 
         if !channel_is_registered(&registry_list, channel) {
             // CONSIDER: Whether we need to surface this to the agent somehow.
-            log::warn!("Channel '{}' is not registered, skipping search for this channel", channel);
+            log::warn!(
+                "Channel '{}' is not registered, skipping search for this channel",
+                channel
+            );
             continue;
         }
 
@@ -291,11 +298,7 @@ fn classify_derivation(drv: &str) -> SearchResultInstallTarget {
 /// (Homebrew Cask-like) or a CLI / nix-native package.
 fn classify_package(channel: &str, attr_path: &str) -> (SearchResultInstallTarget, Option<String>) {
     let mut cmd = Command::new("nix");
-    cmd.args(&[
-        "derivation",
-        "show",
-        &format!("{}#{}", channel, attr_path),
-    ]);
+    cmd.args(&["derivation", "show", &format!("{}#{}", channel, attr_path)]);
 
     let output = match cmd.output() {
         Ok(output) => output,
@@ -316,7 +319,10 @@ fn classify_package(channel: &str, attr_path: &str) -> (SearchResultInstallTarge
 
         // If the package is broken, set to "none" to avoid trying to install it at all.
         if stderr.contains("broken: This package is broken.") {
-            return (SearchResultInstallTarget::None, Some("package is broken".to_string()));
+            return (
+                SearchResultInstallTarget::None,
+                Some("package is broken".to_string()),
+            );
         }
 
         // If this error occurs because the package is "unfree" and allowUnfree
@@ -326,8 +332,13 @@ fn classify_package(channel: &str, attr_path: &str) -> (SearchResultInstallTarge
         // CONSIDER: We may do something additional in the future like offer
         // to enable allowUnfree for the user or something like that, but for now
         // we'll leave things up to the agent.
-        if stderr.contains("Refusing to evaluate package") && stderr.contains("because it has an unfree license") {
-            return (SearchResultInstallTarget::Either, Some("needs allowUnfree enabled".to_string()));
+        if stderr.contains("Refusing to evaluate package")
+            && stderr.contains("because it has an unfree license")
+        {
+            return (
+                SearchResultInstallTarget::Either,
+                Some("needs allowUnfree enabled".to_string()),
+            );
         }
 
         // Else assume the error is on our side and let the agent decide what to
@@ -474,6 +485,9 @@ mod tests {
         let registry_list = "global flake:agda github:agda/agd\nglobal flake:nixpkgs github:NixOS/nixpkgs/nixpkgs-unstable\nglobal flake:nix github:NixOS/nix\n";
         assert!(channel_is_registered(registry_list, "nixpkgs"));
         assert!(channel_is_registered(registry_list, "nix"));
-        assert!(!channel_is_registered(registry_list, "unregistered-channel"));
+        assert!(!channel_is_registered(
+            registry_list,
+            "unregistered-channel"
+        ));
     }
 }

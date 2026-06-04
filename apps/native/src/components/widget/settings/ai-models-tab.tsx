@@ -1,5 +1,4 @@
 import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -9,11 +8,9 @@ import {
 } from "@/components/ui/select";
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
 import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/ai-provider-validation";
-import { DEFAULT_MAX_OUTPUT_TOKENS, DEFAULT_MAX_TOKEN_BUDGET } from "@/lib/constants";
 import { tauriAPI } from "@/ipc/api";
 import type { CliToolsState } from "@/ipc/types";
 import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
-import { Info } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface AiModelsTabProps {
@@ -25,12 +22,6 @@ interface AiModelsTabProps {
   summaryProviderField: AnyFieldApi;
   // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
   summaryModelField: AnyFieldApi;
-  // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
-  maxTokenBudgetField: AnyFieldApi;
-  // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
-  maxBuildAttemptsField: AnyFieldApi;
-  // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
-  maxOutputTokensField: AnyFieldApi;
   // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
   form: ReactFormExtendedApi<any, any, any, any, any, any, any, any, any, any, any, any>;
 }
@@ -49,7 +40,7 @@ const DEFAULT_EVOLVE_MODEL: Record<string, string> = {
   openrouter: "anthropic/claude-sonnet-4",
   openai: "anthropic/claude-sonnet-4",
   ollama: "",
-  vllm: "",
+  vllm: "gpt-oss-120b",
   claude: "",
   codex: "",
   opencode: "",
@@ -58,8 +49,8 @@ const DEFAULT_EVOLVE_MODEL: Record<string, string> = {
 const DEFAULT_SUMMARY_MODEL: Record<string, string> = {
   openrouter: "openai/gpt-4o-mini",
   openai: "openai/gpt-4o-mini",
-  ollama: "",
-  vllm: "",
+  ollama: "llama3.1",
+  vllm: "gpt-oss-120b",
   claude: "",
   codex: "",
   opencode: "",
@@ -108,9 +99,6 @@ export function AiModelsTab({
   evolveModelField,
   summaryProviderField,
   summaryModelField,
-  maxTokenBudgetField,
-  maxBuildAttemptsField,
-  maxOutputTokensField,
   form,
 }: AiModelsTabProps) {
   const cliStatus = useCliToolStatus();
@@ -121,7 +109,7 @@ export function AiModelsTab({
       {([
         { value: "openrouter", label: "OpenRouter" },
         { value: "ollama", label: "Ollama" },
-        { value: "vllm", label: "vLLM / LiteLLM" },
+        { value: "vllm", label: "OpenAI Compatible" },
       ] as const).map(({ value, label }) => {
         return (
           <SelectItem key={value} value={value}>
@@ -143,13 +131,11 @@ export function AiModelsTab({
     evolveProviderField.state.value,
     providerPrefs,
     cliStatus,
-    evolveModelField.state.value,
   );
   const summaryProviderError = getProviderConfigInvalidReason(
     summaryProviderField.state.value,
     providerPrefs,
     cliStatus,
-    summaryModelField.state.value,
   );
 
   return (
@@ -157,8 +143,8 @@ export function AiModelsTab({
       <div>
         <h2 className="mb-4 font-semibold text-base">AI Models</h2>
         <p className="mb-4 text-muted-foreground text-xs">
-          OpenRouter is the supported cloud provider in the main UI. Previously saved direct
-          OpenAI keys still work as a legacy fallback, but they are no longer shown in Settings.
+          OpenRouter is the supported cloud provider in the main UI. Use local or self-hosted
+          providers when you want model routing outside OpenRouter.
         </p>
         <div className="space-y-6">
           {/* Evolution Model */}
@@ -233,9 +219,9 @@ export function AiModelsTab({
                           onBlur={evolveModelField.handleBlur}
                           placeholder={
                             evolveProvider === "ollama"
-                              ? "Select an installed Ollama model"
+                              ? ""
                               : evolveProvider === "vllm"
-                                ? "Enter vLLM model name"
+                                ? "gpt-oss-120b"
                                 : evolveProvider === "opencode"
                                   ? "Leave empty for CLI default"
                                   : "anthropic/claude-sonnet-4"
@@ -321,9 +307,9 @@ export function AiModelsTab({
                           onBlur={summaryModelField.handleBlur}
                           placeholder={
                             summaryProvider === "ollama"
-                              ? "Select an installed Ollama model"
+                              ? "llama3.1"
                               : summaryProvider === "vllm"
-                                ? "Enter vLLM model name"
+                                ? "gpt-oss-120b"
                                 : summaryProvider === "opencode"
                                   ? "Leave empty for CLI default"
                                   : "openai/gpt-4o-mini"
@@ -337,138 +323,6 @@ export function AiModelsTab({
             </div>
           </div>
 
-          {/* Evolution Limits */}
-          <div className="space-y-4 pt-4 border-t border-border">
-            <h3 className="font-medium text-sm">Evolution Limits</h3>
-            <p className="text-muted-foreground text-xs">
-              Control the token budget and build retry ceiling for each evolution
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <label
-                    className="text-xs font-medium text-muted-foreground"
-                    htmlFor="maxTokenBudget"
-                  >
-                    Token Budget
-                  </label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="inline-flex h-4 w-4 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground/70"
-                        aria-label="Token budget info"
-                      >
-                        <Info className="h-3.5 w-3.5" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="max-w-xs text-xs">
-                      <p>Provider-reported tokens before stopping (default: {DEFAULT_MAX_TOKEN_BUDGET.toLocaleString()}).</p>
-                      <p className="mt-1">
-                        Lower = faster/cheaper, may not finish complex changes.
-                        <br />
-                        Higher = more thorough, uses more model tokens.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <Input
-                  id="maxTokenBudget"
-                  type="number"
-                  min={1000}
-                  max={1_000_000}
-                  step={1000}
-                  value={maxTokenBudgetField.state.value}
-                  onChange={async (e) => {
-                    const value = Number.parseInt(e.target.value, 10) || DEFAULT_MAX_TOKEN_BUDGET;
-                    maxTokenBudgetField.handleChange(value);
-                    await tauriAPI.ui.setPrefs({ maxTokenBudget: value });
-                  }}
-                  onBlur={maxTokenBudgetField.handleBlur}
-                />
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <label
-                    className="text-xs font-medium text-muted-foreground"
-                    htmlFor="maxOutputTokens"
-                  >
-                    Max output tokens
-                  </label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="inline-flex h-4 w-4 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground/70"
-                        aria-label="Max output tokens info"
-                      >
-                        <Info className="h-3.5 w-3.5" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="max-w-xs text-xs">
-                      <p>Completion tokens requested from the evolution model.</p>
-                      <p className="mt-1">
-                        Default: {DEFAULT_MAX_OUTPUT_TOKENS}. Lower this if local vLLM rejects
-                        requests for exceeding the model context window.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <Input
-                  id="maxOutputTokens"
-                  type="number"
-                  min={1024}
-                  max={262144}
-                  step={1024}
-                  value={maxOutputTokensField.state.value}
-                  onChange={async (e) => {
-                    const value =
-                      Number.parseInt(e.target.value, 10) || DEFAULT_MAX_OUTPUT_TOKENS;
-                    maxOutputTokensField.handleChange(value);
-                    await tauriAPI.ui.setPrefs({ maxOutputTokens: value });
-                  }}
-                  onBlur={maxOutputTokensField.handleBlur}
-                />
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <label
-                    className="text-xs font-medium text-muted-foreground"
-                    htmlFor="maxBuildAttempts"
-                  >
-                    Max Build Attempts
-                  </label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="inline-flex h-4 w-4 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground/70"
-                        aria-label="Max build attempts info"
-                      >
-                        <Info className="h-3.5 w-3.5" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="max-w-xs text-xs">
-                      Failed builds before stopping (default: 5).
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <Input
-                  id="maxBuildAttempts"
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={maxBuildAttemptsField.state.value}
-                  onChange={async (e) => {
-                    const value = Number.parseInt(e.target.value, 10) || 5;
-                    maxBuildAttemptsField.handleChange(value);
-                    await tauriAPI.ui.setPrefs({ maxBuildAttempts: value });
-                  }}
-                  onBlur={maxBuildAttemptsField.handleBlur}
-                />
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

@@ -2,7 +2,7 @@ use super::helpers::capture_err;
 use crate::state::{build_state, evolve_state};
 use crate::storage::store;
 use crate::{db, git, shared_types};
-use tauri::AppHandle;
+use tauri::{AppHandle, State};
 
 /// Returns original (HEAD) and modified (working-tree) content for each requested file.
 #[tauri::command]
@@ -42,6 +42,7 @@ pub async fn git_status_and_cache(app: AppHandle) -> Result<shared_types::GitSta
 #[tauri::command]
 pub async fn git_commit(
     app: AppHandle,
+    db_pool: State<'_, db::DbPool>,
     message: String,
 ) -> Result<shared_types::CommitResult, String> {
     let dir = store::ensure_git_repo_folder(&app).map_err(|e| capture_err("git_commit", e))?;
@@ -56,22 +57,20 @@ pub async fn git_commit(
         log::warn!("[git_commit] Failed to tag commit: {}", e);
     }
 
-    if let Ok(db_path) = db::get_db_path(&app) {
-        let now = crate::utils::unix_now();
-        match db::commits::upsert_commit(
-            &db_path,
-            &commit_info.hash,
-            &commit_info.tree_hash,
-            Some(&message),
-            now,
-        ) {
-            Ok(id) => log::info!(
-                "[git_commit] Saved commit to database (id={}, hash={})",
-                id,
-                &commit_info.hash[..8]
-            ),
-            Err(e) => log::error!("[git_commit] Failed to save commit: {}", e),
-        }
+    let now = crate::utils::unix_now();
+    match db::commits::upsert_commit_in_pool(
+        &db_pool,
+        &commit_info.hash,
+        &commit_info.tree_hash,
+        Some(&message),
+        now,
+    ) {
+        Ok(id) => log::info!(
+            "[git_commit] Saved commit to database (id={}, hash={})",
+            id,
+            &commit_info.hash[..8]
+        ),
+        Err(e) => log::error!("[git_commit] Failed to save commit: {}", e),
     }
 
     // Update build state: new HEAD hash, no changeset (working tree is now clean).
