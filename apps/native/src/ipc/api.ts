@@ -9,8 +9,8 @@ import type {
   CliToolsState,
   CommitResult,
   Config as DarwinConfig,
-  ConfigurableSchema,
   ConfigEditApplyResult,
+  ConfigurableSchema,
   EvolveCancelResult,
   EvolutionResult,
   EvolveState,
@@ -96,11 +96,6 @@ export const tauriAPI = {
     gatherMetadata: (feedbackType: string, share: FeedbackShareOptions) =>
       invoke<FeedbackMetadata>("feedback_gather_metadata", { request: { feedbackType, share } }),
     submit: (payload: string) => invoke<boolean>("feedback_submit", { payload }),
-  },
-  devConfigs: {
-    list: () => invoke<ConfigurableSchema[]>("dev_configs_list"),
-    set: (structName: string, key: string, value: unknown) =>
-      invoke<void>("dev_config_set", { structName, key, value }),
   },
   debug: {
     logBreadcrumb: (label: string, detail?: string, clientTimestampUnixMs?: number) =>

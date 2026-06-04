@@ -2,7 +2,7 @@
 
 use std::sync::Mutex;
 
-use crate::shared_types::WatcherEvent;
+use crate::shared_types::GitStatus;
 
 static LAST_DRIFT_NOTIFICATION_ID: Mutex<Option<String>> = Mutex::new(None);
 
@@ -17,8 +17,8 @@ struct DriftNotification {
     body: String,
 }
 
-pub fn maybe_notify(event: &WatcherEvent) {
-    let notification = notification_for_event(event);
+pub fn maybe_notify(git_status: Option<&GitStatus>, external_build_detected: bool) {
+    let notification = notification_for_event(git_status, external_build_detected);
     let mut last_notification_id = match LAST_DRIFT_NOTIFICATION_ID.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
@@ -44,8 +44,11 @@ pub fn maybe_notify(event: &WatcherEvent) {
     }
 }
 
-fn notification_for_event(event: &WatcherEvent) -> Option<DriftNotification> {
-    if event.external_build_detected {
+fn notification_for_event(
+    git_status: Option<&GitStatus>,
+    external_build_detected: bool,
+) -> Option<DriftNotification> {
+    if external_build_detected {
         return Some(DriftNotification {
             id: "external-build".to_string(),
             title: "nixmac detected drift",
@@ -54,7 +57,7 @@ fn notification_for_event(event: &WatcherEvent) -> Option<DriftNotification> {
         });
     }
 
-    let status = event.git_status.as_ref()?;
+    let status = git_status?;
     let file_count = status.files.len();
     if file_count == 0 {
         return None;
@@ -133,27 +136,18 @@ mod tests {
         }
     }
 
-    fn watcher_event(git_status: Option<GitStatus>, external_build_detected: bool) -> WatcherEvent {
-        WatcherEvent {
-            git_status,
-            change_map: None,
-            evolve_state: None,
-            error: None,
-            external_build_detected,
-        }
-    }
 
     #[test]
     fn no_notification_without_drift() {
-        let event = watcher_event(Some(clean_status()), false);
-        assert_eq!(notification_for_event(&event), None);
+        let status = clean_status();
+        assert_eq!(notification_for_event(Some(&status), false), None);
     }
 
     #[test]
     fn external_build_drift_takes_priority() {
-        let event = watcher_event(Some(clean_status()), true);
+        let status = clean_status();
         assert_eq!(
-            notification_for_event(&event),
+            notification_for_event(Some(&status), true),
             Some(DriftNotification {
                 id: "external-build".to_string(),
                 title: "nixmac detected drift",
@@ -175,9 +169,8 @@ mod tests {
         status.additions = 3;
         status.clean_head = false;
 
-        let event = watcher_event(Some(status), false);
         assert_eq!(
-            notification_for_event(&event),
+            notification_for_event(Some(&status), false),
             Some(DriftNotification {
                 id: "config-drift:abc123".to_string(),
                 title: "nixmac detected config drift",
