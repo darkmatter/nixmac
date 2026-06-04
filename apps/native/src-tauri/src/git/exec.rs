@@ -8,10 +8,10 @@
 /// - Must preserve CLI semantics exactly
 /// - Includes hooks suppression + identity injection
 /// - May modify filesystem, index, HEAD, refs
-use crate::git::query::{has_head_commit, repo_root};
+use crate::git::query::has_head_commit;
 use anyhow::{Context, Result};
 use std::ffi::OsStr;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 /// Wraps git commands, errs with Stderr on exit with non-zero status
@@ -79,39 +79,74 @@ fn git_command() -> GitCommand {
 
 /// Registers all untracked files as intent-to-add in the git index.
 /// Makes files visible to `git ls-files` (and therefore Nix flakes)
+///
+/// Commands:
+/// - Simulates `git ls-files --others --exclude-standard` with `repo.statuses(...)`.
+/// - Simulates `git add -N -- <untracked files>` by writing empty-blob index
+///   entries with `IndexEntryExtendedFlag::INTENT_TO_ADD`.
 pub fn intent_add_untracked(dir: &str) -> Result<()> {
-    let repo_root_dir = repo_root(dir);
-    let output = git_command()
-        .args(["ls-files", "--others", "--exclude-standard"])
-        .current_dir(&repo_root_dir)
-        .output()?;
+    let repo = git2::Repository::discover(dir)?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(anyhow::anyhow!(
-            "failed to run `git ls-files --others --exclude-standard` in `{dir}`: {stderr}"
-        ));
-    }
+    let mut status_opts = git2::StatusOptions::new();
+    status_opts
+        .show(git2::StatusShow::Workdir)
+        .include_untracked(true)
+        .include_ignored(false)
+        .recurse_untracked_dirs(true);
 
-    let untracked = String::from_utf8_lossy(&output.stdout);
-    let files: Vec<&str> = untracked.lines().filter(|l| !l.is_empty()).collect();
+    let statuses = repo.statuses(Some(&mut status_opts))?;
+    let untracked_paths = statuses
+        .iter()
+        .filter(|entry| entry.status().is_wt_new())
+        // git2's status path API requires UTF-8. This seems like an ok tradeoff, since
+        // we really shouldn't be trying to manage repos with non-UTF-8 paths.
+        .map(|entry| entry.path().map(PathBuf::from))
+        .collect::<std::result::Result<Vec<_>, _>>()?;
 
-    if files.is_empty() {
+    if untracked_paths.is_empty() {
         return Ok(());
     }
 
-    let mut args = vec!["add", "-N", "--"];
-    args.extend(files);
-    let add_output = git_command()
-        .args(&args)
-        .current_dir(&repo_root_dir)
-        .output()?;
-    if !add_output.status.success() {
-        let stderr = String::from_utf8_lossy(&add_output.stderr);
-        return Err(anyhow::anyhow!(
-            "failed to run `git add -N -- <untracked files>` in `{dir}`: {stderr}"
-        ));
+    let mut index = repo.index()?;
+    let empty_blob_id = repo.blob(&[])?;
+
+    for path in &untracked_paths {
+        // Construct the entry first so executable and symlink modes
+        // match the working tree.
+        // This temporarily writes the file's real blob into the object database even
+        // though the final index entry points at the empty blob.
+        // The extra blob is unreachable and harmless, but differs from
+        // `git add -N` semantics and will remain until normal Git object pruning.
+        //
+        // `add_path` itself bypasses ignore rules so we depend on the earlier
+        // status query to filter out ignored files.
+        index
+            .add_path(path)
+            .with_context(|| format!("git2 build intent-to-add entry for `{}`", path.display()))?;
+
+        let mut entry = index
+            .get_path(path, 0)
+            .with_context(|| format!("git2 find intent-to-add entry for `{}`", path.display()))?;
+
+        // Reproduce `git add -N` file semantics.
+        entry.id = empty_blob_id;
+        entry.ctime = git2::IndexTime::new(0, 0);
+        entry.mtime = git2::IndexTime::new(0, 0);
+        entry.dev = 0;
+        entry.ino = 0;
+        entry.uid = 0;
+        entry.gid = 0;
+        entry.file_size = 0;
+        entry.flags |= git2::IndexEntryFlag::EXTENDED.bits();
+        entry.flags_extended |= git2::IndexEntryExtendedFlag::INTENT_TO_ADD.bits();
+
+        index
+            .add(&entry)
+            .with_context(|| format!("git2 add intent-to-add entry for `{}`", path.display()))?;
     }
+
+    index.write().context("git2 write intent-to-add index")?;
+
     Ok(())
 }
 
@@ -435,10 +470,16 @@ mod tests {
         let second = commit_all(&repo_dir_str, "second").unwrap();
 
         tag_commit(&repo_dir_str, "v1", &first.hash, false).unwrap();
-        assert_eq!(run_git_ok(&repo_dir, &["rev-parse", "v1"]).trim(), first.hash);
+        assert_eq!(
+            run_git_ok(&repo_dir, &["rev-parse", "v1"]).trim(),
+            first.hash
+        );
 
         assert!(tag_commit(&repo_dir_str, "v1", &second.hash, false).is_err());
-        assert_eq!(run_git_ok(&repo_dir, &["rev-parse", "v1"]).trim(), first.hash);
+        assert_eq!(
+            run_git_ok(&repo_dir, &["rev-parse", "v1"]).trim(),
+            first.hash
+        );
 
         tag_commit(&repo_dir_str, "v1", &second.hash, true).unwrap();
         assert_eq!(
@@ -512,7 +553,10 @@ mod tests {
             .unwrap()
             .expect("expected a backup branch to be created");
 
-        let added = run_git_ok(&repo_dir, &["show", &format!("{}:added.txt", backup_branch)]);
+        let added = run_git_ok(
+            &repo_dir,
+            &["show", &format!("{}:added.txt", backup_branch)],
+        );
         assert_eq!(added, "added\n");
 
         let removed_path = format!("{}:remove.txt", backup_branch);
@@ -576,6 +620,73 @@ mod tests {
         assert!(
             indexed.lines().any(|line| line == "new.nix"),
             "intent-add should index repo-root untracked file when invoked from nested config dir"
+        );
+    }
+
+    #[test]
+    fn test_intent_add_untracked_sets_intent_flag_without_staging_contents() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join(".gitignore"), "ignored.nix\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial commit"]);
+
+        fs::write(repo_dir.join("new.nix"), "{ untracked = true; }\n").unwrap();
+        fs::write(repo_dir.join("ignored.nix"), "{ secret = true; }\n").unwrap();
+
+        intent_add_untracked(&repo_dir_str).unwrap();
+
+        let repo = git2::Repository::open(&repo_dir).unwrap();
+        let index = repo.index().unwrap();
+        let entry = index
+            .get_path(Path::new("new.nix"), 0)
+            .expect("new file should have an index entry");
+
+        assert!(git2::IndexEntryFlag::from_bits_truncate(entry.flags)
+            .contains(git2::IndexEntryFlag::EXTENDED));
+        assert!(
+            git2::IndexEntryExtendedFlag::from_bits_truncate(entry.flags_extended)
+                .contains(git2::IndexEntryExtendedFlag::INTENT_TO_ADD)
+        );
+        assert_eq!(
+            repo.find_blob(entry.id).unwrap().content(),
+            b"",
+            "intent-to-add entry should point at the empty blob"
+        );
+        assert!(
+            index.get_path(Path::new("ignored.nix"), 0).is_none(),
+            "ignored files should not be registered"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["diff", "--cached", "--name-only"]),
+            "",
+            "intent-to-add should not stage the working file contents"
+        );
+    }
+
+    #[test]
+    fn test_intent_add_untracked_works_without_head_commit() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+
+        intent_add_untracked(&repo_dir_str).unwrap();
+
+        let repo = git2::Repository::open(&repo_dir).unwrap();
+        let index = repo.index().unwrap();
+        let entry = index
+            .get_path(Path::new("flake.nix"), 0)
+            .expect("unborn repo file should have an index entry");
+
+        assert!(
+            git2::IndexEntryExtendedFlag::from_bits_truncate(entry.flags_extended)
+                .contains(git2::IndexEntryExtendedFlag::INTENT_TO_ADD)
         );
     }
 }
