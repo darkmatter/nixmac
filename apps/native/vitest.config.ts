@@ -35,13 +35,16 @@ export default defineConfig({
   test: {
     coverage: {
       reporter: ["text", "html"],
-      provider: "v8",
+      provider: "istanbul",
       reportsDirectory: "./coverage",
+      include: ["src/**/*.{ts,tsx}"],
       exclude: [
         "dist/**",
         "dist-electron/**",
         "public/**",
         "**/*.d.ts",
+        "**/*.stories.{ts,tsx}",
+        "**/*.test.{ts,tsx}",
         "vite.config.ts",
       ],
     },
