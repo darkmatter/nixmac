@@ -107,7 +107,7 @@ jobs:
             --branch="$BRANCH" 2>&1 | tee /dev/stderr)
           url=$(echo "$output" | grep -oE 'https://[a-zA-Z0-9.-]+\.pages\.dev' | head -n1 || true)
           if [ -z "$url" ]; then
-            echo "::error::Cloudflare Pages deploy completed without a detectable preview URL"
+            echo "::error::Cloudflare Pages deploy output did not include a detectable preview URL"
             exit 1
           fi
           echo "Storybook preview: $url"

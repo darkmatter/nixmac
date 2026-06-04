@@ -103,7 +103,7 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4.2.1",
     "@vitest/browser": "^3.0.0",
-    "@vitest/coverage-v8": "^3.0.0",
+    "@vitest/coverage-istanbul": "3.2.4",
     "@wdio/cli": "^9.27.0",
     "@wdio/globals": "^9.27.0",
     "@wdio/local-runner": "^9.27.0",

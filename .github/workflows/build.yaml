@@ -12,8 +12,20 @@ env:
   CARGO_TERM_COLOR: always
   SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 jobs:
+  optimize_ci:
+    runs-on: [self-hosted, linux]
+    outputs:
+      skip: ${{ steps.check_skip.outputs.skip }}
+    steps:
+      - name: Optimize CI
+        id: check_skip
+        uses: withgraphite/graphite-ci-action@main
+        with:
+          graphite_token: ${{ secrets.GRAPHITE_TOKEN }}
   build:
     runs-on: [self-hosted, macos-latest]
+    needs: optimize_ci
+    if: needs.optimize_ci.outputs.skip == 'false'
     permissions:
       contents: write
     steps:
