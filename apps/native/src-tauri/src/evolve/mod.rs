@@ -27,7 +27,7 @@ pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 use crate::evolve::utils::{escape_user_query, format_duration_secs, short_hash};
 use crate::git::query::repo_root;
 // Re-export public API
-use crate::shared_types::EvolutionState;
+use crate::shared_types::{Evolution, EvolutionState, FileEdit};
 use crate::system::nix;
 use anyhow::{anyhow, Result};
 use chrono::Utc;
@@ -39,10 +39,9 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::Arc;
 use std::time::Duration;
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Runtime};
 use tokio::time::sleep;
 use tools::{create_tools, execute_tool, is_editing_tool, ToolResult};
-pub use crate::shared_types::Evolution;
 pub use types::{EvolutionProgress, EvolutionRunError};
 
 use crate::{
@@ -56,8 +55,6 @@ pub(crate) use chat_memory::session_chat_memory_store;
 use config_dir_context::format_config_dir_context;
 use messages::Message;
 use providers::{AiProvider, CliProvider, OllamaProvider, OpenAIProvider, ProviderError};
-
-use crate::shared_types::FileEdit;
 
 /// Strategy for retaining evolution messages in the conversation history for provider context.
 /// This is used to balance keeping important context visible to the model with limiting token usage
@@ -101,7 +98,6 @@ struct EvolutionMessage {
 fn normalize_max_output_tokens(value: usize) -> u32 {
     value.max(1).min(u32::MAX as usize) as u32
 }
-
 
 /// Return short hex prefix for correlation of error messages without risking sensitive content exposure.
 
@@ -595,23 +591,8 @@ pub async fn generate_evolution<R: Runtime>(
     info!("📝 Prompt: {}", prompt);
 
     let store_model = store::get_evolve_model(app).ok().flatten();
-
-    // Read configurable limits from the repo-scoped slice. Falls back to defaults
-    // when the slice isn't managed yet (e.g. during onboarding before config_dir
-    // is set).
-    let limits = app
-        .try_state::<crate::state::slice::Slice<config::EvolutionLimits>>()
-        .map(|slice| slice.read_sync().clone())
-        .unwrap_or_else(|| {
-            warn!("EvolutionLimits slice is not managed; using defaults");
-            config::EvolutionLimits::default()
-        });
-    let config::EvolutionLimits {
-        max_iterations: legacy_max_iterations,
-        max_token_budget,
-        max_build_attempts,
-        max_output_tokens,
-    } = limits;
+    let max_output_tokens =
+        store::get_max_output_tokens(app).unwrap_or(store::DEFAULT_MAX_OUTPUT_TOKENS);
     let max_output_tokens_for_request = normalize_max_output_tokens(max_output_tokens);
 
     // Select provider implementation
@@ -706,18 +687,27 @@ pub async fn generate_evolution<R: Runtime>(
         EvolveEvent::info(start_time, None, &format!("Target host: {}", host_attr)),
     );
 
+    // Read configurable limits from store (hot-reloaded on every run).
+    let config::EvolutionLimits {
+        max_build_attempts, ..
+    } = config::EvolutionLimits::load(app)
+        .inspect_err(|e| warn!("EvolutionLimits::load failed ({e}); using defaults"))
+        .unwrap_or_default();
+    let legacy_max_iterations =
+        store::get_max_iterations(app).unwrap_or(store::DEFAULT_MAX_ITERATIONS);
+    let max_token_budget =
+        store::get_max_token_budget(app).unwrap_or(store::DEFAULT_MAX_TOKEN_BUDGET);
     let max_tokens_before_edit = std::cmp::max(
         1,
         (max_token_budget * MAX_TOKEN_BUDGET_BEFORE_EDIT_PERCENT) / 100,
     );
     info!(
-        "Limits: max_token_budget={}, max_tokens_before_edit={} ({}%), max_build_attempts={}, legacy_max_iterations={}, max_output_tokens={}",
+        "Limits: max_token_budget={}, max_tokens_before_edit={} ({}%), max_build_attempts={}, legacy_max_iterations={}",
         max_token_budget,
         max_tokens_before_edit,
         MAX_TOKEN_BUDGET_BEFORE_EDIT_PERCENT,
         max_build_attempts,
         legacy_max_iterations,
-        max_output_tokens,
     );
 
     let tools = create_tools(banned_tools);
@@ -1719,7 +1709,7 @@ fn process_tool_result(
             );
             evolution.edits.push(FileEdit {
                 path: edit.path.clone(),
-                // Preserve semantic edit events in the existing edit telemetry list.
+                // Preserve semantic edit events in the legacy edits list.
                 search: String::new(),
                 replace: format!("semantic:{:?}", edit.action),
             });
