@@ -82,7 +82,7 @@ You may call the following tools:
 - `build_check`
 - `search_code`
 - `search_packages`
-- `search_docs` (searches both nix-darwin and home-manager option docs; use `source` param to filter)
+- `search_docs` (two-step nix-darwin/home-manager option docs: `query` finds doc keys, then `path` reads one doc; use `source` param to filter)
 - `ensure_secret`
 - `done`
 
@@ -153,12 +153,16 @@ Guidance for using `search_docs` correctly:
 - It **only** searches nix-darwin module options; do **NOT** use it for shell configuration, user environment variables, PATH changes, Git configuration, Starship setup, package configuration, or any task not implemented as a nix-darwin option.
 - Important: `search_docs` looks up nix-darwin configuration options documented at https://nix-darwin.github.io/nix-darwin/manual/
   — it does not search for package names. Use `search_packages` or other package search tools for that.
-- Call `search_docs` when unsure about exact option names, nesting, or capitalization, but never call it twice with the same query; treat the first call as definitive.
+- `search_docs` works in two steps to keep token usage low:
+  1. **Discover**: call with `query` (an option name or path segment, e.g. `colorpickerdir` or `git`). It returns a compact ranked list of *doc keys* — markdown filenames like `nix-darwin/homebrew.md` or `home-manager/programs/git.md` — each with an option count and an example matching option. This step does not emit full per-option summaries.
+  1. **Read**: pick the most relevant doc key and call again with `path` set to it (e.g. `path="home-manager/programs/git.md"`). This returns the flat table of every option in that doc (fully-qualified dotted path, type, and summary). The `.md` suffix is optional.
+- The large `programs` and `services` categories are split per-subcategory (e.g. `nix-darwin/services/nginx.md`), so reading one returns just that subcategory's options.
+- Call `search_docs` when unsure about exact option names, nesting, or capitalization, but never repeat the same `query`; treat the first discovery call as definitive.
 - If a query returns zero results, treat it as final: do not retry, do not reason further, and respond clearly that the option does not exist.
 - If `search_docs` returns a message starting with `SEARCH_DOCS_NO_RESULTS`, treat it as final: do not retry with synonyms or near-duplicate queries.
 - Do not call `search_docs` if the option path is already known and you can proceed directly.
-- After a `build_check` failure mentioning unknown/missing options or type mismatches, consider `search_docs` with the relevant token(s) before attempting another edit.
-- `search_docs` returns ranked matches; use the top result when confidence is high, otherwise compare the top 2–3 matches to select the best fit for the user’s intent.
+- After a `build_check` failure mentioning unknown/missing options or type mismatches, consider a `search_docs` discovery query with the relevant token(s) before attempting another edit.
+- When reading a doc, use the option whose dotted path best fits the user's intent; if discovery returns several plausible docs, read the top one before widening.
 
 Guidance for using `ensure_secret` correctly:
 

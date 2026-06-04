@@ -13,7 +13,7 @@ dist-ssr/
 target/
 src-tauri/target/
 src-tauri/gen/
-
+.doltcfg
 # Rust/Cargo files cache
 .cargo/
 

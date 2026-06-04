@@ -134,6 +134,40 @@ configDir: string;
 hostAttr: string | null }
 
 /**
+ * Payload for `config:changed`, when emitted by a filesystem watcher.
+ */
+export type ConfigChangedEvent = { 
+/**
+ * Whether the selected config currently has changes.
+ */
+hasChanges: boolean }
+
+/**
+ * Result of a managed-edit apply operation (homebrew, system-defaults, etc.).
+ */
+export type ConfigEditApplyResult = { 
+/**
+ * Whether the config edit was applied.
+ */
+ok: boolean; 
+/**
+ * Number of items applied.
+ */
+count: number; 
+/**
+ * Semantic summary after applying the edit.
+ */
+changeMap: SemanticChangeMap; 
+/**
+ * Git status after applying the edit.
+ */
+gitStatus: GitStatus; 
+/**
+ * Evolve routing state after applying the edit.
+ */
+evolveState: EvolveState }
+
+/**
  * Per-field description rendered into a UI control.
  */
 export type ConfigField = { 
@@ -179,65 +213,7 @@ displayName: string;
 /**
  * Optional one-line description shown under the title.
  */
-description?: string | null; 
-fields: ConfigField[] }
-
-export type EnumVariant = { value: string; label: string }
-
-/**
- * What kind of control should render this field.
- */
-export type FieldType = 
-/**
- * Numeric input with optional min/max/step.
- */
-{ kind: "number"; min?: number | null; max?: number | null; step?: number | null } | 
-/**
- * Toggle / checkbox.
- */
-{ kind: "boolean" } | 
-/**
- * Single-line text or multi-line textarea when `multiline = true`.
- */
-{ kind: "string"; multiline: boolean } | 
-/**
- * Select / dropdown of pre-declared options.
- */
-{ kind: "enum"; variants: EnumVariant[] }
-
-/**
- * Payload for `config:changed`, when emitted by a filesystem watcher.
- */
-export type ConfigChangedEvent = { 
-/**
- * Whether the selected config currently has changes.
- */
-hasChanges: boolean }
-
-/**
- * Result of a managed-edit apply operation (homebrew, system-defaults, etc.).
- */
-export type ConfigEditApplyResult = { 
-/**
- * Whether the config edit was applied.
- */
-ok: boolean; 
-/**
- * Number of items applied.
- */
-count: number; 
-/**
- * Semantic summary after applying the edit.
- */
-changeMap: SemanticChangeMap; 
-/**
- * Git status after applying the edit.
- */
-gitStatus: GitStatus; 
-/**
- * Evolve routing state after applying the edit.
- */
-evolveState: EvolveState }
+description?: string | null; fields: ConfigField[] }
 
 /**
  * Payload for `darwin:apply:data`.
@@ -310,6 +286,8 @@ ok: boolean;
  * Human-readable result message.
  */
 message: string }
+
+export type EnumVariant = { value: string; label: string }
 
 export type Evolution = { id: string; createdAt: number; state: EvolutionState; prompt: string; edits: FileEdit[]; commitHash: string | null; summary: string | null; 
 /**
@@ -634,6 +612,12 @@ export type EvolveStep =
 "manualCommit"
 
 /**
+ * Result of a successful settings export. Returned to the frontend so it can
+ * show the file path and the count of skipped sensitive keys.
+ */
+export type ExportResult = { path: string; keysWritten: number; keysSkipped: string[] }
+
+/**
  * AI provider/model info and usage signals.
  */
 export type FeedbackAiProviderModelInfo = { 
@@ -875,6 +859,27 @@ lastComputedAt: string | null;
 extra: JsonValue | null }
 
 /**
+ * What kind of control should render this field.
+ */
+export type FieldType = 
+/**
+ * Numeric input with optional min/max/step.
+ */
+{ kind: "number"; min?: number | null; max?: number | null; step?: number | null } | 
+/**
+ * Toggle / checkbox.
+ */
+{ kind: "boolean" } | 
+/**
+ * Single-line text or multi-line textarea when `multiline = true`.
+ */
+{ kind: "string"; multiline: boolean } | 
+/**
+ * Select / dropdown of pre-declared options.
+ */
+{ kind: "enum"; variants: EnumVariant[] }
+
+/**
  * HEAD content vs working-tree content for a file, used by the diff tab Monaco DiffEditor.
  */
 export type FileDiffContents = { original: string; modified: string }
@@ -1037,6 +1042,11 @@ source: string | null;
  * Unix timestamp when this state was last collected.
  */
 lastChecked: number }
+
+/**
+ * Result of a successful settings import.
+ */
+export type ImportResult = { path: string; keysImported: number }
 
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
 
@@ -1426,15 +1436,6 @@ changes: SummarizedChange[];
 missedHashes: string[] }
 
 /**
- * Payload for `summarizer:update`.
- */
-export type SummarizerUpdateEvent = { 
-/**
- * Latest semantic change map after a queued summary update.
- */
-semanticMap: SemanticChangeMap }
-
-/**
  * A single macOS system default that differs from the factory value.
  */
 export type SystemDefault = { 
@@ -1569,7 +1570,7 @@ maxIterations: number | null;
 /**
  * Maximum provider-reported tokens per evolution.
  */
-maxTokenBudget: number | null;
+maxTokenBudget: number | null; 
 /**
  * Maximum build attempts per evolution.
  */
@@ -1577,7 +1578,7 @@ maxBuildAttempts: number | null;
 /**
  * Maximum output tokens requested per evolution model call.
  */
-maxOutputTokens: number | null;
+maxOutputTokens: number | null; 
 /**
  * Whether diagnostic feedback may be sent.
  */
@@ -1655,7 +1656,7 @@ maxIterations: number | null;
 /**
  * Maximum token budget update.
  */
-maxTokenBudget: number | null;
+maxTokenBudget: number | null; 
 /**
  * Maximum build-attempt count update.
  */
@@ -1663,7 +1664,7 @@ maxBuildAttempts: number | null;
 /**
  * Maximum output token count update.
  */
-maxOutputTokens: number | null;
+maxOutputTokens: number | null; 
 /**
  * Ollama base URL update.
  */

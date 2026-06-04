@@ -1343,7 +1343,7 @@ Do not invent tool names and do not place tool invocations in assistant content.
         }
 
         // Safety limits -- Token Budget Before Edit Check
-        if total_tokens >= max_tokens_before_edit && !made_edit_or_build_check {
+        if total_tokens >= max_tokens_before_edit && !(made_edit || made_build_check) {
             warn!(
                 "⚠️ No edit or build_check after {} tokens - agent not making progress",
                 total_tokens
