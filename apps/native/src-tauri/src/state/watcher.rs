@@ -5,7 +5,7 @@
 //! which is kept in sync by both this watcher and the evolution/summarize handlers.
 
 use crate::shared_types::GitState;
-use crate::state::{build_state, evolve_state};
+use crate::state::{build_state, drift_notifications, evolve_state};
 use crate::storage::store;
 use crate::{db, git, summarize};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -116,6 +116,8 @@ where
                             if let Ok(es) = evolve_state::get(&app_handle) {
                                 let _ = evolve_state::set(&app_handle, es, &status.changes);
                             }
+                            // Native drift notification (config drift / external build).
+                            drift_notifications::maybe_notify(Some(&status), external_build_detected);
                             // One emit per slice — frontend listens on its dedicated channel.
                             // fire-and-forget: window may not be connected yet.
                             let _ = app_handle.emit(
