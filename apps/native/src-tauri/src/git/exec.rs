@@ -1,16 +1,17 @@
 /// Git execution layer (CLI AUTHORITY)
 ///
-/// This module uses `git_command()` exclusively.
+/// This module uses `git_command()` for CLI semantics that git2 cannot preserve,
+/// and git2 where the equivalent operation is object/ref/index-level.
 ///
 /// Rules:
 /// - This layer relies on REAL Git behavior
 /// - Must preserve CLI semantics exactly
 /// - Includes hooks suppression + identity injection
 /// - May modify filesystem, index, HEAD, refs
-use crate::git::query::{get_head_sha, has_head_commit, repo_root};
+use crate::git::query::has_head_commit;
 use anyhow::{Context, Result};
 use std::ffi::OsStr;
-use std::path::{Component, Path};
+use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 /// Wraps git commands, errs with Stderr on exit with non-zero status
@@ -23,11 +24,6 @@ impl GitCommand {
         S: AsRef<OsStr>,
     {
         self.0.args(args);
-        self
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.0.arg(arg);
         self
     }
 
@@ -81,141 +77,98 @@ fn git_command() -> GitCommand {
     GitCommand(cmd)
 }
 
-/// Gets a diff containing only .nix files (including untracked .nix files).
-pub fn get_nix_diff(dir: &str) -> Result<String> {
-    let mut diff = get_tracked_diff(dir, Some("*.nix"))?;
-    append_untracked_diffs(&mut diff, dir, Some("*.nix"))?;
-    Ok(diff)
-}
-
-fn is_safe_repo_relative_path(filename: &str) -> bool {
-    let path = Path::new(filename);
-    !path.is_absolute()
-        && path
-            .components()
-            .all(|component| matches!(component, Component::Normal(_) | Component::CurDir))
-}
-
-/// Returns (original, modified) file content for a single file: HEAD content and working-tree content.
-/// Returns empty strings for new files (no HEAD) or deleted files (not on disk).
-pub fn file_diff_contents(dir: &str, filename: &str) -> (String, String) {
-    let original = git_command()
-        .args(["show", &format!("HEAD:{filename}")])
-        .current_dir(dir)
-        .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
-        .unwrap_or_default();
-    let modified = if is_safe_repo_relative_path(filename) {
-        std::fs::read_to_string(repo_root(dir).join(filename)).unwrap_or_default()
-    } else {
-        String::new()
-    };
-    (original, modified)
-}
-
-/// Returns a diff of tracked changes, optionally restricted to a path glob.
-/// Falls back to staged+unstaged when HEAD is unborn (fresh repo with no commits).
-fn get_tracked_diff(dir: &str, path_filter: Option<&str>) -> Result<String> {
-    let extra: Vec<&str> = match path_filter {
-        Some(f) => vec!["--", f],
-        None => vec![],
-    };
-
-    if has_head_commit(dir) {
-        let mut args = vec!["diff", "HEAD"];
-        args.extend(&extra);
-        let output = git_command().args(&args).current_dir(dir).output()?;
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
-    } else {
-        let mut staged_args = vec!["diff", "--cached"];
-        staged_args.extend(&extra);
-        let mut unstaged_args = vec!["diff"];
-        unstaged_args.extend(&extra);
-
-        let staged = git_command().args(&staged_args).current_dir(dir).output()?;
-        let unstaged = git_command()
-            .args(&unstaged_args)
-            .current_dir(dir)
-            .output()?;
-
-        let mut result = String::from_utf8_lossy(&staged.stdout).to_string();
-        result.push_str(&String::from_utf8_lossy(&unstaged.stdout));
-        Ok(result)
-    }
-}
-
-/// Appends untracked files to `diff` as synthetic new-file diff blocks.
-/// `path_filter` restricts to a glob (e.g. `Some("*.nix")`); `None` includes all files.
-fn append_untracked_diffs(diff: &mut String, dir: &str, path_filter: Option<&str>) -> Result<()> {
-    // --exclude-standard omits gitignored files — hiding them from git status and summarize.
-    let mut args = vec!["ls-files", "--others", "--exclude-standard"];
-    if let Some(filter) = path_filter {
-        args.extend(["--", filter]);
+/// Helper to determine the Git index mode for an intent-to-add entry based on filesystem metadata.
+fn intent_to_add_mode(metadata: &std::fs::Metadata) -> u32 {
+    if metadata.file_type().is_symlink() {
+        return 0o120000;
     }
 
-    let repo_root_dir = repo_root(dir);
-    let untracked_output = git_command()
-        .args(&args)
-        .current_dir(&repo_root_dir)
-        .output()?;
-    let untracked_files = String::from_utf8_lossy(&untracked_output.stdout);
+    // Unix executable permission bits and symlink semantics are the source of truth for
+    // reproducing Git index modes without asking libgit2 to read/hash the file contents.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
 
-    for file in untracked_files.lines() {
-        if file.is_empty() {
-            continue;
-        }
-        let file_path = repo_root_dir.join(file);
-        if let Ok(contents) = std::fs::read_to_string(&file_path) {
-            diff.push_str(&format!("\ndiff --git a/{} b/{}\n", file, file));
-            diff.push_str("new file mode 100644\n");
-            diff.push_str("--- /dev/null\n");
-            diff.push_str(&format!("+++ b/{}\n", file));
-            let line_count = contents.lines().count();
-            diff.push_str(&format!("@@ -0,0 +1,{} @@\n", line_count));
-            for line in contents.lines() {
-                diff.push_str(&format!("+{}\n", line));
-            }
+        if metadata.permissions().mode() & 0o111 != 0 {
+            return 0o100755;
         }
     }
 
-    Ok(())
+    // If we ever run on non-Unix, regular files will be registered as non-executable.
+    0o100644
 }
 
 /// Registers all untracked files as intent-to-add in the git index.
 /// Makes files visible to `git ls-files` (and therefore Nix flakes)
+///
+/// Commands:
+/// - Simulates `git ls-files --others --exclude-standard` with `repo.statuses(...)`.
+/// - Simulates `git add -N -- <untracked files>` by writing empty-blob index
+///   entries with `IndexEntryExtendedFlag::INTENT_TO_ADD`.
 pub fn intent_add_untracked(dir: &str) -> Result<()> {
-    let repo_root_dir = repo_root(dir);
-    let output = git_command()
-        .args(["ls-files", "--others", "--exclude-standard"])
-        .current_dir(&repo_root_dir)
-        .output()?;
+    let repo = git2::Repository::discover(dir)?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(anyhow::anyhow!(
-            "failed to run `git ls-files --others --exclude-standard` in `{dir}`: {stderr}"
-        ));
-    }
+    let mut status_opts = git2::StatusOptions::new();
+    status_opts
+        .show(git2::StatusShow::Workdir)
+        .include_untracked(true)
+        .include_ignored(false)
+        .recurse_untracked_dirs(true);
 
-    let untracked = String::from_utf8_lossy(&output.stdout);
-    let files: Vec<&str> = untracked.lines().filter(|l| !l.is_empty()).collect();
+    let statuses = repo.statuses(Some(&mut status_opts))?;
+    let untracked_paths = statuses
+        .iter()
+        .filter(|entry| entry.status().is_wt_new())
+        // git2's status path API requires UTF-8. This seems like an ok tradeoff, since
+        // we really shouldn't be trying to manage repos with non-UTF-8 paths.
+        .map(|entry| entry.path().map(PathBuf::from))
+        .collect::<std::result::Result<Vec<_>, _>>()?;
 
-    if files.is_empty() {
+    if untracked_paths.is_empty() {
         return Ok(());
     }
 
-    let mut args = vec!["add", "-N", "--"];
-    args.extend(files);
-    let add_output = git_command()
-        .args(&args)
-        .current_dir(&repo_root_dir)
-        .output()?;
-    if !add_output.status.success() {
-        let stderr = String::from_utf8_lossy(&add_output.stderr);
-        return Err(anyhow::anyhow!(
-            "failed to run `git add -N -- <untracked files>` in `{dir}`: {stderr}"
-        ));
+    let mut index = repo.index()?;
+    let empty_blob_id = repo.blob(&[])?;
+    let workdir = repo
+        .workdir()
+        .context("cannot intent-add files in a bare repository")?;
+
+    for path in &untracked_paths {
+        let metadata = std::fs::symlink_metadata(workdir.join(path))
+            .with_context(|| format!("inspect intent-to-add path `{}`", path.display()))?;
+        let path_bytes = path
+            .to_str()
+            .with_context(|| format!("intent-to-add path is not UTF-8: `{}`", path.display()))?
+            .as_bytes()
+            .to_vec();
+
+        // Construct the intent-to-add entry directly so the working file's
+        // contents are never written into the object database.
+        // This matches `git add -N` and avoids accumulating unreachable blobs
+        // when build checks repeatedly register changing untracked files.
+        let entry = git2::IndexEntry {
+            ctime: git2::IndexTime::new(0, 0),
+            mtime: git2::IndexTime::new(0, 0),
+            dev: 0,
+            ino: 0,
+            mode: intent_to_add_mode(&metadata),
+            uid: 0,
+            gid: 0,
+            file_size: 0,
+            id: empty_blob_id,
+            flags: git2::IndexEntryFlag::EXTENDED.bits(),
+            flags_extended: git2::IndexEntryExtendedFlag::INTENT_TO_ADD.bits(),
+            path: path_bytes,
+        };
+
+        index
+            .add(&entry)
+            .with_context(|| format!("git2 add intent-to-add entry for `{}`", path.display()))?;
     }
+
+    index.write().context("git2 write intent-to-add index")?;
+
     Ok(())
 }
 
@@ -223,49 +176,6 @@ pub fn intent_add_untracked(dir: &str) -> Result<()> {
 pub struct CommitInfo {
     pub hash: String,
     pub tree_hash: String,
-}
-
-/// Returns commits as Row Type (id = 0), from `start_hash` for `limit`(None for all)
-pub fn log(
-    dir: &str,
-    start_hash: &str,
-    limit: Option<usize>,
-) -> Result<Vec<crate::sqlite_types::Commit>> {
-    let mut cmd = git_command();
-    cmd.arg("log").arg("--format=%H%n%T%n%at%n%s");
-    if let Some(n) = limit {
-        cmd.arg("-n").arg(n.to_string());
-    }
-    cmd.arg(start_hash);
-    let output = cmd.current_dir(dir).output()?;
-
-    let text = String::from_utf8_lossy(&output.stdout);
-    let mut commits = Vec::new();
-    let mut lines = text.lines();
-
-    loop {
-        let hash = match lines.next() {
-            Some(h) if !h.is_empty() => h.to_string(),
-            _ => break,
-        };
-        let tree_hash = lines.next().unwrap_or("").to_string();
-        let timestamp: i64 = lines.next().unwrap_or("0").trim().parse().unwrap_or(0);
-        let subject = lines.next().unwrap_or("").to_string();
-
-        commits.push(crate::sqlite_types::Commit {
-            id: 0,
-            hash,
-            tree_hash,
-            message: if subject.is_empty() {
-                None
-            } else {
-                Some(subject)
-            },
-            created_at: timestamp,
-        });
-    }
-
-    Ok(commits)
 }
 
 /// Stages all and commits with msg, returns hash and tree hash.
@@ -303,75 +213,165 @@ pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
 
 /// Restores tracked files to `commit_hash`, removes untracked files, and leaves HEAD in place.
 ///
-/// Ignored build outputs are preserved because this intentionally uses
-/// `git clean -fd`, not `git clean -fdx`.
+/// Simulates:
+/// - `git read-tree --reset -u <commit_hash>` by replacing the repository index
+///   with the target commit tree and checking that index out to the worktree.
+/// - `git clean -fd` with `remove_untracked`.
+///
+/// Behavior notes:
+/// - This operates on the entire discovered repository, even when `dir` is a
+///   nested directory. The previous CLI implementation only restored and
+///   cleaned working-tree files beneath `dir`, although it reset the full index.
+///   **THAT SEEMS UNINTENDED** and is maybe an artifact of how we used to assume
+///   that `dir` would always be the repository root.
+///
+/// - The index and worktree are changed to match the target.
+/// - Ignored files are preserved. Completely empty untracked directories may
+///   remain because Git does not report them through status.
 pub fn checkout_files_at_commit(dir: &str, commit_hash: &str) -> Result<()> {
-    git_command()
-        .args(["read-tree", "--reset", "-u", commit_hash])
-        .current_dir(dir)
-        .output()
-        .context("git read-tree --reset -u")?;
+    let repo = git2::Repository::discover(dir)?;
+    let commit = repo
+        .revparse_single(commit_hash)
+        .with_context(|| format!("git2 resolve restore target `{commit_hash}`"))?
+        .peel_to_commit()
+        .with_context(|| format!("git2 peel restore target `{commit_hash}` to commit"))?;
+    let tree = commit.tree().context("git2 read restore target tree")?;
 
-    git_command()
-        .args(["clean", "-fd"])
-        .current_dir(dir)
-        .output()
-        .context("git clean -fd")?;
-    Ok(())
+    let mut index = repo.index().context("git2 open repository index")?;
+    index
+        .read_tree(&tree)
+        .context("git2 replace index with restore target tree")?;
+    index.write().context("git2 write restore target index")?;
+
+    let mut checkout = git2::build::CheckoutBuilder::new();
+    checkout.force().remove_ignored(false);
+    repo.checkout_index(Some(&mut index), Some(&mut checkout))
+        .context("git2 checkout restore target index")?;
+
+    remove_untracked(&repo)
 }
 
-/// Stages all changes and stashes with msg.
-pub fn stash(dir: &str, message: &str) -> Result<()> {
-    git_command()
-        .args(["add", "-A"])
-        .current_dir(dir)
-        .output()?;
-
-    git_command()
-        .args(["stash", "push", "-m", message])
-        .current_dir(dir)
-        .output()?;
-
-    Ok(())
-}
-
-/// Restore all uncommitted, discard untracked.
+/// Restore the entire repository to HEAD and discard untracked files.
+///
+/// Simulates:
+/// - `git reset HEAD --`
+/// - `git checkout -- .`
+/// - `git clean -fd`
+///
+/// Behavior notes:
+/// - This operates on the entire discovered repository, even when `dir` is a
+///   nested directory. The previous CLI implementation only restored and
+///   cleaned working-tree files beneath `dir`, although it reset the full index.
+///   **THAT SEEMS UNINTENDED** and is maybe an artifact of how we used to assume
+///   that `dir` would always be the repository root.
+///
+/// - All staged AND unstaged changes are discarded across the repository.
+///
+/// - Reported untracked files and any now-empty tracked parent directories are
+///   removed; ignored files are preserved. This requires a bit more sophisticated
+///   approach (in the helper than `git clean -fd` alone because git2 does not expose
+///   that command with those semantics.
 pub fn restore_all(dir: &str) -> Result<()> {
-    git_command()
-        .args(["reset", "HEAD", "--"])
-        .current_dir(dir)
-        .output()?;
+    let repo = git2::Repository::discover(dir)?;
+    let head = repo
+        .revparse_single("HEAD")
+        .context("git2 resolve HEAD for restore")?;
 
-    git_command()
-        .args(["checkout", "--", "."])
-        .current_dir(dir)
-        .output()?;
+    let mut checkout = git2::build::CheckoutBuilder::new();
+    checkout.force().remove_ignored(false);
 
-    git_command()
-        .args(["clean", "-fd"])
-        .current_dir(dir)
-        .output()?;
+    repo.reset(&head, git2::ResetType::Hard, Some(&mut checkout))
+        .context("git2 hard reset repository to HEAD")?;
+
+    remove_untracked(&repo)
+}
+
+/// Removes the non-ignored untracked files reported by git2 after a reset.
+///
+/// `CheckoutBuilder::remove_untracked(true)` only removes untracked paths that
+/// obstruct checkout operations; it is not a complete replacement for
+/// `git clean -fd`. Git does not report empty untracked _directories_ through
+/// status, so those directories may remain.
+fn remove_untracked(repo: &git2::Repository) -> Result<()> {
+    let workdir = repo
+        .workdir()
+        .context("cannot remove untracked files from a bare repository")?;
+
+    let mut status_opts = git2::StatusOptions::new();
+    status_opts
+        .show(git2::StatusShow::Workdir)
+        .include_untracked(true)
+        .include_ignored(false)
+        .recurse_untracked_dirs(true);
+
+    let statuses = repo.statuses(Some(&mut status_opts))?;
+    let mut parent_dirs = Vec::new();
+
+    for entry in statuses.iter().filter(|entry| entry.status().is_wt_new()) {
+        let relative_path = Path::new(entry.path()?);
+        let full_path = workdir.join(relative_path);
+
+        let metadata = std::fs::symlink_metadata(&full_path)
+            .with_context(|| format!("inspect untracked path `{}`", full_path.display()))?;
+
+        if metadata.is_dir() {
+            // Don't do recursive removal here: a reported untracked directory may
+            // contain ignored files.
+            std::fs::remove_dir(&full_path)
+                .with_context(|| format!("remove empty untracked dir `{}`", full_path.display()))?;
+        } else {
+            std::fs::remove_file(&full_path)
+                .with_context(|| format!("remove untracked file `{}`", full_path.display()))?;
+        }
+
+        let mut parent = relative_path.parent();
+        while let Some(path) = parent {
+            if path.as_os_str().is_empty() {
+                break;
+            }
+            parent_dirs.push(workdir.join(path));
+            parent = path.parent();
+        }
+    }
+
+    // Sort by deeper paths first, then sort lexically so that duplicates
+    // are adjacent and can be deduped while preserving the correct order.
+    parent_dirs.sort_by(|a, b| {
+        b.components()
+            .count()
+            .cmp(&a.components().count())
+            .then_with(|| a.cmp(b))
+    });
+    parent_dirs.dedup();
+    for dir in parent_dirs {
+        // Failure usually means the directory contains a tracked or ignored
+        // file in which case we leave it alone.
+        let _ = std::fs::remove_dir(dir);
+    }
 
     Ok(())
 }
 
 /// Git tags (any ref or hash) `target`, `force = true` overwrites.
 pub fn tag_commit(dir: &str, tag: &str, target: &str, force: bool) -> Result<()> {
-    let mut args = vec!["tag"];
-    if force {
-        args.push("-f");
-    }
-    args.push(tag);
-    args.push(target);
-    git_command()
-        .args(&args)
-        .current_dir(dir)
-        .output()
+    let repo = git2::Repository::discover(dir)?;
+    let target = repo
+        .revparse_single(target)
+        .with_context(|| format!("failed to resolve tag target `{}`", target))?;
+
+    repo.tag_lightweight(tag, &target, force)
         .with_context(|| format!("failed to create tag `{}`", tag))?;
+
     Ok(())
 }
 
 /// Stage everything and create a backup branch without moving HEAD.
+///
+/// Command mapping:
+/// - Runs `git add --all` through the CLI to preserve Git's staging semantics.
+/// - Simulates `git write-tree` with `git2::Index::write_tree`.
+/// - Simulates `git commit-tree <tree> -p HEAD -m <msg>` with `repo.commit(None, ...)`.
+/// - Simulates `git update-ref refs/heads/<branch> <commit>` with `repo.reference(..., true, ...)`.
 pub fn create_evolution_backup(
     repo_path: &str,
     evolution_id: Option<i64>,
@@ -393,37 +393,26 @@ pub fn create_evolution_backup(
         .output()
         .context("git add --all")?;
 
-    let tree_hash = git_command()
-        .args(["write-tree"])
-        .current_dir(repo_path)
-        .output()
-        .context("git write-tree")
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())?;
-
-    let head_hash =
-        get_head_sha(repo_path).ok_or_else(|| anyhow::anyhow!("failed to resolve HEAD"))?;
+    let repo = git2::Repository::discover(repo_path)?;
+    let mut index = repo.index().context("open git index")?;
+    let tree_id = index.write_tree().context("git2 write index tree")?;
+    let tree = repo.find_tree(tree_id).context("git2 find written tree")?;
+    let parent = repo
+        .head()
+        .context("git2 resolve HEAD")?
+        .peel_to_commit()
+        .context("git2 peel HEAD to commit")?;
+    let signature =
+        git2::Signature::now("nixmac", "nixmac@local").context("create git signature")?;
 
     let commit_msg = format!("nixmac backup: {}", branch_name);
-    let commit_hash = git_command()
-        .args([
-            "commit-tree",
-            &tree_hash,
-            "-p",
-            &head_hash,
-            "-m",
-            &commit_msg,
-        ])
-        .current_dir(repo_path)
-        .output()
-        .context("git commit-tree")
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())?;
+    let commit_id = repo
+        .commit(None, &signature, &signature, &commit_msg, &tree, &[&parent])
+        .context("git2 create backup commit")?;
 
     let ref_path = format!("refs/heads/{}", branch_name);
-    git_command()
-        .args(["update-ref", &ref_path, &commit_hash])
-        .current_dir(repo_path)
-        .output()
-        .context("git update-ref")?;
+    repo.reference(&ref_path, commit_id, true, "create nixmac backup branch")
+        .context("git2 update backup branch ref")?;
 
     Ok(Some(branch_name))
 }
@@ -431,49 +420,37 @@ pub fn create_evolution_backup(
 /// Restore working tree to the content of a specific branch ref.
 /// Replaces the current index with the branch's tree, then checks out the working tree.
 ///
-/// NOTE that this would be harder to implement in git2 because:
-/// - git2 does NOT expose “plumbing-level” commands like `read-tree` or
-///   `checkout-index` as direct APIs.
-/// - The closest primitive is `repo.reset(ResetType::Hard)`, which combines
-///   index + working tree updates, but does NOT include untracked file cleanup.
-/// - `git clean -fd` is not implemented in git2 because it is inherently
-///   a filesystem operation driven by ignore rules and user policy, not just
-///   Git object model state.
+/// Simulates:
+/// - `git read-tree <ref_name>` by replacing the repository index with the
+///   resolved tree.
+/// - `git checkout-index -f -a` by force-checking the index out to the worktree.
+/// - `git clean -fd` with `remove_untracked`.
 ///
-/// Therefore a full equivalent would require:
-/// - resolving the ref → commit → tree (via revparse + peel)
-/// - performing a hard reset (tracked files)
-/// - manually walking the filesystem to delete untracked files/dirs
+/// Behavior notes:
+/// - The index and worktree are changed to match the ref.
+/// - The resolved ref may be any tree-like-thingy that git2 can peel to a tree.
+/// - Ignored files are preserved. Completely empty untracked directories may
+///   remain because Git does not report them through status.
 pub fn restore_from_branch_ref(repo_path: &str, ref_name: &str) -> Result<()> {
-    git_command()
-        .args(["read-tree", ref_name])
-        .current_dir(repo_path)
-        .output()
-        .context("git read-tree")?;
+    let repo = git2::Repository::discover(repo_path)?;
+    let tree = repo
+        .revparse_single(ref_name)
+        .with_context(|| format!("git2 resolve restore ref `{ref_name}`"))?
+        .peel_to_tree()
+        .with_context(|| format!("git2 peel restore ref `{ref_name}` to tree"))?;
 
-    git_command()
-        .args(["checkout-index", "-f", "-a"])
-        .current_dir(repo_path)
-        .output()
-        .context("git checkout-index")?;
+    let mut index = repo.index().context("git2 open repository index")?;
+    index
+        .read_tree(&tree)
+        .context("git2 replace index with restore ref tree")?;
+    index.write().context("git2 write restore ref index")?;
 
-    git_command()
-        .args(["clean", "-fd"])
-        .current_dir(repo_path)
-        .output()?;
+    let mut checkout = git2::build::CheckoutBuilder::new();
+    checkout.force().remove_ignored(false);
+    repo.checkout_index(Some(&mut index), Some(&mut checkout))
+        .context("git2 checkout restore ref index")?;
 
-    Ok(())
-}
-
-/// Delete a backup branch ref.
-#[allow(dead_code)]
-pub fn delete_backup_branch(repo_path: &str, branch_name: &str) -> Result<()> {
-    let ref_path = format!("refs/heads/{}", branch_name);
-    git_command()
-        .args(["update-ref", "-d", &ref_path])
-        .current_dir(repo_path)
-        .output()?;
-    Ok(())
+    remove_untracked(&repo)
 }
 
 #[cfg(test)]
@@ -502,76 +479,6 @@ mod tests {
     }
 
     #[test]
-    fn test_file_diff_contents_rejects_parent_traversal() {
-        let temp_dir = TempDir::new().unwrap();
-        let outside_file = temp_dir.path().join("outside.txt");
-        fs::write(&outside_file, "outside").unwrap();
-
-        let repo_dir = temp_dir.path().join("repo");
-        let repo_dir_str = repo_dir.to_string_lossy().to_string();
-        init_repo(&repo_dir_str).unwrap();
-
-        let (original, modified) = file_diff_contents(&repo_dir_str, "../outside.txt");
-        assert!(original.is_empty());
-        assert!(modified.is_empty());
-    }
-
-    #[test]
-    fn test_file_diff_contents_reads_safe_relative_path() {
-        let temp_dir = TempDir::new().unwrap();
-        let repo_dir = temp_dir.path().join("repo");
-        let repo_dir_str = repo_dir.to_string_lossy().to_string();
-        init_repo(&repo_dir_str).unwrap();
-
-        fs::write(repo_dir.join("flake.nix"), "{ inputs = {}; }").unwrap();
-
-        let (_, modified) = file_diff_contents(&repo_dir_str, "flake.nix");
-        assert_eq!(modified, "{ inputs = {}; }");
-    }
-
-    #[test]
-    fn test_get_nix_diff_excludes_non_nix_untracked() {
-        let temp_dir = TempDir::new().unwrap();
-        let repo_dir = temp_dir.path().join("repo");
-        let repo_dir_str = repo_dir.to_string_lossy().to_string();
-        init_repo(&repo_dir_str).unwrap();
-
-        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
-        commit_all(&repo_dir_str, "initial").unwrap();
-        fs::write(repo_dir.join("config.nix"), "{ }").unwrap();
-        fs::write(repo_dir.join("readme.txt"), "hello").unwrap();
-
-        let diff = get_nix_diff(&repo_dir_str).unwrap();
-        assert!(
-            diff.contains("config.nix"),
-            ".nix untracked file should appear"
-        );
-        assert!(
-            !diff.contains("readme.txt"),
-            "non-.nix file should be excluded"
-        );
-    }
-
-    #[test]
-    fn test_get_nix_diff_excludes_gitignored_nix_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let repo_dir = temp_dir.path().join("repo");
-        let repo_dir_str = repo_dir.to_string_lossy().to_string();
-        init_repo(&repo_dir_str).unwrap();
-
-        fs::write(repo_dir.join(".gitignore"), "secret.nix\n").unwrap();
-        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
-        commit_all(&repo_dir_str, "initial").unwrap();
-        fs::write(repo_dir.join("secret.nix"), "{ password = \"123\"; }").unwrap();
-
-        let diff = get_nix_diff(&repo_dir_str).unwrap();
-        assert!(
-            !diff.contains("secret.nix"),
-            "gitignored .nix file must not appear in diff"
-        );
-    }
-
-    #[test]
     fn test_checkout_files_at_commit_removes_files_added_after_target_without_moving_head() {
         let temp_dir = TempDir::new().unwrap();
         let repo_dir = temp_dir.path().join("repo");
@@ -595,6 +502,7 @@ mod tests {
             "{ temp = true; }\n",
         )
         .unwrap();
+        let branch_before_restore = current_branch(&repo_dir_str);
         checkout_files_at_commit(&repo_dir_str, &baseline.hash).unwrap();
 
         let head_after_restore = run_git_ok(&repo_dir, &["rev-parse", "HEAD"]);
@@ -603,6 +511,7 @@ mod tests {
             changed.hash,
             "History restore preparation should not move HEAD before finalize_restore creates the restore commit"
         );
+        assert_eq!(current_branch(&repo_dir_str), branch_before_restore);
         assert_eq!(
             fs::read_to_string(repo_dir.join("flake.nix")).unwrap(),
             "{ }",
@@ -630,6 +539,61 @@ mod tests {
             run_git_ok(&repo_dir, &["diff", "--name-only", &baseline.hash, "HEAD"]),
             "",
             "the finalized restore commit should match the baseline tree"
+        );
+    }
+
+    #[test]
+    fn test_checkout_files_at_commit_preserves_ignored_files() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join(".gitignore"), "result/\n").unwrap();
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+        let baseline = commit_all(&repo_dir_str, "initial").unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ changed = true; }\n").unwrap();
+        commit_all(&repo_dir_str, "changed").unwrap();
+
+        fs::create_dir_all(repo_dir.join("result")).unwrap();
+        fs::write(repo_dir.join("result/output"), "preserve\n").unwrap();
+
+        checkout_files_at_commit(&repo_dir_str, &baseline.hash).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("flake.nix")).unwrap(),
+            "{ }\n"
+        );
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("result/output")).unwrap(),
+            "preserve\n"
+        );
+    }
+
+    #[test]
+    fn test_checkout_files_at_commit_invalid_target_leaves_repository_unchanged() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+        fs::write(repo_dir.join("flake.nix"), "{ changed = true; }\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+
+        let status_before = run_git_ok(&repo_dir, &["status", "--porcelain=v1"]);
+
+        assert!(checkout_files_at_commit(&repo_dir_str, "does-not-exist").is_err());
+
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("flake.nix")).unwrap(),
+            "{ changed = true; }\n"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["status", "--porcelain=v1"]),
+            status_before
         );
     }
 
@@ -669,6 +633,179 @@ mod tests {
             run_git_ok(&repo_dir, &["status", "--porcelain=v1"]),
             "",
             "abort restore should leave the worktree clean at HEAD"
+        );
+    }
+
+    #[test]
+    fn test_restore_all_from_nested_dir_restores_entire_repository() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let config_dir = repo_dir.join("nix/os");
+        fs::create_dir_all(&config_dir).unwrap();
+
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        let config_dir_str = config_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("outside.txt"), "initial\n").unwrap();
+        fs::write(config_dir.join("inside.nix"), "{ }\n").unwrap();
+        let head = commit_all(&repo_dir_str, "initial").unwrap();
+
+        fs::write(repo_dir.join("outside.txt"), "changed\n").unwrap();
+        fs::write(config_dir.join("inside.nix"), "{ changed = true; }\n").unwrap();
+        fs::write(repo_dir.join("outside-untracked.txt"), "remove\n").unwrap();
+
+        restore_all(&config_dir_str).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("outside.txt")).unwrap(),
+            "initial\n",
+            "tracked files outside the nested input directory are restored"
+        );
+        assert_eq!(
+            fs::read_to_string(config_dir.join("inside.nix")).unwrap(),
+            "{ }\n"
+        );
+        assert!(!repo_dir.join("outside-untracked.txt").exists());
+        assert_eq!(
+            run_git_ok(&repo_dir, &["rev-parse", "HEAD"]).trim(),
+            head.hash
+        );
+    }
+
+    #[test]
+    fn test_restore_all_removes_untracked_but_preserves_ignored_files() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join(".gitignore"), "ignored/\n").unwrap();
+        fs::write(repo_dir.join("tracked.txt"), "initial\n").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+
+        fs::create_dir_all(repo_dir.join("untracked/nested")).unwrap();
+        fs::write(repo_dir.join("untracked/nested/file.txt"), "remove\n").unwrap();
+        fs::create_dir_all(repo_dir.join("ignored")).unwrap();
+        fs::write(repo_dir.join("ignored/build-output"), "preserve\n").unwrap();
+        fs::write(repo_dir.join("intent.nix"), "{ }\n").unwrap();
+        intent_add_untracked(&repo_dir_str).unwrap();
+
+        restore_all(&repo_dir_str).unwrap();
+
+        assert!(!repo_dir.join("untracked").exists());
+        assert!(
+            !repo_dir.join("intent.nix").exists(),
+            "intent-to-add files should become untracked during reset and then be removed"
+        );
+        assert!(repo_dir.join("ignored/build-output").exists());
+        assert_eq!(
+            run_git_ok(&repo_dir, &["status", "--porcelain=v1"]),
+            "",
+            "restore should leave the repository clean"
+        );
+    }
+
+    #[test]
+    fn test_restore_from_branch_ref_restores_backup_without_moving_head() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join(".gitignore"), "result/\n").unwrap();
+        fs::write(repo_dir.join("file.txt"), "initial\n").unwrap();
+        let head = commit_all(&repo_dir_str, "initial").unwrap();
+        let branch_before_restore = current_branch(&repo_dir_str);
+
+        fs::write(repo_dir.join("file.txt"), "backup content\n").unwrap();
+        let backup_branch = create_evolution_backup(&repo_dir_str, Some(2), 1)
+            .unwrap()
+            .expect("expected backup branch");
+
+        fs::write(repo_dir.join("file.txt"), "later content\n").unwrap();
+        fs::write(repo_dir.join("untracked.txt"), "remove\n").unwrap();
+        fs::create_dir_all(repo_dir.join("result")).unwrap();
+        fs::write(repo_dir.join("result/output"), "preserve\n").unwrap();
+
+        restore_from_branch_ref(&repo_dir_str, &backup_branch).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("file.txt")).unwrap(),
+            "backup content\n"
+        );
+        assert!(!repo_dir.join("untracked.txt").exists());
+        assert!(repo_dir.join("result/output").exists());
+        assert_eq!(
+            run_git_ok(&repo_dir, &["rev-parse", "HEAD"]).trim(),
+            head.hash
+        );
+        assert_eq!(current_branch(&repo_dir_str), branch_before_restore);
+        assert_eq!(
+            run_git_ok(
+                &repo_dir,
+                &["diff", "--name-only", &backup_branch, "--cached"]
+            ),
+            "",
+            "index should match the backup ref tree"
+        );
+    }
+
+    #[test]
+    fn test_restore_from_branch_ref_invalid_ref_leaves_repository_unchanged() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("file.txt"), "initial\n").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+        fs::write(repo_dir.join("file.txt"), "changed\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+
+        let status_before = run_git_ok(&repo_dir, &["status", "--porcelain=v1"]);
+
+        assert!(restore_from_branch_ref(&repo_dir_str, "does-not-exist").is_err());
+
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("file.txt")).unwrap(),
+            "changed\n"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["status", "--porcelain=v1"]),
+            status_before
+        );
+    }
+
+    #[test]
+    fn test_tag_commit_creates_lightweight_tag_and_respects_force() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("file.txt"), "first\n").unwrap();
+        let first = commit_all(&repo_dir_str, "first").unwrap();
+
+        fs::write(repo_dir.join("file.txt"), "second\n").unwrap();
+        let second = commit_all(&repo_dir_str, "second").unwrap();
+
+        tag_commit(&repo_dir_str, "v1", &first.hash, false).unwrap();
+        assert_eq!(
+            run_git_ok(&repo_dir, &["rev-parse", "v1"]).trim(),
+            first.hash
+        );
+
+        assert!(tag_commit(&repo_dir_str, "v1", &second.hash, false).is_err());
+        assert_eq!(
+            run_git_ok(&repo_dir, &["rev-parse", "v1"]).trim(),
+            first.hash
+        );
+
+        tag_commit(&repo_dir_str, "v1", &second.hash, true).unwrap();
+        assert_eq!(
+            run_git_ok(&repo_dir, &["rev-parse", "v1"]).trim(),
+            second.hash
         );
     }
 
@@ -719,6 +856,69 @@ mod tests {
     }
 
     #[test]
+    fn test_create_evolution_backup_captures_add_all_semantics() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("keep.txt"), "keep\n").unwrap();
+        fs::write(repo_dir.join("remove.txt"), "remove\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial commit"]);
+
+        fs::write(repo_dir.join("added.txt"), "added\n").unwrap();
+        fs::remove_file(repo_dir.join("remove.txt")).unwrap();
+
+        let backup_branch = create_evolution_backup(&repo_dir_str, Some(1), 2)
+            .unwrap()
+            .expect("expected a backup branch to be created");
+
+        let added = run_git_ok(
+            &repo_dir,
+            &["show", &format!("{}:added.txt", backup_branch)],
+        );
+        assert_eq!(added, "added\n");
+
+        let removed_path = format!("{}:remove.txt", backup_branch);
+        assert!(
+            git_command()
+                .args(["cat-file", "-e", &removed_path])
+                .current_dir(&repo_dir)
+                .output()
+                .is_err(),
+            "backup tree should include tracked deletion staged by git add --all"
+        );
+    }
+
+    #[test]
+    fn test_create_evolution_backup_updates_existing_backup_branch() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("file.txt"), "initial\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial commit"]);
+
+        fs::write(repo_dir.join("file.txt"), "first backup\n").unwrap();
+        let backup_branch = create_evolution_backup(&repo_dir_str, Some(1), 3)
+            .unwrap()
+            .expect("expected a backup branch to be created");
+
+        fs::write(repo_dir.join("file.txt"), "second backup\n").unwrap();
+        let updated_backup_branch = create_evolution_backup(&repo_dir_str, Some(1), 3)
+            .unwrap()
+            .expect("expected a backup branch to be updated");
+
+        assert_eq!(backup_branch, updated_backup_branch);
+
+        let backup_tree = run_git_ok(&repo_dir, &["show", &format!("{}:file.txt", backup_branch)]);
+        assert_eq!(backup_tree, "second backup\n");
+    }
+
+    #[test]
     fn test_intent_add_untracked_from_nested_config_dir() {
         let temp_dir = TempDir::new().unwrap();
         let repo_dir = temp_dir.path().join("repo");
@@ -741,6 +941,117 @@ mod tests {
         assert!(
             indexed.lines().any(|line| line == "new.nix"),
             "intent-add should index repo-root untracked file when invoked from nested config dir"
+        );
+    }
+
+    #[test]
+    fn test_intent_add_untracked_sets_intent_flag_without_staging_contents() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join(".gitignore"), "ignored.nix\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial commit"]);
+
+        fs::write(repo_dir.join("new.nix"), "{ untracked = true; }\n").unwrap();
+        fs::write(repo_dir.join("ignored.nix"), "{ secret = true; }\n").unwrap();
+        let real_blob_id =
+            git2::Oid::hash_object(git2::ObjectType::Blob, b"{ untracked = true; }\n").unwrap();
+
+        intent_add_untracked(&repo_dir_str).unwrap();
+
+        let repo = git2::Repository::open(&repo_dir).unwrap();
+        let index = repo.index().unwrap();
+        let entry = index
+            .get_path(Path::new("new.nix"), 0)
+            .expect("new file should have an index entry");
+
+        assert!(git2::IndexEntryFlag::from_bits_truncate(entry.flags)
+            .contains(git2::IndexEntryFlag::EXTENDED));
+        assert!(
+            git2::IndexEntryExtendedFlag::from_bits_truncate(entry.flags_extended)
+                .contains(git2::IndexEntryExtendedFlag::INTENT_TO_ADD)
+        );
+        assert_eq!(
+            repo.find_blob(entry.id).unwrap().content(),
+            b"",
+            "intent-to-add entry should point at the empty blob"
+        );
+        assert!(
+            repo.find_blob(real_blob_id).is_err(),
+            "intent-to-add should not write the working file contents into the object database"
+        );
+        assert!(
+            index.get_path(Path::new("ignored.nix"), 0).is_none(),
+            "ignored files should not be registered"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["diff", "--cached", "--name-only"]),
+            "",
+            "intent-to-add should not stage the working file contents"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_intent_add_untracked_preserves_unix_file_modes_without_hashing_contents() {
+        use std::os::unix::fs::{symlink, PermissionsExt};
+
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("normal.nix"), "{ normal = true; }\n").unwrap();
+        fs::write(repo_dir.join("executable"), "#!/bin/sh\nexit 0\n").unwrap();
+        let mut executable_permissions = fs::metadata(repo_dir.join("executable"))
+            .unwrap()
+            .permissions();
+        executable_permissions.set_mode(0o755);
+        fs::set_permissions(repo_dir.join("executable"), executable_permissions).unwrap();
+        symlink("normal.nix", repo_dir.join("link.nix")).unwrap();
+
+        intent_add_untracked(&repo_dir_str).unwrap();
+
+        let repo = git2::Repository::open(&repo_dir).unwrap();
+        let index = repo.index().unwrap();
+
+        assert_eq!(
+            index.get_path(Path::new("normal.nix"), 0).unwrap().mode,
+            0o100644
+        );
+        assert_eq!(
+            index.get_path(Path::new("executable"), 0).unwrap().mode,
+            0o100755
+        );
+        assert_eq!(
+            index.get_path(Path::new("link.nix"), 0).unwrap().mode,
+            0o120000
+        );
+    }
+
+    #[test]
+    fn test_intent_add_untracked_works_without_head_commit() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+
+        intent_add_untracked(&repo_dir_str).unwrap();
+
+        let repo = git2::Repository::open(&repo_dir).unwrap();
+        let index = repo.index().unwrap();
+        let entry = index
+            .get_path(Path::new("flake.nix"), 0)
+            .expect("unborn repo file should have an index entry");
+
+        assert!(
+            git2::IndexEntryExtendedFlag::from_bits_truncate(entry.flags_extended)
+                .contains(git2::IndexEntryExtendedFlag::INTENT_TO_ADD)
         );
     }
 }

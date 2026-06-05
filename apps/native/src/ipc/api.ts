@@ -51,7 +51,6 @@ export const tauriAPI = {
     status: () => invoke<GitStatus>("git_status"),
     statusAndCache: () => invoke<GitStatus>("git_status_and_cache"),
     commit: (message: string) => invoke<CommitResult>("git_commit", { message }),
-    stash: (message: string) => invoke<OkResult>("git_stash", { message }),
     fileDiffContents: (filenames: string[]) => invoke<Record<string, FileDiffContents>>("git_file_diff_contents", { filenames }),
   },
   darwin: {
@@ -111,6 +110,7 @@ export const tauriAPI = {
       }),
     sentryEvent: () => invoke<void>("debug_sentry_event"),
     clearTauriState: () => invoke<void>("developer_clear_tauri_state"),
+    sendTestNotification: () => invoke<void>("developer_send_test_notification"),
   },
   ui: {
     getPrefs: getCachedPrefs,

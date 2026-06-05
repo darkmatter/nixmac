@@ -14,9 +14,9 @@ permissions:
   contents: read
 
 jobs:
-  rust-build:
-    name: Rust Build
-    runs-on: macos-latest
+  rust-check:
+    name: Rust Check
+    runs-on: ghcr.io/cirruslabs/macos-runner:tahoe
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -26,9 +26,9 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: apps/native/src-tauri
-      - name: Build Rust app crate
+      - name: Check Rust app crate
         working-directory: apps/native/src-tauri
-        run: cargo build --locked
+        run: cargo check --locked
 
   typescript:
     name: TypeScript
@@ -38,6 +38,13 @@ jobs:
         uses: actions/checkout@v6
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
+      - name: Cache bun install
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
       - name: Install dependencies
         run: bun install --frozen-lockfile
       - name: Type-check native app

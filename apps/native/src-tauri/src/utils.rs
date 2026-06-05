@@ -50,7 +50,14 @@ pub fn non_empty_trimmed_string(input: impl AsRef<str>) -> Option<String> {
 // and causing a panic, thereby avoiding annoying AI code review comments
 // about "don't truncate UTF-8 strings".
 pub fn truncate_utf8(s: &mut String, max: usize) {
-    s.truncate(s.floor_char_boundary(max));
+    if s.len() <= max {
+        return;
+    }
+    let mut boundary = max;
+    while !s.is_char_boundary(boundary) {
+        boundary -= 1;
+    }
+    s.truncate(boundary);
 }
 
 pub fn truncate_with_ellipsis(s: &str, max: usize) -> String {

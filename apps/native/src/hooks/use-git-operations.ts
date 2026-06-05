@@ -8,7 +8,7 @@ import { toast } from "sonner";
 
 /**
  * Hook for git operations.
- * Provides functions for refreshing git status and stashing changes.
+ * Provides functions for refreshing git status changes.
  */
 export const prefetchFileDiffContents = async (status: { changes: { filename: string }[] } | null) => {
   const setFileDiffContents = useWidgetStore.getState().setFileDiffContents;
@@ -68,16 +68,6 @@ const getInitialStatus = async () => {
   }
 };
 
-const gitStash = async () => {
-  try {
-    await tauriAPI.git.stash("stashed changes from nixmac");
-    const status = await refreshGitStatus();
-    return status;
-  } catch {
-    return null;
-  }
-};
-
 const handleCommit = async ({ message }: { message: string }) => {
   const store = useWidgetStore.getState();
   store.setProcessing(true, "merge");
@@ -101,5 +91,5 @@ const handleCommit = async ({ message }: { message: string }) => {
 };
 
 export function useGitOperations() {
-  return { refreshGitStatus, getInitialStatus, gitStash, handleCommit };
+  return { refreshGitStatus, getInitialStatus, handleCommit };
 }

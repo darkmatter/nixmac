@@ -1,6 +1,7 @@
+use std::path::PathBuf;
+
 use anyhow::Result;
 use git2::{DiffOptions, Oid, Repository};
-use std::path::PathBuf;
 use tauri::AppHandle;
 
 use crate::{
@@ -115,11 +116,6 @@ pub fn get_ref_sha(dir: &str, ref_name: &str) -> Option<String> {
     Some(obj.id().to_string())
 }
 
-/// Gets the SHA of the current HEAD commit.
-pub fn get_head_sha(dir: &str) -> Option<String> {
-    get_ref_sha(dir, "HEAD")
-}
-
 /// Returns true if HEAD can be resolved to a commit object.
 ///
 /// This is stricter than "HEAD exists":
@@ -190,6 +186,39 @@ pub fn read_tags(dir: &str, hash: &str) -> Vec<String> {
     }
 
     tags
+}
+
+/// Returns commits as Row Type (id = 0), from `start_hash` for `limit` (None for all).
+///
+/// Equivalent CLI:
+///   git log --format=%H%n%T%n%at%n%s [-n <limit>] <start_hash>
+pub fn log(
+    dir: &str,
+    start_hash: &str,
+    limit: Option<usize>,
+) -> Result<Vec<crate::sqlite_types::Commit>> {
+    let repo = Repository::discover(dir)?;
+    let commit = repo.revparse_single(start_hash)?.peel_to_commit()?;
+
+    let mut revwalk = repo.revwalk()?;
+    revwalk.set_sorting(git2::Sort::TIME)?;
+    revwalk.push(commit.id())?;
+
+    let mut commits = Vec::new();
+    for oid in revwalk.take(limit.unwrap_or(usize::MAX)) {
+        let commit = repo.find_commit(oid?)?;
+        let subject = commit.summary().unwrap_or_default().unwrap_or_default();
+
+        commits.push(crate::sqlite_types::Commit {
+            id: 0,
+            hash: commit.id().to_string(),
+            tree_hash: commit.tree_id().to_string(),
+            message: (!subject.is_empty()).then(|| subject.to_string()),
+            created_at: commit.time().seconds(),
+        });
+    }
+
+    Ok(commits)
 }
 
 /// Gets the current git status of the repo including
@@ -443,6 +472,25 @@ fn run_diff_engine(diff: git2::Diff) -> Result<Vec<FileDiff>> {
     Ok(result)
 }
 
+/// Returns (original, modified) file content for a single file: HEAD content and working-tree content.
+/// Returns empty strings for new files (no HEAD) or deleted files (not on disk).
+pub fn file_diff_contents(dir: &str, filename: &str) -> (String, String) {
+    // Make sure that the path cannot escape the repository, even with weird path components like ".." or symlinks.
+    // If it does, we fail closed and return empty content to avoid potential security issues.
+    let Some(path) = super::repo_files::normalize_repo_relative_path_lexically(filename) else {
+        return (String::new(), String::new());
+    };
+
+    let Ok(repo) = Repository::discover(dir) else {
+        return (String::new(), String::new());
+    };
+
+    (
+        super::repo_files::head_file_contents(&repo, &path),
+        super::repo_files::workdir_file_contents(&repo, &path),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use crate::git::init::init_repo;
@@ -471,6 +519,34 @@ mod tests {
             .expect("create commit");
 
         (temp, commit_id)
+    }
+
+    fn commit_readme(
+        repo: &git2::Repository,
+        repo_path: &Path,
+        message: &str,
+        timestamp: i64,
+        parent: Option<git2::Oid>,
+    ) -> git2::Oid {
+        fs::write(repo_path.join("README.md"), format!("{message}\n")).expect("write file");
+
+        let mut index = repo.index().expect("open index");
+        index.add_path(Path::new("README.md")).expect("stage file");
+        index.write().expect("write index");
+
+        let tree_id = index.write_tree().expect("write tree");
+        let tree = repo.find_tree(tree_id).expect("find tree");
+        let time = git2::Time::new(timestamp, 0);
+        let sig = git2::Signature::new("nixmac", "nixmac@local", &time).expect("signature");
+
+        if let Some(parent_id) = parent {
+            let parent_commit = repo.find_commit(parent_id).expect("find parent");
+            repo.commit(Some("HEAD"), &sig, &sig, message, &tree, &[&parent_commit])
+                .expect("create commit")
+        } else {
+            repo.commit(Some("HEAD"), &sig, &sig, message, &tree, &[])
+                .expect("create commit")
+        }
     }
 
     #[test]
@@ -532,12 +608,11 @@ mod tests {
         let path = temp.path().to_string_lossy().to_string();
 
         assert_eq!(get_ref_sha(&path, "HEAD"), Some(commit_id.to_string()));
-        assert_eq!(get_head_sha(&path), Some(commit_id.to_string()));
         assert_eq!(get_ref_sha(&path, "does-not-exist"), None);
     }
 
     #[test]
-    fn get_head_sha_unborn_branch_is_none() {
+    fn get_ref_sha_unborn_branch_is_none() {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path();
 
@@ -548,18 +623,18 @@ mod tests {
 
         let repo_path = path.to_string_lossy().to_string();
 
-        let head = get_head_sha(&repo_path);
+        let head = get_ref_sha(&repo_path, "HEAD");
 
         assert_eq!(head, None);
     }
 
     #[test]
-    fn get_ref_sha_and_head_sha_none_for_non_repo() {
+    fn get_ref_sha_none_for_non_repo() {
         let temp = TempDir::new().expect("create temp dir");
         let path = temp.path().to_string_lossy().to_string();
 
         assert_eq!(get_ref_sha(&path, "HEAD"), None);
-        assert_eq!(get_head_sha(&path), None);
+        assert_eq!(get_ref_sha(&path, "does-not-exist"), None);
     }
 
     #[test]
@@ -675,6 +750,32 @@ mod tests {
     }
 
     #[test]
+    fn log_returns_commits_from_start_hash_with_limit() {
+        let temp = TempDir::new().expect("create temp dir");
+        let repo = git2::Repository::init(temp.path()).expect("init repo");
+        let path = temp.path().to_string_lossy().to_string();
+
+        let first_id = commit_readme(&repo, temp.path(), "initial", 100, None);
+        let second_id = commit_readme(&repo, temp.path(), "second", 200, Some(first_id));
+        let third_id = commit_readme(&repo, temp.path(), "third", 300, Some(second_id));
+
+        let commits = log(&path, &third_id.to_string(), Some(2)).expect("read log");
+
+        assert_eq!(commits.len(), 2);
+        assert_eq!(commits[0].hash, third_id.to_string());
+        assert_eq!(commits[0].message, Some("third".to_string()));
+        assert_eq!(commits[0].created_at, 300);
+        assert_eq!(
+            commits[0].tree_hash,
+            repo.find_commit(third_id).unwrap().tree_id().to_string()
+        );
+
+        assert_eq!(commits[1].hash, second_id.to_string());
+        assert_eq!(commits[1].message, Some("second".to_string()));
+        assert_eq!(commits[1].created_at, 200);
+    }
+
+    #[test]
     fn test_status() {
         let temp_dir = TempDir::new().unwrap();
         let repo_dir = temp_dir.path().join("repo");
@@ -774,5 +875,50 @@ mod tests {
         assert_eq!(map_change_type(git2::Delta::Copied), ChangeType::Renamed);
         // Other types should default to Edited
         assert_eq!(map_change_type(git2::Delta::Unmodified), ChangeType::Edited);
+    }
+
+    #[test]
+    fn test_file_diff_contents_rejects_parent_traversal() {
+        let temp_dir = TempDir::new().unwrap();
+        let outside_file = temp_dir.path().join("outside.txt");
+        fs::write(&outside_file, "outside").unwrap();
+
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        let (original, modified) = file_diff_contents(&repo_dir_str, "../outside.txt");
+        assert!(original.is_empty());
+        assert!(modified.is_empty());
+    }
+
+    #[test]
+    fn test_file_diff_contents_reads_safe_relative_path() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ inputs = {}; }").unwrap();
+
+        let (_, modified) = file_diff_contents(&repo_dir_str, "flake.nix");
+        assert_eq!(modified, "{ inputs = {}; }");
+    }
+
+    #[test]
+    fn test_file_diff_contents_reads_head_and_worktree_with_git2() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+        crate::git::commit_all(&repo_dir_str, "initial").unwrap();
+        fs::write(repo_dir.join("flake.nix"), "{ inputs = {}; }\n").unwrap();
+
+        let (original, modified) = file_diff_contents(&repo_dir_str, "./flake.nix");
+
+        assert_eq!(original, "{ }\n");
+        assert_eq!(modified, "{ inputs = {}; }\n");
     }
 }

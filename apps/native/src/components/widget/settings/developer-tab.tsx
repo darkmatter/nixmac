@@ -12,6 +12,7 @@ import {
   DatabaseZap,
   Download,
   GitBranch,
+  Bell,
   Eraser,
   History,
   Pin,
@@ -136,6 +137,17 @@ export function DeveloperTab() {
     setStatusMessage("Cleared local UI debug buffers.");
     setErrorMessage(null);
   };
+
+  const handleSendTestNotification = async () => {
+    setErrorMessage(null);
+    try {
+      await tauriAPI.debug.sendTestNotification();
+      setStatusMessage("Test notification sent.");
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : String(err));
+    }
+  };
+
 
   const handleDisableDeveloper = async () => {
     try {
@@ -276,6 +288,10 @@ export function DeveloperTab() {
             <Button onClick={handleClearUiBuffers} size="sm" variant="outline">
               <Eraser className="mr-2 h-3.5 w-3.5" />
               Clear UI buffers
+            </Button>
+            <Button onClick={handleSendTestNotification} size="sm" variant="outline">
+              <Bell className="mr-2 h-3.5 w-3.5" />
+              Test notification
             </Button>
           </div>
         </div>

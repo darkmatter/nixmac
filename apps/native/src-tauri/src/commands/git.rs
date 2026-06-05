@@ -14,7 +14,7 @@ pub async fn git_file_diff_contents(
     Ok(filenames
         .into_iter()
         .map(|f| {
-            let (original, modified) = git::exec::file_diff_contents(&dir, &f);
+            let (original, modified) = git::query::file_diff_contents(&dir, &f);
             (f, shared_types::FileDiffContents { original, modified })
         })
         .collect())
@@ -94,12 +94,4 @@ pub async fn git_commit(
         hash: commit_info.hash,
         evolve_state,
     })
-}
-
-/// Stashes all uncommitted changes with the given message.
-#[tauri::command]
-pub async fn git_stash(app: AppHandle, message: String) -> Result<shared_types::OkResult, String> {
-    let dir = store::ensure_git_repo_folder(&app).map_err(|e| capture_err("git_stash", e))?;
-    git::stash(&dir, &message).map_err(|e| capture_err("git_stash", e))?;
-    Ok(shared_types::OkResult::yes())
 }
