@@ -259,6 +259,15 @@ pub(crate) const EVOLVE_EVENT_CHANNEL: &str = "darwin:evolve:event";
 
 /// Helper to emit evolve events to the frontend
 pub(crate) fn emit_evolve_event<R: tauri::Runtime>(app: &tauri::AppHandle<R>, event: EvolveEvent) {
+    // Append to the session transcript if an evolution is currently recording.
+    if let Some(path) = crate::state::session_log::active_session_path() {
+        let event_json = serde_json::to_value(&event).unwrap_or_default();
+        // Fire-and-forget: emit_evolve_event always runs inside the async evolve loop.
+        tokio::spawn(async move {
+            crate::state::session_log::append_event(&path, "evolve_event", &event_json).await;
+        });
+    }
+
     if let Some(window) = app.get_webview_window("main") {
         if let Err(e) = tauri::Emitter::emit(&window, EVOLVE_EVENT_CHANNEL, &event) {
             log::warn!("Failed to emit evolve event: {}", e);
