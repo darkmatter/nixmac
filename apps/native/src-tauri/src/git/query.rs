@@ -1,6 +1,7 @@
+use std::path::PathBuf;
+
 use anyhow::Result;
 use git2::{DiffOptions, Oid, Repository};
-use std::path::PathBuf;
 use tauri::AppHandle;
 
 use crate::{
@@ -476,6 +477,25 @@ fn run_diff_engine(diff: git2::Diff) -> Result<Vec<FileDiff>> {
     Ok(result)
 }
 
+/// Returns (original, modified) file content for a single file: HEAD content and working-tree content.
+/// Returns empty strings for new files (no HEAD) or deleted files (not on disk).
+pub fn file_diff_contents(dir: &str, filename: &str) -> (String, String) {
+    // Make sure that the path cannot escape the repository, even with weird path components like ".." or symlinks.
+    // If it does, we fail closed and return empty content to avoid potential security issues.
+    let Some(path) = super::repo_files::normalize_repo_relative_path_lexically(filename) else {
+        return (String::new(), String::new());
+    };
+
+    let Ok(repo) = Repository::discover(dir) else {
+        return (String::new(), String::new());
+    };
+
+    (
+        super::repo_files::head_file_contents(&repo, &path),
+        super::repo_files::workdir_file_contents(&repo, &path),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use crate::git::init::init_repo;
@@ -861,5 +881,50 @@ mod tests {
         assert_eq!(map_change_type(git2::Delta::Copied), ChangeType::Renamed);
         // Other types should default to Edited
         assert_eq!(map_change_type(git2::Delta::Unmodified), ChangeType::Edited);
+    }
+
+    #[test]
+    fn test_file_diff_contents_rejects_parent_traversal() {
+        let temp_dir = TempDir::new().unwrap();
+        let outside_file = temp_dir.path().join("outside.txt");
+        fs::write(&outside_file, "outside").unwrap();
+
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        let (original, modified) = file_diff_contents(&repo_dir_str, "../outside.txt");
+        assert!(original.is_empty());
+        assert!(modified.is_empty());
+    }
+
+    #[test]
+    fn test_file_diff_contents_reads_safe_relative_path() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ inputs = {}; }").unwrap();
+
+        let (_, modified) = file_diff_contents(&repo_dir_str, "flake.nix");
+        assert_eq!(modified, "{ inputs = {}; }");
+    }
+
+    #[test]
+    fn test_file_diff_contents_reads_head_and_worktree_with_git2() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+        crate::git::commit_all(&repo_dir_str, "initial").unwrap();
+        fs::write(repo_dir.join("flake.nix"), "{ inputs = {}; }\n").unwrap();
+
+        let (original, modified) = file_diff_contents(&repo_dir_str, "./flake.nix");
+
+        assert_eq!(original, "{ }\n");
+        assert_eq!(modified, "{ inputs = {}; }\n");
     }
 }
