@@ -1,7 +1,9 @@
-//! Persistence backends for state slices.
+//! Persistence backends for observable state.
 //!
 //! `AppDataJson` stores per-device state in the OS app-data directory.
 //! `RepoScopedJson` stores repo-scoped state under the user's config repo.
+//! Subscribers attach a backend to an [`Observable<T>`] via
+//! [`Observable::persist_to`](super::Observable::persist_to).
 
 use anyhow::{Context, Result};
 use serde_json::Value;
@@ -10,9 +12,9 @@ use tauri::{Manager, Runtime};
 
 use super::json_io::{read_json_file, write_json_file};
 
-/// Storage boundary for a slice.
+/// Storage boundary for an observable.
 ///
-/// Implementations work with JSON values so `Slice<T>` can keep the typed
+/// Implementations work with JSON values so `Observable<T>` can keep the typed
 /// serialization/deserialization logic central while backends only decide
 /// where bytes live.
 pub trait Persistence: Send + Sync {
@@ -52,11 +54,6 @@ impl AppDataJson {
         Ok(Self::new(app_data.join(file_name)))
     }
 
-    /// Return the backing JSON path.
-    #[cfg(test)]
-    pub fn path(&self) -> &Path {
-        &self.path
-    }
 }
 
 impl Persistence for AppDataJson {
@@ -96,11 +93,6 @@ impl RepoScopedJson {
         ))
     }
 
-    /// Return the backing JSON path.
-    #[cfg(test)]
-    pub fn path(&self) -> &Path {
-        &self.path
-    }
 }
 
 impl Persistence for RepoScopedJson {
@@ -155,5 +147,38 @@ impl<R: Runtime> Persistence for ConfiguredRepoScopedJson<R> {
         };
         crate::storage::configurable_scope::ensure_repo_store_dir_for_path(&path)?;
         write_json_file(&path, value)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn json_persistence_round_trips_by_scope_path() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let app_data_path = temp.path().join("app-data").join("settings.json");
+        let repo_path = temp.path().join("repo").join(".nixmac").join("settings.json");
+        let app_data = AppDataJson::new(&app_data_path);
+        let repo_scoped = RepoScopedJson::new(&repo_path);
+
+        app_data
+            .flush(&json!({ "count": 3, "label": "global" }))
+            .expect("app data flushes");
+        repo_scoped
+            .flush(&json!({ "count": 4, "label": "repo" }))
+            .expect("repo scoped flushes");
+
+        assert!(app_data_path.ends_with("app-data/settings.json"));
+        assert!(repo_path.ends_with("repo/.nixmac/settings.json"));
+        assert_eq!(
+            app_data.load().expect("app data loads"),
+            Some(json!({ "count": 3, "label": "global" }))
+        );
+        assert_eq!(
+            repo_scoped.load().expect("repo scoped loads"),
+            Some(json!({ "count": 4, "label": "repo" }))
+        );
     }
 }

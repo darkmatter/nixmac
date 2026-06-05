@@ -33,16 +33,15 @@
 //! `RwLockReadGuard`; writers get an `ObservableWriteGuard` that is the only
 //! mutation path — and therefore the only place subscribers are invoked.
 
-// The first call sites migrate in the next commit; suppress dead-code on the
-// public surface only until then.
-#![allow(dead_code)]
+pub mod json_io;
+pub mod persistence;
+
+pub use persistence::{AppDataJson, ConfiguredRepoScopedJson, Persistence};
 
 use serde::Serialize;
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tauri::{AppHandle, Emitter, Runtime};
-
-use crate::state::slice::Persistence;
 
 type Subscriber<T> = Arc<dyn Fn(&T) + Send + Sync + 'static>;
 
@@ -220,7 +219,7 @@ mod tests {
 
     #[test]
     fn persist_to_routes_serialized_value_through_backend() {
-        use crate::state::slice::Persistence;
+        use super::Persistence;
         use anyhow::Result;
         use serde_json::Value;
 

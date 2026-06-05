@@ -13,9 +13,8 @@ use specta::Type;
 use std::sync::Arc;
 use tauri::{AppHandle, Runtime};
 
-use crate::observable::Observable;
+use crate::observable::{AppDataJson, Observable, Persistence};
 use crate::shared_types::UpdateChannel;
-use crate::state::slice::{AppDataJson, Persistence};
 
 const GLOBAL_PREFERENCES_PATH: &str = "global-preferences.json";
 

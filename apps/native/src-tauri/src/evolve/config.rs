@@ -3,9 +3,9 @@
 //! Storage is repo-scoped — values live under `<config_dir>/.nixmac/settings.json`
 //! so they ride along with the user's nix config repo across machines.
 //!
-//! The struct is managed as a `Slice<EvolutionLimits>` at startup and registered
-//! with the slice registry so Developer settings can render and update it
-//! without opening store files directly.
+//! The struct is managed as an `Observable<EvolutionLimits>` at startup and
+//! registered with the slice registry so Developer settings can render and
+//! update it without opening store files directly.
 
 use anyhow::Result;
 use configurable::Configurable;
@@ -14,11 +14,9 @@ use specta::Type;
 use std::sync::Arc;
 use tauri::{AppHandle, Runtime};
 
-use crate::observable::Observable;
+use crate::observable::{ConfiguredRepoScopedJson, Observable, Persistence};
 use crate::state::preferences;
-use crate::state::slice::{
-    ConfiguredRepoScopedJson, Persistence, RegisteredSliceConfig, SliceRegistry,
-};
+use crate::state::slice::{RegisteredSliceConfig, SliceRegistry};
 
 pub const EVOLUTION_LIMITS_CHANGED_EVENT: &str = "evolution_limits_changed";
 

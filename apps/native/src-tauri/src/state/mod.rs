@@ -1,25 +1,21 @@
 //! Persisted application state, split by scope and lifecycle.
 //!
-//! This module owns two categories of state:
-//!
-//! - **Slices** (`slice`): generic typed containers with pluggable persistence.
-//!   Each `Slice<T>` holds in-memory state, flushes to a JSON file on write,
-//!   and emits a Tauri event so the frontend stays in sync. See the slice
-//!   module docs for the full contract.
-//!
-//! - **Domain modules**: thin wrappers that define a concrete state type,
-//!   choose a persistence backend (app-data vs repo-scoped), and expose
-//!   load/get/set functions. These are the call sites that commands and
-//!   lifecycle code actually use.
+//! Each domain module defines a concrete state type, picks a persistence
+//! backend (app-data vs repo-scoped), and exposes load/get/set functions
+//! that wrap an [`Observable<T>`](crate::observable::Observable). Commands
+//! and lifecycle code call into those wrappers.
 //!
 //! The key distinction is persistence scope:
 //! - `GlobalPreferences` → per-device, stored in the OS app-data directory
 //! - `EvolutionLimits` → repo-scoped, stored under `<config_dir>/.nixmac/`
 //! - `EvolveState` → per-device (step routing is machine-local)
 //!
-//! Adding a new state type: define the struct, pick a persistence backend,
-//! load a `Slice<T>` during Tauri setup, and optionally register it with
-//! the slice registry for developer-settings UI.
+//! Adding a new state type: define the struct, pick a persistence backend
+//! from `crate::observable`, and construct an `Observable<T>` during Tauri
+//! setup with `.emit_to()` and `.persist_to()` attached as needed.
+//!
+//! The `slice` submodule survives only for the runtime `SliceRegistry` used
+//! by the developer-settings UI; B1 in the followup plan retires it.
 
 pub mod build_state;
 pub mod completion_log;
@@ -27,6 +23,5 @@ pub mod drift_notifications;
 pub mod evolve_state;
 pub mod preferences;
 pub mod session_log;
-/// Generic state slices used by runtime state and scoped preferences.
 pub mod slice;
 pub mod watcher;

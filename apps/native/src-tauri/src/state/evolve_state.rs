@@ -6,10 +6,9 @@ use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
 use crate::evolve::session_chat_memory_store;
-use crate::observable::Observable;
+use crate::observable::{AppDataJson, Observable, Persistence};
 use crate::shared_types::{EvolutionState, EvolveState, EvolveStep};
 use crate::sqlite_types::Change;
-use crate::state::slice::{AppDataJson, Persistence};
 
 impl EvolveState {
     pub fn recompute_step(&mut self, is_built: bool, has_changes: bool) {
