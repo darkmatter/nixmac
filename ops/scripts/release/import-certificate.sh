@@ -26,7 +26,7 @@ security import "$CERT_FILE" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs
 security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" 2>/dev/null || true
 
 # Check if the user keychain approach worked
-IDENTITY_COUNT=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" 2>/dev/null | grep -c "Developer ID Application" || echo "0")
+IDENTITY_COUNT=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" 2>/dev/null | grep -c "Developer ID Application" || true)
 
 if [ "$IDENTITY_COUNT" -gt 0 ]; then
     echo "User keychain import succeeded"
@@ -38,7 +38,7 @@ else
     sudo security import "$CERT_FILE" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k /Library/Keychains/System.keychain
 
     # Verify
-    SYSTEM_COUNT=$(sudo security find-identity -v -p codesigning /Library/Keychains/System.keychain 2>/dev/null | grep -c "Developer ID Application" || echo "0")
+    SYSTEM_COUNT=$(sudo security find-identity -v -p codesigning /Library/Keychains/System.keychain 2>/dev/null | grep -c "Developer ID Application" || true)
     if [ "$SYSTEM_COUNT" -eq 0 ]; then
         echo "ERROR: No Developer ID Application identity found in either user or system keychain"
         exit 1
