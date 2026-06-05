@@ -57,6 +57,10 @@
 //! }
 //! ```
 
+// Slice<T> itself has no callers after the Observable<T> migration; the next
+// commit deletes it. Persistence + registry stay alive for now.
+#![allow(dead_code)]
+
 pub mod json_io;
 pub mod persistence;
 pub mod registry;

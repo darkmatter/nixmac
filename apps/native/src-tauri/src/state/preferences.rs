@@ -13,8 +13,9 @@ use specta::Type;
 use std::sync::Arc;
 use tauri::{AppHandle, Runtime};
 
+use crate::observable::Observable;
 use crate::shared_types::UpdateChannel;
-use crate::state::slice::{AppDataJson, Persistence, Slice};
+use crate::state::slice::{AppDataJson, Persistence};
 
 const GLOBAL_PREFERENCES_PATH: &str = "global-preferences.json";
 
@@ -73,15 +74,16 @@ impl Default for GlobalPreferences {
     }
 }
 
-pub fn load_global_slice<R: Runtime>(app: &AppHandle<R>) -> Result<Slice<GlobalPreferences>> {
-    let persistence = Arc::new(AppDataJson::for_app(app, GLOBAL_PREFERENCES_PATH)?);
+pub fn load_global_observable<R: Runtime>(
+    app: &AppHandle<R>,
+) -> Result<Observable<GlobalPreferences>> {
+    let persistence: Arc<dyn Persistence> =
+        Arc::new(AppDataJson::for_app(app, GLOBAL_PREFERENCES_PATH)?);
     let initial = load_or_default::<GlobalPreferences>(persistence.as_ref())?;
 
-    Ok(Slice::new(
-        GLOBAL_PREFERENCES_CHANGED_EVENT,
-        initial,
-        persistence,
-    ))
+    Ok(Observable::new(initial)
+        .emit_to(app, GLOBAL_PREFERENCES_CHANGED_EVENT)
+        .persist_to(persistence))
 }
 
 pub(crate) fn load_or_default<T>(persistence: &dyn Persistence) -> Result<T>
