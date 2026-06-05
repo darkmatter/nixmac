@@ -10,8 +10,7 @@ pub mod query;
 #[allow(unused_imports)]
 pub use exec::{
     checkout_files_at_commit, commit_all, create_evolution_backup, delete_backup_branch,
-    get_nix_diff, intent_add_untracked, log, restore_all, restore_from_branch_ref, stash,
-    tag_commit, CommitInfo,
+    intent_add_untracked, log, restore_all, restore_from_branch_ref, stash, tag_commit, CommitInfo,
 };
 
 #[allow(unused_imports)]
