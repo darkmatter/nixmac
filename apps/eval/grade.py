@@ -27,7 +27,7 @@ DEFAULT_RESULTS_DIR = SCRIPT_DIR / "data" / "results"
 GRADER_VERSION = "0.1.0"
 
 # Flake infrastructure path prefixes used by the flake_scope check in grade_succeed().
-# Kept in sync with the soft-guard list in apps/native/src-tauri/prompts/system.md
+# Kept in sync with the soft-guard list in vendor/nixmac/apps/native/src-tauri/prompts/system.md
 # (lines 215-218). flake.lock is intentionally excluded — run_evals.py gitignores it
 # during test fixture setup, so lockfile diffs are never presented to the grader.
 FLAKE_PATH_PREFIXES = ("flake.nix", "flake-modules/")

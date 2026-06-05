@@ -32,11 +32,13 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 RESULTS_DIR: Path = SCRIPT_DIR / "data/results"
 
 # Default nix config template
-CONFIG_TEMPLATE_DIR: Path = SCRIPT_DIR.parent / "native/templates/nix-darwin-determinate"
+CONFIG_TEMPLATE_DIR: Path = (
+    SCRIPT_DIR.parent.parent
+    / "vendor/nixmac/apps/native/templates/nix-darwin-determinate"
+)
 
-# Default place we find nixmac to run evolution during test cases
-# Will work if you have the "nixmac" and "nixmac-web" repos checked out side-by-side and have built the nixmac binary locally.
-DEFAULT_NIXMAC = SCRIPT_DIR.parent.parent.parent / "nixmac" / "target" / "debug" / "nixmac"
+# Default nixmac binary from the vendored public repo submodule (build with `cargo build` there).
+DEFAULT_NIXMAC = SCRIPT_DIR.parent.parent / "vendor/nixmac/target/debug/nixmac"
 
 # Directory containing nixmac config/state files (settings.json, evolve-state.json, etc.)
 NIXMAC_CONFIG_DIR: Path = Path.home() / "Library" / "Application Support" / "com.darkmatter.nixmac"
