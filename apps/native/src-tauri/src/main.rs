@@ -21,6 +21,7 @@ mod feedback;
 mod git;
 mod history;
 mod managed_edits;
+mod observable;
 mod panic_handler;
 mod peek;
 mod rebuild;
