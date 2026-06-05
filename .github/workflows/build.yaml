@@ -11,8 +11,8 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
-  RUSTC_WRAPPER: sccache
-  SCCACHE_DIR: /opt/sccache-cache
+  RUSTUP_INIT_SKIP_PATH_CHECK: yes
+  RUSTUP_HOME: /Users/coopermaruyama/.rustup
   SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 jobs:
   optimize_ci:
@@ -37,7 +37,11 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: true
+      - name: Check Rust
+        id: check-rust
+        run: 'if which rust &>/dev/null; then echo "exists=true" >> $GITHUB_OUTPUT; [ -d "$HOME/.cargo/bin" ] && echo "$HOME/.cargo/bin" >> $GITHUB_PATH; fi'
       - name: Install Rust
+        if: steps.check-rust.outputs.exists != 'true'
         uses: dtolnay/rust-toolchain@stable
       - name: Rust cache
         uses: Swatinem/rust-cache@v2

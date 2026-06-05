@@ -99,7 +99,7 @@ impl ProviderError {
     /// `Http { status, body }` before reaching this method.
     pub fn user_message(&self) -> String {
         match self {
-            ProviderError::Http { status, body } if looks_like_context_window_error(body) => {
+            ProviderError::Http { status: _, body } if looks_like_context_window_error(body) => {
                 "The AI provider rejected the request because the configured max output tokens exceed the model's context window. Lower Max output tokens in Settings or switch to a model with a larger context window.".to_string()
             }
             ProviderError::Http { status, .. } => friendly_provider_error(status.as_u16()),
