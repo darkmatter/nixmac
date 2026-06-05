@@ -9,26 +9,81 @@ import {
   useSpring,
   useTransform,
 } from "motion/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import { cn } from "@/lib/utils";
 
-// Helper component for gradient layers
+/** Clockwise path around a stadium / pill shape, starting at top center. */
+export function pointOnStadiumBorder(
+  width: number,
+  height: number,
+  t: number,
+): { x: number; y: number } {
+  const inset = 1.5;
+  const radius = height / 2 - inset;
+  const centerY = height / 2;
+  const topRightLen = Math.max(0, width / 2 - radius);
+  const topLeftLen = topRightLen;
+  const bottomLen = Math.max(0, width - 2 * radius);
+  const arcLen = Math.PI * radius;
+  const perimeter = topRightLen + arcLen + bottomLen + arcLen + topLeftLen;
+
+  let distance = (((t % 1) + 1) % 1) * perimeter;
+
+  if (distance <= topRightLen) {
+    return { x: width / 2 + distance, y: inset };
+  }
+  distance -= topRightLen;
+
+  if (distance <= arcLen) {
+    const angle = -Math.PI / 2 + (distance / arcLen) * Math.PI;
+    return {
+      x: width - radius + radius * Math.cos(angle),
+      y: centerY + radius * Math.sin(angle),
+    };
+  }
+  distance -= arcLen;
+
+  if (distance <= bottomLen) {
+    return { x: width - radius - distance, y: height - inset };
+  }
+  distance -= bottomLen;
+
+  if (distance <= arcLen) {
+    const angle = Math.PI / 2 + (distance / arcLen) * Math.PI;
+    return {
+      x: radius + radius * Math.cos(angle),
+      y: centerY + radius * Math.sin(angle),
+    };
+  }
+  distance -= arcLen;
+
+  return { x: radius + distance, y: inset };
+}
+
 function GradientLayer({
-  springX,
-  springY,
+  traceProgress,
+  phaseOffset,
+  sizeRef,
   gradientColor,
   opacity,
-  multiplier,
 }: {
-  springX: MotionValue<number>;
-  springY: MotionValue<number>;
+  traceProgress: MotionValue<number>;
+  phaseOffset: number;
+  sizeRef: RefObject<{ width: number; height: number }>;
   gradientColor: string;
   opacity: number;
-  multiplier: number;
 }) {
-  const x = useTransform(springX, (val) => val * multiplier);
-  const y = useTransform(springY, (val) => val * multiplier);
-  const background = useMotionTemplate`radial-gradient(circle at ${x}px ${y}px, ${gradientColor} 0%, transparent 50%)`;
+  const x = useTransform(traceProgress, (progress) => {
+    const { width, height } = sizeRef.current;
+    return pointOnStadiumBorder(width, height, progress + phaseOffset).x;
+  });
+  const y = useTransform(traceProgress, (progress) => {
+    const { width, height } = sizeRef.current;
+    return pointOnStadiumBorder(width, height, progress + phaseOffset).y;
+  });
+  const springX = useSpring(x, { stiffness: 120, damping: 28 });
+  const springY = useSpring(y, { stiffness: 120, damping: 28 });
+  const background = useMotionTemplate`radial-gradient(circle at ${springX}px ${springY}px, ${gradientColor} 0%, transparent 55%)`;
 
   return (
     <motion.div
@@ -41,6 +96,40 @@ function GradientLayer({
   );
 }
 
+function ShimmerSweep({
+  active,
+  opacity,
+}: {
+  active: boolean;
+  opacity: number;
+}) {
+  if (!active) {
+    return null;
+  }
+
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 z-20 overflow-hidden rounded-[inherit]"
+    >
+      <motion.div
+        className="absolute inset-y-0 w-1/3 -skew-x-12 mix-blend-overlay"
+        style={{
+          background: `linear-gradient(to right, transparent, rgba(255, 255, 255, ${opacity}), transparent)`,
+        }}
+        initial={{ x: "-120%" }}
+        animate={{ x: "420%" }}
+        transition={{
+          duration: 2.6,
+          ease: "easeInOut",
+          repeat: Number.POSITIVE_INFINITY,
+          repeatDelay: 7,
+        }}
+      />
+    </div>
+  );
+}
+
 interface NoiseBackgroundProps {
   children?: React.ReactNode;
   className?: string;
@@ -50,6 +139,9 @@ interface NoiseBackgroundProps {
   speed?: number;
   backdropBlur?: boolean;
   animating?: boolean;
+  shimmer?: boolean;
+  /** Peak white opacity of the shimmer band (0–1). Default 0.08. */
+  shimmerOpacity?: number;
 }
 
 export const NoiseBackground = ({
@@ -65,108 +157,34 @@ export const NoiseBackground = ({
   speed = 0.1,
   backdropBlur = false,
   animating = true,
+  shimmer = false,
+  shimmerOpacity = 0.05,
 }: NoiseBackgroundProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
+  const sizeRef = useRef({ width: 0, height: 0 });
+  const traceProgress = useMotionValue(0);
 
-  // Use spring animation for smooth movement
-  const springX = useSpring(x, { stiffness: 100, damping: 30 });
-  const springY = useSpring(y, { stiffness: 100, damping: 30 });
-
-  // Transform for top gradient strip
-  const topGradientX = useTransform(springX, (val) => val * 0.1 - 50);
-
-  const velocityRef = useRef({ x: 0, y: 0 });
-  const lastDirectionChangeRef = useRef(0);
-
-  // Initialize position to center
   useEffect(() => {
     if (!containerRef.current) {
       return;
     }
 
-    const container = containerRef.current;
-    const rect = container.getBoundingClientRect();
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    x.set(centerX);
-    y.set(centerY);
-  }, [x, y]);
+    const rect = containerRef.current.getBoundingClientRect();
+    sizeRef.current = { width: rect.width, height: rect.height };
+    traceProgress.set(0);
+  }, [traceProgress]);
 
-  // Generate random velocity
-  const generateRandomVelocityRef = useRef(() => {
-    const angle = Math.random() * Math.PI * 2;
-    const magnitude = speed * (0.5 + Math.random() * 0.5); // Random speed between 0.5x and 1x
-    return {
-      x: Math.cos(angle) * magnitude,
-      y: Math.sin(angle) * magnitude,
-    };
-  });
-
-  // Update generateRandomVelocity when speed changes
-  useEffect(() => {
-    generateRandomVelocityRef.current = () => {
-      const angle = Math.random() * Math.PI * 2;
-      const magnitude = speed * (0.5 + Math.random() * 0.5);
-      return {
-        x: Math.cos(angle) * magnitude,
-        y: Math.sin(angle) * magnitude,
-      };
-    };
-    velocityRef.current = generateRandomVelocityRef.current();
-  }, [speed]);
-
-  // Animate using motion/react's useAnimationFrame
-  useAnimationFrame((time) => {
+  useAnimationFrame((_time, delta) => {
     if (!(animating && containerRef.current)) {
       return;
     }
 
     const rect = containerRef.current.getBoundingClientRect();
-    const maxX = rect.width;
-    const maxY = rect.height;
+    sizeRef.current = { width: rect.width, height: rect.height };
 
-    // Change direction randomly every 1.5-3 seconds
-    if (time - lastDirectionChangeRef.current > 1500 + Math.random() * 1500) {
-      velocityRef.current = generateRandomVelocityRef.current();
-      lastDirectionChangeRef.current = time;
-    }
-
-    // Update position based on velocity (deltaTime is ~16ms per frame at 60fps)
-    const deltaTime = 16; // Approximate frame time
-    const currentX = x.get();
-    const currentY = y.get();
-
-    let newX = currentX + velocityRef.current.x * deltaTime;
-    let newY = currentY + velocityRef.current.y * deltaTime;
-
-    // When hitting edges, generate a completely new random direction
-    // This ensures truly random movement in all 360 degrees, not just horizontal/vertical
-    const padding = 20; // Keep some distance from edges
-
-    if (
-      newX < padding ||
-      newX > maxX - padding ||
-      newY < padding ||
-      newY > maxY - padding
-    ) {
-      // Generate completely random direction (full 360 degrees)
-      const angle = Math.random() * Math.PI * 2;
-      const magnitude = speed * (0.5 + Math.random() * 0.5);
-      velocityRef.current = {
-        x: Math.cos(angle) * magnitude,
-        y: Math.sin(angle) * magnitude,
-      };
-      // Reset timer to allow immediate new direction
-      lastDirectionChangeRef.current = time;
-      // Clamp position to stay within bounds
-      newX = Math.max(padding, Math.min(maxX - padding, newX));
-      newY = Math.max(padding, Math.min(maxY - padding, newY));
-    }
-
-    x.set(newX);
-    y.set(newY);
+    // One full lap about every 8s at speed=0.1; scales with speed prop.
+    const lapMs = 8000 / Math.max(speed, 0.01);
+    traceProgress.set((traceProgress.get() + delta / lapMs) % 1);
   });
 
   return (
@@ -186,36 +204,26 @@ export const NoiseBackground = ({
         } as React.CSSProperties
       }
     >
-      {/* Moving gradient layers */}
       <GradientLayer
         gradientColor={gradientColors[0]}
-        multiplier={1}
         opacity={0.4}
-        springX={springX}
-        springY={springY}
+        phaseOffset={0}
+        sizeRef={sizeRef}
+        traceProgress={traceProgress}
       />
       <GradientLayer
         gradientColor={gradientColors[1]}
-        multiplier={0.7}
-        opacity={0.3}
-        springX={springX}
-        springY={springY}
+        opacity={0.28}
+        phaseOffset={-0.06}
+        sizeRef={sizeRef}
+        traceProgress={traceProgress}
       />
       <GradientLayer
         gradientColor={gradientColors[2] || gradientColors[0]}
-        multiplier={1.2}
-        opacity={0.25}
-        springX={springX}
-        springY={springY}
-      />
-
-      {/* Top gradient strip */}
-      <motion.div
-        className="absolute inset-x-0 top-0 h-1 rounded-t-2xl opacity-80 blur-sm"
-        style={{
-          background: `linear-gradient(to right, ${gradientColors.join(", ")})`,
-          x: animating ? topGradientX : 0,
-        }}
+        opacity={0.22}
+        phaseOffset={-0.12}
+        sizeRef={sizeRef}
+        traceProgress={traceProgress}
       />
 
       {/* Static Noise Pattern */}
@@ -229,7 +237,16 @@ export const NoiseBackground = ({
       </div>
 
       {/* Content */}
-      <div className={cn("relative z-10", className)}>{children}</div>
+      <div
+        className={cn(
+          "relative z-10",
+          shimmer && "overflow-hidden rounded-[inherit]",
+          className,
+        )}
+      >
+        <ShimmerSweep active={shimmer && animating} opacity={shimmerOpacity} />
+        <div className="relative z-10">{children}</div>
+      </div>
     </div>
   );
 };

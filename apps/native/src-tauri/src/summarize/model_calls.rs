@@ -1,21 +1,18 @@
-//! Hunk-based summarization model calls.
+//! Summarization model calls.
 
 use anyhow::Result;
 use log::{debug, warn};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Runtime};
 
 use crate::ai::providers::{create_provider, TokenUsage};
-use crate::summarize::model_output_types::{
-    EvolvedGroupSummary, HunkSummary, RawHunkPlacement, RawNewMapEntry,
-};
-use crate::summarize::token_budgets::{
-    commit_message_budget, group_budget, map_relations_budget, map_relations_to_existing_budget,
-    single_budget,
-};
+use crate::summarize::token_budgets::commit_message_budget;
 
-const TEMPERATURE: f32 = 0.3;
+#[derive(Deserialize)]
+struct CommitMessageJson {
+    message: String,
+}
 
 async fn request_json<R: Runtime, T: serde::de::DeserializeOwned>(
     system_prompt: &str,
@@ -84,13 +81,6 @@ async fn request_json<R: Runtime, T: serde::de::DeserializeOwned>(
     }
 }
 
-// ── Commit message ────────────────────────────────────────────────────────────
-
-#[derive(Deserialize)]
-struct CommitMessageJson {
-    message: String,
-}
-
 pub async fn generate_commit_message<R: Runtime>(
     prompt: &str,
     app_handle: Option<&AppHandle<R>>,
@@ -111,161 +101,6 @@ pub async fn generate_commit_message<R: Runtime>(
     }
     Ok((parsed.message.trim().to_string(), usage))
 }
-
-// ── map_relations — group incoming hunks into semantic groups ─────────────────
-
-#[derive(Deserialize)]
-struct RawNewMapResponse {
-    changes: Vec<RawNewMapEntry>,
-}
-
-/// Groups all hunks from a new changeset into semantic groups.
-/// Caller builds the prompt via `prompts::build_new_map`.
-pub async fn map_relations<R: Runtime>(
-    prompt: &str,
-    app_handle: Option<&AppHandle<R>>,
-) -> Result<(Vec<RawNewMapEntry>, TokenUsage)> {
-    let (raw, usage) = request_json::<_, RawNewMapResponse>(
-        "",
-        prompt,
-        map_relations_budget,
-        TEMPERATURE,
-        "map_relations",
-        app_handle,
-    )
-    .await?;
-    Ok((raw.changes, usage))
-}
-
-// ── map_relations_to_existing — place missed hunks onto an existing map ───────
-
-#[derive(Deserialize)]
-struct RawPlacementResponse {
-    placements: Vec<RawHunkPlacement>,
-}
-
-/// Places missed hunks onto an existing semantic map.
-pub async fn map_relations_to_existing<R: Runtime>(
-    prompt: &str,
-    app_handle: Option<&AppHandle<R>>,
-) -> Result<(Vec<RawHunkPlacement>, TokenUsage)> {
-    let (raw, usage) = request_json::<_, RawPlacementResponse>(
-        "",
-        prompt,
-        map_relations_to_existing_budget,
-        TEMPERATURE,
-        "map_relations_to_existing",
-        app_handle,
-    )
-    .await?;
-    Ok((raw.placements, usage))
-}
-
-// ── Iterative summarization — for use by task runner ─────────────────────────
-
-#[derive(Deserialize, Serialize)]
-struct OwnSummaryEntry {
-    hash: String,
-    title: String,
-    description: String,
-}
-
-#[derive(Deserialize)]
-struct EvolvedGroupRaw {
-    group: HunkSummary,
-    changes: Vec<OwnSummaryEntry>,
-}
-
-pub async fn summarize_evolved_group<R: Runtime>(
-    prompt: &str,
-    former_group_id: i64,
-    app_handle: Option<&AppHandle<R>>,
-) -> Result<(EvolvedGroupSummary, TokenUsage)> {
-    let fn_name = format!("summarize_evolved_group[{}]", former_group_id);
-    let (raw, usage) = request_json::<_, EvolvedGroupRaw>(
-        "",
-        prompt,
-        group_budget,
-        TEMPERATURE,
-        &fn_name,
-        app_handle,
-    )
-    .await?;
-    let own_summaries = raw
-        .changes
-        .into_iter()
-        .map(|e| {
-            (
-                e.hash,
-                HunkSummary {
-                    title: e.title,
-                    description: e.description,
-                },
-            )
-        })
-        .collect();
-    Ok((
-        EvolvedGroupSummary {
-            former_group_id,
-            group: raw.group,
-            own_summaries,
-        },
-        usage,
-    ))
-}
-
-pub async fn summarize_new_group<R: Runtime>(
-    prompt: &str,
-    app_handle: Option<&AppHandle<R>>,
-) -> Result<(EvolvedGroupSummary, TokenUsage)> {
-    let (raw, usage) = request_json::<_, EvolvedGroupRaw>(
-        "",
-        prompt,
-        group_budget,
-        TEMPERATURE,
-        "summarize_new_group",
-        app_handle,
-    )
-    .await?;
-    let own_summaries = raw
-        .changes
-        .into_iter()
-        .map(|e| {
-            (
-                e.hash,
-                HunkSummary {
-                    title: e.title,
-                    description: e.description,
-                },
-            )
-        })
-        .collect();
-    Ok((
-        EvolvedGroupSummary {
-            former_group_id: 0,
-            group: raw.group,
-            own_summaries,
-        },
-        usage,
-    ))
-}
-
-pub async fn summarize_new_single<R: Runtime>(
-    prompt: &str,
-    app_handle: Option<&AppHandle<R>>,
-) -> Result<(HunkSummary, TokenUsage)> {
-    request_json::<_, HunkSummary>(
-        "",
-        prompt,
-        single_budget,
-        TEMPERATURE,
-        "summarize_new_single",
-        app_handle,
-    )
-    .await
-}
-
-// ── Private helpers ───────────────────────────────────────────────────────────
 
 fn report_provider_error(
     source: &str,

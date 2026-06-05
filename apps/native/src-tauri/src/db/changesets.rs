@@ -13,7 +13,6 @@ use crate::db::tables::{
 };
 use crate::shared_types::{SummarizedChange, SummarizedChangeSet};
 use crate::sqlite_types::{Change, ChangeSet, ChangeSummary, QueuedSummary};
-use crate::summarize::assignments::PendingChange;
 
 pub fn insert_change_summary(
     conn: &mut SqliteConnection,
@@ -531,21 +530,6 @@ pub fn fetch_hashes_for_changeset(
         .select(changes::hash)
         .load::<String>(conn)?;
     Ok(hashes)
-}
-
-/// Builds a JSON array of hash-summary_id pairs for the queue summarizer.
-/// This tells it what part of the model output goes into which change_summaries row.
-pub fn build_pairs_json(changes: &[PendingChange]) -> String {
-    let pairs: Vec<serde_json::Value> = changes
-        .iter()
-        .filter_map(|c| {
-            Some(serde_json::json!({
-                "hash": &c.change.hash[..crate::git::changes_from_diff::SHORT_HASH_LEN],
-                "summary_id": c.own_summary_id?
-            }))
-        })
-        .collect();
-    serde_json::to_string(&pairs).unwrap_or_default()
 }
 
 fn last_insert_rowid(conn: &mut SqliteConnection) -> Result<i64> {

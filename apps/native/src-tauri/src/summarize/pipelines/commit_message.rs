@@ -1,22 +1,25 @@
-//! Commit message pipeline — generates a conventional commit message from the current semantic map.
+//! Commit message pipeline — returns the stored whole-diff summary when available.
 
 use anyhow::Result;
 use tauri::{AppHandle, Manager, Runtime};
 
-use crate::summarize::{build_prompt, find_existing, group_existing, model_calls};
+use crate::summarize::find_existing;
 
 pub async fn generate<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
     let config_dir = crate::storage::store::get_config_dir(app)?;
     let pool = app.state::<crate::db::DbPool>();
 
     let change_sets = find_existing::for_current_state(&pool, &config_dir)?;
-    let map = group_existing::from_change_sets(change_sets);
 
-    if map.groups.is_empty() && map.singles.is_empty() {
-        return Err(anyhow::anyhow!("no summarized changes found"));
-    }
-
-    let prompt = build_prompt::commit_message(&map);
-    let (message, _) = model_calls::generate_commit_message(&prompt, Some(app)).await?;
-    Ok(message)
+    change_sets
+        .iter()
+        .find_map(|entry| {
+            entry
+                .change_set
+                .as_ref()
+                .and_then(|cs| cs.generated_commit_message.as_deref())
+                .filter(|message| !message.trim().is_empty())
+        })
+        .map(str::to_string)
+        .ok_or_else(|| anyhow::anyhow!("no generated commit message found"))
 }

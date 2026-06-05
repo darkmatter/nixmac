@@ -69,13 +69,13 @@ export function Stepper() {
 									className={cn(
 										"hidden xs:flex h-6 min-w-6 sm:min-w-8 sm:h-8 items-center justify-center rounded-full font-medium text-sm transition-colors",
 										isCompleted
-											? "bg-teal-500 text-white"
+											? "bg-slate-800 text-slate-100 border border-slate-700/20 shadow-md shadow-slate-800/20"
 											: isActive
 												? "bg-primary text-primary-foreground"
 												: "bg-muted text-muted-foreground",
 									)}
 								>
-									{isCompleted ? <Check className="h-4 w-4" /> : stepNumber}
+									{isCompleted ? <Check className="h-4 w-4 font-extrabold text-slate-100 stroke-[3px] drop-shadow-md shado" /> : stepNumber}
 								</div>
 								<div>
 									<div className="flex items-center justify-center gap-2">
@@ -94,7 +94,7 @@ export function Stepper() {
 											className={cn(
 												"flex xs:hidden h-[18px] w-[18px] items-center justify-center rounded-full text-xs font-medium transition-colors",
 												isCompleted
-													? "bg-teal-500 text-white"
+													? "bg-slate-700 text-white"
 													: isActive
 														? "bg-primary text-primary-foreground"
 														: "bg-muted text-muted-foreground",
@@ -117,7 +117,7 @@ export function Stepper() {
 										"h-0.5 w-[70%] xs:w-[50%]",
 										index === 0 && "ml-[30%]",
 										index === 1 && "mr-[20%]",
-										isCompleted ? "bg-teal-500" : "bg-border",
+										isCompleted ? "bg-slate-500" : "bg-border",
 									)}
 								/>
 							)}

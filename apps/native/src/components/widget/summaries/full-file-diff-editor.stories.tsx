@@ -8,12 +8,23 @@ import { FullFileDiffEditor } from "./full-file-diff-editor";
 
 function ControlledFullFileDiffEditor({
   initialOpen = false,
+  initialIncluded = true,
   ...props
-}: Omit<React.ComponentProps<typeof FullFileDiffEditor>, "isOpen" | "onOpenChange"> & {
+}: Omit<React.ComponentProps<typeof FullFileDiffEditor>, "isOpen" | "onOpenChange" | "included" | "onIncludedChange"> & {
   initialOpen?: boolean;
+  initialIncluded?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(initialOpen);
-  return <FullFileDiffEditor {...props} isOpen={isOpen} onOpenChange={setIsOpen} />;
+  const [included, setIncluded] = useState(initialIncluded);
+  return (
+    <FullFileDiffEditor
+      {...props}
+      isOpen={isOpen}
+      onOpenChange={setIsOpen}
+      included={included}
+      onIncludedChange={setIncluded}
+    />
+  );
 }
 
 const meta = preview.meta({
