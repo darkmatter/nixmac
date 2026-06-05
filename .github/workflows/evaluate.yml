@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@v6
       - name: Check Rust
         id: check-rust
-        run: 'if command -v rustup &>/dev/null; then echo "exists=true" >> $GITHUB_OUTPUT; echo "$HOME/.cargo/bin" >> $GITHUB_PATH; fi'
+        run: 'if [ -f "$HOME/.cargo/bin/rustup" ]; then echo "exists=true" >> $GITHUB_OUTPUT; echo "$HOME/.cargo/bin" >> $GITHUB_PATH; fi'
       - name: Install Rust
         if: steps.check-rust.outputs.exists != 'true'
         uses: dtolnay/rust-toolchain@stable
