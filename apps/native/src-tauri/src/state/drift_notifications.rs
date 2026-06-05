@@ -6,10 +6,6 @@ use crate::shared_types::GitStatus;
 
 static LAST_DRIFT_NOTIFICATION_ID: Mutex<Option<String>> = Mutex::new(None);
 
-#[cfg(target_os = "macos")]
-#[link(name = "UserNotifications", kind = "framework")]
-extern "C" {}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct DriftNotification {
     id: String,
@@ -76,46 +72,22 @@ fn notification_for_event(
     })
 }
 
-#[cfg(target_os = "macos")]
 fn send_native_notification(title: &str, body: &str) -> Result<(), String> {
-    use cocoa::base::{id, nil};
-    use cocoa::foundation::{NSAutoreleasePool, NSString};
-    use objc::{class, msg_send, sel, sel_impl};
+    use tauri_plugin_notification::NotificationExt;
 
-    unsafe {
-        let pool = NSAutoreleasePool::new(nil);
-        let content: id = msg_send![class!(UNMutableNotificationContent), new];
-        let title = NSString::alloc(nil).init_str(title);
-        let body = NSString::alloc(nil).init_str(body);
-        let identifier =
-            NSString::alloc(nil).init_str(&format!("nixmac-drift-{}", uuid::Uuid::new_v4()));
+    // The notification plugin is registered during GUI startup, so the global
+    // app handle is available by the time the watcher emits drift notifications.
+    let app_handle = crate::APP_HANDLE
+        .get()
+        .ok_or("App handle not initialized")?;
 
-        let _: () = msg_send![content, setTitle: title];
-        let _: () = msg_send![content, setBody: body];
-
-        let request: id = msg_send![
-            class!(UNNotificationRequest),
-            requestWithIdentifier: identifier
-            content: content
-            trigger: nil
-        ];
-
-        let center: id = msg_send![class!(UNUserNotificationCenter), currentNotificationCenter];
-        let _: () = msg_send![center, addNotificationRequest: request withCompletionHandler: nil];
-
-        let _: () = msg_send![title, release];
-        let _: () = msg_send![body, release];
-        let _: () = msg_send![identifier, release];
-        let _: () = msg_send![content, release];
-        let _: () = msg_send![pool, drain];
-    }
-
-    Ok(())
-}
-
-#[cfg(not(target_os = "macos"))]
-fn send_native_notification(_title: &str, _body: &str) -> Result<(), String> {
-    Ok(())
+    app_handle
+        .notification()
+        .builder()
+        .title(title)
+        .body(body)
+        .show()
+        .map_err(|e| e.to_string())
 }
 
 #[cfg(test)]

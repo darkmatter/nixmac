@@ -73,6 +73,20 @@ pub async fn debug_sentry_event() -> Result<shared_types::DebugSentryResult, Str
     })
 }
 
+/// Sends a test drift notification from the developer settings.
+/// Exercises the same code path as the watcher's drift notifications.
+#[tauri::command]
+pub async fn developer_send_test_notification(app: AppHandle) -> Result<(), String> {
+    let developer_mode =
+        store::get_bool_pref(&app, store::DEVELOPER_MODE_KEY, false).map_err(|e| e.to_string())?;
+    if !developer_mode {
+        return Err("Developer mode is required to send test notifications".to_string());
+    }
+
+    crate::state::drift_notifications::maybe_notify(None, true);
+    Ok(())
+}
+
 /// Clears the app's Tauri plugin-store files.
 #[tauri::command]
 pub async fn developer_clear_tauri_state(app: AppHandle) -> Result<(), String> {

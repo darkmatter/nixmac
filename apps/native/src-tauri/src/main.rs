@@ -53,6 +53,11 @@ use tauri::{
 };
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
+/// Global app handle, set during GUI setup so background threads (such as the
+/// drift watcher) can access plugins like notifications without threading an
+/// `AppHandle` through every call site.
+pub static APP_HANDLE: std::sync::OnceLock<tauri::AppHandle> = std::sync::OnceLock::new();
+
 fn e2e_opaque_window_enabled() -> bool {
     cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_OPAQUE_WINDOW")
 }
@@ -328,6 +333,7 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                     // Ensure store plugin (and its managed state) is initialized so we can load settings
                     .plugin(tauri_plugin_store::Builder::default().build())
                     .plugin(tauri_plugin_keyring::init())
+                    .plugin(tauri_plugin_notification::init())
                     .invoke_handler(tauri::generate_handler![])
                     .setup(|app| {
                         app.manage(state::preferences::load_global_slice(app.handle())?);
@@ -476,6 +482,7 @@ fn run_gui_mode(
         .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_upload::init())
         .plugin(tauri_plugin_macos_permissions::init())
+        .plugin(tauri_plugin_notification::init())
         // Configurable slices register here during setup so dev settings
         // commands can update typed state without opening store files directly.
         .manage(state::slice::SliceRegistry::default())
@@ -497,6 +504,7 @@ fn run_gui_mode(
             #[cfg(debug_assertions)]
             commands::debug::debug_sentry_event,
             commands::debug::developer_clear_tauri_state,
+            commands::debug::developer_send_test_notification,
             #[cfg(debug_assertions)]
             commands::debug::e2e_log_breadcrumb,
             #[cfg(debug_assertions)]
@@ -588,6 +596,8 @@ fn run_gui_mode(
         ])
         .setup(move |app| {
             let handle = app.handle();
+            // Expose the app handle globally so background threads can use plugins.
+            let _ = crate::APP_HANDLE.set(handle.clone());
             log::debug!("Tauri setup started");
 
             // Set up panic handler to catch crashes and show feedback dialog
