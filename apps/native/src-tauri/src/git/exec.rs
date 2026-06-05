@@ -209,17 +209,14 @@ pub fn restore_all(dir: &str) -> Result<()> {
 
 /// Git tags (any ref or hash) `target`, `force = true` overwrites.
 pub fn tag_commit(dir: &str, tag: &str, target: &str, force: bool) -> Result<()> {
-    let mut args = vec!["tag"];
-    if force {
-        args.push("-f");
-    }
-    args.push(tag);
-    args.push(target);
-    git_command()
-        .args(&args)
-        .current_dir(dir)
-        .output()
+    let repo = git2::Repository::discover(dir)?;
+    let target = repo
+        .revparse_single(target)
+        .with_context(|| format!("failed to resolve tag target `{}`", target))?;
+
+    repo.tag_lightweight(tag, &target, force)
         .with_context(|| format!("failed to create tag `{}`", tag))?;
+
     Ok(())
 }
 
@@ -314,17 +311,6 @@ pub fn restore_from_branch_ref(repo_path: &str, ref_name: &str) -> Result<()> {
         .current_dir(repo_path)
         .output()?;
 
-    Ok(())
-}
-
-/// Delete a backup branch ref.
-#[allow(dead_code)]
-pub fn delete_backup_branch(repo_path: &str, branch_name: &str) -> Result<()> {
-    let ref_path = format!("refs/heads/{}", branch_name);
-    git_command()
-        .args(["update-ref", "-d", &ref_path])
-        .current_dir(repo_path)
-        .output()?;
     Ok(())
 }
 
@@ -451,6 +437,32 @@ mod tests {
             run_git_ok(&repo_dir, &["status", "--porcelain=v1"]),
             "",
             "abort restore should leave the worktree clean at HEAD"
+        );
+    }
+
+    #[test]
+    fn test_tag_commit_creates_lightweight_tag_and_respects_force() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("file.txt"), "first\n").unwrap();
+        let first = commit_all(&repo_dir_str, "first").unwrap();
+
+        fs::write(repo_dir.join("file.txt"), "second\n").unwrap();
+        let second = commit_all(&repo_dir_str, "second").unwrap();
+
+        tag_commit(&repo_dir_str, "v1", &first.hash, false).unwrap();
+        assert_eq!(run_git_ok(&repo_dir, &["rev-parse", "v1"]).trim(), first.hash);
+
+        assert!(tag_commit(&repo_dir_str, "v1", &second.hash, false).is_err());
+        assert_eq!(run_git_ok(&repo_dir, &["rev-parse", "v1"]).trim(), first.hash);
+
+        tag_commit(&repo_dir_str, "v1", &second.hash, true).unwrap();
+        assert_eq!(
+            run_git_ok(&repo_dir, &["rev-parse", "v1"]).trim(),
+            second.hash
         );
     }
 
