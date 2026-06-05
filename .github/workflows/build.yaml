@@ -10,10 +10,23 @@ on:
   workflow_dispatch:
 env:
   CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
   SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 jobs:
+  optimize_ci:
+    runs-on: [self-hosted, linux]
+    outputs:
+      skip: ${{ steps.check_skip.outputs.skip }}
+    steps:
+      - name: Optimize CI
+        id: check_skip
+        uses: withgraphite/graphite-ci-action@main
+        with:
+          graphite_token: ${{ secrets.GRAPHITE_TOKEN }}
   build:
     runs-on: [self-hosted, macos-latest]
+    needs: optimize_ci
+    if: needs.optimize_ci.outputs.skip == 'false'
     permissions:
       contents: write
     steps:
@@ -38,6 +51,13 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 20
+      - name: Cache bun install
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
       # Decide what kind of build this is:
