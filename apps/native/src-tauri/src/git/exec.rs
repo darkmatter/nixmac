@@ -213,39 +213,141 @@ pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
 
 /// Restores tracked files to `commit_hash`, removes untracked files, and leaves HEAD in place.
 ///
-/// Ignored build outputs are preserved because this intentionally uses
-/// `git clean -fd`, not `git clean -fdx`.
+/// Simulates:
+/// - `git read-tree --reset -u <commit_hash>` by replacing the repository index
+///   with the target commit tree and checking that index out to the worktree.
+/// - `git clean -fd` with `remove_untracked`.
+///
+/// Behavior notes:
+/// - This operates on the entire discovered repository, even when `dir` is a
+///   nested directory. The previous CLI implementation only restored and
+///   cleaned working-tree files beneath `dir`, although it reset the full index.
+///   **THAT SEEMS UNINTENDED** and is maybe an artifact of how we used to assume
+///   that `dir` would always be the repository root.
+///
+/// - The index and worktree are changed to match the target.
+/// - Ignored files are preserved. Completely empty untracked directories may
+///   remain because Git does not report them through status.
 pub fn checkout_files_at_commit(dir: &str, commit_hash: &str) -> Result<()> {
-    git_command()
-        .args(["read-tree", "--reset", "-u", commit_hash])
-        .current_dir(dir)
-        .output()
-        .context("git read-tree --reset -u")?;
+    let repo = git2::Repository::discover(dir)?;
+    let commit = repo
+        .revparse_single(commit_hash)
+        .with_context(|| format!("git2 resolve restore target `{commit_hash}`"))?
+        .peel_to_commit()
+        .with_context(|| format!("git2 peel restore target `{commit_hash}` to commit"))?;
+    let tree = commit.tree().context("git2 read restore target tree")?;
 
-    git_command()
-        .args(["clean", "-fd"])
-        .current_dir(dir)
-        .output()
-        .context("git clean -fd")?;
-    Ok(())
+    let mut index = repo.index().context("git2 open repository index")?;
+    index
+        .read_tree(&tree)
+        .context("git2 replace index with restore target tree")?;
+    index.write().context("git2 write restore target index")?;
+
+    let mut checkout = git2::build::CheckoutBuilder::new();
+    checkout.force().remove_ignored(false);
+    repo.checkout_index(Some(&mut index), Some(&mut checkout))
+        .context("git2 checkout restore target index")?;
+
+    remove_untracked(&repo)
 }
 
-/// Restore all uncommitted, discard untracked.
+/// Restore the entire repository to HEAD and discard untracked files.
+///
+/// Simulates:
+/// - `git reset HEAD --`
+/// - `git checkout -- .`
+/// - `git clean -fd`
+///
+/// Behavior notes:
+/// - This operates on the entire discovered repository, even when `dir` is a
+///   nested directory. The previous CLI implementation only restored and
+///   cleaned working-tree files beneath `dir`, although it reset the full index.
+///   **THAT SEEMS UNINTENDED** and is maybe an artifact of how we used to assume
+///   that `dir` would always be the repository root.
+///
+/// - All staged AND unstaged changes are discarded across the repository.
+///
+/// - Reported untracked files and any now-empty tracked parent directories are
+///   removed; ignored files are preserved. This requires a bit more sophisticated
+///   approach (in the helper than `git clean -fd` alone because git2 does not expose
+///   that command with those semantics.
 pub fn restore_all(dir: &str) -> Result<()> {
-    git_command()
-        .args(["reset", "HEAD", "--"])
-        .current_dir(dir)
-        .output()?;
+    let repo = git2::Repository::discover(dir)?;
+    let head = repo
+        .revparse_single("HEAD")
+        .context("git2 resolve HEAD for restore")?;
 
-    git_command()
-        .args(["checkout", "--", "."])
-        .current_dir(dir)
-        .output()?;
+    let mut checkout = git2::build::CheckoutBuilder::new();
+    checkout.force().remove_ignored(false);
 
-    git_command()
-        .args(["clean", "-fd"])
-        .current_dir(dir)
-        .output()?;
+    repo.reset(&head, git2::ResetType::Hard, Some(&mut checkout))
+        .context("git2 hard reset repository to HEAD")?;
+
+    remove_untracked(&repo)
+}
+
+/// Removes the non-ignored untracked files reported by git2 after a reset.
+///
+/// `CheckoutBuilder::remove_untracked(true)` only removes untracked paths that
+/// obstruct checkout operations; it is not a complete replacement for
+/// `git clean -fd`. Git does not report empty untracked _directories_ through
+/// status, so those directories may remain.
+fn remove_untracked(repo: &git2::Repository) -> Result<()> {
+    let workdir = repo
+        .workdir()
+        .context("cannot remove untracked files from a bare repository")?;
+
+    let mut status_opts = git2::StatusOptions::new();
+    status_opts
+        .show(git2::StatusShow::Workdir)
+        .include_untracked(true)
+        .include_ignored(false)
+        .recurse_untracked_dirs(true);
+
+    let statuses = repo.statuses(Some(&mut status_opts))?;
+    let mut parent_dirs = Vec::new();
+
+    for entry in statuses.iter().filter(|entry| entry.status().is_wt_new()) {
+        let relative_path = Path::new(entry.path()?);
+        let full_path = workdir.join(relative_path);
+
+        let metadata = std::fs::symlink_metadata(&full_path)
+            .with_context(|| format!("inspect untracked path `{}`", full_path.display()))?;
+
+        if metadata.is_dir() {
+            // Don't do recursive removal here: a reported untracked directory may
+            // contain ignored files.
+            std::fs::remove_dir(&full_path)
+                .with_context(|| format!("remove empty untracked dir `{}`", full_path.display()))?;
+        } else {
+            std::fs::remove_file(&full_path)
+                .with_context(|| format!("remove untracked file `{}`", full_path.display()))?;
+        }
+
+        let mut parent = relative_path.parent();
+        while let Some(path) = parent {
+            if path.as_os_str().is_empty() {
+                break;
+            }
+            parent_dirs.push(workdir.join(path));
+            parent = path.parent();
+        }
+    }
+
+    // Sort by deeper paths first, then sort lexically so that duplicates
+    // are adjacent and can be deduped while preserving the correct order.
+    parent_dirs.sort_by(|a, b| {
+        b.components()
+            .count()
+            .cmp(&a.components().count())
+            .then_with(|| a.cmp(b))
+    });
+    parent_dirs.dedup();
+    for dir in parent_dirs {
+        // Failure usually means the directory contains a tracked or ignored
+        // file in which case we leave it alone.
+        let _ = std::fs::remove_dir(dir);
+    }
 
     Ok(())
 }
@@ -318,38 +420,37 @@ pub fn create_evolution_backup(
 /// Restore working tree to the content of a specific branch ref.
 /// Replaces the current index with the branch's tree, then checks out the working tree.
 ///
-/// NOTE that this would be harder to implement in git2 because:
-/// - git2 does NOT expose “plumbing-level” commands like `read-tree` or
-///   `checkout-index` as direct APIs.
-/// - The closest primitive is `repo.reset(ResetType::Hard)`, which combines
-///   index + working tree updates, but does NOT include untracked file cleanup.
-/// - `git clean -fd` is not implemented in git2 because it is inherently
-///   a filesystem operation driven by ignore rules and user policy, not just
-///   Git object model state.
+/// Simulates:
+/// - `git read-tree <ref_name>` by replacing the repository index with the
+///   resolved tree.
+/// - `git checkout-index -f -a` by force-checking the index out to the worktree.
+/// - `git clean -fd` with `remove_untracked`.
 ///
-/// Therefore a full equivalent would require:
-/// - resolving the ref → commit → tree (via revparse + peel)
-/// - performing a hard reset (tracked files)
-/// - manually walking the filesystem to delete untracked files/dirs
+/// Behavior notes:
+/// - The index and worktree are changed to match the ref.
+/// - The resolved ref may be any tree-like-thingy that git2 can peel to a tree.
+/// - Ignored files are preserved. Completely empty untracked directories may
+///   remain because Git does not report them through status.
 pub fn restore_from_branch_ref(repo_path: &str, ref_name: &str) -> Result<()> {
-    git_command()
-        .args(["read-tree", ref_name])
-        .current_dir(repo_path)
-        .output()
-        .context("git read-tree")?;
+    let repo = git2::Repository::discover(repo_path)?;
+    let tree = repo
+        .revparse_single(ref_name)
+        .with_context(|| format!("git2 resolve restore ref `{ref_name}`"))?
+        .peel_to_tree()
+        .with_context(|| format!("git2 peel restore ref `{ref_name}` to tree"))?;
 
-    git_command()
-        .args(["checkout-index", "-f", "-a"])
-        .current_dir(repo_path)
-        .output()
-        .context("git checkout-index")?;
+    let mut index = repo.index().context("git2 open repository index")?;
+    index
+        .read_tree(&tree)
+        .context("git2 replace index with restore ref tree")?;
+    index.write().context("git2 write restore ref index")?;
 
-    git_command()
-        .args(["clean", "-fd"])
-        .current_dir(repo_path)
-        .output()?;
+    let mut checkout = git2::build::CheckoutBuilder::new();
+    checkout.force().remove_ignored(false);
+    repo.checkout_index(Some(&mut index), Some(&mut checkout))
+        .context("git2 checkout restore ref index")?;
 
-    Ok(())
+    remove_untracked(&repo)
 }
 
 #[cfg(test)]
@@ -401,6 +502,7 @@ mod tests {
             "{ temp = true; }\n",
         )
         .unwrap();
+        let branch_before_restore = current_branch(&repo_dir_str);
         checkout_files_at_commit(&repo_dir_str, &baseline.hash).unwrap();
 
         let head_after_restore = run_git_ok(&repo_dir, &["rev-parse", "HEAD"]);
@@ -409,6 +511,7 @@ mod tests {
             changed.hash,
             "History restore preparation should not move HEAD before finalize_restore creates the restore commit"
         );
+        assert_eq!(current_branch(&repo_dir_str), branch_before_restore);
         assert_eq!(
             fs::read_to_string(repo_dir.join("flake.nix")).unwrap(),
             "{ }",
@@ -436,6 +539,61 @@ mod tests {
             run_git_ok(&repo_dir, &["diff", "--name-only", &baseline.hash, "HEAD"]),
             "",
             "the finalized restore commit should match the baseline tree"
+        );
+    }
+
+    #[test]
+    fn test_checkout_files_at_commit_preserves_ignored_files() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join(".gitignore"), "result/\n").unwrap();
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+        let baseline = commit_all(&repo_dir_str, "initial").unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ changed = true; }\n").unwrap();
+        commit_all(&repo_dir_str, "changed").unwrap();
+
+        fs::create_dir_all(repo_dir.join("result")).unwrap();
+        fs::write(repo_dir.join("result/output"), "preserve\n").unwrap();
+
+        checkout_files_at_commit(&repo_dir_str, &baseline.hash).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("flake.nix")).unwrap(),
+            "{ }\n"
+        );
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("result/output")).unwrap(),
+            "preserve\n"
+        );
+    }
+
+    #[test]
+    fn test_checkout_files_at_commit_invalid_target_leaves_repository_unchanged() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+        fs::write(repo_dir.join("flake.nix"), "{ changed = true; }\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+
+        let status_before = run_git_ok(&repo_dir, &["status", "--porcelain=v1"]);
+
+        assert!(checkout_files_at_commit(&repo_dir_str, "does-not-exist").is_err());
+
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("flake.nix")).unwrap(),
+            "{ changed = true; }\n"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["status", "--porcelain=v1"]),
+            status_before
         );
     }
 
@@ -475,6 +633,147 @@ mod tests {
             run_git_ok(&repo_dir, &["status", "--porcelain=v1"]),
             "",
             "abort restore should leave the worktree clean at HEAD"
+        );
+    }
+
+    #[test]
+    fn test_restore_all_from_nested_dir_restores_entire_repository() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let config_dir = repo_dir.join("nix/os");
+        fs::create_dir_all(&config_dir).unwrap();
+
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        let config_dir_str = config_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("outside.txt"), "initial\n").unwrap();
+        fs::write(config_dir.join("inside.nix"), "{ }\n").unwrap();
+        let head = commit_all(&repo_dir_str, "initial").unwrap();
+
+        fs::write(repo_dir.join("outside.txt"), "changed\n").unwrap();
+        fs::write(config_dir.join("inside.nix"), "{ changed = true; }\n").unwrap();
+        fs::write(repo_dir.join("outside-untracked.txt"), "remove\n").unwrap();
+
+        restore_all(&config_dir_str).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("outside.txt")).unwrap(),
+            "initial\n",
+            "tracked files outside the nested input directory are restored"
+        );
+        assert_eq!(
+            fs::read_to_string(config_dir.join("inside.nix")).unwrap(),
+            "{ }\n"
+        );
+        assert!(!repo_dir.join("outside-untracked.txt").exists());
+        assert_eq!(
+            run_git_ok(&repo_dir, &["rev-parse", "HEAD"]).trim(),
+            head.hash
+        );
+    }
+
+    #[test]
+    fn test_restore_all_removes_untracked_but_preserves_ignored_files() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join(".gitignore"), "ignored/\n").unwrap();
+        fs::write(repo_dir.join("tracked.txt"), "initial\n").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+
+        fs::create_dir_all(repo_dir.join("untracked/nested")).unwrap();
+        fs::write(repo_dir.join("untracked/nested/file.txt"), "remove\n").unwrap();
+        fs::create_dir_all(repo_dir.join("ignored")).unwrap();
+        fs::write(repo_dir.join("ignored/build-output"), "preserve\n").unwrap();
+        fs::write(repo_dir.join("intent.nix"), "{ }\n").unwrap();
+        intent_add_untracked(&repo_dir_str).unwrap();
+
+        restore_all(&repo_dir_str).unwrap();
+
+        assert!(!repo_dir.join("untracked").exists());
+        assert!(
+            !repo_dir.join("intent.nix").exists(),
+            "intent-to-add files should become untracked during reset and then be removed"
+        );
+        assert!(repo_dir.join("ignored/build-output").exists());
+        assert_eq!(
+            run_git_ok(&repo_dir, &["status", "--porcelain=v1"]),
+            "",
+            "restore should leave the repository clean"
+        );
+    }
+
+    #[test]
+    fn test_restore_from_branch_ref_restores_backup_without_moving_head() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join(".gitignore"), "result/\n").unwrap();
+        fs::write(repo_dir.join("file.txt"), "initial\n").unwrap();
+        let head = commit_all(&repo_dir_str, "initial").unwrap();
+        let branch_before_restore = current_branch(&repo_dir_str);
+
+        fs::write(repo_dir.join("file.txt"), "backup content\n").unwrap();
+        let backup_branch = create_evolution_backup(&repo_dir_str, Some(2), 1)
+            .unwrap()
+            .expect("expected backup branch");
+
+        fs::write(repo_dir.join("file.txt"), "later content\n").unwrap();
+        fs::write(repo_dir.join("untracked.txt"), "remove\n").unwrap();
+        fs::create_dir_all(repo_dir.join("result")).unwrap();
+        fs::write(repo_dir.join("result/output"), "preserve\n").unwrap();
+
+        restore_from_branch_ref(&repo_dir_str, &backup_branch).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("file.txt")).unwrap(),
+            "backup content\n"
+        );
+        assert!(!repo_dir.join("untracked.txt").exists());
+        assert!(repo_dir.join("result/output").exists());
+        assert_eq!(
+            run_git_ok(&repo_dir, &["rev-parse", "HEAD"]).trim(),
+            head.hash
+        );
+        assert_eq!(current_branch(&repo_dir_str), branch_before_restore);
+        assert_eq!(
+            run_git_ok(
+                &repo_dir,
+                &["diff", "--name-only", &backup_branch, "--cached"]
+            ),
+            "",
+            "index should match the backup ref tree"
+        );
+    }
+
+    #[test]
+    fn test_restore_from_branch_ref_invalid_ref_leaves_repository_unchanged() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("file.txt"), "initial\n").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+        fs::write(repo_dir.join("file.txt"), "changed\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+
+        let status_before = run_git_ok(&repo_dir, &["status", "--porcelain=v1"]);
+
+        assert!(restore_from_branch_ref(&repo_dir_str, "does-not-exist").is_err());
+
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("file.txt")).unwrap(),
+            "changed\n"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["status", "--porcelain=v1"]),
+            status_before
         );
     }
 
