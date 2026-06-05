@@ -326,10 +326,6 @@ fn log_api_error(
 const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 
-// Percentage of max_iterations after which we require at least one edit/build_check.
-// Example: with max_iterations=50 and this set to 75, threshold is 37 iterations.
-const MAX_ITERATIONS_BEFORE_EDIT_PERCENT: usize = 75;
-
 // Applied separately to stdout and stderr. So when thinking about tokens,
 // the effective output limit could be up to double this if both are long.
 const BUILD_OUTPUT_MAX_CHARS: usize = 6_000;
@@ -566,8 +562,6 @@ const LIMIT_DECISION_STOP: &str = "Stop";
 
 #[derive(Debug, Clone, Copy)]
 enum EvolutionLimitKind {
-    NoProgress,
-    MaxIterations,
     BuildAttempts,
 }
 
@@ -582,7 +576,6 @@ impl EvolutionLimitKind {
     fn attempts_label(self, attempts: usize) -> String {
         match self {
             Self::BuildAttempts => format!("{} build attempts", attempts),
-            Self::NoProgress | Self::MaxIterations => format!("{} attempts", attempts),
         }
     }
 
@@ -595,14 +588,6 @@ impl EvolutionLimitKind {
 
     fn stop_summary(self, attempts: usize) -> String {
         match self {
-            Self::NoProgress => format!(
-                "Evolution stopped after {} because the AI had not started making concrete changes.",
-                self.attempts_label(attempts)
-            ),
-            Self::MaxIterations => format!(
-                "Evolution stopped after reaching {}. The current conversation context was preserved.",
-                self.attempts_label(attempts)
-            ),
             Self::BuildAttempts => format!(
                 "Evolution stopped after reaching {}. You can review the current changes or continue with a follow-up prompt.",
                 self.attempts_label(attempts)
@@ -857,26 +842,14 @@ pub async fn generate_evolution<R: Runtime>(
     } = config::EvolutionLimits::load(app)
         .inspect_err(|e| warn!("EvolutionLimits::load failed ({e}); using defaults"))
         .unwrap_or_default();
-    let legacy_max_iterations =
-        store::get_max_iterations(app).unwrap_or(store::DEFAULT_MAX_ITERATIONS);
     let max_token_budget =
         store::get_max_token_budget(app).unwrap_or(store::DEFAULT_MAX_TOKEN_BUDGET);
-    let mut max_iterations = legacy_max_iterations;
-    let mut max_iterations_before_edit = std::cmp::max(
-        1,
-        (max_iterations * MAX_ITERATIONS_BEFORE_EDIT_PERCENT) / 100,
-    );
-    let max_iterations_before_edit_increment = max_iterations_before_edit.max(1);
-    let max_iterations_increment = max_iterations.max(1);
     let max_build_attempts_increment = max_build_attempts.max(1);
     let interactive_limit_prompt = !banned_tools.contains(&"ask_user");
     info!(
-        "Limits: max_token_budget={}, max_iterations_before_edit={} ({}%), max_build_attempts={}, max_iterations={}",
+        "Limits: max_token_budget={}, max_build_attempts={}",
         max_token_budget,
-        max_iterations_before_edit,
-        MAX_ITERATIONS_BEFORE_EDIT_PERCENT,
         max_build_attempts,
-        max_iterations,
     );
 
     let tools = create_tools(banned_tools);
@@ -946,8 +919,7 @@ pub async fn generate_evolution<R: Runtime>(
 
     let gitignore_matcher = gitignore::load_gitignore_matcher(repo_root.as_path())?;
 
-    // Track whether we've made any actual edits and/or build checks
-    let mut made_edit = false;
+    // Track whether we've run a build check
     let mut made_build_check = false;
 
     // Agentic loop - let the model use tools until done AND build passes
@@ -1183,10 +1155,7 @@ pub async fn generate_evolution<R: Runtime>(
                                 success,
                             );
 
-                            // Track if we've made an edit or build check
-                            if is_editing_tool(tool_name) {
-                                made_edit = true;
-                            }
+                            // Track if we've made a build check
                             if tool_name == "build_check" {
                                 made_build_check = true;
                                 tool_key = Some(format!("build_check_{}", iteration));
@@ -1467,110 +1436,6 @@ Do not invent tool names and do not place tool invocations in assistant content.
                 evolution.state = EvolutionState::Generated;
             }
             break;
-        }
-
-        // Safety limits -- Max Iterations Before Edit Check
-        if iteration >= max_iterations_before_edit && !(made_edit || made_build_check) {
-            warn!(
-                "⚠️ No edit or build_check by iteration {} - asking whether to continue",
-                max_iterations_before_edit
-            );
-            match ask_to_continue_after_limit(
-                app,
-                start_time,
-                iteration,
-                EvolutionLimitKind::NoProgress,
-                iteration,
-                interactive_limit_prompt,
-            )
-            .await
-            {
-                LimitDecision::Continue => {
-                    max_iterations_before_edit += max_iterations_before_edit_increment;
-                    max_iterations = max_iterations.max(max_iterations_before_edit);
-                    info!(
-                        "Extending no-progress limit to iteration {} and max iterations to {}",
-                        max_iterations_before_edit, max_iterations
-                    );
-                }
-                LimitDecision::Stop => {
-                    finish_after_limit_stop(
-                        app,
-                        &mut evolution,
-                        start_time,
-                        iteration,
-                        EvolutionLimitKind::NoProgress,
-                        iteration,
-                    );
-                    break;
-                }
-                LimitDecision::Cancelled => {
-                    evolution.state = EvolutionState::Failed;
-                    return Err(EvolutionRunError::from_state(
-                        session_control::EVOLUTION_CANCELLED_MSG,
-                        &evolution,
-                        iteration,
-                        build_attempts,
-                        total_tokens,
-                    )
-                    .into());
-                }
-            }
-        }
-
-        // Safety limits -- Max Iterations
-        if iteration >= max_iterations {
-            warn!(
-                "⚠️ Evolution reached maximum iterations ({}) - asking whether to continue",
-                max_iterations
-            );
-            match ask_to_continue_after_limit(
-                app,
-                start_time,
-                iteration,
-                EvolutionLimitKind::MaxIterations,
-                iteration,
-                interactive_limit_prompt,
-            )
-            .await
-            {
-                LimitDecision::Continue => {
-                    max_iterations += max_iterations_increment;
-                    info!("Extending max iterations to {}", max_iterations);
-
-                    // Avoid immediately prompting again this same iteration if build attempts
-                    // are already at/over the current ceiling.
-                    if build_attempts >= max_build_attempts {
-                        max_build_attempts += max_build_attempts_increment;
-                        info!(
-                            "Also extending max build attempts to {}",
-                            max_build_attempts
-                        );
-                    }
-                }
-                LimitDecision::Stop => {
-                    finish_after_limit_stop(
-                        app,
-                        &mut evolution,
-                        start_time,
-                        iteration,
-                        EvolutionLimitKind::MaxIterations,
-                        iteration,
-                    );
-                    break;
-                }
-                LimitDecision::Cancelled => {
-                    evolution.state = EvolutionState::Failed;
-                    return Err(EvolutionRunError::from_state(
-                        session_control::EVOLUTION_CANCELLED_MSG,
-                        &evolution,
-                        iteration,
-                        build_attempts,
-                        total_tokens,
-                    )
-                    .into());
-                }
-            }
         }
 
         // Safety limits -- Max Build Attempts

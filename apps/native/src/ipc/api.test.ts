@@ -34,7 +34,6 @@ const prefs = (overrides: Partial<UiPrefs> = {}): UiPrefs =>
     summaryModel: "openai/gpt-4o-mini",
     evolveProvider: "openrouter",
     evolveModel: "anthropic/claude-sonnet-4",
-    maxIterations: 25,
     maxBuildAttempts: 5,
     sendDiagnostics: false,
     confirmBuild: true,
