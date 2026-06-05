@@ -117,7 +117,10 @@ where
                                 let _ = evolve_state::set(&app_handle, es, &status.changes);
                             }
                             // Native drift notification (config drift / external build).
-                            drift_notifications::maybe_notify(Some(&status), external_build_detected);
+                            drift_notifications::maybe_notify(
+                                Some(&status),
+                                external_build_detected,
+                            );
                             // One emit per slice — frontend listens on its dedicated channel.
                             // fire-and-forget: window may not be connected yet.
                             let _ = app_handle.emit(

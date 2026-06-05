@@ -79,13 +79,12 @@ fn notification_for_event(
 #[cfg(target_os = "macos")]
 fn send_native_notification(title: &str, body: &str) -> Result<(), String> {
     use objc2::ffi::nil;
-    use objc2::rc::Retained;
+    use objc2::rc::{autoreleasepool, Retained};
     use objc2::runtime::AnyObject;
     use objc2::{class, msg_send};
-    use objc2_foundation::{NSAutoreleasePool, NSString};
+    use objc2_foundation::NSString;
 
-    unsafe {
-        let pool = NSAutoreleasePool::new();
+    autoreleasepool(|_| unsafe {
         let content: Retained<AnyObject> = msg_send![class!(UNMutableNotificationContent), new];
         let title = NSString::from_str(title);
         let body = NSString::from_str(body);
@@ -94,20 +93,17 @@ fn send_native_notification(title: &str, body: &str) -> Result<(), String> {
         let _: () = msg_send![&content, setTitle: &*title];
         let _: () = msg_send![&content, setBody: &*body];
 
-        let request: Retained<AnyObject> = msg_send![
+        let request: *mut AnyObject = msg_send![
             class!(UNNotificationRequest),
             requestWithIdentifier: &*identifier,
             content: &*content,
             trigger: nil
         ];
 
-        let center: Retained<AnyObject> =
+        let center: *mut AnyObject =
             msg_send![class!(UNUserNotificationCenter), currentNotificationCenter];
-        let _: () =
-            msg_send![&center, addNotificationRequest: &*request, withCompletionHandler: nil];
-
-        pool.drain();
-    }
+        let _: () = msg_send![center, addNotificationRequest: request, withCompletionHandler: nil];
+    });
 
     Ok(())
 }

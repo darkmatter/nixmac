@@ -853,7 +853,8 @@ pub async fn generate_evolution<R: Runtime>(
 
     // Read configurable limits from store (hot-reloaded on every run).
     let config::EvolutionLimits {
-        mut max_build_attempts, ..
+        mut max_build_attempts,
+        ..
     } = config::EvolutionLimits::load(app)
         .inspect_err(|e| warn!("EvolutionLimits::load failed ({e}); using defaults"))
         .unwrap_or_default();
@@ -1101,7 +1102,13 @@ pub async fn generate_evolution<R: Runtime>(
             );
             emit_evolve_event(
                 app,
-                EvolveEvent::api_response(start_time, iteration, usage.total, total_tokens, max_token_budget),
+                EvolveEvent::api_response(
+                    start_time,
+                    iteration,
+                    usage.total,
+                    total_tokens,
+                    max_token_budget,
+                ),
             );
         }
 
