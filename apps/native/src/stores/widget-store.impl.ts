@@ -1,15 +1,12 @@
 import { computeCurrentStep } from "@/components/widget/utils";
+import { useViewModel } from "@/stores/view-model";
 import { FeedbackType } from "@/types/feedback";
 import type {
   EvolutionTelemetry,
   EvolveEvent,
-  EvolveState,
   FileDiffContents,
-  GitStatus,
-  HistoryItem,
   PermissionsState,
   RecommendedPrompt,
-  SemanticChangeMap,
   UpdateChannel,
 } from "@/ipc/types";
 import { create } from "zustand";
@@ -34,7 +31,6 @@ export type {
 export type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences" | "tuning" | "developer";
 export type WidgetStep = "permissions" | "nix-setup" | "setup" | "begin" | "evolve" | "commit" | "manualEvolve" | "manualCommit" | "history" | "filesystem";
 type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
-export type FileDiffContentEntry = FileDiffContents | null;
 export type ConfirmPrefKey = "confirmBuild" | "confirmClear" | "confirmRollback";
 export type BoolPrefKey = ConfirmPrefKey | "autoSummarizeOnFocus" | "scanHomebrewOnStartup" | "defaultToDiffTab";
 
@@ -90,13 +86,8 @@ export interface WidgetState {
   darwinRebuildAvailable: boolean | null; // null = not checked yet
   darwinRebuildPrefetching: boolean;
 
-  // Evolve state derived from backend source of truth
-  evolveState: EvolveState | null;
-  externalBuildDetected: boolean;
+  fileDiffContents: Record<string, FileDiffContents>;
 
-  // Git (from backend)
-  gitStatus: GitStatus | null;
-  fileDiffContents: Record<string, FileDiffContentEntry>;
   // Evolution
   evolvePrompt: string;
   isProcessing: boolean;
@@ -105,8 +96,6 @@ export interface WidgetState {
   promptHistory: string[];
   conversationalResponse: string | null;
   evolutionTelemetry: EvolutionTelemetry | null;
-
-  changeMap: SemanticChangeMap | null;
 
   // Commit message suggestion (generated on merge screen)
   commitMessageSuggestion: string | null;
@@ -117,13 +106,9 @@ export interface WidgetState {
   // Console
   consoleLogs: string;
 
-  // History
-  history: HistoryItem[];
-  historyLoading: boolean;
   analyzingHistoryForHashes: Set<string>;
 
   // UI
-  summaryAvailable: boolean;
   isSummarizing: boolean;
   isGenerating: boolean;
   settingsOpen: boolean;
@@ -192,13 +177,9 @@ interface WidgetActions {
   setNixDownloadProgress: (progress: { downloaded: number; total: number } | null) => void;
   setDarwinRebuildAvailable: (available: boolean | null) => void;
   setDarwinRebuildPrefetching: (prefetching: boolean) => void;
-  setEvolveState: (state: EvolveState | null) => void;
-  setExternalBuildDetected: (detected: boolean) => void;
-  setGitStatus: (status: GitStatus | null) => void;
-  setFileDiffContents: (contents: Record<string, FileDiffContentEntry>) => void;
+  setFileDiffContents: (contents: Record<string, FileDiffContents>) => void;
   setEvolvePrompt: (prompt: string) => void;
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
-  setChangeMap: (map: SemanticChangeMap | null) => void;
   setSettingsOpen: (open: boolean, tab?: SettingsTab | null) => void;
   setPrefsLoaded: (loaded: boolean) => void;
   setShowHistory: (show: boolean) => void;
@@ -213,12 +194,9 @@ interface WidgetActions {
     details: { message: string; location?: string; backtrace?: string; timestamp: string } | null,
   ) => void;
   setPromptHistory: (history: string[]) => void;
-  setSummaryAvailable: (available: boolean) => void;
   setRecommendedPrompt: (prompt: RecommendedPrompt | null | undefined) => void;
 
   // History
-  setHistory: (history: HistoryItem[]) => void;
-  setHistoryLoading: (loading: boolean) => void;
   addAnalyzingHistoryHash: (hash: string) => void;
   removeAnalyzingHistoryHash: (hash: string) => void;
 
@@ -237,7 +215,6 @@ interface WidgetActions {
   // Client-side state (NOT from server)
   setSummarizing: (summarizing: boolean) => void;
   setGenerating: (generating: boolean) => void;
-  clearPreview: () => void;
   setFeedbackTypeOverride: (type: FeedbackType | null) => void;
   openFeedback: (type?: FeedbackType, initialText?: string) => void;
 
@@ -301,12 +278,6 @@ const initialWidgetState: WidgetState = {
   darwinRebuildAvailable: null,
   darwinRebuildPrefetching: false,
 
-  // Routing state
-  evolveState: null,
-  externalBuildDetected: false,
-
-  // Git
-  gitStatus: null,
   fileDiffContents: {},
 
   // Evolution
@@ -318,13 +289,7 @@ const initialWidgetState: WidgetState = {
   conversationalResponse: null,
   evolutionTelemetry: null,
 
-  // History
-  history: [],
-  historyLoading: false,
   analyzingHistoryForHashes: new Set<string>(),
-
-  changeMap: null,
-  summaryAvailable: false,
 
   // Commit message suggestion
   commitMessageSuggestion: null,
@@ -398,9 +363,6 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setConfigDir: (configDir) => set({ configDir }),
     setHosts: (hosts) => set({ hosts }),
     setHost: (host) => set({ host }),
-    setEvolveState: (evolveState) => set({ evolveState: evolveState }),
-    setExternalBuildDetected: (externalBuildDetected) => set({ externalBuildDetected }),
-    setGitStatus: (gitStatus) => set({ gitStatus }),
     setFileDiffContents: (fileDiffContents) => set({ fileDiffContents }),
     setEvolvePrompt: (evolvePrompt) => set({ evolvePrompt }),
     setProcessing: (isProcessing, action = null) =>
@@ -408,8 +370,6 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
         isProcessing,
         processingAction: isProcessing ? action : null,
       }),
-    setChangeMap: (changeMap) => set({ changeMap }),
-    setSummaryAvailable: (summaryAvailable) => set({ summaryAvailable }),
     setBoolPref: (key: BoolPrefKey, value: boolean) => set({ [key]: value }),
     initConfirmPrefs: (prefs) =>
       set({
@@ -421,8 +381,6 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setDeveloperMode: (value) => set({ developerMode: value }),
     setPinnedVersion: (value) => set({ pinnedVersion: value }),
     setUpdateChannel: (value) => set({ updateChannel: value }),
-    setHistory: (history) => set({ history }),
-    setHistoryLoading: (historyLoading) => set({ historyLoading }),
     addAnalyzingHistoryHash: (hash) =>
       set((state) => ({
         analyzingHistoryForHashes: new Set([...state.analyzingHistoryForHashes, hash]),
@@ -462,11 +420,6 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setDarwinRebuildPrefetching: (darwinRebuildPrefetching) => set({ darwinRebuildPrefetching }),
     setSummarizing: (isSummarizing) => set({ isSummarizing }),
     setGenerating: (isGenerating) => set({ isGenerating }),
-    clearPreview: () =>
-      set({
-        changeMap: null,
-        summaryAvailable: false,
-      }),
 
     // Console
     appendLog: (text) => set((state) => ({ consoleLogs: state.consoleLogs + text })),
@@ -554,5 +507,6 @@ export const useWidgetStore = createWidgetStore();
  * Uses a selector so components only re-render when the step actually changes.
  */
 export function useCurrentStep(): WidgetStep {
-  return useWidgetStore((state) => computeCurrentStep(state));
+  const evolveState = useViewModel((state) => state.evolve);
+  return useWidgetStore((state) => computeCurrentStep({ ...state, evolveState }));
 }

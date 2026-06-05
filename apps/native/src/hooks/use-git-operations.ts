@@ -6,14 +6,11 @@ import { mirrorEvolveState } from "@/viewmodel/evolve";
 import { mirrorGitState } from "@/viewmodel/git";
 import { toast } from "sonner";
 
-let fileDiffContentsRequestId = 0;
-
 /**
  * Hook for git operations.
  * Provides functions for refreshing git status changes.
  */
 export const prefetchFileDiffContents = async (status: { changes: { filename: string }[] } | null) => {
-  const requestId = ++fileDiffContentsRequestId;
   const setFileDiffContents = useWidgetStore.getState().setFileDiffContents;
   if (!status) {
     setFileDiffContents({});
@@ -24,16 +21,11 @@ export const prefetchFileDiffContents = async (status: { changes: { filename: st
     setFileDiffContents({});
     return;
   }
-  setFileDiffContents({});
   try {
     const result = await tauriAPI.git.fileDiffContents(filenames);
-    if (requestId === fileDiffContentsRequestId) {
-      setFileDiffContents(result ?? {});
-    }
+    setFileDiffContents(result ?? {});
   } catch {
-    if (requestId === fileDiffContentsRequestId) {
-      setFileDiffContents(Object.fromEntries(filenames.map((filename) => [filename, null])));
-    }
+    setFileDiffContents({});
   }
 };
 
