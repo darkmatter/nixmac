@@ -16,6 +16,7 @@ permissions:
 
 env:
   CARGO_INCREMENTAL: 0
+  RUSTUP_INIT_SKIP_PATH_CHECK: yes
 
 jobs:
   rust-check:
