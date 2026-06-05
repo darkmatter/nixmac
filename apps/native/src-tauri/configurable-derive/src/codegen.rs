@@ -99,19 +99,21 @@ fn build_scope_methods(
     let schema_fields = fields.schema_fields;
     let set_field_arms = fields.set_field_arms;
 
-    // The derive is slice-only: reads mirror the managed slice, and writes go
-    // through the slice guard so persistence and change events stay centralized.
+    // The derive is observable-only: reads mirror the managed observable, and
+    // writes go through the observable guard so persistence and change events
+    // stay centralized.
     //
-    // `load` can be called before startup finishes managing all slices, such as
-    // in tests or early schema rendering. Defaults keep that path deterministic.
+    // `load` can be called before startup finishes managing all observables,
+    // such as in tests or early schema rendering. Defaults keep that path
+    // deterministic.
     quote! {
         pub fn load<R: ::tauri::Runtime>(
             app: &::tauri::AppHandle<R>,
         ) -> ::std::result::Result<Self, ::anyhow::Error> {
-            if let ::std::option::Option::Some(__slice) =
-                ::tauri::Manager::try_state::<crate::state::slice::Slice<#name>>(app)
+            if let ::std::option::Option::Some(__observable) =
+                ::tauri::Manager::try_state::<crate::observable::Observable<#name>>(app)
             {
-                return ::std::result::Result::Ok(__slice.read_sync().clone());
+                return ::std::result::Result::Ok(__observable.read_sync().clone());
             }
             ::std::result::Result::Ok(Self {
                 #(#default_inits)*
@@ -137,12 +139,13 @@ fn build_scope_methods(
             key: &str,
             value: ::serde_json::Value,
         ) -> ::std::result::Result<(), ::anyhow::Error> {
-            let __slice = ::tauri::Manager::try_state::<crate::state::slice::Slice<#name>>(app)
-                .ok_or_else(|| ::anyhow::anyhow!(
-                    "Configurable {}: {} slice is not managed",
-                    #name_str, #scope_name,
-                ))?;
-            let mut __state = __slice.write_sync(app);
+            let __observable =
+                ::tauri::Manager::try_state::<crate::observable::Observable<#name>>(app)
+                    .ok_or_else(|| ::anyhow::anyhow!(
+                        "Configurable {}: {} observable is not managed",
+                        #name_str, #scope_name,
+                    ))?;
+            let mut __state = __observable.write_sync();
             match key {
                 #(#set_field_arms)*
                 other => ::std::result::Result::Err(::anyhow::anyhow!(

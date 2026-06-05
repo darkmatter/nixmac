@@ -14,9 +14,10 @@ use specta::Type;
 use std::sync::Arc;
 use tauri::{AppHandle, Runtime};
 
+use crate::observable::Observable;
 use crate::state::preferences;
 use crate::state::slice::{
-    ConfiguredRepoScopedJson, Persistence, RegisteredSliceConfig, Slice, SliceRegistry,
+    ConfiguredRepoScopedJson, Persistence, RegisteredSliceConfig, SliceRegistry,
 };
 
 pub const EVOLUTION_LIMITS_CHANGED_EVENT: &str = "evolution_limits_changed";
@@ -71,15 +72,12 @@ impl Default for EvolutionLimits {
     }
 }
 
-pub fn load_slice<R: Runtime>(app: &AppHandle<R>) -> Result<Slice<EvolutionLimits>> {
+pub fn load_observable<R: Runtime>(app: &AppHandle<R>) -> Result<Observable<EvolutionLimits>> {
     let persistence: Arc<dyn Persistence> = Arc::new(ConfiguredRepoScopedJson::new(app.clone()));
     let initial = preferences::load_or_default::<EvolutionLimits>(persistence.as_ref())?;
-
-    Ok(Slice::new(
-        EVOLUTION_LIMITS_CHANGED_EVENT,
-        initial,
-        persistence,
-    ))
+    Ok(Observable::new(initial)
+        .emit_to(app, EVOLUTION_LIMITS_CHANGED_EVENT)
+        .persist_to(persistence))
 }
 
 pub fn register_slice_config(registry: &SliceRegistry) -> Result<()> {

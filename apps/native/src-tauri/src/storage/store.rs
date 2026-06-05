@@ -639,7 +639,7 @@ pub fn set_max_token_budget<R: Runtime>(app: &AppHandle<R>, max: u32) -> Result<
 /// Gets the maximum build attempts for evolution (default: 5). Repo-scoped.
 pub fn get_max_build_attempts<R: Runtime>(app: &AppHandle<R>) -> Result<usize> {
     if let Some(limits) =
-        app.try_state::<crate::state::slice::Slice<crate::evolve::config::EvolutionLimits>>()
+        app.try_state::<crate::observable::Observable<crate::evolve::config::EvolutionLimits>>()
     {
         return Ok(limits.read_sync().max_build_attempts);
     }
@@ -654,9 +654,9 @@ pub fn get_max_build_attempts<R: Runtime>(app: &AppHandle<R>) -> Result<usize> {
 
 pub fn set_max_build_attempts<R: Runtime>(app: &AppHandle<R>, max: usize) -> Result<()> {
     if let Some(limits) =
-        app.try_state::<crate::state::slice::Slice<crate::evolve::config::EvolutionLimits>>()
+        app.try_state::<crate::observable::Observable<crate::evolve::config::EvolutionLimits>>()
     {
-        let mut limits = limits.write_sync(app);
+        let mut limits = limits.write_sync();
         limits.max_build_attempts = max;
         return Ok(());
     }

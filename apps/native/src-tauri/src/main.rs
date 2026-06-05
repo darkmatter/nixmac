@@ -339,7 +339,7 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                     .invoke_handler(tauri::generate_handler![])
                     .setup(|app| {
                         app.manage(state::preferences::load_global_slice(app.handle())?);
-                        app.manage(evolve::config::load_slice(app.handle())?);
+                        app.manage(evolve::config::load_observable(app.handle())?);
                         evolve::config::register_slice_config(
                             &app.state::<state::slice::SliceRegistry>(),
                         )?;
@@ -592,7 +592,7 @@ fn run_gui_mode(
             panic_handler::setup_panic_hook(handle.clone());
 
             app.manage(state::preferences::load_global_slice(handle)?);
-            app.manage(evolve::config::load_slice(handle)?);
+            app.manage(evolve::config::load_observable(handle)?);
             evolve::config::register_slice_config(&app.state::<state::slice::SliceRegistry>())?;
             app.manage(state::evolve_state::load_slice(handle)?);
 

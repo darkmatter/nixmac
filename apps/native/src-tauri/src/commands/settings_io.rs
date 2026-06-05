@@ -14,6 +14,7 @@ use super::helpers::capture_err;
 use crate::evolve::config::EvolutionLimits;
 use crate::shared_types::{ExportResult, ImportResult};
 use crate::state::preferences::GlobalPreferences;
+use crate::observable::Observable;
 use crate::state::slice::Slice;
 use serde_json::{Map, Value};
 use std::borrow::Borrow;
@@ -79,7 +80,7 @@ fn collect_slice_export_entries(
         );
     }
 
-    if let Some(limits) = app.try_state::<Slice<EvolutionLimits>>() {
+    if let Some(limits) = app.try_state::<Observable<EvolutionLimits>>() {
         merge_export_object(
             &mut output,
             &mut skipped,
@@ -166,10 +167,10 @@ pub async fn settings_import(app: AppHandle) -> Result<Option<ImportResult>, Str
         *global = prefs;
     }
 
-    if let Some(limits) = app.try_state::<Slice<EvolutionLimits>>() {
+    if let Some(limits) = app.try_state::<Observable<EvolutionLimits>>() {
         let prefs = serde_json::from_value::<EvolutionLimits>(imported_value)
             .map_err(|e| capture_err("settings_import", e))?;
-        let mut limits = limits.write_sync(&app);
+        let mut limits = limits.write_sync();
         *limits = prefs;
     }
 
