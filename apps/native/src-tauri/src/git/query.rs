@@ -116,11 +116,6 @@ pub fn get_ref_sha(dir: &str, ref_name: &str) -> Option<String> {
     Some(obj.id().to_string())
 }
 
-/// Gets the SHA of the current HEAD commit.
-pub fn get_head_sha(dir: &str) -> Option<String> {
-    get_ref_sha(dir, "HEAD")
-}
-
 /// Returns true if HEAD can be resolved to a commit object.
 ///
 /// This is stricter than "HEAD exists":
@@ -613,12 +608,11 @@ mod tests {
         let path = temp.path().to_string_lossy().to_string();
 
         assert_eq!(get_ref_sha(&path, "HEAD"), Some(commit_id.to_string()));
-        assert_eq!(get_head_sha(&path), Some(commit_id.to_string()));
         assert_eq!(get_ref_sha(&path, "does-not-exist"), None);
     }
 
     #[test]
-    fn get_head_sha_unborn_branch_is_none() {
+    fn get_ref_sha_unborn_branch_is_none() {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path();
 
@@ -629,18 +623,18 @@ mod tests {
 
         let repo_path = path.to_string_lossy().to_string();
 
-        let head = get_head_sha(&repo_path);
+        let head = get_ref_sha(&repo_path, "HEAD");
 
         assert_eq!(head, None);
     }
 
     #[test]
-    fn get_ref_sha_and_head_sha_none_for_non_repo() {
+    fn get_ref_sha_none_for_non_repo() {
         let temp = TempDir::new().expect("create temp dir");
         let path = temp.path().to_string_lossy().to_string();
 
         assert_eq!(get_ref_sha(&path, "HEAD"), None);
-        assert_eq!(get_head_sha(&path), None);
+        assert_eq!(get_ref_sha(&path, "does-not-exist"), None);
     }
 
     #[test]

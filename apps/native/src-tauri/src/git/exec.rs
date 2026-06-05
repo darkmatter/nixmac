@@ -1,13 +1,14 @@
 /// Git execution layer (CLI AUTHORITY)
 ///
-/// This module uses `git_command()` exclusively.
+/// This module uses `git_command()` for CLI semantics that git2 cannot preserve,
+/// and git2 where the equivalent operation is object/ref/index-level.
 ///
 /// Rules:
 /// - This layer relies on REAL Git behavior
 /// - Must preserve CLI semantics exactly
 /// - Includes hooks suppression + identity injection
 /// - May modify filesystem, index, HEAD, refs
-use crate::git::query::{get_head_sha, has_head_commit, repo_root};
+use crate::git::query::{has_head_commit, repo_root};
 use anyhow::{Context, Result};
 use std::ffi::OsStr;
 use std::path::Path;
@@ -221,6 +222,12 @@ pub fn tag_commit(dir: &str, tag: &str, target: &str, force: bool) -> Result<()>
 }
 
 /// Stage everything and create a backup branch without moving HEAD.
+///
+/// Command mapping:
+/// - Runs `git add --all` through the CLI to preserve Git's staging semantics.
+/// - Simulates `git write-tree` with `git2::Index::write_tree`.
+/// - Simulates `git commit-tree <tree> -p HEAD -m <msg>` with `repo.commit(None, ...)`.
+/// - Simulates `git update-ref refs/heads/<branch> <commit>` with `repo.reference(..., true, ...)`.
 pub fn create_evolution_backup(
     repo_path: &str,
     evolution_id: Option<i64>,
@@ -242,37 +249,26 @@ pub fn create_evolution_backup(
         .output()
         .context("git add --all")?;
 
-    let tree_hash = git_command()
-        .args(["write-tree"])
-        .current_dir(repo_path)
-        .output()
-        .context("git write-tree")
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())?;
-
-    let head_hash =
-        get_head_sha(repo_path).ok_or_else(|| anyhow::anyhow!("failed to resolve HEAD"))?;
+    let repo = git2::Repository::discover(repo_path)?;
+    let mut index = repo.index().context("open git index")?;
+    let tree_id = index.write_tree().context("git2 write index tree")?;
+    let tree = repo.find_tree(tree_id).context("git2 find written tree")?;
+    let parent = repo
+        .head()
+        .context("git2 resolve HEAD")?
+        .peel_to_commit()
+        .context("git2 peel HEAD to commit")?;
+    let signature =
+        git2::Signature::now("nixmac", "nixmac@local").context("create git signature")?;
 
     let commit_msg = format!("nixmac backup: {}", branch_name);
-    let commit_hash = git_command()
-        .args([
-            "commit-tree",
-            &tree_hash,
-            "-p",
-            &head_hash,
-            "-m",
-            &commit_msg,
-        ])
-        .current_dir(repo_path)
-        .output()
-        .context("git commit-tree")
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())?;
+    let commit_id = repo
+        .commit(None, &signature, &signature, &commit_msg, &tree, &[&parent])
+        .context("git2 create backup commit")?;
 
     let ref_path = format!("refs/heads/{}", branch_name);
-    git_command()
-        .args(["update-ref", &ref_path, &commit_hash])
-        .current_dir(repo_path)
-        .output()
-        .context("git update-ref")?;
+    repo.reference(&ref_path, commit_id, true, "create nixmac backup branch")
+        .context("git2 update backup branch ref")?;
 
     Ok(Some(branch_name))
 }
@@ -510,6 +506,66 @@ mod tests {
 
         let result = create_evolution_backup(&repo_dir_str, Some(1), 0).unwrap();
         assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_create_evolution_backup_captures_add_all_semantics() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("keep.txt"), "keep\n").unwrap();
+        fs::write(repo_dir.join("remove.txt"), "remove\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial commit"]);
+
+        fs::write(repo_dir.join("added.txt"), "added\n").unwrap();
+        fs::remove_file(repo_dir.join("remove.txt")).unwrap();
+
+        let backup_branch = create_evolution_backup(&repo_dir_str, Some(1), 2)
+            .unwrap()
+            .expect("expected a backup branch to be created");
+
+        let added = run_git_ok(&repo_dir, &["show", &format!("{}:added.txt", backup_branch)]);
+        assert_eq!(added, "added\n");
+
+        let removed_path = format!("{}:remove.txt", backup_branch);
+        assert!(
+            git_command()
+                .args(["cat-file", "-e", &removed_path])
+                .current_dir(&repo_dir)
+                .output()
+                .is_err(),
+            "backup tree should include tracked deletion staged by git add --all"
+        );
+    }
+
+    #[test]
+    fn test_create_evolution_backup_updates_existing_backup_branch() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("file.txt"), "initial\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial commit"]);
+
+        fs::write(repo_dir.join("file.txt"), "first backup\n").unwrap();
+        let backup_branch = create_evolution_backup(&repo_dir_str, Some(1), 3)
+            .unwrap()
+            .expect("expected a backup branch to be created");
+
+        fs::write(repo_dir.join("file.txt"), "second backup\n").unwrap();
+        let updated_backup_branch = create_evolution_backup(&repo_dir_str, Some(1), 3)
+            .unwrap()
+            .expect("expected a backup branch to be updated");
+
+        assert_eq!(backup_branch, updated_backup_branch);
+
+        let backup_tree = run_git_ok(&repo_dir, &["show", &format!("{}:file.txt", backup_branch)]);
+        assert_eq!(backup_tree, "second backup\n");
     }
 
     #[test]
