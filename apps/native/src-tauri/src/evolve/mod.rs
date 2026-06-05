@@ -41,7 +41,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tauri::{AppHandle, Runtime};
 use tokio::time::sleep;
-use tools::{create_tools, execute_tool, is_editing_tool, ToolResult};
+use tools::{create_tools, execute_tool, ToolResult};
 pub use types::{EvolutionProgress, EvolutionRunError};
 
 use crate::{
