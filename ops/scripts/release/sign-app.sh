@@ -14,12 +14,20 @@ fi
 
 echo "Signing $APP_PATH..."
 
+# Check user keychain first, then fall back to system keychain
 KEYCHAIN_PATH="${RUNNER_TEMP}/app-signing.keychain-db"
-IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" 2>/dev/null | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)".*/\1/' || true)
 
 if [ -z "$IDENTITY" ]; then
-	echo "ERROR: No Developer ID Application identity found in keychain"
-	security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+    echo "No identity in user keychain, checking system keychain..."
+    KEYCHAIN_PATH="/Library/Keychains/System.keychain"
+    IDENTITY=$(sudo security find-identity -v -p codesigning "$KEYCHAIN_PATH" 2>/dev/null | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)".*/\1/' || true)
+fi
+
+if [ -z "$IDENTITY" ]; then
+	echo "ERROR: No Developer ID Application identity found in any keychain"
+	security find-identity -v -p codesigning "${RUNNER_TEMP}/app-signing.keychain-db" 2>/dev/null || true
+	sudo security find-identity -v -p codesigning /Library/Keychains/System.keychain 2>/dev/null || true
 	exit 1
 fi
 
