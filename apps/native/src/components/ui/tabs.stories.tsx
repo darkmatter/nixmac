@@ -23,7 +23,7 @@ export const SettingsSections = meta.story({
         App preferences and telemetry controls.
       </TabsContent>
       <TabsContent className="rounded-md border p-4 text-sm" value="models">
-        Provider, model, and iteration limits.
+        Provider, model, and token budgets.
       </TabsContent>
       <TabsContent className="rounded-md border p-4 text-sm" value="developer">
         Advanced diagnostics and pinned release controls.

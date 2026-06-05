@@ -24,7 +24,7 @@ const REPO_README_CONTENT: &str = "\
 This directory is managed by [nixmac](https://github.com/darkmatter/nixmac).
 
 `settings.json` holds user preferences that should follow you across machines
-— things like agent iteration limits, default model, and confirmation
+— things like the default model and confirmation
 behavior. The file is plain JSON; nixmac reads it on the next agent run.
 
 Per-device settings (developer mode, pinned version, update channel, model

@@ -240,7 +240,6 @@ mod tests {
             &mut output,
             &mut skipped,
             serde_json::to_value(EvolutionLimits {
-                max_iterations: 12,
                 max_token_budget: 80_000,
                 max_build_attempts: 4,
                 max_output_tokens: 16_384,
@@ -251,7 +250,6 @@ mod tests {
 
         assert_eq!(output.get("hostAttr"), Some(&json!("macbook")));
         assert_eq!(output.get("developerMode"), Some(&json!(true)));
-        assert_eq!(output.get("maxIterations"), Some(&json!(12)));
         assert_eq!(output.get("maxBuildAttempts"), Some(&json!(4)));
         assert!(!output.contains_key("openaiApiKey"));
         assert!(!output.contains_key("promptHistory"));
