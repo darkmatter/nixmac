@@ -6,9 +6,10 @@ use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
 use crate::evolve::session_chat_memory_store;
+use crate::observable::Observable;
 use crate::shared_types::{EvolutionState, EvolveState, EvolveStep};
 use crate::sqlite_types::Change;
-use crate::state::slice::{AppDataJson, Persistence, Slice};
+use crate::state::slice::{AppDataJson, Persistence};
 
 impl EvolveState {
     pub fn recompute_step(&mut self, is_built: bool, has_changes: bool) {
@@ -52,7 +53,7 @@ fn load_from_persistence(persistence: &dyn Persistence) -> Result<EvolveState> {
         .unwrap_or_default())
 }
 
-fn persist_without_managed_slice<R: Runtime>(
+fn persist_without_managed_observable<R: Runtime>(
     app: &AppHandle<R>,
     state: &EvolveState,
 ) -> Result<()> {
@@ -62,16 +63,18 @@ fn persist_without_managed_slice<R: Runtime>(
     Ok(())
 }
 
-pub fn load_slice<R: Runtime>(app: &AppHandle<R>) -> Result<Slice<EvolveState>> {
-    let persistence = Arc::new(AppDataJson::for_app(app, EVOLVE_STATE_PATH)?);
+pub fn load_observable<R: Runtime>(app: &AppHandle<R>) -> Result<Observable<EvolveState>> {
+    let persistence: Arc<dyn Persistence> = Arc::new(AppDataJson::for_app(app, EVOLVE_STATE_PATH)?);
     let initial = load_from_persistence(persistence.as_ref())?;
-    Ok(Slice::new(EVOLVE_STATE_CHANGED_EVENT, initial, persistence))
+    Ok(Observable::new(initial)
+        .emit_to(app, EVOLVE_STATE_CHANGED_EVENT)
+        .persist_to(persistence))
 }
 
 /// Load the persisted evolve state, returning `EvolveState::default()` if absent or corrupt.
 pub fn get<R: Runtime>(app: &AppHandle<R>) -> Result<EvolveState> {
-    if let Some(slice) = app.try_state::<Slice<EvolveState>>() {
-        return Ok(slice.read_sync().clone());
+    if let Some(observable) = app.try_state::<Observable<EvolveState>>() {
+        return Ok(observable.read_sync().clone());
     }
 
     let persistence = AppDataJson::for_app(app, EVOLVE_STATE_PATH)?;
@@ -99,12 +102,12 @@ pub fn set<R: Runtime>(
             Some(EvolutionState::Conversational)
         );
 
-    if let Some(slice) = app.try_state::<Slice<EvolveState>>() {
-        let mut guard = slice.write_sync(app);
+    if let Some(observable) = app.try_state::<Observable<EvolveState>>() {
+        let mut guard = observable.write_sync();
         *guard = state.clone();
         drop(guard);
     } else {
-        persist_without_managed_slice(app, &state)?;
+        persist_without_managed_observable(app, &state)?;
     }
 
     // Clear conversational thread memory whenever routing returns to Begin.

@@ -343,7 +343,7 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                         evolve::config::register_slice_config(
                             &app.state::<state::slice::SliceRegistry>(),
                         )?;
-                        app.manage(state::evolve_state::load_slice(app.handle())?);
+                        app.manage(state::evolve_state::load_observable(app.handle())?);
                         Ok(())
                     })
                     .build(context)
@@ -594,7 +594,7 @@ fn run_gui_mode(
             app.manage(state::preferences::load_global_slice(handle)?);
             app.manage(evolve::config::load_observable(handle)?);
             evolve::config::register_slice_config(&app.state::<state::slice::SliceRegistry>())?;
-            app.manage(state::evolve_state::load_slice(handle)?);
+            app.manage(state::evolve_state::load_observable(handle)?);
 
             // Initialize SQLite database before any consumer that reads the
             // managed DbPool from app state.
