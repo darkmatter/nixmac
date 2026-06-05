@@ -13,26 +13,21 @@ concurrency:
 permissions:
   contents: read
 
-
-env:
-  CARGO_INCREMENTAL: 0
-  RUSTUP_INIT_SKIP_PATH_CHECK: yes
-
 jobs:
   rust-check:
     name: Rust Check
-    runs-on: [self-hosted, macos-latest]
+    runs-on: ghcr.io/cirruslabs/macos-runner:tahoe
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-        continue-on-error: true
-      - name: Install devenv
-        run: nix profile install --accept-flake-config nixpkgs#devenv 2>/dev/null || true
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/native/src-tauri
       - name: Check Rust app crate
         working-directory: apps/native/src-tauri
-        shell: devenv shell -- bash -e {0}
         run: cargo check --locked
 
   typescript:
@@ -41,17 +36,19 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-        continue-on-error: true
-      - name: Install devenv
-        run: nix profile install --accept-flake-config nixpkgs#devenv 2>/dev/null || true
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+      - name: Cache bun install
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
       - name: Install dependencies
-        shell: devenv shell -- bash -e {0}
         run: bun install --frozen-lockfile
       - name: Type-check native app
         working-directory: apps/native
-        shell: devenv shell -- bash -e {0}
         run: bunx tsc --noEmit
 
   treefmt:
