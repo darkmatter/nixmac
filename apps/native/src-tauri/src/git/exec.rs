@@ -173,21 +173,6 @@ pub fn checkout_files_at_commit(dir: &str, commit_hash: &str) -> Result<()> {
     Ok(())
 }
 
-/// Stages all changes and stashes with msg.
-pub fn stash(dir: &str, message: &str) -> Result<()> {
-    git_command()
-        .args(["add", "-A"])
-        .current_dir(dir)
-        .output()?;
-
-    git_command()
-        .args(["stash", "push", "-m", message])
-        .current_dir(dir)
-        .output()?;
-
-    Ok(())
-}
-
 /// Restore all uncommitted, discard untracked.
 pub fn restore_all(dir: &str) -> Result<()> {
     git_command()
