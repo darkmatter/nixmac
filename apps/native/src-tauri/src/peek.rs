@@ -523,32 +523,26 @@ pub fn create_preview_indicator_window<R: Runtime>(app: &AppHandle<R>) -> Result
     // Disable shadow and set as utility panel (prevents grouping with main window)
     #[cfg(target_os = "macos")]
     {
-        use cocoa::appkit::{NSWindow, NSWindowCollectionBehavior};
-        use cocoa::base::id;
-        use objc::msg_send;
-        use objc::sel;
-        use objc::sel_impl;
+        use objc2_app_kit::{NSFloatingWindowLevel, NSWindow, NSWindowCollectionBehavior};
 
         let _ = window.set_shadow(false);
 
         // Get the native NSWindow and configure it as an independent panel
         if let Ok(ns_window) = window.ns_window() {
-            let ns_win = ns_window as id;
             unsafe {
+                let ns_win = &*(ns_window.cast::<NSWindow>());
                 // Set collection behavior to be independent (not grouped with other windows)
                 // NSWindowCollectionBehaviorStationary keeps it from moving with spaces
                 // NSWindowCollectionBehaviorCanJoinAllSpaces makes it visible on all spaces
                 // NSWindowCollectionBehaviorIgnoresCycle prevents Cmd+` from cycling to it
-                ns_win.setCollectionBehavior_(
-                    NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces
-                        | NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary
-                        | NSWindowCollectionBehavior::NSWindowCollectionBehaviorIgnoresCycle,
+                ns_win.setCollectionBehavior(
+                    NSWindowCollectionBehavior::CanJoinAllSpaces
+                        | NSWindowCollectionBehavior::Stationary
+                        | NSWindowCollectionBehavior::IgnoresCycle,
                 );
 
                 // Set as a floating panel level (above regular windows but independent)
-                // kCGFloatingWindowLevel = 5 (or we can use NSFloatingWindowLevel = 3)
-                let floating_level: i64 = 3; // NSFloatingWindowLevel
-                let _: () = msg_send![ns_win, setLevel: floating_level];
+                ns_win.setLevel(NSFloatingWindowLevel);
             }
         }
     }

@@ -810,18 +810,15 @@ fn run_gui_mode(
 
             #[cfg(target_os = "macos")]
             if e2e_opaque_window {
-                use objc::msg_send;
-                use objc::runtime::Object;
-                use objc::sel;
-                use objc::sel_impl;
+                use objc2_app_kit::NSWindow;
 
                 match main_window.ns_window() {
                     Ok(ns_window) => unsafe {
-                        let ns_window = ns_window as *mut Object;
-                        let is_opaque: bool = msg_send![ns_window, isOpaque];
-                        let alpha_value: f64 = msg_send![ns_window, alphaValue];
-                        let level: i64 = msg_send![ns_window, level];
-                        let has_shadow: bool = msg_send![ns_window, hasShadow];
+                        let ns_window = &*(ns_window.cast::<NSWindow>());
+                        let is_opaque = ns_window.isOpaque();
+                        let alpha_value = ns_window.alphaValue();
+                        let level = ns_window.level();
+                        let has_shadow = ns_window.hasShadow();
                         log::info!(
                             "NIXMAC_E2E_OPAQUE_WINDOW native window diagnostics: isOpaque={} alphaValue={:.3} level={} hasShadow={}",
                             is_opaque,

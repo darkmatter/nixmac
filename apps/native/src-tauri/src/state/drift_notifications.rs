@@ -78,36 +78,35 @@ fn notification_for_event(
 
 #[cfg(target_os = "macos")]
 fn send_native_notification(title: &str, body: &str) -> Result<(), String> {
-    use cocoa::base::{id, nil};
-    use cocoa::foundation::{NSAutoreleasePool, NSString};
-    use objc::{class, msg_send, sel, sel_impl};
+    use objc2::ffi::nil;
+    use objc2::rc::Retained;
+    use objc2::runtime::AnyObject;
+    use objc2::{class, msg_send};
+    use objc2_foundation::{NSAutoreleasePool, NSString};
 
     unsafe {
-        let pool = NSAutoreleasePool::new(nil);
-        let content: id = msg_send![class!(UNMutableNotificationContent), new];
-        let title = NSString::alloc(nil).init_str(title);
-        let body = NSString::alloc(nil).init_str(body);
-        let identifier =
-            NSString::alloc(nil).init_str(&format!("nixmac-drift-{}", uuid::Uuid::new_v4()));
+        let pool = NSAutoreleasePool::new();
+        let content: Retained<AnyObject> = msg_send![class!(UNMutableNotificationContent), new];
+        let title = NSString::from_str(title);
+        let body = NSString::from_str(body);
+        let identifier = NSString::from_str(&format!("nixmac-drift-{}", uuid::Uuid::new_v4()));
 
-        let _: () = msg_send![content, setTitle: title];
-        let _: () = msg_send![content, setBody: body];
+        let _: () = msg_send![&content, setTitle: &*title];
+        let _: () = msg_send![&content, setBody: &*body];
 
-        let request: id = msg_send![
+        let request: Retained<AnyObject> = msg_send![
             class!(UNNotificationRequest),
-            requestWithIdentifier: identifier
-            content: content
+            requestWithIdentifier: &*identifier,
+            content: &*content,
             trigger: nil
         ];
 
-        let center: id = msg_send![class!(UNUserNotificationCenter), currentNotificationCenter];
-        let _: () = msg_send![center, addNotificationRequest: request withCompletionHandler: nil];
+        let center: Retained<AnyObject> =
+            msg_send![class!(UNUserNotificationCenter), currentNotificationCenter];
+        let _: () =
+            msg_send![&center, addNotificationRequest: &*request, withCompletionHandler: nil];
 
-        let _: () = msg_send![title, release];
-        let _: () = msg_send![body, release];
-        let _: () = msg_send![identifier, release];
-        let _: () = msg_send![content, release];
-        let _: () = msg_send![pool, drain];
+        pool.drain();
     }
 
     Ok(())
@@ -135,7 +134,6 @@ mod tests {
             changes: Vec::new(),
         }
     }
-
 
     #[test]
     fn no_notification_without_drift() {
