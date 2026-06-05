@@ -16,7 +16,8 @@ permissions:
 
 env:
   CARGO_INCREMENTAL: 0
-
+  RUSTC_WRAPPER: sccache
+  SCCACHE_DIR: /opt/sccache-cache
 jobs:
   rust-check:
     name: Rust Check
