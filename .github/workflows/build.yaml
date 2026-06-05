@@ -11,8 +11,6 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
-  RUSTUP_INIT_SKIP_PATH_CHECK: yes
-  RUSTUP_HOME: /Users/coopermaruyama/.rustup
   SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 jobs:
   optimize_ci:
@@ -37,34 +35,13 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: true
-      - name: Check Rust
-        id: check-rust
-        run: 'if which rust &>/dev/null; then echo "exists=true" >> $GITHUB_OUTPUT; [ -d "$HOME/.cargo/bin" ] && echo "$HOME/.cargo/bin" >> $GITHUB_PATH; fi'
-      - name: Install Rust
-        if: steps.check-rust.outputs.exists != 'true'
-        uses: dtolnay/rust-toolchain@stable
-      - name: Rust cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: apps/native/src-tauri
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-      - name: Setup sops
-        uses: nhedger/setup-sops@v2.1.1
-      - name: Setup age
-        uses: alessiodionisi/setup-age-action@v1.4.0
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-      - name: Cache bun install
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            bun-${{ runner.os }}-
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        continue-on-error: true # self-hosted runners may already have Nix
+      - name: Install devenv
+        run: nix profile install --accept-flake-config nixpkgs#devenv 2>/dev/null || true
       - name: Install frontend dependencies
+        shell: devenv shell -- bash -e {0}
         run: bun install --frozen-lockfile
       # Decide what kind of build this is:
       #   - tag:     push of refs/tags/v* → ship that exact version
@@ -78,6 +55,7 @@ jobs:
       # satisfy from the same run that's pushing).
       - name: Compute release version
         id: release-version
+        shell: devenv shell -- bash -e {0}
         run: bash ops/scripts/release/compute-version.sh
       # Sync native app version files. Tag + release modes use the computed
       # version directly; branch/PR builds fall back to the max(package.json,
@@ -90,10 +68,11 @@ jobs:
         env:
           RELEASE_MODE: ${{ steps.release-version.outputs.mode }}
           RELEASE_VERSION: ${{ steps.release-version.outputs.version }}
+        shell: devenv shell -- bash -e {0}
         run: bash ops/scripts/release/sync-version.sh
       - name: Check for code signing secrets
         id: check-secrets
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        shell: 'devenv shell -- sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
         run: |
           if [ -n "$APPLE_CERTIFICATE" ]; then
             echo "has_certificate=true" >> $GITHUB_OUTPUT
@@ -115,7 +94,7 @@ jobs:
           export APPLE_SIGNING_IDENTITY="-"
           unset APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD KEYCHAIN_PASSWORD
           bun run desktop:build
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        shell: 'devenv shell -- sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Pass DSNs and build metadata into the tauri action step so build.rs can read them
@@ -128,6 +107,7 @@ jobs:
           VITE_NIXMAC_ENV: prod
           VITE_NIXMAC_VERSION: ${{ steps.sync-version.outputs.build_version }}
       - name: Unit Test Tauri app
+        shell: devenv shell -- bash -e {0}
         run: bun run desktop:test
 
       # Import Apple Developer certificate (only for releases with secrets).
@@ -138,7 +118,7 @@ jobs:
           steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
           steps.check-secrets.outputs.has_certificate == 'true'
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        shell: 'devenv shell -- sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
         run: bash ops/scripts/release/import-certificate.sh
       # Sign the app bundle (required for notarization)
       - name: Sign app bundle
@@ -146,6 +126,7 @@ jobs:
           steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
           steps.check-secrets.outputs.has_certificate == 'true'
+        shell: devenv shell -- bash -e {0}
         run: bash ops/scripts/release/sign-app.sh
       # Replace unsigned app inside the Tauri-built DMG with the signed one.
       # We mount the DMG read-write, swap the .app in place, and re-compress so
@@ -158,6 +139,7 @@ jobs:
           steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
           steps.check-secrets.outputs.has_certificate == 'true'
+        shell: devenv shell -- bash -e {0}
         run: bash ops/scripts/release/swap-signed-dmg.sh
       # Notarize the app (requires Apple Developer account)
       - name: Notarize app
@@ -165,7 +147,7 @@ jobs:
           steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
           steps.check-secrets.outputs.has_notarization == 'true'
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        shell: 'devenv shell -- sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
         run: bash ops/scripts/release/notarize.sh
       - name: Get artifact paths
         id: artifacts
@@ -234,7 +216,7 @@ jobs:
           steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
           !contains(steps.release-version.outputs.tag, '-test.')
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        shell: 'devenv shell -- sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
         env:
           AWS_DEFAULT_REGION: auto
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -257,4 +239,5 @@ jobs:
           name: nixmac v${{ steps.release-version.outputs.version }}
       - name: Cleanup keychain
         if: always()
+        shell: devenv shell -- bash -e {0}
         run: bash ops/scripts/release/cleanup-keychain.sh

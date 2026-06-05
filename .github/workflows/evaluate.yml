@@ -25,18 +25,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-      - name: Check Rust
-        id: check-rust
-        run: 'if which rust &>/dev/null; then echo "exists=true" >> $GITHUB_OUTPUT; [ -d "$HOME/.cargo/bin" ] && echo "$HOME/.cargo/bin" >> $GITHUB_PATH; fi'
-      - name: Install Rust
-        if: steps.check-rust.outputs.exists != 'true'
-        uses: dtolnay/rust-toolchain@stable
-      - name: Rust cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: apps/native/src-tauri
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        continue-on-error: true
+      - name: Install devenv
+        run: nix profile install --accept-flake-config nixpkgs#devenv 2>/dev/null || true
       - name: Check Rust app crate
         working-directory: apps/native/src-tauri
+        shell: devenv shell -- bash -e {0}
         run: cargo check --locked
 
   typescript:
@@ -45,19 +41,17 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-      - name: Cache bun install
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            bun-${{ runner.os }}-
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        continue-on-error: true
+      - name: Install devenv
+        run: nix profile install --accept-flake-config nixpkgs#devenv 2>/dev/null || true
       - name: Install dependencies
+        shell: devenv shell -- bash -e {0}
         run: bun install --frozen-lockfile
       - name: Type-check native app
         working-directory: apps/native
+        shell: devenv shell -- bash -e {0}
         run: bunx tsc --noEmit
 
   treefmt:
