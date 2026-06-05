@@ -100,7 +100,6 @@ pub async fn settings_export(
     app: AppHandle,
     include_secrets: bool,
 ) -> Result<Option<ExportResult>, String> {
-
     let (tx, rx) = tokio::sync::oneshot::channel();
     app.dialog()
         .file()
@@ -139,7 +138,6 @@ pub async fn settings_export(
 /// cancelled the dialog.
 #[tauri::command]
 pub async fn settings_import(app: AppHandle) -> Result<Option<ImportResult>, String> {
-
     let Some(file_path) = app
         .dialog()
         .file()

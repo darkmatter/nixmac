@@ -26,11 +26,6 @@ impl GitCommand {
         self
     }
 
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.0.arg(arg);
-        self
-    }
-
     fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self {
         self.0.current_dir(dir);
         self
@@ -148,49 +143,6 @@ pub fn intent_add_untracked(dir: &str) -> Result<()> {
 pub struct CommitInfo {
     pub hash: String,
     pub tree_hash: String,
-}
-
-/// Returns commits as Row Type (id = 0), from `start_hash` for `limit`(None for all)
-pub fn log(
-    dir: &str,
-    start_hash: &str,
-    limit: Option<usize>,
-) -> Result<Vec<crate::sqlite_types::Commit>> {
-    let mut cmd = git_command();
-    cmd.arg("log").arg("--format=%H%n%T%n%at%n%s");
-    if let Some(n) = limit {
-        cmd.arg("-n").arg(n.to_string());
-    }
-    cmd.arg(start_hash);
-    let output = cmd.current_dir(dir).output()?;
-
-    let text = String::from_utf8_lossy(&output.stdout);
-    let mut commits = Vec::new();
-    let mut lines = text.lines();
-
-    loop {
-        let hash = match lines.next() {
-            Some(h) if !h.is_empty() => h.to_string(),
-            _ => break,
-        };
-        let tree_hash = lines.next().unwrap_or("").to_string();
-        let timestamp: i64 = lines.next().unwrap_or("0").trim().parse().unwrap_or(0);
-        let subject = lines.next().unwrap_or("").to_string();
-
-        commits.push(crate::sqlite_types::Commit {
-            id: 0,
-            hash,
-            tree_hash,
-            message: if subject.is_empty() {
-                None
-            } else {
-                Some(subject)
-            },
-            created_at: timestamp,
-        });
-    }
-
-    Ok(commits)
 }
 
 /// Stages all and commits with msg, returns hash and tree hash.

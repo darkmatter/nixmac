@@ -11,7 +11,7 @@ pub async fn get_history<R: Runtime>(
     let config_dir = crate::storage::store::get_config_dir(app)?;
     let db_path = crate::db::get_db_path(app)?;
 
-    let git_commits = crate::git::log(&config_dir, "HEAD", None)?;
+    let git_commits = crate::git::query::log(&config_dir, "HEAD", None)?;
 
     let build_state = crate::state::build_state::get(app).unwrap_or_default();
     let last_built_sha = if build_state.unknown_build() {
