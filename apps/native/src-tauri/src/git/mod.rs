@@ -4,6 +4,7 @@ pub mod changes_from_diff;
 pub mod exec;
 pub mod init;
 pub mod query;
+mod repo_files;
 
 // Re-export the entire public surface of exec and query so callers keep using
 // `crate::git::some_fn()` without change.
