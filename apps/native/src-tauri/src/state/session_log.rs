@@ -56,12 +56,16 @@ pub fn create_session_log() -> Result<PathBuf, String> {
 
 /// Sets the active session log path. Called when an evolution starts.
 pub fn set_session_path(path: Option<PathBuf>) {
-    *SESSION_LOG_PATH.lock().unwrap() = path;
+    let mut guard = SESSION_LOG_PATH.lock().unwrap_or_else(|e| e.into_inner());
+    *guard = path;
 }
 
 /// Returns a clone of the active session log path, if any.
 pub fn active_session_path() -> Option<PathBuf> {
-    SESSION_LOG_PATH.lock().unwrap().clone()
+    SESSION_LOG_PATH
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone()
 }
 
 /// Appends a JSON line to the session log file.
