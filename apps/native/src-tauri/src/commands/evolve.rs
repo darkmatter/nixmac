@@ -18,14 +18,17 @@ pub async fn darwin_evolve(
             None
         }
     };
-        crate::state::session_log::set_session_path(Some(path.clone()));
-        crate::state::session_log::append_event(
-            path,
-            "prompt",
-            &serde_json::json!({ "description": description }),
-        )
-        .await;
-    }
+
+        if let Some(path) = session_log {
+            crate::state::session_log::set_session_path(Some(path.clone()));
+            crate::state::session_log::append_event(
+                &path,
+                "prompt",
+                &serde_json::json!({ "description": description }),
+            )
+            .await;
+        }
+
 
     let result =
         match evolve::lifecycle::backup_evolve_and_record_changeset(&app, &description, None).await
@@ -66,8 +69,17 @@ pub async fn darwin_evolve(
                     failure.telemetry.iterations,
                     failure.telemetry.build_attempts
                 );
+                let error = failure.error;
+                if let Some(ref path) = session_log {
+                    crate::state::session_log::append_event(
+                        path,
+                        "result",
+                        &serde_json::json!({ "cancelled": false, "error": &error }),
+                    )
+                    .await;
+                }
                 crate::state::session_log::set_session_path(None);
-                return Err(capture_err("darwin_evolve", failure.error));
+                return Err(capture_err("darwin_evolve", error));
             }
         };
 

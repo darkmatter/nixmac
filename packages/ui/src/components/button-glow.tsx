@@ -44,13 +44,14 @@ export function ButtonGlow({
           <Button
             size="sm"
             disabled={!active}
+            {...props}
             className={cn(
               "rounded-full border-0 shadow-none transition-all duration-100",
               active
                 ? "bg-slate-900 text-slate-300 hover:bg-slate-800 active:scale-[0.98]"
                 : "cursor-not-allowed bg-slate-800/80 text-slate-500 hover:bg-slate-800/80",
+              props.className,
             )}
-            {...props}
           >
             {active ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
