@@ -1,16 +1,15 @@
 //! Database schema initialization.
 
-use anyhow::Result;
-use rusqlite::Connection;
+use anyhow::{anyhow, Result};
+use diesel::connection::SimpleConnection;
+use diesel::prelude::*;
+use diesel::sql_types::BigInt;
+use diesel::sqlite::SqliteConnection;
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use std::path::Path;
 
-const SCHEMA_VERSION: i32 = 1;
-const CURRENT_SCHEMA_SQL: &str = concat!(
-    include_str!("../../migrations/01-initial/up.sql"),
-    "\n",
-    include_str!("../../migrations/02-restore-commits/up.sql"),
-    "\nPRAGMA user_version = 1;\n",
-);
+const SCHEMA_VERSION: i64 = 1;
+const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 
 /// Initialize schema.
 ///
@@ -22,10 +21,13 @@ const CURRENT_SCHEMA_SQL: &str = concat!(
 pub async fn init_schema(db_path: &Path) -> Result<()> {
     let path = db_path.to_path_buf();
 
-    tokio::task::spawn_blocking(move || {
+    tokio::task::spawn_blocking(move || -> Result<()> {
         recreate_stale_database(&path)?;
-        let conn = Connection::open(&path)?;
-        conn.execute_batch(CURRENT_SCHEMA_SQL)?;
+        let database_url = path.to_string_lossy().into_owned();
+        let mut conn = SqliteConnection::establish(&database_url)?;
+        conn.run_pending_migrations(MIGRATIONS)
+            .map_err(|e| anyhow!("failed to run diesel migrations: {e}"))?;
+        conn.batch_execute(&format!("PRAGMA user_version = {SCHEMA_VERSION};"))?;
         Ok(())
     })
     .await?
@@ -36,8 +38,10 @@ fn recreate_stale_database(path: &Path) -> Result<()> {
         return Ok(());
     }
 
-    let conn = Connection::open(path)?;
-    let version: i32 = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
+    let database_url = path.to_string_lossy().into_owned();
+    let mut conn = SqliteConnection::establish(&database_url)?;
+    let version: i64 = diesel::select(diesel::dsl::sql::<BigInt>("user_version FROM pragma_user_version"))
+        .get_result(&mut conn)?;
     drop(conn);
     if version != SCHEMA_VERSION {
         std::fs::remove_file(path)?;
@@ -48,42 +52,49 @@ fn recreate_stale_database(path: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rusqlite::Connection;
 
     #[test]
     fn init_schema_recreates_stale_databases_without_migration() {
         let temp_dir = tempfile::tempdir().unwrap();
         let db_path = temp_dir.path().join("stale.db");
-        let conn = Connection::open(&db_path).unwrap();
-        conn.execute_batch(
-            r#"
-            CREATE TABLE evolutions (
-                id INTEGER PRIMARY KEY,
-                branch TEXT NOT NULL,
-                merged INTEGER NOT NULL DEFAULT 0,
-                builds INTEGER NOT NULL DEFAULT 0
-            );
-            INSERT INTO evolutions (id, branch, merged, builds) VALUES (1, 'main', 0, 0);
-            PRAGMA user_version = 3;
-            "#,
-        )
-        .unwrap();
-        drop(conn);
+
+        // Seed a stale database (user_version = 3, plus a row that would survive).
+        let database_url = db_path.to_string_lossy().into_owned();
+        {
+            let mut conn = SqliteConnection::establish(&database_url).unwrap();
+            conn.batch_execute(
+                r#"
+                CREATE TABLE evolutions (
+                    id INTEGER PRIMARY KEY,
+                    branch TEXT NOT NULL,
+                    merged INTEGER NOT NULL DEFAULT 0,
+                    builds INTEGER NOT NULL DEFAULT 0
+                );
+                INSERT INTO evolutions (id, branch, merged, builds) VALUES (1, 'main', 0, 0);
+                PRAGMA user_version = 3;
+                "#,
+            )
+            .unwrap();
+        }
 
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(init_schema(&db_path)).unwrap();
 
-        let conn = Connection::open(&db_path).unwrap();
-        let version: i32 = conn
-            .query_row("PRAGMA user_version", [], |row| row.get(0))
-            .unwrap();
+        let mut conn = SqliteConnection::establish(&database_url).unwrap();
+        let version: i64 =
+            diesel::select(diesel::dsl::sql::<BigInt>("user_version FROM pragma_user_version"))
+                .get_result(&mut conn)
+                .unwrap();
         assert_eq!(version, SCHEMA_VERSION);
 
-        let row_count: i64 = conn
-            .query_row("SELECT COUNT(*) FROM evolutions", [], |row| row.get(0))
+        let row_count = crate::db::tables::evolutions::table
+            .count()
+            .get_result::<i64>(&mut conn)
             .unwrap();
         assert_eq!(row_count, 0);
 
-        crate::db::evolutions::upsert(&db_path, None, "feature").unwrap();
+        drop(conn);
+        let pool = rt.block_on(crate::db::init_pool_at_path(&db_path)).unwrap();
+        crate::db::evolutions::upsert(&pool, None, "feature").unwrap();
     }
 }

@@ -2,7 +2,7 @@ use super::helpers::capture_err;
 use crate::state::evolve_state;
 use crate::storage::store;
 use crate::{db, git, rebuild, shared_types};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 /// Restore uncommitted changes.
 #[tauri::command]
@@ -36,11 +36,10 @@ pub async fn darwin_adopt_manual_changes(app: AppHandle) -> Result<i64, String> 
         .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
     let git_status =
         git::status(&config_dir).map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
-    let db_path =
-        db::get_db_path(&app).map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
     let branch = git_status.branch.as_deref().unwrap_or("unknown");
     let existing_id = evolve_state::get(&app).ok().and_then(|s| s.evolution_id);
-    let evolution_id = db::evolutions::upsert(&db_path, existing_id, branch)
+    let pool = app.state::<db::DbPool>();
+    let evolution_id = db::evolutions::upsert(&pool, existing_id, branch)
         .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
 
     evolve_state::set(

@@ -120,7 +120,6 @@ pub fn get_ref_sha(dir: &str, ref_name: &str) -> Option<String> {
 ///
 /// This is stricter than "HEAD exists":
 /// it ensures HEAD ultimately points to a commit that can be diffed.
-/// Therefore it fixes a bug in the old version that used GitCommand.
 ///
 /// Equivalent intent:
 ///     git rev-parse --verify HEAD

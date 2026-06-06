@@ -1,81 +1,14 @@
-/// Git execution layer (CLI AUTHORITY)
+/// Git execution layer.
 ///
-/// This module uses `git_command()` for CLI semantics that git2 cannot preserve,
-/// and git2 where the equivalent operation is object/ref/index-level.
+/// This module uses git2 for object, ref, index, and worktree mutation.
+/// Note that the unit tests still require git to be installed on the system
+/// but that seems like a reasonable assumption.
 ///
 /// Rules:
-/// - This layer relies on REAL Git behavior
-/// - Must preserve CLI semantics exactly
-/// - Includes hooks suppression + identity injection
 /// - May modify filesystem, index, HEAD, refs
 use crate::git::query::has_head_commit;
 use anyhow::{Context, Result};
-use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
-
-/// Wraps git commands, errs with Stderr on exit with non-zero status
-struct GitCommand(Command);
-
-impl GitCommand {
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.0.args(args);
-        self
-    }
-
-    fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self {
-        self.0.current_dir(dir);
-        self
-    }
-
-    fn output(&mut self) -> Result<Output> {
-        let out = self.0.output()?;
-        if !out.status.success() {
-            let stderr = String::from_utf8_lossy(&out.stderr);
-            anyhow::bail!("Git error: {}", stderr.trim());
-        }
-        Ok(out)
-    }
-}
-
-/// Identity + hooks injection layer (CLI boundary enforcement)
-///
-/// IMPORTANT: This cannot be meaningfully replicated with `git2`,
-/// the Rust library which doesn't require shelling out to a process.
-///
-/// The functions that call this wrapper intentionally use the Git CLI to enforce:
-/// - deterministic identity (user.name / user.email)
-/// - disabled commit signing (GPG)
-/// - disabled hooks execution (core.hooksPath=/dev/null)
-/// - controlled environment PATH resolution
-///
-/// These behaviors are part of the *Git process environment*, not the
-/// repository object model.
-///
-/// `git2` does NOT support:
-/// - per-command environment mutation equivalent to `-c` CLI overrides
-/// - hooksPath / hook suppression semantics
-/// - GPG signing configuration via execution context
-/// - PATH-based toolchain isolation
-fn git_command() -> GitCommand {
-    let mut cmd = Command::new("git");
-    cmd.env("PATH", crate::system::nix::get_nix_path());
-    cmd.args([
-        "-c",
-        "user.name=nixmac",
-        "-c",
-        "user.email=nixmac@local",
-        "-c",
-        "commit.gpgsign=false",
-        "-c",
-        "core.hooksPath=/dev/null",
-    ]);
-    GitCommand(cmd)
-}
 
 /// Helper to determine the Git index mode for an intent-to-add entry based on filesystem metadata.
 fn intent_to_add_mode(metadata: &std::fs::Metadata) -> u32 {
@@ -178,37 +111,76 @@ pub struct CommitInfo {
     pub tree_hash: String,
 }
 
+/// Stages every non-ignored worktree change into the repository index.
+///
+/// Simulates `git add -A`:
+/// - `update_all(["."])` refreshes existing tracked entries and stages deletions.
+/// - `add_all(["."], DEFAULT, ...)` stages new/modified non-ignored files.
+///
+/// Behavior notes:
+/// - This operates on the whole discovered repository, matching modern
+///   `git add -A` behavior even when invoked from a nested directory.
+fn stage_all(repo: &git2::Repository) -> Result<git2::Index> {
+    let mut index = repo.index().context("git2 open repository index")?;
+
+    index
+        .update_all(["."], None)
+        .context("git2 update tracked index entries")?;
+    index
+        .add_all(["."], git2::IndexAddOption::DEFAULT, None)
+        .context("git2 add worktree changes to index")?;
+    index.write().context("git2 write staged index")?;
+
+    Ok(index)
+}
+
 /// Stages all and commits with msg, returns hash and tree hash.
+///
+/// Simulates:
+/// - `git add -A` with the `stage_all` helper.
+/// - `git commit -m <message>` with `repo.commit(Some("HEAD"), ...)`.
+/// - `git rev-parse HEAD` by returning the new commit id.
+/// - `git rev-parse HEAD^{tree}` by returning the staged tree id.
+///
+/// Environment notes:
+/// - The old CLI impl injected `user.name=nixmac` and `user.email=nixmac@local`;
+///   git2 needs to implement that with an explicit signature.
+/// - git2 does not run hooks or GPG signing, which preserves the previous CLI's
+///   `core.hooksPath=/dev/null` and `commit.gpgsign=false` intent.
+/// - PATH is thankfully irrelevant because no subprocess, hook, editor, or signer runs.
 pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
-    git_command()
-        .args(["add", "-A"])
-        .current_dir(dir)
-        .output()?;
+    let repo = git2::Repository::discover(dir)?;
+    let mut index = stage_all(&repo)?;
+    let tree_id = index.write_tree().context("git2 write commit tree")?;
+    let tree = repo.find_tree(tree_id).context("git2 find commit tree")?;
 
-    git_command()
-        .args(["commit", "-m", message])
-        .current_dir(dir)
-        .output()?;
+    let parent = repo.head().ok().and_then(|head| head.peel_to_commit().ok());
+    if let Some(parent) = parent.as_ref() {
+        if parent.tree_id() == tree_id {
+            anyhow::bail!("nothing to commit");
+        }
+    } else if index.is_empty() {
+        anyhow::bail!("nothing to commit");
+    }
 
-    // Get commit hash
-    let hash_output = git_command()
-        .args(["rev-parse", "HEAD"])
-        .current_dir(dir)
-        .output()?;
-    let hash = String::from_utf8_lossy(&hash_output.stdout)
-        .trim()
-        .to_string();
+    let signature =
+        git2::Signature::now("nixmac", "nixmac@local").context("create git signature")?;
+    let parents = parent.iter().collect::<Vec<_>>();
+    let commit_id = repo
+        .commit(
+            Some("HEAD"),
+            &signature,
+            &signature,
+            message,
+            &tree,
+            &parents,
+        )
+        .context("git2 create commit")?;
 
-    // Get tree hash
-    let tree_output = git_command()
-        .args(["rev-parse", "HEAD^{tree}"])
-        .current_dir(dir)
-        .output()?;
-    let tree_hash = String::from_utf8_lossy(&tree_output.stdout)
-        .trim()
-        .to_string();
-
-    Ok(CommitInfo { hash, tree_hash })
+    Ok(CommitInfo {
+        hash: commit_id.to_string(),
+        tree_hash: tree_id.to_string(),
+    })
 }
 
 /// Restores tracked files to `commit_hash`, removes untracked files, and leaves HEAD in place.
@@ -368,7 +340,7 @@ pub fn tag_commit(dir: &str, tag: &str, target: &str, force: bool) -> Result<()>
 /// Stage everything and create a backup branch without moving HEAD.
 ///
 /// Command mapping:
-/// - Runs `git add --all` through the CLI to preserve Git's staging semantics.
+/// - Simulates `git add --all` with the `stage_all` helper.
 /// - Simulates `git write-tree` with `git2::Index::write_tree`.
 /// - Simulates `git commit-tree <tree> -p HEAD -m <msg>` with `repo.commit(None, ...)`.
 /// - Simulates `git update-ref refs/heads/<branch> <commit>` with `repo.reference(..., true, ...)`.
@@ -387,14 +359,8 @@ pub fn create_evolution_backup(
         changeset_id
     );
 
-    git_command()
-        .args(["add", "--all"])
-        .current_dir(repo_path)
-        .output()
-        .context("git add --all")?;
-
     let repo = git2::Repository::discover(repo_path)?;
-    let mut index = repo.index().context("open git index")?;
+    let mut index = stage_all(&repo)?;
     let tree_id = index.write_tree().context("git2 write index tree")?;
     let tree = repo.find_tree(tree_id).context("git2 find written tree")?;
     let parent = repo
@@ -461,14 +427,30 @@ mod tests {
     use super::*;
     use std::fs;
     use std::path::Path;
+    use std::process::{Command, Output};
     use tempfile::TempDir;
 
-    fn run_git_ok(repo_dir: &Path, args: &[&str]) -> String {
-        let output = git_command()
+    fn run_git(repo_dir: &Path, args: &[&str]) -> Output {
+        Command::new("git")
+            .env("PATH", crate::system::nix::get_nix_path())
+            .args([
+                "-c",
+                "user.name=nixmac",
+                "-c",
+                "user.email=nixmac@local",
+                "-c",
+                "commit.gpgsign=false",
+                "-c",
+                "core.hooksPath=/dev/null",
+            ])
             .args(args)
             .current_dir(repo_dir)
             .output()
-            .unwrap();
+            .expect("run git command")
+    }
+
+    fn run_git_ok(repo_dir: &Path, args: &[&str]) -> String {
+        let output = run_git(repo_dir, args);
         assert!(
             output.status.success(),
             "git {:?} failed: {}",
@@ -476,6 +458,166 @@ mod tests {
             String::from_utf8_lossy(&output.stderr)
         );
         String::from_utf8_lossy(&output.stdout).to_string()
+    }
+
+    #[test]
+    fn test_commit_all_creates_initial_commit_with_deterministic_identity() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+
+        let info = commit_all(&repo_dir_str, "initial").unwrap();
+
+        assert_eq!(
+            run_git_ok(&repo_dir, &["rev-parse", "HEAD"]).trim(),
+            info.hash
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["rev-parse", "HEAD^{tree}"]).trim(),
+            info.tree_hash
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["show", "-s", "--format=%an <%ae>", "HEAD"]).trim(),
+            "nixmac <nixmac@local>"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["show", "-s", "--format=%s", "HEAD"]).trim(),
+            "initial"
+        );
+    }
+
+    #[test]
+    fn test_commit_all_matches_add_all_for_all_file_states() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join(".gitignore"), "ignored.txt\n").unwrap();
+        fs::write(repo_dir.join("keep.txt"), "initial\n").unwrap();
+        fs::write(repo_dir.join("remove.txt"), "remove\n").unwrap();
+        fs::write(repo_dir.join("tracked_ignored.txt"), "tracked initial\n").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+
+        fs::write(repo_dir.join("keep.txt"), "changed\n").unwrap();
+        fs::remove_file(repo_dir.join("remove.txt")).unwrap();
+        fs::write(repo_dir.join("added.txt"), "added\n").unwrap();
+        fs::write(repo_dir.join("ignored.txt"), "ignored\n").unwrap();
+        fs::write(repo_dir.join("tracked_ignored.txt"), "tracked changed\n").unwrap();
+
+        commit_all(&repo_dir_str, "second").unwrap();
+
+        assert_eq!(
+            run_git_ok(&repo_dir, &["show", "HEAD:keep.txt"]),
+            "changed\n"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["show", "HEAD:added.txt"]),
+            "added\n"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["show", "HEAD:tracked_ignored.txt"]),
+            "tracked changed\n"
+        );
+        assert!(
+            !run_git(&repo_dir, &["cat-file", "-e", "HEAD:remove.txt"])
+                .status
+                .success(),
+            "deleted tracked file should be removed from the commit"
+        );
+        assert!(
+            !run_git(&repo_dir, &["cat-file", "-e", "HEAD:ignored.txt"])
+                .status
+                .success(),
+            "ignored untracked file should not be committed"
+        );
+        assert_eq!(run_git_ok(&repo_dir, &["status", "--porcelain=v1"]), "");
+    }
+
+    #[test]
+    fn test_commit_all_from_nested_dir_stages_entire_repo() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let config_dir = repo_dir.join("nix/os");
+        fs::create_dir_all(&config_dir).unwrap();
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        let config_dir_str = config_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("outside.txt"), "outside initial\n").unwrap();
+        fs::write(config_dir.join("inside.nix"), "{ }\n").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+
+        fs::write(repo_dir.join("outside.txt"), "outside changed\n").unwrap();
+        fs::write(config_dir.join("inside.nix"), "{ changed = true; }\n").unwrap();
+
+        commit_all(&config_dir_str, "nested commit").unwrap();
+
+        assert_eq!(
+            run_git_ok(&repo_dir, &["show", "HEAD:outside.txt"]),
+            "outside changed\n"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["show", "HEAD:nix/os/inside.nix"]),
+            "{ changed = true; }\n"
+        );
+    }
+
+    #[test]
+    fn test_commit_all_fails_when_there_is_nothing_to_commit() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        git2::Repository::init(&repo_dir).unwrap();
+
+        assert!(commit_all(&repo_dir_str, "empty initial").is_err());
+
+        let repo_dir = temp_dir.path().join("repo-with-gitignore");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+        let first = commit_all(&repo_dir_str, "initial").unwrap();
+
+        assert!(commit_all(&repo_dir_str, "empty second").is_err());
+        assert_eq!(
+            run_git_ok(&repo_dir, &["rev-parse", "HEAD"]).trim(),
+            first.hash
+        );
+    }
+
+    #[test]
+    fn test_commit_all_does_not_run_git_hooks() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+        fs::write(
+            repo_dir.join(".git/hooks/pre-commit"),
+            "#!/bin/sh\nexit 1\n",
+        )
+        .unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut permissions = fs::metadata(repo_dir.join(".git/hooks/pre-commit"))
+                .unwrap()
+                .permissions();
+            permissions.set_mode(0o755);
+            fs::set_permissions(repo_dir.join(".git/hooks/pre-commit"), permissions).unwrap();
+        }
+
+        commit_all(&repo_dir_str, "initial").unwrap();
+
+        assert_eq!(
+            run_git_ok(&repo_dir, &["show", "-s", "--format=%s", "HEAD"]).trim(),
+            "initial"
+        );
     }
 
     #[test]
@@ -882,11 +1024,9 @@ mod tests {
 
         let removed_path = format!("{}:remove.txt", backup_branch);
         assert!(
-            git_command()
-                .args(["cat-file", "-e", &removed_path])
-                .current_dir(&repo_dir)
-                .output()
-                .is_err(),
+            !run_git(&repo_dir, &["cat-file", "-e", &removed_path])
+                .status
+                .success(),
             "backup tree should include tracked deletion staged by git add --all"
         );
     }
