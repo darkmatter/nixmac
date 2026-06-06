@@ -5,10 +5,12 @@
 //! worker drains the durable SQLite queue at a time.
 
 use anyhow::{Context, Result};
-use std::path::Path;
-use tauri::{AppHandle, Emitter, Runtime};
+use diesel::connection::Connection;
+use diesel::sqlite::SqliteConnection;
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tokio::sync::mpsc;
 
+use crate::db::DbPool;
 use crate::sqlite_types::QueuedSummary;
 use crate::summarize::model_output_types::HunkSummary;
 
@@ -59,13 +61,13 @@ struct HashSummaryPair {
 pub fn start_worker<R: Runtime>(app: &AppHandle<R>) -> Result<SummarizerState> {
     let (tx, rx) = mpsc::channel(SUMMARIZER_QUEUE_DEPTH);
     let app = app.clone();
-    let db_path = crate::db::get_db_path(&app)?;
+    let pool = app.state::<DbPool>().inner().clone();
 
     tauri::async_runtime::spawn(worker_loop(rx, move |job| {
         let app = app.clone();
-        let db_path = db_path.clone();
+        let pool = pool.clone();
         async move {
-            if let Err(error) = process(job.ids, app, db_path).await {
+            if let Err(error) = process(job.ids, app, pool).await {
                 log::warn!("[queue_summarizer] worker job failed: {error:#}");
             }
         }
@@ -87,7 +89,7 @@ where
 pub async fn process<R: Runtime>(
     ids: Option<Vec<i64>>,
     app: AppHandle<R>,
-    db_path: std::path::PathBuf,
+    pool: DbPool,
 ) -> Result<()> {
     if let Some(ref specific_ids) = ids {
         crate::summarize::sumlog::queue_log_started(specific_ids);
@@ -95,16 +97,17 @@ pub async fn process<R: Runtime>(
     let mut first_pass = true;
     loop {
         let items = {
-            let conn = rusqlite::Connection::open(&db_path)?;
+            let mut conn = pool.get()?;
             if first_pass {
                 match &ids {
-                    Some(specific_ids) => {
-                        crate::db::changesets::fetch_queued_summaries_by_ids(&conn, specific_ids)?
-                    }
-                    None => crate::db::changesets::fetch_all_queued_summaries(&conn)?,
+                    Some(specific_ids) => crate::db::changesets::fetch_queued_summaries_by_ids(
+                        &mut conn,
+                        specific_ids,
+                    )?,
+                    None => crate::db::changesets::fetch_all_queued_summaries(&mut conn)?,
                 }
             } else {
-                crate::db::changesets::fetch_all_queued_summaries(&conn)?
+                crate::db::changesets::fetch_all_queued_summaries(&mut conn)?
             }
         };
         first_pass = false;
@@ -116,14 +119,14 @@ pub async fn process<R: Runtime>(
         let mut passed = 0usize;
         let mut retrying = 0usize;
         for item in &items {
-            match try_process_item(item, &app, &db_path).await {
+            match try_process_item(item, &app, &pool).await {
                 Ok(_) => passed += 1,
                 Err(e) => {
                     log::warn!("[queue_summarizer] item {} error: {:#}", item.id, e);
                     retrying += 1;
                 }
             }
-            emit_update(&app, &db_path);
+            emit_update(&app);
         }
         crate::summarize::sumlog::queue_log_done(passed, retrying);
     }
@@ -135,38 +138,40 @@ pub async fn process<R: Runtime>(
 async fn try_process_item<R: Runtime>(
     item: &QueuedSummary,
     app: &AppHandle<R>,
-    db_path: &Path,
+    pool: &DbPool,
 ) -> Result<()> {
     // Already exhausted retries on a previous run — fail immediately.
     if item.attempted_count >= FAILED_AFTER_TRIES {
-        let mut conn = rusqlite::Connection::open(db_path)?;
-        let tx = conn.transaction()?;
-        crate::db::changesets::mark_queued_failed(&tx, item.id)?;
-        fail_change_summaries(&tx, item)?;
-        tx.commit()?;
+        let mut conn = pool.get()?;
+        conn.transaction::<(), anyhow::Error, _>(|conn| {
+            crate::db::changesets::mark_queued_failed(conn, item.id)?;
+            fail_change_summaries(conn, item)?;
+            Ok(())
+        })?;
         return Ok(());
     }
 
     // Optimistically increment the attempt counter before the model call.
     {
-        let mut conn = rusqlite::Connection::open(db_path)?;
-        let tx = conn.transaction()?;
-        crate::db::changesets::increment_queued_attempts(&tx, item.id)?;
-        tx.commit()?;
+        let mut conn = pool.get()?;
+        conn.transaction::<(), anyhow::Error, _>(|conn| {
+            crate::db::changesets::increment_queued_attempts(conn, item.id)?;
+            Ok(())
+        })?;
     }
     let new_count = item.attempted_count + 1;
 
     match item.summary_type.as_str() {
-        "NEW_SINGLE" => handle_new_single(item, app, db_path, new_count).await?,
+        "NEW_SINGLE" => handle_new_single(item, app, pool, new_count).await?,
         "NEW_GROUP" => {
-            handle_group(item, db_path, new_count, || {
+            handle_group(item, pool, new_count, || {
                 crate::summarize::model_calls::summarize_new_group(&item.prompt, Some(app))
             })
             .await?
         }
         "EVOLVED_GROUP" => {
             let group_summary_id = item.group_summary_id.unwrap_or(0);
-            handle_group(item, db_path, new_count, || {
+            handle_group(item, pool, new_count, || {
                 crate::summarize::model_calls::summarize_evolved_group(
                     &item.prompt,
                     group_summary_id,
@@ -186,7 +191,7 @@ async fn try_process_item<R: Runtime>(
 async fn handle_new_single<R: Runtime>(
     item: &QueuedSummary,
     app: &AppHandle<R>,
-    db_path: &Path,
+    pool: &DbPool,
     new_count: i64,
 ) -> Result<()> {
     crate::summarize::sumlog::queue_log_prompt(item.id, &item.prompt);
@@ -198,7 +203,7 @@ async fn handle_new_single<R: Runtime>(
             );
             let summary = validate_or_retry(
                 summary,
-                db_path,
+                pool,
                 item.id,
                 |s| validate_hunk_summary(s, "single"),
                 || crate::summarize::model_calls::summarize_new_single(&item.prompt, Some(app)),
@@ -209,26 +214,28 @@ async fn handle_new_single<R: Runtime>(
                 serde_json::to_string(&summary).unwrap_or_else(|_| "{}".to_string());
             let pairs = parse_pairs(item)?;
             if let Some(pair) = pairs.first() {
-                let mut conn = rusqlite::Connection::open(db_path)?;
-                let tx = conn.transaction()?;
-                crate::db::changesets::update_change_summary_content(
-                    &tx,
-                    pair.summary_id,
-                    &summary.title,
-                    &summary.description,
-                )?;
-                crate::db::changesets::mark_queued_done(&tx, item.id, &model_response)?;
-                tx.commit()?;
+                let mut conn = pool.get()?;
+                conn.transaction::<(), anyhow::Error, _>(|conn| {
+                    crate::db::changesets::update_change_summary_content(
+                        conn,
+                        pair.summary_id,
+                        &summary.title,
+                        &summary.description,
+                    )?;
+                    crate::db::changesets::mark_queued_done(conn, item.id, &model_response)?;
+                    Ok(())
+                })?;
             }
         }
         Err(e) => {
             log::warn!("[queue_summarizer] NEW_SINGLE {} failed: {:#}", item.id, e);
             if new_count >= FAILED_AFTER_TRIES {
-                let mut conn = rusqlite::Connection::open(db_path)?;
-                let tx = conn.transaction()?;
-                crate::db::changesets::mark_queued_failed(&tx, item.id)?;
-                fail_change_summaries(&tx, item)?;
-                tx.commit()?;
+                let mut conn = pool.get()?;
+                conn.transaction::<(), anyhow::Error, _>(|conn| {
+                    crate::db::changesets::mark_queued_failed(conn, item.id)?;
+                    fail_change_summaries(conn, item)?;
+                    Ok(())
+                })?;
             }
         }
     }
@@ -239,7 +246,7 @@ async fn handle_new_single<R: Runtime>(
 /// `call` is invoked for both the initial model request and, if validation fails, the retry.
 async fn handle_group<F, Fut>(
     item: &QueuedSummary,
-    db_path: &Path,
+    pool: &DbPool,
     new_count: i64,
     call: F,
 ) -> Result<()>
@@ -264,7 +271,7 @@ where
             );
             let summary = validate_or_retry(
                 summary,
-                db_path,
+                pool,
                 item.id,
                 |s| validate_group_response(s, &pairs),
                 call,
@@ -273,48 +280,50 @@ where
             crate::summarize::sumlog::queue_log_validation_ok(item.id, pairs.len());
             let model_response =
                 serialize_group_response(&summary.group, &pairs, &summary.own_summaries);
-            let mut conn = rusqlite::Connection::open(db_path)?;
-            let tx = conn.transaction()?;
-            crate::db::changesets::update_change_summary_content(
-                &tx,
-                group_summary_id,
-                &summary.group.title,
-                &summary.group.description,
-            )?;
-            for pair in &pairs {
-                let own = summary.own_summaries.get(&pair.hash).ok_or_else(|| {
-                    anyhow::anyhow!("hash {} missing after validation", pair.hash)
-                })?;
+            let mut conn = pool.get()?;
+            conn.transaction::<(), anyhow::Error, _>(|conn| {
                 crate::db::changesets::update_change_summary_content(
-                    &tx,
-                    pair.summary_id,
-                    &own.title,
-                    &own.description,
+                    conn,
+                    group_summary_id,
+                    &summary.group.title,
+                    &summary.group.description,
                 )?;
-            }
-            crate::db::changesets::mark_queued_done(&tx, item.id, &model_response)?;
-            tx.commit()?;
+                for pair in &pairs {
+                    let own = summary.own_summaries.get(&pair.hash).ok_or_else(|| {
+                        anyhow::anyhow!("hash {} missing after validation", pair.hash)
+                    })?;
+                    crate::db::changesets::update_change_summary_content(
+                        conn,
+                        pair.summary_id,
+                        &own.title,
+                        &own.description,
+                    )?;
+                }
+                crate::db::changesets::mark_queued_done(conn, item.id, &model_response)?;
+                Ok(())
+            })?;
         }
         Err(e) => {
             log::warn!("[queue_summarizer] group {} failed: {:#}", item.id, e);
             if new_count >= FAILED_AFTER_TRIES {
-                let mut conn = rusqlite::Connection::open(db_path)?;
-                let tx = conn.transaction()?;
-                crate::db::changesets::mark_queued_failed(&tx, item.id)?;
-                fail_change_summaries(&tx, item)?;
-                tx.commit()?;
+                let mut conn = pool.get()?;
+                conn.transaction::<(), anyhow::Error, _>(|conn| {
+                    crate::db::changesets::mark_queued_failed(conn, item.id)?;
+                    fail_change_summaries(conn, item)?;
+                    Ok(())
+                })?;
             }
         }
     }
     Ok(())
 }
 
-fn increment_attempts_now(db_path: &Path, id: i64) -> Result<()> {
-    let mut conn = rusqlite::Connection::open(db_path)?;
-    let tx = conn.transaction()?;
-    crate::db::changesets::increment_queued_attempts(&tx, id)?;
-    tx.commit()?;
-    Ok(())
+fn increment_attempts_now(pool: &DbPool, id: i64) -> Result<()> {
+    let mut conn = pool.get()?;
+    conn.transaction::<(), anyhow::Error, _>(|conn| {
+        crate::db::changesets::increment_queued_attempts(conn, id)?;
+        Ok(())
+    })
 }
 
 // ── Retry helper ──────────────────────────────────────────────────────────────
@@ -324,7 +333,7 @@ fn increment_attempts_now(db_path: &Path, id: i64) -> Result<()> {
 /// also fails validation.
 async fn validate_or_retry<T, Retry, Fut>(
     result: T,
-    db_path: &Path,
+    pool: &DbPool,
     item_id: i64,
     validate: impl Fn(&T) -> Result<()>,
     retry: Retry,
@@ -341,7 +350,7 @@ where
                 item_id,
                 e
             );
-            increment_attempts_now(db_path, item_id)?;
+            increment_attempts_now(pool, item_id)?;
             let (result2, _) = retry().await.with_context(|| {
                 format!(
                     "failed to summarize queued item {}, retry model call failed",
@@ -349,7 +358,7 @@ where
                 )
             })?;
             if let Err(e2) = validate(&result2) {
-                increment_attempts_now(db_path, item_id)?;
+                increment_attempts_now(pool, item_id)?;
                 return Err(e2).with_context(|| {
                     format!(
                         "failed to summarize queued item {}, retry validation also failed",
@@ -403,14 +412,14 @@ fn parse_pairs(item: &QueuedSummary) -> Result<Vec<HashSummaryPair>> {
     Ok(serde_json::from_str(json)?)
 }
 
-fn fail_change_summaries(tx: &rusqlite::Transaction, item: &QueuedSummary) -> Result<()> {
+fn fail_change_summaries(conn: &mut SqliteConnection, item: &QueuedSummary) -> Result<()> {
     if let Some(group_id) = item.group_summary_id {
-        crate::db::changesets::mark_change_summary_failed(tx, group_id)?;
+        crate::db::changesets::mark_change_summary_failed(conn, group_id)?;
     }
     if let Some(pairs_json) = &item.hash_own_summary_id_pairs {
         if let Ok(pairs) = serde_json::from_str::<Vec<HashSummaryPair>>(pairs_json) {
             for pair in pairs {
-                crate::db::changesets::mark_change_summary_failed(tx, pair.summary_id)?;
+                crate::db::changesets::mark_change_summary_failed(conn, pair.summary_id)?;
             }
         }
     }
@@ -441,10 +450,11 @@ fn serialize_group_response(
     .unwrap_or_else(|_| "{}".to_string())
 }
 
-fn emit_update<R: Runtime>(app: &AppHandle<R>, db_path: &Path) {
+fn emit_update<R: Runtime>(app: &AppHandle<R>) {
     let result = (|| -> Result<()> {
         let config_dir = crate::storage::store::get_config_dir(app)?;
-        let change_sets = crate::summarize::find_existing::for_current_state(db_path, &config_dir)?;
+        let pool = app.state::<crate::db::DbPool>();
+        let change_sets = crate::summarize::find_existing::for_current_state(&pool, &config_dir)?;
         let semantic_map = crate::summarize::group_existing::from_change_sets(change_sets);
         app.emit("change_map_changed", semantic_map)?;
         Ok(())

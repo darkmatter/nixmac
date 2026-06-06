@@ -1,7 +1,6 @@
 //! Iterative pipeline — adapts an existing semantic map with new hunks from a changeset.
 
 use anyhow::Result;
-use std::path::Path;
 use tauri::{AppHandle, Manager, Runtime};
 
 use crate::shared_types::SemanticChangeMap;
@@ -14,7 +13,6 @@ pub async fn analyze<R: Runtime>(
     semantic_map: SemanticChangeMap,
     missed_changes: Vec<Change>,
     app: &AppHandle<R>,
-    db_path: &Path,
     commit_id: Option<i64>,
     base_commit_id: i64,
     commit_message: Option<&str>,
@@ -75,8 +73,9 @@ pub async fn analyze<R: Runtime>(
 
     dbg::grouped_log_assignments(&assignments);
 
+    let pool = app.state::<crate::db::DbPool>();
     let (change_set_id, queued_ids) = crate::db::store_evolved_changeset::store(
-        db_path,
+        &pool,
         commit_id,
         base_commit_id,
         commit_message,
@@ -94,7 +93,7 @@ pub async fn analyze<R: Runtime>(
             crate::summarize::queue_summarizer::process(
                 Some(queued_ids),
                 app.clone(),
-                db_path.to_path_buf(),
+                pool.inner().clone(),
             )
             .await?;
         }
