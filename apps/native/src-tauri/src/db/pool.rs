@@ -1,9 +1,7 @@
 //! Diesel connection pool for the application SQLite database.
 //!
-//! Phase 2 starts by centralizing connection ownership here. Existing query
-//! modules can then move from `rusqlite::Connection::open` to
-//! `tauri::State<DbPool>` incrementally, without changing the schema and
-//! without giving each call site responsibility for opening SQLite.
+//! Every query path acquires its connection from this pool via
+//! `tauri::State<DbPool>`; no module opens SQLite directly.
 
 use anyhow::{Context, Result};
 use diesel::{r2d2::ConnectionManager, sqlite::SqliteConnection};

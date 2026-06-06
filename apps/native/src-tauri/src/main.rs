@@ -605,17 +605,12 @@ fn run_gui_mode(
             app.manage(evolve::config::load_slice(handle)?);
             evolve::config::register_slice_config(&app.state::<state::slice::SliceRegistry>())?;
             app.manage(state::evolve_state::load_slice(handle)?);
-            app.manage(summarize::queue_summarizer::start_worker(handle)?);
 
-            // Initialize SQLite database
-            let db_handle = handle.clone();
-            tauri::async_runtime::spawn(async move {
-                if let Err(e) = db::init(&db_handle).await {
-                    log::error!("Failed to initialize database: {}", e);
-                } else {
-                    log::info!("Database initialized successfully");
-                }
-            });
+            // Initialize SQLite database before any consumer that reads the
+            // managed DbPool from app state (e.g. the queue summarizer worker).
+            tauri::async_runtime::block_on(db::init(handle))?;
+
+            app.manage(summarize::queue_summarizer::start_worker(handle)?);
 
             // Background initialize the scanner singleton; the returned &'static ref is not
             // needed right now. fire-and-forget is intentional here.
