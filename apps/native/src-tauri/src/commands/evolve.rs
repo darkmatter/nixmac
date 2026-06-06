@@ -19,15 +19,15 @@ pub async fn darwin_evolve(
         }
     };
 
-        if let Some(path) = session_log {
-            crate::state::session_log::set_session_path(Some(path.clone()));
-            crate::state::session_log::append_event(
-                &path,
-                "prompt",
-                &serde_json::json!({ "description": description }),
-            )
-            .await;
-        }
+    if let Some(path) = session_log {
+        crate::state::session_log::set_session_path(Some(path.clone()));
+        crate::state::session_log::append_event(
+            &path,
+            "prompt",
+            &serde_json::json!({ "description": &description }),
+        )
+        .await;
+    }
 
 
     let result =
@@ -63,6 +63,7 @@ pub async fn darwin_evolve(
                     }
                     crate::state::session_log::set_session_path(None);
                     return Err(failure.error);
+                }
 
                 log::warn!(
                     "[darwin_evolve] failed after {} iterations and {} build attempts",

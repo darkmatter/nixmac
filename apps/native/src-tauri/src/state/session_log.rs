@@ -24,18 +24,17 @@ static SESSION_LOG_PATH: Mutex<Option<PathBuf>> = Mutex::new(None);
 ///
 /// Uses `dirs::data_local_dir()`, which resolves per-platform (macOS:
 /// `~/Library/Application Support/`, Linux: `~/.local/share/`).
-fn sessions_dir() -> PathBuf {
+fn sessions_dir() -> Result<PathBuf, String> {
     dirs::data_local_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("nixmac")
-        .join("sessions")
+        .map(|d| d.join("nixmac").join("sessions"))
+        .ok_or_else(|| "Could not resolve OS data-local directory".to_string())
 }
 
 /// Creates a new session log file and returns its path.
 ///
 /// File name format: `YYYYMMDDHHMMSS_<8-char-uuid>.jsonl`.
 pub fn create_session_log() -> Result<PathBuf, String> {
-    let dir = sessions_dir();
+    let dir = sessions_dir()?;
     std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create sessions dir: {e}"))?;
 
     let timestamp = Local::now().format("%Y%m%d%H%M%S");
@@ -97,3 +96,4 @@ pub async fn append_event(path: &PathBuf, event_type: &str, payload: &serde_json
         Ok(Err(e)) => log::warn!("Failed to append session log event: {e}"),
         Err(e) => log::warn!("Failed to append session log event: {e}"),
     }
+}
