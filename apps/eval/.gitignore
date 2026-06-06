@@ -1,4 +1,7 @@
 data/results
 data/results_*
+data/report
+data/report_*
 ~$*
 *.out
+__pycache__

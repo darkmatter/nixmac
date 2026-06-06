@@ -1,0 +1,97 @@
+{% extends "base.html.j2" %}
+{% set asset_root = "../assets" %}
+{% set index_href = "../index.html" %}
+{% block title %}Case {{ case.case_id }} — {{ case.prompt_truncated }}{% endblock %}
+{% block content %}
+
+<nav class="case-nav">
+  <a href="../index.html">← back to index</a>
+  {% if prev_id %}<a href="case_{{ prev_id }}.html">← case {{ prev_id }}</a>{% endif %}
+  {% if next_id %}<a href="case_{{ next_id }}.html">case {{ next_id }} →</a>{% endif %}
+</nav>
+
+<section class="case-header">
+  <h1>
+    Case {{ case.case_id }}
+    {% if case.status_label == "pass" %}<span class="pill pill-pass">PASS</span>
+    {% elif case.status_label == "fail" %}<span class="pill pill-fail">FAIL</span>
+    {% else %}<span class="pill pill-ungraded">ungraded</span>
+    {% endif %}
+  </h1>
+  <dl class="case-meta">
+    <dt>Outcome</dt>
+    <dd>
+      <span class="outcome-badge outcome-{{ case.status_label }}">{{ case.outcome_label }}</span>
+      {% if not case.passed %}<span class="muted">(expected: {{ case.expected_outcome }})</span>{% endif %}
+    </dd>
+    {% if case.is_golden %}<dt>Set</dt><dd><span class="badge">golden</span></dd>{% endif %}
+    {% if case.category %}<dt>Category</dt><dd><code>{{ case.category }}{% if case.subcategory %} / {{ case.subcategory }}{% endif %}</code></dd>{% endif %}
+    {% if case.priority %}<dt>Priority</dt><dd>{{ case.priority }}</dd>{% endif %}
+  </dl>
+</section>
+
+<section id="prompt">
+  <h2>Prompt</h2>
+  <blockquote class="prompt">{{ case.prompt }}</blockquote>
+  {% if case.notes %}<p class="muted">Notes: {{ case.notes }}</p>{% endif %}
+</section>
+
+<section id="verdict">
+  <h2>Verdict</h2>
+  {% if case.checks %}
+  <table class="checks">
+    <tbody>
+    {% for check in case.checks %}
+      <tr class="check-{{ "pass" if check.passed else "fail" }}">
+        <td class="check-icon">{{ "✓" if check.passed else "✗" }}</td>
+        <td class="check-name"><code>{{ check.name }}</code></td>
+        <td class="check-detail">{{ check.detail }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No grade block on this case — run <code>grade.py</code>.</p>
+  {% endif %}
+</section>
+
+<section id="diff">
+  <h2>Diff</h2>
+  {% if case.diff_html %}
+    {{ case.diff_html | safe }}
+  {% else %}
+    <p class="muted">No diff (conversational reply, refusal, or empty change).</p>
+  {% endif %}
+</section>
+
+{% if case.conversational_reply %}
+<section id="reply">
+  <h2>Conversational reply</h2>
+  <blockquote class="reply">{{ case.conversational_reply }}</blockquote>
+</section>
+{% endif %}
+
+{% if case.commit_message or case.summary_instructions %}
+<section id="summary">
+  <h2>Summary</h2>
+  {% if case.commit_message %}<p><strong>Commit:</strong> {{ case.commit_message }}</p>{% endif %}
+  {% if case.summary_instructions %}<pre class="instructions">{{ case.summary_instructions }}</pre>{% endif %}
+</section>
+{% endif %}
+
+<section id="telemetry">
+  <h2>Telemetry</h2>
+  <table class="telemetry">
+    <tr><th>Iterations</th><td>{{ case.iterations }}</td></tr>
+    <tr><th>Build attempts</th><td>{{ case.build_attempts }}</td></tr>
+    <tr><th>Edits</th><td>{{ case.edits_count }}</td></tr>
+    <tr><th>Tool calls</th><td>{{ case.tool_calls_count if case.tool_calls_count is not none else "—" }}</td></tr>
+    <tr><th>Thinking entries</th><td>{{ case.thinking_count if case.thinking_count is not none else "—" }}</td></tr>
+    <tr><th>Duration</th><td>{{ case.duration_ms | duration }}</td></tr>
+    <tr><th>Total tokens</th><td>{{ case.total_tokens | tokens }}</td></tr>
+    <tr><th>State</th><td><code>{{ case.state }}</code></td></tr>
+    {% if case.evolve_model %}<tr><th>Model</th><td>{{ case.evolve_model }}{% if case.evolve_provider %} ({{ case.evolve_provider }}){% endif %}</td></tr>{% endif %}
+  </table>
+</section>
+
+{% endblock %}
