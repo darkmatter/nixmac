@@ -206,27 +206,11 @@ pub(crate) fn ensure_nixmac_edit_allowed(tool: &str, path: &str) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{execute_tool, is_editing_tool, ToolResult};
+    use super::{execute_tool, ToolResult};
     use crate::evolve::gitignore::load_gitignore_matcher;
     use serde_json::json;
     use std::fs;
     use tempfile::tempdir;
-
-    #[test]
-    fn returns_true_for_editing_tools() {
-        assert!(is_editing_tool("edit_file"));
-        assert!(is_editing_tool("edit_nix_file"));
-        assert!(is_editing_tool("ensure_secret"));
-    }
-
-    #[test]
-    fn returns_false_for_non_editing_tools() {
-        assert!(!is_editing_tool("read_file"));
-        assert!(!is_editing_tool("list_files"));
-        assert!(!is_editing_tool("build_check"));
-        assert!(!is_editing_tool("done"));
-        assert!(!is_editing_tool(""));
-    }
 
     #[test]
     fn read_file_rejects_base_gitignored_files() {
