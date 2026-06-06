@@ -79,12 +79,17 @@ pub async fn append_event(path: &PathBuf, event_type: &str, payload: &serde_json
     let buf = format!("{line}\n").into_bytes();
     let path = path.clone();
 
-    if let Err(e) = tokio::task::spawn_blocking(move || -> std::io::Result<()> {
-        let mut file = OpenOptions::new().append(true).open(&path)?;
+    let result = tokio::task::spawn_blocking(move || -> std::io::Result<()> {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let mut file = OpenOptions::new().create(true).append(true).open(&path)?;
         file.write_all(&buf)
     })
-    .await
-    {
-        log::warn!("Failed to append session log event: {e}");
+    .await;
+
+    match result {
+        Ok(Ok(())) => {}
+        Ok(Err(e)) => log::warn!("Failed to append session log event: {e}"),
+        Err(e) => log::warn!("Failed to append session log event: {e}"),
     }
-}
