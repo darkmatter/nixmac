@@ -24,18 +24,17 @@ static SESSION_LOG_PATH: Mutex<Option<PathBuf>> = Mutex::new(None);
 ///
 /// Uses `dirs::data_local_dir()`, which resolves per-platform (macOS:
 /// `~/Library/Application Support/`, Linux: `~/.local/share/`).
-fn sessions_dir() -> PathBuf {
+fn sessions_dir() -> Result<PathBuf, String> {
     dirs::data_local_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("nixmac")
-        .join("sessions")
+        .map(|d| d.join("nixmac").join("sessions"))
+        .ok_or_else(|| "Could not resolve OS data-local directory".to_string())
 }
 
 /// Creates a new session log file and returns its path.
 ///
 /// File name format: `YYYYMMDDHHMMSS_<8-char-uuid>.jsonl`.
 pub fn create_session_log() -> Result<PathBuf, String> {
-    let dir = sessions_dir();
+    let dir = sessions_dir()?;
     std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create sessions dir: {e}"))?;
 
     let timestamp = Local::now().format("%Y%m%d%H%M%S");
@@ -56,12 +55,16 @@ pub fn create_session_log() -> Result<PathBuf, String> {
 
 /// Sets the active session log path. Called when an evolution starts.
 pub fn set_session_path(path: Option<PathBuf>) {
-    *SESSION_LOG_PATH.lock().unwrap() = path;
+    let mut guard = SESSION_LOG_PATH.lock().unwrap_or_else(|e| e.into_inner());
+    *guard = path;
 }
 
 /// Returns a clone of the active session log path, if any.
 pub fn active_session_path() -> Option<PathBuf> {
-    SESSION_LOG_PATH.lock().unwrap().clone()
+    SESSION_LOG_PATH
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone()
 }
 
 /// Appends a JSON line to the session log file.
@@ -79,12 +82,18 @@ pub async fn append_event(path: &PathBuf, event_type: &str, payload: &serde_json
     let buf = format!("{line}\n").into_bytes();
     let path = path.clone();
 
-    if let Err(e) = tokio::task::spawn_blocking(move || -> std::io::Result<()> {
-        let mut file = OpenOptions::new().append(true).open(&path)?;
+    let result = tokio::task::spawn_blocking(move || -> std::io::Result<()> {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let mut file = OpenOptions::new().create(true).append(true).open(&path)?;
         file.write_all(&buf)
     })
-    .await
-    {
-        log::warn!("Failed to append session log event: {e}");
+    .await;
+
+    match result {
+        Ok(Ok(())) => {}
+        Ok(Err(e)) => log::warn!("Failed to append session log event: {e}"),
+        Err(e) => log::warn!("Failed to append session log event: {e}"),
     }
 }

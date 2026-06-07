@@ -127,6 +127,7 @@ mod tests {
 
     #[test]
     fn test_relative_path_resolves_against_cwd() {
+        let _env_lock = crate::test_support::e2e_env_lock();
         let tmp = tempfile::tempdir().expect("create tempdir");
         let orig_cwd = std::env::current_dir().ok();
         std::env::set_current_dir(tmp.path()).expect("chdir");
@@ -162,6 +163,7 @@ mod tests {
 
     #[test]
     fn test_whitespace_trimming() {
+        let _env_lock = crate::test_support::e2e_env_lock();
         let tmp = tempfile::tempdir().expect("create tempdir");
         let orig_cwd = std::env::current_dir().ok();
         std::env::set_current_dir(tmp.path()).expect("chdir");
@@ -183,6 +185,7 @@ mod tests {
 
     #[test]
     fn test_multiple_slashes_normalized() {
+        let _env_lock = crate::test_support::e2e_env_lock();
         let tmp = tempfile::tempdir().expect("create tempdir");
         let orig_cwd = std::env::current_dir().ok();
         std::env::set_current_dir(tmp.path()).expect("chdir");
@@ -201,6 +204,7 @@ mod tests {
 
     #[test]
     fn test_dot_and_dotdot_in_paths() {
+        let _env_lock = crate::test_support::e2e_env_lock();
         let tmp = tempfile::tempdir().expect("create tempdir");
         let orig_cwd = std::env::current_dir().ok();
 
