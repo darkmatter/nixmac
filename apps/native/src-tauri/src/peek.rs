@@ -724,7 +724,11 @@ pub fn create_evolve_mascot_window<R: Runtime>(app: &AppHandle<R>) -> Result<(),
         }
     }
 
-    peek_log!("🌀 Created evolve mascot indicator window at ({}, {})", x, y);
+    peek_log!(
+        "🌀 Created evolve mascot indicator window at ({}, {})",
+        x,
+        y
+    );
     Ok(())
 }
 
