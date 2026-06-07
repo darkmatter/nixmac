@@ -19,7 +19,7 @@ pub async fn darwin_evolve(
         }
     };
 
-    if let Some(path) = session_log {
+    if let Some(ref path) = session_log {
         crate::state::session_log::set_session_path(Some(path.clone()));
         crate::state::session_log::append_event(
             &path,
