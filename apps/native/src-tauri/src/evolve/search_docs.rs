@@ -5,7 +5,7 @@ use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
-use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::fmt;
 use std::sync::RwLock;
 
@@ -72,6 +72,17 @@ const DEFAULT_RESULT_LIMIT: usize = 10;
 // Max limit for search_docs results to prevent token bonfires or overwhelming the agent.
 const MAX_RESULT_LIMIT: usize = 20;
 
+/// Top-level categories that the docs generator splits into one file per
+/// second-level subcategory (mirrors SPLIT_KEYS in scripts/nix-options.sh).
+/// Doc keys for options under these are `<source>/<top>/<sub>.md` instead of
+/// `<source>/<top>.md`, so the agent reads a focused slice rather than a giant
+/// `programs.md` / `services.md`.
+const SPLIT_KEYS: &[&str] = &["programs", "services"];
+
+/// Safety cap on how many options a single "read doc" response can include, to
+/// avoid token bonfires if a split subcategory is unexpectedly large.
+const MAX_DOC_OPTIONS: usize = 400;
+
 /// Sentinel string included in the response when no results are found, to allow the agent
 /// to reliably detect this case and avoid retrying with similar queries or different limits,
 /// which would be futile and could cause token overuse.
@@ -86,15 +97,51 @@ struct DocsOptionEntry {
     source: DocsSource,
 }
 
-#[derive(Debug, Clone)]
-struct ScoredResult {
-    score: i32,
-    entry: DocsOptionEntry,
+/// Aggregate for a single doc (one generated markdown file). The doc key is the
+/// relative markdown path, e.g. `home-manager/programs/git.md`.
+#[derive(Debug, Default)]
+struct DocGroup {
+    /// Number of options contained in the doc.
+    count: usize,
+    /// Best per-option relevance score within the doc (for key-search ranking).
+    best_score: i32,
+    /// A representative matching option path, shown as a hint.
+    best_path: String,
+    source: Option<DocsSource>,
 }
 
 #[derive(Debug, Default)]
 struct DocsIndex {
     entries: Vec<DocsOptionEntry>,
+}
+
+/// Compute the doc key (relative markdown path) that contains an option,
+/// mirroring the layout produced by scripts/nix-options.sh.
+fn doc_key_for(source: DocsSource, option_path: &str) -> String {
+    let segments: Vec<&str> = option_path.split('.').collect();
+    let first = segments.first().copied().unwrap_or("");
+    if first.is_empty() {
+        return format!("{}/index.md", source);
+    }
+    if SPLIT_KEYS.contains(&first) && segments.len() >= 2 {
+        format!("{}/{}/{}.md", source, first, segments[1])
+    } else {
+        format!("{}/{}.md", source, first)
+    }
+}
+
+/// Normalize a doc path/key for comparison: lowercase, trim, drop a leading
+/// `./`, a trailing `/`, and an optional `.md` suffix.
+fn normalize_doc_path(p: &str) -> String {
+    let mut s = p.trim().to_ascii_lowercase();
+    if let Some(rest) = s.strip_prefix("./") {
+        s = rest.to_string();
+    }
+    s = s.trim_matches('/').to_string();
+    if let Some(rest) = s.strip_suffix(".md") {
+        s = rest.to_string();
+    }
+    s
 }
 
 pub fn initialize_docs_index() {
@@ -125,8 +172,23 @@ pub fn initialize_docs_index() {
     *guard = Some(DocsIndex { entries });
 }
 
+/// Entry point for the search_docs tool.
+///
+/// Two complementary modes keep token usage low:
+/// - Key search (default): given `query`, return a compact ranked list of doc
+///   keys (the generated markdown filenames, e.g. `home-manager/programs/git.md`)
+///   with an option count and a representative matching option. No per-option
+///   summaries are emitted here.
+/// - Read doc: given `doc_path` (one of the keys above), return the flat table
+///   of every option in that doc, keyed by its fully-qualified dotted path with
+///   type and summary.
+///
+/// This lets the agent first discover *which* doc is relevant by matching
+/// filenames, then read only that doc's options, instead of paying for full
+/// option summaries on every search.
 pub fn execute_search_docs(
     query: &str,
+    doc_path: Option<&str>,
     limit: usize,
     source_filter: Option<DocsSource>,
 ) -> Result<String> {
@@ -141,74 +203,148 @@ pub fn execute_search_docs(
         return Ok("No docs index available".to_string());
     };
 
-    let normalized_query = query.trim().to_ascii_lowercase();
-    if normalized_query.is_empty() {
-        return Ok("search_docs requires a non-empty query".to_string());
+    // Read mode: a specific doc key/path was requested.
+    if let Some(path) = doc_path
+        .map(str::trim)
+        .filter(|p| !p.is_empty())
+    {
+        return Ok(read_doc(index, path, source_filter));
     }
 
-    // Filter entries by source if requested
+    // Key-search mode.
+    let normalized_query = query.trim().to_ascii_lowercase();
+    if normalized_query.is_empty() {
+        return Ok(
+            "search_docs requires a non-empty `query` (to find docs) or a `path` (to read one)"
+                .to_string(),
+        );
+    }
+
     let entries: Vec<&DocsOptionEntry> = index
         .entries
         .iter()
-        .filter(|e| source_filter.map_or_else(|| true, |s| e.source == s))
+        .filter(|e| source_filter.map_or(true, |s| e.source == s))
         .collect();
 
     let max_results = limit.clamp(1, MAX_RESULT_LIMIT);
-    let mut ranked = rank_entries_ref(&entries, &normalized_query);
+    let ranked = rank_doc_keys(&entries, &normalized_query);
 
-    // Debug: log candidate names and scores
     log::debug!(
-        "[search_docs] query='{}' source={:?} tokens={:?} computed {} candidates before truncation",
+        "[search_docs] key-search query='{}' source={:?} matched {} docs before truncation",
         query,
         source_filter,
-        normalized_query.split_whitespace().collect::<Vec<_>>(),
         ranked.len()
     );
-    for r in ranked.iter().take(5) {
-        log::debug!(
-            "[search_docs] candidate score={} source={} path={}",
-            r.score,
-            r.entry.source,
-            r.entry.option_path,
-        );
-    }
-    ranked.truncate(max_results);
 
     if ranked.is_empty() {
         return Ok(format_no_results_message(query, source_filter));
     }
 
     let source_label = source_filter.map(|s| format!("{} ", s)).unwrap_or_default();
-    let mut out = String::new();
-    out.push_str(&format!(
-        "Top {} {}option matches for '{}':\n",
-        ranked.len(),
-        source_label,
-        query
-    ));
+    let shown = ranked.len().min(max_results);
+    let mut out = format!(
+        "Top {} {}doc(s) matching '{}'. Read one with search_docs(path=\"<key>\"):\n",
+        shown, source_label, query
+    );
 
-    for (i, result) in ranked.iter().enumerate() {
-        let type_suffix = result
-            .entry
-            .option_type
-            .as_ref()
-            .map(|t| format!(" | type: {}", t))
-            .unwrap_or_default();
+    for (i, (key, group)) in ranked.iter().take(max_results).enumerate() {
         let source_tag = match source_filter {
-            Some(_) => String::new(), // already filtered, no need to tag
-            None => format!(" [{}]", result.entry.source),
+            Some(_) => String::new(),
+            None => group
+                .source
+                .map(|s| format!(" [{}]", s))
+                .unwrap_or_default(),
+        };
+        let hint = if group.best_path.is_empty() {
+            String::new()
+        } else {
+            format!(" — e.g. {}", group.best_path)
         };
         out.push_str(&format!(
-            "{}. {}{}{}\n   summary: {}\n",
+            "{}. {} ({} option{}){}{}\n",
             i + 1,
-            result.entry.option_path,
-            type_suffix,
+            key,
+            group.count,
+            if group.count == 1 { "" } else { "s" },
             source_tag,
-            result.entry.summary
+            hint,
         ));
     }
 
     Ok(out.trim_end().to_string())
+}
+
+/// Read mode: render the flat option table for a requested doc key. If the
+/// requested path resolves to multiple docs (e.g. a split top-level like
+/// `nix-darwin/programs`), list those docs instead so the agent can pick one.
+fn read_doc(index: &DocsIndex, requested: &str, source_filter: Option<DocsSource>) -> String {
+    let target = normalize_doc_path(requested);
+    let child_prefix = format!("{}/", target);
+
+    let mut exact: Vec<&DocsOptionEntry> = Vec::new();
+    let mut child_keys: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+
+    for entry in index
+        .entries
+        .iter()
+        .filter(|e| source_filter.map_or(true, |s| e.source == s))
+    {
+        let key = doc_key_for(entry.source, &entry.option_path);
+        let key_norm = normalize_doc_path(&key);
+        if key_norm == target {
+            exact.push(entry);
+        } else if key_norm.starts_with(child_prefix.as_str()) {
+            *child_keys.entry(key).or_insert(0) += 1;
+        }
+    }
+
+    if !exact.is_empty() {
+        exact.sort_by(|a, b| a.option_path.cmp(&b.option_path));
+        let total = exact.len();
+        let mut out = format!(
+            "{} ({} option{}):\n\noption | type | summary\n",
+            requested.trim(),
+            total,
+            if total == 1 { "" } else { "s" },
+        );
+        for entry in exact.iter().take(MAX_DOC_OPTIONS) {
+            let type_cell = entry.option_type.as_deref().unwrap_or("");
+            out.push_str(&format!(
+                "{} | {} | {}\n",
+                entry.option_path, type_cell, entry.summary
+            ));
+        }
+        if total > MAX_DOC_OPTIONS {
+            out.push_str(&format!(
+                "... {} more options omitted (narrow your read or filter by source)\n",
+                total - MAX_DOC_OPTIONS
+            ));
+        }
+        return out.trim_end().to_string();
+    }
+
+    if !child_keys.is_empty() {
+        let mut out = format!(
+            "'{}' is split into multiple docs. Read one of:\n",
+            requested.trim()
+        );
+        for (i, (key, count)) in child_keys.iter().enumerate() {
+            out.push_str(&format!(
+                "{}. {} ({} option{})\n",
+                i + 1,
+                key,
+                count,
+                if *count == 1 { "" } else { "s" }
+            ));
+        }
+        return out.trim_end().to_string();
+    }
+
+    format!(
+        "{}: no doc found at path '{}'. Use search_docs(query=...) to discover valid doc keys.",
+        NO_RESULTS_SENTINEL,
+        requested.trim()
+    )
 }
 
 fn format_no_results_message(query: &str, source_filter: Option<DocsSource>) -> String {
@@ -216,9 +352,84 @@ fn format_no_results_message(query: &str, source_filter: Option<DocsSource>) -> 
         .map(|s| format!("{} ", s))
         .unwrap_or_else(|| "nix-darwin or home-manager ".to_string());
     format!(
-        "{}: query='{}'. No {}option paths matched this query. Treat this as definitive and do not retry with similar wording or different limits.",
+        "{}: query='{}'. No {}docs matched this query. Treat this as definitive and do not retry with similar wording or different limits.",
         NO_RESULTS_SENTINEL, query, scope
     )
+}
+
+/// Rank doc keys by the best per-option relevance score within each doc, with a
+/// bonus when the doc key (filename/category name) itself matches the query.
+fn rank_doc_keys(entries: &[&DocsOptionEntry], query: &str) -> Vec<(String, DocGroup)> {
+    let tokens: Vec<&str> = query.split_whitespace().filter(|t| !t.is_empty()).collect();
+
+    let mut groups: HashMap<String, DocGroup> = HashMap::new();
+    for entry in entries {
+        let key = doc_key_for(entry.source, &entry.option_path);
+        let score = score_entry(entry, query, &tokens);
+        let group = groups.entry(key).or_default();
+        group.count += 1;
+        group.source.get_or_insert(entry.source);
+        if score > group.best_score {
+            group.best_score = score;
+            group.best_path = entry.option_path.clone();
+        }
+    }
+
+    let mut ranked: Vec<(String, DocGroup)> = groups
+        .into_iter()
+        .map(|(key, mut group)| {
+            group.best_score += score_doc_key(&key, query, &tokens);
+            (key, group)
+        })
+        .filter(|(_, group)| group.best_score >= MIN_SCORE)
+        .collect();
+
+    ranked.sort_by(|a, b| {
+        b.1.best_score
+            .cmp(&a.1.best_score)
+            .then_with(|| a.0.cmp(&b.0))
+    });
+    ranked
+}
+
+/// Score how well a doc key (its category/subcategory name) matches the query.
+/// Operates on the label after the source prefix and without the `.md` suffix,
+/// e.g. `programs/git`.
+fn score_doc_key(doc_key: &str, query: &str, tokens: &[&str]) -> i32 {
+    let label = doc_key
+        .splitn(2, '/')
+        .nth(1)
+        .unwrap_or(doc_key)
+        .trim_end_matches(".md")
+        .to_ascii_lowercase();
+    let segments: Vec<&str> = label
+        .split(|c| c == '/' || c == '.')
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    let mut score = 0;
+    if label == query {
+        score += 400;
+    }
+    if label.contains(query) {
+        score += 120;
+    }
+    for segment in &segments {
+        if *segment == query {
+            score += 250;
+        } else if segment.contains(query) {
+            score += 90;
+        }
+    }
+    for token in tokens {
+        if token.len() < 2 {
+            continue;
+        }
+        if label.contains(token) {
+            score += 40;
+        }
+    }
+    score
 }
 
 fn parse_entries(json: &str, source: DocsSource) -> Vec<DocsOptionEntry> {
@@ -260,29 +471,6 @@ fn parse_entries(json: &str, source: DocsSource) -> Vec<DocsOptionEntry> {
             Vec::new()
         }
     }
-}
-
-fn rank_entries_ref(entries: &[&DocsOptionEntry], query: &str) -> Vec<ScoredResult> {
-    let tokens: Vec<&str> = query.split_whitespace().filter(|t| !t.is_empty()).collect();
-
-    let mut scored: Vec<ScoredResult> = entries
-        .iter()
-        .filter_map(|entry| {
-            let score = score_entry(entry, query, &tokens);
-            (score >= MIN_SCORE).then(|| ScoredResult {
-                score,
-                entry: (*entry).clone(),
-            })
-        })
-        .collect();
-
-    scored.sort_by(|a, b| {
-        b.score
-            .cmp(&a.score)
-            .then_with(|| a.entry.option_path.cmp(&b.entry.option_path))
-            .then(Ordering::Equal)
-    });
-    scored
 }
 
 fn score_entry(entry: &DocsOptionEntry, query: &str, tokens: &[&str]) -> i32 {
@@ -471,7 +659,8 @@ mod tests {
     #[test]
     fn no_results_message_has_sentinel_and_query() {
         let query = "zzzzzzzzzzzzzzzzzzzzqqq";
-        let response = execute_search_docs(query, 3, None).expect("search_docs should succeed");
+        let response =
+            execute_search_docs(query, None, 3, None).expect("search_docs should succeed");
 
         assert!(
             response.starts_with(NO_RESULTS_SENTINEL),
@@ -487,26 +676,25 @@ mod tests {
 
     #[test]
     fn source_filter_returns_only_matching_source() {
-        let result_darwin = execute_search_docs("enable", 5, Some(DocsSource::NixDarwin))
+        let result_darwin = execute_search_docs("enable", None, 5, Some(DocsSource::NixDarwin))
             .expect("search should succeed");
         assert!(
-            !result_darwin.contains("[home-manager]"),
-            "filtered nix-darwin results should not contain home-manager tags"
+            !result_darwin.contains("home-manager/"),
+            "filtered nix-darwin results should not contain home-manager doc keys"
         );
 
-        let result_hm = execute_search_docs("enable", 5, Some(DocsSource::HomeManager))
+        let result_hm = execute_search_docs("enable", None, 5, Some(DocsSource::HomeManager))
             .expect("search should succeed");
         assert!(
-            !result_hm.contains("[nix-darwin]"),
-            "filtered home-manager results should not contain nix-darwin tags"
+            !result_hm.contains("nix-darwin/"),
+            "filtered home-manager results should not contain nix-darwin doc keys"
         );
     }
 
     #[test]
     fn unfiltered_search_returns_both_sources() {
         // A broad query should return results from both sources
-        let result = execute_search_docs("enable", 10, None).expect("search should succeed");
-        // With no filter and a broad query, we should have results (the source tags are shown)
+        let result = execute_search_docs("enable", None, 10, None).expect("search should succeed");
         assert!(
             !result.starts_with(NO_RESULTS_SENTINEL),
             "expected results for broad query 'enable'"
@@ -515,26 +703,102 @@ mod tests {
 
     #[test]
     fn limit_parameter_restricts_number_of_results() {
-        let result = execute_search_docs("enable", 3, None).expect("search should succeed");
+        let result = execute_search_docs("enable", None, 3, None).expect("search should succeed");
         let lines: Vec<&str> = result.lines().collect();
-        // The first line is the header, and each result takes 2 lines, so
-        // expect at most 3 results + 1 header = 7 lines.
+        // One header line + one line per doc result, capped at the limit.
         assert!(
-            lines.len() <= 7,
-            "expected at most 3 results plus header line, got {} lines",
+            lines.len() <= 4,
+            "expected at most 3 doc results plus header line, got {} lines",
             lines.len()
         );
     }
 
     #[test]
     fn max_limit_enforced() {
-        let result = execute_search_docs("enable", 100, None).expect("search should succeed");
+        let result = execute_search_docs("enable", None, 100, None).expect("search should succeed");
         let lines: Vec<&str> = result.lines().collect();
-        // With a max limit of 20, we expect at most 20 results + 1 header = 41 lines.
+        // Limit is clamped to MAX_RESULT_LIMIT; one header + one line per result.
         assert!(
-            lines.len() <= 41,
-            "expected max limit of 20 results plus header line, got {} lines",
+            lines.len() <= MAX_RESULT_LIMIT + 1,
+            "expected at most {} results plus header line, got {} lines",
+            MAX_RESULT_LIMIT,
             lines.len()
+        );
+    }
+
+    #[test]
+    fn doc_key_for_splits_programs_and_services() {
+        assert_eq!(
+            doc_key_for(DocsSource::HomeManager, "programs.git.enable"),
+            "home-manager/programs/git.md"
+        );
+        assert_eq!(
+            doc_key_for(DocsSource::NixDarwin, "services.nginx.enable"),
+            "nix-darwin/services/nginx.md"
+        );
+        // Non-split top-level categories collapse to one file.
+        assert_eq!(
+            doc_key_for(DocsSource::NixDarwin, "homebrew.casks"),
+            "nix-darwin/homebrew.md"
+        );
+    }
+
+    #[test]
+    fn key_search_returns_doc_keys_not_option_dump() {
+        let result = execute_search_docs("git", None, 5, Some(DocsSource::HomeManager))
+            .expect("search should succeed");
+        assert!(
+            result.contains("home-manager/programs/git.md"),
+            "expected the git doc key in results, got: {}",
+            result
+        );
+        // Discovery output should not include per-option summary blocks.
+        assert!(
+            !result.contains("\n   summary:"),
+            "key search should not emit per-option summaries: {}",
+            result
+        );
+    }
+
+    #[test]
+    fn read_doc_returns_flat_table_of_options() {
+        let result = execute_search_docs("", Some("home-manager/programs/git.md"), 10, None)
+            .expect("read should succeed");
+        assert!(
+            result.contains("option | type | summary"),
+            "expected a flat table header, got: {}",
+            result
+        );
+        assert!(
+            result.contains("programs.git."),
+            "expected dotted option paths under programs.git, got: {}",
+            result
+        );
+    }
+
+    #[test]
+    fn read_doc_accepts_key_without_md_suffix() {
+        let with = execute_search_docs("", Some("home-manager/programs/git.md"), 10, None)
+            .expect("read should succeed");
+        let without = execute_search_docs("", Some("home-manager/programs/git"), 10, None)
+            .expect("read should succeed");
+        assert!(without.contains("programs.git."), "got: {}", without);
+        // Both forms should resolve to the same doc (same option count line shape).
+        assert_eq!(
+            with.lines().count(),
+            without.lines().count(),
+            "normalized path should resolve to the same doc"
+        );
+    }
+
+    #[test]
+    fn read_doc_unknown_path_returns_sentinel() {
+        let result = execute_search_docs("", Some("home-manager/does/not/exist.md"), 10, None)
+            .expect("read should succeed");
+        assert!(
+            result.starts_with(NO_RESULTS_SENTINEL),
+            "expected no-results sentinel for unknown doc path: {}",
+            result
         );
     }
 }
