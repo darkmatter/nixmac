@@ -74,11 +74,11 @@ function GradientLayer({
   opacity: number;
 }) {
   const x = useTransform(traceProgress, (progress) => {
-    const { width, height } = sizeRef.current;
+    const { width, height } = sizeRef.current ?? { width: 0, height: 0 };
     return pointOnStadiumBorder(width, height, progress + phaseOffset).x;
   });
   const y = useTransform(traceProgress, (progress) => {
-    const { width, height } = sizeRef.current;
+    const { width, height } = sizeRef.current ?? { width: 0, height: 0 };
     return pointOnStadiumBorder(width, height, progress + phaseOffset).y;
   });
   const springX = useSpring(x, { stiffness: 120, damping: 28 });
