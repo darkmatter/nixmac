@@ -96,13 +96,13 @@ export function GeneralTab({
             <div className="space-y-0.5">
               <div className="font-medium text-sm">Send diagnostics to the nixmac team</div>
               <div className="text-muted-foreground text-xs">
-                Share anonymized crash and error reports to improve stability. Restart required.
+                Share redacted crash and error reports to improve stability. Restart required.
                 <div>
                   <button
                     type="button"
                     onClick={() => {
                       const base = getWebSiteUrl().replace(/\/$/, "");
-                      openExternalUrl(`${base}/privacy-policy`);
+                      openExternalUrl(`${base}/privacy`);
                     }}
                     className="mt-2 text-xs text-zinc-400 underline hover:text-zinc-200"
                   >
