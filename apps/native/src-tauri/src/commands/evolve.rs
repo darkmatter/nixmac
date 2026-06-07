@@ -10,6 +10,18 @@ pub async fn darwin_evolve(
     // Reset cancellation flag at the start of a new evolution
     evolve::session_control::set_evolve_cancelled(false);
 
+    // Create a session transcript log for this evolution and record the prompt.
+    let session_log = crate::state::session_log::create_session_log().ok();
+    if let Some(ref path) = session_log {
+        crate::state::session_log::set_session_path(Some(path.clone()));
+        crate::state::session_log::append_event(
+            path,
+            "prompt",
+            &serde_json::json!({ "description": description }),
+        )
+        .await;
+    }
+
     let result =
         match evolve::lifecycle::backup_evolve_and_record_changeset(&app, &description, None).await
         {
@@ -27,6 +39,7 @@ pub async fn darwin_evolve(
                         failure.telemetry.build_attempts
                     );
                     // Don't send to Sentry if it was a user-initiated cancellation
+                    crate::state::session_log::set_session_path(None);
                     return Err(failure.error);
                 }
 
@@ -35,9 +48,18 @@ pub async fn darwin_evolve(
                     failure.telemetry.iterations,
                     failure.telemetry.build_attempts
                 );
+                crate::state::session_log::set_session_path(None);
                 return Err(capture_err("darwin_evolve", failure.error));
             }
         };
+
+    // Record the evolution result, then clear the active session.
+    if let Some(ref path) = session_log {
+        let result_json = serde_json::to_value(&result)
+            .unwrap_or(serde_json::json!({ "error": "serialization failed" }));
+        crate::state::session_log::append_event(path, "result", &result_json).await;
+    }
+    crate::state::session_log::set_session_path(None);
 
     Ok(result)
 }
