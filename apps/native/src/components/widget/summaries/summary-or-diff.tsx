@@ -29,6 +29,7 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   const { summarizeOnFocus } = useSummary();
   const [activeTab, setActiveTab] = useState(defaultToDiffTab ? "diff" : "summary");
   const [openFiles, setOpenFiles] = useState<Record<string, boolean>>({});
+  const [includedFiles, setIncludedFiles] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     window.addEventListener("focus", summarizeOnFocus);
@@ -44,6 +45,18 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   useEffect(() => {
     prefetchFileDiffContents(useViewModel.getState().git);
   }, [fileDiffKey]);
+
+  useEffect(() => {
+    if (!gitStatus) return;
+    const filenames = [...new Set(gitStatus.changes.map((c) => c.filename))];
+    setIncludedFiles((prev) => {
+      const next: Record<string, boolean> = {};
+      for (const filename of filenames) {
+        next[filename] = prev[filename] ?? true;
+      }
+      return next;
+    });
+  }, [fileDiffKey, gitStatus]);
 
   if (!gitStatus || !evolveState || evolveState.step === "begin") {
     return null;
@@ -95,6 +108,8 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
             changes={gitStatus.changes}
             openFiles={openFiles}
             onOpenFilesChange={setOpenFiles}
+            includedFiles={includedFiles}
+            onIncludedFilesChange={setIncludedFiles}
           />
         )}
       </>

@@ -607,10 +607,8 @@ fn run_gui_mode(
             app.manage(state::evolve_state::load_slice(handle)?);
 
             // Initialize SQLite database before any consumer that reads the
-            // managed DbPool from app state (e.g. the queue summarizer worker).
+            // managed DbPool from app state.
             tauri::async_runtime::block_on(db::init(handle))?;
-
-            app.manage(summarize::queue_summarizer::start_worker(handle)?);
 
             // Background initialize the scanner singleton; the returned &'static ref is not
             // needed right now. fire-and-forget is intentional here.

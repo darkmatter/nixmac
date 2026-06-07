@@ -2,6 +2,8 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MarkdownDescription } from "@/components/widget/summaries/markdown-description";
+import { commitMessageBody } from "@/components/widget/summaries/markdown-utils";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useSummary } from "@/hooks/use-summary";
 import { useViewModel } from "@/stores/view-model";
@@ -24,10 +26,16 @@ export function MergeSection() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const msg = new FormData(e.currentTarget).get("commitMsg")?.toString() ?? "";
-    await handleCommit({ message: msg });
+    const subject =
+      new FormData(e.currentTarget).get("commitMsg")?.toString() ?? "";
+    const body = commitMessageBody(commitMessageSuggestion ?? "");
+    const message = body ? `${subject}\n\n${body}` : subject;
+    await handleCommit({ message });
     useWidgetStore.getState().setEvolvePrompt("");
   }
+
+  const commitSubject = (commitMessageSuggestion ?? "").split(/\r?\n/)[0] ?? "";
+  const commitBody = commitMessageBody(commitMessageSuggestion ?? "");
 
   return (
     <div className="flex flex-col">
@@ -43,15 +51,18 @@ export function MergeSection() {
           <Input
             key={commitMessageSuggestion}
             className="border-border bg-background mb-2"
-            defaultValue={commitMessageSuggestion ?? ""}
+            defaultValue={commitSubject || commitMessageSuggestion || ''}
             disabled={isProcessing}
             name="commitMsg"
             placeholder="Loading..."
           />
+          {commitBody && (
+            <MarkdownDescription modalTitle={commitSubject} text={commitBody} />
+          )}
         </div>
 
         <Button
-          className="bg-teal-600 hover:bg-teal-500 text-white"
+          className="bg-slate-200 hover:bg-slate-300 text-slate-800"
           disabled={isProcessing}
           type="submit"
         >

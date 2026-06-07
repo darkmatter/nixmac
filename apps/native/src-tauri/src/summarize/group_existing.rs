@@ -109,7 +109,10 @@ pub fn find_in_singles_by_hash<'a>(
 }
 
 fn is_invalid(summary: &ChangeSummary) -> bool {
-    matches!(summary.status.as_str(), "FAILED" | "CANCELLED")
+    matches!(
+        summary.status.as_str(),
+        "FAILED" | "CANCELLED" | "QUEUED"
+    )
 }
 
 fn to_change_with_summary(
@@ -202,11 +205,10 @@ mod tests {
     }
 
     #[test]
-    fn queued_own_summary_is_not_treated_as_unsummarized() {
+    fn queued_own_summary_is_treated_as_unsummarized() {
         let change = make_change("def456");
         let map = from_change_sets(vec![found(change, Some(make_summary("QUEUED")))]);
-        assert!(map.unsummarized_hashes.is_empty());
-        assert_eq!(map.singles.len(), 1);
-        assert_eq!(map.singles[0].hash, "def456");
+        assert_eq!(map.unsummarized_hashes, vec!["def456"]);
+        assert!(map.singles.is_empty());
     }
 }

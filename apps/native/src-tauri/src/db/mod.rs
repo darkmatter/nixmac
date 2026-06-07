@@ -7,8 +7,7 @@ pub mod pool;
 pub mod restore_commits;
 mod schema;
 pub mod store_bare_changeset;
-pub mod store_evolved_changeset;
-pub mod store_new_changeset;
+pub mod store_whole_diff_changeset;
 pub(crate) mod tables;
 
 use anyhow::Result;
