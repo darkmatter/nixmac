@@ -226,3 +226,26 @@ async fn error_for_status(resp: reqwest::Response) -> Result<reqwest::Response> 
         Err(anyhow!("server returned {status}: {detail}"))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_trims_trailing_slashes_from_base_url() {
+        let client = SyncClient::new("https://sync.example.com/");
+        assert_eq!(
+            client.url("/v1/sync/status"),
+            "https://sync.example.com/v1/sync/status"
+        );
+    }
+
+    #[test]
+    fn url_joins_base_and_path_without_double_slash() {
+        let client = SyncClient::new("https://sync.example.com");
+        assert_eq!(
+            client.url("/v1/auth/sessions"),
+            "https://sync.example.com/v1/auth/sessions"
+        );
+    }
+}
