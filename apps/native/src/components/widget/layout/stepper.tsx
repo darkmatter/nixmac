@@ -75,7 +75,7 @@ export function Stepper() {
 												: "bg-muted text-muted-foreground",
 									)}
 								>
-									{isCompleted ? <Check className="h-4 w-4 font-extrabold text-slate-100 stroke-[3px] drop-shadow-md shado" /> : stepNumber}
+									{isCompleted ? <Check className="h-4 w-4 font-extrabold text-slate-100 stroke-[3px] drop-shadow-md" /> : stepNumber}
 								</div>
 								<div>
 									<div className="flex items-center justify-center gap-2">
