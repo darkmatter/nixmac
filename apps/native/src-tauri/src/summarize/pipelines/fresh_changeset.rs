@@ -1,7 +1,6 @@
 //! Fresh changeset pipeline — groups incoming hunks from scratch into a new semantic map.
 
 use anyhow::Result;
-use std::path::Path;
 use tauri::{AppHandle, Manager, Runtime};
 
 use crate::sqlite_types::Change;
@@ -12,7 +11,6 @@ use crate::summarize::sumlog as dbg;
 pub async fn analyze<R: Runtime>(
     changes: Vec<Change>,
     app: &AppHandle<R>,
-    db_path: &Path,
     commit_id: Option<i64>,
     base_commit_id: Option<i64>,
     commit_message: Option<&str>,
@@ -25,8 +23,9 @@ pub async fn analyze<R: Runtime>(
     }
 
     let config_dir = crate::storage::store::get_config_dir(app)?;
+    let pool = app.state::<crate::db::DbPool>();
     let Some(base_commit_id) =
-        crate::db::commits::store_head_commit(db_path, &config_dir, base_commit_id)?
+        crate::db::commits::store_head_commit(&pool, &config_dir, base_commit_id)?
     else {
         return Ok(None);
     };
@@ -62,7 +61,7 @@ pub async fn analyze<R: Runtime>(
     }
 
     let (change_set_id, queued_ids) = crate::db::store_new_changeset::store(
-        db_path,
+        &pool,
         commit_id,
         base_commit_id,
         commit_message,
@@ -79,7 +78,7 @@ pub async fn analyze<R: Runtime>(
             crate::summarize::queue_summarizer::process(
                 Some(queued_ids),
                 app.clone(),
-                db_path.to_path_buf(),
+                pool.inner().clone(),
             )
             .await?;
         }

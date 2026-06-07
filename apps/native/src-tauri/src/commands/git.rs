@@ -58,7 +58,7 @@ pub async fn git_commit(
     }
 
     let now = crate::utils::unix_now();
-    match db::commits::upsert_commit_in_pool(
+    match db::commits::upsert_commit(
         &db_pool,
         &commit_info.hash,
         &commit_info.tree_hash,

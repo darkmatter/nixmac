@@ -1,9 +1,8 @@
 //! Orchestrators for querying change sets and summarized changes from the DB.
 
 use anyhow::Result;
-use rusqlite::Connection;
-use std::path::Path;
 
+use crate::db::DbPool;
 use crate::shared_types::{SummarizedChange, SummarizedChangeSet};
 use crate::sqlite_types::ChangeSet;
 use crate::summarize::sumlog as dbg;
@@ -28,13 +27,13 @@ impl From<SummarizedChangeSet> for FoundSetForCurrent {
 
 /// Looks up changes for hashes against a known base commit
 pub fn by_base_with_hashes(
-    db_path: &Path,
+    pool: &DbPool,
     base_commit_id: i64,
     hashes: &[String],
 ) -> Result<FoundSetForCurrent> {
-    let conn = Connection::open(db_path)?;
+    let mut conn = pool.get()?;
     match crate::db::changesets::query_change_set_for_base_with_hashes(
-        &conn,
+        &mut conn,
         base_commit_id,
         hashes,
     )? {
@@ -48,7 +47,7 @@ pub fn by_base_with_hashes(
 }
 
 /// Retuns existing summaries for head and missed hashes for unsummarized
-pub fn for_current_state(db_path: &Path, dir: &str) -> Result<Vec<FoundSetForCurrent>> {
+pub fn for_current_state(pool: &DbPool, dir: &str) -> Result<Vec<FoundSetForCurrent>> {
     let status = crate::git::status(dir)?;
 
     let Some(head_hash) = status.head_commit_hash.as_deref() else {
@@ -57,7 +56,7 @@ pub fn for_current_state(db_path: &Path, dir: &str) -> Result<Vec<FoundSetForCur
 
     let diff_hashes: Vec<String> = status.changes.iter().map(|c| c.hash.clone()).collect();
 
-    let Some(commit) = crate::db::commits::get_commit_by_hash(db_path, head_hash)? else {
+    let Some(commit) = crate::db::commits::get_commit_by_hash(pool, head_hash)? else {
         // DB has no record for this commit — surface all hashes as missed
         return Ok(vec![FoundSetForCurrent {
             change_set: None,
@@ -71,10 +70,11 @@ pub fn for_current_state(db_path: &Path, dir: &str) -> Result<Vec<FoundSetForCur
         commit_id: commit.id,
         hashes: &diff_hashes,
     });
-    let conn = Connection::open(db_path)?;
+
+    let mut conn = pool.get()?;
     let result: Vec<FoundSetForCurrent> =
         match crate::db::changesets::query_change_set_for_base_with_hashes(
-            &conn,
+            &mut conn,
             commit.id,
             &diff_hashes,
         )? {
