@@ -30,6 +30,7 @@ mod state;
 mod statistics;
 mod storage;
 mod summarize;
+mod sync;
 mod system;
 mod types;
 mod updater_pin;
@@ -494,6 +495,17 @@ fn run_gui_mode(
             commands::config::flake_exists_at,
             commands::config::path_exists,
             commands::config::path_normalize,
+            commands::config::config_pick_zip,
+            commands::config::config_import_github,
+            commands::config::config_import_zip,
+            // nixmac account + non-GitHub sync
+            commands::account::account_status,
+            commands::account::account_sign_in,
+            commands::account::account_sign_out,
+            commands::account::account_set_server_url,
+            commands::account::sync_status,
+            commands::account::sync_push,
+            commands::account::sync_pull,
             // Feedback
             commands::feedback::feedback_gather_metadata,
             commands::feedback::feedback_submit,

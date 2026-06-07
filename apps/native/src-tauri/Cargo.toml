@@ -78,6 +78,8 @@ fuzzy-matcher = "0.3.7"
 tauri-plugin-webdriver-automation = "0.1.3"
 tiktoken-rs = "0.6"
 configurable = { path = "configurable" }
+hmac = "0.12"
+zip = { version = "2", default-features = false, features = ["deflate"] }
 
 [dependencies.tauri-plugin-sql]
 features = ["sqlite"] # or "postgres", or "mysql"
