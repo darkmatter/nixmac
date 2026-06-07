@@ -11,7 +11,6 @@ import { MarkdownDescription } from "@/components/widget/summaries/markdown-desc
 import { commitMessageBody } from "@/components/widget/summaries/markdown-utils";
 import {
   ChangeWithRichType,
-  getCategoryStyle,
   getShortFilename,
 } from "@/components/widget/utils";
 import { cn } from "@/lib/utils";
