@@ -37,7 +37,7 @@ export function HunkPill({ change, showCounts = true, onClick }: HunkPillProps) 
   return (
     <Badge
       variant="secondary"
-      className="max-w-[140px] cursor-pointer truncate rounded-full border-none font-mono text-[10px] text-[#888] tracking-wide transition-all hover:brightness-110"
+      className="max-w-[140px] cursor-pointer truncate rounded-full border-none font-mono text-[10px] text-[#888] tracking-wide transition-all hover:brightness-110 ml-auto"
       onClick={(e) => {
         e.stopPropagation();
         onClick();

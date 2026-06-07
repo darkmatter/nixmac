@@ -9,11 +9,10 @@ use diesel::sql_query;
 use diesel::sql_types::{BigInt, Nullable, Text};
 
 use crate::db::tables::{
-    change_sets, change_summaries, changes, group_summaries, queued_summaries, set_changes,
+    change_sets, change_summaries, changes, group_summaries, set_changes,
 };
 use crate::shared_types::{SummarizedChange, SummarizedChangeSet};
-use crate::sqlite_types::{Change, ChangeSet, ChangeSummary, QueuedSummary};
-use crate::summarize::assignments::PendingChange;
+use crate::sqlite_types::{Change, ChangeSet, ChangeSummary};
 
 pub fn insert_change_summary(
     conn: &mut SqliteConnection,
@@ -138,24 +137,6 @@ pub fn link_change_to_set(
     Ok(())
 }
 
-pub fn insert_queued_summary(
-    conn: &mut SqliteConnection,
-    prompt: &str,
-    summary_type: &str,
-    group_summary_id: Option<i64>,
-    hash_own_summary_id_pairs: Option<&str>,
-) -> Result<i64> {
-    diesel::insert_into(queued_summaries::table)
-        .values((
-            queued_summaries::status.eq("QUEUED"),
-            queued_summaries::prompt.eq(prompt),
-            queued_summaries::type_.eq(summary_type),
-            queued_summaries::group_summary_id.eq(group_summary_id),
-            queued_summaries::hash_own_summary_id_pairs.eq(hash_own_summary_id_pairs),
-        ))
-        .execute(conn)?;
-    last_insert_rowid(conn)
-}
 
 // ── Big aliased row used by the JOIN read queries ────────────────────────────
 
@@ -404,122 +385,6 @@ fn query_changes_by_hashes_for_base(
     Ok(rows.into_iter().map(Into::into).collect())
 }
 
-// ── Queue-processing helpers ───────────────────────────────────────────────────
-
-#[derive(Queryable, Selectable)]
-#[diesel(table_name = queued_summaries)]
-struct QueuedRow {
-    id: i64,
-    status: String,
-    attempted_count: i64,
-    prompt: String,
-    model_response: Option<String>,
-    group_summary_id: Option<i64>,
-    hash_own_summary_id_pairs: Option<String>,
-    type_: String,
-}
-
-impl From<QueuedRow> for QueuedSummary {
-    fn from(row: QueuedRow) -> Self {
-        Self {
-            id: row.id,
-            status: row.status,
-            attempted_count: row.attempted_count,
-            prompt: row.prompt,
-            model_response: row.model_response,
-            group_summary_id: row.group_summary_id,
-            hash_own_summary_id_pairs: row.hash_own_summary_id_pairs,
-            summary_type: row.type_,
-        }
-    }
-}
-
-/// Fetch specific QUEUED rows by ID, preserving the order of the `ids` slice.
-pub fn fetch_queued_summaries_by_ids(
-    conn: &mut SqliteConnection,
-    ids: &[i64],
-) -> Result<Vec<QueuedSummary>> {
-    if ids.is_empty() {
-        return Ok(vec![]);
-    }
-    let rows = queued_summaries::table
-        .filter(queued_summaries::status.eq("QUEUED"))
-        .filter(queued_summaries::id.eq_any(ids))
-        .select(QueuedRow::as_select())
-        .load::<QueuedRow>(conn)?;
-
-    let id_order: std::collections::HashMap<i64, usize> =
-        ids.iter().enumerate().map(|(i, &id)| (id, i)).collect();
-    let mut summaries: Vec<QueuedSummary> = rows.into_iter().map(Into::into).collect();
-    summaries.sort_by_key(|r| id_order.get(&r.id).copied().unwrap_or(usize::MAX));
-    Ok(summaries)
-}
-
-/// Fetch all rows with status = 'QUEUED'.
-pub fn fetch_all_queued_summaries(conn: &mut SqliteConnection) -> Result<Vec<QueuedSummary>> {
-    let rows = queued_summaries::table
-        .filter(queued_summaries::status.eq("QUEUED"))
-        .select(QueuedRow::as_select())
-        .load::<QueuedRow>(conn)?;
-    Ok(rows.into_iter().map(Into::into).collect())
-}
-
-/// Atomically increment attempted_count.
-pub fn increment_queued_attempts(conn: &mut SqliteConnection, id: i64) -> Result<()> {
-    diesel::update(queued_summaries::table.find(id))
-        .set(queued_summaries::attempted_count.eq(queued_summaries::attempted_count + 1))
-        .execute(conn)?;
-    Ok(())
-}
-
-/// Mark queued_summary DONE, saving the raw model JSON.
-pub fn mark_queued_done(
-    conn: &mut SqliteConnection,
-    id: i64,
-    model_response: &str,
-) -> Result<()> {
-    diesel::update(queued_summaries::table.find(id))
-        .set((
-            queued_summaries::status.eq("DONE"),
-            queued_summaries::model_response.eq(model_response),
-        ))
-        .execute(conn)?;
-    Ok(())
-}
-
-/// Mark queued_summary FAILED.
-pub fn mark_queued_failed(conn: &mut SqliteConnection, id: i64) -> Result<()> {
-    diesel::update(queued_summaries::table.find(id))
-        .set(queued_summaries::status.eq("FAILED"))
-        .execute(conn)?;
-    Ok(())
-}
-
-/// Write title + description into a change_summaries row, set status = 'DONE'.
-pub fn update_change_summary_content(
-    conn: &mut SqliteConnection,
-    summary_id: i64,
-    title: &str,
-    description: &str,
-) -> Result<()> {
-    diesel::update(change_summaries::table.find(summary_id))
-        .set((
-            change_summaries::title.eq(title),
-            change_summaries::description.eq(description),
-            change_summaries::status.eq("DONE"),
-        ))
-        .execute(conn)?;
-    Ok(())
-}
-
-/// Set a change_summaries row to status = 'FAILED'.
-pub fn mark_change_summary_failed(conn: &mut SqliteConnection, summary_id: i64) -> Result<()> {
-    diesel::update(change_summaries::table.find(summary_id))
-        .set(change_summaries::status.eq("FAILED"))
-        .execute(conn)?;
-    Ok(())
-}
-
 /// Fetch the change hashes stored in a changeset.
 pub fn fetch_hashes_for_changeset(
     conn: &mut SqliteConnection,
@@ -531,21 +396,6 @@ pub fn fetch_hashes_for_changeset(
         .select(changes::hash)
         .load::<String>(conn)?;
     Ok(hashes)
-}
-
-/// Builds a JSON array of hash-summary_id pairs for the queue summarizer.
-/// This tells it what part of the model output goes into which change_summaries row.
-pub fn build_pairs_json(changes: &[PendingChange]) -> String {
-    let pairs: Vec<serde_json::Value> = changes
-        .iter()
-        .filter_map(|c| {
-            Some(serde_json::json!({
-                "hash": &c.change.hash[..crate::git::changes_from_diff::SHORT_HASH_LEN],
-                "summary_id": c.own_summary_id?
-            }))
-        })
-        .collect();
-    serde_json::to_string(&pairs).unwrap_or_default()
 }
 
 fn last_insert_rowid(conn: &mut SqliteConnection) -> Result<i64> {

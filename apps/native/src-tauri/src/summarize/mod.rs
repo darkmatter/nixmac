@@ -1,14 +1,10 @@
 //! Summarization module — AI model calls and pipelines for change analysis and changeset generation.
 
-pub mod assignments;
 pub mod build_prompt;
 pub mod find_existing;
 pub mod group_existing;
 pub mod model_calls;
-pub mod model_output_types;
 pub mod pipelines;
-pub mod queue_summarizer;
-pub mod simplify_grouped;
 pub mod sumlog;
 pub mod token_budgets;
 
@@ -23,47 +19,28 @@ pub async fn new_changeset<R: Runtime>(
     let pool = app.state::<crate::db::DbPool>();
 
     let status = crate::git::status(&config_dir)?;
-
     let all_changes = status.changes;
     if all_changes.is_empty() {
         return Ok(None);
     }
 
     let existing = find_existing::for_current_state(&pool, &config_dir)?;
-
-    if !existing.iter().any(|e| e.change_set.is_some()) {
-        return pipelines::fresh_changeset::analyze(
-            all_changes,
-            app,
-            None,
-            None,
-            None,
-            evolution_id,
-        )
-        .await;
-    }
-
     let existing_id = existing
         .iter()
         .filter_map(|e| e.change_set.as_ref().map(|cs| cs.id))
         .next();
 
-    let semantic_map = group_existing::from_change_sets(existing);
-    let (missed_changes, unfound) = crate::git::changes_from_diff::filter_by_hashes(
-        all_changes,
-        &semantic_map.unsummarized_hashes,
-    );
-    if let Some(unfound_hashes) = unfound {
-        log::warn!(
-            "[new_changeset] {} missed hash(es) not found in current diff: {:?}",
-            unfound_hashes.len(),
-            unfound_hashes
-        );
-    }
+    let has_generated_message = existing.iter().any(|entry| {
+        entry
+            .change_set
+            .as_ref()
+            .and_then(|cs| cs.generated_commit_message.as_deref())
+            .is_some_and(|message| !message.trim().is_empty())
+    });
 
-    // All current changes are already summarized (e.g. same changes re-made after a discard).
-    // Return the existing changeset ID so callers can track it — no new model calls needed.
-    if missed_changes.is_empty() {
+    let semantic_map = group_existing::from_change_sets(existing);
+
+    if semantic_map.unsummarized_hashes.is_empty() && has_generated_message {
         return Ok(existing_id);
     }
 
@@ -73,12 +50,11 @@ pub async fn new_changeset<R: Runtime>(
         return Ok(None);
     };
 
-    pipelines::evolved_changeset::analyze(
-        semantic_map,
-        missed_changes,
+    pipelines::whole_diff::analyze(
+        all_changes,
         app,
         None,
-        base_commit_id,
+        Some(base_commit_id),
         None,
         evolution_id,
     )

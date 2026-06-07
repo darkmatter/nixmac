@@ -8,6 +8,11 @@ on:
     branches: [main, develop]
   merge_group:
   workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
   SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}

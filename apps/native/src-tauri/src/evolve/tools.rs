@@ -139,13 +139,6 @@ pub fn execute_tool(
     }
 }
 
-/// Helper to determine if a tool is an editing tool, i.e. it
-/// makes changes to the nix config that count as "edits" in the
-/// evolution process and should be tracked as such.
-pub fn is_editing_tool(name: &str) -> bool {
-    matches!(name, "edit_file" | "edit_nix_file" | "ensure_secret")
-}
-
 // =============================================================================
 // Shared helpers (used across tool modules)
 // =============================================================================

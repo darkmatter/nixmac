@@ -14,9 +14,17 @@ interface DiffSectionProps {
   changes: Change[];
   openFiles: Record<string, boolean>;
   onOpenFilesChange: (next: Record<string, boolean>) => void;
+  includedFiles: Record<string, boolean>;
+  onIncludedFilesChange: (next: Record<string, boolean>) => void;
 }
 
-export function DiffSection({ changes, openFiles, onOpenFilesChange }: DiffSectionProps) {
+export function DiffSection({
+  changes,
+  openFiles,
+  onOpenFilesChange,
+  includedFiles,
+  onIncludedFilesChange,
+}: DiffSectionProps) {
   const fileContents = useWidgetStore((s) => s.fileDiffContents);
 
   const byFile = useMemo(() => {
@@ -49,6 +57,10 @@ export function DiffSection({ changes, openFiles, onOpenFilesChange }: DiffSecti
             isOpen={openFiles[filename] ?? false}
             onOpenChange={(open) =>
               onOpenFilesChange({ ...openFiles, [filename]: open })
+            }
+            included={includedFiles[filename] ?? true}
+            onIncludedChange={(included) =>
+              onIncludedFilesChange({ ...includedFiles, [filename]: included })
             }
           />
         ))}

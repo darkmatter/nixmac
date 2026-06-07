@@ -6,7 +6,18 @@ import { DiffSection } from "./diff-section";
 
 function ControlledDiffSection({ changes }: { changes: Change[] }) {
   const [openFiles, setOpenFiles] = useState<Record<string, boolean>>({});
-  return <DiffSection changes={changes} openFiles={openFiles} onOpenFilesChange={setOpenFiles} />;
+  const [includedFiles, setIncludedFiles] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries([...new Set(changes.map((c) => c.filename))].map((filename) => [filename, true])),
+  );
+  return (
+    <DiffSection
+      changes={changes}
+      openFiles={openFiles}
+      onOpenFilesChange={setOpenFiles}
+      includedFiles={includedFiles}
+      onIncludedFilesChange={setIncludedFiles}
+    />
+  );
 }
 
 const meta = preview.meta({

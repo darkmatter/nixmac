@@ -1,6 +1,5 @@
 //! Git module: low-level subprocess wrappers and diff parsing.
 
-pub mod changes_from_diff;
 pub mod exec;
 pub mod init;
 pub mod query;

@@ -7,9 +7,10 @@ import {
 } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
 import { UnsummarizedChangesSection } from "@/components/widget/summaries/unsummarized-changes-section";
+import { MarkdownDescription } from "@/components/widget/summaries/markdown-description";
+import { commitMessageBody } from "@/components/widget/summaries/markdown-utils";
 import {
   ChangeWithRichType,
-  getCategoryStyle,
   getShortFilename,
 } from "@/components/widget/utils";
 import { cn } from "@/lib/utils";
@@ -61,7 +62,11 @@ function GroupItem({
     return <SkeletonItem index={index} />;
   }
 
-  const style = getCategoryStyle(group.summary.title);
+  // const style = getCategoryStyle(group.summary.title);
+  const style = {
+    text: "text-slate-200",
+    border: "border-slate-500/40",
+  };
 
   return (
     <Collapsible className="group/root mb-2 last:mb-0">
@@ -79,9 +84,10 @@ function GroupItem({
             <Layers className="hidden h-[11px] w-[11px] group-data-[state=open]/root:block" />
           </CollapsibleTrigger>
         </div>
-        <p className="mt-1 text-[12px] leading-snug text-neutral-300">
-          {group.summary.description}
-        </p>
+        <MarkdownDescription
+          modalTitle={group.summary.title}
+          text={commitMessageBody(group.summary.description)}
+        />
       </div>
       <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
         <div className="space-y-[3px] px-1 pb-2">
@@ -96,7 +102,7 @@ function GroupItem({
               <div className="truncate text-[11px] text-neutral-300">
                 {change.title || getShortFilename(change.filename)}
                 {change.description && (
-                  <span className="text-neutral-400">
+                  <span className="text-neutral-600">
                     {" "}
                     — {change.description}
                   </span>
@@ -127,9 +133,10 @@ function SingleItem({
         {change.title || getShortFilename(change.filename)}
       </span>
       {change.description && (
-        <p className="mt-1 text-[12px] leading-snug text-neutral-300">
-          {change.description}
-        </p>
+        <MarkdownDescription
+          modalTitle={change.title || getShortFilename(change.filename)}
+          text={commitMessageBody(change.description)}
+        />
       )}
     </div>
   );
