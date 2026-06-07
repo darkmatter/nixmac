@@ -157,7 +157,7 @@ pub async fn append_event(path: &PathBuf, event_type: &str, payload: &serde_json
 
 #[cfg(test)]
 mod tests {
-    use super::{sanitize_payload_for_session_log, OMITTED_SESSION_FIELD};
+    use super::{append_event, sanitize_payload_for_session_log, OMITTED_SESSION_FIELD};
     use serde_json::json;
 
     #[test]
@@ -214,5 +214,34 @@ mod tests {
         assert!(serialized.contains("leave normal diagnostic text alone"));
         assert!(!serialized.contains("sk-abcdefghijklmnopqrstuvwx"));
         assert!(serialized.contains("[REDACTED"));
+    }
+
+    #[tokio::test]
+    async fn append_event_persists_sanitized_jsonl() {
+        let temp = tempfile::tempdir().expect("create temp dir");
+        let path = temp.path().join("session.jsonl");
+        std::fs::File::create(&path).expect("create session log");
+        let payload = json!({
+            "summary": "safe event summary",
+            "raw": "raw provider error with api_key = sk-abcdefghijklmnopqrstuvwx",
+            "gitStatus": {
+                "diff": "+token = \"ghp_1234567890abcdefghijklmnopqrstuvwxyz\""
+            }
+        });
+
+        append_event(&path, "evolve_event", &payload).await;
+
+        let contents = std::fs::read_to_string(&path).expect("read session log");
+        let line: serde_json::Value =
+            serde_json::from_str(contents.trim()).expect("session log line is valid JSON");
+
+        assert_eq!(line["event"], "evolve_event");
+        assert_eq!(line["data"]["summary"], "safe event summary");
+        assert_eq!(line["data"]["raw"], OMITTED_SESSION_FIELD);
+        assert_eq!(line["data"]["gitStatus"]["diff"], OMITTED_SESSION_FIELD);
+
+        let serialized = line.to_string();
+        assert!(!serialized.contains("sk-abcdefghijklmnopqrstuvwx"));
+        assert!(!serialized.contains("ghp_1234567890abcdefghijklmnopqrstuvwxyz"));
     }
 }
