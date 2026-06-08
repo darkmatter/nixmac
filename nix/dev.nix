@@ -113,6 +113,7 @@ lib.mkIf (!config.container.isBuilding) {
         pkgs.libxshmfence
         pkgs.gdk-pixbuf
         pkgs.gtk3
+        pkgs.udev
         pkgs.xorg.libX11
         pkgs.xorg.libXcomposite
         pkgs.xorg.libXdamage
