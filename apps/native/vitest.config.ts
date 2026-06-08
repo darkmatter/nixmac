@@ -68,6 +68,18 @@ export default defineConfig({
       {
         extends: true,
         plugins: storybookPlugins,
+        resolve: {
+          alias: [
+            {
+              find: "@monaco-editor/react",
+              replacement: path.resolve(import.meta.dirname, ".storybook/mocks/monaco-react.tsx"),
+            },
+            {
+              find: "monaco-editor",
+              replacement: path.resolve(import.meta.dirname, ".storybook/mocks/monaco-editor.ts"),
+            },
+          ],
+        },
         test: {
           name: "storybook",
           browser: {

@@ -2,6 +2,6 @@
 
 exports[`Configuration Nix 1`] = `"<div class="flex h-[500px] w-[700px] flex-col overflow-hidden rounded-lg border border-border bg-background"><div class="relative flex flex-1 flex-col overflow-hidden" data-slot="nix-editor"><div data-slot="nix-editor-placeholder"></div></div></div>"`;
 
-exports[`Flake Nix 1`] = `"<div class="monaco-alert" role="alert" aria-atomic="true"></div><div class="monaco-alert" role="alert" aria-atomic="true"></div><div class="monaco-status" aria-live="polite" aria-atomic="true"></div><div class="monaco-status" aria-live="polite" aria-atomic="true"></div>"`;
+exports[`Flake Nix 1`] = `"<div class="flex h-[500px] w-[700px] flex-col overflow-hidden rounded-lg border border-border bg-background"><div class="relative flex flex-1 flex-col overflow-hidden" data-slot="nix-editor"><div data-slot="nix-editor-placeholder"></div></div></div>"`;
 
 exports[`Unknown File 1`] = `"<div class="flex h-[500px] w-[700px] flex-col overflow-hidden rounded-lg border border-border bg-background"><div class="relative flex flex-1 flex-col overflow-hidden" data-slot="nix-editor"><div data-slot="nix-editor-placeholder"></div></div></div>"`;
