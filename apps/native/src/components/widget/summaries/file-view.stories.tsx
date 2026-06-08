@@ -12,6 +12,8 @@ const meta = preview.meta({
 
 export default meta;
 
+const disableEditorRuntime = import.meta.env.MODE === "test";
+
 const NIX_CONTENT = `{ config, pkgs, ... }:
 
 {
@@ -32,6 +34,7 @@ export const NewNixFile = meta.story({
       <FileView
         contents={{ original: "", modified: NIX_CONTENT }}
         filename="modules/darwin/fonts.nix"
+        disableRuntime={disableEditorRuntime}
       />
     </div>
   ),
@@ -43,6 +46,7 @@ export const NewJsonFile = meta.story({
       <FileView
         contents={{ original: "", modified: JSON_CONTENT }}
         filename=".vscode/settings.json"
+        disableRuntime={disableEditorRuntime}
       />
     </div>
   ),

@@ -12,6 +12,8 @@ const meta = preview.meta({
 
 export default meta;
 
+const disableEditorRuntime = import.meta.env.MODE === "test";
+
 const ORIGINAL = `{ config, pkgs, ... }:
 
 {
@@ -41,7 +43,12 @@ const mockContents: FileDiffContents = {
 export const Default = meta.story({
   render: () => (
     <div className="w-[560px]">
-      <DiffView contents={mockContents} filename="configuration.nix" onMount={() => {}} />
+      <DiffView
+        contents={mockContents}
+        filename="configuration.nix"
+        onMount={() => {}}
+        disableRuntime={disableEditorRuntime}
+      />
     </div>
   ),
 });
@@ -53,6 +60,7 @@ export const Identical = meta.story({
         contents={{ original: ORIGINAL, modified: ORIGINAL }}
         filename="configuration.nix"
         onMount={() => {}}
+        disableRuntime={disableEditorRuntime}
       />
     </div>
   ),

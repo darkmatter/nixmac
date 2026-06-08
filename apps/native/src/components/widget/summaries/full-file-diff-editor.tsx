@@ -22,6 +22,7 @@ interface FullFileDiffEditorProps {
   onOpenChange: (open: boolean) => void;
   included: boolean;
   onIncludedChange: (included: boolean) => void;
+  disableEditorRuntime?: boolean;
 }
 
 export function FullFileDiffEditor({
@@ -32,6 +33,7 @@ export function FullFileDiffEditor({
   onOpenChange,
   included,
   onIncludedChange,
+  disableEditorRuntime = false,
 }: FullFileDiffEditorProps) {
   const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
   const pendingScrollLineRef = useRef<number | null>(
@@ -102,9 +104,14 @@ export function FullFileDiffEditor({
       {displayContents ? (
         <div className="relative">
           {changeType === "new" ? (
-            <FileView contents={displayContents} filename={filename} />
+            <FileView contents={displayContents} filename={filename} disableRuntime={disableEditorRuntime} />
           ) : (
-            <DiffView contents={displayContents} filename={filename} onMount={handleMount} />
+            <DiffView
+              contents={displayContents}
+              filename={filename}
+              onMount={handleMount}
+              disableRuntime={disableEditorRuntime}
+            />
           )}
           <div className="absolute top-2 right-2 z-10 flex h-7 w-7 items-center justify-center rounded-md border border-border/60 bg-background/80 shadow-sm backdrop-blur-sm">
             <Checkbox

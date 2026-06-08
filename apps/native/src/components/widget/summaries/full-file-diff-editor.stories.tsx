@@ -34,6 +34,8 @@ const meta = preview.meta({
   tags: ["autodocs"],
 });
 
+const disableEditorRuntime = import.meta.env.MODE === "test";
+
 export default meta;
 
 // =============================================================================
@@ -132,6 +134,7 @@ export const SingleHunk = meta.story({
         filename="configuration.nix"
         changes={[makeChange(1, DIFF_HEADER)]}
         contents={mockContents}
+        disableEditorRuntime={disableEditorRuntime}
         initialOpen
       />
     </WithStore>
@@ -145,6 +148,7 @@ export const MultipleHunks = meta.story({
         filename="configuration.nix"
         changes={[makeChange(1, DIFF_HEADER), makeChange(2, DIFF_HEADER_2)]}
         contents={mockContents}
+        disableEditorRuntime={disableEditorRuntime}
         initialOpen
       />
     </WithStore>
@@ -158,6 +162,7 @@ export const Collapsed = meta.story({
         filename="configuration.nix"
         changes={[makeChange(1, DIFF_HEADER), makeChange(2, DIFF_HEADER_2)]}
         contents={mockContents}
+        disableEditorRuntime={disableEditorRuntime}
       />
     </WithStore>
   ),
@@ -189,6 +194,7 @@ export const Removed = meta.story({
           changeType: "removed",
         }]}
         contents={{ original: ORIGINAL, modified: "" }}
+        disableEditorRuntime={disableEditorRuntime}
         initialOpen
       />
     </WithStore>
@@ -202,6 +208,7 @@ export const Loading = meta.story({
         filename="configuration.nix"
         changes={[makeChange(1, DIFF_HEADER)]}
         contents={undefined}
+        disableEditorRuntime={disableEditorRuntime}
         initialOpen
       />
     </WithStore>
