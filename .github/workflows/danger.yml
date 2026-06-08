@@ -26,18 +26,9 @@ jobs:
       issues: write
       statuses: write
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: ./.github/actions/setup
         with:
           fetch-depth: 0
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
       # Generate a coverage report so the dangerfile has something to surface.
       # `continue-on-error` keeps Danger running even if a test fails — Danger
       # itself is not the gate for test failures, the test workflow is.

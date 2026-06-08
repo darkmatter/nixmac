@@ -34,36 +34,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: ./.github/actions/setup
         with:
           fetch-depth: 0
-          persist-credentials: true
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Rust cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: apps/native/src-tauri
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-      - name: Setup sops
-        uses: nhedger/setup-sops@v2.1.1
-      - name: Setup age
-        uses: alessiodionisi/setup-age-action@v1.4.0
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-      - name: Cache bun install
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            bun-${{ runner.os }}-
-      - name: Install frontend dependencies
-        run: bun install --frozen-lockfile
+          setup-rust: true
+          rust-cache-workspaces: apps/native/src-tauri
       # Decide what kind of build this is:
       #   - tag:     push of refs/tags/v* → ship that exact version
       #   - release: push to main → patch-bump the latest tag and ship

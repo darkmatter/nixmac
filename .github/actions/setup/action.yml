@@ -1,0 +1,92 @@
+name: "Setup nixmac CI"
+description: >
+  Install Determinate Nix (skips if already installed), enter the devenv shell
+  to get bun/node/rust/sops/age/etc. from nix, and install JS dependencies.
+
+inputs:
+  install-bun-deps:
+    description: "Run bun install --frozen-lockfile"
+    required: false
+    default: "true"
+  setup-rust:
+    description: "Install Rust toolchain via dtolnay/rust-toolchain and cache"
+    required: false
+    default: "false"
+  rust-cache-workspaces:
+    description: "Workspace paths for rust-cache (comma-separated)"
+    required: false
+    default: ""
+  fetch-depth:
+    description: "Checkout fetch-depth (0 for full history)"
+    required: false
+    default: "1"
+  skip-checkout:
+    description: "Skip checkout (use when a prior step already checked out)"
+    required: false
+    default: "false"
+  extra-nix-conf:
+    description: "Extra lines for /etc/nix/nix.conf (newline-separated)"
+    required: false
+    default: ""
+  persist-credentials:
+    description: "Checkout persist-credentials setting"
+    required: false
+    default: "true"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout repository
+      if: inputs.skip-checkout != 'true'
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: ${{ inputs.fetch-depth }}
+        persist-credentials: ${{ inputs.persist-credentials }}
+
+    - name: Install Nix
+      uses: DeterminateSystems/nix-installer-action@v22
+      with:
+        extra-conf: ${{ inputs.extra-nix-conf }}
+
+    - name: Cache nix store
+      uses: DeterminateSystems/flakehub-cache-action@v1
+      continue-on-error: true
+
+    - name: Add devenv tools to PATH
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        # Evaluate the devenv shell PATH and write the nix-provided
+        # entries to GITHUB_PATH so subsequent steps get bun, node,
+        # sops, age, rust, etc. without wrapping in `nix develop`.
+        devenv_path="$(nix develop --impure --command bash -c 'echo $PATH')"
+
+        # Collect current system PATH to filter out non-nix entries
+        IFS=: read -ra SYS_PATH_ARR <<< "$PATH"
+        declare -A sys_parts
+        for p in "${SYS_PATH_ARR[@]}"; do
+          sys_parts["$p"]=1
+        done
+
+        IFS=: read -ra DEVENV_PATH_ARR <<< "$devenv_path"
+        for p in "${DEVENV_PATH_ARR[@]}"; do
+          if [[ -z "${sys_parts[$p]+_}" ]]; then
+            echo "$p" >> "$GITHUB_PATH"
+          fi
+        done
+
+    - name: Install Rust toolchain
+      if: inputs.setup-rust == 'true'
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache Rust artifacts
+      if: inputs.setup-rust == 'true' && inputs.rust-cache-workspaces != ''
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: ${{ inputs.rust-cache-workspaces }}
+
+    - name: Install frontend dependencies
+      if: inputs.install-bun-deps == 'true'
+      shell: bash
+      run: bun install --frozen-lockfile

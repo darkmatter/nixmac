@@ -58,15 +58,10 @@ jobs:
       storybook_artifact_ready: ${{ steps.storybook-preview.outputs.storybook_artifact_ready }}
       storybook_status: ${{ steps.storybook-preview.outputs.storybook_status }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: ./.github/actions/setup
         with:
           fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
+          install-bun-deps: false
 
       - name: Initialize timing telemetry
         shell: bash
@@ -209,11 +204,7 @@ jobs:
             --out artifacts/computer-use-storybook/storybook-preview.initial.json \
             --github-output
 
-      - name: Setup Bun for Storybook preview
-        if: steps.storybook-preview-initial.outputs.storybook_has_ui == 'true'
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.2
+      # bun is provided by the nix devenv via ./.github/actions/setup
 
       - name: Install frontend dependencies for Storybook preview
         if: steps.storybook-preview-initial.outputs.storybook_has_ui == 'true'
@@ -622,15 +613,10 @@ jobs:
       index_url: ${{ steps.report-meta.outputs.index_url }}
       latest_index_url: ${{ steps.report-meta.outputs.latest_index_url }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: ./.github/actions/setup
         with:
           fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
+          install-bun-deps: false
 
       - name: Download Storybook plan
         uses: actions/download-artifact@v7

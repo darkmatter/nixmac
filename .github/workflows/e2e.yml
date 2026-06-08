@@ -90,13 +90,9 @@ jobs:
         scenario: ${{ fromJSON(needs.resolve-scenarios.outputs.scenarios) }}
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup sops
-        uses: nhedger/setup-sops@v2
-
-      - name: Setup age
-        uses: alessiodionisi/setup-age-action@v1.3.0
+      - uses: ./.github/actions/setup
+        with:
+          install-bun-deps: false
 
       - name: Load E2E secrets
         env:

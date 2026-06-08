@@ -18,14 +18,10 @@ jobs:
     name: Rust Check
     runs-on: ghcr.io/cirruslabs/macos-runner:tahoe
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Rust cache
-        uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup
         with:
-          workspaces: apps/native/src-tauri
+          setup-rust: true
+          rust-cache-workspaces: apps/native/src-tauri
       - name: Check Rust app crate
         working-directory: apps/native/src-tauri
         run: cargo check --locked
@@ -34,19 +30,7 @@ jobs:
     name: TypeScript
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-      - name: Cache bun install
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            bun-${{ runner.os }}-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+      - uses: ./.github/actions/setup
       - name: Type-check native app
         working-directory: apps/native
         run: bunx tsc --noEmit
@@ -55,12 +39,10 @@ jobs:
     name: Treefmt
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: ./.github/actions/setup
         with:
           fetch-depth: 0
-      - name: Install Nix
-        uses: cachix/install-nix-action@v31.10.6
+          install-bun-deps: false
       - name: Check changed Nix and shell files
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
