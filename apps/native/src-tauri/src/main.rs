@@ -32,6 +32,7 @@ mod storage;
 mod summarize;
 mod sync;
 mod system;
+mod telemetry;
 mod types;
 mod updater_pin;
 mod utils;
@@ -407,10 +408,6 @@ fn run_gui_mode(
 ) {
     // Prefer compile-time embedded vars (set by build.rs via `cargo:rustc-env`),
     // fall back to runtime environment variables.
-    let sentry_dsn = option_env!("SENTRY_DSN")
-        .map(|s| s.to_string())
-        .or_else(|| env::var("SENTRY_DSN").ok());
-
     let nixmac_env = option_env!("NIXMAC_ENV")
         .map(|s| s.to_string())
         .or_else(|| env::var("NIXMAC_ENV").ok())
@@ -421,30 +418,7 @@ fn run_gui_mode(
         .or_else(|| env::var("NIXMAC_VERSION").ok())
         .unwrap_or_else(|| "unknown".to_string());
 
-    let mut sentry_guard = None;
-
-    if let Some(dsn) = sentry_dsn.filter(|s| !s.trim().is_empty()) {
-        // clone `nixmac_env`/`nixmac_version` so we don't move the original
-        // values and can use them again below for logging. Annoying Rust thing.
-        let client = sentry::init((
-            dsn,
-            sentry::ClientOptions {
-                environment: Some(nixmac_env.clone().into()),
-                release: Some(nixmac_version.clone().into()),
-                auto_session_tracking: false,
-                send_default_pii: false,
-                ..Default::default()
-            },
-        ));
-
-        sentry_guard = Some(client);
-    }
-
     let mut builder = tauri::Builder::default().plugin(tauri_plugin_http::init());
-
-    if let Some(client) = sentry_guard.as_ref() {
-        builder = builder.plugin(tauri_plugin_sentry::init(client));
-    }
 
     // The updater will misbehave in dev mode (always says an update is available, fails signature
     // checks, tries to downgrade your app, etc.), so we only include it in release builds.
@@ -511,8 +485,6 @@ fn run_gui_mode(
             commands::feedback::feedback_submit,
             #[cfg(debug_assertions)]
             commands::debug::trigger_test_panic,
-            #[cfg(debug_assertions)]
-            commands::debug::debug_sentry_event,
             commands::debug::developer_clear_tauri_state,
             commands::debug::developer_send_test_notification,
             #[cfg(debug_assertions)]
@@ -603,6 +575,7 @@ fn run_gui_mode(
             commands::editor::lsp_start,
             commands::editor::lsp_send,
             commands::editor::lsp_stop,
+            telemetry::ipc::otel_forward_span,
         ])
         .setup(move |app| {
             let handle = app.handle();
@@ -651,16 +624,20 @@ fn run_gui_mode(
             let send_diagnostics = store::get_send_diagnostics(handle).unwrap_or(false);
             if send_diagnostics {
                 log::info!(
-                    "Sentry diagnostics enabled by user preference (env: {}, version: {})",
+                    "Diagnostics enabled by user preference (env: {}, version: {})",
                     nixmac_env,
                     nixmac_version
                 );
             } else {
-                log::info!("Sentry diagnostics disabled by user preference");
-                if sentry_guard.is_some() {
-                    sentry::Hub::current().bind_client(None);
-                }
+                log::info!("Diagnostics disabled by user preference");
             }
+
+            // Initialize the OTEL telemetry pipeline. Rust owns the OTEL
+            // providers; the WebView forwards spans via IPC. The guard is moved
+            // into Tauri-managed state so it lives for the app's lifetime: a
+            // local `let` binding here would drop at the end of `setup`, which
+            // would shut down the globally-registered provider prematurely.
+            app.manage(telemetry::init::init_telemetry(send_diagnostics));
 
             // Build the system tray menu
             let open_i = MenuItem::with_id(app, "open", "Open nixmac", true, None::<&str>)?;
@@ -816,7 +793,7 @@ fn run_gui_mode(
             let main_window = main_window_builder.build().map_err(|e| {
                 let msg = format!("Failed to create main window: {}", e);
                 log::error!("{}", msg);
-                sentry::capture_message(&msg, sentry::Level::Error);
+                tracing::error!(message = %msg, "window build failed");
                 msg
             })?;
             log::debug!("Main nixmac window created");

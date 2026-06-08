@@ -1,6 +1,7 @@
 import path from "node:path";
 import react from "@vitejs/plugin-react";
 import storybookTest from "@storybook/addon-vitest/vitest-plugin";
+import type {} from "@vitest/browser/providers/playwright";
 import { defineConfig } from "vitest/config";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");

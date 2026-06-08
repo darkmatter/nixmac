@@ -16,16 +16,16 @@ permissions:
 jobs:
   rust-check:
     name: Rust Check
-    runs-on: ghcr.io/cirruslabs/macos-runner:tahoe
+    runs-on: [self-hosted, macOS]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Rust cache
-        uses: Swatinem/rust-cache@v2
+
+      - uses: ./.github/actions/setup
         with:
-          workspaces: apps/native/src-tauri
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+          setup-rust: true
+          rust-cache-workspaces: apps/native/src-tauri
       - name: Check Rust app crate
         working-directory: apps/native/src-tauri
         run: cargo check --locked
@@ -36,17 +36,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-      - name: Cache bun install
-        uses: actions/cache@v4
+
+      - uses: ./.github/actions/setup
         with:
-          path: node_modules
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            bun-${{ runner.os }}-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
       - name: Type-check native app
         working-directory: apps/native
         run: bunx tsc --noEmit
@@ -59,8 +52,11 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Install Nix
-        uses: cachix/install-nix-action@v31.10.6
+
+      - uses: ./.github/actions/setup
+        with:
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+          install-bun-deps: false
       - name: Check changed Nix and shell files
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}

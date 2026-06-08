@@ -94,7 +94,6 @@ fn main() {
         .register::<shared_types::BuildCheckResult>()
         .register::<shared_types::ConfigEditApplyResult>()
         .register::<shared_types::CliToolsState>()
-        .register::<shared_types::DebugSentryResult>()
         .register::<shared_types::EvolveCancelResult>()
         .register::<shared_types::CommitResult>()
         .register::<shared_types::FinalizeApplyResult>()

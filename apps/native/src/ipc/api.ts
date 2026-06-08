@@ -128,7 +128,6 @@ export const tauriAPI = {
         stage,
         clientTimestampUnixMs: clientTimestampUnixMs ?? null,
       }),
-    sentryEvent: () => invoke<void>("debug_sentry_event"),
     clearTauriState: () => invoke<void>("developer_clear_tauri_state"),
     sendTestNotification: () => invoke<void>("developer_send_test_notification"),
   },

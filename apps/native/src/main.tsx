@@ -1,7 +1,10 @@
 import { AppFatalFallback } from "@/components/widget/layout/AppFatalFallback";
 import { markBootStage } from "@/lib/boot-diagnostics";
-import { attachSentry, captureRenderError } from "@/lib/sentry/init";
-import * as Sentry from "@sentry/react";
+import { initTelemetry } from "@/lib/telemetry/init";
+import { TelemetryContextProvider } from "@/lib/telemetry/context";
+import { getTelemetry, setTelemetryProvider } from "@/lib/telemetry/instance";
+import type { TelemetryProvider } from "@/lib/telemetry/types";
+import { AppErrorBoundary } from "@/components/widget/layout/AppErrorBoundary";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
@@ -24,36 +27,36 @@ if (import.meta.env.VITE_NIXMAC_E2E_MODE === "true") {
 
 const root = ReactDOM.createRoot(rootElement);
 
-const renderApp = () => {
+const renderApp = (telemetry: TelemetryProvider) => {
   markBootStage("react-render-start");
   root.render(
     <React.StrictMode>
-      <Sentry.ErrorBoundary
-        fallback={({ error }) => (
-          <AppFatalFallback error={error instanceof Error ? error : null} />
-        )}
-        onError={(error, _componentStack) => {
-          console.error("ErrorBoundary caught:", error);
-          captureRenderError("render-error", error);
-        }}
+      <AppErrorBoundary
+        fallback={(error) => <AppFatalFallback error={error} />}
       >
-        <App />
-      </Sentry.ErrorBoundary>
+        <TelemetryContextProvider value={telemetry}>
+          <App />
+        </TelemetryContextProvider>
+      </AppErrorBoundary>
     </React.StrictMode>,
   );
   markBootStage("react-render-scheduled");
 };
 
 const bootstrap = async () => {
-  // Awaiting attachSentry blocks render in production,
-  // in E2E_MODE resolves synchronously and the harness handles its own init lifecycle.
-  await attachSentry();
+  // In E2E_MODE, initTelemetry returns a noop provider synchronously.
+  const telemetry = await initTelemetry();
+  setTelemetryProvider(telemetry);
+  telemetry.captureEvent({ name: "app_launched", props: { environment: (import.meta.env.VITE_NIXMAC_ENV || import.meta.env.MODE || "prod").toString() } });
 
   try {
-    renderApp();
+    renderApp(telemetry);
   } catch (error) {
     markBootStage("react-render-fatal");
-    captureRenderError("render-fatal", error);
+    getTelemetry().captureError(
+      error instanceof Error ? error : new Error(String(error)),
+      { name: "render-fatal" },
+    );
     root.render(
       <AppFatalFallback error={error instanceof Error ? error : null} />,
     );
