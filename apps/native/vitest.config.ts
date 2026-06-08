@@ -74,6 +74,7 @@ export default defineConfig({
             enabled: true,
             provider: "playwright",
             headless: true,
+            fileParallelism: false,
             instances: [
               {
                 browser: "chromium",
