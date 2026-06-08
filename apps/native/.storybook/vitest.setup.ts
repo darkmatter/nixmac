@@ -91,16 +91,34 @@ function normalizeSnapshotRoot(root: Element): string {
   html = html.replace(/inmemory:\/\/model\/\d+/g, "inmemory://model/N");
   // data-keybinding-context values are similarly auto-incremented.
   html = html.replace(/data-keybinding-context="\d+"/g, 'data-keybinding-context="N"');
+  // Monaco can emit these attributes in either order across runs.
+  html = html.replace(
+    /<div style="([^"]*)" data-keybinding-context="N">/g,
+    '<div data-keybinding-context="N" style="$1">'
+  );
+  html = html.replace(/ style="--cmdk-list-height:[^"]*"/g, "");
   return html;
+}
+
+function cleanupMonacoAccessibilityContainers(): void {
+  for (const container of document.body.querySelectorAll(
+    ":scope > .monaco-alert, :scope > .monaco-status"
+  )) {
+    container.remove();
+  }
 }
 
 // Automatically snapshot every story after it renders
 afterEach(() => {
-  const containers = document.body.querySelectorAll(
-    ":scope > div:not(.sb-wrapper)"
-  );
-  const root = containers[containers.length - 1];
-  if (root?.innerHTML) {
-    expect(normalizeSnapshotRoot(root)).toMatchSnapshot();
+  try {
+    const containers = document.body.querySelectorAll(
+      ":scope > div:not(.sb-wrapper)"
+    );
+    const root = containers[containers.length - 1];
+    if (root?.innerHTML) {
+      expect(normalizeSnapshotRoot(root)).toMatchSnapshot();
+    }
+  } finally {
+    cleanupMonacoAccessibilityContainers();
   }
 });
