@@ -1,7 +1,7 @@
 name: "Setup nixmac CI"
 description: >
   Install Determinate Nix (skips if already installed), build the devenv profile
-  via `devenv ci` to get bun/node/rust/sops/age/etc. on PATH, and install JS
+  via `devenv shell` to get bun/node/rust/sops/age/etc. on PATH, and install JS
   NOTE: You MUST run actions/checkout before this action — local composite
   actions need the repo on disk before they can be resolved.
 
@@ -31,9 +31,22 @@ runs:
       with:
         extra-conf: ${{ inputs.extra-nix-conf }}
 
-    - name: Cache nix store
-      uses: DeterminateSystems/flakehub-cache-action@v1
-      continue-on-error: true
+    # Pull pre-built devenv packages from devenv.cachix.org (free, no auth).
+    # This avoids building devenv and its deps from source.
+    - name: Configure devenv Cachix cache
+      uses: cachix/cachix-action@v17
+      with:
+        name: devenv
+        skipPush: true
+
+    # Cache the full nix store in GitHub Actions cache (free, 10GB limit).
+    # Primary cold-start speedup: restores /nix/store from GHA cache
+    # so subsequent runs skip downloads entirely.
+    - name: Restore nix store cache
+      uses: nix-community/cache-nix-action@v7
+      with:
+        primary-key: nix-${{ runner.os }}-${{ hashFiles('devenv.lock', 'devenv.nix', 'devenv.yaml') }}
+        restore-prefixes-first-match: nix-${{ runner.os }}-
 
     - name: Install devenv
       shell: bash
@@ -44,22 +57,23 @@ runs:
       run: |
         set -euo pipefail
 
-        # Build the devenv profile (installs all packages but does not enter a shell).
-        # This is the CI-optimized path — much faster than `devenv shell`.
-        /tmp/devenv-profile/bin/devenv ci
+        # Build the devenv profile by entering the shell with a trivial command.
+        # This creates .devenv/profile symlink with all packages on PATH.
+        # Do NOT use `devenv ci` — it runs the test suite which may fail.
+        /tmp/devenv-profile/bin/devenv shell echo ready
 
     - name: Add devenv tools to PATH
       shell: bash
       run: |
         set -euo pipefail
 
-        # After `devenv ci`, .devenv/profile is a symlink to the nix store path
+        # After `devenv shell`, .devenv/profile is a symlink to the nix store path
         # containing all packages (bun, node, sops, age, rust, etc.)
         if [[ -L .devenv/profile ]]; then
           profile_path="$(readlink -f .devenv/profile)"
           echo "${profile_path}/bin" >> "$GITHUB_PATH"
         else
-          echo "ERROR: .devenv/profile symlink not found after devenv ci"
+          echo "ERROR: .devenv/profile symlink not found after devenv shell"
           exit 1
         fi
 
