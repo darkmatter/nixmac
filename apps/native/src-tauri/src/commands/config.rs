@@ -275,6 +275,11 @@ fn is_importable_target(path: &Path) -> Result<bool, String> {
 }
 
 /// Validates and prepares an import target directory.
+///
+/// On success the directory is guaranteed to be absent or *truly* empty: a
+/// lone `.DS_Store` (which `is_importable_target` tolerates, since the folder
+/// looks empty in Finder) is removed so libgit2 clone, which rejects a
+/// non-empty destination, succeeds.
 fn prepare_import_target(dir_name: Option<String>) -> Result<PathBuf, String> {
     let target = resolve_import_target(dir_name)?;
     validate_new_dir_location(&target)?;
@@ -283,6 +288,13 @@ fn prepare_import_target(dir_name: Option<String>) -> Result<PathBuf, String> {
             "Directory already exists and is not empty. Choose Existing to use a current configuration."
                 .to_string(),
         );
+    }
+    if target.exists() {
+        let ds_store = target.join(".DS_Store");
+        if ds_store.exists() {
+            std::fs::remove_file(&ds_store)
+                .map_err(|e| format!("Failed to clear {}: {}", ds_store.display(), e))?;
+        }
     }
     Ok(target)
 }
@@ -371,6 +383,26 @@ mod tests {
             .expect("system time should be after epoch")
             .as_nanos();
         std::env::temp_dir().join(format!("nixmac-{name}-{nonce}"))
+    }
+
+    #[test]
+    fn importable_target_treats_absent_and_finder_only_dirs_as_empty() {
+        let absent = temp_dir("import-absent");
+        assert!(is_importable_target(&absent).expect("absent path"));
+
+        let ds_only = temp_dir("import-ds-only");
+        fs::create_dir_all(&ds_only).expect("create temp dir");
+        fs::write(ds_only.join(".DS_Store"), "").expect("create finder metadata");
+        assert!(is_importable_target(&ds_only).expect("ds-only path"));
+
+        let with_git = temp_dir("import-with-git");
+        fs::create_dir_all(with_git.join(".git")).expect("create git dir");
+        // Unlike `is_dir_empty_or_only_git`, a clone target with a `.git` dir is
+        // not importable — libgit2 clone requires a truly empty destination.
+        assert!(!is_importable_target(&with_git).expect("with-git path"));
+
+        let _ = fs::remove_dir_all(ds_only);
+        let _ = fs::remove_dir_all(with_git);
     }
 
     #[test]

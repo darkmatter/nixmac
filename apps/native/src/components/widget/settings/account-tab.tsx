@@ -59,6 +59,9 @@ export function AccountTab() {
     run("saving-url", async () => {
       const status = await tauriAPI.account.setServerUrl(serverUrl.trim());
       setAuth(status);
+      // Reflect the backend-normalized URL (e.g. trailing slash trimmed) so the
+      // input matches what sync requests will actually use.
+      setServerUrl(status.serverUrl);
       setNotice("Server URL updated");
     });
 
