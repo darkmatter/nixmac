@@ -39,18 +39,6 @@ runs:
         name: devenv
         skipPush: true
 
-    # Cache the full nix store in GitHub Actions cache (free, 10GB limit).
-    # Primary cold-start speedup: restores /nix/store from GHA cache
-    # so subsequent runs skip downloads entirely.
-    - name: Restore nix store cache
-      uses: nix-community/cache-nix-action@v7
-      with:
-        primary-key: nix-${{ runner.os }}-${{ hashFiles('devenv.lock', 'devenv.nix', 'devenv.yaml') }}
-        restore-prefixes-first-match: nix-${{ runner.os }}-
-        gc-max-store-size-macos: 7500000000
-        gc-max-store-size-linux: 7500000000
-    continue-on-error: true
-
     - name: Install devenv
       shell: bash
       run: nix profile install --profile /tmp/devenv-profile github:cachix/devenv/latest
