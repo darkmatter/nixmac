@@ -1,5 +1,5 @@
 import { bootBreadcrumb } from "@/lib/boot-diagnostics";
-import { sanitizeDiagnosticText } from "@/lib/sentry/sanitize";
+import { sanitizeDiagnosticText } from "@/lib/telemetry/sanitize";
 
 const e2eBootDiagnosticsEnabled = import.meta.env.VITE_NIXMAC_E2E_MODE === "true";
 

@@ -1,6 +1,10 @@
 import { AppFatalFallback } from "@/components/widget/layout/AppFatalFallback";
 import { markBootStage } from "@/lib/boot-diagnostics";
-import { attachSentry, captureRenderError } from "@/lib/sentry/init";
+import { initTelemetry } from "@/lib/telemetry/init";
+import { TelemetryContextProvider } from "@/lib/telemetry/context";
+import { setTelemetryProvider } from "@/lib/telemetry/instance";
+import type { TelemetryProvider } from "@/lib/telemetry/types";
+import { captureRenderError, attachSentry } from "@/lib/sentry/init";
 import * as Sentry from "@sentry/react";
 import React from "react";
 import ReactDOM from "react-dom/client";
@@ -24,7 +28,7 @@ if (import.meta.env.VITE_NIXMAC_E2E_MODE === "true") {
 
 const root = ReactDOM.createRoot(rootElement);
 
-const renderApp = () => {
+const renderApp = (telemetry: TelemetryProvider) => {
   markBootStage("react-render-start");
   root.render(
     <React.StrictMode>
@@ -37,7 +41,9 @@ const renderApp = () => {
           captureRenderError("render-error", error);
         }}
       >
-        <App />
+        <TelemetryContextProvider value={telemetry}>
+          <App />
+        </TelemetryContextProvider>
       </Sentry.ErrorBoundary>
     </React.StrictMode>,
   );
@@ -45,12 +51,15 @@ const renderApp = () => {
 };
 
 const bootstrap = async () => {
-  // Awaiting attachSentry blocks render in production,
-  // in E2E_MODE resolves synchronously and the harness handles its own init lifecycle.
+  // Init Sentry for ErrorBoundary + crash reporting (migrating to OTEL).
+  // In E2E_MODE, attachSentry and initTelemetry return noop providers synchronously.
+  const telemetry = await initTelemetry();
   await attachSentry();
+  setTelemetryProvider(telemetry);
+  telemetry.captureEvent({ name: "app_launched", props: { environment: (import.meta.env.VITE_NIXMAC_ENV || import.meta.env.MODE || "prod").toString() } });
 
   try {
-    renderApp();
+    renderApp(telemetry);
   } catch (error) {
     markBootStage("react-render-fatal");
     captureRenderError("render-fatal", error);

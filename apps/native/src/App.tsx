@@ -1,15 +1,17 @@
 import { DarwinWidget } from "@/components/widget/widget";
 import { bootBreadcrumb, clearBootStage, markBootStage } from "@/lib/boot-diagnostics";
+import { useTelemetry } from "@/lib/telemetry/context";
 import { useEffect } from "react";
 import { Toaster } from "sonner";
 
 export default function App() {
-  markBootStage("app-render");
+  const telemetry = useTelemetry();
 
   useEffect(() => {
     markBootStage("app-effect");
     bootBreadcrumb("App mounted");
     window.dispatchEvent(new Event("nixmac:app-mounted"));
+    telemetry.captureEvent({ name: "app_ready" });
     clearBootStage();
   }, []);
 

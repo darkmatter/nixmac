@@ -31,10 +31,10 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   const [openFiles, setOpenFiles] = useState<Record<string, boolean>>({});
   const [includedFiles, setIncludedFiles] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    window.addEventListener("focus", summarizeOnFocus);
-    return () => window.removeEventListener("focus", summarizeOnFocus);
-  }, [summarizeOnFocus]);
+  // useEffect(() => {
+  //   window.addEventListener("focus", summarizeOnFocus);
+  //   return () => window.removeEventListener("focus", summarizeOnFocus);
+  // }, [summarizeOnFocus]);
 
   const fileDiffKey = useMemo(
     () =>

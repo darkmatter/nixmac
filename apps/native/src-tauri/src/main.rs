@@ -31,6 +31,7 @@ mod statistics;
 mod storage;
 mod summarize;
 mod system;
+mod telemetry;
 mod types;
 mod updater_pin;
 mod utils;
@@ -591,6 +592,7 @@ fn run_gui_mode(
             commands::editor::lsp_start,
             commands::editor::lsp_send,
             commands::editor::lsp_stop,
+            telemetry::ipc::otel_forward_span,
         ])
         .setup(move |app| {
             let handle = app.handle();
@@ -649,6 +651,13 @@ fn run_gui_mode(
                     sentry::Hub::current().bind_client(None);
                 }
             }
+
+            // Initialize the OTEL telemetry pipeline. Rust owns the OTEL
+            // providers; the WebView forwards spans via IPC. The guard is moved
+            // into Tauri-managed state so it lives for the app's lifetime: a
+            // local `let` binding here would drop at the end of `setup`, which
+            // would shut down the globally-registered provider prematurely.
+            app.manage(telemetry::init::init_telemetry(send_diagnostics));
 
             // Build the system tray menu
             let open_i = MenuItem::with_id(app, "open", "Open nixmac", true, None::<&str>)?;

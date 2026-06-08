@@ -9,6 +9,7 @@ import { mirrorChangeMapState } from "@/viewmodel/change-map";
 import { mirrorEvolveState } from "@/viewmodel/evolve";
 import { mirrorGitState } from "@/viewmodel/git";
 import { toast } from "sonner";
+import { getTelemetry } from "@/lib/telemetry/instance";
 
 /**
  * Hook for the evolution operation.
@@ -70,6 +71,8 @@ const handleEvolve = async () => {
   store.setEvolutionTelemetry(null);
   store.appendLog(`\n> Evolving: "${store.evolvePrompt}"\n`);
 
+  // Track evolution start
+  getTelemetry().captureEvent({ name: "evolve_started" });
   // Set up evolve event listener
   const unlistenEvolve = await ipcRenderer.on<EvolveEvent>(EVOLVE_EVENT_CHANNEL, (event) => {
     if (event.payload) {
@@ -110,6 +113,13 @@ const handleEvolve = async () => {
     }
 
     store.setEvolvePrompt("");
+
+    // Track successful evolution
+    if (result?.evolveState) {
+      const step = result.evolveState.step;
+      const outcome = step === "commit" ? "committed" as const : step === "evolve" ? "applied" as const : "discarded" as const;
+      getTelemetry().captureEvent({ name: "evolve_completed", props: { outcome } });
+    }
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
     // User-initiated cancellation isn't an error — backup still ran, so refresh
@@ -127,6 +137,10 @@ const handleEvolve = async () => {
       });
       useWidgetStore.getState().setError(msg);
       useWidgetStore.getState().appendLog(`✗ Error: ${msg}\n`);
+
+      // Track evolution failure
+      const stage = msg.toLowerCase().includes("build") ? "build" : msg.toLowerCase().includes("apply") ? "apply" : "agent";
+      getTelemetry().captureEvent({ name: "evolve_failed", props: { stage: stage as "build" | "agent" | "apply" } });
     }
     await findChangeMap();
   } finally {
