@@ -24,7 +24,7 @@ pub mod lifecycle;
 /// Directories ignored by file listing and search helpers.
 pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
-use crate::evolve::utils::{escape_user_query, format_duration_secs, short_hash};
+use crate::evolve::utils::{escape_user_query, format_duration_secs};
 use crate::git::query::repo_root;
 // Re-export public API
 use crate::shared_types::{Evolution, EvolutionState, FileEdit};
@@ -175,7 +175,7 @@ fn report_provider_error(
     match err {
         ProviderError::Http { status, body } => {
             // compute short hash of body for correlation but never send body
-            let body_hash = short_hash(body);
+            let body_hash = global_utils::short_hash(body);
             sentry::with_scope(
                 |scope| {
                     scope.set_tag("provider", provider);
@@ -194,7 +194,7 @@ fn report_provider_error(
             let err_str = format!("{:#}", e);
             // fallback: use parsing extractor to try to pull metadata
             let (status, code, typ, len) = extract_error_metadata(&err_str);
-            let hash = short_hash(&err_str);
+            let hash = global_utils::short_hash(&err_str);
             sentry::with_scope(
                 |scope| {
                     scope.set_tag("provider", provider);
@@ -838,7 +838,8 @@ pub async fn generate_evolution<R: Runtime>(
 
     // Read configurable limits from store (hot-reloaded on every run).
     let config::EvolutionLimits {
-        mut max_build_attempts, ..
+        mut max_build_attempts,
+        ..
     } = config::EvolutionLimits::load(app)
         .inspect_err(|e| warn!("EvolutionLimits::load failed ({e}); using defaults"))
         .unwrap_or_default();
@@ -848,8 +849,7 @@ pub async fn generate_evolution<R: Runtime>(
     let interactive_limit_prompt = !banned_tools.contains(&"ask_user");
     info!(
         "Limits: max_token_budget={}, max_build_attempts={}",
-        max_token_budget,
-        max_build_attempts,
+        max_token_budget, max_build_attempts,
     );
 
     let tools = create_tools(banned_tools);
@@ -1073,7 +1073,13 @@ pub async fn generate_evolution<R: Runtime>(
             );
             emit_evolve_event(
                 app,
-                EvolveEvent::api_response(start_time, iteration, usage.total, total_tokens, max_token_budget),
+                EvolveEvent::api_response(
+                    start_time,
+                    iteration,
+                    usage.total,
+                    total_tokens,
+                    max_token_budget,
+                ),
             );
         }
 
