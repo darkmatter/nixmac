@@ -1,0 +1,21 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Hop & Spin 1`] = `"<div aria-label="nixmac mascot" data-slot="nixmac-mascot-lottie" style="width: 220px; height: 220px;"></div>"`;
+
+exports[`Lottie 1`] = `"<div aria-label="nixmac mascot" data-slot="nixmac-mascot-lottie" style="width: 200px; height: 200px;"></div>"`;
+
+exports[`Lottie Vs Css 1`] = `
+"<div class="flex items-center gap-12"><div class="flex flex-col items-center gap-2"><div aria-label="nixmac mascot" data-slot="nixmac-mascot-lottie" style="width: 160px; height: 160px;"></div><span class="text-xs text-zinc-400">Lottie (.json)</span></div><div class="flex flex-col items-center gap-2"><div class="nixmac-mascot" role="img" aria-label="nixmac mascot" style="width: 160px; height: 160px;"><!--
+  nixmac mascot — rigged for animation.
+  Built from apps/native/public/logo.svg, with each animatable feature wrapped in
+  an id'd <g> so it can be targeted by CSS (this file), After Effects, Jitter, or Rive.
+
+  Groups:  #frame  #wordmark  #eye-left  #eye-right  #blush-left  #blush-right  #smile  #circuits
+  Coordinate note: features keep logo.svg's native 0..441 / 0..406 space; the #features
+  wrapper scales them to sit inside the rounded frame's stroke.
+-->
+<div aria-label="nixmac mascot" data-slot="nixmac-mascot-lottie"></div>
+</div><span class="text-xs text-zinc-400">SVG + CSS</span></div></div>"
+`;
+
+exports[`Sizes 1`] = `"<div class="flex items-end gap-8"><div class="flex flex-col items-center gap-2"><div aria-label="nixmac mascot" data-slot="nixmac-mascot-lottie" style="width: 48px; height: 48px;"></div><span class="text-xs text-zinc-400">48px</span></div><div class="flex flex-col items-center gap-2"><div aria-label="nixmac mascot" data-slot="nixmac-mascot-lottie" style="width: 96px; height: 96px;"></div><span class="text-xs text-zinc-400">96px</span></div><div class="flex flex-col items-center gap-2"><div aria-label="nixmac mascot" data-slot="nixmac-mascot-lottie" style="width: 160px; height: 160px;"></div><span class="text-xs text-zinc-400">160px</span></div><div class="flex flex-col items-center gap-2"><div aria-label="nixmac mascot" data-slot="nixmac-mascot-lottie" style="width: 240px; height: 240px;"></div><span class="text-xs text-zinc-400">240px</span></div></div>"`;

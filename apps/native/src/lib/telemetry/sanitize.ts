@@ -1,3 +1,16 @@
+/**
+ * PII sanitization for the unified telemetry pipeline.
+ *
+ * Ported from the original Sentry/analytics sanitize pipeline so the telemetry
+ * module is self-contained. Same regex/redaction logic, re-homed under the new
+ * module and renamed for the unified surface:
+ *
+ * - sanitizeTelemetryAttributes — was sanitizeSentryEvent
+ * - sanitizeValue              — was sanitizeSentryValue
+ * - sanitizeDiagnosticText     — unchanged
+ * - sanitizeProps              — flat property-bag scrub for PostHog
+ */
+
 const REDACTED = "[REDACTED]";
 const REDACTED_APP_CONTENT = "[REDACTED_APP_CONTENT]";
 
@@ -63,7 +76,7 @@ const sanitizeString = (value: string): string => {
   return sanitizeUrl(sanitized);
 };
 
-const sanitizeSentryValue = (value: unknown, keyName = ""): unknown => {
+const sanitizeValue = (value: unknown, keyName = ""): unknown => {
   if (SENSITIVE_KEY_PATTERN.test(keyName)) {
     return REDACTED;
   }
@@ -85,13 +98,13 @@ const sanitizeSentryValue = (value: unknown, keyName = ""): unknown => {
   }
 
   if (Array.isArray(value)) {
-    return value.map((entry) => sanitizeSentryValue(entry));
+    return value.map((entry) => sanitizeValue(entry));
   }
 
   if (value && typeof value === "object") {
     const sanitizedObject: Record<string, unknown> = {};
     for (const [childKey, childValue] of Object.entries(value)) {
-      sanitizedObject[childKey] = sanitizeSentryValue(childValue, childKey);
+      sanitizedObject[childKey] = sanitizeValue(childValue, childKey);
     }
     return sanitizedObject;
   }
@@ -99,8 +112,8 @@ const sanitizeSentryValue = (value: unknown, keyName = ""): unknown => {
   return value;
 };
 
-export function sanitizeSentryEvent(event: unknown): unknown {
-  const sanitized = sanitizeSentryValue(event);
+export function sanitizeTelemetryAttributes(event: unknown): unknown {
+  const sanitized = sanitizeValue(event);
   if (!sanitized || typeof sanitized !== "object") {
     return sanitized;
   }
@@ -112,8 +125,22 @@ export function sanitizeSentryEvent(event: unknown): unknown {
   return sanitizedRecord;
 }
 
-// Used by boot diagnostics for text snapshots; same regex pipeline as the Sentry path
+// Used by boot diagnostics for text snapshots; same regex pipeline as the OTEL/Sentry path
 // plus a non-printable strip suitable for embedding in JSON/HTML diagnostics output.
 export function sanitizeDiagnosticText(value: string): string {
   return sanitizeString(value).replace(/[^\t\x20-\x7e]/g, "");
+}
+
+/**
+ * Sanitize a flat property bag before sending to PostHog.
+ * String values are scrubbed; non-string values pass through unchanged.
+ */
+export function sanitizeProps(
+  props: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(props)) {
+    out[k] = typeof v === "string" ? sanitizeDiagnosticText(v) : v;
+  }
+  return out;
 }

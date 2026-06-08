@@ -4,7 +4,7 @@
   config,
   ...
 }:
-lib.mkIf (! config.container.isBuilding) {
+lib.mkIf (!config.container.isBuilding) {
   # Dev-only packages (excluded from container builds by conditional import).
   packages = [
     pkgs.rustPackages.rustc
@@ -19,6 +19,7 @@ lib.mkIf (! config.container.isBuilding) {
     pkgs.age
     pkgs.sops
     pkgs.git
+    pkgs.gh
     pkgs.libiconv
     pkgs.starship
     pkgs.nixfmt
@@ -81,6 +82,48 @@ lib.mkIf (! config.container.isBuilding) {
     # For CodeLLDB
     export LLDB_BIN=$(which lldb)
     export DYLD_LIBRARY_PATH=${pkgs.lldb}/lib:$DYLD_LIBRARY_PATH
+
+    # Cargo invokes the macOS linker with -liconv for proc-macro crates.
+    # Expose nix libiconv so CI runners can link without relying on host paths.
+    export LIBRARY_PATH=${pkgs.libiconv}/lib:''${LIBRARY_PATH:-}
+    export RUSTFLAGS="-L native=${pkgs.libiconv}/lib ''${RUSTFLAGS:-}"
+  ''
+  + lib.optionalString pkgs.stdenv.isLinux ''
+    export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
+    export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+
+    export LD_LIBRARY_PATH=${
+      lib.makeLibraryPath [
+        pkgs.glib
+        pkgs.nss
+        pkgs.nspr
+        pkgs.atk
+        pkgs.at-spi2-atk
+        pkgs.at-spi2-core
+        pkgs.dbus
+        pkgs.expat
+        pkgs.libxkbcommon
+        pkgs.pango
+        pkgs.cairo
+        pkgs.fontconfig
+        pkgs.freetype
+        pkgs.cups
+        pkgs.libdrm
+        pkgs.libgbm
+        pkgs.alsa-lib
+        pkgs.libxshmfence
+        pkgs.gdk-pixbuf
+        pkgs.gtk3
+        pkgs.udev
+        pkgs.xorg.libX11
+        pkgs.xorg.libXcomposite
+        pkgs.xorg.libXdamage
+        pkgs.xorg.libXext
+        pkgs.xorg.libXfixes
+        pkgs.xorg.libXrandr
+        pkgs.xorg.libxcb
+      ]
+    }:''${LD_LIBRARY_PATH:-}
   '';
 
   # https://devenv.sh/languages/

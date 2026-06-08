@@ -2,7 +2,7 @@
 //!
 //! This module sets up a custom panic hook that:
 //! 1. Captures panic information including backtrace
-//! 2. Reports to Sentry if configured
+//! 2. Logs the panic via tracing
 //! 3. Emits an event to the frontend to show the feedback dialog
 //! 4. Calls the default panic hook (unwinding proceeds normally)
 //!
@@ -54,21 +54,13 @@ pub fn setup_panic_hook(app_handle: AppHandle) {
             error!("Backtrace:\n{}", bt);
         }
 
-        // Report to Sentry with proper metadata
-        sentry::with_scope(
-            |scope| {
-                scope.set_tag("panic", "true");
-                if let Some(ref loc) = location {
-                    scope.set_tag("panic.location", loc);
-                }
-                if let Some(ref bt) = backtrace {
-                    scope.set_extra("backtrace", serde_json::Value::String(bt.clone()));
-                }
-                scope.set_level(Some(sentry::Level::Fatal));
-            },
-            || {
-                sentry::capture_message(&format!("Panic: {}", message), sentry::Level::Fatal);
-            },
+        // Report the panic via tracing with structured fields (no raw scope tags).
+        tracing::error!(
+            message = %format!("Panic: {}", message),
+            panic = true,
+            location = location.as_deref().unwrap_or("unknown"),
+            backtrace_present = backtrace.is_some(),
+            "application panic"
         );
 
         // Create panic info payload

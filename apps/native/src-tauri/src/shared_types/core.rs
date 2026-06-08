@@ -103,13 +103,3 @@ pub struct CliToolsState {
     /// Whether the OpenCode CLI is installed.
     pub opencode: bool,
 }
-
-/// Response from the debug Sentry event command.
-#[cfg(debug_assertions)]
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-pub struct DebugSentryResult {
-    /// Whether the debug event was sent.
-    pub ok: bool,
-    /// Human-readable result message.
-    pub message: String,
-}

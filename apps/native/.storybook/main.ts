@@ -70,6 +70,13 @@ const config: StorybookConfig = {
     // merged.plugins = withoutMonacoEditorPlugin(merged.plugins) as typeof merged.plugins;
     merged.build ??= {};
     merged.build.target = "esnext";
+    // Force Vite HMR to use localhost instead of the auto-detected link-local
+    // address (169.254.x.x). Without this, visiting localhost:6006 causes 404s
+    // because Vite's HMR client tries to reach the link-local address.
+    merged.server ??= {};
+    merged.server.host = "localhost";
+    merged.server.hmr ??= {};
+    merged.server.hmr.host = "localhost";
     return merged;
   },
   env: (config) => ({

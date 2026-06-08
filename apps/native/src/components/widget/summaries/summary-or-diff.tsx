@@ -8,7 +8,6 @@ import { Tabs } from "@/components/ui/tabs";
 import { DiffSection } from "@/components/widget/summaries/diff-section";
 import { SummaryItems } from "@/components/widget/summaries/summary-items";
 import { prefetchFileDiffContents } from "@/hooks/use-git-operations";
-import { useSummary } from "@/hooks/use-summary";
 import { cn } from "@/lib/utils";
 import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
@@ -26,15 +25,10 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   const changeMap = useViewModel((s) => s.changeMap);
   const evolveState = useViewModel((s) => s.evolve);
   const defaultToDiffTab = useWidgetStore((s) => s.defaultToDiffTab);
-  const { summarizeOnFocus } = useSummary();
   const [activeTab, setActiveTab] = useState(defaultToDiffTab ? "diff" : "summary");
   const [openFiles, setOpenFiles] = useState<Record<string, boolean>>({});
   const [includedFiles, setIncludedFiles] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    window.addEventListener("focus", summarizeOnFocus);
-    return () => window.removeEventListener("focus", summarizeOnFocus);
-  }, [summarizeOnFocus]);
 
   const fileDiffKey = useMemo(
     () =>

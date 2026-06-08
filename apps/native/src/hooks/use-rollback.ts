@@ -5,7 +5,7 @@ import { useSummary } from "@/hooks/use-summary";
 import { useViewModel } from "@/stores/view-model";
 import { mirrorEvolveState } from "@/viewmodel/evolve";
 import { mirrorGitState } from "@/viewmodel/git";
-
+import { getTelemetry } from "@/lib/telemetry/instance";
 /**
  * Hook for discarding changes and restoring the working tree to its pre-evolution state.
  */
@@ -26,6 +26,9 @@ export function useRollback() {
       mirrorEvolveState(result.evolveState);
       store.setEvolvePrompt("");
       store.appendLog("✓ Changes discarded\n");
+
+      // Track rollback
+      getTelemetry().captureEvent({ name: "rollback_performed" });
 
       if (result.rollbackStorePath && wasCommittable) {
         await triggerRebuild({
