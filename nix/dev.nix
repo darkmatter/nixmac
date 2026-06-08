@@ -87,6 +87,41 @@ lib.mkIf (!config.container.isBuilding) {
     # Expose nix libiconv so CI runners can link without relying on host paths.
     export LIBRARY_PATH=${pkgs.libiconv}/lib:''${LIBRARY_PATH:-}
     export RUSTFLAGS="-L native=${pkgs.libiconv}/lib ''${RUSTFLAGS:-}"
+  ''
+  + lib.optionalString pkgs.stdenv.isLinux ''
+    # Playwright's downloaded Chromium needs these shared libraries at runtime.
+    # CI runners cannot `playwright install --with-deps` because sudo is blocked.
+    export LD_LIBRARY_PATH=${
+      lib.makeLibraryPath [
+        pkgs.glib
+        pkgs.nss
+        pkgs.nspr
+        pkgs.atk
+        pkgs.at-spi2-atk
+        pkgs.at-spi2-core
+        pkgs.dbus
+        pkgs.expat
+        pkgs.libxkbcommon
+        pkgs.pango
+        pkgs.cairo
+        pkgs.fontconfig
+        pkgs.freetype
+        pkgs.cups
+        pkgs.libdrm
+        pkgs.libgbm
+        pkgs.alsa-lib
+        pkgs.libxshmfence
+        pkgs.gdk-pixbuf
+        pkgs.gtk3
+        pkgs.xorg.libX11
+        pkgs.xorg.libXcomposite
+        pkgs.xorg.libXdamage
+        pkgs.xorg.libXext
+        pkgs.xorg.libXfixes
+        pkgs.xorg.libXrandr
+        pkgs.xorg.libxcb
+      ]
+    }:''${LD_LIBRARY_PATH:-}
   '';
 
   # https://devenv.sh/languages/

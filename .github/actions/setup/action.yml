@@ -79,7 +79,7 @@ runs:
         # Later workflow steps do not run inside `devenv shell`, so persist the
         # shell-provided linker flags that are needed by macOS Rust builds.
         /tmp/devenv-profile/bin/devenv shell -- bash -c '
-          for name in LIBRARY_PATH RUSTFLAGS; do
+          for name in LD_LIBRARY_PATH LIBRARY_PATH RUSTFLAGS; do
             value="${!name:-}"
             if [ -n "$value" ]; then
               printf "%s=%s\n" "$name" "$value"
