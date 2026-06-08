@@ -35,29 +35,29 @@ runs:
       uses: DeterminateSystems/flakehub-cache-action@v1
       continue-on-error: true
 
+    - name: Install devenv
+      shell: bash
+      run: nix profile install --profile /tmp/devenv-profile github:cachix/devenv/latest
+
     - name: Add devenv tools to PATH
       shell: bash
       run: |
         set -euo pipefail
 
-        # Evaluate the devenv shell PATH and write the nix-provided
-        # entries to GITHUB_PATH so subsequent steps get bun, node,
-        # sops, age, rust, etc. without wrapping in `nix develop`.
-        devenv_path="$(nix develop --impure --command bash -c 'echo $PATH')"
+        # Enter the devenv shell and extract PATH with all tools
+        # (bun, node, sops, age, rust, etc. are provided by the devenv profile)
+        devenv_path="$(/tmp/devenv-profile/bin/devenv shell -- bash -c 'echo $PATH' 2>/dev/null)"
 
-        # Collect current system PATH to filter out non-nix entries
-        IFS=: read -ra SYS_PATH_ARR <<< "$PATH"
-        declare -A sys_parts
-        for p in "${SYS_PATH_ARR[@]}"; do
-          sys_parts["$p"]=1
-        done
-
-        IFS=: read -ra DEVENV_PATH_ARR <<< "$devenv_path"
-        for p in "${DEVENV_PATH_ARR[@]}"; do
-          if [[ -z "${sys_parts[$p]+_}" ]]; then
-            echo "$p" >> "$GITHUB_PATH"
+        # Add only nix store paths to GITHUB_PATH (devenv-provided tools)
+        IFS=: read -ra ENTRIES <<< "$devenv_path"
+        for entry in "${ENTRIES[@]}"; do
+          if [[ "$entry" == /nix/store/* ]]; then
+            echo "$entry" >> "$GITHUB_PATH"
           fi
         done
+
+        # Also add the devenv CLI itself to PATH for potential later use
+        echo "/tmp/devenv-profile/bin" >> "$GITHUB_PATH"
 
     - name: Install Rust toolchain
       if: inputs.setup-rust == 'true'
