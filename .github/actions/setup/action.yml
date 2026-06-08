@@ -1,7 +1,7 @@
 name: "Setup nixmac CI"
 description: >
-  Install Determinate Nix (skips if already installed), enter the devenv shell
-  to get bun/node/rust/sops/age/etc. from nix, and install JS dependencies.
+  Install Determinate Nix (skips if already installed), build the devenv profile
+  via `devenv ci` to get bun/node/rust/sops/age/etc. on PATH, and install JS
   NOTE: You MUST run actions/checkout before this action — local composite
   actions need the repo on disk before they can be resolved.
 
@@ -39,22 +39,29 @@ runs:
       shell: bash
       run: nix profile install --profile /tmp/devenv-profile github:cachix/devenv/latest
 
+    - name: Build devenv profile
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        # Build the devenv profile (installs all packages but does not enter a shell).
+        # This is the CI-optimized path — much faster than `devenv shell`.
+        /tmp/devenv-profile/bin/devenv ci
+
     - name: Add devenv tools to PATH
       shell: bash
       run: |
         set -euo pipefail
 
-        # Enter the devenv shell and extract PATH with all tools
-        # (bun, node, sops, age, rust, etc. are provided by the devenv profile)
-        devenv_path="$(/tmp/devenv-profile/bin/devenv shell -- bash -c 'echo $PATH' 2>/dev/null)"
-
-        # Add only nix store paths to GITHUB_PATH (devenv-provided tools)
-        IFS=: read -ra ENTRIES <<< "$devenv_path"
-        for entry in "${ENTRIES[@]}"; do
-          if [[ "$entry" == /nix/store/* ]]; then
-            echo "$entry" >> "$GITHUB_PATH"
-          fi
-        done
+        # After `devenv ci`, .devenv/profile is a symlink to the nix store path
+        # containing all packages (bun, node, sops, age, rust, etc.)
+        if [[ -L .devenv/profile ]]; then
+          profile_path="$(readlink -f .devenv/profile)"
+          echo "${profile_path}/bin" >> "$GITHUB_PATH"
+        else
+          echo "ERROR: .devenv/profile symlink not found after devenv ci"
+          exit 1
+        fi
 
         # Also add the devenv CLI itself to PATH for potential later use
         echo "/tmp/devenv-profile/bin" >> "$GITHUB_PATH"
