@@ -49,6 +49,7 @@ runs:
         restore-prefixes-first-match: nix-${{ runner.os }}-
         gc-max-store-size-macos: 7500000000
         gc-max-store-size-linux: 7500000000
+    continue-on-error: true
 
     - name: Install devenv
       shell: bash
