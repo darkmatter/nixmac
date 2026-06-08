@@ -381,6 +381,136 @@ mod tests {
     }
 
     #[test]
+    fn edit_nix_file_accepts_add_shorthand_and_infers_only_list_path() {
+        let tmp = tempdir().expect("tempdir");
+        let module_dir = tmp.path().join("modules/darwin");
+        fs::create_dir_all(&module_dir).expect("make module dir");
+        fs::write(
+            module_dir.join("packages.nix"),
+            r#"{ pkgs, ... }:
+{
+  environment.systemPackages = with pkgs; [
+    git
+  ];
+}
+"#,
+        )
+        .expect("write package module");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "add",
+                "path": "modules/darwin/packages.nix",
+                "values": ["wget"]
+            }),
+            None,
+        )
+        .expect("edit_nix_file should accept add shorthand");
+
+        let ToolResult::EditSemantic(edit) = result else {
+            panic!("expected semantic edit result");
+        };
+        assert_eq!(edit.path, "modules/darwin/packages.nix");
+        let crate::evolve::types::FileEditAction::Add { path, values } = edit.action else {
+            panic!("expected add action");
+        };
+        assert_eq!(path, "environment.systemPackages");
+        assert_eq!(values, vec!["wget".to_string()]);
+
+        let edited = fs::read_to_string(module_dir.join("packages.nix")).expect("read edited");
+        assert!(
+            edited.contains("environment.systemPackages = with pkgs; ["),
+            "{edited}"
+        );
+        assert!(edited.contains("    git\n    wget"), "{edited}");
+    }
+
+    #[test]
+    fn edit_nix_file_accepts_add_shorthand_with_explicit_attr_path() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(
+            tmp.path().join("packages.nix"),
+            r#"{ pkgs, ... }:
+{
+  environment.systemPackages = with pkgs; [
+    git
+  ];
+
+  home.packages = with pkgs; [
+    ripgrep
+  ];
+}
+"#,
+        )
+        .expect("write package module");
+
+        execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "add",
+                "path": "packages.nix",
+                "attr_path": "home.packages",
+                "values": ["fd"]
+            }),
+            None,
+        )
+        .expect("edit_nix_file should accept explicit attr_path shorthand");
+
+        let edited = fs::read_to_string(tmp.path().join("packages.nix")).expect("read edited");
+        assert!(
+            edited.contains("home.packages = with pkgs; [\n    ripgrep\n    fd"),
+            "{edited}"
+        );
+        assert!(!edited.contains("git\n    fd"), "{edited}");
+    }
+
+    #[test]
+    fn edit_nix_file_rejects_add_shorthand_when_multiple_list_paths_are_possible() {
+        let tmp = tempdir().expect("tempdir");
+        let original = r#"{ pkgs, ... }:
+{
+  environment.systemPackages = with pkgs; [
+    git
+  ];
+
+  home.packages = with pkgs; [
+    ripgrep
+  ];
+}
+"#;
+        fs::write(tmp.path().join("packages.nix"), original).expect("write package module");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "add",
+                "path": "packages.nix",
+                "values": ["fd"]
+            }),
+            None,
+        );
+
+        let err = result.expect_err("ambiguous shorthand should require an explicit attr path");
+        assert!(
+            err.to_string().contains("edit_nix_file.add: missing path"),
+            "unexpected error: {err:#}"
+        );
+
+        let edited = fs::read_to_string(tmp.path().join("packages.nix")).expect("read file");
+        assert_eq!(edited, original);
+    }
+
+    #[test]
     fn edit_nix_file_quotes_homebrew_remove_values() {
         let tmp = tempdir().expect("tempdir");
         fs::write(
