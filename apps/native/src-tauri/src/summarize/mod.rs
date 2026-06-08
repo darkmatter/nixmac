@@ -19,8 +19,7 @@ struct SummaryScope {
     hashes: Vec<String>,
 }
 
-/// Summarizes all the changes for the given evolution. This is a wrapper function
-/// that just gets a summary from there to the HEAD.
+/// Wrapper function to summarize changes since HEAD.
 pub async fn new_changeset<R: Runtime>(
     app: &AppHandle<R>,
     evolution_id: Option<i64>,
@@ -101,10 +100,30 @@ pub fn found_change_sets_since<R: Runtime>(
 
 /// Gets the base commit for the current summary or HEAD if no summary exists, so the frontend can use it as a reference point for showing file diffs, etc.
 pub fn active_summary_base_ref<R: Runtime>(app: &AppHandle<R>) -> String {
-    crate::state::evolve_state::get(app)
-        .ok()
-        .and_then(|state| state.rollback_branch.or(state.backup_branch))
-        .unwrap_or_else(|| "HEAD".to_string())
+    let Some(state) = crate::state::evolve_state::get(app).ok() else {
+        return "HEAD".to_string();
+    };
+    let Some(config_dir) = crate::storage::store::get_config_dir(app).ok() else {
+        return "HEAD".to_string();
+    };
+
+    existing_summary_base_ref(&config_dir, &state).unwrap_or_else(|| "HEAD".to_string())
+}
+
+/// Returns the first persisted summary base ref that still exists in the repo.
+fn existing_summary_base_ref(
+    config_dir: &str,
+    state: &crate::shared_types::EvolveState,
+) -> Option<String> {
+    // Prefer rollback over backup, but skip refs that were already cleaned up.
+    [
+        state.rollback_branch.as_deref(),
+        state.backup_branch.as_deref(),
+    ]
+    .into_iter()
+    .flatten()
+    .find(|base_ref| crate::git::get_ref_sha(config_dir, base_ref).is_some())
+    .map(str::to_string)
 }
 
 /// Gets the commit for `base_ref` and stores it in the DB if not already present, returning its ID.
@@ -138,6 +157,10 @@ fn load_summary_scope<R: Runtime>(
         return Ok(None);
     }
 
+    if crate::git::get_ref_sha(&config_dir, base_ref).is_none() {
+        return Ok(None);
+    }
+
     let changes = changes_since_ref(&config_dir, base_ref)?;
     if changes.is_empty() {
         return Ok(None);
@@ -162,4 +185,58 @@ fn changes_since_ref(config_dir: &str, base_ref: &str) -> Result<Vec<Change>> {
             .map(|diff| crate::git::file_diff_to_change(diff, 0, false))
             .collect()
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::shared_types::EvolveState;
+    use std::fs;
+    use std::path::Path;
+
+    /// Creates a temporary git repository with one committed README.
+    fn repo_with_initial_commit() -> (tempfile::TempDir, git2::Oid) {
+        let temp = tempfile::TempDir::new().expect("create temp dir");
+        let repo = git2::Repository::init(temp.path()).expect("init repo");
+
+        fs::write(temp.path().join("README.md"), "hello\n").expect("write file");
+
+        let mut index = repo.index().expect("open index");
+        index.add_path(Path::new("README.md")).expect("stage file");
+        index.write().expect("write index");
+
+        let tree_id = index.write_tree().expect("write tree");
+        let tree = repo.find_tree(tree_id).expect("find tree");
+        let sig = git2::Signature::now("nixmac", "nixmac@local").expect("signature");
+        let commit_id = repo
+            .commit(Some("HEAD"), &sig, &sig, "initial", &tree, &[])
+            .expect("create commit");
+
+        drop(tree);
+        drop(repo);
+
+        (temp, commit_id)
+    }
+
+    #[test]
+    fn existing_summary_base_ref_skips_missing_refs() {
+        let (temp, commit_id) = repo_with_initial_commit();
+        let repo = git2::Repository::discover(temp.path()).expect("open repo");
+        let commit = repo.find_commit(commit_id).expect("find commit");
+        repo.branch("existing-backup", &commit, false)
+            .expect("create branch");
+
+        let state = EvolveState {
+            rollback_branch: Some("missing-rollback".to_string()),
+            backup_branch: Some("existing-backup".to_string()),
+            ..EvolveState::default()
+        };
+
+        let config_dir = temp.path().to_string_lossy();
+
+        assert_eq!(
+            existing_summary_base_ref(&config_dir, &state),
+            Some("existing-backup".to_string())
+        );
+    }
 }

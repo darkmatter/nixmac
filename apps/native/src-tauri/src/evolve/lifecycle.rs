@@ -365,15 +365,11 @@ pub async fn store_metadata(
         }
     };
 
-    // Summarize since we started evolution (using the backup branch as a reference point) to get a changeset to link to the evolution record.
-    let current_state = evolve_state::get(app).unwrap_or_default();
-    let base_ref = current_state
-        .rollback_branch
-        .as_deref()
-        .or(current_state.backup_branch.as_deref())
-        .unwrap_or("HEAD");
+    // Summarize since we started evolution, falling back to HEAD if the persisted
+    // backup/rollback ref has already been removed.
+    let base_ref = summarize::active_summary_base_ref(app);
 
-    let changeset_id = match summarize::summarize_since(app, base_ref, evolution_id).await {
+    let changeset_id = match summarize::summarize_since(app, &base_ref, evolution_id).await {
         Ok(id) => id,
         Err(e) => {
             log::error!("[evolution] summarization pipeline failed: {}", e);
