@@ -53,8 +53,8 @@ mod tests {
             own_summary_id: None,
         };
         let out = whole_diff(&[&change]);
-        assert!(out.contains(&change.hash));
-        assert!(out.contains("ALL of these changes together"));
+        assert!(out.contains(&crate::utils::short_hash(&change.hash)));
+        assert!(out.contains("single conventional commit message "));
         assert!(out.contains("\"message\""));
         assert!(!out.contains("\"changes\""));
         assert!(!out.contains("\"group\""));
