@@ -16,7 +16,7 @@ permissions:
 jobs:
   rust-check:
     name: Rust Check
-    runs-on: ghcr.io/cirruslabs/macos-runner:tahoe
+    runs-on: [self-hosted, macOS]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6

@@ -18,7 +18,7 @@ env:
   SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 jobs:
   optimize_ci:
-    runs-on: ghcr.io/cirruslabs/macos-runner:tahoe
+    runs-on: [self-hosted, macOS]
     outputs:
       skip: ${{ steps.check_skip.outputs.skip }}
     steps:
@@ -28,7 +28,7 @@ jobs:
         with:
           graphite_token: ${{ secrets.GRAPHITE_TOKEN }}
   build:
-    runs-on: ghcr.io/cirruslabs/macos-runner:tahoe
+    runs-on: [self-hosted, macOS]
     needs: optimize_ci
     if: needs.optimize_ci.outputs.skip == 'false'
     permissions:
