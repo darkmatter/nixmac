@@ -38,8 +38,11 @@ jobs:
             exit 0
           fi
 
+          merge_base=$(git merge-base \
+            "origin/${{ github.base_ref }}" \
+            "${{ github.event.pull_request.head.sha }}")
           git diff --name-only \
-            "${{ github.event.pull_request.base.sha }}" \
+            "$merge_base" \
             "${{ github.event.pull_request.head.sha }}" \
             > /tmp/storybook-changed-files.txt
 
