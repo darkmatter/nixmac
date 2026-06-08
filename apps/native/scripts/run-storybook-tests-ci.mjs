@@ -8,7 +8,7 @@ const storyRoots = [
   path.resolve(repoRoot, "packages/ui/src"),
 ];
 const storyFileSuffixes = [".stories.ts", ".stories.tsx"];
-const batchSize = 3;
+const batchSize = 2;
 const perBatchTimeoutMs = 120_000;
 
 async function listStoryFiles(directory) {
