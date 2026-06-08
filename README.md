@@ -115,6 +115,23 @@ bun run dev:server     # API server at http://localhost:3000
 bun run dev:native     # Tauri desktop app
 ```
 
+### Storybook Visual Snapshots
+
+Storybook snapshots are committed source artifacts. When an intentional UI or
+style change affects rendered output, update snapshots locally and commit the
+resulting `.snap` changes:
+
+```bash
+cd apps/native
+bun run test:update-snapshots
+```
+
+CI does not regenerate snapshots or push commits back to PR branches. It builds
+and deploys the Storybook preview before running snapshot tests, then fails on
+snapshot drift and uploads diff artifacts for review. PRs with no frontend,
+shared UI, Storybook, package, or styling changes skip the heavy Storybook work
+and record the skip in the job summary.
+
 ### Profiling (Rust-side)
 
 You should have Xcode installed.
