@@ -82,6 +82,7 @@ export default defineConfig({
                     "--no-sandbox",
                     "--disable-dev-shm-usage",
                     "--disable-gpu-sandbox",
+                    "--disable-gpu",
                     "--no-zygote",
                   ],
                 },
