@@ -25,9 +25,14 @@ struct SentryOtlpConfig {
     headers: Vec<(String, String)>,
 }
 
-/// Parses a Sentry DSN of the form
-/// `https://public_key@o123456.ingest.sentry.io/123456` and derives the OTLP
-/// traces/logs URLs plus the `sentry_key` auth header.
+/// Parses a Sentry DSN and derives the OTLP traces/logs URLs plus the
+/// `X-Sentry-Auth` header.
+///
+/// Supports both SaaS (`https://key@o{id}.ingest.sentry.io/{pid}`) and
+/// self-hosted (`https://key@sentry.example.com/{pid}`) DSNs.
+///
+/// The OTLP endpoint path follows the Sentry convention used by all official
+/// SDKs (Python, JS, Go, Collector): `/api/{pid}/integration/otlp/v1/{signal}/`.
 fn parse_sentry_dsn(dsn: &str) -> Option<SentryOtlpConfig> {
     let parsed = url::Url::parse(dsn).ok()?;
     let public_key = parsed.username().to_string();
@@ -35,19 +40,20 @@ fn parse_sentry_dsn(dsn: &str) -> Option<SentryOtlpConfig> {
         return None;
     }
     let host = parsed.host_str()?.to_string();
+    // For self-hosted Sentry behind a path-prefixed reverse proxy (e.g.
+    // https://sentry.example.com/sentry/), preserve the base path.
     let project_id = parsed.path().trim_start_matches('/').to_string();
     if project_id.is_empty() {
         return None;
     }
-    // Validate the org segment looks like `o<id>`; we don't otherwise need the
-    // org id since the OTLP path is keyed on the host + project id.
-    let org_segment = host.split('.').next()?;
-    org_segment.strip_prefix('o')?;
+    // Use the DSN's own scheme instead of hardcoding https, so http works
+    // for local dev / self-hosted instances without TLS.
+    let scheme = parsed.scheme();
 
     Some(SentryOtlpConfig {
-        traces_url: format!("https://{host}/api/{project_id}/v1/traces"),
-        logs_url: format!("https://{host}/api/{project_id}/v1/logs"),
-        headers: vec![("sentry_key".to_string(), public_key)],
+        traces_url: format!("{scheme}://{host}/api/{project_id}/integration/otlp/v1/traces/"),
+        logs_url: format!("{scheme}://{host}/api/{project_id}/integration/otlp/v1/logs/"),
+        headers: vec![("x-sentry-auth".to_string(), format!("sentry sentry_key={public_key}"))],
     })
 }
 
