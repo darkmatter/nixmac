@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   rust-check:
-    name: Rust Check
+    name: Rust Check / Build
     runs-on: ghcr.io/cirruslabs/macos-runner:tahoe
     steps:
       - name: Checkout repository
@@ -29,6 +29,9 @@ jobs:
       - name: Check Rust app crate
         working-directory: apps/native/src-tauri
         run: cargo check --locked
+      - name: Build Rust app crate
+        working-directory: apps/native/src-tauri
+        run: cargo build --locked
 
   typescript:
     name: TypeScript
