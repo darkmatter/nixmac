@@ -171,7 +171,7 @@ jobs:
 
       - name: Run Storybook snapshot tests
         working-directory: apps/native
-        run: bun run test:storybook
+        run: bun run test:storybook:ci
 
       - name: Check for snapshot staleness
         if: always() && !cancelled()
