@@ -57,7 +57,6 @@ jobs:
           DEBUG=pw:browser bun --eval '
             const { chromium } = await import("playwright");
             const browser = await chromium.launch({
-              channel: "chromium",
               args: [
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
