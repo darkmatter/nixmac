@@ -56,7 +56,10 @@ jobs:
           bunx playwright install --dry-run chromium
           bun --eval '
             const { chromium } = await import("playwright");
-            const browser = await chromium.launch({ channel: "chromium" });
+            const browser = await chromium.launch({
+              channel: "chromium",
+              args: ["--no-sandbox", "--disable-dev-shm-usage"],
+            });
             const page = await browser.newPage();
             await page.setContent("<h1>ok</h1>");
             console.log(await page.textContent("h1"));
