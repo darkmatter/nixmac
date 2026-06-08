@@ -19,6 +19,7 @@ lib.mkIf (!config.container.isBuilding) {
     pkgs.age
     pkgs.sops
     pkgs.git
+    pkgs.gh
     pkgs.libiconv
     pkgs.starship
     pkgs.nixfmt
