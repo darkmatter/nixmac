@@ -54,7 +54,7 @@ jobs:
         working-directory: apps/native
         run: |
           bunx playwright install --dry-run chromium
-          bun --eval '
+          DEBUG=pw:browser bun --eval '
             const { chromium } = await import("playwright");
             const browser = await chromium.launch({
               channel: "chromium",
