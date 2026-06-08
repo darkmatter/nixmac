@@ -28,7 +28,7 @@ export type {
 /**
  * Widget step state - updated by useEffect based on app state.
  */
-export type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences" | "tuning" | "developer";
+export type SettingsTab = "general" | "account" | "api-keys" | "ai-models" | "preferences" | "tuning" | "developer";
 export type WidgetStep = "permissions" | "nix-setup" | "setup" | "begin" | "evolve" | "commit" | "manualEvolve" | "manualCommit" | "history" | "filesystem";
 type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
 export type ConfirmPrefKey = "confirmBuild" | "confirmClear" | "confirmRollback";

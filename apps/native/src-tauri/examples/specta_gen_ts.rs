@@ -114,7 +114,11 @@ fn main() {
         .register::<shared_types::PermissionsState>()
         .register::<shared_types::SystemDefault>()
         .register::<shared_types::SystemDefaultsScan>()
-        .register::<shared_types::RecommendedPrompt>();
+        .register::<shared_types::RecommendedPrompt>()
+        .register::<shared_types::AuthAccount>()
+        .register::<shared_types::AuthStatus>()
+        .register::<shared_types::SyncRemoteStatus>()
+        .register::<shared_types::SyncResult>();
 
     let shared_output_path = "../src/ipc/types.ts";
 

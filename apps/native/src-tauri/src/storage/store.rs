@@ -40,6 +40,17 @@ pub const DEVELOPER_MODE_KEY: &str = "developerMode";
 pub const PINNED_VERSION_KEY: &str = "pinnedVersion";
 pub const UPDATE_CHANNEL_KEY: &str = "updateChannel";
 
+// nixmac account + non-GitHub sync keys
+pub const SYNC_SERVER_URL_KEY: &str = "syncServerUrl";
+pub const SYNC_ACCOUNT_ID_KEY: &str = "syncAccountId";
+pub const SYNC_ACCOUNT_EMAIL_KEY: &str = "syncAccountEmail";
+pub const SYNC_KEY_ID_KEY: &str = "syncKeyId";
+/// Keychain account name for the per-device HMAC secret. Never written to the
+/// plaintext settings store.
+pub const SYNC_SECRET_KEYCHAIN_KEY: &str = "nixmacSyncSecret";
+/// Default sync server when the user has not configured a custom endpoint.
+pub const DEFAULT_SYNC_BASE_URL: &str = "https://sync.nixmac.app";
+
 pub const DEFAULT_MAX_OUTPUT_TOKENS: usize = 32_768;
 pub const DEFAULT_MAX_TOKEN_BUDGET: u32 = 50_000;
 const KEYCHAIN_SERVICE: &str = "com.darkmatter.nixmac";
@@ -486,12 +497,97 @@ fn set_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str, value: &st
     keychain.set(value).map_err(anyhow::Error::from)
 }
 
+fn delete_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> Result<()> {
+    if e2e_mock_system_enabled() {
+        return delete_pref_raw(app, key);
+    }
+
+    let keychain = keychain_store_for(app, key);
+    keychain.delete().map_err(anyhow::Error::from)
+}
+
 pub fn get_bool_pref<R: Runtime>(app: &AppHandle<R>, key: &str, default: bool) -> Result<bool> {
     get_json_pref_or(app, key, default)
 }
 
 pub fn set_bool_pref<R: Runtime>(app: &AppHandle<R>, key: &str, value: bool) -> Result<()> {
     set_json_pref(app, key, &value)
+}
+
+// =============================================================================
+// nixmac Account + non-GitHub Sync
+// =============================================================================
+//
+// The HMAC secret lives in the OS keychain; account metadata (id, email,
+// key id) and the configured server URL live in the plaintext settings store
+// since none of it is sensitive on its own.
+
+/// Non-secret metadata describing the signed-in account on this device.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SyncAccountMeta {
+    pub account_id: String,
+    pub email: String,
+    pub key_id: String,
+}
+
+/// Gets the configured sync server base URL, defaulting to [`DEFAULT_SYNC_BASE_URL`].
+pub fn get_sync_server_url<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
+    if let Some(url) = e2e_env_value("NIXMAC_E2E_SYNC_SERVER_URL") {
+        return Ok(url);
+    }
+    Ok(get_string_pref(app, SYNC_SERVER_URL_KEY)?
+        .unwrap_or_else(|| DEFAULT_SYNC_BASE_URL.to_string()))
+}
+
+/// Sets the sync server base URL. Trailing slashes are trimmed for consistency.
+pub fn set_sync_server_url<R: Runtime>(app: &AppHandle<R>, url: &str) -> Result<()> {
+    set_string_pref(app, SYNC_SERVER_URL_KEY, url.trim_end_matches('/'))
+}
+
+/// Reads the stored account metadata, returning `None` unless all fields are present.
+pub fn get_sync_account<R: Runtime>(app: &AppHandle<R>) -> Result<Option<SyncAccountMeta>> {
+    let account_id = get_string_pref(app, SYNC_ACCOUNT_ID_KEY)?;
+    let email = get_string_pref(app, SYNC_ACCOUNT_EMAIL_KEY)?;
+    let key_id = get_string_pref(app, SYNC_KEY_ID_KEY)?;
+    match (account_id, email, key_id) {
+        (Some(account_id), Some(email), Some(key_id)) => Ok(Some(SyncAccountMeta {
+            account_id,
+            email,
+            key_id,
+        })),
+        _ => Ok(None),
+    }
+}
+
+/// Persists account metadata after a successful sign-in.
+pub fn set_sync_account<R: Runtime>(app: &AppHandle<R>, meta: &SyncAccountMeta) -> Result<()> {
+    set_string_pref(app, SYNC_ACCOUNT_ID_KEY, &meta.account_id)?;
+    set_string_pref(app, SYNC_ACCOUNT_EMAIL_KEY, &meta.email)?;
+    set_string_pref(app, SYNC_KEY_ID_KEY, &meta.key_id)?;
+    Ok(())
+}
+
+/// Removes account metadata (used on sign-out).
+pub fn delete_sync_account<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
+    delete_pref_raw(app, SYNC_ACCOUNT_ID_KEY)?;
+    delete_pref_raw(app, SYNC_ACCOUNT_EMAIL_KEY)?;
+    delete_pref_raw(app, SYNC_KEY_ID_KEY)?;
+    Ok(())
+}
+
+/// Gets the per-device HMAC secret from the keychain.
+pub fn get_sync_secret<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
+    get_secret_pref(app, SYNC_SECRET_KEYCHAIN_KEY)
+}
+
+/// Stores the per-device HMAC secret in the keychain.
+pub fn set_sync_secret<R: Runtime>(app: &AppHandle<R>, secret: &str) -> Result<()> {
+    set_secret_pref(app, SYNC_SECRET_KEYCHAIN_KEY, secret)
+}
+
+/// Removes the per-device HMAC secret from the keychain (used on sign-out).
+pub fn delete_sync_secret<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
+    delete_secret_pref(app, SYNC_SECRET_KEYCHAIN_KEY)
 }
 
 // =============================================================================

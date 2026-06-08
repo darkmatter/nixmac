@@ -4,6 +4,7 @@
 //! configuration from bundled templates and to finalize the flake lock file.
 
 pub mod default_config;
+pub mod import;
 pub mod template;
 
 // Re-export the key public API so callers can use short paths.

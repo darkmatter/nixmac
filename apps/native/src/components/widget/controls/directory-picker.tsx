@@ -7,6 +7,7 @@ import { useWidgetStore } from "@/stores/widget-store";
 import { HoverClickPopoverIcon } from "@/components/ui/hover-click-popover-icon";
 import { ConfigDirBadge } from "@/components/widget/badges/config-dir-badge";
 import { GitignoreBadge } from "@/components/widget/badges/gitignore-badge";
+import { RepoImport } from "@/components/widget/controls/repo-import";
 import { FolderOpen, FolderPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { tauriAPI } from "@/ipc/api";
@@ -18,7 +19,7 @@ type DirectoryPickerProps = {
   onConfigured?: (valid?: boolean) => void;
 };
 
-type SetupChoice = "new" | "existing";
+type SetupChoice = "new" | "existing" | "import";
 
 const INITIAL_HINT =
   "Select your own, or proceed below for defaults";
@@ -208,21 +209,28 @@ export function DirectoryPicker({
             className="w-full max-w-md"
             value={setupChoice}
             onValueChange={(value) => {
-              if (value === "new" || value === "existing") setSetupChoice(value);
+              if (value === "new" || value === "existing" || value === "import") {
+                setSetupChoice(value);
+              }
             }}
           >
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger onClick={() => setSetupChoice("existing")} value="existing">
                 Existing
               </TabsTrigger>
               <TabsTrigger onClick={() => setSetupChoice("new")} value="new">
                 New
               </TabsTrigger>
+              <TabsTrigger onClick={() => setSetupChoice("import")} value="import">
+                Import
+              </TabsTrigger>
             </TabsList>
           </Tabs>
         )}
 
-        {setupChoice === "new" ? (
+        {setupChoice === "import" ? (
+          <RepoImport onImported={() => onConfigured?.()} />
+        ) : setupChoice === "new" ? (
           <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
             <div className="flex items-center gap-2">
               <input

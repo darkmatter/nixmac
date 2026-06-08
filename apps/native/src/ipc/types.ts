@@ -3,9 +3,44 @@
 // Source: src-tauri/src/shared_types/ (re-exported by shared_types.rs)
 
 /**
+ * The signed-in nixmac account, minus any secret material.
+ */
+export type AuthAccount = {
+/**
+ * Stable account identifier assigned by the server.
+ */
+id: string;
+/**
+ * Account email address used to sign in.
+ */
+email: string }
+
+/**
+ * Snapshot of the desktop client's authentication state, returned by
+ * `account_status`. The HMAC secret is never included.
+ */
+export type AuthStatus = {
+/**
+ * Whether a usable account credential is stored on this device.
+ */
+signedIn: boolean;
+/**
+ * The signed-in account, when `signed_in` is true.
+ */
+account: AuthAccount | null;
+/**
+ * Public credential/key identifier sent in the `Authorization` header.
+ */
+keyId: string | null;
+/**
+ * Base URL of the sync server this device is configured to talk to.
+ */
+serverUrl: string }
+
+/**
  * Result of `darwin_build_check` — dry-run build outcome.
  */
-export type BuildCheckResult = { 
+export type BuildCheckResult = {
 /**
  * Whether the dry-run build passed.
  */
@@ -1449,9 +1484,47 @@ changes: SummarizedChange[];
 missedHashes: string[] }
 
 /**
+ * Remote sync state for the current account, returned by `sync_status`.
+ */
+export type SyncRemoteStatus = {
+/**
+ * Whether the server has a stored configuration snapshot for this account.
+ */
+configured: boolean;
+/**
+ * Commit hash of the latest snapshot the server holds, if any.
+ */
+headCommitHash: string | null;
+/**
+ * Unix timestamp (seconds) of the latest server-side snapshot, if any.
+ */
+updatedAt: number | null;
+/**
+ * Number of devices currently registered to the account.
+ */
+deviceCount: number }
+
+/**
+ * Result of a `sync_push` or `sync_pull` operation.
+ */
+export type SyncResult = {
+/**
+ * Whether the operation succeeded end-to-end.
+ */
+ok: boolean;
+/**
+ * Commit hash that is now current after the operation, when known.
+ */
+headCommitHash: string | null;
+/**
+ * Human-readable status detail for display in the UI.
+ */
+message: string }
+
+/**
  * A single macOS system default that differs from the factory value.
  */
-export type SystemDefault = { 
+export type SystemDefault = {
 /**
  * nix-darwin option path for this macOS default.
  */
