@@ -675,6 +675,17 @@ fn add(content: &str, attrpath: &str, values: &[String]) -> Result<String> {
         return append_values_to_existing_list(content, &list_node, &values_to_append);
     }
 
+    // No list was found at this attrpath. If the attrpath already exists as a
+    // non-list assignment (e.g. `programs.git = { enable = true; };`), inserting
+    // a fresh `attrpath = [ ... ];` would produce two assignments to the same
+    // attribute — invalid Nix. Refuse rather than silently corrupt the file.
+    if find_assignment_value_range(content, attrpath).is_some() {
+        return Err(anyhow::anyhow!(
+            "Cannot add list values to '{}': it already exists and is not a list",
+            attrpath
+        ));
+    }
+
     // not found -> insert new attr assignment in top-level attrset
     let insert_pos = find_top_level_attrset_end(&root_node)
         .context("Cannot find top-level attribute set to insert new attr")?;
@@ -1005,6 +1016,20 @@ environment.systemPackages = with pkgs; [
             edited.matches("environment.systemPackages =").count(),
             1,
             "should not insert duplicate environment.systemPackages assignment"
+        );
+    }
+
+    #[test]
+    fn add_refuses_to_duplicate_non_list_attr() {
+        // `programs.git` already exists as an attrset, not a list. Adding list
+        // values must error rather than insert a second `programs.git = [ ... ];`
+        // assignment (which would be invalid, duplicated Nix).
+        let src = "{\n  programs.git = { enable = true; };\n}\n";
+        let err = add(src, "programs.git", &["foo".to_string()])
+            .expect_err("add to a non-list attr should error, not duplicate it");
+        assert!(
+            err.to_string().contains("not a list"),
+            "unexpected error: {err:#}"
         );
     }
 
