@@ -990,9 +990,9 @@
     url = "https://registry.npmjs.org/@pkgjs/parseargs/-/parseargs-0.11.0.tgz";
     hash = "sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==";
   };
-  "@playwright/test@1.59.1" = fetchurl {
-    url = "https://registry.npmjs.org/@playwright/test/-/test-1.59.1.tgz";
-    hash = "sha512-PG6q63nQg5c9rIi4/Z5lR5IVF7yU5MqmKaPOe0HSc0O2cX1fPi96sUQu5j7eo4gKCkB2AnNGoWt7y4/Xx3Kcqg==";
+  "@playwright/test@1.58.2" = fetchurl {
+    url = "https://registry.npmjs.org/@playwright/test/-/test-1.58.2.tgz";
+    hash = "sha512-akea+6bHYBBfA9uQqSYmlJXn61cTa+jbO87xVLCWbTqbWadRVmhxlXATaOjOgcBaWU4ePo0wB41KMFv3o35IXA==";
   };
   "@polka/url@1.0.0-next.29" = fetchurl {
     url = "https://registry.npmjs.org/@polka/url/-/url-1.0.0-next.29.tgz";
@@ -4427,13 +4427,13 @@
     url = "https://registry.npmjs.org/pkg-types/-/pkg-types-2.3.1.tgz";
     hash = "sha512-y+ichcgc2LrADuhLNAx8DFjVfgz91pRxfZdI3UDhxHvcVEZsenLO+7XaU5vOp0u/7V/wZ+plyuQxtrDlZJ+yeg==";
   };
-  "playwright-core@1.59.1" = fetchurl {
-    url = "https://registry.npmjs.org/playwright-core/-/playwright-core-1.59.1.tgz";
-    hash = "sha512-HBV/RJg81z5BiiZ9yPzIiClYV/QMsDCKUyogwH9p3MCP6IYjUFu/MActgYAvK0oWyV9NlwM3GLBjADyWgydVyg==";
+  "playwright-core@1.58.2" = fetchurl {
+    url = "https://registry.npmjs.org/playwright-core/-/playwright-core-1.58.2.tgz";
+    hash = "sha512-yZkEtftgwS8CsfYo7nm0KE8jsvm6i/PTgVtB8DL726wNf6H2IMsDuxCpJj59KDaxCtSnrWan2AeDqM7JBaultg==";
   };
-  "playwright@1.59.1" = fetchurl {
-    url = "https://registry.npmjs.org/playwright/-/playwright-1.59.1.tgz";
-    hash = "sha512-C8oWjPR3F81yljW9o5OxcWzfh6avkVwDD2VYdwIGqTkl+OGFISgypqzfu7dOe4QNLL2aqcWBmI3PMtLIK233lw==";
+  "playwright@1.58.2" = fetchurl {
+    url = "https://registry.npmjs.org/playwright/-/playwright-1.58.2.tgz";
+    hash = "sha512-vA30H8Nvkq/cPBnNw4Q8TWz1EJyqgpuinBcHET0YVJVFldr8JDNiU9LaWAE1KqSkRYazuaBhTpB5ZzShOezQ6A==";
   };
   "postcss-import@15.1.0" = fetchurl {
     url = "https://registry.npmjs.org/postcss-import/-/postcss-import-15.1.0.tgz";
