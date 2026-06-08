@@ -46,7 +46,7 @@ jobs:
             "${{ github.event.pull_request.head.sha }}" \
             > /tmp/storybook-changed-files.txt
 
-          if grep -Eq '^(apps/native/\.storybook/|apps/native/(package\.json|components\.json|tailwind\.config\.(js|ts|cjs|mjs)|postcss\.config\.(js|ts|cjs|mjs)|vite\.config\.ts|vitest\.config\.ts)|apps/native/src/.*|packages/ui/(package\.json|components\.json)|packages/ui/src/.*|package\.json|bun\.lock)$' /tmp/storybook-changed-files.txt; then
+          if grep -Eq '^(apps/native/\.storybook/.*|apps/native/(package\.json|components\.json|tailwind\.config\.(js|ts|cjs|mjs)|postcss\.config\.(js|ts|cjs|mjs)|vite\.config\.ts|vitest\.config\.ts)|apps/native/public/.*|apps/native/src/.*|packages/ui/(package\.json|components\.json)|packages/ui/src/.*|package\.json|bun\.lock)$' /tmp/storybook-changed-files.txt; then
             echo "should-run=true" >> "$GITHUB_OUTPUT"
             echo "reason=relevant frontend or Storybook files changed" >> "$GITHUB_OUTPUT"
           else
