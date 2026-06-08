@@ -9,7 +9,7 @@ const E2E_MODE = import.meta.env.VITE_NIXMAC_E2E_MODE === "true";
 /**
  * Bootstrap the unified telemetry provider for this session.
  *
- * Replaces both attachSentry() and createAnalytics(): one pipeline that mirrors
+ * Replaces the legacy Sentry init and analytics setup: one pipeline that mirrors
  * product events to PostHog (direct) and routes events/errors through OTEL into
  * the Rust backend.
  *

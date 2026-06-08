@@ -8,7 +8,7 @@ const TelemetryCtx = createContext<TelemetryProvider>(noopProvider);
  * Provider component that makes the telemetry instance available
  * to the component tree via useTelemetry().
  *
- * Place inside the Sentry ErrorBoundary so telemetry never
+ * Place inside the AppErrorBoundary so telemetry never
  * interferes with crash capture.
  */
 export function TelemetryContextProvider({

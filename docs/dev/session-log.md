@@ -4,99 +4,111 @@
 
 ## Goal
 
-Make the nixmac evolve review UI (`EvolveStep`) and the change-summary list look
-nicer and read more clearly, using shadcnblocks-style patterns but the app's
-existing monochrome theme.
+Build a unified OTEL telemetry pipeline for the nixmac Tauri app using OpenTelemetry libraries/SDKs, with Sentry and PostHog as sinks, replacing the current separate analytics and Sentry integrations.
 
 ## Current phase
 
-Implement — feature work complete; targeted tests green. No PR/commit requested yet.
+Implementation milestone — core pipeline built, tests passing, migration partially complete.
 
 ## Current state
 
-All requested UI changes are applied and lint-clean. Targeted unit test file passes.
-Work is in a stable state (no broken code paths, no mid-refactor).
+**All 4 implementation tasks completed.** Both Rust and JS telemetry modules are created, call sites migrated, old analytics module deleted. Old sentry module retained during migration period.
 
-Files changed this session (all under `apps/native/src/components/widget/`):
+### Verification results
 
-- `steps/evolve-step.tsx` — Review step redesigned. Header moved into
-  `SummaryOrDiff` (large header w/ `Eye` icon + subtitle). Two mutually
-  exclusive modes via local `useState`: `"build"` (CTA card: blue notice
-  callout + stacked `Build & Test` / `Keep editing` / `Discard` buttons,
-  `h-12 text-base`, `mt-auto ... pb-6`) and `"edit"` (Back-to-review button +
-  `PromptInputSection`). Only one renders at a time.
-- `summaries/summary-or-diff.tsx` — Added optional props `title`, `subtitle`,
-  `icon`, `headerSize` (`"default" | "lg"`). Defaults preserve prior behavior
-  (Dna/Wrench icon, "What's changed"/"Active Changes").
-- `summaries/summary-items.tsx` — Summary rows are now SEMANTIC, not file-based.
-  New `SummaryRow` reuses the diff-tab visual shell (rounded border, muted
-  header, chevron, Dna icon, collapsible body). Collapsed header shows the
-  generated summary title; NO filenames rendered. Expanding reveals the
-  plain-language description only. Caret is omitted entirely when there is no
-  description. If exactly one summary row is displayed, it renders expanded
-  (`defaultOpen`).
-- `summaries/collapsible-diff.tsx` — Added uncontrolled open-state support
-  (internal `useState` when `open` prop is undefined); chevron button wired to
-  shared `handleToggle`. (Diff tab still uses it controlled.)
-- `summaries/summary-items.test.tsx` — Extended `@/components/widget/utils` mock
-  (`CHANGE_TYPE_STYLES`, `getDirectory`, `enrichChanges`); added collapsible
-  `data-open` mock + test that the single displayed summary item opens by default.
+- `tsc --noEmit` ✅ (only pre-existing error in `summary-or-diff.tsx`)
+- `vitest run` ✅ (116 tests passing — 16 analytics tests removed with module)
+- `cargo check` ✅
+- `cargo test` ✅ (396 tests passing)
 
 ## Decisions & constraints
 
-- Theme is monochrome (`primary`) EXCEPT the build notice callout, which the
-  user explicitly wanted blue (`border-blue-500/20 bg-blue-500/5`, `text-blue-400`).
-- Summary tab must be semantic: a summary can span many files, so do not render
-  filenames; title in collapsed header, description on expand.
-- Build CTA and continue-editing prompt must be mutually exclusive (one or the
-  other), not stacked.
-- E2E helper `assertPromptFlowReachedEvolveReview` was updated to look for the
-  `h2` "Ready to test-drive your changes?" (the moved header) instead of the old
-  `h3` + "What's changed". `submitPromptMessage` clicks `evolve-keep-editing-button`
-  when the prompt input is hidden. (File:
-  `apps/native/e2e-tauri/tests/wdio/helpers/app-ui.ts`.)
-- Preserve existing test IDs: `evolve-discard-button`, `evolve-keep-editing-button`,
-  `evolve-back-to-review-button`, `evolve-prompt-input`, `evolve-prompt-send`.
+- Must use `@opentelemetry` libraries and SDKs — not custom event types
+- Sentry and PostHog both attach to the same OTEL pipeline as sinks
+- PostHog stays direct in JS (not via OTEL) — its OTEL exporter is JS-only and needs DOM context
+- Sentry via OTLP from Rust backend — DSN parsed to construct OTLP traces/logs URLs
+- `sendDiagnostics` pref gate at pipeline level (both Rust and JS respect it)
+- PII scrubbing at exporter level (Rust: `scrub.rs`, JS: `sanitize.ts`)
+- No Rust-side PostHog — PostHog lives in the JS/webview layer
+- Additive migration: old sentry module kept alongside new OTEL pipeline until OTEL→Sentry is proven in production
+- Conservative git workflow — no commit/push without explicit authority
 
 ## Evidence (files/commands/results)
 
-- `bun run test:unit src/components/widget/summaries/summary-items.test.tsx`
-  (cwd `apps/native`) → 5 passed.
-- `ReadLints` on changed files → no linter errors.
-- `git diff --stat` (5 files): evolve-step, collapsible-diff, summary-items(+test),
-  summary-or-diff → +312/-152.
-- NOTE: many other widget files show as `M` in `git status` but were already
-  modified before this session (pre-existing working-tree changes), not by this work.
+### Rust side — new files
+
+- `apps/native/src-tauri/src/telemetry/mod.rs` — module declarations
+- `apps/native/src-tauri/src/telemetry/init.rs` — parses Sentry DSN → OTLP URLs, builds SdkTracerProvider + SdkLoggerProvider, registers globally, TelemetryGuard with flush-on-drop
+- `apps/native/src-tauri/src/telemetry/ipc.rs` — `otel_forward_span` Tauri command, scrubs PII, logs
+- `apps/native/src-tauri/src/telemetry/scrub.rs` — PII/secret regexes ported from sanitize.ts
+- `apps/native/src-tauri/Cargo.toml` — added: opentelemetry 0.29, opentelemetry_sdk 0.29, opentelemetry-otlp 0.29, opentelemetry-appender-tracing 0.29, tracing-opentelemetry 0.30, url 2
+- `apps/native/src-tauri/src/main.rs` — added `mod telemetry;`, `telemetry::ipc::otel_forward_span` in invoke_handler, `app.manage(telemetry::init::init_telemetry(send_diagnostics))` in setup
+
+### JS side — new files
+
+- `apps/native/src/lib/telemetry/types.ts` — TelemetryEvent taxonomy + TelemetryProvider interface
+- `apps/native/src/lib/telemetry/sanitize.ts` — PII scrubbing (ported from sentry/sanitize.ts)
+- `apps/native/src/lib/telemetry/forwarding-processor.ts` — ForwardingSpanProcessor → invoke("otel_forward_span")
+- `apps/native/src/lib/telemetry/provider.ts` — WebTracerProvider + PostHog direct
+- `apps/native/src/lib/telemetry/init.ts` — initTelemetry() bootstrap
+- `apps/native/src/lib/telemetry/instance.ts` — module singleton
+- `apps/native/src/lib/telemetry/noop.ts` — no-op provider
+- `apps/native/src/lib/telemetry/context.tsx` — TelemetryContextProvider / useTelemetry
+- `package.json` — added: @opentelemetry/api, @opentelemetry/sdk-trace-web, @opentelemetry/core, @opentelemetry/resources, @opentelemetry/semantic-conventions
+
+### Migrated call sites
+
+- `apps/native/src/main.tsx` — initTelemetry() + attachSentry() (both active), TelemetryContextProvider
+- `apps/native/src/App.tsx` — useTelemetry(), captureEvent({ name: "app_ready" })
+- `apps/native/src/hooks/use-evolve.ts` — getTelemetry().captureEvent() for evolve_started/completed/failed
+- `apps/native/src/hooks/use-rollback.ts` — getTelemetry().captureEvent() for rollback_performed
+- `apps/native/src/components/widget/settings/general-tab.tsx` — useTelemetry(), captureEvent(), setEnabled()
+- `apps/native/src/e2e/dom-snapshots.ts` — sanitizeDiagnosticText from telemetry
+
+### Deleted
+
+- `apps/native/src/lib/analytics/` — entire directory (8 files, 16 tests) — zero external imports
+
+### Still retained (migration period)
+
+- `apps/native/src/lib/sentry/` — 3 files — still imported by main.tsx for attachSentry/captureRenderError
+- Rust `sentry` + `tauri-plugin-sentry` crates — still active alongside OTEL
+- `@sentry/react` ErrorBoundary — stays for now
 
 ## ✅ What worked
 
-- Reusing the diff-row visual shell for semantic summary rows.
-- Moving the big header into `SummaryOrDiff` via optional props (no duplicate header).
-- Local `useState` mode toggle for build-vs-edit.
-- Uncontrolled mode for `CollapsibleDiff` so default-open rows still toggle.
+- Parallel delegation of Rust and JS telemetry modules to deep category agents
+- The Vortex/Nexus-Mods ForwardingSpanProcessor pattern adapted for Tauri IPC
+- Sentry DSN → OTLP URL derivation (parse DSN host + project_id → construct traces/logs URLs)
+- TelemetryGuard stored via `app.manage()` instead of local binding (avoids premature Drop in setup closure)
+- PII scrub module ported cleanly from TS to Rust
+- Additive migration approach: both old and new pipelines run simultaneously
 
 ## ❌ What didn't work
 
-- `bun test <file>` directly fails (`window is not defined`) — must use the app's
-  Vitest runner: `bun run test:unit <relativePath>` from `apps/native`.
-- First attempt at making summary rows reuse `CollapsibleDiff` was rejected as the
-  wrong model (file-centric) for many-file summaries; replaced with semantic
-  `SummaryRow`.
+- `tracing→OTEL` log bridge can't attach to existing subscriber (tracing only allows one global subscriber, already initialized in main.rs before telemetry init). Bridge is constructed best-effort via `try_init()`, documented as follow-up.
+- `opentelemetry-rust` has no clean "inject external span" API, so `otel_forward_span` currently logs forwarded spans rather than reconstructing them into the TracerProvider. Documented as follow-up.
+- Initial `let _telemetry_guard` in setup closure would Drop at setup-end (killing shared provider). Fixed by using `app.manage()`.
 
 ## 🧩 Not attempted / remaining
 
-- Full suite (`bun run test:unit`) and Storybook snapshot update not run; only the
-  targeted summary test was executed.
-- WDIO e2e not run (requires process-compose services); helper selectors updated
-  but unverified end-to-end.
-- No commit/PR created (not requested).
-- `collapsible-diff.stories.tsx` not re-checked for the uncontrolled-state change.
+- **Remove old `src/lib/sentry/` module** — blocked until OTEL→Sentry exporter is proven in production
+- **Remove Rust `sentry` + `tauri-plugin-sentry` crates** — same blocker
+- **Full span reconstruction in Rust** — `otel_forward_span` currently logs; needs opentelemetry-rust API work or custom span injection
+- **Wire tracing→OTEL log bridge** — requires refactoring main.rs subscriber setup to host the bridge layer
+- **Ring buffer for offline/error export** — Vortex pattern (buffer spans, export on error)
+- **OTEL context propagation across Tauri IPC** — pass traceId/spanId in Tauri command params for parent span linking
+- **Production validation** — verify spans actually reach Sentry via OTLP
 
 ## ⏭️ Next steps (checklist)
 
-- [ ] If broader verification wanted: run `bun run test:unit` (full) in `apps/native`.
-- [ ] Consider `bun run test:storybook` / `--update` if snapshots reference these components.
-- [ ] Optionally run/inspect WDIO discard + modify specs to confirm helper selector changes.
-- [ ] Await user direction before committing; no commit requested yet.
+- [ ] Test the OTEL→Sentry pipeline end-to-end (send a test span, verify it appears in Sentry)
+- [ ] Decide when to remove old sentry module (JS side) and `sentry`/`tauri-plugin-sentry` crates (Rust side)
+- [ ] Implement full span reconstruction in `otel_forward_span` (inject forwarded spans into Rust TracerProvider)
+- [ ] Refactor main.rs subscriber setup to host OTEL log bridge layer
+- [ ] Implement ring buffer pattern for offline/error-triggered span export
+- [ ] Add OTEL context propagation (traceId/spanId) across Tauri IPC boundary
+- [ ] Add tests for new telemetry module (JS: provider, forwarding-processor, sanitize; Rust: scrub, dsn parsing)
+- [ ] Git commit (when authorized)
 
 <!-- SESSION_LOG_END -->

@@ -1,7 +1,7 @@
 //! PII / secret scrubbing for OTEL attributes.
 //!
-//! Ported from `apps/native/src/lib/sentry/sanitize.ts` so the Rust-owned OTEL
-//! pipeline applies the same redaction rules the WebView Sentry path used.
+//! Ported from the former WebView telemetry sanitizer so the Rust-owned OTEL
+//! pipeline applies the same redaction rules the WebView path used.
 
 use std::collections::HashMap;
 

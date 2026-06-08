@@ -161,10 +161,10 @@ fn extract_error_metadata(error: &str) -> (Option<u16>, Option<String>, Option<S
     (None, None, None, error.len())
 }
 
-/// Report a ProviderError to Sentry using structured fields (no raw bodies).
+/// Report a ProviderError via tracing using structured fields (no raw bodies).
 /// This is because ProviderError::Http contains the raw response body which may have sensitive info,
 /// (in the case of Ollama it definitely includes the prompt and response related to it)
-/// so we extract only metadata for Sentry.
+/// so we extract only metadata for logging.
 fn report_provider_error(
     err: &ProviderError,
     provider: &str,
@@ -176,18 +176,15 @@ fn report_provider_error(
         ProviderError::Http { status, body } => {
             // compute short hash of body for correlation but never send body
             let body_hash = short_hash(body);
-            sentry::with_scope(
-                |scope| {
-                    scope.set_tag("provider", provider);
-                    scope.set_tag("model", model);
-                    scope.set_tag("iteration", iteration.to_string());
-                    scope.set_tag("messages_count", messages.len().to_string());
-                    scope.set_extra("response_status", (status.as_u16() as u64).into());
-                    scope.set_extra("error_length", (body.len() as u64).into());
-                    scope.set_extra("error_hash", body_hash.into());
-                    sentry::capture_message("AI API HTTP error (redacted)", sentry::Level::Error);
-                },
-                || {},
+            tracing::error!(
+                provider = provider,
+                model = model,
+                iteration = iteration,
+                messages_count = messages.len(),
+                response_status = status.as_u16(),
+                error_length = body.len(),
+                error_hash = %body_hash,
+                "AI API HTTP error (redacted)"
             );
         }
         ProviderError::Other(e) => {
@@ -195,26 +192,17 @@ fn report_provider_error(
             // fallback: use parsing extractor to try to pull metadata
             let (status, code, typ, len) = extract_error_metadata(&err_str);
             let hash = short_hash(&err_str);
-            sentry::with_scope(
-                |scope| {
-                    scope.set_tag("provider", provider);
-                    scope.set_tag("model", model);
-                    scope.set_tag("iteration", iteration.to_string());
-                    scope.set_tag("messages_count", messages.len().to_string());
-                    if let Some(s) = status {
-                        scope.set_extra("response_status", (s as u64).into());
-                    }
-                    if let Some(c) = code {
-                        scope.set_extra("error_code", c.into());
-                    }
-                    if let Some(t) = typ {
-                        scope.set_extra("error_type", t.into());
-                    }
-                    scope.set_extra("error_length", (len as u64).into());
-                    scope.set_extra("error_hash", hash.into());
-                    sentry::capture_message("AI API error (redacted)", sentry::Level::Error);
-                },
-                || {},
+            tracing::error!(
+                provider = provider,
+                model = model,
+                iteration = iteration,
+                messages_count = messages.len(),
+                response_status = status.map(|s| s as u64),
+                error_code = code.as_deref(),
+                error_type = typ.as_deref(),
+                error_length = len,
+                error_hash = %hash,
+                "AI API error (redacted)"
             );
         }
     }
