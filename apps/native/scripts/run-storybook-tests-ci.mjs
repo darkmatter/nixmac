@@ -8,12 +8,8 @@ const storyRoots = [
   path.resolve(repoRoot, "packages/ui/src"),
 ];
 const storyFileSuffixes = [".stories.ts", ".stories.tsx"];
+const batchSize = 3;
 const perBatchTimeoutMs = 120_000;
-const firstBatch = [
-  "src/components/widget/widget.stories.tsx",
-  "src/components/widget/overlays/evolve-progress.stories.tsx",
-  "src/components/widget/evolve-flow.stories.tsx",
-];
 
 async function listStoryFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -34,6 +30,16 @@ async function listStoryFiles(directory) {
   );
 
   return files.flat().sort();
+}
+
+function chunkFiles(files) {
+  const chunks = [];
+
+  for (let index = 0; index < files.length; index += batchSize) {
+    chunks.push(files.slice(index, index + batchSize));
+  }
+
+  return chunks;
 }
 
 function runVitestForBatch(files) {
@@ -91,18 +97,10 @@ if (storyFiles.length === 0) {
   throw new Error(`No Storybook story files found under ${storyRoots.join(", ")}`);
 }
 
-const firstBatchSet = new Set(firstBatch);
-const missingFirstBatchFiles = firstBatch.filter((file) => !storyFiles.includes(file));
-
-if (missingFirstBatchFiles.length > 0) {
-  throw new Error(`Expected Storybook story files are missing: ${missingFirstBatchFiles.join(", ")}`);
-}
-
-const remainingBatch = storyFiles.filter((file) => !firstBatchSet.has(file));
-const batches = [firstBatch, remainingBatch];
+const batches = chunkFiles(storyFiles);
 
 console.log(`Running ${storyFiles.length} Storybook snapshot files across ${batches.length} Vitest processes.`);
-console.log("The first process covers the three files that previously completed before CI hung.");
+console.log(`Batch size: ${batchSize} files per Vitest process.`);
 
 try {
   for (const storyFileBatch of batches) {
