@@ -34,9 +34,14 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: ./.github/actions/setup
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: true
+
+      - uses: ./.github/actions/setup
+        with:
           setup-rust: true
           rust-cache-workspaces: apps/native/src-tauri
       # Decide what kind of build this is:

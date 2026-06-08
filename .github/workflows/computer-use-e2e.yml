@@ -58,9 +58,13 @@ jobs:
       storybook_artifact_ready: ${{ steps.storybook-preview.outputs.storybook_artifact_ready }}
       storybook_status: ${{ steps.storybook-preview.outputs.storybook_status }}
     steps:
-      - uses: ./.github/actions/setup
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
+      - uses: ./.github/actions/setup
+        with:
           install-bun-deps: false
 
       - name: Initialize timing telemetry
@@ -613,9 +617,13 @@ jobs:
       index_url: ${{ steps.report-meta.outputs.index_url }}
       latest_index_url: ${{ steps.report-meta.outputs.latest_index_url }}
     steps:
-      - uses: ./.github/actions/setup
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
+      - uses: ./.github/actions/setup
+        with:
           install-bun-deps: false
 
       - name: Download Storybook plan

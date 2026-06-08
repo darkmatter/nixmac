@@ -65,8 +65,6 @@ jobs:
 
       - uses: ./.github/actions/setup
         with:
-          skip-checkout: true
-          fetch-depth: 0
           install-bun-deps: false
 
       - name: Run nightly release

@@ -2,6 +2,8 @@ name: "Setup nixmac CI"
 description: >
   Install Determinate Nix (skips if already installed), enter the devenv shell
   to get bun/node/rust/sops/age/etc. from nix, and install JS dependencies.
+  NOTE: You MUST run actions/checkout before this action — local composite
+  actions need the repo on disk before they can be resolved.
 
 inputs:
   install-bun-deps:
@@ -16,33 +18,14 @@ inputs:
     description: "Workspace paths for rust-cache (comma-separated)"
     required: false
     default: ""
-  fetch-depth:
-    description: "Checkout fetch-depth (0 for full history)"
-    required: false
-    default: "1"
-  skip-checkout:
-    description: "Skip checkout (use when a prior step already checked out)"
-    required: false
-    default: "false"
   extra-nix-conf:
     description: "Extra lines for /etc/nix/nix.conf (newline-separated)"
     required: false
     default: ""
-  persist-credentials:
-    description: "Checkout persist-credentials setting"
-    required: false
-    default: "true"
 
 runs:
   using: "composite"
   steps:
-    - name: Checkout repository
-      if: inputs.skip-checkout != 'true'
-      uses: actions/checkout@v6
-      with:
-        fetch-depth: ${{ inputs.fetch-depth }}
-        persist-credentials: ${{ inputs.persist-credentials }}
-
     - name: Install Nix
       uses: DeterminateSystems/nix-installer-action@v22
       with:

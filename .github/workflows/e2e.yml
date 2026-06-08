@@ -90,6 +90,8 @@ jobs:
         scenario: ${{ fromJSON(needs.resolve-scenarios.outputs.scenarios) }}
 
     steps:
+      - uses: actions/checkout@v4
+
       - uses: ./.github/actions/setup
         with:
           install-bun-deps: false

@@ -26,9 +26,12 @@ jobs:
       issues: write
       statuses: write
     steps:
-      - uses: ./.github/actions/setup
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
+      - uses: ./.github/actions/setup
       # Generate a coverage report so the dangerfile has something to surface.
       # `continue-on-error` keeps Danger running even if a test fails — Danger
       # itself is not the gate for test failures, the test workflow is.

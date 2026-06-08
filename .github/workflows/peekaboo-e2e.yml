@@ -58,10 +58,14 @@ jobs:
       PEEKABOO_NODE: ${{ vars.NIXMAC_E2E_MACINCLOUD_NODE || '/opt/homebrew/bin/node' }}
       BUILD_ATTEMPTS: ${{ inputs.build_attempts || '2' }}
     steps:
-      - uses: ./.github/actions/setup
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      - uses: ./.github/actions/setup
+        with:
           install-bun-deps: false
 
       - name: Check report transport dependencies
