@@ -161,10 +161,10 @@ fn extract_error_metadata(error: &str) -> (Option<u16>, Option<String>, Option<S
     (None, None, None, error.len())
 }
 
-/// Report a ProviderError to Sentry using structured fields (no raw bodies).
+/// Report a ProviderError via tracing using structured fields (no raw bodies).
 /// This is because ProviderError::Http contains the raw response body which may have sensitive info,
 /// (in the case of Ollama it definitely includes the prompt and response related to it)
-/// so we extract only metadata for Sentry.
+/// so we extract only metadata for logging.
 fn report_provider_error(
     err: &ProviderError,
     provider: &str,
@@ -175,46 +175,34 @@ fn report_provider_error(
     match err {
         ProviderError::Http { status, body } => {
             // compute short hash of body for correlation but never send body
-            let body_hash = global_utils::short_hash(body);
-            sentry::with_scope(
-                |scope| {
-                    scope.set_tag("provider", provider);
-                    scope.set_tag("model", model);
-                    scope.set_tag("iteration", iteration.to_string());
-                    scope.set_tag("messages_count", messages.len().to_string());
-                    scope.set_extra("response_status", (status.as_u16() as u64).into());
-                    scope.set_extra("error_length", (body.len() as u64).into());
-                    scope.set_extra("error_hash", body_hash.into());
-                    sentry::capture_message("AI API HTTP error (redacted)", sentry::Level::Error);
-                },
-                || {},
+            let body_hash = short_hash(body);
+            tracing::error!(
+                provider = provider,
+                model = model,
+                iteration = iteration,
+                messages_count = messages.len(),
+                response_status = status.as_u16(),
+                error_length = body.len(),
+                error_hash = %body_hash,
+                "AI API HTTP error (redacted)"
             );
         }
         ProviderError::Other(e) => {
             let err_str = format!("{:#}", e);
             // fallback: use parsing extractor to try to pull metadata
             let (status, code, typ, len) = extract_error_metadata(&err_str);
-            let hash = global_utils::short_hash(&err_str);
-            sentry::with_scope(
-                |scope| {
-                    scope.set_tag("provider", provider);
-                    scope.set_tag("model", model);
-                    scope.set_tag("iteration", iteration.to_string());
-                    scope.set_tag("messages_count", messages.len().to_string());
-                    if let Some(s) = status {
-                        scope.set_extra("response_status", (s as u64).into());
-                    }
-                    if let Some(c) = code {
-                        scope.set_extra("error_code", c.into());
-                    }
-                    if let Some(t) = typ {
-                        scope.set_extra("error_type", t.into());
-                    }
-                    scope.set_extra("error_length", (len as u64).into());
-                    scope.set_extra("error_hash", hash.into());
-                    sentry::capture_message("AI API error (redacted)", sentry::Level::Error);
-                },
-                || {},
+            let hash = short_hash(&err_str);
+            tracing::error!(
+                provider = provider,
+                model = model,
+                iteration = iteration,
+                messages_count = messages.len(),
+                response_status = status.map(|s| s as u64),
+                error_code = code.as_deref(),
+                error_type = typ.as_deref(),
+                error_length = len,
+                error_hash = %hash,
+                "AI API error (redacted)"
             );
         }
     }
@@ -1744,6 +1732,10 @@ fn process_tool_result(
                 edit.replace.len()
             );
             evolution.edits.push(edit.clone());
+            // A new edit invalidates any prior successful build: the verified
+            // state no longer matches the files, so `done` must require a fresh
+            // build_check.
+            *build_verified = false;
             let msg = Message::Tool {
                 tool_call_id: tool_call_id.to_string(),
                 content:
@@ -1765,6 +1757,8 @@ fn process_tool_result(
                 search: String::new(),
                 replace: format!("semantic:{:?}", edit.action),
             });
+            // A new edit invalidates any prior successful build verification.
+            *build_verified = false;
 
             let msg = Message::Tool {
                 tool_call_id: tool_call_id.to_string(),
@@ -1782,6 +1776,8 @@ fn process_tool_result(
                 search: String::new(),
                 replace: format!("ensure_secret:{}", result.name),
             });
+            // A new edit invalidates any prior successful build verification.
+            *build_verified = false;
             let content = serde_json::to_string(result)
                 .unwrap_or_else(|_| format!("{{\"name\":\"{}\"}}", result.name));
             let msg = Message::Tool {
@@ -1838,6 +1834,9 @@ fn process_tool_result(
                 };
                 (msg, Some(false))
             } else {
+                // A failing build invalidates any earlier successful verification,
+                // otherwise `done` could still accept the (now broken) config.
+                *build_verified = false;
                 warn!(
                     "❌ BUILD CHECK FAILED (attempt {}/{})",
                     build_attempts, max_build_attempts
@@ -1915,9 +1914,113 @@ fn process_tool_result(
 #[cfg(test)]
 mod tests {
     use super::{
-        filter_evolution_messages, read_file_dedup_key, store_tool_result, EvolutionMessage,
-        Message, Retention,
+        filter_evolution_messages, process_tool_result, read_file_dedup_key, store_tool_result,
+        Evolution, EvolutionMessage, EvolutionState, FileEdit, Message, Retention, ToolResult,
     };
+
+    fn build_result(success: bool) -> ToolResult {
+        ToolResult::BuildResult {
+            success,
+            output: String::new(),
+            stdout: String::new(),
+            stderr: if success {
+                String::new()
+            } else {
+                "boom".to_string()
+            },
+        }
+    }
+
+    fn run_tool_result(result: &ToolResult, evolution: &mut Evolution, build_verified: &mut bool) {
+        let mut build_attempts = 0usize;
+        process_tool_result(
+            "tool-call-id",
+            result,
+            evolution,
+            build_verified,
+            &mut build_attempts,
+            5,
+            "host",
+            0,
+            0,
+        )
+        .expect("process_tool_result should not error in these cases");
+    }
+
+    // Bug 1: build_verified latched true on the first passing build and was never
+    // cleared, so a later failing build_check (or an edit) still let `done`
+    // complete an unbuildable config. A failing build must clear verification.
+    #[test]
+    fn failing_build_check_clears_prior_verification() {
+        let mut evolution = Evolution::new("prompt");
+        let mut build_verified = false;
+
+        run_tool_result(&build_result(true), &mut evolution, &mut build_verified);
+        assert!(
+            build_verified,
+            "a passing build_check should set build_verified"
+        );
+
+        run_tool_result(&build_result(false), &mut evolution, &mut build_verified);
+        assert!(
+            !build_verified,
+            "a failing build_check must clear the prior verification"
+        );
+    }
+
+    // End-to-end consequence: with edits present, calling done after a build that
+    // failed (following an earlier pass) must NOT mark the evolution Generated.
+    #[test]
+    fn done_is_rejected_after_a_failing_build() {
+        let mut evolution = Evolution::new("prompt");
+        evolution.edits.push(FileEdit {
+            path: "configuration.nix".to_string(),
+            search: "a".to_string(),
+            replace: "b".to_string(),
+        });
+        let mut build_verified = false;
+
+        run_tool_result(&build_result(true), &mut evolution, &mut build_verified);
+        run_tool_result(&build_result(false), &mut evolution, &mut build_verified);
+        run_tool_result(
+            &ToolResult::Done("done".to_string()),
+            &mut evolution,
+            &mut build_verified,
+        );
+
+        assert!(
+            !matches!(evolution.state, EvolutionState::Generated),
+            "done must not complete an evolution whose last build_check failed"
+        );
+    }
+
+    // A new edit after a passing build_check must clear verification, so the
+    // agent cannot call done on files that were changed since the last build.
+    #[test]
+    fn edit_after_passing_build_clears_verification() {
+        let mut evolution = Evolution::new("prompt");
+        let mut build_verified = false;
+
+        run_tool_result(&build_result(true), &mut evolution, &mut build_verified);
+        assert!(
+            build_verified,
+            "a passing build_check should set build_verified"
+        );
+
+        run_tool_result(
+            &ToolResult::Edit(FileEdit {
+                path: "configuration.nix".to_string(),
+                search: "a".to_string(),
+                replace: "b".to_string(),
+            }),
+            &mut evolution,
+            &mut build_verified,
+        );
+        assert!(
+            !build_verified,
+            "an edit after a passing build must clear the prior verification"
+        );
+    }
 
     fn set_memory_strategy_for_test(
         value: &str,

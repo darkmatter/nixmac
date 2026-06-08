@@ -113,19 +113,14 @@ fn report_provider_error(
     let mut h = Sha256::new();
     h.update(err_str.as_bytes());
     let hash = hex::encode(h.finalize())[..8].to_string();
-    sentry::with_scope(
-        |scope| {
-            scope.set_tag("source", source);
-            scope.set_tag("provider", provider_model);
-            scope.set_tag("model", provider_model);
-            scope.set_extra("request_id", request_id.into());
-            scope.set_extra("error_length", (err_str.len() as u64).into());
-            scope.set_extra("error_hash", hash.into());
-            sentry::capture_message(
-                &format!("{}: provider completion failed", context),
-                sentry::Level::Error,
-            );
-        },
-        || {},
+    tracing::error!(
+        source = source,
+        provider = provider_model,
+        model = provider_model,
+        request_id = request_id,
+        error_length = err_str.len(),
+        error_hash = %hash,
+        "{}: provider completion failed",
+        context
     );
 }

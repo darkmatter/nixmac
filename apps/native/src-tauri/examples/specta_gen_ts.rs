@@ -94,7 +94,6 @@ fn main() {
         .register::<shared_types::BuildCheckResult>()
         .register::<shared_types::ConfigEditApplyResult>()
         .register::<shared_types::CliToolsState>()
-        .register::<shared_types::DebugSentryResult>()
         .register::<shared_types::EvolveCancelResult>()
         .register::<shared_types::CommitResult>()
         .register::<shared_types::FinalizeApplyResult>()
@@ -115,7 +114,11 @@ fn main() {
         .register::<shared_types::PermissionsState>()
         .register::<shared_types::SystemDefault>()
         .register::<shared_types::SystemDefaultsScan>()
-        .register::<shared_types::RecommendedPrompt>();
+        .register::<shared_types::RecommendedPrompt>()
+        .register::<shared_types::AuthAccount>()
+        .register::<shared_types::AuthStatus>()
+        .register::<shared_types::SyncRemoteStatus>()
+        .register::<shared_types::SyncResult>();
 
     let shared_output_path = "../src/ipc/types.ts";
 

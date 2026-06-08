@@ -9,6 +9,7 @@
 
 mod helpers;
 
+pub mod account;
 pub mod apply;
 pub mod cli_tool;
 pub mod config;

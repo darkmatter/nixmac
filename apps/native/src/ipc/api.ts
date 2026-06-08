@@ -5,6 +5,7 @@ import {
   requestFullDiskAccessPermission,
 } from "tauri-plugin-macos-permissions-api";
 import type {
+  AuthStatus,
   BuildCheckResult,
   CliToolsState,
   CommitResult,
@@ -32,6 +33,8 @@ import type {
   RollbackResult,
   SemanticChangeMap,
   SetDirResult,
+  SyncRemoteStatus,
+  SyncResult,
   SystemDefault,
   SystemDefaultsScan,
   UpdateInfo,
@@ -46,6 +49,23 @@ export const tauriAPI = {
     prepareNewDir: (dir: string) => invoke<SetDirResult>("config_prepare_new_dir", { dir }),
     pickDir: () => invoke<SetDirResult | null>("config_pick_dir"),
     setHostAttr: (host: string) => invoke<OkResult>("config_set_host_attr", { host }),
+    pickZip: () => invoke<string | null>("config_pick_zip"),
+    importGithub: (repoRef: string, dirName?: string) =>
+      invoke<SetDirResult>("config_import_github", { repoRef, dirName: dirName ?? null }),
+    importZip: (zipPath: string, dirName?: string) =>
+      invoke<SetDirResult>("config_import_zip", { zipPath, dirName: dirName ?? null }),
+  },
+  account: {
+    status: () => invoke<AuthStatus>("account_status"),
+    signIn: (email: string, password: string) =>
+      invoke<AuthStatus>("account_sign_in", { email, password }),
+    signOut: () => invoke<AuthStatus>("account_sign_out"),
+    setServerUrl: (url: string) => invoke<AuthStatus>("account_set_server_url", { url }),
+  },
+  sync: {
+    status: () => invoke<SyncRemoteStatus>("sync_status"),
+    push: () => invoke<SyncResult>("sync_push"),
+    pull: () => invoke<SyncResult>("sync_pull"),
   },
   git: {
     status: () => invoke<GitStatus>("git_status"),
@@ -108,7 +128,6 @@ export const tauriAPI = {
         stage,
         clientTimestampUnixMs: clientTimestampUnixMs ?? null,
       }),
-    sentryEvent: () => invoke<void>("debug_sentry_event"),
     clearTauriState: () => invoke<void>("developer_clear_tauri_state"),
     sendTestNotification: () => invoke<void>("developer_send_test_notification"),
   },

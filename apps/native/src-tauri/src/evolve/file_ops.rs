@@ -174,20 +174,29 @@ fn path_scope_error(input: &str, base: &Path, resolved: &Path, operation: &str) 
 /// even for complete junk, which isn't helpful for our use case of validating AI-generated edits.
 /// Instead, we check basic structural validity: balanced braces/brackets/parens, closed strings.
 fn validate_nix_syntax(content: &str, file_path: &str) -> anyhow::Result<()> {
-    // Simple validation: track bracket/brace/paren balance across the content,
-    // respecting string contexts. This catches obvious errors like unmatched braces.
-
-    let mut brace_depth = 0;
-    let mut bracket_depth = 0;
-    let mut paren_depth = 0;
-    let mut in_string = false;
-    let mut in_multiline_string = false;
-    let mut in_line_comment = false;
-    let mut in_block_comment = false;
-    let mut escape_next = false;
+    // Track structural balance (braces/brackets/parens) and string contexts.
+    // `${ ... }` antiquotation re-enters code context *inside* a string, so a
+    // single shared stack is used: an interpolation pushes a code frame and its
+    // matching `}` pops back to the string. This lets interpolations contain
+    // nested strings, braces, and further interpolations without desyncing the
+    // string state (which the old flag-based scanner got wrong, falsely
+    // rejecting valid Nix like `"${if a then "}" else "y"}"`).
+    #[derive(PartialEq)]
+    enum Frame {
+        Brace,    // `{ ... }` in code, and `${ ... }` interpolation bodies
+        Bracket,  // `[ ... ]`
+        Paren,    // `( ... )`
+        Str,      // `"..."`
+        Indented, // `''...''`
+    }
 
     let chars: Vec<char> = content.chars().collect();
+    let mut stack: Vec<Frame> = Vec::new();
+    let mut in_line_comment = false;
+    let mut in_block_comment = false;
     let mut i = 0;
+
+    let err = |msg: String| anyhow::anyhow!("Syntax error in {}: {}", file_path, msg);
 
     while i < chars.len() {
         let ch = chars[i];
@@ -204,137 +213,124 @@ fn validate_nix_syntax(content: &str, file_path: &str) -> anyhow::Result<()> {
             if i + 1 < chars.len() && ch == '*' && chars[i + 1] == '/' {
                 in_block_comment = false;
                 i += 2;
-                continue;
-            }
-            i += 1;
-            continue;
-        }
-
-        if escape_next {
-            escape_next = false;
-            i += 1;
-            continue;
-        }
-
-        // Check for multiline strings: '' ... ''
-        if !in_string && i + 1 < chars.len() && ch == '\'' && chars[i + 1] == '\'' {
-            if in_multiline_string {
-                // In an indented string, '' introduces either an escape sequence
-                // (e.g. ''', ''$, ''\) or the closing delimiter.
-                // Only treat it as closing when it is not an escape prefix.
-                if i + 2 < chars.len()
-                    && (chars[i + 2] == '\'' || chars[i + 2] == '$' || chars[i + 2] == '\\')
-                {
-                    i += 3;
-                    continue;
-                }
-            }
-
-            in_multiline_string = !in_multiline_string;
-            i += 2;
-            continue;
-        }
-
-        if in_multiline_string {
-            i += 1;
-            continue;
-        }
-
-        if !in_string {
-            if ch == '#' {
-                in_line_comment = true;
+            } else {
                 i += 1;
-                continue;
             }
-            if i + 1 < chars.len() && ch == '/' && chars[i + 1] == '*' {
-                in_block_comment = true;
-                i += 2;
-                continue;
-            }
+            continue;
         }
 
-        match ch {
-            '\\' if in_string => escape_next = true,
-            '"' => in_string = !in_string,
-            '{' if !in_string => brace_depth += 1,
-            '}' if !in_string => {
-                brace_depth -= 1;
-                if brace_depth < 0 {
-                    return Err(anyhow::anyhow!(
-                        "Syntax error in {}: unmatched closing brace '}}'",
-                        file_path
-                    ));
+        let is_interp_start = ch == '$' && i + 1 < chars.len() && chars[i + 1] == '{';
+
+        match stack.last() {
+            // Inside a normal "..." string.
+            Some(Frame::Str) => {
+                if ch == '\\' {
+                    i += 2; // escape: skip the escaped char too
+                } else if ch == '"' {
+                    stack.pop();
+                    i += 1;
+                } else if is_interp_start {
+                    stack.push(Frame::Brace); // antiquotation -> code context
+                    i += 2;
+                } else {
+                    i += 1;
                 }
             }
-            '[' if !in_string => bracket_depth += 1,
-            ']' if !in_string => {
-                bracket_depth -= 1;
-                if bracket_depth < 0 {
-                    return Err(anyhow::anyhow!(
-                        "Syntax error in {}: unmatched closing bracket ']'",
-                        file_path
-                    ));
+            // Inside an indented ''...'' string.
+            Some(Frame::Indented) => {
+                if ch == '\'' && i + 1 < chars.len() && chars[i + 1] == '\'' {
+                    // '' escape sequences (''', ''$, ''\) stay in the string;
+                    // a bare '' closes it.
+                    if i + 2 < chars.len()
+                        && (chars[i + 2] == '\'' || chars[i + 2] == '$' || chars[i + 2] == '\\')
+                    {
+                        i += 3;
+                    } else {
+                        stack.pop();
+                        i += 2;
+                    }
+                } else if is_interp_start {
+                    stack.push(Frame::Brace);
+                    i += 2;
+                } else {
+                    i += 1;
                 }
             }
-            '(' if !in_string => paren_depth += 1,
-            ')' if !in_string => {
-                paren_depth -= 1;
-                if paren_depth < 0 {
-                    return Err(anyhow::anyhow!(
-                        "Syntax error in {}: unmatched closing parenthesis ')'",
-                        file_path
-                    ));
+            // Code context: top is None / Brace / Bracket / Paren.
+            _ => {
+                if ch == '#' {
+                    in_line_comment = true;
+                    i += 1;
+                } else if ch == '/' && i + 1 < chars.len() && chars[i + 1] == '*' {
+                    in_block_comment = true;
+                    i += 2;
+                } else if ch == '"' {
+                    stack.push(Frame::Str);
+                    i += 1;
+                } else if ch == '\'' && i + 1 < chars.len() && chars[i + 1] == '\'' {
+                    stack.push(Frame::Indented);
+                    i += 2;
+                } else if ch == '{' {
+                    stack.push(Frame::Brace);
+                    i += 1;
+                } else if ch == '[' {
+                    stack.push(Frame::Bracket);
+                    i += 1;
+                } else if ch == '(' {
+                    stack.push(Frame::Paren);
+                    i += 1;
+                } else if ch == '}' {
+                    if stack.last() == Some(&Frame::Brace) {
+                        stack.pop();
+                        i += 1;
+                    } else {
+                        return Err(err("unmatched closing brace '}'".to_string()));
+                    }
+                } else if ch == ']' {
+                    if stack.last() == Some(&Frame::Bracket) {
+                        stack.pop();
+                        i += 1;
+                    } else {
+                        return Err(err("unmatched closing bracket ']'".to_string()));
+                    }
+                } else if ch == ')' {
+                    if stack.last() == Some(&Frame::Paren) {
+                        stack.pop();
+                        i += 1;
+                    } else {
+                        return Err(err("unmatched closing parenthesis ')'".to_string()));
+                    }
+                } else {
+                    i += 1;
                 }
             }
-            _ => {}
         }
-
-        i += 1;
-    }
-
-    if in_string {
-        return Err(anyhow::anyhow!(
-            "Syntax error in {}: unclosed string literal",
-            file_path
-        ));
-    }
-
-    if in_multiline_string {
-        return Err(anyhow::anyhow!(
-            "Syntax error in {}: unclosed multiline string ''...''",
-            file_path
-        ));
     }
 
     if in_block_comment {
-        return Err(anyhow::anyhow!(
-            "Syntax error in {}: unclosed block comment /*...*/",
-            file_path
-        ));
+        return Err(err("unclosed block comment /*...*/".to_string()));
+    }
+    if stack.iter().any(|f| *f == Frame::Str) {
+        return Err(err("unclosed string literal".to_string()));
+    }
+    if stack.iter().any(|f| *f == Frame::Indented) {
+        return Err(err("unclosed multiline string ''...''".to_string()));
     }
 
-    if brace_depth != 0 {
-        return Err(anyhow::anyhow!(
-            "Syntax error in {}: {} unmatched opening brace(s)",
-            file_path,
-            brace_depth
-        ));
+    let braces = stack.iter().filter(|f| **f == Frame::Brace).count();
+    if braces != 0 {
+        return Err(err(format!("{} unmatched opening brace(s)", braces)));
     }
-
-    if bracket_depth != 0 {
-        return Err(anyhow::anyhow!(
-            "Syntax error in {}: {} unmatched opening bracket(s)",
-            file_path,
-            bracket_depth
-        ));
+    let brackets = stack.iter().filter(|f| **f == Frame::Bracket).count();
+    if brackets != 0 {
+        return Err(err(format!("{} unmatched opening bracket(s)", brackets)));
     }
-
-    if paren_depth != 0 {
-        return Err(anyhow::anyhow!(
-            "Syntax error in {}: {} unmatched opening parenthesis/parentheses",
-            file_path,
-            paren_depth
-        ));
+    let parens = stack.iter().filter(|f| **f == Frame::Paren).count();
+    if parens != 0 {
+        return Err(err(format!(
+            "{} unmatched opening parenthesis/parentheses",
+            parens
+        )));
     }
 
     Ok(())
@@ -683,6 +679,46 @@ mod tests {
         let err = super::validate_nix_syntax(invalid_nix, "test.nix")
             .expect_err("should reject unclosed block comment");
         assert!(err.to_string().contains("unclosed block comment"));
+    }
+
+    #[test]
+    fn validate_nix_syntax_accepts_antiquotation_with_nested_strings() {
+        // `${ ... }` re-enters code context, so nested strings inside the
+        // interpolation that contain `{`/`}` must not desync string tracking.
+        // The old scanner falsely rejected all but the first of these.
+        let cases = [
+            r#"{ x = "${cfg.name}"; }"#,
+            r#"{ x = "${if a then "}" else "y"}"; }"#,
+            r#"{ x = "${if a then "{" else "y"}"; }"#,
+            r#"{ x = "pre ${f "a" "}"} post"; }"#,
+        ];
+        for src in cases {
+            super::validate_nix_syntax(src, "test.nix")
+                .unwrap_or_else(|e| panic!("should accept `{src}`: {e}"));
+        }
+    }
+
+    #[test]
+    fn validate_nix_syntax_accepts_interpolation_in_indented_string() {
+        let valid = r#"
+{
+  script = ''
+    ${pkgs.coreutils}/bin/ls {a} [b]
+  '';
+}
+"#;
+        super::validate_nix_syntax(valid, "test.nix")
+            .expect("antiquotation inside an indented string should be accepted");
+    }
+
+    #[test]
+    fn validate_nix_syntax_rejects_unbalanced_inside_interpolation() {
+        // The `}` closes the interpolation while a `(` is still open: still a
+        // real syntax error, and still caught.
+        let invalid = r#"{ x = "${ f ( }"; }"#;
+        let err = super::validate_nix_syntax(invalid, "test.nix")
+            .expect_err("unbalanced delimiters inside an interpolation should be rejected");
+        assert!(err.to_string().contains("Syntax error"));
     }
 
     #[test]

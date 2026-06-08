@@ -63,14 +63,10 @@ jobs:
           token: ${{ secrets.RELEASE_BOT_TOKEN || github.token }}
           persist-credentials: true
 
-      # The release script invokes `node` (affected-paths.mjs +
-      # next_minor_version's package.json fallback). Pin node-version so
-      # the cron is reproducible across runner-image updates, matching
-      # build.yaml's convention.
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - uses: ./.github/actions/setup
         with:
-          node-version: 20
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+          install-bun-deps: false
 
       - name: Run nightly release
         env:

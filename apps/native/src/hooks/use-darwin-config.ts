@@ -37,6 +37,20 @@ const pickDir = async () => {
   return result;
 };
 
+const importGithub = async (repoRef: string, dirName?: string) => {
+  const result = await tauriAPI.config.importGithub(repoRef, dirName);
+  await applyDirResult(result);
+  return result;
+};
+
+const importZip = async (zipPath: string, dirName?: string) => {
+  const result = await tauriAPI.config.importZip(zipPath, dirName);
+  await applyDirResult(result);
+  return result;
+};
+
+const pickZip = () => tauriAPI.config.pickZip();
+
 const saveHost = async (host: string) => {
   const store = useWidgetStore.getState();
 
@@ -84,5 +98,15 @@ const bootstrap = async (hostname: string) => {
 export function useDarwinConfig() {
   const isBootstrapping = useWidgetStore((state) => state.isBootstrapping);
 
-  return { setDir, prepareNewDir, pickDir, saveHost, bootstrap, isBootstrapping };
+  return {
+    setDir,
+    prepareNewDir,
+    pickDir,
+    saveHost,
+    bootstrap,
+    isBootstrapping,
+    importGithub,
+    importZip,
+    pickZip,
+  };
 }

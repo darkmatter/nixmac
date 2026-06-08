@@ -1,0 +1,124 @@
+name: "Setup nixmac CI"
+description: >
+  Install Determinate Nix (skips if already installed), build the devenv profile
+  via `devenv shell` to get bun/node/rust/sops/age/etc. on PATH, and install JS
+  NOTE: You MUST run actions/checkout before this action — local composite
+  actions need the repo on disk before they can be resolved.
+
+inputs:
+  install-bun-deps:
+    description: "Run bun install --frozen-lockfile"
+    required: false
+    default: "true"
+  setup-rust:
+    description: "Install Rust toolchain via dtolnay/rust-toolchain and cache"
+    required: false
+    default: "false"
+  rust-cache-workspaces:
+    description: "Workspace paths for rust-cache (comma-separated)"
+    required: false
+    default: ""
+  extra-nix-conf:
+    description: "Extra lines for /etc/nix/nix.conf (newline-separated)"
+    required: false
+    default: ""
+  darkmatter-cachix-auth-token:
+    description: "Cachix auth token for the darkmatter binary cache"
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Nix
+      uses: DeterminateSystems/nix-installer-action@v22
+      with:
+        extra-conf: ${{ inputs.extra-nix-conf }}
+
+    - name: Configure darkmatter Cachix cache
+      if: ${{ inputs.darkmatter-cachix-auth-token != '' }}
+      uses: cachix/cachix-action@v17
+      with:
+        name: darkmatter
+        authToken: ${{ inputs.darkmatter-cachix-auth-token }}
+
+    # Pull pre-built devenv packages from devenv.cachix.org (free, no auth).
+    # This avoids building devenv and its deps from source.
+    - name: Configure devenv Cachix cache
+      uses: cachix/cachix-action@v17
+      with:
+        name: devenv
+        skipPush: true
+
+    - name: Set devenv profile path
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        echo "DEVENV_PROFILE=${RUNNER_TEMP}/devenv-profile-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${GITHUB_JOB}" >> "$GITHUB_ENV"
+
+    - name: Install devenv
+      shell: bash
+      run: nix profile install --profile "${DEVENV_PROFILE:?}" github:cachix/devenv/latest
+
+    - name: Build devenv profile
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        # Build the devenv profile by entering the shell with a trivial command.
+        # This creates .devenv/profile symlink with all packages on PATH.
+        # Do NOT use `devenv ci` — it runs the test suite which may fail.
+        "${DEVENV_PROFILE:?}/bin/devenv" shell echo ready
+
+    - name: Add devenv tools to PATH
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        # After `devenv shell`, .devenv/profile is a symlink to the nix store path
+        # containing all packages (bun, node, sops, age, rust, etc.)
+        if [[ -L .devenv/profile ]]; then
+          profile_path="$(readlink -f .devenv/profile)"
+          echo "${profile_path}/bin" >> "$GITHUB_PATH"
+        else
+          echo "ERROR: .devenv/profile symlink not found after devenv shell"
+          exit 1
+        fi
+
+        echo "${DEVENV_PROFILE:?}/bin" >> "$GITHUB_PATH"
+
+    - name: Export devenv environment
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        "${DEVENV_PROFILE:?}/bin/devenv" shell -- bash -c '
+          for name in \
+            LD_LIBRARY_PATH \
+            LIBRARY_PATH \
+            PLAYWRIGHT_BROWSERS_PATH \
+            PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD \
+            RUSTFLAGS
+          do
+            value="${!name:-}"
+            if [ -n "$value" ]; then
+              printf "%s=%s\n" "$name" "$value"
+            fi
+          done
+        ' >> "$GITHUB_ENV" 2>/dev/null
+
+    - name: Install Rust toolchain
+      if: inputs.setup-rust == 'true'
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache Rust artifacts
+      if: inputs.setup-rust == 'true' && inputs.rust-cache-workspaces != ''
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: ${{ inputs.rust-cache-workspaces }}
+
+    - name: Install frontend dependencies
+      if: inputs.install-bun-deps == 'true'
+      shell: bash
+      run: bun install --frozen-lockfile

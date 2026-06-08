@@ -158,13 +158,17 @@ pub(crate) fn quote_homebrew_list_values(path: &str, values: Vec<String>) -> Vec
     }
 }
 
-// Truncate string for logging (single line preview)
+// Truncate string for logging (single line preview).
+// `max_len` is a character budget: slicing by byte index would panic when the
+// cut lands inside a multi-byte UTF-8 char (e.g. an accented letter or emoji in
+// an agent thought), so truncate on a char boundary instead.
 pub(crate) fn truncate_for_log(s: &str, max_len: usize) -> String {
     let s = s.replace('\n', " ").replace('\r', "");
-    if s.len() <= max_len {
+    if s.chars().count() <= max_len {
         s
     } else {
-        format!("{}...", &s[..max_len])
+        let truncated: String = s.chars().take(max_len).collect();
+        format!("{}...", truncated)
     }
 }
 
@@ -199,11 +203,34 @@ pub(crate) fn ensure_nixmac_edit_allowed(tool: &str, path: &str) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{execute_tool, ToolResult};
+    use super::{execute_tool, truncate_for_log, ToolResult};
     use crate::evolve::gitignore::load_gitignore_matcher;
     use serde_json::json;
     use std::fs;
     use tempfile::tempdir;
+
+    #[test]
+    fn truncate_for_log_passes_short_strings_through() {
+        assert_eq!(truncate_for_log("hello", 100), "hello");
+    }
+
+    #[test]
+    fn truncate_for_log_collapses_newlines() {
+        assert_eq!(truncate_for_log("a\nb\r\nc", 100), "a b c");
+    }
+
+    #[test]
+    fn truncate_for_log_truncates_to_char_budget() {
+        assert_eq!(truncate_for_log("abcdefghij", 4), "abcd...");
+    }
+
+    #[test]
+    fn truncate_for_log_does_not_panic_on_multibyte_boundary() {
+        // 3-byte chars: a byte-index slice at max_len would land mid-char and
+        // panic (the original bug). Truncation must happen on a char boundary.
+        let s = "→".repeat(50);
+        assert_eq!(truncate_for_log(&s, 10), format!("{}...", "→".repeat(10)));
+    }
 
     #[test]
     fn read_file_rejects_base_gitignored_files() {
