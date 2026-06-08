@@ -1,19 +1,15 @@
 use super::helpers::capture_err;
 use crate::storage::store;
-use crate::{db, git, rebuild};
-use tauri::{AppHandle, Manager};
+use crate::{git, rebuild};
+use tauri::AppHandle;
 
 #[tauri::command]
 pub async fn find_change_map(
     app: AppHandle,
 ) -> Result<crate::shared_types::SemanticChangeMap, String> {
-    let dir = store::get_config_dir(&app).map_err(|e| capture_err("find_change_map", e))?;
-    let pool = app.state::<db::DbPool>();
-    let change_sets = crate::summarize::find_existing::for_current_state(&pool, &dir)
-        .map_err(|e| capture_err("find_change_map", e))?;
-    Ok(crate::summarize::group_existing::from_change_sets(
-        change_sets,
-    ))
+    let base_ref = crate::summarize::active_summary_base_ref(&app);
+    crate::summarize::change_map_since(&app, &base_ref)
+        .map_err(|e| capture_err("find_change_map", e))
 }
 
 /// Walks back `number` commits from `commit_hash`,
@@ -39,13 +35,8 @@ pub async fn summarize_current(
     crate::summarize::new_changeset(&app, None)
         .await
         .map_err(|e| capture_err("summarize_current", e))?;
-    let dir = store::get_config_dir(&app).map_err(|e| capture_err("summarize_current", e))?;
-    let pool = app.state::<db::DbPool>();
-    let change_sets = crate::summarize::find_existing::for_current_state(&pool, &dir)
-        .map_err(|e| capture_err("summarize_current", e))?;
-    Ok(crate::summarize::group_existing::from_change_sets(
-        change_sets,
-    ))
+    crate::summarize::change_map_since(&app, "HEAD")
+        .map_err(|e| capture_err("summarize_current", e))
 }
 
 /// Returns all commits on the main branch, each paired with optional DB metadata, summary,

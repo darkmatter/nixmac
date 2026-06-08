@@ -295,11 +295,8 @@ pub async fn backup_evolve_and_record_changeset(
     .unwrap_or_default();
 
     // Build the change map from whatever is now stored in the DB.
-    let pool = app.state::<db::DbPool>();
-    let change_map = summarize::find_existing::for_current_state(&pool, &repo_root)
-        .ok()
-        .map(summarize::group_existing::from_change_sets)
-        .unwrap_or_default();
+    let base_ref = summarize::active_summary_base_ref(app);
+    let change_map = summarize::change_map_since(app, &base_ref).unwrap_or_default();
 
     Ok(EvolutionResult {
         change_map,
@@ -368,7 +365,11 @@ pub async fn store_metadata(
         }
     };
 
-    let changeset_id = match summarize::new_changeset(app, evolution_id).await {
+    // Summarize since we started evolution, falling back to HEAD if the persisted
+    // backup/rollback ref has already been removed.
+    let base_ref = summarize::active_summary_base_ref(app);
+
+    let changeset_id = match summarize::summarize_since(app, &base_ref, evolution_id).await {
         Ok(id) => id,
         Err(e) => {
             log::error!("[evolution] summarization pipeline failed: {}", e);

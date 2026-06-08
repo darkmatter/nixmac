@@ -1,15 +1,11 @@
 //! Commit message pipeline — returns the stored whole-diff summary when available.
 
 use anyhow::Result;
-use tauri::{AppHandle, Manager, Runtime};
-
-use crate::summarize::find_existing;
+use tauri::{AppHandle, Runtime};
 
 pub async fn generate<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
-    let config_dir = crate::storage::store::get_config_dir(app)?;
-    let pool = app.state::<crate::db::DbPool>();
-
-    let change_sets = find_existing::for_current_state(&pool, &config_dir)?;
+    let base_ref = crate::summarize::active_summary_base_ref(app);
+    let change_sets = crate::summarize::found_change_sets_since(app, &base_ref)?;
 
     change_sets
         .iter()
