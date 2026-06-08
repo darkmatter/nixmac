@@ -52,8 +52,10 @@ jobs:
               ;;
           esac
 
-          curl -fsSL "https://github.com/getsops/sops/releases/download/v3.12.1/sops-v3.12.1.linux.${SOPS_ARCH}" -o /tmp/sops
-          sudo install -m 0755 /tmp/sops /usr/local/bin/sops
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL "https://github.com/getsops/sops/releases/download/v3.12.1/sops-v3.12.1.linux.${SOPS_ARCH}" -o "$HOME/.local/bin/sops"
+          chmod 0755 "$HOME/.local/bin/sops"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           sops --version
 
       - name: Install dependencies
