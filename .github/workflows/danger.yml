@@ -32,6 +32,8 @@ jobs:
           fetch-depth: 0
 
       - uses: ./.github/actions/setup
+        with:
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
       # Generate a coverage report so the dangerfile has something to surface.
       # `continue-on-error` keeps Danger running even if a test fails — Danger
       # itself is not the gate for test failures, the test workflow is.

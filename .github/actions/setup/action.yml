@@ -22,6 +22,10 @@ inputs:
     description: "Extra lines for /etc/nix/nix.conf (newline-separated)"
     required: false
     default: ""
+  darkmatter-cachix-auth-token:
+    description: "Cachix auth token for the darkmatter binary cache"
+    required: false
+    default: ""
 
 runs:
   using: "composite"
@@ -30,6 +34,13 @@ runs:
       uses: DeterminateSystems/nix-installer-action@v22
       with:
         extra-conf: ${{ inputs.extra-nix-conf }}
+
+    - name: Configure darkmatter Cachix cache
+      if: ${{ inputs.darkmatter-cachix-auth-token != '' }}
+      uses: cachix/cachix-action@v17
+      with:
+        name: darkmatter
+        authToken: ${{ inputs.darkmatter-cachix-auth-token }}
 
     # Pull pre-built devenv packages from devenv.cachix.org (free, no auth).
     # This avoids building devenv and its deps from source.

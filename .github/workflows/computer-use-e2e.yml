@@ -65,6 +65,7 @@ jobs:
 
       - uses: ./.github/actions/setup
         with:
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
           install-bun-deps: false
 
       - name: Initialize timing telemetry
@@ -624,6 +625,7 @@ jobs:
 
       - uses: ./.github/actions/setup
         with:
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
           install-bun-deps: false
 
       - name: Download Storybook plan

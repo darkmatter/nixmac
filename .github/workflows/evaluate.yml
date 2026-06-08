@@ -23,6 +23,7 @@ jobs:
 
       - uses: ./.github/actions/setup
         with:
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
           setup-rust: true
           rust-cache-workspaces: apps/native/src-tauri
       - name: Check Rust app crate
@@ -37,6 +38,8 @@ jobs:
         uses: actions/checkout@v6
 
       - uses: ./.github/actions/setup
+        with:
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
       - name: Type-check native app
         working-directory: apps/native
         run: bunx tsc --noEmit
@@ -52,6 +55,7 @@ jobs:
 
       - uses: ./.github/actions/setup
         with:
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
           install-bun-deps: false
       - name: Check changed Nix and shell files
         env:
