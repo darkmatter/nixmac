@@ -89,8 +89,9 @@ lib.mkIf (!config.container.isBuilding) {
     export RUSTFLAGS="-L native=${pkgs.libiconv}/lib ''${RUSTFLAGS:-}"
   ''
   + lib.optionalString pkgs.stdenv.isLinux ''
-    # Playwright's downloaded Chromium needs these shared libraries at runtime.
-    # CI runners cannot `playwright install --with-deps` because sudo is blocked.
+    export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
+    export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+
     export LD_LIBRARY_PATH=${
       lib.makeLibraryPath [
         pkgs.glib
