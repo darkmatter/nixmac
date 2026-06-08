@@ -111,7 +111,8 @@ fn should_omit_session_field(key: &str) -> bool {
         || normalized.contains("password")
         || normalized.contains("credential")
         || normalized.contains("secret")
-        || normalized.contains("token")
+        || normalized == "token"
+        || normalized.ends_with("token")
 }
 
 fn is_safe_session_metadata_string(key: Option<&str>, value: &str) -> bool {
