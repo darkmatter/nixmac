@@ -17,6 +17,7 @@
     "test": "vitest run",
     "test:unit": "vitest run --project=unit",
     "test:storybook": "vitest run --project=storybook --no-file-parallelism --maxWorkers=1",
+    "test:storybook:ci": "node scripts/run-storybook-tests-ci.mjs",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:update": "vitest run --update",
