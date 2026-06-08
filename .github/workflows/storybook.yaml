@@ -61,7 +61,7 @@ jobs:
               args: [
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
-                "--disable-gpu-sandbox",
+                "--no-zygote",
               ],
             });
             const page = await browser.newPage();
