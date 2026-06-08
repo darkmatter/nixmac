@@ -79,7 +79,11 @@ export default defineConfig({
                 browser: "chromium",
                 launch: {
                   channel: "chromium",
-                  args: ["--no-sandbox", "--disable-dev-shm-usage"],
+                  args: [
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu-sandbox",
+                  ],
                 },
               },
             ],
