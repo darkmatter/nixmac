@@ -11,14 +11,20 @@
 //! thread via `spawn_blocking` so the Tokio runtime is never stalled.
 
 use chrono::Local;
+use serde_json::Value;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
+
+use crate::system::secret_scanner::SecretScanner;
 
 /// The active session log path, set when an evolution starts and cleared when
 /// it finishes. `None` means no session is currently recording.
 static SESSION_LOG_PATH: Mutex<Option<PathBuf>> = Mutex::new(None);
+static SESSION_LOG_SCANNER: OnceLock<SecretScanner> = OnceLock::new();
+
+const OMITTED_SESSION_FIELD: &str = "[REDACTED: omitted from session log]";
 
 /// Returns the sessions directory path.
 ///
@@ -64,6 +70,63 @@ pub fn active_session_path() -> Option<PathBuf> {
     SESSION_LOG_PATH.lock().unwrap().clone()
 }
 
+fn session_log_scanner() -> &'static SecretScanner {
+    SESSION_LOG_SCANNER
+        .get_or_init(|| SecretScanner::from_toml(include_str!("../../resources/gitleaks.toml")))
+}
+
+fn should_omit_session_field(key: &str) -> bool {
+    let normalized = key
+        .chars()
+        .filter(|ch| *ch != '_' && *ch != '-')
+        .flat_map(char::to_lowercase)
+        .collect::<String>();
+
+    matches!(
+        normalized.as_str(),
+        "raw"
+            | "diff"
+            | "original"
+            | "modified"
+            | "content"
+            | "changednixfilesdiff"
+            | "builderroroutput"
+            | "applogscontent"
+    ) || normalized.contains("apikey")
+        || normalized.contains("accesstoken")
+        || normalized.contains("authtoken")
+        || normalized.contains("password")
+        || normalized.contains("credential")
+        || normalized.contains("secret")
+}
+
+fn omit_sensitive_session_fields(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            for (key, nested) in map.iter_mut() {
+                if should_omit_session_field(key) {
+                    *nested = Value::String(OMITTED_SESSION_FIELD.to_string());
+                } else {
+                    omit_sensitive_session_fields(nested);
+                }
+            }
+        }
+        Value::Array(items) => {
+            for item in items {
+                omit_sensitive_session_fields(item);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn sanitize_payload_for_session_log(payload: &Value) -> Value {
+    let mut sanitized = payload.clone();
+    omit_sensitive_session_fields(&mut sanitized);
+    let (sanitized, _) = session_log_scanner().redact_json(sanitized);
+    sanitized
+}
+
 /// Appends a JSON line to the session log file.
 ///
 /// Dispatched to a blocking thread to avoid stalling the Tokio runtime. The
@@ -71,6 +134,7 @@ pub fn active_session_path() -> Option<PathBuf> {
 /// `write_all`, which (combined with `O_APPEND`) keeps each line effectively
 /// atomic for the small payloads seen here.
 pub async fn append_event(path: &PathBuf, event_type: &str, payload: &serde_json::Value) {
+    let payload = sanitize_payload_for_session_log(payload);
     let line = serde_json::json!({
         "ts": chrono::Utc::now().to_rfc3339(),
         "event": event_type,
@@ -79,12 +143,105 @@ pub async fn append_event(path: &PathBuf, event_type: &str, payload: &serde_json
     let buf = format!("{line}\n").into_bytes();
     let path = path.clone();
 
-    if let Err(e) = tokio::task::spawn_blocking(move || -> std::io::Result<()> {
+    match tokio::task::spawn_blocking(move || -> std::io::Result<()> {
         let mut file = OpenOptions::new().append(true).open(&path)?;
         file.write_all(&buf)
     })
     .await
     {
-        log::warn!("Failed to append session log event: {e}");
+        Ok(Ok(())) => {}
+        Ok(Err(e)) => log::warn!("Failed to append session log event: {e}"),
+        Err(e) => log::warn!("Failed to join session log append task: {e}"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{append_event, sanitize_payload_for_session_log, OMITTED_SESSION_FIELD};
+    use serde_json::json;
+
+    #[test]
+    fn session_log_sanitizer_omits_raw_diff_and_content_fields() {
+        let payload = json!({
+            "raw": "provider error containing token ghp_1234567890abcdefghijklmnopqrstuvwxyz",
+            "summary": "safe summary",
+            "gitStatus": {
+                "diff": "+password = \"super-secret\"",
+                "changes": [
+                    {
+                        "filename": "secrets/example.yaml",
+                        "diff": "+api_key: abcdefghijklmnop"
+                    }
+                ]
+            },
+            "changeMap": {
+                "groups": [
+                    {
+                        "changes": [
+                            {
+                                "filename": "hosts/macbook/default.nix",
+                                "diff": "+access_token = \"abcdefghijklmnop\""
+                            }
+                        ]
+                    }
+                ]
+            }
+        });
+
+        let sanitized = sanitize_payload_for_session_log(&payload);
+        let serialized = serde_json::to_string(&sanitized).expect("serialize sanitized payload");
+
+        assert!(serialized.contains("\"summary\":\"safe summary\""));
+        assert!(!serialized.contains("super-secret"));
+        assert!(!serialized.contains("api_key"));
+        assert!(!serialized.contains("access_token"));
+        assert!(!serialized.contains("provider error containing token"));
+        assert!(serialized.matches(OMITTED_SESSION_FIELD).count() >= 4);
+    }
+
+    #[test]
+    fn session_log_sanitizer_redacts_secret_like_values() {
+        let payload = json!({
+            "description": "Please configure api_key = sk-abcdefghijklmnopqrstuvwx for the service",
+            "nested": {
+                "note": "leave normal diagnostic text alone"
+            }
+        });
+
+        let sanitized = sanitize_payload_for_session_log(&payload);
+        let serialized = serde_json::to_string(&sanitized).expect("serialize sanitized payload");
+
+        assert!(serialized.contains("leave normal diagnostic text alone"));
+        assert!(!serialized.contains("sk-abcdefghijklmnopqrstuvwx"));
+        assert!(serialized.contains("[REDACTED"));
+    }
+
+    #[tokio::test]
+    async fn append_event_persists_sanitized_jsonl() {
+        let temp = tempfile::tempdir().expect("create temp dir");
+        let path = temp.path().join("session.jsonl");
+        std::fs::File::create(&path).expect("create session log");
+        let payload = json!({
+            "summary": "safe event summary",
+            "raw": "raw provider error with api_key = sk-abcdefghijklmnopqrstuvwx",
+            "gitStatus": {
+                "diff": "+token = \"ghp_1234567890abcdefghijklmnopqrstuvwxyz\""
+            }
+        });
+
+        append_event(&path, "evolve_event", &payload).await;
+
+        let contents = std::fs::read_to_string(&path).expect("read session log");
+        let line: serde_json::Value =
+            serde_json::from_str(contents.trim()).expect("session log line is valid JSON");
+
+        assert_eq!(line["event"], "evolve_event");
+        assert_eq!(line["data"]["summary"], "safe event summary");
+        assert_eq!(line["data"]["raw"], OMITTED_SESSION_FIELD);
+        assert_eq!(line["data"]["gitStatus"]["diff"], OMITTED_SESSION_FIELD);
+
+        let serialized = line.to_string();
+        assert!(!serialized.contains("sk-abcdefghijklmnopqrstuvwx"));
+        assert!(!serialized.contains("ghp_1234567890abcdefghijklmnopqrstuvwxyz"));
     }
 }
