@@ -220,6 +220,21 @@ pub fn log(
     Ok(commits)
 }
 
+/// Returns structured FileDiffs representing the changes between `base_ref` and the working tree.
+/// We use this to feed change details to summarization for uncommitted changes since
+/// an arbitrary reference point (e.g. last commit, last push, evolution start, etc).
+pub fn changes_since_ref(dir: &str, base_ref: &str) -> Result<Vec<FileDiff>> {
+    require_repo(dir)?;
+    let repo = Repository::discover(dir)?;
+    let reference = repo.revparse_single(base_ref)?;
+    let reference_tree = reference.peel_to_tree()?;
+
+    let mut diff_opts = default_diff_opts();
+    let diff = repo.diff_tree_to_workdir_with_index(Some(&reference_tree), Some(&mut diff_opts))?;
+
+    run_diff_engine(diff)
+}
+
 /// Gets the current git status of the repo including
 /// the structured list of changes for summarization and the full diff string for clients that need it.
 pub fn status(dir: &str) -> Result<GitStatus> {
@@ -919,5 +934,94 @@ mod tests {
 
         assert_eq!(original, "{ }\n");
         assert_eq!(modified, "{ inputs = {}; }\n");
+    }
+
+    #[test]
+    fn changes_since_ref_includes_uncommitted_worktree_changes_since_base_ref() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+        crate::git::commit_all(&repo_dir_str, "initial").unwrap();
+
+        let repo = git2::Repository::discover(&repo_dir_str).unwrap();
+        let head = repo.head().unwrap().peel_to_commit().unwrap();
+        repo.branch("evolution-start", &head, false).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ inputs = {}; }\n").unwrap();
+
+        let diffs = changes_since_ref(&repo_dir_str, "evolution-start").unwrap();
+
+        assert_eq!(diffs.len(), 1);
+        assert_eq!(diffs[0].new_path.as_deref(), Some("flake.nix"));
+        assert!(diffs[0].diff.contains("+{ inputs = {}; }"));
+    }
+
+    #[test]
+    fn changes_since_ref_includes_untracked_files_since_base_ref() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+        crate::git::commit_all(&repo_dir_str, "initial").unwrap();
+
+        let repo = git2::Repository::discover(&repo_dir_str).unwrap();
+        let head = repo.head().unwrap().peel_to_commit().unwrap();
+        repo.branch("evolution-start", &head, false).unwrap();
+
+        fs::write(repo_dir.join("new-module.nix"), "{ config, ... }: { }\n").unwrap();
+
+        let diffs = changes_since_ref(&repo_dir_str, "evolution-start").unwrap();
+
+        assert_eq!(diffs.len(), 1);
+        assert_eq!(diffs[0].new_path.as_deref(), Some("new-module.nix"));
+        assert!(diffs[0].diff.contains("+{ config, ... }: { }"));
+    }
+
+    #[test]
+    fn changes_since_ref_includes_cumulative_changes_after_head_moves() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+        crate::git::commit_all(&repo_dir_str, "initial").unwrap();
+
+        let repo = git2::Repository::discover(&repo_dir_str).unwrap();
+        let start = repo.head().unwrap().peel_to_commit().unwrap();
+        repo.branch("evolution-start", &start, false).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ inputs = {}; }\n").unwrap();
+        crate::git::commit_all(&repo_dir_str, "intermediate").unwrap();
+
+        fs::write(repo_dir.join("home.nix"), "{ pkgs, ... }: { }\n").unwrap();
+
+        let diffs = changes_since_ref(&repo_dir_str, "evolution-start").unwrap();
+
+        let paths: Vec<_> = diffs
+            .iter()
+            .map(|d| d.new_path.as_deref().unwrap_or_default())
+            .collect();
+
+        assert!(paths.contains(&"flake.nix"));
+        assert!(paths.contains(&"home.nix"));
+    }
+
+    #[test]
+    fn changes_since_ref_errors_for_invalid_base_ref() {
+        let (temp, _) = repo_with_initial_commit();
+        let path = temp.path().to_string_lossy().to_string();
+
+        let result = changes_since_ref(&path, "does-not-exist");
+
+        assert!(result.is_err());
     }
 }

@@ -90,6 +90,7 @@ pub async fn from_commit_times_number<R: Runtime>(
             app,
             Some(commit_id),
             Some(base_commit_id),
+            None,
             commits[i].message.as_deref(),
             None,
         )

@@ -74,6 +74,7 @@ export default defineConfig({
             enabled: true,
             provider: "playwright",
             headless: true,
+            fileParallelism: false,
             instances: [
               {
                 browser: "chromium",
@@ -82,6 +83,7 @@ export default defineConfig({
                     "--no-sandbox",
                     "--disable-dev-shm-usage",
                     "--disable-gpu-sandbox",
+                    "--disable-gpu",
                     "--no-zygote",
                   ],
                 },
