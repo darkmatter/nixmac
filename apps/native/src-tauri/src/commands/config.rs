@@ -1,8 +1,8 @@
 use super::helpers::{capture_err, handle_new_config_dir};
-use crate::bootstrap::default_config;
+use crate::bootstrap::{default_config, import};
 use crate::storage::store;
 use crate::{shared_types, types, utils};
-use std::path::{Component, Path};
+use std::path::{Component, Path, PathBuf};
 use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
 
@@ -238,6 +238,138 @@ pub async fn bootstrap_default_config(app: AppHandle, hostname: String) -> Resul
     default_config::bootstrap(&app, &hostname)
 }
 
+/// Resolves an optional directory name into an absolute, home-relative target
+/// for an imported configuration. Defaults to `~/.darwin`.
+fn resolve_import_target(dir_name: Option<String>) -> Result<PathBuf, String> {
+    let name = dir_name
+        .as_deref()
+        .map(str::trim)
+        .filter(|n| !n.is_empty())
+        .unwrap_or(".darwin");
+
+    if name.contains('/') || name == "." || name == ".." {
+        return Err("Use a directory name, not a path".to_string());
+    }
+
+    let home = dirs::home_dir().ok_or_else(|| "Failed to resolve home directory".to_string())?;
+    Ok(home.join(name))
+}
+
+/// Returns true when `path` is absent or an empty directory (ignoring Finder
+/// metadata). Import targets must be empty so we never clobber existing files.
+fn is_importable_target(path: &Path) -> Result<bool, String> {
+    if !path.exists() {
+        return Ok(true);
+    }
+    if !path.is_dir() {
+        return Err(format!(
+            "Path exists but is not a directory: {}",
+            path.display()
+        ));
+    }
+    let has_entries = std::fs::read_dir(path)
+        .map_err(|e| format!("Failed to read directory: {}", e))?
+        .filter_map(|e| e.ok())
+        .any(|entry| entry.file_name().to_str() != Some(".DS_Store"));
+    Ok(!has_entries)
+}
+
+/// Validates and prepares an import target directory.
+///
+/// On success the directory is guaranteed to be absent or *truly* empty: a
+/// lone `.DS_Store` (which `is_importable_target` tolerates, since the folder
+/// looks empty in Finder) is removed so libgit2 clone, which rejects a
+/// non-empty destination, succeeds.
+fn prepare_import_target(dir_name: Option<String>) -> Result<PathBuf, String> {
+    let target = resolve_import_target(dir_name)?;
+    validate_new_dir_location(&target)?;
+    if !is_importable_target(&target)? {
+        return Err(
+            "Directory already exists and is not empty. Choose Existing to use a current configuration."
+                .to_string(),
+        );
+    }
+    if target.exists() {
+        let ds_store = target.join(".DS_Store");
+        if ds_store.exists() {
+            std::fs::remove_file(&ds_store)
+                .map_err(|e| format!("Failed to clear {}: {}", ds_store.display(), e))?;
+        }
+    }
+    Ok(target)
+}
+
+/// Selects an imported directory as the active config dir and initializes state.
+fn finalize_imported_dir(
+    app: &AppHandle,
+    target: &Path,
+) -> Result<shared_types::SetDirResult, String> {
+    let new_dir = target.to_string_lossy().to_string();
+    store::set_config_dir(app, &new_dir).map_err(|e| capture_err("finalize_imported_dir", e))?;
+    let (evolve_state, hosts) = handle_new_config_dir(app, &new_dir)
+        .map_err(|e| capture_err("finalize_imported_dir", e))?;
+    Ok(shared_types::SetDirResult {
+        dir: new_dir,
+        evolve_state: Some(evolve_state),
+        hosts,
+    })
+}
+
+/// Opens a native file picker for a `.zip` archive and returns its path.
+#[tauri::command]
+pub async fn config_pick_zip(app: AppHandle) -> Result<Option<String>, String> {
+    let result = app
+        .dialog()
+        .file()
+        .set_title("Select a configuration .zip archive")
+        .add_filter("Zip archive", &["zip"])
+        .blocking_pick_file();
+    Ok(result.map(|path| path.to_string()))
+}
+
+/// Clones a GitHub reference (e.g. `owner/repo`) into a fresh config directory.
+#[tauri::command]
+pub async fn config_import_github(
+    app: AppHandle,
+    repo_ref: String,
+    dir_name: Option<String>,
+) -> Result<shared_types::SetDirResult, String> {
+    let spec = import::parse_repo_ref(&repo_ref).map_err(|e| e.to_string())?;
+    let target = prepare_import_target(dir_name)?;
+
+    // Clone on a blocking thread; libgit2 network I/O is synchronous.
+    let target_for_clone = target.clone();
+    tauri::async_runtime::spawn_blocking(move || import::clone_repo(&spec, &target_for_clone))
+        .await
+        .map_err(|e| capture_err("config_import_github", e))?
+        .map_err(|e| capture_err("config_import_github", e))?;
+
+    finalize_imported_dir(&app, &target)
+}
+
+/// Extracts a local `.zip` archive into a fresh config directory.
+#[tauri::command]
+pub async fn config_import_zip(
+    app: AppHandle,
+    zip_path: String,
+    dir_name: Option<String>,
+) -> Result<shared_types::SetDirResult, String> {
+    let zip =
+        utils::normalize_dir_input(&zip_path).map_err(|e| capture_err("config_import_zip", e))?;
+    if !zip.is_file() {
+        return Err(format!("Zip file not found: {}", zip.display()));
+    }
+    let target = prepare_import_target(dir_name)?;
+
+    let target_for_extract = target.clone();
+    tauri::async_runtime::spawn_blocking(move || import::extract_zip(&zip, &target_for_extract))
+        .await
+        .map_err(|e| capture_err("config_import_zip", e))?
+        .map_err(|e| capture_err("config_import_zip", e))?;
+
+    finalize_imported_dir(&app, &target)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -251,6 +383,26 @@ mod tests {
             .expect("system time should be after epoch")
             .as_nanos();
         std::env::temp_dir().join(format!("nixmac-{name}-{nonce}"))
+    }
+
+    #[test]
+    fn importable_target_treats_absent_and_finder_only_dirs_as_empty() {
+        let absent = temp_dir("import-absent");
+        assert!(is_importable_target(&absent).expect("absent path"));
+
+        let ds_only = temp_dir("import-ds-only");
+        fs::create_dir_all(&ds_only).expect("create temp dir");
+        fs::write(ds_only.join(".DS_Store"), "").expect("create finder metadata");
+        assert!(is_importable_target(&ds_only).expect("ds-only path"));
+
+        let with_git = temp_dir("import-with-git");
+        fs::create_dir_all(with_git.join(".git")).expect("create git dir");
+        // Unlike `is_dir_empty_or_only_git`, a clone target with a `.git` dir is
+        // not importable — libgit2 clone requires a truly empty destination.
+        assert!(!is_importable_target(&with_git).expect("with-git path"));
+
+        let _ = fs::remove_dir_all(ds_only);
+        let _ = fs::remove_dir_all(with_git);
     }
 
     #[test]

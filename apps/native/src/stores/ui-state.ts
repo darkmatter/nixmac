@@ -11,7 +11,7 @@
 import { FeedbackType } from "@/types/feedback";
 import { create } from "zustand";
 
-export type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences" | "tuning" | "developer";
+export type SettingsTab = "general" | "account" | "api-keys" | "ai-models" | "preferences" | "tuning" | "developer";
 type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
 
 /**

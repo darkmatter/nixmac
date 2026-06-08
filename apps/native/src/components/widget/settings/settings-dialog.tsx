@@ -4,8 +4,9 @@ import { cn } from "@/lib/utils";
 import { type SettingsTab, useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 import { useForm } from "@tanstack/react-form";
-import { Bot, FolderOpen, Key, Settings2, SlidersHorizontal, Wrench } from "lucide-react";
+import { Bot, FolderOpen, Key, Settings2, SlidersHorizontal, UserCircle2, Wrench } from "lucide-react";
 import { Suspense, useEffect, useRef, useState } from "react";
+import { AccountTab } from "@/components/widget/settings/account-tab";
 import { AiModelsTab } from "@/components/widget/settings/ai-models-tab";
 import { ApiKeysTab } from "@/components/widget/settings/api-keys-tab";
 import { DeveloperTab } from "@/components/widget/settings/developer-tab";
@@ -197,6 +198,12 @@ export function SettingsDialog() {
                 onClick={() => setActiveTab("general")}
               />
               <NavItem
+                active={activeTab === "account"}
+                icon={<UserCircle2 className="h-4 w-4" />}
+                label="Account"
+                onClick={() => setActiveTab("account")}
+              />
+              <NavItem
                 active={activeTab === "ai-models"}
                 icon={<Bot className="h-4 w-4" />}
                 label="AI Models"
@@ -291,6 +298,8 @@ export function SettingsDialog() {
                 )}
               </form.Field>
             )}
+
+            {activeTab === "account" && <AccountTab />}
 
             {activeTab === "preferences" && <PreferencesTab />}
 

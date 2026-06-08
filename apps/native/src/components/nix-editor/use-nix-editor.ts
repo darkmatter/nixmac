@@ -36,13 +36,11 @@ export function useNixEditor({ filePath, containerRef, onSave, disabled = false 
   };
 
   useEffect(() => {
-    if (disabled) {
-      setIsLoading(false);
+    const container = containerRef.current;
+    if (!container) {
+      if (disabled) setIsLoading(false);
       return;
     }
-
-    const container = containerRef.current;
-    if (!container) return;
 
     let disposed = false;
     let editor: monaco.editor.IStandaloneCodeEditor | null = null;
@@ -50,11 +48,13 @@ export function useNixEditor({ filePath, containerRef, onSave, disabled = false 
 
     async function init() {
       try {
-        // Load file content + config dir in parallel
-        const [content, config] = await Promise.all([
-          tauriAPI.editor.readFile(filePath),
-          tauriAPI.config.get(),
-        ]);
+        // Load file content (and config dir when not disabled)
+        const [content, config] = disabled
+          ? [await tauriAPI.editor.readFile(filePath), null as { configDir: string } | null]
+          : await Promise.all([
+              tauriAPI.editor.readFile(filePath),
+              tauriAPI.config.get(),
+            ]);
         if (disposed) return;
 
         originalContentRef.current = content;
@@ -100,26 +100,29 @@ export function useNixEditor({ filePath, containerRef, onSave, disabled = false 
           await initNixGrammar(monaco, editor);
         }
 
-        // Track dirty state
-        editor.onDidChangeModelContent(() => {
-          const current = editor!.getValue();
-          setIsDirty(current !== originalContentRef.current);
-        });
+        // Track dirty state (skip when disabled — no save callback)
+        if (!disabled) {
+          editor.onDidChangeModelContent(() => {
+            const current = editor!.getValue();
+            setIsDirty(current !== originalContentRef.current);
+          });
 
-        // Cmd+S to save
-        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-          const content = editor!.getValue();
-          tauriAPI.editor.writeFile(filePath, content).then(() => {
-            originalContentRef.current = content;
-            setIsDirty(false);
-            onSave?.(content);
-          }).catch((e) => setError(String(e)));
-        });
+          // Cmd+S to save
+          editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+            const content = editor!.getValue();
+            tauriAPI.editor.writeFile(filePath, content).then(() => {
+              originalContentRef.current = content;
+              setIsDirty(false);
+              onSave?.(content);
+            }).catch((e) => setError(String(e)));
+          });
+        }
 
         setIsLoading(false);
 
         // Start LSP for Nix files (non-blocking — editor works without it)
-        if (language === "nix" && configDir) {
+        // Skip LSP when disabled (Storybook, etc.)
+        if (!disabled && language === "nix" && configDir) {
           setLspStatus("starting");
           try {
             if (!lspClient.running) {

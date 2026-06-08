@@ -1,5 +1,7 @@
 //! Shared contract types exported to TypeScript via Specta.
 
+#[path = "shared_types/account.rs"]
+mod account;
 #[path = "shared_types/core.rs"]
 mod core;
 #[path = "shared_types/events.rs"]
@@ -17,6 +19,7 @@ mod settings_io;
 #[path = "shared_types/system.rs"]
 mod system;
 
+pub use account::*;
 pub use core::*;
 pub use events::*;
 pub use evolve::*;

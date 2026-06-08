@@ -64,10 +64,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - uses: ./.github/actions/setup
         with:
-          node-version: 22
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+          install-bun-deps: false
 
       - name: Check report transport dependencies
         shell: bash
