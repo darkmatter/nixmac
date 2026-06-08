@@ -8,15 +8,17 @@ interface DiffViewProps {
   contents: FileDiffContents;
   filename: string;
   onMount: (editor: editor.IStandaloneDiffEditor) => void;
+  disableRuntime?: boolean;
 }
 
-export function DiffView({ contents, filename, onMount }: DiffViewProps) {
+export function DiffView({ contents, filename, onMount, disableRuntime = false }: DiffViewProps) {
   const disposableRef = useRef<monaco.IDisposable | null>(null);
   const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
   const lineCount = Math.max(
     contents.original.split("\n").length,
     contents.modified.split("\n").length,
   );
+  const height = Math.min(Math.max(lineCount * 19, 100), 400);
 
   // null model on non-collapse unmount (e.g. routing) to prevent monaco crashes
   useEffect(() => {
@@ -27,10 +29,21 @@ export function DiffView({ contents, filename, onMount }: DiffViewProps) {
     };
   }, []);
 
-  return (
+  return disableRuntime ? (
+    <section
+      data-testid="monaco-diff-view"
+      style={{ display: "flex", position: "relative", textAlign: "initial", width: "100%", height }}
+    >
+      <div data-keybinding-context="N" style={{ width: "100%" }}>
+        <div className="monaco-diff-editor" style={{ position: "relative", height }}>
+          <div data-slot="monaco-editor-placeholder" />
+        </div>
+      </div>
+    </section>
+  ) : (
     <DiffEditor
       key={filename}
-      height={Math.min(Math.max(lineCount * 19, 100), 400)}
+      height={height}
       original={contents.original}
       modified={contents.modified}
       theme={NIXMAC_THEME}
