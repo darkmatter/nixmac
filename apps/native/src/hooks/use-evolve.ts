@@ -117,8 +117,7 @@ const handleEvolve = async () => {
     // Track successful evolution
     if (result?.evolveState) {
       const step = result.evolveState.step;
-      const outcome = step === "commit" ? "committed" as const : step === "evolve" ? "applied" as const : "discarded" as const;
-      getTelemetry().captureEvent({ name: "evolve_completed", props: { outcome } });
+      getTelemetry().captureEvent({ name: "evolve_completed", props: { step } });
     }
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);

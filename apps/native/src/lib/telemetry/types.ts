@@ -9,17 +9,17 @@ export type TelemetryEvent =
   | { name: "app_launched"; props?: { environment: string } }
   | { name: "app_ready"; props?: { boot_ms?: number } }
   | {
-      name: "evolve_started";
-      props?: { provider: string; has_custom_model: boolean };
-    }
+    name: "evolve_started";
+    props?: { provider: string; has_custom_model: boolean };
+  }
   | {
-      name: "evolve_completed";
-      props: { outcome: "applied" | "committed" | "discarded" };
-    }
+    name: "evolve_completed";
+    props: { step: string };
+  }
   | {
-      name: "evolve_failed";
-      props?: { stage: "build" | "agent" | "apply" };
-    }
+    name: "evolve_failed";
+    props?: { stage: "build" | "agent" | "apply" };
+  }
   | { name: "rollback_performed" }
   | { name: "settings_changed"; props: { setting: string } }
   | { name: "diagnostics_opt_in" }
