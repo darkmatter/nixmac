@@ -4,7 +4,7 @@
   config,
   ...
 }:
-lib.mkIf (! config.container.isBuilding) {
+lib.mkIf (!config.container.isBuilding) {
   # Dev-only packages (excluded from container builds by conditional import).
   packages = [
     pkgs.rustPackages.rustc
@@ -81,6 +81,11 @@ lib.mkIf (! config.container.isBuilding) {
     # For CodeLLDB
     export LLDB_BIN=$(which lldb)
     export DYLD_LIBRARY_PATH=${pkgs.lldb}/lib:$DYLD_LIBRARY_PATH
+
+    # Cargo invokes the macOS linker with -liconv for proc-macro crates.
+    # Expose nix libiconv so CI runners can link without relying on host paths.
+    export LIBRARY_PATH=${pkgs.libiconv}/lib:''${LIBRARY_PATH:-}
+    export RUSTFLAGS="-L native=${pkgs.libiconv}/lib ''${RUSTFLAGS:-}"
   '';
 
   # https://devenv.sh/languages/

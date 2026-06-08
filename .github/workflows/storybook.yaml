@@ -50,7 +50,7 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: apps/native
-        run: bunx playwright install --with-deps chromium
+        run: bunx playwright install chromium
 
       - name: Build Storybook
         working-directory: apps/native
