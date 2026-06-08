@@ -71,6 +71,22 @@ runs:
         # Also add the devenv CLI itself to PATH for potential later use
         echo "/tmp/devenv-profile/bin" >> "$GITHUB_PATH"
 
+    - name: Export devenv environment
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        # Later workflow steps do not run inside `devenv shell`, so persist the
+        # shell-provided linker flags that are needed by macOS Rust builds.
+        /tmp/devenv-profile/bin/devenv shell -- bash -c '
+          for name in LIBRARY_PATH RUSTFLAGS; do
+            value="${!name:-}"
+            if [ -n "$value" ]; then
+              printf "%s=%s\n" "$name" "$value"
+            fi
+          done
+        ' >> "$GITHUB_ENV" 2>/dev/null
+
     - name: Install Rust toolchain
       if: inputs.setup-rust == 'true'
       uses: dtolnay/rust-toolchain@stable
