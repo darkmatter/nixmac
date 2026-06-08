@@ -30,10 +30,10 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   const [activeTab, setActiveTab] = useState(defaultToDiffTab ? "diff" : "summary");
   const [openFiles, setOpenFiles] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    window.addEventListener("focus", summarizeOnFocus);
-    return () => window.removeEventListener("focus", summarizeOnFocus);
-  }, [summarizeOnFocus]);
+  // useEffect(() => {
+  //   window.addEventListener("focus", summarizeOnFocus);
+  //   return () => window.removeEventListener("focus", summarizeOnFocus);
+  // }, [summarizeOnFocus]);
 
   const fileDiffKey = useMemo(
     () =>

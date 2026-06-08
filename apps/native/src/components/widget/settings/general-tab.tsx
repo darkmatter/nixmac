@@ -12,6 +12,7 @@ import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
 import { getWebSiteUrl } from "@/lib/env";
 import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
+import { useTelemetry } from "@/lib/telemetry/context";
 import { getVersion } from "@tauri-apps/api/app";
 import { open } from "@tauri-apps/plugin-shell";
 import type { AnyFieldApi } from "@tanstack/react-form";
@@ -52,6 +53,7 @@ export function GeneralTab({
   setSettingsOpen,
   sendDiagnosticsField,
 }: GeneralTabProps) {
+  const telemetry = useTelemetry();
   return (
     <div className="space-y-6">
       <div>
@@ -118,6 +120,8 @@ export function GeneralTab({
                 sendDiagnosticsField.handleChange(checked);
                 try {
                   await tauriAPI.ui.setPrefs({ sendDiagnostics: checked });
+                  telemetry.setEnabled(checked);
+                  telemetry.captureEvent({ name: checked ? "diagnostics_opt_in" : "diagnostics_opt_out" });
                 } catch (error) {
                   // Revert the field value if persisting the preference fails
                   sendDiagnosticsField.handleChange(previousValue);
