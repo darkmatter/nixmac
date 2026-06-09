@@ -15,8 +15,18 @@ const storybookPlugins = await storybookTest({
   configDir: path.join(import.meta.dirname, ".storybook"),
 });
 
+const storybookOptimizeDeps = [
+  "@react-three/drei",
+  "@react-three/fiber",
+  "lucide-react",
+  "three",
+] as const;
+
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    include: storybookOptimizeDeps,
+  },
   resolve: {
     alias: [
       {
