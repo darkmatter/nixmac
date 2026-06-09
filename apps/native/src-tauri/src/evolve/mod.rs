@@ -24,7 +24,7 @@ pub mod lifecycle;
 /// Directories ignored by file listing and search helpers.
 pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
-use crate::evolve::utils::{escape_user_query, format_duration_secs, short_hash};
+use crate::evolve::utils::{escape_user_query, format_duration_secs};
 use crate::git::query::repo_root;
 // Re-export public API
 use crate::shared_types::{Evolution, EvolutionState, FileEdit};
@@ -47,6 +47,7 @@ pub use types::{EvolutionProgress, EvolutionRunError};
 use crate::{
     statistics, store,
     types::{emit_evolve_event, EvolveEvent},
+    utils::short_hash,
     utils as global_utils,
 };
 use chat_memory::{to_provider_context_messages, ChatMessage, Role as ChatMemoryRole};
@@ -826,7 +827,8 @@ pub async fn generate_evolution<R: Runtime>(
 
     // Read configurable limits from store (hot-reloaded on every run).
     let config::EvolutionLimits {
-        mut max_build_attempts, ..
+        mut max_build_attempts,
+        ..
     } = config::EvolutionLimits::load(app)
         .inspect_err(|e| warn!("EvolutionLimits::load failed ({e}); using defaults"))
         .unwrap_or_default();
@@ -836,8 +838,7 @@ pub async fn generate_evolution<R: Runtime>(
     let interactive_limit_prompt = !banned_tools.contains(&"ask_user");
     info!(
         "Limits: max_token_budget={}, max_build_attempts={}",
-        max_token_budget,
-        max_build_attempts,
+        max_token_budget, max_build_attempts,
     );
 
     let tools = create_tools(banned_tools);
@@ -1061,7 +1062,13 @@ pub async fn generate_evolution<R: Runtime>(
             );
             emit_evolve_event(
                 app,
-                EvolveEvent::api_response(start_time, iteration, usage.total, total_tokens, max_token_budget),
+                EvolveEvent::api_response(
+                    start_time,
+                    iteration,
+                    usage.total,
+                    total_tokens,
+                    max_token_budget,
+                ),
             );
         }
 

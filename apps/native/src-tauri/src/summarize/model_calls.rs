@@ -60,8 +60,8 @@ async fn request_json<R: Runtime, T: serde::de::DeserializeOwned>(
             fn_name, request_id,
         );
         debug!(
-            "[{}] user prompt: {}\nsystem prompt: {}",
-            fn_name, user_prompt, system_prompt
+            "[{}] user prompt: {}\nsystem prompt: {}\ntoken budget: {}",
+            fn_name, user_prompt, system_prompt, allocation.output_tokens
         );
         return Err(anyhow::anyhow!(
             "{}: model returned empty response",
@@ -82,12 +82,13 @@ async fn request_json<R: Runtime, T: serde::de::DeserializeOwned>(
 }
 
 pub async fn generate_commit_message<R: Runtime>(
-    prompt: &str,
+    system_prompt: &str,
+    user_prompt: &str,
     app_handle: Option<&AppHandle<R>>,
 ) -> Result<(String, TokenUsage)> {
     let (parsed, usage) = request_json::<_, CommitMessageJson>(
-        "",
-        prompt,
+        system_prompt,
+        user_prompt,
         commit_message_budget,
         0.2,
         "generate_commit_message",
