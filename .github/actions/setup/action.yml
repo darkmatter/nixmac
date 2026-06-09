@@ -63,13 +63,15 @@ runs:
 
     - name: Build devenv profile
       shell: bash
+      env:
+        NIXPKGS_ALLOW_UNFREE=1
       run: |
         set -euo pipefail
 
         # Build the devenv profile by entering the shell with a trivial command.
         # This creates .devenv/profile symlink with all packages on PATH.
         # Do NOT use `devenv ci` — it runs the test suite which may fail.
-        "${DEVENV_PROFILE:?}/bin/devenv" shell echo ready
+        "${DEVENV_PROFILE:?}/bin/devenv" shell --impure -- echo ready
 
     - name: Add devenv tools to PATH
       shell: bash
