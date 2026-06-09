@@ -16,6 +16,10 @@ function hasValue(value?: string | null): boolean {
   return Boolean(value?.trim());
 }
 
+function isOpenrouterModelSlug(value?: string | null): boolean {
+  return Boolean(value?.trim().includes("/"));
+}
+
 function shouldMigrateLegacyOpenaiProvider(prefs: Pick<UiPrefs, "openaiApiKey" | "openrouterApiKey">): boolean {
   return hasValue(prefs.openrouterApiKey) && !hasValue(prefs.openaiApiKey);
 }
@@ -38,16 +42,20 @@ export function migrateLegacyOpenaiProviderPrefs(prefs: UiPrefs): {
 
   if (prefs.evolveProvider === OPENAI_PROVIDER) {
     values.evolveProvider = OPENROUTER_PROVIDER;
-    values.evolveModel = DEFAULT_OPENROUTER_EVOLVE_MODEL;
     update.evolveProvider = values.evolveProvider;
-    update.evolveModel = values.evolveModel;
+    if (!isOpenrouterModelSlug(prefs.evolveModel)) {
+      values.evolveModel = DEFAULT_OPENROUTER_EVOLVE_MODEL;
+      update.evolveModel = values.evolveModel;
+    }
   }
 
   if (prefs.summaryProvider === OPENAI_PROVIDER) {
     values.summaryProvider = OPENROUTER_PROVIDER;
-    values.summaryModel = DEFAULT_OPENROUTER_SUMMARY_MODEL;
     update.summaryProvider = values.summaryProvider;
-    update.summaryModel = values.summaryModel;
+    if (!isOpenrouterModelSlug(prefs.summaryModel)) {
+      values.summaryModel = DEFAULT_OPENROUTER_SUMMARY_MODEL;
+      update.summaryModel = values.summaryModel;
+    }
   }
 
   return {

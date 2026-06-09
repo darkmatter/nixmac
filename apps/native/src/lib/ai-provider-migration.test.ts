@@ -28,7 +28,30 @@ const PREFS: UiPrefs = {
 };
 
 describe("migrateLegacyOpenaiProviderPrefs", () => {
-  it("migrates legacy openai provider prefs to OpenRouter when only an OpenRouter key exists", () => {
+  it("preserves OpenRouter model slugs when migrating legacy openai provider prefs", () => {
+    const result = migrateLegacyOpenaiProviderPrefs({
+      ...PREFS,
+      openrouterApiKey: "sk-or-key",
+      openaiApiKey: "",
+      evolveProvider: "openai",
+      evolveModel: "google/gemini-2.5-pro",
+      summaryProvider: "openai",
+      summaryModel: "anthropic/claude-3.5-haiku",
+    });
+
+    expect(result.values).toEqual({
+      evolveProvider: "openrouter",
+      evolveModel: "google/gemini-2.5-pro",
+      summaryProvider: "openrouter",
+      summaryModel: "anthropic/claude-3.5-haiku",
+    });
+    expect(result.update).toEqual({
+      evolveProvider: "openrouter",
+      summaryProvider: "openrouter",
+    });
+  });
+
+  it("uses OpenRouter defaults when migrated legacy openai models are bare or missing", () => {
     const result = migrateLegacyOpenaiProviderPrefs({
       ...PREFS,
       openrouterApiKey: "sk-or-key",
@@ -36,7 +59,7 @@ describe("migrateLegacyOpenaiProviderPrefs", () => {
       evolveProvider: "openai",
       evolveModel: "gpt-4o",
       summaryProvider: "openai",
-      summaryModel: "gpt-4o-mini",
+      summaryModel: " ",
     });
 
     expect(result.values).toEqual({
