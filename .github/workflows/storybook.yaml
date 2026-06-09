@@ -172,6 +172,8 @@ jobs:
       - name: Run Storybook snapshot tests
         id: snapshot_tests
         working-directory: apps/native
+        env:
+          STORYBOOK_BATCH_SIZE: "1"
         run: bun run test:storybook:ci
 
       # ---- Failed-story screenshots (PR only, only when snapshots failed) ----
