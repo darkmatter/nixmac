@@ -1,6 +1,6 @@
 //! `search_code` tool: ripgrep over the codebase.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 use crate::evolve::messages::Tool;
 use crate::evolve::search_code::execute_search_code;
@@ -13,7 +13,8 @@ pub(crate) fn definition() -> Tool {
         description: "Search for text patterns in the codebase using ripgrep. \
                      This helps locate where functions or variables are defined or used. \
                      Output format: one match per line as file:line:text, where \
-                     text is the matching line content.".to_string(),
+                     text is the matching line content."
+            .to_string(),
         parameters: serde_json::json!({
             "type": "object",
             "properties": {

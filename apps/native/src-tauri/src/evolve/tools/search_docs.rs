@@ -1,9 +1,9 @@
 //! `search_docs` tool: two-step nix-darwin/home-manager option docs lookup.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 use crate::evolve::messages::Tool;
-use crate::evolve::search_docs::{default_limit, execute_search_docs, max_limit, DocsSource};
+use crate::evolve::search_docs::{DocsSource, default_limit, execute_search_docs, max_limit};
 
 use super::{ToolCtx, ToolResult};
 

@@ -5,7 +5,7 @@ use anyhow::Result;
 use crate::evolve::ensure_secret::execute_ensure_secret;
 use crate::evolve::messages::Tool;
 
-use super::{ensure_nixmac_edit_allowed, ToolCtx, ToolResult};
+use super::{ToolCtx, ToolResult, ensure_nixmac_edit_allowed};
 
 pub(crate) fn definition() -> Tool {
     Tool {

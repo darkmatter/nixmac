@@ -20,7 +20,7 @@ mod strings;
 mod types;
 
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, DeriveInput};
+use syn::{DeriveInput, parse_macro_input};
 
 /// Proc-macro entrypoint called by the compiler for each annotated struct.
 ///

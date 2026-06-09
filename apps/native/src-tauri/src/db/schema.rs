@@ -1,11 +1,11 @@
 //! Database schema initialization.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use diesel::connection::SimpleConnection;
 use diesel::prelude::*;
 use diesel::sql_types::BigInt;
 use diesel::sqlite::SqliteConnection;
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use std::path::Path;
 
 const SCHEMA_VERSION: i64 = 1;
@@ -40,8 +40,10 @@ fn recreate_stale_database(path: &Path) -> Result<()> {
 
     let database_url = path.to_string_lossy().into_owned();
     let mut conn = SqliteConnection::establish(&database_url)?;
-    let version: i64 = diesel::select(diesel::dsl::sql::<BigInt>("user_version FROM pragma_user_version"))
-        .get_result(&mut conn)?;
+    let version: i64 = diesel::select(diesel::dsl::sql::<BigInt>(
+        "user_version FROM pragma_user_version",
+    ))
+    .get_result(&mut conn)?;
     drop(conn);
     if version != SCHEMA_VERSION {
         std::fs::remove_file(path)?;
@@ -81,10 +83,11 @@ mod tests {
         rt.block_on(init_schema(&db_path)).unwrap();
 
         let mut conn = SqliteConnection::establish(&database_url).unwrap();
-        let version: i64 =
-            diesel::select(diesel::dsl::sql::<BigInt>("user_version FROM pragma_user_version"))
-                .get_result(&mut conn)
-                .unwrap();
+        let version: i64 = diesel::select(diesel::dsl::sql::<BigInt>(
+            "user_version FROM pragma_user_version",
+        ))
+        .get_result(&mut conn)
+        .unwrap();
         assert_eq!(version, SCHEMA_VERSION);
 
         let row_count = crate::db::tables::evolutions::table

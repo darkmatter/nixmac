@@ -3,6 +3,7 @@ use crate::ai::provider_errors::classify_openai_error;
 use crate::evolve::messages::{Message, Tool as GenericTool, ToolCall};
 use anyhow::anyhow;
 use async_openai::{
+    Client,
     config::OpenAIConfig,
     error::OpenAIError,
     types::{
@@ -12,7 +13,6 @@ use async_openai::{
         ChatCompletionTool, ChatCompletionToolArgs, ChatCompletionToolType,
         CreateChatCompletionRequestArgs, FunctionCall, FunctionObjectArgs,
     },
-    Client,
 };
 use async_trait::async_trait;
 use reqwest::StatusCode;

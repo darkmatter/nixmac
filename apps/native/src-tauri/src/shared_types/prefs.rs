@@ -54,6 +54,9 @@ pub struct UiPrefs {
     pub scan_homebrew_on_startup: bool,
     /// Whether the change view defaults to the Diff tab instead of Summary.
     pub default_to_diff_tab: bool,
+    /// Experimental: spin the nixmac mascot (horizontal-axis flip) in a corner
+    /// indicator window while an evolution is running or a build is in progress.
+    pub experimental_spinning_mascot: bool,
     /// Whether developer-only UI/actions are enabled.
     pub developer_mode: bool,
     /// Version pinned by the user, when update pinning is active.
@@ -107,6 +110,8 @@ pub struct UiPrefsUpdate {
     pub scan_homebrew_on_startup: Option<bool>,
     /// Default-to-diff-tab preference update.
     pub default_to_diff_tab: Option<bool>,
+    /// Experimental spinning-mascot preference update.
+    pub experimental_spinning_mascot: Option<bool>,
     /// Developer mode preference update.
     pub developer_mode: Option<bool>,
     /// `None` -> field not sent; `Some(None)` -> clear the pinned version.

@@ -1,8 +1,8 @@
 //! search_docs tool implementation for nix-darwin and home-manager documentation.
 
 use anyhow::Result;
-use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
+use fuzzy_matcher::skim::SkimMatcherV2;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -204,10 +204,7 @@ pub fn execute_search_docs(
     };
 
     // Read mode: a specific doc key/path was requested.
-    if let Some(path) = doc_path
-        .map(str::trim)
-        .filter(|p| !p.is_empty())
-    {
+    if let Some(path) = doc_path.map(str::trim).filter(|p| !p.is_empty()) {
         return Ok(read_doc(index, path, source_filter));
     }
 
@@ -282,7 +279,8 @@ fn read_doc(index: &DocsIndex, requested: &str, source_filter: Option<DocsSource
     let child_prefix = format!("{}/", target);
 
     let mut exact: Vec<&DocsOptionEntry> = Vec::new();
-    let mut child_keys: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+    let mut child_keys: std::collections::BTreeMap<String, usize> =
+        std::collections::BTreeMap::new();
 
     for entry in index
         .entries

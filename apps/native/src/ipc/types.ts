@@ -5,11 +5,11 @@
 /**
  * The signed-in nixmac account, minus any secret material.
  */
-export type AuthAccount = {
+export type AuthAccount = { 
 /**
  * Stable account identifier assigned by the server.
  */
-id: string;
+id: string; 
 /**
  * Account email address used to sign in.
  */
@@ -19,19 +19,19 @@ email: string }
  * Snapshot of the desktop client's authentication state, returned by
  * `account_status`. The HMAC secret is never included.
  */
-export type AuthStatus = {
+export type AuthStatus = { 
 /**
  * Whether a usable account credential is stored on this device.
  */
-signedIn: boolean;
+signedIn: boolean; 
 /**
  * The signed-in account, when `signed_in` is true.
  */
-account: AuthAccount | null;
+account: AuthAccount | null; 
 /**
  * Public credential/key identifier sent in the `Authorization` header.
  */
-keyId: string | null;
+keyId: string | null; 
 /**
  * Base URL of the sync server this device is configured to talk to.
  */
@@ -40,7 +40,7 @@ serverUrl: string }
 /**
  * Result of `darwin_build_check` — dry-run build outcome.
  */
-export type BuildCheckResult = {
+export type BuildCheckResult = { 
 /**
  * Whether the dry-run build passed.
  */
@@ -308,19 +308,6 @@ error: boolean | null;
  * Error category when `error` or `complete && !success` is set.
  */
 error_type: RebuildErrorType | null }
-
-/**
- * Response from the debug Sentry event command.
- */
-export type DebugSentryResult = { 
-/**
- * Whether the debug event was sent.
- */
-ok: boolean; 
-/**
- * Human-readable result message.
- */
-message: string }
 
 export type EnumVariant = { value: string; label: string }
 
@@ -1486,19 +1473,19 @@ missedHashes: string[] }
 /**
  * Remote sync state for the current account, returned by `sync_status`.
  */
-export type SyncRemoteStatus = {
+export type SyncRemoteStatus = { 
 /**
  * Whether the server has a stored configuration snapshot for this account.
  */
-configured: boolean;
+configured: boolean; 
 /**
  * Commit hash of the latest snapshot the server holds, if any.
  */
-headCommitHash: string | null;
+headCommitHash: string | null; 
 /**
  * Unix timestamp (seconds) of the latest server-side snapshot, if any.
  */
-updatedAt: number | null;
+updatedAt: number | null; 
 /**
  * Number of devices currently registered to the account.
  */
@@ -1507,15 +1494,15 @@ deviceCount: number }
 /**
  * Result of a `sync_push` or `sync_pull` operation.
  */
-export type SyncResult = {
+export type SyncResult = { 
 /**
  * Whether the operation succeeded end-to-end.
  */
-ok: boolean;
+ok: boolean; 
 /**
  * Commit hash that is now current after the operation, when known.
  */
-headCommitHash: string | null;
+headCommitHash: string | null; 
 /**
  * Human-readable status detail for display in the UI.
  */
@@ -1524,7 +1511,7 @@ message: string }
 /**
  * A single macOS system default that differs from the factory value.
  */
-export type SystemDefault = {
+export type SystemDefault = { 
 /**
  * nix-darwin option path for this macOS default.
  */
@@ -1694,6 +1681,11 @@ scanHomebrewOnStartup: boolean;
  */
 defaultToDiffTab: boolean; 
 /**
+ * Experimental: spin the nixmac mascot (horizontal-axis flip) in a corner
+ * indicator window while an evolution is running or a build is in progress.
+ */
+experimentalSpinningMascot: boolean; 
+/**
  * Whether developer-only UI/actions are enabled.
  */
 developerMode: boolean; 
@@ -1791,6 +1783,10 @@ scanHomebrewOnStartup: boolean | null;
  * Default-to-diff-tab preference update.
  */
 defaultToDiffTab: boolean | null; 
+/**
+ * Experimental spinning-mascot preference update.
+ */
+experimentalSpinningMascot: boolean | null; 
 /**
  * Developer mode preference update.
  */

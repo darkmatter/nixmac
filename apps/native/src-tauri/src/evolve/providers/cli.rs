@@ -1,5 +1,5 @@
 use super::{AiProvider, ProviderError, ProviderResponse};
-use crate::ai::providers::cli::{run_cli_process, CliTool};
+use crate::ai::providers::cli::{CliTool, run_cli_process};
 use crate::evolve::messages::{Message, Tool as GenericTool, ToolCall};
 use anyhow::anyhow;
 use async_trait::async_trait;

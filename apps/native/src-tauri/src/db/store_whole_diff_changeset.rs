@@ -3,11 +3,11 @@
 use anyhow::Result;
 use diesel::connection::Connection;
 
+use crate::db::DbPool;
 use crate::db::changesets::{
     get_change_id_by_hash, insert_change_set, insert_change_summary, link_change_to_group_summary,
     link_change_to_set, upsert_change,
 };
-use crate::db::DbPool;
 use crate::sqlite_types::Change;
 
 #[allow(clippy::too_many_arguments)]

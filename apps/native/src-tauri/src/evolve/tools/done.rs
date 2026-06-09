@@ -11,7 +11,8 @@ pub(crate) fn definition() -> Tool {
     Tool {
         name: "done".to_string(),
         description: "Signal that all changes are complete. IMPORTANT: Only call this AFTER \
-                     you have verified your changes with build_check and are confident they work.".to_string(),
+                     you have verified your changes with build_check and are confident they work."
+            .to_string(),
         parameters: serde_json::json!({
             "type": "object",
             "properties": {

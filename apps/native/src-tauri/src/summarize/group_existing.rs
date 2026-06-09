@@ -109,10 +109,7 @@ pub fn find_in_singles_by_hash<'a>(
 }
 
 fn is_invalid(summary: &ChangeSummary) -> bool {
-    matches!(
-        summary.status.as_str(),
-        "FAILED" | "CANCELLED" | "QUEUED"
-    )
+    matches!(summary.status.as_str(), "FAILED" | "CANCELLED" | "QUEUED")
 }
 
 fn to_change_with_summary(
