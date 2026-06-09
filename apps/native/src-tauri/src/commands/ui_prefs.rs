@@ -18,6 +18,8 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, Strin
         wrap_result_and_capture_err("ui_get_prefs", store::get_effective_openai_api_key(&app))?;
     let send_diagnostics =
         wrap_result_and_capture_err("ui_get_prefs", store::get_send_diagnostics(&app))?;
+    let product_analytics_enabled =
+        wrap_result_and_capture_err("ui_get_prefs", store::get_product_analytics_enabled(&app))?;
 
     let evolve_provider =
         wrap_result_and_capture_err("ui_get_prefs", store::get_evolve_provider(&app))?;
@@ -97,6 +99,7 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, Strin
         vllm_api_base_url,
         vllm_api_key,
         send_diagnostics,
+        product_analytics_enabled,
 
         confirm_build,
         confirm_clear,
@@ -164,6 +167,10 @@ pub async fn ui_set_prefs(
     }
     if let Some(send_diagnostics) = prefs.send_diagnostics {
         store::set_send_diagnostics(&app, send_diagnostics)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
+    }
+    if let Some(product_analytics_enabled) = prefs.product_analytics_enabled {
+        store::set_product_analytics_enabled(&app, product_analytics_enabled)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(confirm_build) = prefs.confirm_build {

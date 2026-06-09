@@ -39,6 +39,7 @@ pub const DEFAULT_TO_DIFF_TAB_KEY: &str = "defaultToDiffTab";
 pub const DEVELOPER_MODE_KEY: &str = "developerMode";
 pub const PINNED_VERSION_KEY: &str = "pinnedVersion";
 pub const UPDATE_CHANNEL_KEY: &str = "updateChannel";
+pub const PRODUCT_ANALYTICS_ENABLED_KEY: &str = "productAnalyticsEnabled";
 
 // nixmac account + non-GitHub sync keys
 pub const SYNC_SERVER_URL_KEY: &str = "syncServerUrl";
@@ -207,6 +208,17 @@ pub fn set_send_diagnostics<R: Runtime>(app: &AppHandle<R>, send: bool) -> Resul
     store.set("sendDiagnostics", serde_json::json!(send));
     store.save()?;
     Ok(())
+}
+
+pub fn get_product_analytics_enabled<R: Runtime>(app: &AppHandle<R>) -> Result<bool> {
+    get_bool_pref(app, PRODUCT_ANALYTICS_ENABLED_KEY, true)
+}
+
+pub fn set_product_analytics_enabled<R: Runtime>(
+    app: &AppHandle<R>,
+    enabled: bool,
+) -> Result<()> {
+    set_bool_pref(app, PRODUCT_ANALYTICS_ENABLED_KEY, enabled)
 }
 
 // =============================================================================

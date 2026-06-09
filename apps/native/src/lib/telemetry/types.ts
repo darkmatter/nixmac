@@ -2,7 +2,7 @@
  * Unified telemetry provider interface.
  *
  * Replaces the separate AnalyticsProvider and Sentry init with a single
- * pipeline: OTEL traces for error/crash reporting, PostHog for product analytics.
+ * pipeline: OTEL spans for diagnostics, PostHog for product analytics.
  */
 
 export type TelemetryEvent =
@@ -23,17 +23,23 @@ export type TelemetryEvent =
   | { name: "rollback_performed" }
   | { name: "settings_changed"; props: { setting: string } }
   | { name: "diagnostics_opt_in" }
-  | { name: "diagnostics_opt_out" };
+  | { name: "diagnostics_opt_out" }
+  | { name: "product_analytics_opt_in" }
+  | { name: "product_analytics_opt_out" };
 
 export interface TelemetryProvider {
-  /** Record a product event (goes to PostHog + OTEL span). */
+  /** Record a product event. Goes only to PostHog and is product-consent gated. */
   captureEvent(event: TelemetryEvent): void;
-  /** Record an error (goes to OTEL → Sentry). */
+  /** Record a diagnostics-gated error span. */
   captureError(error: Error, context?: Record<string, unknown>): void;
-  /** Turn telemetry on/off at runtime. */
-  setEnabled(enabled: boolean): void;
-  /** Whether telemetry is currently active. */
-  readonly enabled: boolean;
+  /** Turn diagnostics/error reporting on/off at runtime. */
+  setDiagnosticsEnabled(enabled: boolean): void;
+  /** Turn product analytics on/off at runtime. */
+  setProductAnalyticsEnabled(enabled: boolean): void;
+  /** Whether diagnostics/error reporting is currently active. */
+  readonly diagnosticsEnabled: boolean;
+  /** Whether product analytics capture is currently active. */
+  readonly productAnalyticsEnabled: boolean;
   /** Clear identity / queued state. */
   reset(): void;
 }

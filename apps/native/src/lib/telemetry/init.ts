@@ -16,7 +16,8 @@ const E2E_MODE = import.meta.env.VITE_NIXMAC_E2E_MODE === "true";
  * Behavior:
  * - E2E mode → noop (no telemetry, no PostHog).
  * - Build-time config (key/host/release/environment) read from Vite env.
- * - Gated on the sendDiagnostics pref, fail-closed if prefs can't be read.
+ * - Product capture is gated on productAnalyticsEnabled.
+ * - Diagnostics/error reporting is gated on sendDiagnostics.
  * - Installs the provider via setTelemetryProvider() for non-React callers.
  */
 export async function initTelemetry(): Promise<TelemetryProvider> {
@@ -37,12 +38,16 @@ export async function initTelemetry(): Promise<TelemetryProvider> {
     return noopProvider;
   }
 
+  let productAnalyticsEnabled = true;
   let sendDiagnostics = false;
   try {
     const prefs = await tauriAPI.ui.getPrefs();
+    productAnalyticsEnabled = prefs?.productAnalyticsEnabled ?? true;
     sendDiagnostics = prefs?.sendDiagnostics ?? false;
   } catch {
-    // fail closed — no telemetry if we can't read prefs
+    // If prefs are unreadable, do not risk overriding a persisted opt-out.
+    productAnalyticsEnabled = false;
+    sendDiagnostics = false;
   }
 
   const provider = createTelemetryProvider(
@@ -56,7 +61,10 @@ export async function initTelemetry(): Promise<TelemetryProvider> {
         "prod"
       ).toString(),
     },
-    sendDiagnostics,
+    {
+      diagnosticsEnabled: sendDiagnostics,
+      productAnalyticsEnabled,
+    },
   );
 
   setTelemetryProvider(provider);

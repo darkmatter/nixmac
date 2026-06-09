@@ -1666,6 +1666,10 @@ maxOutputTokens: number | null;
  */
 sendDiagnostics: boolean; 
 /**
+ * Whether anonymous product analytics may be sent.
+ */
+productAnalyticsEnabled: boolean;
+/**
  * Whether to confirm before running build/apply.
  */
 confirmBuild: boolean; 
@@ -1760,6 +1764,10 @@ vllmApiKey: string | null;
  */
 sendDiagnostics: boolean | null; 
 /**
+ * Product analytics sharing preference update.
+ */
+productAnalyticsEnabled: boolean | null;
+/**
  * Build confirmation preference update.
  */
 confirmBuild: boolean | null; 
@@ -1817,4 +1825,3 @@ version: string;
  * Release notes from the channel manifest, when available.
  */
 notes: string | null }
-

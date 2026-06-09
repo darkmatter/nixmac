@@ -40,6 +40,8 @@ pub struct UiPrefs {
     pub max_output_tokens: Option<usize>,
     /// Whether diagnostic feedback may be sent.
     pub send_diagnostics: bool,
+    /// Whether anonymous product analytics may be sent.
+    pub product_analytics_enabled: bool,
     /// Whether to confirm before running build/apply.
     pub confirm_build: bool,
     /// Whether to confirm before clearing changes.
@@ -91,6 +93,8 @@ pub struct UiPrefsUpdate {
     pub vllm_api_key: Option<String>,
     /// Diagnostics sharing preference update.
     pub send_diagnostics: Option<bool>,
+    /// Product analytics sharing preference update.
+    pub product_analytics_enabled: Option<bool>,
     /// Build confirmation preference update.
     pub confirm_build: Option<bool>,
     /// Clear confirmation preference update.

@@ -29,6 +29,8 @@ interface GeneralTabProps {
   setSettingsOpen: (open: boolean) => void;
   // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
   sendDiagnosticsField: AnyFieldApi;
+  // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
+  productAnalyticsField: AnyFieldApi;
 }
 
 // Support should always land on the public website, even in local app builds.
@@ -43,6 +45,21 @@ async function openExternalUrl(url: string) {
   }
 }
 
+function PrivacyPolicyButton() {
+  return (
+    <button
+      className="mt-2 text-xs text-zinc-400 underline hover:text-zinc-200"
+      onClick={() => {
+        const base = getWebSiteUrl().replace(/\/$/, "");
+        openExternalUrl(`${base}/privacy`);
+      }}
+      type="button"
+    >
+      Privacy policy
+    </button>
+  );
+}
+
 export function GeneralTab({
   configDir,
   hasFlake,
@@ -52,6 +69,7 @@ export function GeneralTab({
   handleRefreshHosts,
   setSettingsOpen,
   sendDiagnosticsField,
+  productAnalyticsField,
 }: GeneralTabProps) {
   const telemetry = useTelemetry();
   return (
@@ -100,16 +118,7 @@ export function GeneralTab({
               <div className="text-muted-foreground text-xs">
                 Share redacted crash and error reports to improve stability. Restart required.
                 <div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const base = getWebSiteUrl().replace(/\/$/, "");
-                      openExternalUrl(`${base}/privacy`);
-                    }}
-                    className="mt-2 text-xs text-zinc-400 underline hover:text-zinc-200"
-                  >
-                    Privacy policy
-                  </button>
+                  <PrivacyPolicyButton />
                 </div>
               </div>
             </div>
@@ -120,11 +129,45 @@ export function GeneralTab({
                 sendDiagnosticsField.handleChange(checked);
                 try {
                   await tauriAPI.ui.setPrefs({ sendDiagnostics: checked });
-                  telemetry.setEnabled(checked);
+                  telemetry.setDiagnosticsEnabled(checked);
                   telemetry.captureEvent({ name: checked ? "diagnostics_opt_in" : "diagnostics_opt_out" });
                 } catch (error) {
                   // Revert the field value if persisting the preference fails
                   sendDiagnosticsField.handleChange(previousValue);
+                  throw error;
+                }
+              }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border border-border p-3">
+            <div className="space-y-0.5">
+              <div className="font-medium text-sm">Share anonymous product usage</div>
+              <div className="text-muted-foreground text-xs">
+                Helps improve onboarding and evolve flows. Does not include prompts, config
+                contents, diffs, logs, file paths, provider responses, names, email addresses,
+                or API keys.
+                <div>
+                  <PrivacyPolicyButton />
+                </div>
+              </div>
+            </div>
+            <Switch
+              checked={!!productAnalyticsField.state.value}
+              onCheckedChange={async (checked) => {
+                const previousValue = !!productAnalyticsField.state.value;
+                productAnalyticsField.handleChange(checked);
+                try {
+                  await tauriAPI.ui.setPrefs({ productAnalyticsEnabled: checked });
+                  if (checked) {
+                    telemetry.setProductAnalyticsEnabled(true);
+                    telemetry.captureEvent({ name: "product_analytics_opt_in" });
+                  } else {
+                    telemetry.captureEvent({ name: "product_analytics_opt_out" });
+                    telemetry.setProductAnalyticsEnabled(false);
+                  }
+                } catch (error) {
+                  productAnalyticsField.handleChange(previousValue);
                   throw error;
                 }
               }}

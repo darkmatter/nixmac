@@ -7,7 +7,11 @@ import {
 } from "@opentelemetry/semantic-conventions";
 import posthog from "posthog-js";
 import { ForwardingSpanProcessor } from "./forwarding-processor";
-import { sanitizeProps, sanitizeTelemetryAttributes } from "./sanitize";
+import {
+  preparePostHogEvent,
+  sanitizeProps,
+  sanitizeTelemetryAttributes,
+} from "./sanitize";
 import type { TelemetryEvent, TelemetryProvider } from "./types";
 
 export interface TelemetryConfig {
@@ -17,7 +21,25 @@ export interface TelemetryConfig {
   environment: string;
 }
 
+export interface TelemetryInitialState {
+  diagnosticsEnabled: boolean;
+  productAnalyticsEnabled: boolean;
+}
+
 const SERVICE_NAME = "nixmac";
+const PRIVACY_SUPER_PROPERTIES = {
+  $geoip_disable: true,
+  $ip: null,
+  $process_person_profile: false,
+} as const;
+
+const registerPostHogSuperProperties = (config: TelemetryConfig) => {
+  posthog.register({
+    ...PRIVACY_SUPER_PROPERTIES,
+    environment: config.environment,
+    release: config.release,
+  });
+};
 
 // OTEL span attributes accept primitives only; coerce everything else to a
 // JSON string after sanitization so structured props survive the boundary.
@@ -54,19 +76,22 @@ const toSpanAttributes = (
  * Create the unified telemetry provider.
  *
  * Pipeline:
- * - PostHog (direct): product events, opt-in/out honoured at SDK + flag level.
- * - OTEL (WebTracerProvider → ForwardingSpanProcessor → Rust IPC): every event
- *   is mirrored as a span, and errors are recorded as ERROR-status spans with
- *   recordException(). The Rust backend exports these (e.g. to Sentry).
+ * - PostHog (direct): product events, opt-in/out honoured at SDK + flag level
+ *   and filtered through an event/property allowlist.
+ * - OTEL (WebTracerProvider → ForwardingSpanProcessor → Rust IPC): diagnostics
+ *   errors are recorded as ERROR-status spans with recordException(). The Rust
+ *   IPC bridge currently scrubs and logs forwarded spans; full span
+ *   reconstruction/export is a follow-up.
  *
  * Sanitization runs at the boundary for defense in depth, layered on top of the
  * constrained event taxonomy.
  */
 export function createTelemetryProvider(
   config: TelemetryConfig,
-  initiallyEnabled: boolean,
+  initialState: TelemetryInitialState,
 ): TelemetryProvider {
-  let enabled = initiallyEnabled;
+  let diagnosticsEnabled = initialState.diagnosticsEnabled;
+  let productAnalyticsEnabled = initialState.productAnalyticsEnabled;
   let posthogStarted = false;
 
   const tracerProvider = new WebTracerProvider({
@@ -87,35 +112,41 @@ export function createTelemetryProvider(
     capture_pageleave: false,
     disable_session_recording: true,
     persistence: "localStorage",
-    opt_out_capturing_by_default: !enabled,
+    opt_out_capturing_by_default: !productAnalyticsEnabled,
     sanitize_properties: (props) => sanitizeProps(props),
     loaded: (ph) => {
-      if (!enabled) ph.opt_out_capturing();
+      if (productAnalyticsEnabled) {
+        ph.opt_in_capturing();
+      } else {
+        ph.opt_out_capturing();
+      }
     },
   });
+  registerPostHogSuperProperties(config);
+  if (productAnalyticsEnabled) {
+    posthog.opt_in_capturing();
+  } else {
+    posthog.opt_out_capturing();
+  }
   posthogStarted = true;
 
   return {
-    get enabled() {
-      return enabled;
+    get diagnosticsEnabled() {
+      return diagnosticsEnabled;
+    },
+
+    get productAnalyticsEnabled() {
+      return productAnalyticsEnabled;
     },
 
     captureEvent(event: TelemetryEvent) {
-      if (!enabled) return;
-      const rawProps = "props" in event && event.props ? event.props : {};
-      const props = sanitizeProps(rawProps);
-
-      // PostHog (direct).
-      posthog.capture(event.name, props);
-
-      // OTEL span mirror.
-      const span = tracer.startSpan(event.name);
-      span.setAttributes(toSpanAttributes(props));
-      span.end();
+      if (!productAnalyticsEnabled) return;
+      const prepared = preparePostHogEvent(event);
+      posthog.capture(prepared.name, prepared.props);
     },
 
     captureError(error: Error, context?: Record<string, unknown>) {
-      if (!enabled) return;
+      if (!diagnosticsEnabled) return;
       const span = tracer.startSpan(`error.${error.name || "Error"}`);
       if (context) {
         const sanitized = sanitizeTelemetryAttributes(context);
@@ -133,14 +164,20 @@ export function createTelemetryProvider(
       span.end();
     },
 
-    setEnabled(next: boolean) {
-      enabled = next;
+    setDiagnosticsEnabled(next: boolean) {
+      diagnosticsEnabled = next;
+    },
+
+    setProductAnalyticsEnabled(next: boolean) {
+      productAnalyticsEnabled = next;
       if (!posthogStarted) return;
       if (next) {
+        registerPostHogSuperProperties(config);
         posthog.opt_in_capturing();
       } else {
         posthog.opt_out_capturing();
         posthog.reset();
+        registerPostHogSuperProperties(config);
       }
     },
 

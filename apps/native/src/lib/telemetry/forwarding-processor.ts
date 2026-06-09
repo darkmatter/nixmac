@@ -38,7 +38,8 @@ function serializeSpan(span: ReadableSpan): SerializedSpan {
 
 /**
  * SpanProcessor that forwards completed spans to the Rust backend over Tauri
- * IPC, where the unified OTEL pipeline exports them (e.g. to Sentry).
+ * IPC. The Rust bridge currently scrubs and logs forwarded spans; full
+ * reconstruction into the Rust-owned OTEL exporter is a follow-up.
  *
  * Forwarding is fire-and-forget: IPC failures must never throw inside the span
  * processor, so onEnd swallows rejections with a warning.

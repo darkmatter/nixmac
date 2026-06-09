@@ -128,6 +128,7 @@ export function SettingsDialog() {
       summaryModel: "openai/gpt-4o-mini",
       evolveProvider: "openrouter",
       evolveModel: "anthropic/claude-sonnet-4",
+      productAnalyticsEnabled: true,
       sendDiagnostics: false,
     },
   });
@@ -148,6 +149,7 @@ export function SettingsDialog() {
           form.setFieldValue("summaryModel", prefs.summaryModel ?? "openai/gpt-4o-mini");
           form.setFieldValue("evolveProvider", normalizeProvider(prefs.evolveProvider));
           form.setFieldValue("evolveModel", prefs.evolveModel ?? "anthropic/claude-sonnet-4");
+          form.setFieldValue("productAnalyticsEnabled", prefs.productAnalyticsEnabled ?? true);
           form.setFieldValue("sendDiagnostics", prefs.sendDiagnostics ?? false);
 
           setOpenrouterKeyStatus(prefs.openrouterApiKey ? "valid" : "idle");
@@ -253,16 +255,21 @@ export function SettingsDialog() {
             {activeTab === "general" && (
               <form.Field name="sendDiagnostics">
                 {(sendDiagnosticsField) => (
-                  <GeneralTab
-                    configDir={configDir}
-                    handleRefreshHosts={handleRefreshHosts}
-                    hasFlake={hasFlake}
-                    host={host}
-                    hosts={hosts}
-                    saveHost={saveHost}
-                    sendDiagnosticsField={sendDiagnosticsField}
-                    setSettingsOpen={setSettingsOpen}
-                  />
+                  <form.Field name="productAnalyticsEnabled">
+                    {(productAnalyticsField) => (
+                      <GeneralTab
+                        configDir={configDir}
+                        handleRefreshHosts={handleRefreshHosts}
+                        hasFlake={hasFlake}
+                        host={host}
+                        hosts={hosts}
+                        productAnalyticsField={productAnalyticsField}
+                        saveHost={saveHost}
+                        sendDiagnosticsField={sendDiagnosticsField}
+                        setSettingsOpen={setSettingsOpen}
+                      />
+                    )}
+                  </form.Field>
                 )}
               </form.Field>
             )}

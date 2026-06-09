@@ -8,8 +8,11 @@
  * - sanitizeTelemetryAttributes — was sanitizeSentryEvent
  * - sanitizeValue              — was sanitizeSentryValue
  * - sanitizeDiagnosticText     — unchanged
- * - sanitizeProps              — flat property-bag scrub for PostHog
+ * - preparePostHogEvent       — allowlisted product-event payload prep
+ * - sanitizeProps              — flat property-bag scrub for legacy callers
  */
+
+import type { TelemetryEvent } from "./types";
 
 const REDACTED = "[REDACTED]";
 const REDACTED_APP_CONTENT = "[REDACTED_APP_CONTENT]";
@@ -129,6 +132,52 @@ export function sanitizeTelemetryAttributes(event: unknown): unknown {
 // plus a non-printable strip suitable for embedding in JSON/HTML diagnostics output.
 export function sanitizeDiagnosticText(value: string): string {
   return sanitizeString(value).replace(/[^\t\x20-\x7e]/g, "");
+}
+
+type ProductEventName = TelemetryEvent["name"];
+
+export interface PreparedPostHogEvent {
+  name: ProductEventName;
+  props: Record<string, boolean | number | string>;
+}
+
+const POSTHOG_ALLOWED_PROPERTIES = {
+  app_launched: ["environment"],
+  app_ready: ["boot_ms"],
+  evolve_started: ["provider", "has_custom_model"],
+  evolve_completed: ["step"],
+  evolve_failed: ["stage"],
+  rollback_performed: [],
+  settings_changed: ["setting"],
+  diagnostics_opt_in: [],
+  diagnostics_opt_out: [],
+  product_analytics_opt_in: [],
+  product_analytics_opt_out: [],
+} satisfies Record<ProductEventName, readonly string[]>;
+
+const isPrimitiveProductValue = (
+  value: unknown,
+): value is boolean | number | string =>
+  typeof value === "boolean" ||
+  typeof value === "number" ||
+  typeof value === "string";
+
+export function preparePostHogEvent(
+  event: TelemetryEvent,
+): PreparedPostHogEvent {
+  const allowed = new Set<string>(POSTHOG_ALLOWED_PROPERTIES[event.name]);
+  const rawProps = "props" in event && event.props ? event.props : {};
+  const props: Record<string, boolean | number | string> = {};
+
+  for (const [key, value] of Object.entries(rawProps)) {
+    if (!(allowed.has(key) && isPrimitiveProductValue(value))) {
+      continue;
+    }
+    props[key] =
+      typeof value === "string" ? sanitizeDiagnosticText(value) : value;
+  }
+
+  return { name: event.name, props };
 }
 
 /**
