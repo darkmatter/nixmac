@@ -29,6 +29,8 @@ const failedStoriesFile = path.join(appRoot, "test-results", "failed-stories.jso
 /** @type {Array<{ file: string, name: string }>} */
 const failedStories = [];
 
+class BatchTimeoutError extends Error {}
+
 function recordFailure(file, name) {
   const relFile = path.relative(appRoot, path.resolve(file));
   if (!failedStories.some((entry) => entry.file === relFile && entry.name === name)) {
@@ -130,9 +132,11 @@ function runVitestForBatch(files, reportPath) {
       console.log("##[endgroup]");
 
       if (timedOut) {
-        // No reliable per-story report on a hard timeout; mark the batch wholesale.
-        for (const file of files) recordFailure(file, "(timed out)");
-        reject(new Error(`Timed out after ${perBatchTimeoutMs / 1000}s while running ${label}`));
+        reject(
+          new BatchTimeoutError(
+            `Timed out after ${perBatchTimeoutMs / 1000}s while running ${label}`
+          )
+        );
         return;
       }
 
@@ -150,6 +154,41 @@ function runVitestForBatch(files, reportPath) {
       reject(error);
     });
   });
+}
+
+async function runBatchWithTimeoutRetry(files, reportPath, index) {
+  try {
+    await runVitestForBatch(files, reportPath);
+    await collectFailuresFromReport(reportPath, files);
+    return true;
+  } catch (error) {
+    if (error instanceof BatchTimeoutError && files.length > 1) {
+      console.error(`::warning::${error.message}; retrying files individually`);
+      let allRetriesPassed = true;
+
+      for (const [fileIndex, file] of files.entries()) {
+        const retryReportPath = path.join(reportDir, `batch-${index}-retry-${fileIndex}.json`);
+        try {
+          await runVitestForBatch([file], retryReportPath);
+          await collectFailuresFromReport(retryReportPath, [file]);
+        } catch (retryError) {
+          console.error(`::error::${retryError.message}`);
+          allRetriesPassed = false;
+          await collectFailuresFromReport(retryReportPath, [file]);
+        }
+
+        if (!allRetriesPassed && failedStories.length >= maxFailuresToCollect) {
+          break;
+        }
+      }
+
+      return allRetriesPassed;
+    }
+
+    console.error(`::error::${error.message}`);
+    await collectFailuresFromReport(reportPath, files);
+    return false;
+  }
 }
 
 const storyFiles = (await Promise.all(storyRoots.map(listStoryFiles))).flat().sort();
@@ -172,13 +211,9 @@ const reportDir = await mkdtempReportDir();
 try {
   for (const [index, storyFileBatch] of batches.entries()) {
     const reportPath = path.join(reportDir, `batch-${index}.json`);
-    try {
-      await runVitestForBatch(storyFileBatch, reportPath);
-    } catch (error) {
-      console.error(`::error::${error.message}`);
+    const passed = await runBatchWithTimeoutRetry(storyFileBatch, reportPath, index);
+    if (!passed) {
       process.exitCode = 1;
-    } finally {
-      await collectFailuresFromReport(reportPath, storyFileBatch);
     }
 
     if (process.exitCode === 1 && failedStories.length >= maxFailuresToCollect) {
