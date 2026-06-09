@@ -22,6 +22,9 @@ const batchSize = Math.max(1, Number(process.env.STORYBOOK_BATCH_SIZE) || 6);
 // Budget scales with batch size (~60s/file) plus a fixed startup allowance so a
 // bigger batch isn't SIGKILLed just for doing more work.
 const perBatchTimeoutMs = 30_000 + batchSize * 60_000;
+// Individual retry runs should identify a hung story quickly enough to finish
+// before the workflow-level timeout kills the whole job without logs.
+const perRetryTimeoutMs = Number(process.env.STORYBOOK_RETRY_TIMEOUT_MS) || 60_000;
 
 // Aggregated record of every story whose snapshot failed, consumed by the
 // failed-story screenshot pipeline (scripts/resolve-failed-stories.mjs).
@@ -93,7 +96,7 @@ function chunkFiles(files) {
   return chunks;
 }
 
-function runVitestForBatch(files, reportPath) {
+function runVitestForBatch(files, reportPath, timeoutMs = perBatchTimeoutMs) {
   return new Promise((resolve, reject) => {
     const label = files.join(", ");
 
@@ -125,7 +128,7 @@ function runVitestForBatch(files, reportPath) {
           child.kill("SIGKILL");
         }
       }, 5_000).unref();
-    }, perBatchTimeoutMs);
+    }, timeoutMs);
 
     child.on("exit", (code, signal) => {
       clearTimeout(timeout);
@@ -134,7 +137,7 @@ function runVitestForBatch(files, reportPath) {
       if (timedOut) {
         reject(
           new BatchTimeoutError(
-            `Timed out after ${perBatchTimeoutMs / 1000}s while running ${label}`
+            `Timed out after ${timeoutMs / 1000}s while running ${label}`
           )
         );
         return;
@@ -169,7 +172,7 @@ async function runBatchWithTimeoutRetry(files, reportPath, index) {
       for (const [fileIndex, file] of files.entries()) {
         const retryReportPath = path.join(reportDir, `batch-${index}-retry-${fileIndex}.json`);
         try {
-          await runVitestForBatch([file], retryReportPath);
+          await runVitestForBatch([file], retryReportPath, perRetryTimeoutMs);
           await collectFailuresFromReport(retryReportPath, [file]);
         } catch (retryError) {
           console.error(`::error::${retryError.message}`);
