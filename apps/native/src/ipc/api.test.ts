@@ -67,6 +67,35 @@ describe("tauriAPI.ui.getPrefs", () => {
     expect(mocks.invoke).toHaveBeenCalledWith("ui_get_prefs");
   });
 
+  it("migrates legacy OpenAI provider prefs before caching", async () => {
+    const loaded = prefs({
+      openrouterApiKey: "openrouter-secret",
+      openaiApiKey: "",
+      evolveProvider: "openai",
+      evolveModel: "gpt-4o",
+      summaryProvider: "openai",
+      summaryModel: "gpt-4o-mini",
+    });
+    mocks.invoke.mockResolvedValueOnce(loaded).mockResolvedValueOnce({ ok: true });
+    const { tauriAPI } = await import("./api");
+
+    const migrated = await tauriAPI.ui.getPrefs();
+
+    expect(migrated.evolveProvider).toBe("openrouter");
+    expect(migrated.evolveModel).toBe("anthropic/claude-sonnet-4");
+    expect(migrated.summaryProvider).toBe("openrouter");
+    expect(migrated.summaryModel).toBe("openai/gpt-4o-mini");
+    expect(mocks.invoke).toHaveBeenNthCalledWith(1, "ui_get_prefs");
+    expect(mocks.invoke).toHaveBeenNthCalledWith(2, "ui_set_prefs", {
+      prefs: {
+        evolveProvider: "openrouter",
+        evolveModel: "anthropic/claude-sonnet-4",
+        summaryProvider: "openrouter",
+        summaryModel: "openai/gpt-4o-mini",
+      },
+    });
+  });
+
   it("reuses loaded preferences until a write invalidates the cache", async () => {
     const initial = prefs();
     const afterWrite = prefs({ developerMode: true });

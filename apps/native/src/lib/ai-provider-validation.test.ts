@@ -13,11 +13,11 @@ const NO_CLI_TOOLS = { claude: false, codex: false, opencode: false };
 describe("getProviderConfigInvalidReason", () => {
   it("requires an API key for the OpenRouter provider", () => {
     expect(getProviderConfigInvalidReason("openrouter", EMPTY_PREFS, NO_CLI_TOOLS)).toBe(
-      "No API key set",
+      "No OpenRouter API key set",
     );
   });
 
-  it("accepts either OpenRouter or OpenAI keys for OpenRouter-compatible providers", () => {
+  it("requires an OpenRouter key for the OpenRouter provider", () => {
     expect(
       getProviderConfigInvalidReason(
         "openrouter",
@@ -28,6 +28,23 @@ describe("getProviderConfigInvalidReason", () => {
     expect(
       getProviderConfigInvalidReason(
         "openrouter",
+        { ...EMPTY_PREFS, openaiApiKey: "sk-openai-key" },
+        NO_CLI_TOOLS,
+      ),
+    ).toBe("No OpenRouter API key set");
+  });
+
+  it("requires an OpenAI key for the OpenAI provider", () => {
+    expect(
+      getProviderConfigInvalidReason(
+        "openai",
+        { ...EMPTY_PREFS, openrouterApiKey: "sk-or-key" },
+        NO_CLI_TOOLS,
+      ),
+    ).toBe("No OpenAI API key set");
+    expect(
+      getProviderConfigInvalidReason(
+        "openai",
         { ...EMPTY_PREFS, openaiApiKey: "sk-openai-key" },
         NO_CLI_TOOLS,
       ),

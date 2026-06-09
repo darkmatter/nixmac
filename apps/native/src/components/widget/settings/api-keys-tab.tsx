@@ -11,6 +11,9 @@ interface ApiKeysTabProps {
   openrouterKeyStatus: ApiKeyStatus;
   verifyOpenrouterKey: (key: string) => Promise<void>;
   openrouterTimeoutRef: React.RefObject<NodeJS.Timeout | null>;
+  // OpenAI
+  openaiApiKeyField: AnyFieldApi;
+  onSaveOpenaiKey: (key: string) => Promise<void>;
   // Ollama
   ollamaApiBaseUrlField: AnyFieldApi;
   onSaveOllamaUrl: (url: string) => Promise<void>;
@@ -212,6 +215,8 @@ export function ApiKeysTab({
   openrouterKeyStatus,
   verifyOpenrouterKey,
   openrouterTimeoutRef,
+  openaiApiKeyField,
+  onSaveOpenaiKey,
   ollamaApiBaseUrlField,
   onSaveOllamaUrl,
   vllmApiBaseUrlField,
@@ -250,6 +255,31 @@ export function ApiKeysTab({
               verifyKey={verifyOpenrouterKey}
               timeoutRef={openrouterTimeoutRef}
               form={form}
+            />
+          </div>
+
+          {/* OpenAI API Key */}
+          <div className="rounded-lg border border-border p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-emerald-500 to-teal-500">
+                <span className="font-bold text-white text-xs">OA</span>
+              </div>
+              <div>
+                <h3 className="font-medium text-sm">OpenAI</h3>
+                <p className="text-muted-foreground text-xs">
+                  Direct OpenAI API access for GPT and reasoning models
+                </p>
+              </div>
+            </div>
+            <UrlInput
+              field={openaiApiKeyField}
+              form={form}
+              id="openaiApiKey"
+              label="API Key"
+              onSave={onSaveOpenaiKey}
+              placeholder="sk-..."
+              type="password"
+              description="Saved locally and used only when OpenAI is selected as the provider."
             />
           </div>
 
@@ -316,9 +346,8 @@ export function ApiKeysTab({
           {/* Info box */}
           <div className="rounded-lg bg-muted/50 p-3">
             <p className="text-muted-foreground text-xs">
-              <strong className="text-foreground">Tip:</strong> OpenRouter is the supported cloud
-              model path in the main UI. Use Ollama or OpenAI Compatible when you want local or
-              self-hosted models.
+              <strong className="text-foreground">Tip:</strong> Select the matching provider in AI
+              Models for the key you add here. OpenAI and OpenRouter keys are stored separately.
             </p>
           </div>
         </div>

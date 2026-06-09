@@ -11,6 +11,7 @@ use tauri::{AppHandle, Runtime};
 use async_trait::async_trait;
 
 const DEFAULT_SUMMARY_MODEL: &str = "openai/gpt-4o-mini";
+const DEFAULT_OPENAI_SUMMARY_MODEL: &str = "gpt-4o-mini";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 
 /// Token consumption reported by a provider for a single completion call.
@@ -140,27 +141,39 @@ pub fn create_provider<R: Runtime>(
 
             Ok(Box::new(OpenAIClient::new(&api_key, &base_url, &model)))
         }
+        "openai" => {
+            let model = configured_model(store_model, "SUMMARY_MODEL")
+                .unwrap_or_else(|| DEFAULT_OPENAI_SUMMARY_MODEL.to_string());
+
+            let (key, base_url) = if let Some(app) = app_handle {
+                crate::storage::store::get_effective_openai_provider_credential(app)?
+            } else {
+                crate::storage::store::get_env_openai_provider_credential()
+            }
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "No OpenAI API key found. Please add your API key in Settings to get started."
+                )
+            })?;
+
+            let model = model.strip_prefix("openai/").unwrap_or(&model).to_string();
+
+            Ok(Box::new(OpenAIClient::new(&key, base_url, &model)))
+        }
         _ => {
             let model = configured_model(store_model, "SUMMARY_MODEL")
                 .unwrap_or_else(|| DEFAULT_SUMMARY_MODEL.to_string());
 
             let (key, base_url) = if let Some(app) = app_handle {
-                crate::storage::store::get_effective_openai_compatible_credential(app)?
+                crate::storage::store::get_effective_openrouter_provider_credential(app)?
             } else {
-                crate::storage::store::get_env_openai_compatible_credential()
+                crate::storage::store::get_env_openrouter_provider_credential()
             }
             .ok_or_else(|| {
                 anyhow::anyhow!(
-                    "No API key found. Please add your API key in Settings to get started."
+                    "No OpenRouter API key found. Please add your API key in Settings to get started."
                 )
             })?;
-
-            // Strip OpenRouter-style "openai/" prefix for direct OpenAI usage
-            let model = if base_url == crate::storage::store::OPENAI_BASE_URL {
-                model.strip_prefix("openai/").unwrap_or(&model).to_string()
-            } else {
-                model
-            };
 
             Ok(Box::new(OpenAIClient::new(&key, base_url, &model)))
         }

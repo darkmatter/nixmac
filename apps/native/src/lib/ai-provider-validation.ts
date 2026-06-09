@@ -19,10 +19,12 @@ export function getProviderConfigInvalidReason(
     }
   }
 
-  if (provider === "openai" || provider === "openrouter") {
-    const hasOpenrouterKey = !!prefs.openrouterApiKey?.trim();
-    const hasOpenaiKey = !!prefs.openaiApiKey?.trim();
-    return hasOpenrouterKey || hasOpenaiKey ? null : "No API key set";
+  if (provider === "openrouter") {
+    return prefs.openrouterApiKey?.trim() ? null : "No OpenRouter API key set";
+  }
+
+  if (provider === "openai") {
+    return prefs.openaiApiKey?.trim() ? null : "No OpenAI API key set";
   }
 
   if (provider === "vllm") {

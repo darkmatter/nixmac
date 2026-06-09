@@ -38,7 +38,7 @@ function isPlainInputCliProvider(provider: string): boolean {
 
 const DEFAULT_EVOLVE_MODEL: Record<string, string> = {
   openrouter: "anthropic/claude-sonnet-4",
-  openai: "anthropic/claude-sonnet-4",
+  openai: "gpt-4o",
   ollama: "",
   vllm: "gpt-oss-120b",
   claude: "",
@@ -48,13 +48,29 @@ const DEFAULT_EVOLVE_MODEL: Record<string, string> = {
 
 const DEFAULT_SUMMARY_MODEL: Record<string, string> = {
   openrouter: "openai/gpt-4o-mini",
-  openai: "openai/gpt-4o-mini",
+  openai: "gpt-4o-mini",
   ollama: "llama3.1",
   vllm: "gpt-oss-120b",
   claude: "",
   codex: "",
   opencode: "",
 };
+
+function modelPlaceholder(provider: string, fallback: string): string {
+  if (provider === "openai") {
+    return fallback;
+  }
+  if (provider === "ollama") {
+    return fallback === "gpt-4o" ? "" : "llama3.1";
+  }
+  if (provider === "vllm") {
+    return "gpt-oss-120b";
+  }
+  if (provider === "opencode") {
+    return "Leave empty for CLI default";
+  }
+  return fallback === "gpt-4o" ? "anthropic/claude-sonnet-4" : "openai/gpt-4o-mini";
+}
 
 function useCliToolStatus() {
   const [status, setStatus] = useState<CliToolsState | null>(null);
@@ -108,6 +124,7 @@ export function AiModelsTab({
     <>
       {([
         { value: "openrouter", label: "OpenRouter" },
+        { value: "openai", label: "OpenAI" },
         { value: "ollama", label: "Ollama" },
         { value: "vllm", label: "OpenAI Compatible" },
       ] as const).map(({ value, label }) => {
@@ -143,8 +160,7 @@ export function AiModelsTab({
       <div>
         <h2 className="mb-4 font-semibold text-base">AI Models</h2>
         <p className="mb-4 text-muted-foreground text-xs">
-          OpenRouter is the supported cloud provider in the main UI. Use local or self-hosted
-          providers when you want model routing outside OpenRouter.
+          Choose a cloud provider, local model, or self-hosted OpenAI-compatible endpoint.
         </p>
         <div className="space-y-6">
           {/* Evolution Model */}
@@ -217,15 +233,7 @@ export function AiModelsTab({
                             await tauriAPI.ui.setPrefs({ evolveModel: value });
                           }}
                           onBlur={evolveModelField.handleBlur}
-                          placeholder={
-                            evolveProvider === "ollama"
-                              ? ""
-                              : evolveProvider === "vllm"
-                                ? "gpt-oss-120b"
-                                : evolveProvider === "opencode"
-                                  ? "Leave empty for CLI default"
-                                  : "anthropic/claude-sonnet-4"
-                          }
+                          placeholder={modelPlaceholder(evolveProvider, "gpt-4o")}
                         />
                       )}
                     </>
@@ -305,15 +313,7 @@ export function AiModelsTab({
                             await tauriAPI.ui.setPrefs({ summaryModel: value });
                           }}
                           onBlur={summaryModelField.handleBlur}
-                          placeholder={
-                            summaryProvider === "ollama"
-                              ? "llama3.1"
-                              : summaryProvider === "vllm"
-                                ? "gpt-oss-120b"
-                                : summaryProvider === "opencode"
-                                  ? "Leave empty for CLI default"
-                                  : "openai/gpt-4o-mini"
-                          }
+                          placeholder={modelPlaceholder(summaryProvider, "gpt-4o-mini")}
                         />
                       )}
                     </>
