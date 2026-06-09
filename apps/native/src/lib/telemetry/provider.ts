@@ -111,6 +111,7 @@ export function createTelemetryProvider(
     capture_pageview: false,
     capture_pageleave: false,
     disable_session_recording: true,
+    ip: false,
     persistence: "localStorage",
     opt_out_capturing_by_default: !productAnalyticsEnabled,
     sanitize_properties: (props) => sanitizeProps(props),

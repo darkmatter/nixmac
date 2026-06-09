@@ -144,6 +144,7 @@ describe("createTelemetryProvider", () => {
         capture_pageleave: false,
         capture_pageview: false,
         disable_session_recording: true,
+        ip: false,
         opt_out_capturing_by_default: false,
         sanitize_properties: expect.any(Function),
       }),
