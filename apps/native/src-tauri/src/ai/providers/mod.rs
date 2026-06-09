@@ -104,6 +104,20 @@ pub(crate) fn resolve_legacy_openai_provider(
     }
 }
 
+pub(crate) fn resolve_unconfigured_openai_compatible_provider(
+    provider: Option<String>,
+    has_openai_credential: bool,
+    has_openrouter_credential: bool,
+) -> String {
+    provider.unwrap_or_else(|| {
+        if has_openai_credential && !has_openrouter_credential {
+            "openai".to_string()
+        } else {
+            "openrouter".to_string()
+        }
+    })
+}
+
 pub(crate) fn openrouter_model_slug_or_default(
     model: Option<String>,
     default_model: &str,
@@ -165,9 +179,11 @@ pub fn create_provider<R: Runtime>(
         .and_then(|app| crate::storage::store::get_summary_provider(app).ok())
         .flatten();
 
-    let provider = store_provider
-        .or_else(|| std::env::var("SUMMARY_AI_PROVIDER").ok())
-        .unwrap_or_else(|| "openrouter".to_string());
+    let provider = resolve_unconfigured_openai_compatible_provider(
+        store_provider.or_else(|| std::env::var("SUMMARY_AI_PROVIDER").ok()),
+        has_openai_provider_credential(app_handle)?,
+        has_openrouter_provider_credential(app_handle)?,
+    );
     let store_model = app_handle
         .and_then(|app| crate::storage::store::get_summary_model(app).ok())
         .flatten();
@@ -258,7 +274,10 @@ pub fn create_provider<R: Runtime>(
 
 #[cfg(test)]
 mod tests {
-    use super::{openrouter_model_slug_or_default, resolve_legacy_openai_provider};
+    use super::{
+        openrouter_model_slug_or_default, resolve_legacy_openai_provider,
+        resolve_unconfigured_openai_compatible_provider,
+    };
 
     #[test]
     fn legacy_openai_provider_falls_back_to_openrouter_when_only_openrouter_key_exists() {
@@ -306,6 +325,31 @@ mod tests {
     fn non_openai_provider_is_unchanged() {
         let provider =
             resolve_legacy_openai_provider("ollama".to_string(), Some("gpt-4o"), false, true);
+
+        assert_eq!(provider, "ollama");
+    }
+
+    #[test]
+    fn unconfigured_provider_uses_openai_when_only_openai_key_exists() {
+        let provider = resolve_unconfigured_openai_compatible_provider(None, true, false);
+
+        assert_eq!(provider, "openai");
+    }
+
+    #[test]
+    fn unconfigured_provider_preserves_openrouter_default_when_both_keys_exist() {
+        let provider = resolve_unconfigured_openai_compatible_provider(None, true, true);
+
+        assert_eq!(provider, "openrouter");
+    }
+
+    #[test]
+    fn configured_provider_overrides_available_credentials() {
+        let provider = resolve_unconfigured_openai_compatible_provider(
+            Some("ollama".to_string()),
+            true,
+            false,
+        );
 
         assert_eq!(provider, "ollama");
     }

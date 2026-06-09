@@ -136,4 +136,46 @@ describe("verified API key save flow", () => {
     expect(saveKey).toHaveBeenCalledTimes(1);
     expect(saveKey).toHaveBeenCalledWith("");
   });
+
+  it("replays a newer clear after an older verified save has already started", async () => {
+    const events: string[] = [];
+    let resolveFirstSave: () => void = () => {};
+    const saveKey = vi.fn(async (key: string) => {
+      events.push(`save:start:${key}`);
+      if (key === "sk-old") {
+        await new Promise<void>((resolve) => {
+          resolveFirstSave = resolve;
+        });
+      }
+      events.push(`save:end:${key}`);
+    });
+    const verifyKey = vi.fn().mockResolvedValue(true);
+    const handleKey = createVerifiedApiKeyHandler({
+      saveKey,
+      setStatus: (status) => events.push(`status:${status}`),
+      verifyKey,
+    });
+
+    const oldSave = handleKey("sk-old");
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(saveKey).toHaveBeenCalledWith("sk-old");
+
+    const clearSave = handleKey("");
+    await Promise.resolve();
+    expect(saveKey).toHaveBeenCalledTimes(1);
+
+    resolveFirstSave();
+    await Promise.all([oldSave, clearSave]);
+
+    expect(saveKey.mock.calls.map(([key]) => key)).toEqual(["sk-old", ""]);
+    expect(events).toEqual([
+      "status:verifying",
+      "save:start:sk-old",
+      "status:idle",
+      "save:end:sk-old",
+      "save:start:",
+      "save:end:",
+    ]);
+  });
 });

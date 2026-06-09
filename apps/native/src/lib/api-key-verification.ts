@@ -58,13 +58,27 @@ export function createVerifiedApiKeyHandler({
   verifyKey: (key: string) => Promise<boolean>;
 }): (key: string) => Promise<void> {
   let requestId = 0;
+  let saveQueue = Promise.resolve();
+
+  const saveIfCurrent = async (currentRequestId: number, key: string) => {
+    const queuedSave = saveQueue.then(async () => {
+      if (currentRequestId !== requestId) return false;
+      await saveKey(key);
+      return currentRequestId === requestId;
+    });
+    saveQueue = queuedSave.then(
+      () => undefined,
+      () => undefined,
+    );
+    return queuedSave;
+  };
 
   return async (key: string) => {
     const currentRequestId = (requestId += 1);
     const trimmedKey = key.trim();
     if (!trimmedKey) {
       setStatus("idle");
-      await saveKey("");
+      await saveIfCurrent(currentRequestId, "");
       return;
     }
 
@@ -73,8 +87,8 @@ export function createVerifiedApiKeyHandler({
     if (currentRequestId !== requestId) return;
 
     if (valid) {
-      await saveKey(trimmedKey);
-      if (currentRequestId !== requestId) return;
+      const savedCurrent = await saveIfCurrent(currentRequestId, trimmedKey);
+      if (!savedCurrent) return;
       setStatus("valid");
       return;
     }
