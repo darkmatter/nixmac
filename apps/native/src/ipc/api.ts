@@ -93,8 +93,6 @@ export const tauriAPI = {
   },
   nix: {
     check: () => invoke<NixCheckResult>("nix_check"),
-    installStart: () => invoke<OkResult>("nix_install_start"),
-    prefetchDarwinRebuild: () => invoke<OkResult>("darwin_rebuild_prefetch"),
   },
   flake: {
     listHosts: () => invoke<string[]>("flake_list_hosts"),
