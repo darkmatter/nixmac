@@ -72,7 +72,29 @@ describe("migrateLegacyOpenaiProviderPrefs", () => {
     expect(result.update).toEqual(result.values);
   });
 
-  it("keeps direct openai prefs when an OpenAI key exists", () => {
+  it("preserves legacy OpenRouter slugs when both OpenRouter and OpenAI keys exist", () => {
+    const result = migrateLegacyOpenaiProviderPrefs({
+      ...PREFS,
+      openrouterApiKey: "sk-or-key",
+      openaiApiKey: "sk-openai-key",
+      evolveProvider: "openai",
+      evolveModel: "anthropic/claude-sonnet-4",
+      summaryProvider: "openai",
+      summaryModel: "gpt-4o-mini",
+    });
+
+    expect(result.values).toEqual({
+      evolveProvider: "openrouter",
+      evolveModel: "anthropic/claude-sonnet-4",
+      summaryProvider: "openai",
+      summaryModel: "gpt-4o-mini",
+    });
+    expect(result.update).toEqual({
+      evolveProvider: "openrouter",
+    });
+  });
+
+  it("keeps direct openai prefs when both keys exist with a bare OpenAI model", () => {
     const result = migrateLegacyOpenaiProviderPrefs({
       ...PREFS,
       openrouterApiKey: "sk-or-key",

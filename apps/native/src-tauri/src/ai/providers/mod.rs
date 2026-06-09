@@ -87,10 +87,17 @@ fn require_local_model(
 
 pub(crate) fn resolve_legacy_openai_provider(
     provider: String,
+    model: Option<&str>,
     has_openai_credential: bool,
     has_openrouter_credential: bool,
 ) -> String {
-    if provider == "openai" && !has_openai_credential && has_openrouter_credential {
+    let uses_openrouter_model = model
+        .and_then(crate::utils::non_empty_trimmed_string)
+        .map_or(true, |value| value.contains('/'));
+    if provider == "openai"
+        && has_openrouter_credential
+        && (!has_openai_credential || uses_openrouter_model)
+    {
         "openrouter".to_string()
     } else {
         provider
@@ -129,6 +136,7 @@ fn has_openrouter_provider_credential<R: Runtime>(
 fn resolve_summary_provider<R: Runtime>(
     app_handle: Option<&AppHandle<R>>,
     provider: String,
+    model: Option<&str>,
 ) -> Result<(String, bool)> {
     if provider != "openai" {
         return Ok((provider, false));
@@ -136,12 +144,13 @@ fn resolve_summary_provider<R: Runtime>(
 
     let resolved = resolve_legacy_openai_provider(
         provider,
+        model,
         has_openai_provider_credential(app_handle)?,
         has_openrouter_provider_credential(app_handle)?,
     );
 
     if resolved == "openrouter" {
-        log::info!("Using OpenRouter for legacy OpenAI summary provider because no direct OpenAI key is configured");
+        log::info!("Using OpenRouter for legacy OpenAI summary provider compatibility");
     }
     let used_legacy_openai_fallback = resolved == "openrouter";
 
@@ -159,11 +168,12 @@ pub fn create_provider<R: Runtime>(
     let provider = store_provider
         .or_else(|| std::env::var("SUMMARY_AI_PROVIDER").ok())
         .unwrap_or_else(|| "openrouter".to_string());
-    let (provider, used_legacy_openai_fallback) = resolve_summary_provider(app_handle, provider)?;
-
     let store_model = app_handle
         .and_then(|app| crate::storage::store::get_summary_model(app).ok())
         .flatten();
+    let configured_summary_model = configured_model(store_model.clone(), "SUMMARY_MODEL");
+    let (provider, used_legacy_openai_fallback) =
+        resolve_summary_provider(app_handle, provider, configured_summary_model.as_deref())?;
 
     match provider.as_str() {
         "claude" | "codex" | "opencode" => {
@@ -172,8 +182,7 @@ pub fn create_provider<R: Runtime>(
                 "codex" => CliTool::Codex,
                 _ => CliTool::OpenCode,
             };
-            let model =
-                configured_model(store_model, "SUMMARY_MODEL").unwrap_or_else(|| provider.clone());
+            let model = configured_summary_model.unwrap_or_else(|| provider.clone());
             Ok(Box::new(CliCompletionClient::new(tool, model)))
         }
         "ollama" => {
@@ -206,7 +215,7 @@ pub fn create_provider<R: Runtime>(
             Ok(Box::new(OpenAIClient::new(&api_key, &base_url, &model)))
         }
         "openai" => {
-            let model = configured_model(store_model, "SUMMARY_MODEL")
+            let model = configured_summary_model
                 .unwrap_or_else(|| DEFAULT_OPENAI_SUMMARY_MODEL.to_string());
 
             let (key, base_url) = if let Some(app) = app_handle {
@@ -225,11 +234,10 @@ pub fn create_provider<R: Runtime>(
             Ok(Box::new(OpenAIClient::new(&key, base_url, &model)))
         }
         _ => {
-            let configured_model = configured_model(store_model, "SUMMARY_MODEL");
             let model = if used_legacy_openai_fallback {
-                openrouter_model_slug_or_default(configured_model, DEFAULT_SUMMARY_MODEL)
+                openrouter_model_slug_or_default(configured_summary_model, DEFAULT_SUMMARY_MODEL)
             } else {
-                configured_model.unwrap_or_else(|| DEFAULT_SUMMARY_MODEL.to_string())
+                configured_summary_model.unwrap_or_else(|| DEFAULT_SUMMARY_MODEL.to_string())
             };
 
             let (key, base_url) = if let Some(app) = app_handle {
@@ -254,21 +262,43 @@ mod tests {
 
     #[test]
     fn legacy_openai_provider_falls_back_to_openrouter_when_only_openrouter_key_exists() {
-        let provider = resolve_legacy_openai_provider("openai".to_string(), false, true);
+        let provider =
+            resolve_legacy_openai_provider("openai".to_string(), Some("gpt-4o"), false, true);
 
         assert_eq!(provider, "openrouter");
     }
 
     #[test]
-    fn direct_openai_provider_stays_openai_when_openai_key_exists() {
-        let provider = resolve_legacy_openai_provider("openai".to_string(), true, true);
+    fn legacy_openai_provider_falls_back_to_openrouter_for_openrouter_model_slug() {
+        let provider = resolve_legacy_openai_provider(
+            "openai".to_string(),
+            Some("anthropic/claude-sonnet-4"),
+            true,
+            true,
+        );
+
+        assert_eq!(provider, "openrouter");
+    }
+
+    #[test]
+    fn legacy_openai_provider_falls_back_to_openrouter_for_missing_model() {
+        let provider = resolve_legacy_openai_provider("openai".to_string(), None, true, true);
+
+        assert_eq!(provider, "openrouter");
+    }
+
+    #[test]
+    fn direct_openai_provider_stays_openai_when_openai_key_exists_with_bare_model() {
+        let provider =
+            resolve_legacy_openai_provider("openai".to_string(), Some("gpt-4o"), true, true);
 
         assert_eq!(provider, "openai");
     }
 
     #[test]
     fn non_openai_provider_is_unchanged() {
-        let provider = resolve_legacy_openai_provider("ollama".to_string(), false, true);
+        let provider =
+            resolve_legacy_openai_provider("ollama".to_string(), Some("gpt-4o"), false, true);
 
         assert_eq!(provider, "ollama");
     }
