@@ -9,10 +9,10 @@
 //! configurable base URL and will function against any backend that implements
 //! the documented endpoints.
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use serde::{Deserialize, Serialize};
 
-use super::signing::{authorization_header, SigningRequest};
+use super::signing::{SigningRequest, authorization_header};
 use crate::shared_types::{AuthAccount, SyncRemoteStatus};
 
 /// Secret material needed to sign authenticated sync requests.

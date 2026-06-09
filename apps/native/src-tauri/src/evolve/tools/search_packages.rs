@@ -1,6 +1,6 @@
 //! `search_packages` tool: wrapper around `nix search`.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 use crate::evolve::messages::Tool;
 use crate::evolve::search_packages::execute_search_packages;

@@ -97,6 +97,7 @@ export default defineConfig({
         main: path.resolve(__dirname, "index.html"),
         "preview-indicator": path.resolve(__dirname, "preview-indicator.html"),
         "peek-icon": path.resolve(__dirname, "src/peek-icon.html"),
+        "evolve-mascot": path.resolve(__dirname, "evolve-mascot.html"),
       },
     },
   },

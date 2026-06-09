@@ -11,24 +11,16 @@ pub async fn darwin_evolve(
     evolve::session_control::set_evolve_cancelled(false);
 
     // Create a session transcript log for this evolution and record the prompt.
-    let session_log = match crate::state::session_log::create_session_log() {
-        Ok(path) => Some(path),
-        Err(e) => {
-            log::warn!("Failed to create session transcript log: {e}");
-            None
-        }
-    };
-
+    let session_log = crate::state::session_log::create_session_log().ok();
     if let Some(ref path) = session_log {
         crate::state::session_log::set_session_path(Some(path.clone()));
         crate::state::session_log::append_event(
-            &path,
+            path,
             "prompt",
-            &serde_json::json!({ "description": &description }),
+            &serde_json::json!({ "description": description }),
         )
         .await;
     }
-
 
     let result =
         match evolve::lifecycle::backup_evolve_and_record_changeset(&app, &description, None).await
@@ -47,20 +39,6 @@ pub async fn darwin_evolve(
                         failure.telemetry.build_attempts
                     );
                     // Don't send to Sentry if it was a user-initiated cancellation
-                    if let Some(ref path) = session_log {
-                        crate::state::session_log::append_event(
-                            path,
-                            "result",
-                            &serde_json::json!({
-                                "ok": false,
-                                "cancelled": true,
-                                "error": failure.error.clone(),
-                                "iterations": failure.telemetry.iterations,
-                                "buildAttempts": failure.telemetry.build_attempts,
-                            }),
-                        )
-                        .await;
-                    }
                     crate::state::session_log::set_session_path(None);
                     return Err(failure.error);
                 }
@@ -70,17 +48,8 @@ pub async fn darwin_evolve(
                     failure.telemetry.iterations,
                     failure.telemetry.build_attempts
                 );
-                let error = failure.error;
-                if let Some(ref path) = session_log {
-                    crate::state::session_log::append_event(
-                        path,
-                        "result",
-                        &serde_json::json!({ "cancelled": false, "error": &error }),
-                    )
-                    .await;
-                }
                 crate::state::session_log::set_session_path(None);
-                return Err(capture_err("darwin_evolve", error));
+                return Err(capture_err("darwin_evolve", failure.error));
             }
         };
 

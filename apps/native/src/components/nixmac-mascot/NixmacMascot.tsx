@@ -6,8 +6,6 @@
 // isolated document our stylesheet can't reach.
 //
 //   <NixmacMascot size={160} />
-//
-// Vite types `?raw` as string via "vite/client" (referenced in vite-env.d.ts).
 import type { CSSProperties } from "react";
 import rawSvg from "./nixmac-mascot.svg?raw";
 import "./nixmac-mascot.css";

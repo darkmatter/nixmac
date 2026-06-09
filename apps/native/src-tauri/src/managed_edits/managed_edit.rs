@@ -19,8 +19,8 @@ pub fn prepare_managed_edit(app: &AppHandle) -> Result<ManagedEditContext> {
         git::status(&dir).context("Failed to get pre-edit working tree status")?;
 
     let pool = app.state::<db::DbPool>();
-    let _base_commit_id = db::commits::store_head_commit(&pool, &dir, None)
-        .context("Failed to store HEAD commit")?;
+    let _base_commit_id =
+        db::commits::store_head_commit(&pool, &dir, None).context("Failed to store HEAD commit")?;
 
     let pre_state = evolve_state::get(app).unwrap_or_default();
     let branch = git::current_branch(&dir).unwrap_or_else(|| "main".to_string());

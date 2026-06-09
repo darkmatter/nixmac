@@ -1,6 +1,7 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
 import { NixmacMascot } from "./NixmacMascot";
+import { NixmacMascotCube } from "./NixmacMascotCube";
 import { NixmacMascotLottie } from "./NixmacMascotLottie";
 
 const meta = preview.meta({
@@ -23,12 +24,22 @@ export default meta;
 export const Lottie = meta.story({});
 
 /**
- * The intermittent hop + 360° spin. Sped up 2.5× here so it's easy to catch —
- * the default loop fires the hop about once every 8 seconds.
+ * The intermittent hop + 360° (Z-axis) spin. Sped up 2.5× here so it's easy to
+ * catch — the default loop fires the hop about once every 8 seconds.
  */
 export const HopAndSpin = meta.story({
   name: "Hop & Spin",
   args: { size: 220, speed: 2.5 },
+});
+
+/**
+ * Real 3D: a CSS cube that hops and turns on its **Y axis** to reveal a
+ * device-style back face and the dark side edges. Not Lottie — Lottie is 2D and
+ * can't represent a cube.
+ */
+export const Cube = meta.story({
+  name: "3D Cube (Y-axis spin)",
+  render: () => <NixmacMascotCube size={200} />,
 });
 
 /** Renders crisply at any size — it's vector all the way down. */

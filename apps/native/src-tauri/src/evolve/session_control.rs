@@ -26,8 +26,8 @@ static ONGOING_QUESTION: std::sync::OnceLock<
     tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<String>>>,
 > = std::sync::OnceLock::new();
 
-fn ongoing_question_slot(
-) -> &'static tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<String>>> {
+fn ongoing_question_slot()
+-> &'static tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<String>>> {
     ONGOING_QUESTION.get_or_init(|| tokio::sync::Mutex::new(None))
 }
 
