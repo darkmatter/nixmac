@@ -8,8 +8,8 @@
 
 pub(crate) use crate::shared_types::PreviewIndicatorState;
 use once_cell::sync::Lazy;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tauri::{
     AppHandle, Emitter, Manager, PhysicalPosition, Runtime, WebviewUrl, WebviewWindowBuilder,

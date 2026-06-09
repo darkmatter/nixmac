@@ -18,7 +18,7 @@ use crate::{
         SemanticChangeMap,
     },
     summarize,
-    types::{emit_evolve_event, EvolveEvent},
+    types::{EvolveEvent, emit_evolve_event},
 };
 
 impl EvolutionTelemetry {

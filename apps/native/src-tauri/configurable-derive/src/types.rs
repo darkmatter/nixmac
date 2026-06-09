@@ -31,7 +31,7 @@ pub(crate) fn field_type_expr(ty: &Type, cfg: &FieldConfig) -> syn::Result<Token
                         return Err(syn::Error::new_spanned(
                             elem,
                             "#[config(options = [...])] entries must be string literals",
-                        ))
+                        ));
                     }
                 };
                 let label = humanize(&value_str);
@@ -59,8 +59,8 @@ pub(crate) fn field_type_expr(ty: &Type, cfg: &FieldConfig) -> syn::Result<Token
     })?;
 
     match name.as_str() {
-        "u8" | "u16" | "u32" | "u64" | "usize" | "i8" | "i16" | "i32" | "i64" | "isize"
-        | "f32" | "f64" => {
+        "u8" | "u16" | "u32" | "u64" | "usize" | "i8" | "i16" | "i32" | "i64" | "isize" | "f32"
+        | "f64" => {
             let (min_expr, max_expr) = match &cfg.range {
                 Some(range) => range_bounds(range),
                 None => (

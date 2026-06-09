@@ -1,7 +1,7 @@
 //! Token budget constants and prompt-length based budget computation for model calls.
 
 use once_cell::sync::Lazy;
-use tiktoken_rs::{cl100k_base, CoreBPE};
+use tiktoken_rs::{CoreBPE, cl100k_base};
 
 const DEFAULT_MODEL_CONTEXT_WINDOW: u32 = 8192;
 const MIN_MEANINGFUL_OUTPUT_TOKENS: u32 = 128;

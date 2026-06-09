@@ -643,8 +643,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
             },
             KeyDef {
                 defaults_key: "com.apple.trackpad.enableSecondaryClick",
-                nix_key:
-                    "system.defaults.NSGlobalDomain.\"com.apple.trackpad.enableSecondaryClick\"",
+                nix_key: "system.defaults.NSGlobalDomain.\"com.apple.trackpad.enableSecondaryClick\"",
                 label: "Enable secondary click on trackpad",
                 category: "Global",
                 val_type: ValType::Bool,

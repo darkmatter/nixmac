@@ -10,8 +10,8 @@
 //! mapping live in sibling modules so this file can read like the macro's
 //! high-level pipeline.
 
-use crate::attrs::{parse_struct_config, StoreScope};
-use crate::fields::{generate_fields, named_fields, GeneratedFields};
+use crate::attrs::{StoreScope, parse_struct_config};
+use crate::fields::{GeneratedFields, generate_fields, named_fields};
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::DeriveInput;

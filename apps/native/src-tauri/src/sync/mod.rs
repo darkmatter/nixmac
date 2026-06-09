@@ -13,7 +13,7 @@
 pub mod client;
 pub mod signing;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use tauri::{AppHandle, Runtime};
 
 use crate::shared_types::{AuthAccount, AuthStatus, SyncRemoteStatus, SyncResult};

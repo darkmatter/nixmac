@@ -7,6 +7,19 @@ use crate::db::DbPool;
 use crate::sqlite_types::Change;
 use crate::summarize::{build_prompt, sumlog as dbg};
 
+const WHOLE_DIFF_SYSTEM_PROMPT: &str = r#"
+You are a git commit message generator.
+
+Rules:
+- Produce exactly one conventional commit message.
+- Base the message only on the provided changes.
+- Do not invent intent that is not visible in the diff.
+- If the type is unclear, prefer "chore".
+- Always return valid JSON in this format:
+
+{"message":"<commit message>"}
+"#;
+
 #[allow(clippy::too_many_arguments)]
 pub async fn analyze<R: Runtime>(
     changes: Vec<Change>,
@@ -32,11 +45,15 @@ pub async fn analyze<R: Runtime>(
     };
 
     let refs: Vec<&Change> = changes.iter().collect();
-    let prompt = build_prompt::whole_diff(&refs);
-    dbg::new_log_prompt(&prompt);
+    let user_prompt = build_prompt::whole_diff(&refs);
+    dbg::new_log_prompt(&user_prompt);
 
-    let (message, _usage) =
-        crate::summarize::model_calls::generate_commit_message(&prompt, Some(app)).await?;
+    let (message, _usage) = crate::summarize::model_calls::generate_commit_message(
+        WHOLE_DIFF_SYSTEM_PROMPT,
+        &user_prompt,
+        Some(app),
+    )
+    .await?;
 
     let change_set_id = crate::db::store_whole_diff_changeset::store(
         &pool,
