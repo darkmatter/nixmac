@@ -167,7 +167,7 @@ lib.mkIf (!config.container.isBuilding) {
   treefmt.config = {
     # The commit hook runs treefmt repo-wide; enabling more formatters here
     # expands pre-commit cost and can surface unrelated formatting drift.
-    programs.rustfmt.enable = false;
+    programs.rustfmt.enable = true;
     programs.yamlfmt.enable = false;
     programs.mdformat.enable = true;
   };

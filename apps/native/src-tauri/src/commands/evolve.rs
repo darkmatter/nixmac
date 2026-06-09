@@ -29,7 +29,6 @@ pub async fn darwin_evolve(
         .await;
     }
 
-
     let result =
         match evolve::lifecycle::backup_evolve_and_record_changeset(&app, &description, None).await
         {

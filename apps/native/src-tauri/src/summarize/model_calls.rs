@@ -6,7 +6,7 @@ use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Runtime};
 
-use crate::ai::providers::{create_provider, TokenUsage};
+use crate::ai::providers::{TokenUsage, create_provider};
 use crate::summarize::token_budgets::commit_message_budget;
 
 #[derive(Deserialize)]

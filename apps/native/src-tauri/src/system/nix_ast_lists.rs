@@ -1,7 +1,7 @@
 use rnix::ast::List;
 use rnix::{Parse, Root};
-use rowan::ast::AstNode;
 use rowan::TextSize;
+use rowan::ast::AstNode;
 use std::collections::HashMap;
 
 /// Parse all string-only list assignments from Nix source and return a map of

@@ -47,8 +47,8 @@ pub use types::{EvolutionProgress, EvolutionRunError};
 use crate::{
     statistics, store,
     types::{emit_evolve_event, EvolveEvent},
-    utils::short_hash,
     utils as global_utils,
+    utils::short_hash,
 };
 use chat_memory::{to_provider_context_messages, ChatMessage, Role as ChatMemoryRole};
 
@@ -1857,12 +1857,12 @@ fn process_tool_result(
                 }
 
                 let msg = Message::Tool {
-            tool_call_id: tool_call_id.to_string(),
-            content: format!(
-                "{}\n\nUse the 'think' tool to analyze the error, then fix the issue and run build_check again.",
-                model_output
-            ),
-        };
+                    tool_call_id: tool_call_id.to_string(),
+                    content: format!(
+                        "{}\n\nUse the 'think' tool to analyze the error, then fix the issue and run build_check again.",
+                        model_output
+                    ),
+                };
                 (msg, Some(false))
             }
         }

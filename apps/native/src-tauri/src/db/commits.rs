@@ -3,8 +3,8 @@
 use anyhow::Result;
 use diesel::prelude::*;
 
-use crate::db::tables::commits;
 use crate::db::DbPool;
+use crate::db::tables::commits;
 
 #[derive(Debug, Insertable)]
 #[diesel(table_name = commits)]
@@ -105,9 +105,7 @@ pub fn store_head_commit(
         return Ok(None);
     };
     let now = crate::utils::unix_now();
-    Ok(Some(upsert_commit(
-        pool, &hash, &tree_hash, None, now,
-    )?))
+    Ok(Some(upsert_commit(pool, &hash, &tree_hash, None, now)?))
 }
 
 #[cfg(test)]
@@ -120,13 +118,9 @@ mod tests {
         let db_path = temp_dir.path().join("nixmac.db");
         let pool = crate::db::init_pool_at_path(&db_path).await.unwrap();
 
-        let first_id =
-            upsert_commit(&pool, "abc123", "tree123", Some("message"), 123).unwrap();
-        let second_id =
-            upsert_commit(&pool, "abc123", "tree123", Some("message"), 123).unwrap();
-        let commit = get_commit_by_hash(&pool, "abc123")
-            .unwrap()
-            .unwrap();
+        let first_id = upsert_commit(&pool, "abc123", "tree123", Some("message"), 123).unwrap();
+        let second_id = upsert_commit(&pool, "abc123", "tree123", Some("message"), 123).unwrap();
+        let commit = get_commit_by_hash(&pool, "abc123").unwrap().unwrap();
 
         assert_eq!(first_id, second_id);
         assert_eq!(commit.id, first_id);

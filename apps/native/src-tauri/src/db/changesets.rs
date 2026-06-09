@@ -8,9 +8,7 @@ use diesel::prelude::*;
 use diesel::sql_query;
 use diesel::sql_types::{BigInt, Nullable, Text};
 
-use crate::db::tables::{
-    change_sets, change_summaries, changes, group_summaries, set_changes,
-};
+use crate::db::tables::{change_sets, change_summaries, changes, group_summaries, set_changes};
 use crate::shared_types::{SummarizedChange, SummarizedChangeSet};
 use crate::sqlite_types::{Change, ChangeSet, ChangeSummary};
 
@@ -136,7 +134,6 @@ pub fn link_change_to_set(
         .execute(conn)?;
     Ok(())
 }
-
 
 // ── Big aliased row used by the JOIN read queries ────────────────────────────
 
