@@ -49,10 +49,32 @@ const DarkModeDocsContainer = (
   );
 };
 
+// CI-only: when capturing screenshots of failed snapshot stories, this regex
+// (built from the failed story names by scripts/resolve-failed-stories.mjs) is
+// injected at build time so Creevey skips every story whose name is NOT in the
+// failed set. Unset in normal builds, so this is a no-op for dev/Vitest.
+const creeveySkipRegex = import.meta.env.VITE_CREEVEY_SKIP_REGEX as
+  | string
+  | undefined;
+
+const creeveyParameters = creeveySkipRegex
+  ? {
+      creevey: {
+        captureElement: "#storybook-root",
+        skip: {
+          "capture only failed snapshot stories": {
+            stories: new RegExp(creeveySkipRegex),
+          },
+        },
+      },
+    }
+  : {};
+
 const preview = definePreview({
   addons: [addonA11y(), addonDocs()],
   tags: ["autodocs", "test"],
   parameters: {
+    ...creeveyParameters,
     layout: "padded",
 
     controls: {
