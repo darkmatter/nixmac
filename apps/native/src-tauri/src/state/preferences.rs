@@ -29,6 +29,7 @@ pub struct GlobalPreferences {
     pub config_dir: Option<String>,
     pub repo_root: Option<String>,
     pub send_diagnostics: bool,
+    pub product_analytics_enabled: bool,
     pub evolve_provider: Option<String>,
     pub evolve_model: Option<String>,
     pub summary_provider: Option<String>,
@@ -53,6 +54,7 @@ impl Default for GlobalPreferences {
             config_dir: None,
             repo_root: None,
             send_diagnostics: false,
+            product_analytics_enabled: true,
             evolve_provider: None,
             evolve_model: None,
             summary_provider: None,
@@ -150,6 +152,7 @@ mod tests {
             "configDir": "/Users/cm/.darwin",
             "repoRoot": "/Users/cm/.darwin",
             "sendDiagnostics": true,
+            "productAnalyticsEnabled": false,
             "evolveProvider": "openrouter",
             "evolveModel": "anthropic/claude",
             "summaryProvider": "openai",
@@ -174,6 +177,7 @@ mod tests {
         assert_eq!(prefs.evolve_provider.as_deref(), Some("openrouter"));
         assert_eq!(prefs.update_channel, UpdateChannel::Develop);
         assert!(prefs.send_diagnostics);
+        assert!(!prefs.product_analytics_enabled);
         assert!(prefs.developer_mode);
     }
 

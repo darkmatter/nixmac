@@ -231,6 +231,7 @@ mod tests {
             serde_json::to_value(GlobalPreferences {
                 host_attr: Some("macbook".to_string()),
                 developer_mode: true,
+                product_analytics_enabled: false,
                 ..GlobalPreferences::default()
             })
             .unwrap(),
@@ -250,6 +251,7 @@ mod tests {
 
         assert_eq!(output.get("hostAttr"), Some(&json!("macbook")));
         assert_eq!(output.get("developerMode"), Some(&json!(true)));
+        assert_eq!(output.get("productAnalyticsEnabled"), Some(&json!(false)));
         assert_eq!(output.get("maxBuildAttempts"), Some(&json!(4)));
         assert!(!output.contains_key("openaiApiKey"));
         assert!(!output.contains_key("promptHistory"));
