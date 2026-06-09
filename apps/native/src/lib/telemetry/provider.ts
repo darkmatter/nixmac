@@ -41,6 +41,12 @@ const registerPostHogSuperProperties = (config: TelemetryConfig) => {
   });
 };
 
+const optInPostHogCapturing = (
+  ph: Pick<typeof posthog, "opt_in_capturing">,
+) => {
+  ph.opt_in_capturing({ captureEventName: false });
+};
+
 // OTEL span attributes accept primitives only; coerce everything else to a
 // JSON string after sanitization so structured props survive the boundary.
 const toAttributeValue = (
@@ -117,18 +123,13 @@ export function createTelemetryProvider(
     sanitize_properties: (props) => sanitizeProps(props),
     loaded: (ph) => {
       if (productAnalyticsEnabled) {
-        ph.opt_in_capturing();
+        optInPostHogCapturing(ph);
       } else {
         ph.opt_out_capturing();
       }
     },
   });
   registerPostHogSuperProperties(config);
-  if (productAnalyticsEnabled) {
-    posthog.opt_in_capturing();
-  } else {
-    posthog.opt_out_capturing();
-  }
   posthogStarted = true;
 
   return {
@@ -174,7 +175,7 @@ export function createTelemetryProvider(
       if (!posthogStarted) return;
       if (next) {
         registerPostHogSuperProperties(config);
-        posthog.opt_in_capturing();
+        optInPostHogCapturing(posthog);
       } else {
         posthog.opt_out_capturing();
         posthog.reset();

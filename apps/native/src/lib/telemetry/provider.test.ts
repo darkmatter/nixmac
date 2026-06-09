@@ -36,6 +36,8 @@ const config = {
 };
 
 describe("createTelemetryProvider", () => {
+  const silentOptIn = { captureEventName: false };
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.init.mockImplementation((_key, options) => {
@@ -118,7 +120,8 @@ describe("createTelemetryProvider", () => {
     telemetry.setProductAnalyticsEnabled(true);
     telemetry.captureEvent({ name: "app_launched", props: { environment: "production" } });
 
-    expect(mocks.optIn).toHaveBeenCalled();
+    expect(mocks.optIn).toHaveBeenCalledTimes(2);
+    expect(mocks.optIn).toHaveBeenCalledWith(silentOptIn);
     expect(mocks.register).toHaveBeenCalledTimes(3);
     expect(mocks.register).toHaveBeenLastCalledWith({
       $geoip_disable: true,
@@ -163,6 +166,7 @@ describe("createTelemetryProvider", () => {
       environment: "test",
       release: "0.0.0-test",
     });
-    expect(mocks.optIn).toHaveBeenCalled();
+    expect(mocks.optIn).toHaveBeenCalledTimes(1);
+    expect(mocks.optIn).toHaveBeenCalledWith(silentOptIn);
   });
 });
