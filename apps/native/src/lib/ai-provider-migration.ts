@@ -27,7 +27,7 @@ function shouldMigrateLegacyOpenaiProvider(
   if (!hasValue(prefs.openrouterApiKey)) {
     return false;
   }
-  return !hasValue(prefs.openaiApiKey) || !hasValue(model) || isOpenrouterModelSlug(model);
+  return !hasValue(prefs.openaiApiKey) || isOpenrouterModelSlug(model);
 }
 
 export function migrateLegacyOpenaiProviderPrefs(prefs: UiPrefs): {

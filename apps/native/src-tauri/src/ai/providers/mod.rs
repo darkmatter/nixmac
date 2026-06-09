@@ -93,7 +93,7 @@ pub(crate) fn resolve_legacy_openai_provider(
 ) -> String {
     let uses_openrouter_model = model
         .and_then(crate::utils::non_empty_trimmed_string)
-        .map_or(true, |value| value.contains('/'));
+        .is_some_and(|value| value.contains('/'));
     if provider == "openai"
         && has_openrouter_credential
         && (!has_openai_credential || uses_openrouter_model)
@@ -282,9 +282,16 @@ mod tests {
 
     #[test]
     fn legacy_openai_provider_falls_back_to_openrouter_for_missing_model() {
-        let provider = resolve_legacy_openai_provider("openai".to_string(), None, true, true);
+        let provider = resolve_legacy_openai_provider("openai".to_string(), None, false, true);
 
         assert_eq!(provider, "openrouter");
+    }
+
+    #[test]
+    fn direct_openai_provider_stays_openai_when_openai_key_exists_without_model() {
+        let provider = resolve_legacy_openai_provider("openai".to_string(), None, true, true);
+
+        assert_eq!(provider, "openai");
     }
 
     #[test]

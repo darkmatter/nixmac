@@ -107,4 +107,18 @@ describe("migrateLegacyOpenaiProviderPrefs", () => {
     expect(result.values.evolveModel).toBe("gpt-4o");
     expect(result.update).toBeNull();
   });
+
+  it("keeps direct openai prefs when both keys exist without a model", () => {
+    const result = migrateLegacyOpenaiProviderPrefs({
+      ...PREFS,
+      openrouterApiKey: "sk-or-key",
+      openaiApiKey: "sk-openai-key",
+      summaryProvider: "openai",
+      summaryModel: "",
+    });
+
+    expect(result.values.summaryProvider).toBe("openai");
+    expect(result.values.summaryModel).toBe("");
+    expect(result.update).toBeNull();
+  });
 });
