@@ -175,6 +175,17 @@ fn action_name(value: &serde_json::Value) -> Option<&str> {
     None
 }
 
+/// Heuristic for correcting `action: "set"` calls that supply an array where
+/// this tool expects a scalar. We intentionally key off the JSON value shape
+/// instead of trying to maintain a complete list of Nix list-valued options:
+/// `add`/`remove` operate on string lists, and `set` does not support arrays.
+fn looks_like_string_list_value(value: &serde_json::Value) -> bool {
+    let Some(items) = value.as_array() else {
+        return false;
+    };
+    !items.is_empty() && items.iter().all(|item| item.is_string())
+}
+
 /// For the shorthand format, look for a sibling field with likely name that indicates the attribute
 /// path.
 fn sibling_attr_path(args: &serde_json::Value) -> Option<String> {
@@ -207,8 +218,21 @@ fn infer_attr_path_from_file(ctx: &ToolCtx, path: &str) -> Result<Option<String>
 
 /// Build a compact example call that shows where the file path and action path belong.
 fn corrective_action_shape(action: &str, attr_path: &str) -> String {
+    corrective_action_shape_with_values(action, attr_path, None)
+}
+
+fn corrective_action_shape_with_values(
+    action: &str,
+    attr_path: &str,
+    values: Option<&serde_json::Value>,
+) -> String {
     let payload = match action {
-        "add" | "remove" => format!(r#""path": "{}", "values": [...]"#, attr_path),
+        "add" | "remove" => {
+            let values = values
+                .and_then(|value| serde_json::to_string(value).ok())
+                .unwrap_or_else(|| "[...]".to_string());
+            format!(r#""path": "{}", "values": {}"#, attr_path, values)
+        }
         "set" => format!(r#""path": "{}", "value": ..."#, attr_path),
         "set_attrs" => format!(r#""path": "{}", "attrs": {{...}}"#, attr_path),
         _ => format!(r#""path": "{}""#, attr_path),
@@ -223,20 +247,36 @@ fn corrective_action_shape(action: &str, attr_path: &str) -> String {
 /// Explain the common mistake of putting a Nix option path in the top-level file path field.
 fn explain_attr_path_used_as_file_path(args: &serde_json::Value, path: &str) -> anyhow::Error {
     let action = action_name(&args["action"]);
+    let supplied_string_list_value = args
+        .get("value")
+        .filter(|value| looks_like_string_list_value(value));
+    let list_set_attempt = matches!(action, Some("set")) && supplied_string_list_value.is_some();
     let correction = action
-        .map(|name| corrective_action_shape(name, path))
+        .map(|name| {
+            if list_set_attempt {
+                corrective_action_shape_with_values("add", path, supplied_string_list_value)
+            } else {
+                corrective_action_shape(name, path)
+            }
+        })
         .unwrap_or_else(|| {
             format!(
                 r#"{{ "path": "modules/darwin/services.nix", "action": {{ "set_attrs": {{ "path": "{}", "attrs": {{...}} }} }} }}"#,
                 path
             )
         });
+    let list_hint = if list_set_attempt {
+        " This looks like a list edit: use action.add/action.remove with 'values', not action.set with array 'value'."
+    } else {
+        ""
+    };
 
     anyhow!(
-        "edit_nix_file: top-level 'path' must be the relative .nix file to edit, but got attribute path '{}'. Put '{}' inside the action object as the action path, choose a file path for top-level 'path', and call the tool like: {}",
+        "edit_nix_file: top-level 'path' must be the relative .nix file to edit, but got attribute path '{}'. Put '{}' inside the action object as the action path, choose a file path for top-level 'path', and call the tool like: {}{}",
         path,
         path,
-        correction
+        correction,
+        list_hint
     )
 }
 
