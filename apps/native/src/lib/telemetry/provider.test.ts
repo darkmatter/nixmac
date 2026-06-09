@@ -37,12 +37,12 @@ const config = {
 };
 
 describe("createTelemetryProvider", () => {
-  const silentOptIn = { captureEventName: false };
-  const latestProductPayload = () => {
-    const [, init] = mocks.fetch.mock.calls.at(-1) ?? [];
-    return JSON.parse((init as RequestInit | undefined)?.body as string) as {
-      api_key: string;
-      event: string;
+	const silentOptIn = { captureEventName: false };
+	const latestProductPayload = () => {
+		const [, init] = mocks.fetch.mock.calls[mocks.fetch.mock.calls.length - 1] ?? [];
+		return JSON.parse((init as RequestInit | undefined)?.body as string) as {
+			api_key: string;
+			event: string;
       properties: Record<string, unknown>;
     };
   };
