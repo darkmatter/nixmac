@@ -18,6 +18,10 @@ vi.mock("@/ipc/api", () => ({
       read: vi.fn().mockResolvedValue({ configDir: "/Users/test/nixmac" }),
       listHosts: vi.fn().mockResolvedValue(["Test-MacBook"]),
     },
+    evolveMascot: {
+      show: vi.fn().mockResolvedValue(undefined),
+      hide: vi.fn().mockResolvedValue(undefined),
+    },
   },
   ipcRenderer: {
     on: vi.fn().mockReturnValue(Promise.resolve(() => {})),
