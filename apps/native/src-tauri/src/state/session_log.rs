@@ -157,7 +157,7 @@ pub async fn append_event(path: &PathBuf, event_type: &str, payload: &serde_json
 
 #[cfg(test)]
 mod tests {
-    use super::{append_event, sanitize_payload_for_session_log, OMITTED_SESSION_FIELD};
+    use super::{OMITTED_SESSION_FIELD, append_event, sanitize_payload_for_session_log};
     use serde_json::json;
 
     #[test]
