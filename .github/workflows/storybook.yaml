@@ -14,7 +14,7 @@ jobs:
   storybook-tests:
     name: Storybook Snapshot Tests
     runs-on: [self-hosted, linux]
-    timeout-minutes: 15
+    timeout-minutes: 25
     permissions:
       contents: read
       deployments: write
@@ -170,8 +170,90 @@ jobs:
           fi
 
       - name: Run Storybook snapshot tests
+        id: snapshot_tests
         working-directory: apps/native
         run: bun run test:storybook:ci
+
+      # ---- Failed-story screenshots (PR only, only when snapshots failed) ----
+      # Resolve the failed stories (recorded by the runner) into Storybook IDs +
+      # deep links, and emit the Creevey skip regex used to scope capture.
+      - name: Resolve failed stories
+        id: resolve_failures
+        if: failure() && steps.snapshot_tests.conclusion == 'failure' && github.event_name == 'pull_request' && steps.deploy.outputs.deployment-url != ''
+        continue-on-error: true
+        working-directory: apps/native
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          node scripts/resolve-failed-stories.mjs
+          count=$(node -e 'const r=require("./test-results/failed-stories-resolved.json"); process.stdout.write(String(r.length))')
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+
+      # Rebuild Storybook with the skip regex baked in, serve it locally, and let
+      # Creevey (Playwright, no Docker) screenshot only the failed stories.
+      - name: Capture failed-story screenshots (Creevey)
+        if: ${{ failure() && steps.resolve_failures.outcome == 'success' && steps.resolve_failures.outputs.count != '0' }}
+        continue-on-error: true
+        working-directory: apps/native
+        run: |
+          export VITE_CREEVEY_SKIP_REGEX="$(cat test-results/creevey-skip-regex.txt)"
+          bun run build-storybook
+          python3 -m http.server 6100 --directory storybook-static >/tmp/creevey-storybook.log 2>&1 &
+          SB_PID=$!
+          trap 'kill $SB_PID 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do
+            curl -sf http://localhost:6100/index.json >/dev/null && break
+            sleep 1
+          done
+          CREEVEY_STORYBOOK_URL="http://localhost:6100" bunx creevey test --no-docker || true
+          node scripts/harvest-creevey-shots.mjs
+
+      # Host the screenshots on Cloudflare Pages so the PR comment can embed them.
+      - name: Deploy failed-story screenshots
+        id: deploy_shots
+        if: ${{ failure() && steps.resolve_failures.outcome == 'success' && steps.resolve_failures.outputs.count != '0' }}
+        continue-on-error: true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          set -euo pipefail
+          bunx wrangler pages project create nixmac-storybook-shots --production-branch=main 2>/dev/null || true
+          output=$(bunx wrangler pages deploy apps/native/test-results/shots \
+            --project-name=nixmac-storybook-shots \
+            --commit-dirty=true \
+            --branch="$BRANCH" 2>&1 | tee /dev/stderr)
+          url=$(echo "$output" | grep -oE 'https://[a-zA-Z0-9.-]+\.pages\.dev' | head -n1 || true)
+          echo "shots-url=$url" >> "$GITHUB_OUTPUT"
+
+      # Re-render the sticky comment to include the failed-snapshot gallery.
+      - name: Update PR comment with failed snapshots
+        if: ${{ failure() && steps.deploy_shots.outcome == 'success' && steps.deploy_shots.outputs.shots-url != '' }}
+        continue-on-error: true
+        working-directory: apps/native
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          MARKER: "<!-- nixmac-storybook-preview -->"
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+          SHOTS_BASE_URL: ${{ steps.deploy_shots.outputs.shots-url }}
+        run: |
+          set -euo pipefail
+          BODY="$(node scripts/build-failed-comment.mjs)"
+          EXISTING_ID=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --paginate --jq ".[] | select(.body | startswith(\"${MARKER}\")) | .id" \
+            | head -n1 || true)
+          if [ -n "${EXISTING_ID}" ]; then
+            gh api --method PATCH "repos/${REPO}/issues/comments/${EXISTING_ID}" \
+              -f body="${BODY}" >/dev/null
+            echo "Updated sticky comment ${EXISTING_ID}"
+          else
+            gh pr comment "${PR_NUMBER}" --repo "${REPO}" --body "${BODY}"
+            echo "Created sticky comment"
+          fi
 
       - name: Check for snapshot staleness
         if: always() && !cancelled()
