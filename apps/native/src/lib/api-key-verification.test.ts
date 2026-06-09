@@ -15,7 +15,6 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 const okResponse = { ok: true } as Response;
-const unauthorizedResponse = { ok: false } as Response;
 
 describe("api key verification", () => {
   beforeEach(() => {

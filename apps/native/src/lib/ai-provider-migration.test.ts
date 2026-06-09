@@ -23,6 +23,7 @@ const PREFS: UiPrefs = {
   scanHomebrewOnStartup: false,
   defaultToDiffTab: false,
   developerMode: false,
+  experimentalSpinningMascot: false,
   pinnedVersion: null,
   updateChannel: "stable",
 };
