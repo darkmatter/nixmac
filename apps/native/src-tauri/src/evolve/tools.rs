@@ -370,6 +370,116 @@ mod tests {
     }
 
     #[test]
+    fn edit_nix_file_reports_attr_path_used_as_top_level_path() {
+        let tmp = tempdir().expect("tempdir");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "set_attrs",
+                "path": "launchd.user.agents",
+                "attrs": {
+                    "raycast": {
+                        "serviceConfig": {
+                            "Label": "com.raycast.macos",
+                            "RunAtLoad": true
+                        }
+                    }
+                }
+            }),
+            None,
+        );
+
+        let err = result.expect_err("attr path in top-level path should be corrective");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("top-level 'path' must be the relative .nix file"),
+            "unexpected error: {err:#}"
+        );
+        assert!(
+            msg.contains(r#""path": "modules/darwin/services.nix""#),
+            "unexpected error: {err:#}"
+        );
+        assert!(
+            msg.contains(r#""set_attrs": { "path": "launchd.user.agents", "attrs": {...} }"#),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
+    fn edit_nix_file_reports_string_action_with_corrective_shape() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(tmp.path().join("services.nix"), "{ ... }: { }\n").expect("write nix file");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "path": "services.nix",
+                "action": "set_attrs",
+                "attrs": {
+                    "raycast": {
+                        "serviceConfig": {
+                            "Label": "com.raycast.macos",
+                            "RunAtLoad": true
+                        }
+                    }
+                }
+            }),
+            None,
+        );
+
+        let err = result.expect_err("string action should get a corrective error");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("action must be an object, not string 'set_attrs'"),
+            "unexpected error: {err:#}"
+        );
+        assert!(
+            msg.contains("Wrap sibling payload fields under action.set_attrs"),
+            "unexpected error: {err:#}"
+        );
+        assert!(
+            msg.contains(
+                r#""action": { "set_attrs": { "path": "<attribute.path>", "attrs": {...} } }"#
+            ),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
+    fn edit_nix_file_reports_non_object_action_payload() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(tmp.path().join("services.nix"), "{ ... }: { }\n").expect("write nix file");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "path": "services.nix",
+                "action": {
+                    "set_attrs": "launchd.user.agents"
+                }
+            }),
+            None,
+        );
+
+        let err = result.expect_err("non-object set_attrs payload should be corrective");
+        assert!(
+            err.to_string()
+                .contains("edit_nix_file.set_attrs: action payload must be an object"),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
     fn edit_nix_file_quotes_homebrew_add_values() {
         let tmp = tempdir().expect("tempdir");
         fs::write(
@@ -405,6 +515,263 @@ mod tests {
         let edited = fs::read_to_string(tmp.path().join("homebrew.nix")).expect("read edited");
         assert!(edited.contains(r#"brews = [ "bat" ];"#), "{edited}");
         assert!(!edited.contains("brews = [ bat ];"), "{edited}");
+    }
+
+    #[test]
+    fn edit_nix_file_accepts_add_shorthand_and_infers_only_list_path() {
+        let tmp = tempdir().expect("tempdir");
+        let module_dir = tmp.path().join("modules/darwin");
+        fs::create_dir_all(&module_dir).expect("make module dir");
+        fs::write(
+            module_dir.join("packages.nix"),
+            r#"{ pkgs, ... }:
+{
+  environment.systemPackages = with pkgs; [
+    git
+  ];
+}
+"#,
+        )
+        .expect("write package module");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "add",
+                "path": "modules/darwin/packages.nix",
+                "values": ["wget"]
+            }),
+            None,
+        )
+        .expect("edit_nix_file should accept add shorthand");
+
+        let ToolResult::EditSemantic(edit) = result else {
+            panic!("expected semantic edit result");
+        };
+        assert_eq!(edit.path, "modules/darwin/packages.nix");
+        let crate::evolve::types::FileEditAction::Add { path, values } = edit.action else {
+            panic!("expected add action");
+        };
+        assert_eq!(path, "environment.systemPackages");
+        assert_eq!(values, vec!["wget".to_string()]);
+
+        let edited = fs::read_to_string(module_dir.join("packages.nix")).expect("read edited");
+        assert!(
+            edited.contains("environment.systemPackages = with pkgs; ["),
+            "{edited}"
+        );
+        assert!(edited.contains("    git\n    wget"), "{edited}");
+    }
+
+    #[test]
+    fn edit_nix_file_accepts_add_shorthand_with_explicit_attr_path() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(
+            tmp.path().join("packages.nix"),
+            r#"{ pkgs, ... }:
+{
+  environment.systemPackages = with pkgs; [
+    git
+  ];
+
+  home.packages = with pkgs; [
+    ripgrep
+  ];
+}
+"#,
+        )
+        .expect("write package module");
+
+        execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "add",
+                "path": "packages.nix",
+                "attr_path": "home.packages",
+                "values": ["fd"]
+            }),
+            None,
+        )
+        .expect("edit_nix_file should accept explicit attr_path shorthand");
+
+        let edited = fs::read_to_string(tmp.path().join("packages.nix")).expect("read edited");
+        assert!(
+            edited.contains("home.packages = with pkgs; [\n    ripgrep\n    fd"),
+            "{edited}"
+        );
+        assert!(!edited.contains("git\n    fd"), "{edited}");
+    }
+
+    #[test]
+    fn edit_nix_file_accepts_add_shorthand_with_legacy_attr_path_alias() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(
+            tmp.path().join("packages.nix"),
+            r#"{ pkgs, ... }:
+{
+  environment.systemPackages = with pkgs; [
+    git
+  ];
+
+  home.packages = with pkgs; [
+    ripgrep
+  ];
+}
+"#,
+        )
+        .expect("write package module");
+
+        execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "add",
+                "path": "packages.nix",
+                "attrPath": "home.packages",
+                "values": ["fd"]
+            }),
+            None,
+        )
+        .expect("edit_nix_file should accept legacy attrPath shorthand alias");
+
+        let edited = fs::read_to_string(tmp.path().join("packages.nix")).expect("read edited");
+        assert!(
+            edited.contains("home.packages = with pkgs; [\n    ripgrep\n    fd"),
+            "{edited}"
+        );
+        assert!(!edited.contains("git\n    fd"), "{edited}");
+    }
+
+    #[test]
+    fn edit_nix_file_accepts_add_shorthand_with_repeated_inferred_list_path() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(
+            tmp.path().join("packages.nix"),
+            r#"{ pkgs, lib, ... }:
+{
+  environment.systemPackages = with pkgs; [
+    git
+  ] ++ lib.optionals true [
+    wget
+  ];
+}
+"#,
+        )
+        .expect("write package module");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "add",
+                "path": "packages.nix",
+                "values": ["fd"]
+            }),
+            None,
+        )
+        .expect("edit_nix_file should dedupe repeated inferred list paths");
+
+        let ToolResult::EditSemantic(edit) = result else {
+            panic!("expected semantic edit result");
+        };
+        let crate::evolve::types::FileEditAction::Add { path, values } = edit.action else {
+            panic!("expected add action");
+        };
+        assert_eq!(path, "environment.systemPackages");
+        assert_eq!(values, vec!["fd".to_string()]);
+    }
+
+    #[test]
+    fn edit_nix_file_rejects_add_shorthand_when_multiple_list_paths_are_possible() {
+        let tmp = tempdir().expect("tempdir");
+        let original = r#"{ pkgs, ... }:
+{
+  environment.systemPackages = with pkgs; [
+    git
+  ];
+
+  home.packages = with pkgs; [
+    ripgrep
+  ];
+}
+"#;
+        fs::write(tmp.path().join("packages.nix"), original).expect("write package module");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "add",
+                "path": "packages.nix",
+                "values": ["fd"]
+            }),
+            None,
+        );
+
+        let err = result.expect_err("ambiguous shorthand should require an explicit attr path");
+        assert!(
+            err.to_string().contains("edit_nix_file.add: missing path"),
+            "unexpected error: {err:#}"
+        );
+
+        let edited = fs::read_to_string(tmp.path().join("packages.nix")).expect("read file");
+        assert_eq!(edited, original);
+    }
+
+    #[test]
+    fn edit_nix_file_accepts_remove_shorthand_and_infers_only_list_path() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(
+            tmp.path().join("packages.nix"),
+            r#"{ pkgs, ... }:
+{
+  environment.systemPackages = with pkgs; [
+    git
+    wget
+  ];
+}
+"#,
+        )
+        .expect("write package module");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "remove",
+                "path": "packages.nix",
+                "values": ["wget"]
+            }),
+            None,
+        )
+        .expect("edit_nix_file should accept remove shorthand");
+
+        let ToolResult::EditSemantic(edit) = result else {
+            panic!("expected semantic edit result");
+        };
+        let crate::evolve::types::FileEditAction::Remove { path, values } = edit.action else {
+            panic!("expected remove action");
+        };
+        assert_eq!(path, "environment.systemPackages");
+        assert_eq!(values, vec!["wget".to_string()]);
+
+        let edited = fs::read_to_string(tmp.path().join("packages.nix")).expect("read edited");
+        assert!(edited.contains("git"), "{edited}");
+        assert!(!edited.contains("wget"), "{edited}");
     }
 
     #[test]

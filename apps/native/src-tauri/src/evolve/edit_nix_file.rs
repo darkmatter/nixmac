@@ -537,6 +537,29 @@ fn find_list_for_attrpath(root: &SyntaxNode, content: &str, attrpath: &str) -> O
     None
 }
 
+pub(crate) fn list_attrpaths(content: &str) -> Result<Vec<String>> {
+    let parsed: Parse<Root> = Root::parse(content);
+    let root: Root = parsed
+        .ok()
+        .context("Failed to parse Nix content when inferring list attribute paths")?;
+    let root_node = root.syntax().clone();
+    let mut attrpaths = Vec::new();
+
+    for node in root_node.descendants() {
+        if List::cast(node.clone()).is_some() {
+            let list_start = text_size_to_usize(node.text_range().start());
+            if let Some(full_path) = list_full_attrpath(content, list_start) {
+                attrpaths.push(full_path);
+            }
+        }
+    }
+
+    attrpaths.sort();
+    attrpaths.dedup();
+
+    Ok(attrpaths)
+}
+
 fn append_values_to_existing_list(
     content: &str,
     list_node: &SyntaxNode,
