@@ -4,7 +4,7 @@ mod age;
 mod chat_memory;
 pub(crate) mod config;
 mod config_dir_context;
-pub(crate) mod edit_nix_file;
+pub(crate) mod nix_file_editor;
 mod ensure_secret;
 pub(crate) mod file_ops;
 mod gitignore;
