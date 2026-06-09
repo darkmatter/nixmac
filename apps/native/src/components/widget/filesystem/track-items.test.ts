@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { FILES } from "./data";
@@ -9,19 +10,13 @@ type NixDarwinDocsEntry = {
 };
 
 const nixDarwinDocs = JSON.parse(
-  readFileSync(
-    new URL("../../../../src-tauri/resources/nix-darwin-docs.json", import.meta.url),
-    "utf8",
-  ),
+  readFileSync(join(process.cwd(), "src-tauri/resources/nix-darwin-docs.json"), "utf8"),
 ) as NixDarwinDocsEntry[];
 
 const docsOptionPaths = new Set(nixDarwinDocs.map((entry) => entry.option_path));
 
 function readDocsMarkdown(docsPath: string): string {
-  return readFileSync(
-    new URL(`../../../../src-tauri/resources/options/${docsPath}`, import.meta.url),
-    "utf8",
-  );
+  return readFileSync(join(process.cwd(), "src-tauri/resources/options", docsPath), "utf8");
 }
 
 describe("Track Items snapshot", () => {
