@@ -32,6 +32,7 @@ const PRIVACY_SUPER_PROPERTIES = {
   $ip: null,
   $process_person_profile: false,
 } as const;
+const PRODUCT_ANALYTICS_DISTINCT_ID = "nixmac-product-analytics";
 
 const registerPostHogSuperProperties = (config: TelemetryConfig) => {
   posthog.register({
@@ -46,6 +47,32 @@ const optInPostHogCapturing = (
 ) => {
   ph.opt_in_capturing({ captureEventName: false });
 };
+
+const postHogCaptureUrl = (host: string) => `${host.replace(/\/$/, "")}/capture/`;
+
+const sendPostHogProductEvent = (
+  config: TelemetryConfig,
+  name: string,
+  props: Record<string, unknown>,
+  fetchImpl: typeof fetch = fetch,
+) =>
+  fetchImpl(postHogCaptureUrl(config.host), {
+    body: JSON.stringify({
+      api_key: config.key,
+      event: name,
+      properties: {
+        ...PRIVACY_SUPER_PROPERTIES,
+        distinct_id: PRODUCT_ANALYTICS_DISTINCT_ID,
+        environment: config.environment,
+        release: config.release,
+        token: config.key,
+        ...props,
+      },
+    }),
+    headers: { "Content-Type": "application/json" },
+    keepalive: true,
+    method: "POST",
+  }).catch(() => undefined);
 
 // OTEL span attributes accept primitives only; coerce everything else to a
 // JSON string after sanitization so structured props survive the boundary.
@@ -144,7 +171,7 @@ export function createTelemetryProvider(
     captureEvent(event: TelemetryEvent) {
       if (!productAnalyticsEnabled) return;
       const prepared = preparePostHogEvent(event);
-      posthog.capture(prepared.name, prepared.props);
+      void sendPostHogProductEvent(config, prepared.name, prepared.props);
     },
 
     captureError(error: Error, context?: Record<string, unknown>) {

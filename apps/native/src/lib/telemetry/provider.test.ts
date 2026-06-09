@@ -5,6 +5,7 @@ import type { TelemetryEvent } from "./types";
 
 const mocks = vi.hoisted(() => ({
   capture: vi.fn(),
+  fetch: vi.fn(),
   init: vi.fn(),
   invoke: vi.fn(),
   optIn: vi.fn(),
@@ -37,9 +38,19 @@ const config = {
 
 describe("createTelemetryProvider", () => {
   const silentOptIn = { captureEventName: false };
+  const latestProductPayload = () => {
+    const [, init] = mocks.fetch.mock.calls.at(-1) ?? [];
+    return JSON.parse((init as RequestInit | undefined)?.body as string) as {
+      api_key: string;
+      event: string;
+      properties: Record<string, unknown>;
+    };
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal("fetch", mocks.fetch);
+    mocks.fetch.mockResolvedValue({ ok: true });
     mocks.init.mockImplementation((_key, options) => {
       options.loaded?.(posthog);
     });
@@ -55,6 +66,7 @@ describe("createTelemetryProvider", () => {
     telemetry.captureEvent({ name: "app_launched", props: { environment: "production" } });
 
     expect(mocks.capture).not.toHaveBeenCalled();
+    expect(mocks.fetch).not.toHaveBeenCalled();
   });
 
   it("captures only allowlisted sanitized product properties when product analytics is enabled", () => {
@@ -71,7 +83,31 @@ describe("createTelemetryProvider", () => {
       },
     } as unknown as TelemetryEvent);
 
-    expect(mocks.capture).toHaveBeenCalledWith("evolve_failed", { stage: "build" });
+    expect(mocks.capture).not.toHaveBeenCalled();
+    expect(mocks.fetch).toHaveBeenCalledWith(
+      "https://us.i.posthog.com/capture/",
+      expect.objectContaining({
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+        method: "POST",
+      }),
+    );
+    expect(latestProductPayload()).toEqual({
+      api_key: "phc_test",
+      event: "evolve_failed",
+      properties: {
+        $geoip_disable: true,
+        $ip: null,
+        $process_person_profile: false,
+        distinct_id: "nixmac-product-analytics",
+        environment: "test",
+        release: "0.0.0-test",
+        stage: "build",
+        token: "phc_test",
+      },
+    });
+    expect(latestProductPayload().properties).not.toHaveProperty("$device_id");
+    expect(latestProductPayload().properties).not.toHaveProperty("$session_id");
   });
 
   it("does not forward product events into the diagnostics span path", () => {
@@ -82,7 +118,8 @@ describe("createTelemetryProvider", () => {
 
     telemetry.captureEvent({ name: "rollback_performed" });
 
-    expect(mocks.capture).toHaveBeenCalledTimes(1);
+    expect(mocks.capture).not.toHaveBeenCalled();
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
     expect(mocks.invoke).not.toHaveBeenCalled();
   });
 
@@ -116,6 +153,7 @@ describe("createTelemetryProvider", () => {
       release: "0.0.0-test",
     });
     expect(mocks.capture).not.toHaveBeenCalled();
+    expect(mocks.fetch).not.toHaveBeenCalled();
 
     telemetry.setProductAnalyticsEnabled(true);
     telemetry.captureEvent({ name: "app_launched", props: { environment: "production" } });
@@ -130,7 +168,19 @@ describe("createTelemetryProvider", () => {
       environment: "test",
       release: "0.0.0-test",
     });
-    expect(mocks.capture).toHaveBeenCalledWith("app_launched", { environment: "production" });
+    expect(latestProductPayload()).toEqual({
+      api_key: "phc_test",
+      event: "app_launched",
+      properties: {
+        $geoip_disable: true,
+        $ip: null,
+        $process_person_profile: false,
+        distinct_id: "nixmac-product-analytics",
+        environment: "production",
+        release: "0.0.0-test",
+        token: "phc_test",
+      },
+    });
     expect(telemetry.diagnosticsEnabled).toBe(true);
   });
 
