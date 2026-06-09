@@ -109,7 +109,7 @@ export const tauriAPI = {
   summarizedChanges: {
     findChangeMap: () => invoke<SemanticChangeMap>("find_change_map"),
     summarizeCurrent: () => invoke<SemanticChangeMap>("summarize_current"),
-    generateCommitMessage: () => invoke<string>("generate_commit_message"),
+    generateCommitMessage: () => invoke<string | null>("generate_commit_message"),
   },
   feedback: {
     gatherMetadata: (feedbackType: string, share: FeedbackShareOptions) =>

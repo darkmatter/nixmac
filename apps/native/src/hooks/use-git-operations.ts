@@ -68,7 +68,7 @@ const getInitialStatus = async () => {
   }
 };
 
-const handleCommit = async ({ message }: { message: string }) => {
+const handleCommit = async ({ message }: { message: string }): Promise<boolean> => {
   const store = useWidgetStore.getState();
   store.setProcessing(true, "merge");
   store.appendLog(`\n> Committing changes...\n`);
@@ -81,10 +81,12 @@ const handleCommit = async ({ message }: { message: string }) => {
     mirrorChangeMapState(null);
     mirrorEvolveState(result.evolveState);
     await refreshGitStatus();
+    return true;
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
     useWidgetStore.getState().setError(msg);
     useWidgetStore.getState().appendLog(`✗ Error: ${msg}\n`);
+    return false;
   } finally {
     useWidgetStore.getState().setProcessing(false);
   }

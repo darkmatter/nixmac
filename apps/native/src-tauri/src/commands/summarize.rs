@@ -79,7 +79,7 @@ pub async fn finalize_restore(
 
 /// Generates a commit message from the current semantic change map via the pipeline.
 #[tauri::command]
-pub async fn generate_commit_message(app: AppHandle) -> Result<String, String> {
+pub async fn generate_commit_message(app: AppHandle) -> Result<Option<String>, String> {
     crate::summarize::pipelines::commit_message::generate(&app)
         .await
         .map_err(|e| capture_err("generate_commit_message", e))
