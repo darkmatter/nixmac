@@ -1,11 +1,11 @@
 //! `think` tool: structured step-by-step reasoning.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use log::{debug, info};
 
 use crate::evolve::messages::Tool;
 
-use super::{truncate_for_log, ToolCtx, ToolResult};
+use super::{ToolCtx, ToolResult, truncate_for_log};
 
 pub(crate) fn definition() -> Tool {
     Tool {

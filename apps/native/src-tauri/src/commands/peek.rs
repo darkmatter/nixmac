@@ -51,3 +51,17 @@ pub async fn preview_indicator_get_state() -> Result<shared_types::PreviewIndica
     log::debug!("Current preview indicator state: {:?}", state);
     Ok(state)
 }
+
+/// Shows the experimental spinning-mascot indicator window (creates it lazily).
+#[tauri::command]
+pub async fn evolve_mascot_show(app: AppHandle) -> Result<shared_types::OkResult, String> {
+    peek::show_evolve_mascot(&app).map_err(|e| capture_err("evolve_mascot_show", e))?;
+    Ok(shared_types::OkResult::yes())
+}
+
+/// Hides the experimental spinning-mascot indicator window.
+#[tauri::command]
+pub async fn evolve_mascot_hide(app: AppHandle) -> Result<shared_types::OkResult, String> {
+    peek::hide_evolve_mascot(&app).map_err(|e| capture_err("evolve_mascot_hide", e))?;
+    Ok(shared_types::OkResult::yes())
+}

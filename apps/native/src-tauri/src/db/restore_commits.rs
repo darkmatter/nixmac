@@ -7,8 +7,8 @@
 use anyhow::Result;
 use diesel::prelude::*;
 
-use crate::db::tables::restore_commits;
 use crate::db::DbPool;
+use crate::db::tables::restore_commits;
 
 /// Record that `commit_hash` is a restore of `origin_hash`.
 pub fn insert(pool: &DbPool, commit_hash: &str, origin_hash: &str) -> Result<()> {

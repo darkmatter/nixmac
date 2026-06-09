@@ -3,13 +3,13 @@ use crate::ai::model_capabilities::supports_custom_temperature;
 use crate::ai::provider_errors::{classify_openai_error, friendly_provider_error};
 use anyhow::Result;
 use async_openai::{
+    Client,
     config::OpenAIConfig,
     error::OpenAIError,
     types::{
         ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestUserMessageArgs,
         CreateChatCompletionRequestArgs, ResponseFormat,
     },
-    Client,
 };
 use async_trait::async_trait;
 use log::debug;

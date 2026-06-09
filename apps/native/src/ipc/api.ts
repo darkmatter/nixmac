@@ -169,6 +169,12 @@ export const tauriAPI = {
     getState: () => invoke<PreviewIndicatorState>("preview_indicator_get_state"),
   },
 
+  // Experimental: the spinning-mascot corner indicator shown during evolve/build.
+  evolveMascot: {
+    show: () => invoke<OkResult>("evolve_mascot_show"),
+    hide: () => invoke<OkResult>("evolve_mascot_hide"),
+  },
+
   scanner: {
     getRecommendedPrompt: () => invoke<RecommendedPrompt | null>("get_recommended_prompt"),
     scanDefaults: () => invoke<SystemDefaultsScan>("scan_system_defaults"),

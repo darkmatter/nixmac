@@ -42,18 +42,18 @@ use storage::store;
 
 use std::env;
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc, Mutex,
+    atomic::{AtomicBool, Ordering},
 };
 use std::time::Duration;
 use tauri::{
+    Emitter, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
     image::Image,
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
     webview::PageLoadEvent,
-    Emitter, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
 };
-use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Global app handle, set during GUI setup so background threads (such as the
 /// drift watcher) can access plugins like notifications without threading an
@@ -553,6 +553,9 @@ fn run_gui_mode(
             commands::peek::preview_indicator_update,
             commands::peek::preview_indicator_get_state,
             commands::peek::set_has_uncommitted_changes,
+            // Evolve mascot indicator (experimental)
+            commands::peek::evolve_mascot_show,
+            commands::peek::evolve_mascot_hide,
             // Permissions
             commands::permissions::permissions_check_all,
             commands::permissions::permissions_request,
@@ -896,6 +899,17 @@ fn run_gui_mode(
             // if let Err(e) = peek::create_preview_indicator_window(handle) {
             //     log::error!("[peek] ❌ Failed to create preview indicator window: {}", e);
             // }
+
+            // Experimental: create the spinning-mascot indicator window when the
+            // flag is enabled at launch. Gated here so users who never enable it
+            // pay no startup cost; enabling the flag applies on the next launch.
+            if store::get_bool_pref(handle, store::EXPERIMENTAL_SPINNING_MASCOT_KEY, false)
+                .unwrap_or(false)
+            {
+                if let Err(e) = peek::create_evolve_mascot_window(handle) {
+                    log::error!("[peek] failed to create evolve mascot window: {}", e);
+                }
+            }
 
             // Start config watcher - monitors config directory for file changes
             // This emits config:changed events to the frontend when files are modified

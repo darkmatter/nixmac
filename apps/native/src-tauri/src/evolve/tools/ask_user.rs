@@ -1,6 +1,6 @@
 //! `ask_user` tool: ask the user a question and wait for a response.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use log::info;
 
 use crate::evolve::messages::Tool;
@@ -13,7 +13,8 @@ pub(crate) fn definition() -> Tool {
         description: "Ask the user a question and wait for their response. Use this when you \
                      need clarification, want to confirm a destructive action, or need the user \
                      to choose between options. The question should be clear and specific. \
-                     Optionally provide a list of choices for the user to pick from.".to_string(),
+                     Optionally provide a list of choices for the user to pick from."
+            .to_string(),
         parameters: serde_json::json!({
             "type": "object",
             "properties": {

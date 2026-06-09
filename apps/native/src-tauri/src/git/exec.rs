@@ -1108,8 +1108,10 @@ mod tests {
             .get_path(Path::new("new.nix"), 0)
             .expect("new file should have an index entry");
 
-        assert!(git2::IndexEntryFlag::from_bits_truncate(entry.flags)
-            .contains(git2::IndexEntryFlag::EXTENDED));
+        assert!(
+            git2::IndexEntryFlag::from_bits_truncate(entry.flags)
+                .contains(git2::IndexEntryFlag::EXTENDED)
+        );
         assert!(
             git2::IndexEntryExtendedFlag::from_bits_truncate(entry.flags_extended)
                 .contains(git2::IndexEntryExtendedFlag::INTENT_TO_ADD)
@@ -1137,7 +1139,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn test_intent_add_untracked_preserves_unix_file_modes_without_hashing_contents() {
-        use std::os::unix::fs::{symlink, PermissionsExt};
+        use std::os::unix::fs::{PermissionsExt, symlink};
 
         let temp_dir = TempDir::new().unwrap();
         let repo_dir = temp_dir.path().join("repo");

@@ -3,8 +3,8 @@
 use anyhow::Result;
 use diesel::prelude::*;
 
-use crate::db::tables::evolutions;
 use crate::db::DbPool;
+use crate::db::tables::evolutions;
 
 /// Upsert an evolution by id: if `existing_id` is Some and exists in the DB, return it.
 /// Otherwise insert a new evolution record and return its id.
