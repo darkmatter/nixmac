@@ -10,6 +10,11 @@ const storyRoots = [
   path.resolve(repoRoot, "packages/ui/src"),
 ];
 const storyFileSuffixes = [".stories.ts", ".stories.tsx"];
+const skippedSnapshotStoryFiles = new Set([
+  // React Three Fiber can hang in headless CI WebGL contexts. Keep this story
+  // available in Storybook, but exclude it from automated snapshot batches.
+  path.resolve(appRoot, "src/components/nixmac-mascot/NixmacMascot3D.stories.tsx"),
+]);
 const batchSize = 2;
 const perBatchTimeoutMs = 120_000;
 
@@ -56,7 +61,11 @@ async function listStoryFiles(directory) {
         return listStoryFiles(absolutePath);
       }
 
-      if (entry.isFile() && storyFileSuffixes.some((suffix) => entry.name.endsWith(suffix))) {
+      if (
+        entry.isFile() &&
+        storyFileSuffixes.some((suffix) => entry.name.endsWith(suffix)) &&
+        !skippedSnapshotStoryFiles.has(absolutePath)
+      ) {
         return [path.relative(process.cwd(), absolutePath)];
       }
 
