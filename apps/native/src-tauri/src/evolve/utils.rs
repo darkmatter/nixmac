@@ -1,6 +1,6 @@
 //! Common utilities for the evolve module
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::path::{Component, Path, PathBuf};
 
 /// Escape special characters in the user query to prevent them from being interpreted as markup in the system prompt.
