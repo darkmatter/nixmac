@@ -11,10 +11,10 @@ use std::env;
 use opentelemetry::KeyValue;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_otlp::{LogExporter, Protocol, SpanExporter, WithExportConfig, WithHttpConfig};
+use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::logs::SdkLoggerProvider;
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 use opentelemetry_sdk::trace::SdkTracerProvider;
-use opentelemetry_sdk::Resource;
 
 const SERVICE_NAME: &str = "nixmac";
 
@@ -53,7 +53,10 @@ fn parse_sentry_dsn(dsn: &str) -> Option<SentryOtlpConfig> {
     Some(SentryOtlpConfig {
         traces_url: format!("{scheme}://{host}/api/{project_id}/integration/otlp/v1/traces/"),
         logs_url: format!("{scheme}://{host}/api/{project_id}/integration/otlp/v1/logs/"),
-        headers: vec![("x-sentry-auth".to_string(), format!("sentry sentry_key={public_key}"))],
+        headers: vec![(
+            "x-sentry-auth".to_string(),
+            format!("sentry sentry_key={public_key}"),
+        )],
     })
 }
 
@@ -193,10 +196,12 @@ pub fn init_telemetry(send_diagnostics: bool) -> TelemetryGuard {
     {
         use tracing_subscriber::prelude::*;
         let log_bridge = OpenTelemetryTracingBridge::new(&logger_provider);
-        if tracing_subscriber::registry().with(log_bridge).try_init().is_err() {
-            log::debug!(
-                "OTEL log bridge not attached: a tracing subscriber is already installed"
-            );
+        if tracing_subscriber::registry()
+            .with(log_bridge)
+            .try_init()
+            .is_err()
+        {
+            log::debug!("OTEL log bridge not attached: a tracing subscriber is already installed");
         }
     }
 

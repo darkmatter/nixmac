@@ -4,4 +4,4 @@ pub mod providers;
 
 // Re-export the most commonly used types so callers can use short paths.
 #[allow(unused_imports)]
-pub use providers::{create_provider, ChatCompletionProvider, TokenUsage};
+pub use providers::{ChatCompletionProvider, TokenUsage, create_provider};

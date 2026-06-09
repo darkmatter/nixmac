@@ -1,5 +1,5 @@
 use super::utils::truncate_error;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use ignore::gitignore::Gitignore;
 use log::info;
 use serde_json::Value;

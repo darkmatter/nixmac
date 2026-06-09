@@ -35,6 +35,7 @@ import { useTrayEvents } from "@/hooks/use-tray-events";
 import { loadConfig, loadHosts, loadEvolveState } from "@/hooks/use-widget-initialization";
 import { useSummary } from "@/hooks/use-summary";
 import { markBootStage } from "@/lib/boot-diagnostics";
+import { useEvolveMascot } from "@/hooks/use-evolve-mascot";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { UpdateBanner } from "@/components/widget/layout/update-banner";
 import { startViewModelSync } from "@/viewmodel";
@@ -56,6 +57,9 @@ export function DarwinWidget() {
   const { loadPrefs } = usePrefs();
   const { refreshPromptHistory } = usePromptHistory();
   const { findChangeMap } = useSummary();
+
+  // Experimental: spin the mascot in a corner indicator while evolving/building
+  useEvolveMascot();
 
   // Set up panic handler to catch Rust crashes and show feedback dialog
   usePanicHandler();
