@@ -148,10 +148,19 @@ fn looks_like_attr_path(path: &str) -> bool {
     path.contains('.') && !path.contains('/') && !path.ends_with(".nix")
 }
 
-/// Return a known edit action name when `action` was provided as a shorthand string.
 fn action_name(value: &serde_json::Value) -> Option<&str> {
-    let name = value.as_str()?;
-    matches!(name, "add" | "remove" | "set" | "set_attrs").then_some(name)
+    if let Some(name) = value.as_str() {
+        return matches!(name, "add" | "remove" | "set" | "set_attrs").then_some(name);
+    }
+
+    let obj = value.as_object()?;
+    for key in ["add", "remove", "set", "set_attrs"] {
+        if obj.contains_key(key) {
+            return Some(key);
+        }
+    }
+
+    None
 }
 
 /// Build a compact example call that shows where the file path and action path belong.
