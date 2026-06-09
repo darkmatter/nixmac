@@ -32,7 +32,6 @@ pub fn whole_diff(changes: &[&crate::sqlite_types::Change]) -> String {
         "Return ONLY valid JSON.\n".to_string(),
         "Example:\n".to_string(),
         "{\"message\":\"feat(darwin): enable dock auto-hide\"}\n\n".to_string(),
-        "JSON:\n".to_string(),
     ])
 }
 
@@ -56,6 +55,7 @@ mod tests {
         assert!(out.contains(&crate::utils::short_hash(&change.hash)));
         assert!(out.contains("single conventional commit message "));
         assert!(out.contains("\"message\""));
+        assert!(!out.contains("JSON:"));
         assert!(!out.contains("\"changes\""));
         assert!(!out.contains("\"group\""));
         assert!(!out.contains("Title – Description"));

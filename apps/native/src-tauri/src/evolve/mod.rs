@@ -47,6 +47,7 @@ pub use types::{EvolutionProgress, EvolutionRunError};
 use crate::{
     statistics, store,
     types::{emit_evolve_event, EvolveEvent},
+    utils::short_hash,
     utils as global_utils,
 };
 use chat_memory::{to_provider_context_messages, ChatMessage, Role as ChatMemoryRole};
