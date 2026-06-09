@@ -70,7 +70,7 @@ fi
 
 target="${!#}"
 printf '%s\n' "signed $target" >>"$TAURI_SIGNER_LOG"
-printf '%s\n' "fresh signature" >"${target}.sig"
+printf '%s\n' "fresh signature"
 SH
 chmod +x "$FAKE_BIN/bun"
 
