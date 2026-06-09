@@ -1,11 +1,20 @@
+import { TRACK_ITEMS_FILES } from "./track-items";
+
 export type FileTone = "teal" | "amber" | "rose" | "blue" | "muted";
 export type FileStatus = "managed" | "changed" | "candidate";
+
+export type NixDarwinDocsRef = {
+  optionPath: string;
+  docsPath: string;
+  generatedBy: string;
+};
 
 export type CandidateItem = {
   name: string;
   detail: string;
   installedAt: string;
   attr: string;
+  source?: NixDarwinDocsRef;
 };
 
 export type FsFile = {
@@ -32,6 +41,7 @@ export type FsFile = {
   scanCommand?: string;
   scannedAt?: string;
   items?: CandidateItem[];
+  source?: NixDarwinDocsRef;
 };
 
 export type SectionId = "entry" | "darwin" | "home" | "support" | "manage";
@@ -266,75 +276,7 @@ creation_rules:
       status: "managed",
     },
   ],
-  manage: [
-    {
-      id: "untracked-brew",
-      path: "Untracked Homebrew",
-      title: "11 apps installed by hand",
-      description:
-        "Casks already on disk via `brew` but not declared in your flake. On a fresh Mac they wouldn't come back.",
-      iconName: "warn",
-      tone: "amber",
-      status: "candidate",
-      destination: "modules/darwin/homebrew.nix",
-      scanCommand: "brew list --cask",
-      scannedAt: "scanned 14 min ago",
-      items: [
-        { name: "docker", detail: "Docker Desktop · 4.32.0", installedAt: "Mar 12", attr: 'homebrew.casks = [ "docker" ];' },
-        { name: "obs", detail: "OBS Studio · 30.2.3", installedAt: "Feb 28", attr: 'homebrew.casks = [ "obs" ];' },
-        { name: "iterm2", detail: "iTerm2 · 3.5.1", installedAt: "Jan 09", attr: 'homebrew.casks = [ "iterm2" ];' },
-        { name: "vlc", detail: "VLC media player · 3.0.20", installedAt: "Jan 02", attr: 'homebrew.casks = [ "vlc" ];' },
-        { name: "figma", detail: "Figma · 124.4.0", installedAt: "2025-12-18", attr: 'homebrew.casks = [ "figma" ];' },
-        { name: "spotify", detail: "Spotify · 1.2.45", installedAt: "2025-11-30", attr: 'homebrew.casks = [ "spotify" ];' },
-        { name: "slack", detail: "Slack · 4.40.0", installedAt: "2025-11-21", attr: 'homebrew.casks = [ "slack" ];' },
-        { name: "zoom", detail: "Zoom · 6.1.10", installedAt: "2025-11-15", attr: 'homebrew.casks = [ "zoom" ];' },
-        { name: "discord", detail: "Discord · 0.0.310", installedAt: "2025-10-04", attr: 'homebrew.casks = [ "discord" ];' },
-        { name: "notion", detail: "Notion · 4.1.0", installedAt: "2025-09-22", attr: 'homebrew.casks = [ "notion" ];' },
-        { name: "audacity", detail: "Audacity · 3.6.4", installedAt: "2025-08-11", attr: 'homebrew.casks = [ "audacity" ];' },
-      ],
-    },
-    {
-      id: "custom-defaults",
-      path: "Custom macOS defaults",
-      title: "8 untracked settings",
-      description:
-        "Preferences you've changed in System Settings. Capture them as code so a fresh install matches.",
-      iconName: "settings",
-      tone: "blue",
-      status: "candidate",
-      destination: "modules/darwin/defaults.nix",
-      scanCommand: "defaults read · diff against profile",
-      scannedAt: "scanned 14 min ago",
-      items: [
-        { name: "Dock — magnification on", detail: "dock magnification = 1", installedAt: "changed Mar 18", attr: "system.defaults.dock.magnification = true;" },
-        { name: "Finder — show path bar", detail: "finder ShowPathbar = 1", installedAt: "changed Mar 02", attr: "system.defaults.finder.ShowPathbar = true;" },
-        { name: "Trackpad — three-finger drag", detail: "trackpad TrackpadThreeFingerDrag = 1", installedAt: "changed Feb 14", attr: "system.defaults.trackpad.TrackpadThreeFingerDrag = true;" },
-        { name: "Keyboard — fast key repeat", detail: "NSGlobalDomain KeyRepeat = 2", installedAt: "changed Jan 28", attr: "system.defaults.NSGlobalDomain.KeyRepeat = 2;" },
-        { name: "Mission Control — disable rearrange", detail: "dock mru-spaces = 0", installedAt: "changed Jan 15", attr: "system.defaults.dock.mru-spaces = false;" },
-        { name: "Hot corners — bottom-right: lock screen", detail: "dock wvous-br-corner = 13", installedAt: "changed Jan 09", attr: "system.defaults.dock.wvous-br-corner = 13;" },
-        { name: "Menu bar — show date", detail: "menuextra.clock ShowDate = 1", installedAt: "changed 2025-12-22", attr: "system.defaults.menuExtraClock.ShowDate = 1;" },
-        { name: "Sound — feedback off", detail: 'NSGlobalDomain "com.apple.sound.beep.feedback" = 0', installedAt: "changed 2025-12-04", attr: 'system.defaults.NSGlobalDomain."com.apple.sound.beep.feedback" = 0;' },
-      ],
-    },
-    {
-      id: "login-items",
-      path: "Login items",
-      title: "4 apps auto-start at login",
-      description: "Move them into your config so new machines launch the same set.",
-      iconName: "warn",
-      tone: "amber",
-      status: "candidate",
-      destination: "modules/darwin/services.nix",
-      scanCommand: "osascript · System Events get login items",
-      scannedAt: "scanned 14 min ago",
-      items: [
-        { name: "Rectangle", detail: "/Applications/Rectangle.app", installedAt: "since Dec 2024", attr: "launchd.user.agents.rectangle = { ... };" },
-        { name: "Raycast", detail: "/Applications/Raycast.app", installedAt: "since Dec 2024", attr: "launchd.user.agents.raycast   = { ... };" },
-        { name: "1Password", detail: "/Applications/1Password.app", installedAt: "since Jan 2025", attr: 'launchd.user.agents."1password" = { ... };' },
-        { name: "Hammerspoon", detail: "/Applications/Hammerspoon.app", installedAt: "since Feb 2025", attr: "launchd.user.agents.hammerspoon = { ... };" },
-      ],
-    },
-  ],
+  manage: TRACK_ITEMS_FILES,
 };
 
 export const TONE_CLASSES: Record<FileTone, { fg: string; bg: string }> = {

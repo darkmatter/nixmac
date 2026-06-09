@@ -1,0 +1,234 @@
+{
+  "version": 1,
+  "sources": {
+    "nixDarwinDocs": "apps/native/src-tauri/resources/nix-darwin-docs.json",
+    "generatedBy": "scripts/nix-options.sh"
+  },
+  "sections": [
+    {
+      "id": "untracked-brew",
+      "path": "Untracked Homebrew",
+      "title": {
+        "singular": "app installed by hand",
+        "plural": "apps installed by hand"
+      },
+      "description": "Casks already on disk via `brew` but not declared in your flake. On a fresh Mac they wouldn't come back.",
+      "iconName": "warn",
+      "tone": "amber",
+      "destination": "modules/darwin/homebrew.nix",
+      "scanCommand": "brew list --cask",
+      "scannedAt": "scanned 14 min ago",
+      "attrFormat": "homebrewCask",
+      "source": {
+        "optionPath": "homebrew.casks",
+        "docsPath": "nix-darwin/homebrew.md"
+      },
+      "items": [
+        {
+          "name": "docker",
+          "detail": "Docker Desktop \u00b7 4.32.0",
+          "installedAt": "Mar 12",
+          "cask": "docker"
+        },
+        {
+          "name": "obs",
+          "detail": "OBS Studio \u00b7 30.2.3",
+          "installedAt": "Feb 28",
+          "cask": "obs"
+        },
+        {
+          "name": "iterm2",
+          "detail": "iTerm2 \u00b7 3.5.1",
+          "installedAt": "Jan 09",
+          "cask": "iterm2"
+        },
+        {
+          "name": "vlc",
+          "detail": "VLC media player \u00b7 3.0.20",
+          "installedAt": "Jan 02",
+          "cask": "vlc"
+        },
+        {
+          "name": "figma",
+          "detail": "Figma \u00b7 124.4.0",
+          "installedAt": "2025-12-18",
+          "cask": "figma"
+        },
+        {
+          "name": "spotify",
+          "detail": "Spotify \u00b7 1.2.45",
+          "installedAt": "2025-11-30",
+          "cask": "spotify"
+        },
+        {
+          "name": "slack",
+          "detail": "Slack \u00b7 4.40.0",
+          "installedAt": "2025-11-21",
+          "cask": "slack"
+        },
+        {
+          "name": "zoom",
+          "detail": "Zoom \u00b7 6.1.10",
+          "installedAt": "2025-11-15",
+          "cask": "zoom"
+        },
+        {
+          "name": "discord",
+          "detail": "Discord \u00b7 0.0.310",
+          "installedAt": "2025-10-04",
+          "cask": "discord"
+        },
+        {
+          "name": "notion",
+          "detail": "Notion \u00b7 4.1.0",
+          "installedAt": "2025-09-22",
+          "cask": "notion"
+        },
+        {
+          "name": "audacity",
+          "detail": "Audacity \u00b7 3.6.4",
+          "installedAt": "2025-08-11",
+          "cask": "audacity"
+        }
+      ]
+    },
+    {
+      "id": "custom-defaults",
+      "path": "Custom macOS defaults",
+      "title": {
+        "singular": "untracked setting",
+        "plural": "untracked settings"
+      },
+      "description": "Preferences you've changed in System Settings. Capture them as code so a fresh install matches.",
+      "iconName": "settings",
+      "tone": "blue",
+      "destination": "modules/darwin/defaults.nix",
+      "scanCommand": "defaults read \u00b7 diff against profile",
+      "scannedAt": "scanned 14 min ago",
+      "attrFormat": "nixDarwinOption",
+      "source": {
+        "optionPath": "system.defaults",
+        "docsPath": "nix-darwin/system.md"
+      },
+      "items": [
+        {
+          "name": "Dock \u2014 magnification on",
+          "detail": "dock magnification = 1",
+          "installedAt": "changed Mar 18",
+          "value": true,
+          "source": {
+            "optionPath": "system.defaults.dock.magnification"
+          }
+        },
+        {
+          "name": "Finder \u2014 show path bar",
+          "detail": "finder ShowPathbar = 1",
+          "installedAt": "changed Mar 02",
+          "value": true,
+          "source": {
+            "optionPath": "system.defaults.finder.ShowPathbar"
+          }
+        },
+        {
+          "name": "Trackpad \u2014 three-finger drag",
+          "detail": "trackpad TrackpadThreeFingerDrag = 1",
+          "installedAt": "changed Feb 14",
+          "value": true,
+          "source": {
+            "optionPath": "system.defaults.trackpad.TrackpadThreeFingerDrag"
+          }
+        },
+        {
+          "name": "Keyboard \u2014 fast key repeat",
+          "detail": "NSGlobalDomain KeyRepeat = 2",
+          "installedAt": "changed Jan 28",
+          "value": 2,
+          "source": {
+            "optionPath": "system.defaults.NSGlobalDomain.KeyRepeat"
+          }
+        },
+        {
+          "name": "Mission Control \u2014 disable rearrange",
+          "detail": "dock mru-spaces = 0",
+          "installedAt": "changed Jan 15",
+          "value": false,
+          "source": {
+            "optionPath": "system.defaults.dock.mru-spaces"
+          }
+        },
+        {
+          "name": "Hot corners \u2014 bottom-right: lock screen",
+          "detail": "dock wvous-br-corner = 13",
+          "installedAt": "changed Jan 09",
+          "value": 13,
+          "source": {
+            "optionPath": "system.defaults.dock.wvous-br-corner"
+          }
+        },
+        {
+          "name": "Menu bar \u2014 show date",
+          "detail": "menuextra.clock ShowDate = 1",
+          "installedAt": "changed 2025-12-22",
+          "value": 1,
+          "source": {
+            "optionPath": "system.defaults.menuExtraClock.ShowDate"
+          }
+        },
+        {
+          "name": "Sound \u2014 feedback off",
+          "detail": "NSGlobalDomain \"com.apple.sound.beep.feedback\" = 0",
+          "installedAt": "changed 2025-12-04",
+          "value": 0,
+          "source": {
+            "optionPath": "system.defaults.NSGlobalDomain.\"com.apple.sound.beep.feedback\""
+          }
+        }
+      ]
+    },
+    {
+      "id": "login-items",
+      "path": "Login items",
+      "title": {
+        "singular": "app auto-starts at login",
+        "plural": "apps auto-start at login"
+      },
+      "description": "Move them into your config so new machines launch the same set.",
+      "iconName": "warn",
+      "tone": "amber",
+      "destination": "modules/darwin/services.nix",
+      "scanCommand": "osascript \u00b7 System Events get login items",
+      "scannedAt": "scanned 14 min ago",
+      "attrFormat": "launchdUserAgent",
+      "source": {
+        "optionPath": "launchd.user.agents",
+        "docsPath": "nix-darwin/launchd.md"
+      },
+      "items": [
+        {
+          "name": "Rectangle",
+          "detail": "/Applications/Rectangle.app",
+          "installedAt": "since Dec 2024",
+          "agentName": "rectangle"
+        },
+        {
+          "name": "Raycast",
+          "detail": "/Applications/Raycast.app",
+          "installedAt": "since Dec 2024",
+          "agentName": "raycast"
+        },
+        {
+          "name": "1Password",
+          "detail": "/Applications/1Password.app",
+          "installedAt": "since Jan 2025",
+          "agentName": "1password"
+        },
+        {
+          "name": "Hammerspoon",
+          "detail": "/Applications/Hammerspoon.app",
+          "installedAt": "since Feb 2025",
+          "agentName": "hammerspoon"
+        }
+      ]
+    }
+  ]
+}
