@@ -152,90 +152,103 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
     }
 }
 
-/// For the shorthand format, look for a sibling field with likely name that indicates the attribute
-/// path.
-fn sibling_attr_path(args: &serde_json::Value) -> Option<String> {
-    [
-        "attr_path",
-        "attrPath",
-        "action_path",
-        "target",
-        "target_path",
-    ]
-    .iter()
-    .find_map(|key| args.get(*key).and_then(|value| value.as_str()))
-    .map(str::to_string)
+/// Determines if the given string presumably from "path" looks like an actual
+/// file path or if it looks like an attribute path that was mistakenly put in the
+/// file path field, which is a common agent mistake.
+/// This is a heuristic check to provide a helpful error message, but it's not a guarantee.
+fn looks_like_attr_path(path: &str) -> bool {
+    path.contains('.') && !path.contains('/') && !path.ends_with(".nix")
 }
 
-fn infer_attr_path_from_file(ctx: &ToolCtx, path: &str) -> Result<Option<String>> {
-    let normalized_path = normalize_relative_path(std::path::Path::new(path))?;
-    if is_ignored_by_matcher(ctx.gitignore_matcher, &normalized_path, false) {
+fn action_name(value: &serde_json::Value) -> Option<&str> {
+    if let Some(name) = value.as_str() {
+        return matches!(name, "add" | "remove" | "set" | "set_attrs").then_some(name);
+    }
+
+    let obj = value.as_object()?;
+    for key in ["add", "remove", "set", "set_attrs"] {
+        if obj.contains_key(key) {
+            return Some(key);
+        }
+    }
+
+    None
+}
+
+/// Build a compact example call that shows where the file path and action path belong.
+fn corrective_action_shape(action: &str, attr_path: &str) -> String {
+    let payload = match action {
+        "add" | "remove" => format!(r#""path": "{}", "values": [...]"#, attr_path),
+        "set" => format!(r#""path": "{}", "value": ..."#, attr_path),
+        "set_attrs" => format!(r#""path": "{}", "attrs": {{...}}"#, attr_path),
+        _ => format!(r#""path": "{}""#, attr_path),
+    };
+
+    format!(
+        r#"{{ "path": "modules/darwin/services.nix", "action": {{ "{}": {{ {} }} }} }}"#,
+        action, payload
+    )
+}
+
+/// Explain the common mistake of putting a Nix option path in the top-level file path field.
+fn explain_attr_path_used_as_file_path(args: &serde_json::Value, path: &str) -> anyhow::Error {
+    let action = action_name(&args["action"]);
+    let correction = action
+        .map(|name| corrective_action_shape(name, path))
+        .unwrap_or_else(|| {
+            format!(
+                r#"{{ "path": "modules/darwin/services.nix", "action": {{ "set_attrs": {{ "path": "{}", "attrs": {{...}} }} }} }}"#,
+                path
+            )
+        });
+
+    anyhow!(
+        "edit_nix_file: top-level 'path' must be the relative .nix file to edit, but got attribute path '{}'. Put '{}' inside the action object as the action path, choose a file path for top-level 'path', and call the tool like: {}",
+        path,
+        path,
+        correction
+    )
+}
+
+/// Explain the shorthand action shape without executing it, so the agent can retry correctly.
+fn explain_string_action(args: &serde_json::Value, action: &str) -> anyhow::Error {
+    let payload_fields = match action {
+        "add" | "remove" => "path and values",
+        "set" => "path and value",
+        "set_attrs" => "path and attrs",
+        _ => "the required payload fields",
+    };
+    let likely_attr_path = args["path"]
+        .as_str()
+        .filter(|path| looks_like_attr_path(path));
+    let attr_path = likely_attr_path.unwrap_or("<attribute.path>");
+    let correction = corrective_action_shape(action, attr_path);
+
+    anyhow!(
+        "edit_nix_file: action must be an object, not string '{}'. Wrap sibling payload fields under action.{} with {}. Top-level 'path' must remain the .nix file path. Correct shape: {}",
+        action,
+        action,
+        payload_fields,
+        correction
+    )
+}
+
+/// Ensure the selected action contains the expected object payload before reading fields from it.
+fn ensure_action_payload_is_object<'a>(
+    action_val: &'a serde_json::Value,
+    action_name: &str,
+) -> Result<&'a serde_json::Value> {
+    let payload = action_val
+        .get(action_name)
+        .ok_or_else(|| anyhow!("edit_nix_file.{}: missing action payload", action_name))?;
+    if !payload.is_object() {
         return Err(anyhow!(
-            "edit_nix_file: '{}' is ignored by .gitignore in git repository; refusing to infer action path",
-            path
+            "edit_nix_file.{}: action payload must be an object. Correct shape: {{ \"action\": {{ \"{}\": {{ \"path\": \"<attribute.path>\", ... }} }}, \"path\": \"modules/darwin/services.nix\" }}",
+            action_name,
+            action_name
         ));
     }
-
-    let full_path = resolve_existing_path_in_dir(ctx.repo_root, path)?;
-    let content = std::fs::read_to_string(&full_path)
-        .map_err(|e| anyhow!("edit_nix_file: failed to read {}: {}", path, e))?;
-    infer_single_list_attrpath(&content)
-}
-
-/// Convert the shorthand action format into the full action object format for downstream processing.
-/// For add/remove, if no path is provided, attempt to infer it from the file when there is exactly one list attribute.
-/// If there is more than one list attribute or the file is git-ignored, inference is skipped and an error is returned if the path is missing.
-fn shorthand_action_object(
-    ctx: &ToolCtx,
-    path: &str,
-    action_name: &str,
-    args: &serde_json::Value,
-) -> Result<serde_json::Value> {
-    let action_key = match action_name {
-        "add" | "remove" | "set" | "set_attrs" => action_name,
-        _ => {
-            return Err(anyhow!(
-                "edit_nix_file: unsupported shorthand action '{}'; expected add, remove, set, or set_attrs",
-                action_name
-            ));
-        }
-    };
-
-    let attr_path = sibling_attr_path(args);
-    let inferred_path = if attr_path.is_none() && matches!(action_key, "add" | "remove") {
-        infer_attr_path_from_file(ctx, path)?
-    } else {
-        None
-    };
-    let attr_path = attr_path.or(inferred_path);
-
-    let mut payload = serde_json::Map::new();
-    if let Some(attr_path) = attr_path {
-        payload.insert("path".to_string(), serde_json::Value::String(attr_path));
-    }
-
-    match action_key {
-        "add" | "remove" => {
-            if let Some(values) = args.get("values") {
-                payload.insert("values".to_string(), values.clone());
-            }
-        }
-        "set" => {
-            if let Some(value) = args.get("value") {
-                payload.insert("value".to_string(), value.clone());
-            }
-        }
-        "set_attrs" => {
-            if let Some(attrs) = args.get("attrs") {
-                payload.insert("attrs".to_string(), attrs.clone());
-            }
-        }
-        _ => unreachable!(),
-    }
-
-    let mut action = serde_json::Map::new();
-    action.insert(action_key.to_string(), serde_json::Value::Object(payload));
-    Ok(serde_json::Value::Object(action))
+    Ok(payload)
 }
 
 pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
@@ -243,21 +256,19 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
     let path = args["path"]
         .as_str()
         .ok_or_else(|| anyhow!("edit_nix_file: missing path"))?;
+    if looks_like_attr_path(path) {
+        return Err(explain_attr_path_used_as_file_path(args, path));
+    }
     ensure_nixmac_edit_allowed("edit_nix_file", path)?;
 
-    // Prefer an object like { "add": { "path": "a.b", "values": ["v"] } }, but
-    // tolerate shorthand calls like { "action": "add", "path": "file.nix", "values": ["v"] }.
-    let normalized_action;
-    let action_val = if let Some(action_name) = args["action"].as_str() {
-        normalized_action = shorthand_action_object(ctx, path, action_name, args)?;
-        &normalized_action
-    } else if args["action"].is_object() {
-        &args["action"]
-    } else {
-        return Err(anyhow!(
-            "edit_nix_file: action must be an object or shorthand string"
-        ));
-    };
+    // Expect `action` to be an object like { "add": { "path": "a.b", "values": ["v"] } }
+    let action_val = &args["action"];
+    if !action_val.is_object() {
+        if let Some(action) = action_name(action_val) {
+            return Err(explain_string_action(args, action));
+        }
+        return Err(anyhow!("edit_nix_file: action must be an object"));
+    }
 
     let parse_values = |value: &serde_json::Value, context: &str| -> Result<Vec<String>> {
         let values = value
@@ -294,10 +305,14 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
     }
 
     let action = if has_add {
-        let add_obj = &action_val["add"];
+        let add_obj = ensure_action_payload_is_object(action_val, "add")?;
         let attr_path = add_obj["path"]
             .as_str()
-            .ok_or_else(|| anyhow!("edit_nix_file.add: missing path"))?;
+            .ok_or_else(|| {
+                anyhow!(
+                    "edit_nix_file.add: missing action path. Put the list attribute path inside action.add.path, e.g. {{ \"action\": {{ \"add\": {{ \"path\": \"environment.systemPackages\", \"values\": [...] }} }}, \"path\": \"modules/darwin/packages.nix\" }}"
+                )
+            })?;
         let values = quote_homebrew_list_values(
             attr_path,
             parse_values(&add_obj["values"], "edit_nix_file.add")?,
@@ -307,10 +322,14 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
             values,
         }
     } else if action_val.get("remove").is_some() {
-        let rem_obj = &action_val["remove"];
+        let rem_obj = ensure_action_payload_is_object(action_val, "remove")?;
         let attr_path = rem_obj["path"]
             .as_str()
-            .ok_or_else(|| anyhow!("edit_nix_file.remove: missing path"))?;
+            .ok_or_else(|| {
+                anyhow!(
+                    "edit_nix_file.remove: missing action path. Put the list attribute path inside action.remove.path, e.g. {{ \"action\": {{ \"remove\": {{ \"path\": \"environment.systemPackages\", \"values\": [...] }} }}, \"path\": \"modules/darwin/packages.nix\" }}"
+                )
+            })?;
         let values = quote_homebrew_list_values(
             attr_path,
             parse_values(&rem_obj["values"], "edit_nix_file.remove")?,
@@ -320,10 +339,14 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
             values,
         }
     } else if action_val.get("set").is_some() {
-        let set_obj = &action_val["set"];
+        let set_obj = ensure_action_payload_is_object(action_val, "set")?;
         let attr_path = set_obj["path"]
             .as_str()
-            .ok_or_else(|| anyhow!("edit_nix_file.set: missing path"))?;
+            .ok_or_else(|| {
+                anyhow!(
+                    "edit_nix_file.set: missing action path. Put the scalar option path inside action.set.path, e.g. {{ \"action\": {{ \"set\": {{ \"path\": \"services.tailscale.enable\", \"value\": true }} }}, \"path\": \"modules/darwin/services.nix\" }}"
+                )
+            })?;
         let value = set_obj
             .get("value")
             .ok_or_else(|| anyhow!("edit_nix_file.set: missing value"))?
@@ -346,10 +369,14 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
             value,
         }
     } else if has_set_attrs {
-        let set_attrs_obj = &action_val["set_attrs"];
+        let set_attrs_obj = ensure_action_payload_is_object(action_val, "set_attrs")?;
         let attr_path = set_attrs_obj["path"]
             .as_str()
-            .ok_or_else(|| anyhow!("edit_nix_file.set_attrs: missing path"))?;
+            .ok_or_else(|| {
+                anyhow!(
+                    "edit_nix_file.set_attrs: missing action path. Put the attrset option path inside action.set_attrs.path, e.g. {{ \"action\": {{ \"set_attrs\": {{ \"path\": \"launchd.user.agents\", \"attrs\": {{...}} }} }}, \"path\": \"modules/darwin/services.nix\" }}"
+                )
+            })?;
         let attrs_val = set_attrs_obj
             .get("attrs")
             .ok_or_else(|| anyhow!("edit_nix_file.set_attrs: missing attrs"))?;
