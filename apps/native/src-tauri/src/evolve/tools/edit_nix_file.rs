@@ -1,12 +1,16 @@
 //! `edit_nix_file` tool: semantic Add/Remove/Set/SetAttrs edits to Nix files.
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 
-use crate::evolve::edit_nix_file::apply_semantic_edit;
+use crate::evolve::edit_nix_file::{apply_semantic_edit, list_attrpaths};
+use crate::evolve::file_ops::resolve_existing_path_in_dir;
+use crate::evolve::gitignore::is_ignored_by_matcher;
 use crate::evolve::messages::Tool;
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
+use crate::evolve::utils::normalize_relative_path;
+use std::path::Path;
 
-use super::{ToolCtx, ToolResult, ensure_nixmac_edit_allowed, quote_homebrew_list_values};
+use super::{ensure_nixmac_edit_allowed, quote_homebrew_list_values, ToolCtx, ToolResult};
 
 pub(crate) fn definition() -> Tool {
     Tool {
@@ -248,6 +252,40 @@ fn ensure_action_payload_is_object<'a>(
     Ok(payload)
 }
 
+fn infer_shorthand_list_path(ctx: &ToolCtx, file_path: &str, action: &str) -> Result<String> {
+    if let Some(attr_path) = ctx.args["attr_path"].as_str() {
+        return Ok(attr_path.to_string());
+    }
+
+    let normalized_rel = normalize_relative_path(Path::new(file_path))?;
+    if is_ignored_by_matcher(ctx.gitignore_matcher, &normalized_rel, false) {
+        return Err(anyhow!(
+            "apply semantic nix edit: '{}' is ignored by .gitignore in git repository; refusing to edit",
+            file_path
+        ));
+    }
+
+    let full_path = resolve_existing_path_in_dir(ctx.repo_root, file_path)?;
+    let content = std::fs::read_to_string(&full_path).map_err(|error| {
+        anyhow!(
+            "Failed to read {} for edit_nix_file shorthand: {}",
+            file_path,
+            error
+        )
+    })?;
+    let candidates = list_attrpaths(&content)?;
+
+    match candidates.as_slice() {
+        [only] => Ok(only.clone()),
+        _ => Err(anyhow!(
+            "edit_nix_file.{}: missing path. Shorthand action needs sibling attr_path when the target file does not have exactly one list attribute path. Prefer the object shape: {{ \"action\": {{ \"{}\": {{ \"path\": \"<attribute.path>\", \"values\": [...] }} }}, \"path\": \"{}\" }}",
+            action,
+            action,
+            file_path
+        )),
+    }
+}
+
 pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
     let args = ctx.args;
     let path = args["path"]
@@ -257,15 +295,6 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
         return Err(explain_attr_path_used_as_file_path(args, path));
     }
     ensure_nixmac_edit_allowed("edit_nix_file", path)?;
-
-    // Expect `action` to be an object like { "add": { "path": "a.b", "values": ["v"] } }
-    let action_val = &args["action"];
-    if !action_val.is_object() {
-        if let Some(action) = action_name(action_val) {
-            return Err(explain_string_action(args, action));
-        }
-        return Err(anyhow!("edit_nix_file: action must be an object"));
-    }
 
     let parse_values = |value: &serde_json::Value, context: &str| -> Result<Vec<String>> {
         let values = value
@@ -285,6 +314,49 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
             })
             .collect()
     };
+
+    // Expect `action` to be an object like { "add": { "path": "a.b", "values": ["v"] } }.
+    // Preserve the legacy list shorthand because package-install agent calls use it.
+    let action_val = &args["action"];
+    if !action_val.is_object() {
+        if let Some(action_name @ ("add" | "remove")) = action_val.as_str() {
+            let attr_path = infer_shorthand_list_path(ctx, path, action_name)?;
+            let values = quote_homebrew_list_values(
+                &attr_path,
+                parse_values(&args["values"], &format!("edit_nix_file.{action_name}"))?,
+            );
+            let action = match action_name {
+                "add" => FileEditAction::Add {
+                    path: attr_path,
+                    values,
+                },
+                "remove" => FileEditAction::Remove {
+                    path: attr_path,
+                    values,
+                },
+                _ => unreachable!("list shorthand action already matched"),
+            };
+
+            apply_semantic_edit(
+                ctx.repo_root,
+                &SemanticFileEdit {
+                    path: path.to_string(),
+                    action: action.clone(),
+                },
+                ctx.gitignore_matcher,
+            )?;
+
+            return Ok(ToolResult::EditSemantic(SemanticFileEdit {
+                path: path.to_string(),
+                action,
+            }));
+        }
+
+        if let Some(action) = action_name(action_val) {
+            return Err(explain_string_action(args, action));
+        }
+        return Err(anyhow!("edit_nix_file: action must be an object"));
+    }
 
     // Require exactly one discriminant to avoid ambiguous ordering (e.g. simultaneous add+remove).
     // TODO: Allow multiple actions per call once ordering semantics are defined.
