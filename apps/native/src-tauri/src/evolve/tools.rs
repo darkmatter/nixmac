@@ -28,7 +28,7 @@ use crate::evolve::types::SemanticFileEdit;
 use crate::evolve::utils::normalize_relative_path;
 use crate::shared_types::FileEdit;
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use ignore::gitignore::Gitignore;
 use std::path::{Component, Path};
 
@@ -203,7 +203,7 @@ pub(crate) fn ensure_nixmac_edit_allowed(tool: &str, path: &str) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{ToolResult, execute_tool, truncate_for_log};
+    use super::{execute_tool, truncate_for_log, ToolResult};
     use crate::evolve::gitignore::load_gitignore_matcher;
     use serde_json::json;
     use std::fs;
@@ -609,6 +609,89 @@ mod tests {
     }
 
     #[test]
+    fn edit_nix_file_accepts_add_shorthand_with_legacy_attr_path_alias() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(
+            tmp.path().join("packages.nix"),
+            r#"{ pkgs, ... }:
+{
+  environment.systemPackages = with pkgs; [
+    git
+  ];
+
+  home.packages = with pkgs; [
+    ripgrep
+  ];
+}
+"#,
+        )
+        .expect("write package module");
+
+        execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "add",
+                "path": "packages.nix",
+                "attrPath": "home.packages",
+                "values": ["fd"]
+            }),
+            None,
+        )
+        .expect("edit_nix_file should accept legacy attrPath shorthand alias");
+
+        let edited = fs::read_to_string(tmp.path().join("packages.nix")).expect("read edited");
+        assert!(
+            edited.contains("home.packages = with pkgs; [\n    ripgrep\n    fd"),
+            "{edited}"
+        );
+        assert!(!edited.contains("git\n    fd"), "{edited}");
+    }
+
+    #[test]
+    fn edit_nix_file_accepts_add_shorthand_with_repeated_inferred_list_path() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(
+            tmp.path().join("packages.nix"),
+            r#"{ pkgs, lib, ... }:
+{
+  environment.systemPackages = with pkgs; [
+    git
+  ] ++ lib.optionals true [
+    wget
+  ];
+}
+"#,
+        )
+        .expect("write package module");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "add",
+                "path": "packages.nix",
+                "values": ["fd"]
+            }),
+            None,
+        )
+        .expect("edit_nix_file should dedupe repeated inferred list paths");
+
+        let ToolResult::EditSemantic(edit) = result else {
+            panic!("expected semantic edit result");
+        };
+        let crate::evolve::types::FileEditAction::Add { path, values } = edit.action else {
+            panic!("expected add action");
+        };
+        assert_eq!(path, "environment.systemPackages");
+        assert_eq!(values, vec!["fd".to_string()]);
+    }
+
+    #[test]
     fn edit_nix_file_rejects_add_shorthand_when_multiple_list_paths_are_possible() {
         let tmp = tempdir().expect("tempdir");
         let original = r#"{ pkgs, ... }:
@@ -645,6 +728,50 @@ mod tests {
 
         let edited = fs::read_to_string(tmp.path().join("packages.nix")).expect("read file");
         assert_eq!(edited, original);
+    }
+
+    #[test]
+    fn edit_nix_file_accepts_remove_shorthand_and_infers_only_list_path() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(
+            tmp.path().join("packages.nix"),
+            r#"{ pkgs, ... }:
+{
+  environment.systemPackages = with pkgs; [
+    git
+    wget
+  ];
+}
+"#,
+        )
+        .expect("write package module");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "remove",
+                "path": "packages.nix",
+                "values": ["wget"]
+            }),
+            None,
+        )
+        .expect("edit_nix_file should accept remove shorthand");
+
+        let ToolResult::EditSemantic(edit) = result else {
+            panic!("expected semantic edit result");
+        };
+        let crate::evolve::types::FileEditAction::Remove { path, values } = edit.action else {
+            panic!("expected remove action");
+        };
+        assert_eq!(path, "environment.systemPackages");
+        assert_eq!(values, vec!["wget".to_string()]);
+
+        let edited = fs::read_to_string(tmp.path().join("packages.nix")).expect("read edited");
+        assert!(edited.contains("git"), "{edited}");
+        assert!(!edited.contains("wget"), "{edited}");
     }
 
     #[test]
