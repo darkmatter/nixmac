@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { getProviderConfigInvalidReason } from "./ai-provider-validation";
+import {
+  getProviderConfigInvalidReason,
+  resolveOpenAiCompatibleProvider,
+} from "./ai-provider-validation";
 
 const EMPTY_PREFS = {
   openrouterApiKey: "",
@@ -11,6 +14,53 @@ const EMPTY_PREFS = {
 const NO_CLI_TOOLS = { claude: false, codex: false, opencode: false };
 
 describe("getProviderConfigInvalidReason", () => {
+  it("resolves an unconfigured provider to OpenAI only when only an OpenAI key exists", () => {
+    expect(
+      resolveOpenAiCompatibleProvider(null, {
+        ...EMPTY_PREFS,
+        openaiApiKey: "sk-openai-key",
+      }),
+    ).toBe("openai");
+
+    expect(
+      resolveOpenAiCompatibleProvider(undefined, {
+        ...EMPTY_PREFS,
+        openrouterApiKey: "sk-or-key",
+        openaiApiKey: "sk-openai-key",
+      }),
+    ).toBe("openrouter");
+
+    expect(resolveOpenAiCompatibleProvider("openai", EMPTY_PREFS)).toBe("openai");
+  });
+
+  it("validates an unconfigured provider against the resolved credential default", () => {
+    expect(
+      getProviderConfigInvalidReason(
+        null,
+        { ...EMPTY_PREFS, openaiApiKey: "sk-openai-key" },
+        NO_CLI_TOOLS,
+      ),
+    ).toBeNull();
+    expect(
+      getProviderConfigInvalidReason(
+        null,
+        {
+          ...EMPTY_PREFS,
+          openrouterApiKey: "sk-or-key",
+          openaiApiKey: "sk-openai-key",
+        },
+        NO_CLI_TOOLS,
+      ),
+    ).toBeNull();
+    expect(
+      getProviderConfigInvalidReason(
+        undefined,
+        { ...EMPTY_PREFS, openaiApiKey: "sk-openai-key" },
+        NO_CLI_TOOLS,
+      ),
+    ).toBeNull();
+  });
+
   it("requires an API key for the OpenRouter provider", () => {
     expect(getProviderConfigInvalidReason("openrouter", EMPTY_PREFS, NO_CLI_TOOLS)).toBe(
       "No OpenRouter API key set",

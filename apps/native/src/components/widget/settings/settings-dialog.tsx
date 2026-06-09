@@ -19,6 +19,7 @@ import { DeveloperTab } from "@/components/widget/settings/developer-tab";
 import { GeneralTab } from "@/components/widget/settings/general-tab";
 import { PreferencesTab } from "@/components/widget/settings/preferences-tab";
 import { TuningTab } from "@/components/widget/settings/tuning-tab";
+import { resolveOpenAiCompatibleProvider } from "@/lib/ai-provider-validation";
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -138,15 +139,24 @@ export function SettingsDialog() {
       try {
         const prefs = await tauriAPI.ui.getPrefs();
         if (prefs) {
+          const summaryProvider = resolveOpenAiCompatibleProvider(prefs.summaryProvider, prefs);
+          const evolveProvider = resolveOpenAiCompatibleProvider(prefs.evolveProvider, prefs);
+
           form.setFieldValue("openrouterApiKey", prefs.openrouterApiKey ?? "");
           form.setFieldValue("openaiApiKey", prefs.openaiApiKey ?? "");
           form.setFieldValue("ollamaApiBaseUrl", prefs.ollamaApiBaseUrl ?? "");
           form.setFieldValue("vllmApiBaseUrl", prefs.vllmApiBaseUrl ?? "");
           form.setFieldValue("vllmApiKey", prefs.vllmApiKey ?? "");
-          form.setFieldValue("summaryProvider", prefs.summaryProvider ?? "openrouter");
-          form.setFieldValue("summaryModel", prefs.summaryModel ?? "openai/gpt-4o-mini");
-          form.setFieldValue("evolveProvider", prefs.evolveProvider ?? "openrouter");
-          form.setFieldValue("evolveModel", prefs.evolveModel ?? "anthropic/claude-sonnet-4");
+          form.setFieldValue("summaryProvider", summaryProvider);
+          form.setFieldValue(
+            "summaryModel",
+            prefs.summaryModel ?? (summaryProvider === "openai" ? "gpt-4o-mini" : "openai/gpt-4o-mini"),
+          );
+          form.setFieldValue("evolveProvider", evolveProvider);
+          form.setFieldValue(
+            "evolveModel",
+            prefs.evolveModel ?? (evolveProvider === "openai" ? "gpt-4o" : "anthropic/claude-sonnet-4"),
+          );
           form.setFieldValue("sendDiagnostics", prefs.sendDiagnostics ?? false);
 
           setOpenrouterKeyStatus(prefs.openrouterApiKey ? "valid" : "idle");
