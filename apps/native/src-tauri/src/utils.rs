@@ -1,3 +1,12 @@
+use sha2::{Digest, Sha256};
+
+/// Return short hex prefix for correlation of error messages without risking sensitive content exposure.
+pub fn short_hash(s: &str) -> String {
+    let mut h = Sha256::new();
+    h.update(s.as_bytes());
+    hex::encode(h.finalize())[..8].to_string()
+}
+
 pub fn unix_now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

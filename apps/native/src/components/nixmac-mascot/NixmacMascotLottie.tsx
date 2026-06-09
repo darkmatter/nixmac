@@ -7,8 +7,6 @@
 //   bun add lottie-react
 //
 // Needs `resolveJsonModule: true` in tsconfig (set in this app's tsconfig.json).
-// On React 19 you may see a peer-dep warning from lottie-react; it works, but
-// @lottiefiles/dotlottie-react is the actively-maintained alternative (see README).
 import Lottie, { type LottieRefCurrentProps } from "lottie-react";
 import { useEffect, useRef } from "react";
 import animationData from "./nixmac-mascot.json";

@@ -1,8 +1,10 @@
 import { spawn } from "node:child_process";
-import { readdir } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "../../..");
+const appRoot = path.resolve(import.meta.dirname, "..");
 const storyRoots = [
   path.resolve(import.meta.dirname, "../src"),
   path.resolve(repoRoot, "packages/ui/src"),
@@ -10,6 +12,39 @@ const storyRoots = [
 const storyFileSuffixes = [".stories.ts", ".stories.tsx"];
 const batchSize = 2;
 const perBatchTimeoutMs = 120_000;
+
+// Aggregated record of every story whose snapshot failed, consumed by the
+// failed-story screenshot pipeline (scripts/resolve-failed-stories.mjs).
+const failedStoriesFile = path.join(appRoot, "test-results", "failed-stories.json");
+/** @type {Array<{ file: string, name: string }>} */
+const failedStories = [];
+
+function recordFailure(file, name) {
+  const relFile = path.relative(appRoot, path.resolve(file));
+  if (!failedStories.some((entry) => entry.file === relFile && entry.name === name)) {
+    failedStories.push({ file: relFile, name });
+  }
+}
+
+// Parse a Vitest JSON report (jest-style) and record every failed assertion as
+// a { file, story name } pair. On any parse/IO problem we fall back to marking
+// the whole batch's files as failed so screenshots are never silently dropped.
+async function collectFailuresFromReport(reportPath, batchFiles) {
+  try {
+    const report = JSON.parse(await readFile(reportPath, "utf8"));
+    for (const testFile of report.testResults ?? []) {
+      for (const assertion of testFile.assertionResults ?? []) {
+        if (assertion.status === "failed") {
+          recordFailure(testFile.name, assertion.title);
+        }
+      }
+    }
+  } catch {
+    for (const file of batchFiles) {
+      recordFailure(file, "(entire file failed)");
+    }
+  }
+}
 
 async function listStoryFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -42,7 +77,7 @@ function chunkFiles(files) {
   return chunks;
 }
 
-function runVitestForBatch(files) {
+function runVitestForBatch(files, reportPath) {
   return new Promise((resolve, reject) => {
     const label = files.join(", ");
 
@@ -52,7 +87,17 @@ function runVitestForBatch(files) {
 
     const child = spawn(
       "bunx",
-      ["vitest", "run", "--project=storybook", "--no-file-parallelism", "--maxWorkers=1", ...files],
+      [
+        "vitest",
+        "run",
+        "--project=storybook",
+        "--no-file-parallelism",
+        "--maxWorkers=1",
+        "--reporter=default",
+        "--reporter=json",
+        `--outputFile=${reportPath}`,
+        ...files,
+      ],
       { stdio: "inherit" }
     );
 
@@ -71,6 +116,8 @@ function runVitestForBatch(files) {
       console.log("##[endgroup]");
 
       if (timedOut) {
+        // No reliable per-story report on a hard timeout; mark the batch wholesale.
+        for (const file of files) recordFailure(file, "(timed out)");
         reject(new Error(`Timed out after ${perBatchTimeoutMs / 1000}s while running ${label}`));
         return;
       }
@@ -102,11 +149,42 @@ const batches = chunkFiles(storyFiles);
 console.log(`Running ${storyFiles.length} Storybook snapshot files across ${batches.length} Vitest processes.`);
 console.log(`Batch size: ${batchSize} files per Vitest process.`);
 
+// Once enough failures are gathered for the screenshot pipeline (it only
+// embeds up to 5), stop early to avoid spending CI time re-running batches —
+// the job already fails on exit code, so remaining batches add no signal.
+const maxFailuresToCollect = 5;
+const reportDir = await mkdtempReportDir();
+
 try {
-  for (const storyFileBatch of batches) {
-    await runVitestForBatch(storyFileBatch);
+  for (const [index, storyFileBatch] of batches.entries()) {
+    const reportPath = path.join(reportDir, `batch-${index}.json`);
+    try {
+      await runVitestForBatch(storyFileBatch, reportPath);
+    } catch (error) {
+      console.error(`::error::${error.message}`);
+      process.exitCode = 1;
+    } finally {
+      await collectFailuresFromReport(reportPath, storyFileBatch);
+    }
+
+    if (process.exitCode === 1 && failedStories.length >= maxFailuresToCollect) {
+      console.log(
+        `\nCollected ${failedStories.length} failures; skipping remaining batches.`
+      );
+      break;
+    }
   }
-} catch (error) {
-  console.error(`::error::${error.message}`);
-  process.exitCode = 1;
+} finally {
+  await mkdir(path.dirname(failedStoriesFile), { recursive: true });
+  await writeFile(failedStoriesFile, JSON.stringify(failedStories, null, 2));
+  await rm(reportDir, { recursive: true, force: true });
+  console.log(
+    `\nRecorded ${failedStories.length} failed stor${failedStories.length === 1 ? "y" : "ies"} to ${path.relative(appRoot, failedStoriesFile)}.`
+  );
+}
+
+async function mkdtempReportDir() {
+  const dir = path.join(os.tmpdir(), `storybook-vitest-reports-${process.pid}`);
+  await mkdir(dir, { recursive: true });
+  return dir;
 }

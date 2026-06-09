@@ -208,7 +208,7 @@ mod tests {
     };
     use anyhow::Result;
     use serde::{Deserialize, Serialize};
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
     use std::sync::{Arc, Mutex};
 
     #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -336,9 +336,11 @@ mod tests {
         assert_eq!(entries[0].name, "DemoState");
         let _schema_fn = entries[0].schema_fn;
         let _set_field_fn = entries[0].set_field_fn;
-        assert!(registry
-            .get("DemoState")
-            .expect("registry lookup")
-            .is_some());
+        assert!(
+            registry
+                .get("DemoState")
+                .expect("registry lookup")
+                .is_some()
+        );
     }
 }

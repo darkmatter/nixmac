@@ -262,8 +262,8 @@ pub(crate) fn emit_evolve_event<R: tauri::Runtime>(app: &tauri::AppHandle<R>, ev
     // Append to the session transcript if an evolution is currently recording.
     if let Some(path) = crate::state::session_log::active_session_path() {
         let event_json = serde_json::to_value(&event).unwrap_or_default();
-        // Fire-and-forget: use Tauri's runtime handle so this remains safe from sync contexts.
-        tauri::async_runtime::spawn(async move {
+        // Fire-and-forget: emit_evolve_event always runs inside the async evolve loop.
+        tokio::spawn(async move {
             crate::state::session_log::append_event(&path, "evolve_event", &event_json).await;
         });
     }

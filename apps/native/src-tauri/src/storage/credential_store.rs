@@ -186,7 +186,9 @@ where
                             err
                         );
                     } else {
-                        log::info!("Cleaned up stale plaintext credential from settings (already in keychain)");
+                        log::info!(
+                            "Cleaned up stale plaintext credential from settings (already in keychain)"
+                        );
                     }
                 }
                 Ok(None) => {}

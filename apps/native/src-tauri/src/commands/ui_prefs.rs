@@ -63,6 +63,10 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, Strin
         "ui_get_prefs",
         store::get_bool_pref(&app, store::DEFAULT_TO_DIFF_TAB_KEY, false),
     )?;
+    let experimental_spinning_mascot = wrap_result_and_capture_err(
+        "ui_get_prefs",
+        store::get_bool_pref(&app, store::EXPERIMENTAL_SPINNING_MASCOT_KEY, false),
+    )?;
     let developer_mode = wrap_result_and_capture_err(
         "ui_get_prefs",
         store::get_bool_pref(&app, store::DEVELOPER_MODE_KEY, false),
@@ -104,6 +108,7 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, Strin
         auto_summarize_on_focus,
         scan_homebrew_on_startup,
         default_to_diff_tab,
+        experimental_spinning_mascot,
         developer_mode,
         pinned_version,
         update_channel,
@@ -197,6 +202,14 @@ pub async fn ui_set_prefs(
     if let Some(default_to_diff_tab) = prefs.default_to_diff_tab {
         store::set_bool_pref(&app, store::DEFAULT_TO_DIFF_TAB_KEY, default_to_diff_tab)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
+    }
+    if let Some(experimental_spinning_mascot) = prefs.experimental_spinning_mascot {
+        store::set_bool_pref(
+            &app,
+            store::EXPERIMENTAL_SPINNING_MASCOT_KEY,
+            experimental_spinning_mascot,
+        )
+        .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(developer_mode) = prefs.developer_mode {
         store::set_bool_pref(&app, store::DEVELOPER_MODE_KEY, developer_mode)
