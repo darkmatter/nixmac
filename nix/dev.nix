@@ -3,7 +3,17 @@
   lib,
   config,
   ...
-}:
+}: let
+ playwright-driver = pkgs.playwright-driver;
+  playwright-driver-browsers = pkgs.playwright-driver.browsers;
+
+  playright-file = builtins.readFile "${playwright-driver}/browsers.json";
+  playright-json = builtins.fromJSON playright-file;
+  playwright-chromium-entry = builtins.elemAt (builtins.filter (
+    browser: browser.name == "chromium"
+  ) playright-json.browsers) 0;
+  playwright-chromium-revision = playwright-chromium-entry.revision;
+in
 lib.mkIf (!config.container.isBuilding) {
   # Dev-only packages (excluded from container builds by conditional import).
   packages = [
@@ -133,6 +143,10 @@ lib.mkIf (!config.container.isBuilding) {
   languages.javascript.bun.enable = true;
 
   env.SOPS_KEYSERVICE = "tcp://100.116.189.36:5000";
+   # TODO: add MacOS support to omit this
+  env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH = "${playwright-driver-browsers}/chromium-${playwright-chromium-revision}/chrome-linux/chrome";
+  # This is used by npx playwright --{ui,debug,...}
+  env.PLAYWRIGHT_BROWSERS_PATH = "${playwright-driver-browsers}";
 
   # https://devenv.sh/processes/
   # Use process-compose as the process manager for the TUI

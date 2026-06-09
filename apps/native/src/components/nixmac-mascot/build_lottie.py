@@ -10,12 +10,13 @@ The hop rides on the *layer* transform, so the frame + face move as one unit whi
 the idle channels keep animating underneath. "Intermittent" just means one hop per
 loop — LOOP_S sets how often it fires.
 
-No system install needed; run through uv with an ephemeral env:
+(Note: this 2D Lottie spins in-plane on the Z axis. The Y-axis "cube" spin that
+reveals a back face is true 3D and lives in NixmacMascotCube.tsx, not here —
+Lottie is 2D and can't represent a cube.)
 
     uv run --python 3.12 --with lottie python build_lottie.py
-
-Output is a standard Lottie .json (lottie-web, lottie-react, dotLottie, iOS/Android).
 """
+
 import os
 from lottie.parsers.svg import parse_svg_file
 from lottie.exporters.core import export_lottie
@@ -25,31 +26,27 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SVG = os.path.join(HERE, "nixmac-mascot.svg")
 OUT = os.path.join(HERE, "nixmac-mascot.json")
 
-# Canvas centre (viewBox is 441 x 406) — the pivot the mascot spins about.
-CX, CY = 220.5, 203.0
+CX, CY = 220.5, 203.0  # canvas centre (viewBox 441 x 406) — the spin pivot
 
 # ──────────────────────────────────────────────────────────────────────────
 # TUNE THE PERSONALITY HERE  ← the part that's yours to shape.
-# Re-run after editing to regenerate the Lottie.
 # ──────────────────────────────────────────────────────────────────────────
-FPS = 60            # frame rate
-LOOP_S = 8.0        # loop length (s) == how often the hop fires. Bigger = rarer.
+FPS = 60
+LOOP_S = 8.0  # loop length (s) == how often the hop fires. Bigger = rarer.
 
-# idle channels
-BLINK_AT = [0.30, 0.55]   # blink moments, as fractions of the loop
-BLINK_CLOSE = 8           # eye height % at peak blink (0 = fully shut)
-SMILE_RISE = 4            # px the smile lifts at its breathe peak
-BLUSH_DIM = 80            # blush opacity % at its dimmest
-PULSE_DIM = 35            # circuit opacity % between pulses
-PULSES = 3                # circuit pulses per loop
+BLINK_AT = [0.30, 0.55]
+BLINK_CLOSE = 8
+SMILE_RISE = 4
+BLUSH_DIM = 80
+PULSE_DIM = 35
+PULSES = 3
 
-# the hop + spin (one event per loop, inside this window)
-JUMP_WINDOW = (0.68, 0.95)  # start/end of the hop, as fractions of the loop
-JUMP_HEIGHT = 72            # px the mascot rises at the peak
-CROUCH = 10                 # px it dips first (anticipation)
-SQUASH = 13                 # % deformation on crouch/landing (0 = rigid hop)
-STRETCH = 13                # % deformation on takeoff/rebound
-SPIN_DEG = 360              # spin during the hop (360 = one full flip; keep a multiple of 360)
+JUMP_WINDOW = (0.68, 0.95)
+JUMP_HEIGHT = 72
+CROUCH = 10
+SQUASH = 13
+STRETCH = 13
+SPIN_DEG = 360  # keep a multiple of 360 so he lands upright (seamless loop)
 # ── end personality block ──
 
 TOTAL = int(FPS * LOOP_S)
@@ -82,7 +79,6 @@ def pivot(group):
 
 
 def kf(prop, items):
-    """items: list of (frame, value[, easing]) — easing defaults to Sigmoid."""
     for item in items:
         t, v = item[0], item[1]
         e = item[2] if len(item) > 2 else EASE
@@ -96,70 +92,87 @@ def add_idle(anim):
         frames = [(0, [100, 100])]
         for at in BLINK_AT:
             t = at * TOTAL
-            frames += [(t - 5, [100, 100]), (t, [100, BLINK_CLOSE]), (t + 5, [100, 100])]
+            frames += [
+                (t - 5, [100, 100]),
+                (t, [100, BLINK_CLOSE]),
+                (t + 5, [100, 100]),
+            ]
         frames += [(TOTAL, [100, 100])]
         kf(g.transform.scale, frames)
 
     g = find(anim, "smile")
     cx, cy = pivot(g)
-    kf(g.transform.position, [(0, [cx, cy]), (0.5 * TOTAL, [cx, cy + SMILE_RISE]), (TOTAL, [cx, cy])])
+    kf(
+        g.transform.position,
+        [(0, [cx, cy]), (0.5 * TOTAL, [cx, cy + SMILE_RISE]), (TOTAL, [cx, cy])],
+    )
 
     for name in ("blush-left", "blush-right"):
         g = find(anim, name)
-        kf(g.transform.opacity, [(0, BLUSH_DIM), (0.5 * TOTAL, 100), (TOTAL, BLUSH_DIM)])
+        kf(
+            g.transform.opacity,
+            [(0, BLUSH_DIM), (0.5 * TOTAL, 100), (TOTAL, BLUSH_DIM)],
+        )
 
     g = find(anim, "circuits")
     frames = [(0, PULSE_DIM)]
     for i in range(PULSES):
-        frames += [((i + 0.5) / PULSES * TOTAL, 100), ((i + 1) / PULSES * TOTAL, PULSE_DIM)]
+        frames += [
+            ((i + 0.5) / PULSES * TOTAL, 100),
+            ((i + 1) / PULSES * TOTAL, PULSE_DIM),
+        ]
     kf(g.transform.opacity, frames)
 
 
 def add_hop(layer):
-    """Hop + spin on the whole-layer transform, pivoting about the canvas centre."""
     layer.transform.anchor_point.value = [CX, CY]
     j0, j1 = (f * TOTAL for f in JUMP_WINDOW)
 
-    def at(f):  # fraction within the hop window -> absolute frame
+    def at(f):
         return j0 + f * (j1 - j0)
 
     S, T = SQUASH, STRETCH
 
-    # vertical arc: crouch down, spring up to peak (decelerate), fall (accelerate), land
-    kf(layer.transform.position, [
-        (0, [CX, CY]),
-        (j0, [CX, CY]),
-        (at(0.12), [CX, CY + CROUCH], EZ_OUT),          # anticipation dip
-        (at(0.24), [CX, CY - JUMP_HEIGHT * 0.2], EZ_OUT),
-        (at(0.50), [CX, CY - JUMP_HEIGHT], EZ_IN),      # peak
-        (at(0.78), [CX, CY - JUMP_HEIGHT * 0.15], EZ_IN),
-        (at(0.86), [CX, CY], EZ_OUT),                   # touchdown
-        (at(1.00), [CX, CY], EZ_OUT),
-        (TOTAL, [CX, CY]),
-    ])
+    kf(
+        layer.transform.position,
+        [
+            (0, [CX, CY]),
+            (j0, [CX, CY]),
+            (at(0.12), [CX, CY + CROUCH], EZ_OUT),
+            (at(0.24), [CX, CY - JUMP_HEIGHT * 0.2], EZ_OUT),
+            (at(0.50), [CX, CY - JUMP_HEIGHT], EZ_IN),
+            (at(0.78), [CX, CY - JUMP_HEIGHT * 0.15], EZ_IN),
+            (at(0.86), [CX, CY], EZ_OUT),
+            (at(1.00), [CX, CY], EZ_OUT),
+            (TOTAL, [CX, CY]),
+        ],
+    )
 
-    # squash & stretch: wide-short on crouch/land, tall-thin on takeoff/rebound
-    kf(layer.transform.scale, [
-        (0, [100, 100]),
-        (j0, [100, 100]),
-        (at(0.12), [100 + S, 100 - S], EZ_OUT),         # crouch squash
-        (at(0.24), [100 - T, 100 + T], EZ_OUT),         # takeoff stretch
-        (at(0.46), [100, 100]),
-        (at(0.82), [100, 100]),
-        (at(0.86), [100 + round(S * 1.3), 100 - round(S * 1.3)], EZ_OUT),  # land squash
-        (at(0.93), [100 - round(T * 0.4), 100 + round(T * 0.4)], EZ_OUT),  # rebound
-        (at(1.00), [100, 100]),
-        (TOTAL, [100, 100]),
-    ])
+    kf(
+        layer.transform.scale,
+        [
+            (0, [100, 100]),
+            (j0, [100, 100]),
+            (at(0.12), [100 + S, 100 - S], EZ_OUT),
+            (at(0.24), [100 - T, 100 + T], EZ_OUT),
+            (at(0.46), [100, 100]),
+            (at(0.82), [100, 100]),
+            (at(0.86), [100 + round(S * 1.3), 100 - round(S * 1.3)], EZ_OUT),
+            (at(0.93), [100 - round(T * 0.4), 100 + round(T * 0.4)], EZ_OUT),
+            (at(1.00), [100, 100]),
+            (TOTAL, [100, 100]),
+        ],
+    )
 
-    # the spin: hold, then a smooth full turn during the airborne span, then hold
-    # (ends on SPIN_DEG; the loop reset to 0 is visually identical mod 360)
-    kf(layer.transform.rotation, [
-        (0, 0),
-        (at(0.20), 0),
-        (at(0.86), SPIN_DEG),
-        (TOTAL, SPIN_DEG),
-    ])
+    kf(
+        layer.transform.rotation,
+        [
+            (0, 0),
+            (at(0.20), 0),
+            (at(0.86), SPIN_DEG),
+            (TOTAL, SPIN_DEG),
+        ],
+    )
 
 
 def main():
@@ -175,7 +188,7 @@ def main():
         add_hop(layer)
 
     export_lottie(anim, OUT)
-    print(f"OK -> {OUT}  ({os.path.getsize(OUT)} bytes, {TOTAL} frames @ {FPS}fps, hop @ {JUMP_WINDOW})")
+    print(f"OK -> {OUT}  ({os.path.getsize(OUT)} bytes, {TOTAL} frames @ {FPS}fps)")
 
 
 if __name__ == "__main__":
