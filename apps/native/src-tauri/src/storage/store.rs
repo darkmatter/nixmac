@@ -214,13 +214,30 @@ pub fn set_send_diagnostics<R: Runtime>(app: &AppHandle<R>, send: bool) -> Resul
 }
 
 pub fn get_product_analytics_enabled<R: Runtime>(app: &AppHandle<R>) -> Result<bool> {
-    get_bool_pref(app, PRODUCT_ANALYTICS_ENABLED_KEY, true)
+    if let Some(enabled) = get_json_pref::<R, bool>(app, PRODUCT_ANALYTICS_ENABLED_KEY)? {
+        return Ok(enabled);
+    }
+
+    if let Some(global) =
+        app.try_state::<crate::state::slice::Slice<crate::state::preferences::GlobalPreferences>>()
+    {
+        return Ok(global.read_sync().product_analytics_enabled);
+    }
+
+    Ok(true)
 }
 
 pub fn set_product_analytics_enabled<R: Runtime>(
     app: &AppHandle<R>,
     enabled: bool,
 ) -> Result<()> {
+    if let Some(global) =
+        app.try_state::<crate::state::slice::Slice<crate::state::preferences::GlobalPreferences>>()
+    {
+        let mut global = global.write_sync(app);
+        global.product_analytics_enabled = enabled;
+    }
+
     set_bool_pref(app, PRODUCT_ANALYTICS_ENABLED_KEY, enabled)
 }
 

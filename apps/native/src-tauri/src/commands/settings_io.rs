@@ -15,6 +15,7 @@ use crate::evolve::config::EvolutionLimits;
 use crate::shared_types::{ExportResult, ImportResult};
 use crate::state::preferences::GlobalPreferences;
 use crate::state::slice::Slice;
+use crate::storage::store;
 use serde_json::{Map, Value};
 use std::borrow::Borrow;
 use tauri::{AppHandle, Manager};
@@ -70,11 +71,13 @@ fn collect_slice_export_entries(
     let mut skipped = Vec::new();
 
     if let Some(global) = app.try_state::<Slice<GlobalPreferences>>() {
+        let mut prefs = global.read_sync().clone();
+        prefs.product_analytics_enabled = store::get_product_analytics_enabled(app)
+            .map_err(|e| capture_err("settings_export", e))?;
         merge_export_object(
             &mut output,
             &mut skipped,
-            serde_json::to_value(&*global.read_sync())
-                .map_err(|e| capture_err("settings_export", e))?,
+            serde_json::to_value(prefs).map_err(|e| capture_err("settings_export", e))?,
             include_secrets,
         );
     }
@@ -162,8 +165,13 @@ pub async fn settings_import(app: AppHandle) -> Result<Option<ImportResult>, Str
     if let Some(global) = app.try_state::<Slice<GlobalPreferences>>() {
         let prefs = serde_json::from_value::<GlobalPreferences>(imported_value.clone())
             .map_err(|e| capture_err("settings_import", e))?;
-        let mut global = global.write_sync(&app);
-        *global = prefs;
+        let product_analytics_enabled = prefs.product_analytics_enabled;
+        {
+            let mut global = global.write_sync(&app);
+            *global = prefs;
+        }
+        store::set_product_analytics_enabled(&app, product_analytics_enabled)
+            .map_err(|e| capture_err("settings_import", e))?;
     }
 
     if let Some(limits) = app.try_state::<Slice<EvolutionLimits>>() {
