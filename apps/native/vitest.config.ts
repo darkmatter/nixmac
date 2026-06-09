@@ -16,9 +16,18 @@ const storybookPlugins = await storybookTest({
 });
 
 const storybookOptimizeDeps = [
+  "@radix-ui/react-popover",
+  "@radix-ui/react-slot",
   "@react-three/drei",
   "@react-three/fiber",
+  "class-variance-authority",
+  "clsx",
   "lucide-react",
+  "lottie-react",
+  "monaco-editor-textmate",
+  "monaco-textmate",
+  "onigasm",
+  "tailwind-merge",
   "three",
 ] as const;
 
