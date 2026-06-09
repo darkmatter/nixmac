@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createVerifiedApiKeyHandler,
   verifyOpenaiApiKey,
@@ -6,39 +6,42 @@ import {
   type ApiKeyStatus,
 } from "./api-key-verification";
 
+const mocks = vi.hoisted(() => ({
+  invoke: vi.fn(),
+}));
+
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: mocks.invoke,
+}));
+
 const okResponse = { ok: true } as Response;
 const unauthorizedResponse = { ok: false } as Response;
 
 describe("api key verification", () => {
-  it("verifies OpenAI keys against the direct OpenAI models endpoint", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(okResponse);
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
-    await expect(verifyOpenaiApiKey("sk-openai", fetchImpl)).resolves.toBe(true);
+  it("verifies OpenAI keys through the Tauri backend", async () => {
+    mocks.invoke.mockResolvedValueOnce(true);
 
-    expect(fetchImpl).toHaveBeenCalledWith("https://api.openai.com/v1/models", {
-      headers: { Authorization: "Bearer sk-openai" },
-      method: "GET",
+    await expect(verifyOpenaiApiKey(" sk-openai ")).resolves.toBe(true);
+
+    expect(mocks.invoke).toHaveBeenCalledWith("verify_openai_api_key", {
+      apiKey: "sk-openai",
     });
   });
 
-  it("treats non-OK OpenAI verification responses as invalid", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(unauthorizedResponse);
+  it("treats rejected OpenAI verification commands as invalid", async () => {
+    mocks.invoke.mockRejectedValueOnce(new Error("offline"));
 
-    await expect(verifyOpenaiApiKey("sk-openai", fetchImpl)).resolves.toBe(false);
+    await expect(verifyOpenaiApiKey("sk-openai")).resolves.toBe(false);
   });
 
   it("does not call OpenAI for blank keys", async () => {
-    const fetchImpl = vi.fn();
+    await expect(verifyOpenaiApiKey("   ")).resolves.toBe(false);
 
-    await expect(verifyOpenaiApiKey("   ", fetchImpl)).resolves.toBe(false);
-
-    expect(fetchImpl).not.toHaveBeenCalled();
-  });
-
-  it("treats OpenAI network errors as invalid", async () => {
-    const fetchImpl = vi.fn().mockRejectedValue(new Error("offline"));
-
-    await expect(verifyOpenaiApiKey("sk-openai", fetchImpl)).resolves.toBe(false);
+    expect(mocks.invoke).not.toHaveBeenCalled();
   });
 
   it("preserves OpenRouter endpoint and authorization behavior", async () => {

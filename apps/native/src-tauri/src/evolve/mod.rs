@@ -738,9 +738,24 @@ pub async fn generate_evolution<R: Runtime>(
 
     // Determine provider
     let store_provider = store::get_evolve_provider(app).ok().flatten();
-    let provider_type = store_provider
+    let requested_provider_type = store_provider
         .or_else(|| std::env::var("EVOLVE_PROVIDER").ok())
         .unwrap_or_else(|| "openrouter".to_string());
+    let provider_type = if requested_provider_type == "openai" {
+        let resolved_provider = crate::ai::providers::resolve_legacy_openai_provider(
+            requested_provider_type.clone(),
+            store::get_effective_openai_provider_credential(app)?.is_some(),
+            store::get_effective_openrouter_provider_credential(app)?.is_some(),
+        );
+        if resolved_provider == "openrouter" {
+            info!("Using OpenRouter for legacy OpenAI evolve provider because no direct OpenAI key is configured");
+        }
+        resolved_provider
+    } else {
+        requested_provider_type.clone()
+    };
+    let used_legacy_openai_fallback =
+        requested_provider_type == "openai" && provider_type == "openrouter";
 
     info!("");
     info!("════════════════════════════════════════════════════════════════");
@@ -830,8 +845,12 @@ pub async fn generate_evolution<R: Runtime>(
                 anyhow!("No OpenRouter API key found. Please add your API key in Settings to get started.")
             })?;
 
-        let model = configured_model(store_model, "EVOLVE_MODEL")
-            .unwrap_or_else(|| DEFAULT_MODEL.to_string());
+        let configured_model = configured_model(store_model, "EVOLVE_MODEL");
+        let model = if used_legacy_openai_fallback {
+            crate::ai::providers::openrouter_model_slug_or_default(configured_model, DEFAULT_MODEL)
+        } else {
+            configured_model.unwrap_or_else(|| DEFAULT_MODEL.to_string())
+        };
         info!(
             "Using OpenRouter provider | Model: {} | Max output tokens: {}",
             model, max_output_tokens_for_request

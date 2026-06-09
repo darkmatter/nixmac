@@ -1,9 +1,15 @@
+import { invoke } from "@tauri-apps/api/core";
+
 export type ApiKeyStatus = "idle" | "verifying" | "valid" | "invalid";
 
 type FetchLike = (input: string, init?: RequestInit) => Promise<Pick<Response, "ok">>;
+type VerifyKeyLike = (key: string) => Promise<boolean>;
 
-const OPENAI_VERIFY_URL = "https://api.openai.com/v1/models";
 const OPENROUTER_VERIFY_URL = "https://openrouter.ai/api/v1/auth/key";
+
+async function verifyOpenaiKeyInTauri(key: string): Promise<boolean> {
+  return invoke<boolean>("verify_openai_api_key", { apiKey: key });
+}
 
 async function verifyBearerKey(
   url: string,
@@ -24,8 +30,18 @@ async function verifyBearerKey(
   }
 }
 
-export function verifyOpenaiApiKey(key: string, fetchImpl?: FetchLike): Promise<boolean> {
-  return verifyBearerKey(OPENAI_VERIFY_URL, key, fetchImpl);
+export async function verifyOpenaiApiKey(
+  key: string,
+  verifyImpl: VerifyKeyLike = verifyOpenaiKeyInTauri,
+): Promise<boolean> {
+  const trimmedKey = key.trim();
+  if (!trimmedKey) return false;
+
+  try {
+    return await verifyImpl(trimmedKey);
+  } catch {
+    return false;
+  }
 }
 
 export function verifyOpenrouterApiKey(key: string, fetchImpl?: FetchLike): Promise<boolean> {
