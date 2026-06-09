@@ -2,9 +2,12 @@
 
 use anyhow::{anyhow, Result};
 
-use crate::evolve::edit_nix_file::apply_semantic_edit;
+use crate::evolve::edit_nix_file::{apply_semantic_edit, infer_single_list_attrpath};
+use crate::evolve::file_ops::resolve_existing_path_in_dir;
+use crate::evolve::gitignore::is_ignored_by_matcher;
 use crate::evolve::messages::Tool;
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
+use crate::evolve::utils::normalize_relative_path;
 
 use super::{ensure_nixmac_edit_allowed, quote_homebrew_list_values, ToolCtx, ToolResult};
 
@@ -13,7 +16,7 @@ pub(crate) fn definition() -> Tool {
         name: "edit_nix_file".to_string(),
         description: r#"Edit a Nix file with semantic operations using attribute-path Add/Remove/Set/SetAttrs actions.
 Use this tool whenever you need the agent to make structured edits to Nix config. `add` and `remove` operate on list-valued attributes such as `home.packages` or `environment.systemPackages`. For Homebrew list attributes (`homebrew.brews`, `homebrew.casks`, and `homebrew.taps`), pass raw package/token strings such as `"bat"`; the tool writes them as Nix string literals. `set` assigns a scalar value such as a boolean, string, number, or `null` to an attribute path like `services.tailscale.enable`. `set_attrs` creates or updates a Nix attribute set (object) at a given path and sets key-value pairs inside it, including nested JSON objects/arrays that map to nested Nix attrsets/lists. Use this for options like `system.defaults.dock` that take an attrset value. The tool understands Nix syntax and will modify existing assignments when possible, or insert a new assignment into the module body if missing.
-Always: provide an `action` object with exactly one of `add`, `remove`, `set`, or `set_attrs`. After calling this tool, run `build_check` to verify changes.
+Prefer: provide an `action` object with exactly one of `add`, `remove`, `set`, or `set_attrs`. A shorthand string action such as `"add"` is also accepted with sibling payload fields (for example `values`) and, when possible, the tool infers the only list attribute path in the target file. After calling this tool, run `build_check` to verify changes.
 IMPORTANT: Do not use this tool for files under .nixmac. Nix implementation files there are reserved for Nixmac; only exact .nixmac/<module>/data.json files may be edited with edit_file.
 IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with syntax errors (unmatched braces/brackets, unclosed strings, etc) will be rejected. Ensure all generated code is syntactically complete and correct."#.to_string(),            parameters: serde_json::json!({
             "type": "object",
@@ -42,94 +45,103 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
                     "description": "Relative path to the nix file to edit"
                 },
                 "action": {
-                    "type": "object",
                     "oneOf": [
                         {
                             "type": "object",
-                            "properties": {
-                                "add": {
+                            "oneOf": [
+                                {
                                     "type": "object",
                                     "properties": {
-                                        "path": { "type": "string", "description": "Dot-separated attribute path (e.g. environment.systemPackages, home.packages, or homebrew.brews)" },
-                                        "values": {
-                                            "type": "array",
-                                            "items": { "type": "string" },
-                                            "description": "Values to add to the list. Use a one-element array for a single package. For homebrew.brews/casks/taps, pass raw package or token names; the tool quotes them as Nix strings."
-                                        }
-                                    },
-                                    "required": ["path", "values"],
-                                    "additionalProperties": false
-                                }
-                            },
-                            "required": ["add"],
-                            "additionalProperties": false
-                        },
-                        {
-                            "type": "object",
-                            "properties": {
-                                "remove": {
-                                    "type": "object",
-                                    "properties": {
-                                        "path": { "type": "string", "description": "Dot-separated attribute path to remove from" },
-                                        "values": {
-                                            "type": "array",
-                                            "items": { "type": "string" },
-                                            "description": "Values to remove from the list. Use a one-element array for a single package. For homebrew.brews/casks/taps, pass raw package or token names; the tool matches their Nix string literal form."
-                                        }
-                                    },
-                                    "required": ["path", "values"],
-                                    "additionalProperties": false
-                                }
-                            },
-                            "required": ["remove"],
-                            "additionalProperties": false
-                        },
-                        {
-                            "type": "object",
-                            "properties": {
-                                "set": {
-                                    "type": "object",
-                                    "properties": {
-                                        "path": { "type": "string", "description": "Dot-separated attribute path to set (e.g. services.tailscale.enable)" },
-                                        "value": {
-                                            "description": "Scalar JSON value to assign. Supports booleans, strings, numbers, and null.",
-                                            "oneOf": [
-                                                { "type": "boolean" },
-                                                { "type": "string" },
-                                                { "type": "number" },
-                                                { "type": "integer" },
-                                                { "type": "null" }
-                                            ]
-                                        }
-                                    },
-                                    "required": ["path", "value"],
-                                    "additionalProperties": false
-                                }
-                            },
-                            "required": ["set"],
-                            "additionalProperties": false
-                        },
-                        {
-                            "type": "object",
-                            "properties": {
-                                "set_attrs": {
-                                    "type": "object",
-                                    "properties": {
-                                        "path": { "type": "string", "description": "Dot-separated attribute path of the attrset to create or update (e.g. system.defaults.dock)" },
-                                        "attrs": {
+                                        "add": {
                                             "type": "object",
-                                            "description": "Key-value pairs to set inside the attrset. Values may be scalars, arrays, or nested objects.",
-                                            "additionalProperties": {
-                                                "$ref": "#/$defs/jsonValue"
-                                            }
+                                            "properties": {
+                                                "path": { "type": "string", "description": "Dot-separated attribute path (e.g. environment.systemPackages, home.packages, or homebrew.brews)" },
+                                                "values": {
+                                                    "type": "array",
+                                                    "items": { "type": "string" },
+                                                    "description": "Values to add to the list. Use a one-element array for a single package. For homebrew.brews/casks/taps, pass raw package or token names; the tool quotes them as Nix strings."
+                                                }
+                                            },
+                                            "required": ["path", "values"],
+                                            "additionalProperties": false
                                         }
                                     },
-                                    "required": ["path", "attrs"],
+                                    "required": ["add"],
+                                    "additionalProperties": false
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "remove": {
+                                            "type": "object",
+                                            "properties": {
+                                                "path": { "type": "string", "description": "Dot-separated attribute path to remove from" },
+                                                "values": {
+                                                    "type": "array",
+                                                    "items": { "type": "string" },
+                                                    "description": "Values to remove from the list. Use a one-element array for a single package. For homebrew.brews/casks/taps, pass raw package or token names; the tool matches their Nix string literal form."
+                                                }
+                                            },
+                                            "required": ["path", "values"],
+                                            "additionalProperties": false
+                                        }
+                                    },
+                                    "required": ["remove"],
+                                    "additionalProperties": false
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "set": {
+                                            "type": "object",
+                                            "properties": {
+                                                "path": { "type": "string", "description": "Dot-separated attribute path to set (e.g. services.tailscale.enable)" },
+                                                "value": {
+                                                    "description": "Scalar JSON value to assign. Supports booleans, strings, numbers, and null.",
+                                                    "oneOf": [
+                                                        { "type": "boolean" },
+                                                        { "type": "string" },
+                                                        { "type": "number" },
+                                                        { "type": "integer" },
+                                                        { "type": "null" }
+                                                    ]
+                                                }
+                                            },
+                                            "required": ["path", "value"],
+                                            "additionalProperties": false
+                                        }
+                                    },
+                                    "required": ["set"],
+                                    "additionalProperties": false
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "set_attrs": {
+                                            "type": "object",
+                                            "properties": {
+                                                "path": { "type": "string", "description": "Dot-separated attribute path of the attrset to create or update (e.g. system.defaults.dock)" },
+                                                "attrs": {
+                                                    "type": "object",
+                                                    "description": "Key-value pairs to set inside the attrset. Values may be scalars, arrays, or nested objects.",
+                                                    "additionalProperties": {
+                                                        "$ref": "#/$defs/jsonValue"
+                                                    }
+                                                }
+                                            },
+                                            "required": ["path", "attrs"],
+                                            "additionalProperties": false
+                                        }
+                                    },
+                                    "required": ["set_attrs"],
                                     "additionalProperties": false
                                 }
-                            },
-                            "required": ["set_attrs"],
-                            "additionalProperties": false
+                            ]
+                        },
+                        {
+                            "type": "string",
+                            "enum": ["add", "remove", "set", "set_attrs"],
+                            "description": "Shorthand action name. Payload fields such as values/value/attrs may be supplied as siblings; add/remove infer the list path when the target file has exactly one list assignment."
                         }
                     ],
                     "description": "The specific edit action to perform on the nix file (object with one of `add`, `remove`, `set`, or `set_attrs`)",
