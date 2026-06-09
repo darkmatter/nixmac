@@ -5,7 +5,13 @@ import { type SettingsTab, useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 import { useForm } from "@tanstack/react-form";
 import { Bot, FolderOpen, Key, Settings2, SlidersHorizontal, UserCircle2, Wrench } from "lucide-react";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ApiKeyStatus,
+  createVerifiedApiKeyHandler,
+  verifyOpenaiApiKey,
+  verifyOpenrouterApiKey,
+} from "@/lib/api-key-verification";
 import { AccountTab } from "@/components/widget/settings/account-tab";
 import { AiModelsTab } from "@/components/widget/settings/ai-models-tab";
 import { ApiKeysTab } from "@/components/widget/settings/api-keys-tab";
@@ -13,7 +19,6 @@ import { DeveloperTab } from "@/components/widget/settings/developer-tab";
 import { GeneralTab } from "@/components/widget/settings/general-tab";
 import { PreferencesTab } from "@/components/widget/settings/preferences-tab";
 import { TuningTab } from "@/components/widget/settings/tuning-tab";
-type ApiKeyStatus = "idle" | "verifying" | "valid" | "invalid";
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -67,37 +72,35 @@ export function SettingsDialog() {
     }
   }, [developerMode, activeTab]);
   const [openrouterKeyStatus, setOpenrouterKeyStatus] = useState<ApiKeyStatus>("idle");
+  const [openaiKeyStatus, setOpenaiKeyStatus] = useState<ApiKeyStatus>("idle");
   const openrouterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const openaiTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { saveHost } = useDarwinConfig();
 
-  const verifyOpenrouterKey = async (key: string) => {
-    if (!key) {
-      setOpenrouterKeyStatus("idle");
-      await tauriAPI.ui.setPrefs({ openrouterApiKey: "" });
-      return;
-    }
-
-    setOpenrouterKeyStatus("verifying");
-    try {
-      const response = await fetch("https://openrouter.ai/api/v1/auth/key", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${key}`,
+  const verifyOpenrouterKey = useMemo(
+    () =>
+      createVerifiedApiKeyHandler({
+        saveKey: async (key) => {
+          await tauriAPI.ui.setPrefs({ openrouterApiKey: key });
         },
-      });
+        setStatus: setOpenrouterKeyStatus,
+        verifyKey: verifyOpenrouterApiKey,
+      }),
+    [],
+  );
 
-      if (response.ok) {
-        setOpenrouterKeyStatus("valid");
-        await tauriAPI.ui.setPrefs({ openrouterApiKey: key });
-      } else {
-        setOpenrouterKeyStatus("invalid");
-      }
-    } catch (error) {
-      console.error("Error verifying OpenRouter API key:", error);
-      setOpenrouterKeyStatus("invalid");
-    }
-  };
+  const verifyOpenaiKey = useMemo(
+    () =>
+      createVerifiedApiKeyHandler({
+        saveKey: async (key) => {
+          await tauriAPI.ui.setPrefs({ openaiApiKey: key });
+        },
+        setStatus: setOpenaiKeyStatus,
+        verifyKey: verifyOpenaiApiKey,
+      }),
+    [],
+  );
 
   const saveOllamaUrl = async (url: string) => {
     await tauriAPI.ui.setPrefs({ ollamaApiBaseUrl: url });
@@ -111,10 +114,6 @@ export function SettingsDialog() {
 
   const saveVllmKey = async (key: string) => {
     await tauriAPI.ui.setPrefs({ vllmApiKey: key });
-  };
-
-  const saveOpenaiKey = async (key: string) => {
-    await tauriAPI.ui.setPrefs({ openaiApiKey: key });
   };
 
   const form = useForm({
@@ -151,6 +150,7 @@ export function SettingsDialog() {
           form.setFieldValue("sendDiagnostics", prefs.sendDiagnostics ?? false);
 
           setOpenrouterKeyStatus(prefs.openrouterApiKey ? "valid" : "idle");
+          setOpenaiKeyStatus(prefs.openaiApiKey ? "valid" : "idle");
         }
       } catch (err) {
         console.error("Failed to load settings:", err);
@@ -281,14 +281,16 @@ export function SettingsDialog() {
                                   <ApiKeysTab
                                     form={form}
                                     ollamaApiBaseUrlField={ollamaApiBaseUrlField}
+                                    openaiKeyStatus={openaiKeyStatus}
+                                    openaiTimeoutRef={openaiTimeoutRef}
                                     onSaveOllamaUrl={saveOllamaUrl}
-                                    onSaveOpenaiKey={saveOpenaiKey}
                                     onSaveVllmKey={saveVllmKey}
                                     onSaveVllmUrl={saveVllmUrl}
                                     openaiApiKeyField={openaiApiKeyField}
                                     openrouterApiKeyField={openrouterApiKeyField}
                                     openrouterKeyStatus={openrouterKeyStatus}
                                     openrouterTimeoutRef={openrouterTimeoutRef}
+                                    verifyOpenaiKey={verifyOpenaiKey}
                                     verifyOpenrouterKey={verifyOpenrouterKey}
                                     vllmApiBaseUrlField={vllmApiBaseUrlField}
                                     vllmApiKeyField={vllmApiKeyField}

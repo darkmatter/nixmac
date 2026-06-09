@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import { Check, Loader2, X, Eye, EyeOff } from "lucide-react";
+import type { ApiKeyStatus } from "@/lib/api-key-verification";
 import { cn } from "@/lib/utils";
 import type { AnyFieldApi, AnyFormApi } from "@tanstack/react-form";
-
-type ApiKeyStatus = "idle" | "verifying" | "valid" | "invalid";
 
 interface ApiKeysTabProps {
   // OpenRouter
@@ -13,7 +12,9 @@ interface ApiKeysTabProps {
   openrouterTimeoutRef: React.RefObject<NodeJS.Timeout | null>;
   // OpenAI
   openaiApiKeyField: AnyFieldApi;
-  onSaveOpenaiKey: (key: string) => Promise<void>;
+  openaiKeyStatus: ApiKeyStatus;
+  verifyOpenaiKey: (key: string) => Promise<void>;
+  openaiTimeoutRef: React.RefObject<NodeJS.Timeout | null>;
   // Ollama
   ollamaApiBaseUrlField: AnyFieldApi;
   onSaveOllamaUrl: (url: string) => Promise<void>;
@@ -88,7 +89,7 @@ function ApiKeyInput({
             if (timeoutRef.current) {
               clearTimeout(timeoutRef.current);
             }
-            if (!e.target.value) {
+            if (!e.target.value.trim()) {
               verifyKey("");
             } else {
               timeoutRef.current = setTimeout(() => verifyKey(e.target.value), 500);
@@ -216,7 +217,9 @@ export function ApiKeysTab({
   verifyOpenrouterKey,
   openrouterTimeoutRef,
   openaiApiKeyField,
-  onSaveOpenaiKey,
+  openaiKeyStatus,
+  verifyOpenaiKey,
+  openaiTimeoutRef,
   ollamaApiBaseUrlField,
   onSaveOllamaUrl,
   vllmApiBaseUrlField,
@@ -271,15 +274,18 @@ export function ApiKeysTab({
                 </p>
               </div>
             </div>
-            <UrlInput
+            <ApiKeyInput
               field={openaiApiKeyField}
               form={form}
               id="openaiApiKey"
               label="API Key"
-              onSave={onSaveOpenaiKey}
-              placeholder="sk-..."
-              type="password"
               description="Saved locally and used only when OpenAI is selected as the provider."
+              linkHref="https://platform.openai.com/api-keys"
+              linkText="Get an API key →"
+              placeholder="sk-..."
+              status={openaiKeyStatus}
+              timeoutRef={openaiTimeoutRef}
+              verifyKey={verifyOpenaiKey}
             />
           </div>
 
