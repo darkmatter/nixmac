@@ -78,7 +78,7 @@ pub(crate) fn parse_struct_config(attrs: &[Attribute]) -> syn::Result<StructConf
                         return Err(syn::Error::new_spanned(
                             lit,
                             format!("Configurable: unsupported scope `{other}`"),
-                        ))
+                        ));
                     }
                 });
                 Ok(())
@@ -181,7 +181,7 @@ pub(crate) fn parse_field_config(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use syn::{parse_quote, DeriveInput};
+    use syn::{DeriveInput, parse_quote};
 
     #[test]
     fn parse_struct_config_accepts_repo_scope() {

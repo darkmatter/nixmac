@@ -3,8 +3,8 @@
 use anyhow::Result;
 use diesel::connection::Connection;
 
-use crate::db::changesets::{insert_change_or_ignore, insert_change_set, link_change_to_set};
 use crate::db::DbPool;
+use crate::db::changesets::{insert_change_or_ignore, insert_change_set, link_change_to_set};
 use crate::sqlite_types::Change;
 use crate::utils::unix_now;
 

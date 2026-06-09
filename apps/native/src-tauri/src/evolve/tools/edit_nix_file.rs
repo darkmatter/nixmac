@@ -1,6 +1,6 @@
 //! `edit_nix_file` tool: semantic Add/Remove/Set/SetAttrs edits to Nix files.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 use crate::evolve::edit_nix_file::{apply_semantic_edit, infer_single_list_attrpath};
 use crate::evolve::file_ops::resolve_existing_path_in_dir;
@@ -9,7 +9,7 @@ use crate::evolve::messages::Tool;
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
 use crate::evolve::utils::normalize_relative_path;
 
-use super::{ensure_nixmac_edit_allowed, quote_homebrew_list_values, ToolCtx, ToolResult};
+use super::{ToolCtx, ToolResult, ensure_nixmac_edit_allowed, quote_homebrew_list_values};
 
 pub(crate) fn definition() -> Tool {
     Tool {

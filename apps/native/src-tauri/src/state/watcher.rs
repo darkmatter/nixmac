@@ -8,8 +8,8 @@ use crate::shared_types::GitState;
 use crate::state::{build_state, drift_notifications, evolve_state};
 use crate::storage::store;
 use crate::{db, git, summarize};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
@@ -105,17 +105,21 @@ where
 
                         if current_json != cached_json || external_build_detected {
                             let pool = app_handle.state::<db::DbPool>();
-                            let change_map = summarize::find_existing::for_current_state(&pool, dir)
-                                .ok()
-                                .map(summarize::group_existing::from_change_sets)
-                                .unwrap_or_default();
+                            let change_map =
+                                summarize::find_existing::for_current_state(&pool, dir)
+                                    .ok()
+                                    .map(summarize::group_existing::from_change_sets)
+                                    .unwrap_or_default();
                             // Side-effect: refresh the evolve slice. The slice write-guard
                             // emits `evolve_state_changed` on drop, so no manual emit needed.
                             if let Ok(es) = evolve_state::get(&app_handle) {
                                 let _ = evolve_state::set(&app_handle, es, &status.changes);
                             }
                             // Native drift notification (config drift / external build).
-                            drift_notifications::maybe_notify(Some(&status), external_build_detected);
+                            drift_notifications::maybe_notify(
+                                Some(&status),
+                                external_build_detected,
+                            );
                             // One emit per slice — frontend listens on its dedicated channel.
                             // fire-and-forget: window may not be connected yet.
                             let _ = app_handle.emit(

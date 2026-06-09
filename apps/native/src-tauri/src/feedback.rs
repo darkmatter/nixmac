@@ -816,11 +816,13 @@ regex = "token=([A-Za-z0-9]+)"
         assert!(redacted_fields.contains(&"evolution_log_content"));
         assert!(redacted_fields.contains(&"build_error_output"));
         assert!(!redacted_fields.contains(&"changed_nix_files_diff"));
-        assert!(metadata
-            .evolution_log_content
-            .unwrap()
-            .prompt
-            .contains("[REDACTED]"));
+        assert!(
+            metadata
+                .evolution_log_content
+                .unwrap()
+                .prompt
+                .contains("[REDACTED]")
+        );
         assert_eq!(metadata.changed_nix_files_diff.unwrap(), "no secrets here");
         assert!(metadata.build_error_output.unwrap().contains("[REDACTED]"));
     }
@@ -850,17 +852,21 @@ regex = "token=([A-Za-z0-9]+)"
         assert!(redacted_fields.contains(&"ai_provider_model_info"));
 
         let state = metadata.current_app_state_snapshot.unwrap();
-        assert!(state
-            .get("token")
-            .and_then(|v| v.as_str())
-            .unwrap()
-            .contains("[REDACTED]"));
-        assert!(state
-            .get("nested")
-            .and_then(|v| v.get("value"))
-            .and_then(|v| v.as_str())
-            .unwrap()
-            .contains("[REDACTED]"));
+        assert!(
+            state
+                .get("token")
+                .and_then(|v| v.as_str())
+                .unwrap()
+                .contains("[REDACTED]")
+        );
+        assert!(
+            state
+                .get("nested")
+                .and_then(|v| v.get("value"))
+                .and_then(|v| v.as_str())
+                .unwrap()
+                .contains("[REDACTED]")
+        );
 
         let info = metadata.ai_provider_model_info.unwrap();
         assert!(info.evolve_provider.unwrap().contains("[REDACTED]"));

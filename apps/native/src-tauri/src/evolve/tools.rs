@@ -28,7 +28,7 @@ use crate::evolve::types::SemanticFileEdit;
 use crate::evolve::utils::normalize_relative_path;
 use crate::shared_types::FileEdit;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use ignore::gitignore::Gitignore;
 use std::path::{Component, Path};
 
@@ -203,7 +203,7 @@ pub(crate) fn ensure_nixmac_edit_allowed(tool: &str, path: &str) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{execute_tool, truncate_for_log, ToolResult};
+    use super::{ToolResult, execute_tool, truncate_for_log};
     use crate::evolve::gitignore::load_gitignore_matcher;
     use serde_json::json;
     use std::fs;

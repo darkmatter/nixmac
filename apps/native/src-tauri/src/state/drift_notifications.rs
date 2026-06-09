@@ -108,7 +108,6 @@ mod tests {
         }
     }
 
-
     #[test]
     fn no_notification_without_drift() {
         let status = clean_status();

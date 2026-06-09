@@ -1,8 +1,8 @@
 use crate::evolve::types::SemanticFileEdit;
 use anyhow::{Context, Result};
 use log::{debug, info};
-use rnix::ast::{AttrSet, List};
 use rnix::SyntaxNode;
+use rnix::ast::{AttrSet, List};
 use rnix::{Parse, Root};
 use rowan::ast::AstNode;
 use rowan::{TextRange, TextSize};
@@ -508,7 +508,7 @@ fn find_statement_end(content: &str, start: usize) -> Option<usize> {
             '(' => paren_depth += 1,
             ')' => paren_depth = paren_depth.saturating_sub(1),
             ';' if bracket_depth == 0 && brace_depth == 0 && paren_depth == 0 => {
-                return Some(absolute)
+                return Some(absolute);
             }
             _ => {}
         }
@@ -1149,11 +1149,11 @@ environment.systemPackages = with pkgs; [
         ];"#;
 
         assert!(
-        edited.contains(expected),
-        "expected firefox to append at the end while preserving list comment/spacing structure.\nExpected:\n{}\n\nActual:\n{}",
-        expected,
-        edited
-    );
+            edited.contains(expected),
+            "expected firefox to append at the end while preserving list comment/spacing structure.\nExpected:\n{}\n\nActual:\n{}",
+            expected,
+            edited
+        );
     }
 
     #[test]

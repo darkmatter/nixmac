@@ -8,7 +8,7 @@ use crate::shared_types;
 use crate::storage::credential_store::{CredentialStore, KeychainStore};
 
 use anyhow::Result;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_store::{Store, StoreExt};

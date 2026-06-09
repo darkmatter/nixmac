@@ -1,6 +1,6 @@
 //! `read_file` tool: read a file's contents (gitignore-aware).
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use log::info;
 use std::path::Path;
 

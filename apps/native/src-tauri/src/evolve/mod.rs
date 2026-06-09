@@ -29,7 +29,7 @@ use crate::git::query::repo_root;
 // Re-export public API
 use crate::shared_types::{Evolution, EvolutionState, FileEdit};
 use crate::system::nix;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use chrono::Utc;
 use log::{debug, error, info, warn};
 use regex::Regex;
@@ -41,16 +41,16 @@ use std::sync::Arc;
 use std::time::Duration;
 use tauri::{AppHandle, Runtime};
 use tokio::time::sleep;
-use tools::{create_tools, execute_tool, ToolResult};
+use tools::{ToolResult, create_tools, execute_tool};
 pub use types::{EvolutionProgress, EvolutionRunError};
 
 use crate::{
     statistics, store,
-    types::{emit_evolve_event, EvolveEvent},
-    utils::short_hash,
+    types::{EvolveEvent, emit_evolve_event},
     utils as global_utils,
+    utils::short_hash,
 };
-use chat_memory::{to_provider_context_messages, ChatMessage, Role as ChatMemoryRole};
+use chat_memory::{ChatMessage, Role as ChatMemoryRole, to_provider_context_messages};
 
 pub(crate) use chat_memory::session_chat_memory_store;
 use config_dir_context::format_config_dir_context;
@@ -1857,12 +1857,12 @@ fn process_tool_result(
                 }
 
                 let msg = Message::Tool {
-            tool_call_id: tool_call_id.to_string(),
-            content: format!(
-                "{}\n\nUse the 'think' tool to analyze the error, then fix the issue and run build_check again.",
-                model_output
-            ),
-        };
+                    tool_call_id: tool_call_id.to_string(),
+                    content: format!(
+                        "{}\n\nUse the 'think' tool to analyze the error, then fix the issue and run build_check again.",
+                        model_output
+                    ),
+                };
                 (msg, Some(false))
             }
         }
@@ -1915,8 +1915,8 @@ fn process_tool_result(
 #[cfg(test)]
 mod tests {
     use super::{
-        filter_evolution_messages, process_tool_result, read_file_dedup_key, store_tool_result,
         Evolution, EvolutionMessage, EvolutionState, FileEdit, Message, Retention, ToolResult,
+        filter_evolution_messages, process_tool_result, read_file_dedup_key, store_tool_result,
     };
 
     fn build_result(success: bool) -> ToolResult {
