@@ -370,6 +370,116 @@ mod tests {
     }
 
     #[test]
+    fn edit_nix_file_reports_attr_path_used_as_top_level_path() {
+        let tmp = tempdir().expect("tempdir");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "set_attrs",
+                "path": "launchd.user.agents",
+                "attrs": {
+                    "raycast": {
+                        "serviceConfig": {
+                            "Label": "com.raycast.macos",
+                            "RunAtLoad": true
+                        }
+                    }
+                }
+            }),
+            None,
+        );
+
+        let err = result.expect_err("attr path in top-level path should be corrective");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("top-level 'path' must be the relative .nix file"),
+            "unexpected error: {err:#}"
+        );
+        assert!(
+            msg.contains(r#""path": "modules/darwin/services.nix""#),
+            "unexpected error: {err:#}"
+        );
+        assert!(
+            msg.contains(r#""set_attrs": { "path": "launchd.user.agents", "attrs": {...} }"#),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
+    fn edit_nix_file_reports_string_action_with_corrective_shape() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(tmp.path().join("services.nix"), "{ ... }: { }\n").expect("write nix file");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "path": "services.nix",
+                "action": "set_attrs",
+                "attrs": {
+                    "raycast": {
+                        "serviceConfig": {
+                            "Label": "com.raycast.macos",
+                            "RunAtLoad": true
+                        }
+                    }
+                }
+            }),
+            None,
+        );
+
+        let err = result.expect_err("string action should get a corrective error");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("action must be an object, not string 'set_attrs'"),
+            "unexpected error: {err:#}"
+        );
+        assert!(
+            msg.contains("Wrap sibling payload fields under action.set_attrs"),
+            "unexpected error: {err:#}"
+        );
+        assert!(
+            msg.contains(
+                r#""action": { "set_attrs": { "path": "<attribute.path>", "attrs": {...} } }"#
+            ),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
+    fn edit_nix_file_reports_non_object_action_payload() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(tmp.path().join("services.nix"), "{ ... }: { }\n").expect("write nix file");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "path": "services.nix",
+                "action": {
+                    "set_attrs": "launchd.user.agents"
+                }
+            }),
+            None,
+        );
+
+        let err = result.expect_err("non-object set_attrs payload should be corrective");
+        assert!(
+            err.to_string()
+                .contains("edit_nix_file.set_attrs: action payload must be an object"),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
     fn edit_nix_file_quotes_homebrew_add_values() {
         let tmp = tempdir().expect("tempdir");
         fs::write(
