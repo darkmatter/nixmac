@@ -18,7 +18,7 @@ const docsOptionPaths = new Set(
 );
 
 function normalizeOptionPath(optionPath: string): string {
-  return optionPath.replaceAll('"', "");
+  return optionPath.replace(/"/g, "");
 }
 
 function readDocsMarkdown(docsPath: string): string {
