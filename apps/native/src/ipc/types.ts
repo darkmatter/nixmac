@@ -280,6 +280,10 @@ error_type: RebuildErrorType | null;
  */
 error: string | null; 
 /**
+ * Whether the failed operation completed before changing system state.
+ */
+system_untouched: boolean | null;
+/**
  * Path to the captured rebuild log, when available.
  */
 log_file: string | null }

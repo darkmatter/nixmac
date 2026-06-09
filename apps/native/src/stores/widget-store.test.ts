@@ -279,6 +279,14 @@ describe("rebuild lifecycle", () => {
     expect(r.isRunning).toBe(true);
   });
 
+  it("setRebuildError records whether the system was untouched", () => {
+    const store = createWidgetStore();
+    store.getState().startRebuild("apply");
+    store.getState().setRebuildError("build_error", "derivation foo failed", true);
+
+    expect(store.getState().rebuild.systemUntouched).toBe(true);
+  });
+
   it("setRebuildComplete flips isRunning off and records success/exitCode", () => {
     const store = createWidgetStore();
     store.getState().startRebuild("apply");

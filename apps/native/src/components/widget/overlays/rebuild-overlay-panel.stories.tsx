@@ -20,6 +20,7 @@ const withRebuildState = (rebuildState: Partial<RebuildState>) => {
     success: undefined,
     errorType: undefined,
     errorMessage: undefined,
+    systemUntouched: undefined,
   };
 
   return (Story: () => React.ReactNode) => {
@@ -137,6 +138,7 @@ export const InfiniteRecursionError: Story = {
       errorType: "infinite_recursion",
       errorMessage:
         "error: infinite recursion encountered at /nix/store/...-source/flake.nix:42",
+      systemUntouched: true,
     }),
   ],
 };
@@ -153,6 +155,7 @@ export const EvaluationError: Story = {
       errorType: "evaluation_error",
       errorMessage:
         "error: attribute 'missing-package' not found at /nix/store/...-source/configuration.nix:15",
+      systemUntouched: true,
     }),
   ],
 };

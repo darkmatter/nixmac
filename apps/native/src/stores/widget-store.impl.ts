@@ -61,6 +61,7 @@ export interface RebuildState {
   success?: boolean;
   errorType?: RebuildErrorType;
   errorMessage?: string;
+  systemUntouched?: boolean;
 }
 
 export interface WidgetState {
@@ -236,7 +237,7 @@ interface WidgetActions {
   startRebuild: (context: RebuildContext) => void;
   appendRebuildLine: (line: RebuildLine) => void;
   appendRawLine: (line: string) => void;
-  setRebuildError: (errorType: RebuildErrorType, errorMessage: string) => void;
+  setRebuildError: (errorType: RebuildErrorType, errorMessage: string, systemUntouched?: boolean) => void;
   setRebuildComplete: (success: boolean, exitCode?: number) => void;
   clearRebuild: () => void;
 }
@@ -256,6 +257,7 @@ export const initialRebuildState: RebuildState = {
   success: undefined,
   errorType: undefined,
   errorMessage: undefined,
+  systemUntouched: undefined,
 };
 
 const initialWidgetState: WidgetState = {
@@ -449,6 +451,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
           success: undefined,
           errorType: undefined,
           errorMessage: undefined,
+          systemUntouched: undefined,
         },
       }),
     appendRebuildLine: (line) =>
@@ -465,12 +468,13 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
           rawLines: [...state.rebuild.rawLines, line].slice(-500), // Keep last 500 raw lines
         },
       })),
-    setRebuildError: (errorType, errorMessage) =>
+    setRebuildError: (errorType, errorMessage, systemUntouched) =>
       set((state) => ({
         rebuild: {
           ...state.rebuild,
           errorType,
           errorMessage,
+          systemUntouched,
         },
       })),
     setRebuildComplete: (success, exitCode) =>

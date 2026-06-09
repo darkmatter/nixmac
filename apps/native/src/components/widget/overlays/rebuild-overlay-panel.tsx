@@ -59,6 +59,21 @@ function getErrorSuggestion(errorType: RebuildErrorType | undefined): string {
   }
 }
 
+function getSystemSafetyMessage(
+  systemUntouched: boolean | undefined,
+  context: "apply" | "rollback",
+): string | null {
+  if (context !== "apply") {
+    return null;
+  }
+
+  if (systemUntouched === true) {
+    return "No changes were made to your system.";
+  }
+
+  return null;
+}
+
 /** Map backend emoji to icon component and strip from text */
 const EMOJI_MAP: Record<string, (className: string) => React.ReactNode> = {
   "🚀": (c) => <Play className={c} />,
@@ -161,8 +176,8 @@ function LoaderCore({
     <div className="flex h-full w-full flex-col">
       {children}
       <div className="flex min-h-0 flex-1 items-center justify-center">
-          <div className="w-full max-w-2xl mx-auto">
-            <div className="relative flex w-full flex-col items-start">
+        <div className="mx-auto w-full max-w-2xl">
+          <div className="relative flex w-full flex-col items-start">
             <div
               className="relative w-full"
               style={{
@@ -210,7 +225,7 @@ function LoaderCore({
                 return (
                   <motion.div
                     animate={{ opacity, y }}
-                      className="absolute left-0 right-0 flex items-center gap-3 px-6"
+                    className="absolute left-0 right-0 flex items-center gap-3 px-6"
                     initial={{ opacity: 0, y: y + 8 }}
                     key={loadingState.id}
                     transition={{
@@ -342,10 +357,10 @@ function RawConsoleOutput({ lines, children }: { lines: string[]; children?: Rea
 export function RebuildOverlayPanel() {
   const { handleRollback } = useRollback();
   const { triggerRebuild } = useRebuildStream();
-  const { isRunning, lines, rawLines, success, errorType, errorMessage, context } = useWidgetStore(
-    (state) => state.rebuild,
-  );
+  const { isRunning, lines, rawLines, success, errorType, errorMessage, context, systemUntouched } =
+    useWidgetStore((state) => state.rebuild);
   const isRollback = context === "rollback";
+  const systemSafetyMessage = getSystemSafetyMessage(systemUntouched, context);
 
   const handleRetry = async () => {
     useWidgetStore.getState().setProcessing(true, "cancel");
@@ -363,14 +378,14 @@ export function RebuildOverlayPanel() {
   // Reset to summary view when new build starts
   useEffect(() => {
     if (isRunning) {
-      setShowConsole(false);
+      setShowConsole((current) => (current ? false : current));
     }
   }, [isRunning]);
 
   // On failure, switch from console to error panel (if console was shown)
   useEffect(() => {
     if (showErrorPanel) {
-      setShowConsole(false);
+      setShowConsole((current) => (current ? false : current));
     }
   }, [showErrorPanel]);
 
@@ -427,6 +442,12 @@ export function RebuildOverlayPanel() {
                   <h2 className="text-center font-semibold text-white text-lg">
                     {getErrorTitle(errorType)}
                   </h2>
+
+                  {systemSafetyMessage && (
+                    <p className="max-w-xl rounded-lg border border-teal-400/30 bg-teal-400/10 px-4 py-2 text-center font-medium text-sm text-teal-200">
+                      {systemSafetyMessage}
+                    </p>
+                  )}
 
                   {/* Error Message */}
                   {errorMessage && (
