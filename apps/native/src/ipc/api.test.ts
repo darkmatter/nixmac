@@ -42,6 +42,7 @@ const prefs = (overrides: Partial<UiPrefs> = {}): UiPrefs =>
     autoSummarizeOnFocus: false,
     scanHomebrewOnStartup: true,
     defaultToDiffTab: false,
+    experimentalSpinningMascot: false,
     developerMode: false,
     pinnedVersion: null,
     updateChannel: "stable",

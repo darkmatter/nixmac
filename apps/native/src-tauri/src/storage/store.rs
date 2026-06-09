@@ -35,6 +35,9 @@ pub const SCAN_HOMEBREW_ON_STARTUP_KEY: &str = "scanHomebrewOnStartup";
 // Default-tab preference keys
 pub const DEFAULT_TO_DIFF_TAB_KEY: &str = "defaultToDiffTab";
 
+// Experimental feature preference keys
+pub const EXPERIMENTAL_SPINNING_MASCOT_KEY: &str = "experimentalSpinningMascot";
+
 // Developer-mode preference keys
 pub const DEVELOPER_MODE_KEY: &str = "developerMode";
 pub const PINNED_VERSION_KEY: &str = "pinnedVersion";

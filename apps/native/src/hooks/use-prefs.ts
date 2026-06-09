@@ -13,6 +13,9 @@ export function usePrefs() {
       useWidgetStore
         .getState()
         .setBoolPref("defaultToDiffTab", prefs.defaultToDiffTab ?? false);
+      useWidgetStore
+        .getState()
+        .setBoolPref("experimentalSpinningMascot", prefs.experimentalSpinningMascot ?? false);
       useWidgetStore.getState().setDeveloperMode(prefs.developerMode ?? false);
       useWidgetStore.getState().setPinnedVersion(prefs.pinnedVersion ?? null);
       useWidgetStore.getState().setUpdateChannel(prefs.updateChannel ?? "stable");
