@@ -33,6 +33,7 @@ interface GeneralTabProps {
 
 // Support should always land on the public website, even in local app builds.
 const SUPPORT_NIXMAC_URL = "https://nixmac.com/support";
+const PRIVACY_POLICY_URL = "https://nixmac.com/privacy";
 
 async function openExternalUrl(url: string) {
   try {
@@ -141,6 +142,24 @@ export function GeneralTab({
             <Button
               aria-label="Open Support Nixmac"
               onClick={() => openExternalUrl(SUPPORT_NIXMAC_URL)}
+              size="sm"
+              variant="outline"
+            >
+              Open
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border border-border p-3">
+            <div className="space-y-0.5">
+              <div className="font-medium text-sm">Privacy Policy</div>
+              <div className="text-muted-foreground text-xs">
+                Read how nixmac handles diagnostics and account data.
+              </div>
+            </div>
+            <Button
+              aria-label="Open Privacy Policy"
+              onClick={() => openExternalUrl(PRIVACY_POLICY_URL)}
               size="sm"
               variant="outline"
             >
