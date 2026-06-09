@@ -13,7 +13,13 @@ const nixDarwinDocs = JSON.parse(
   readFileSync(join(process.cwd(), "src-tauri/resources/nix-darwin-docs.json"), "utf8"),
 ) as NixDarwinDocsEntry[];
 
-const docsOptionPaths = new Set(nixDarwinDocs.map((entry) => entry.option_path));
+const docsOptionPaths = new Set(
+  nixDarwinDocs.map((entry) => normalizeOptionPath(entry.option_path)),
+);
+
+function normalizeOptionPath(optionPath: string): string {
+  return optionPath.replaceAll('"', "");
+}
 
 function readDocsMarkdown(docsPath: string): string {
   return readFileSync(join(process.cwd(), "src-tauri/resources/options", docsPath), "utf8");
@@ -60,7 +66,7 @@ describe("Track Items snapshot", () => {
 
     for (const { source, requireExactMarkdownRow } of sources) {
       expect(source).toBeDefined();
-      expect(docsOptionPaths.has(source?.optionPath ?? "")).toBe(true);
+      expect(docsOptionPaths.has(normalizeOptionPath(source?.optionPath ?? ""))).toBe(true);
 
       const markdown = readDocsMarkdown(source?.docsPath ?? "");
       if (requireExactMarkdownRow) {
