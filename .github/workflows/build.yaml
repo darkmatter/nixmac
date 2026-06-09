@@ -109,6 +109,18 @@ jobs:
       - name: Unit Test Tauri app
         run: bun run desktop:test
 
+      # Import Apple Developer certificate (only for releases with secrets).
+      # Placed AFTER the Tauri build to avoid replacing the keychain search list
+      # before `bun run desktop:build`, which caused DMG bundling failures on tags.
+      # The normalizer needs this keychain to re-sign updater archives after
+      # install-name rewrites mutate the embedded app bundle.
+      - name: Import Apple Developer certificate
+        if: (steps.release-version.outputs.mode == 'tag' ||
+          steps.release-version.outputs.mode == 'release' ||
+          steps.release-version.outputs.mode == 'develop') &&
+          steps.check-secrets.outputs.has_certificate == 'true'
+        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        run: bash ops/scripts/release/import-certificate.sh
       - name: Normalize macOS system install names
         shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
         run: |
@@ -125,16 +137,6 @@ jobs:
 
           bash ops/scripts/release/normalize-macos-install-names.sh "$APP_PATH" "$DMG_PATH" "$TAR_GZ_PATH"
 
-      # Import Apple Developer certificate (only for releases with secrets).
-      # Placed AFTER the Tauri build to avoid replacing the keychain search list
-      # before `bun run desktop:build`, which caused DMG bundling failures on tags.
-      - name: Import Apple Developer certificate
-        if: (steps.release-version.outputs.mode == 'tag' ||
-          steps.release-version.outputs.mode == 'release' ||
-          steps.release-version.outputs.mode == 'develop') &&
-          steps.check-secrets.outputs.has_certificate == 'true'
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
-        run: bash ops/scripts/release/import-certificate.sh
       # Sign the app bundle (required for notarization)
       - name: Sign app bundle
         if: (steps.release-version.outputs.mode == 'tag' ||

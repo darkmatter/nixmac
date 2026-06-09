@@ -9,10 +9,12 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 FAKE_BIN="$TMP_DIR/bin"
 INSTALL_NAME_TOOL_LOG="$TMP_DIR/install-name-tool.log"
 TAURI_SIGNER_LOG="$TMP_DIR/tauri-signer.log"
+CODESIGN_LOG="$TMP_DIR/codesign.log"
 mkdir -p "$FAKE_BIN"
 touch "$INSTALL_NAME_TOOL_LOG"
 export INSTALL_NAME_TOOL_LOG
 export TAURI_SIGNER_LOG
+export CODESIGN_LOG
 
 cat >"$FAKE_BIN/otool" <<'SH'
 #!/usr/bin/env bash
@@ -72,6 +74,27 @@ printf '%s\n' "fresh signature" >"${target}.sig"
 SH
 chmod +x "$FAKE_BIN/bun"
 
+cat >"$FAKE_BIN/security" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$1" != "find-identity" ]; then
+	echo "unexpected security invocation: $*" >&2
+	exit 2
+fi
+
+printf '%s\n' '  1) ABCDEF1234567890 "Developer ID Application: Test Signing (TEAMID)"'
+SH
+chmod +x "$FAKE_BIN/security"
+
+cat >"$FAKE_BIN/codesign" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf '%s\n' "$*" >>"$CODESIGN_LOG"
+SH
+chmod +x "$FAKE_BIN/codesign"
+
 make_app() {
 	local app="$1"
 	local executable_name="$2"
@@ -115,18 +138,34 @@ if [ -s "$INSTALL_NAME_TOOL_LOG" ]; then
 fi
 
 : >"$INSTALL_NAME_TOOL_LOG"
+: >"$CODESIGN_LOG"
 make_app "$TMP_DIR/NixIconvUpdater.app" nix-iconv-updater
 tar -czf "$TMP_DIR/nixmac.app.tar.gz" -C "$TMP_DIR" NixIconvUpdater.app
 printf '%s\n' "stale signature" >"$TMP_DIR/nixmac.app.tar.gz.sig"
 ABS_TAR_PATH="$(cd "$TMP_DIR" && pwd -P)/nixmac.app.tar.gz"
+RUNNER_TEMP="$TMP_DIR/runner"
+mkdir -p "$RUNNER_TEMP"
+touch "$RUNNER_TEMP/app-signing.keychain-db"
 (
 	cd "$TMP_DIR"
-	TAURI_SIGNING_PRIVATE_KEY=test PATH="$FAKE_BIN:$PATH" "$SCRIPT" "nixmac.app.tar.gz" >"$TMP_DIR/tarball-normalizer.out" 2>&1
+	RUNNER_TEMP="$RUNNER_TEMP" TAURI_SIGNING_PRIVATE_KEY=test PATH="$FAKE_BIN:$PATH" "$SCRIPT" "nixmac.app.tar.gz" >"$TMP_DIR/tarball-normalizer.out" 2>&1
 )
 
 if ! grep -F -- "-change /nix/store/example-libiconv-109.100.2/lib/libiconv.2.dylib /usr/lib/libiconv.2.dylib" "$INSTALL_NAME_TOOL_LOG" >/dev/null; then
 	echo "expected updater tarball app to be normalized" >&2
 	cat "$INSTALL_NAME_TOOL_LOG" >&2
+	exit 1
+fi
+
+if ! grep -F "NixIconvUpdater.app" "$CODESIGN_LOG" >/dev/null; then
+	echo "expected updater tarball app to be code signed after normalization" >&2
+	cat "$CODESIGN_LOG" >&2
+	exit 1
+fi
+
+if ! grep -F "apps/native/src-tauri/entitlements.plist" "$CODESIGN_LOG" >/dev/null; then
+	echo "expected updater tarball app signing to use the app entitlements" >&2
+	cat "$CODESIGN_LOG" >&2
 	exit 1
 fi
 

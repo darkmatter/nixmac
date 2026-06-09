@@ -22,6 +22,7 @@ fi
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/../../.." && pwd)
+ENTITLEMENTS_PATH="$REPO_ROOT/apps/native/src-tauri/entitlements.plist"
 TMP_DIR=$(mktemp -d)
 MOUNTS_FILE="$TMP_DIR/mounts"
 REWRITES_FILE="$TMP_DIR/rewrites"
@@ -130,6 +131,49 @@ normalize_app() {
 	while IFS= read -r -d '' file; do
 		normalize_macho_file "$file"
 	done < <(find "$app_path" -type f -print0)
+}
+
+sign_app_if_certificate_available() {
+	local app_path="$1"
+	local keychain_path
+	local identity
+
+	if [ -z "${RUNNER_TEMP:-}" ]; then
+		echo "No GitHub Actions temp directory available; skipping code signing for $app_path."
+		return
+	fi
+
+	keychain_path="${RUNNER_TEMP}/app-signing.keychain-db"
+	if [ ! -f "$keychain_path" ]; then
+		echo "No code-signing keychain found; skipping code signing for $app_path."
+		return
+	fi
+
+	if ! command -v security >/dev/null 2>&1; then
+		echo "ERROR: security is required to code sign $app_path" >&2
+		exit 2
+	fi
+
+	if ! command -v codesign >/dev/null 2>&1; then
+		echo "ERROR: codesign is required to code sign $app_path" >&2
+		exit 2
+	fi
+
+	identity=$(security find-identity -v -p codesigning "$keychain_path" | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+	if [ -z "$identity" ]; then
+		echo "ERROR: No Developer ID Application identity found in keychain" >&2
+		security find-identity -v -p codesigning "$keychain_path" >&2
+		exit 1
+	fi
+
+	echo "Code signing normalized app: $app_path"
+	codesign --force --deep --options runtime \
+		--entitlements "$ENTITLEMENTS_PATH" \
+		--sign "$identity" \
+		"$app_path"
+
+	echo "Verifying normalized app signature: $app_path"
+	codesign --verify --verbose "$app_path"
 }
 
 normalize_dmg() {
@@ -245,6 +289,7 @@ normalize_updater_tarball() {
 
 	while IFS= read -r app_path; do
 		normalize_app "$app_path"
+		sign_app_if_certificate_available "$app_path"
 	done < <(find "$extract_dir" -maxdepth 3 -name "*.app" -type d)
 
 	echo "Repacking normalized updater archive: $tar_path"
