@@ -46,7 +46,7 @@ jobs:
             "${{ github.event.pull_request.head.sha }}" \
             > /tmp/storybook-changed-files.txt
 
-          if grep -Eq '^(\.github/workflows/storybook\.yaml|apps/native/\.storybook/.*|apps/native/(package\.json|components\.json|tailwind\.config\.(js|ts|cjs|mjs)|postcss\.config\.(js|ts|cjs|mjs)|vite\.config\.ts|vitest\.config\.ts)|apps/native/public/.*|apps/native/scripts/.*|apps/native/shared/.*|apps/native/src/.*|packages/ui/(package\.json|components\.json)|packages/ui/src/.*|package\.json|bun\.lock)$' /tmp/storybook-changed-files.txt; then
+          if grep -Eq '^(\.github/workflows/storybook\.yaml|\.github/actions/setup/action\.yml|apps/native/\.storybook/.*|apps/native/(package\.json|components\.json|tailwind\.config\.(js|ts|cjs|mjs)|postcss\.config\.(js|ts|cjs|mjs)|vite\.config\.ts|vitest\.config\.ts)|apps/native/public/.*|apps/native/scripts/.*|apps/native/shared/.*|apps/native/src/.*|packages/ui/(package\.json|components\.json)|packages/ui/src/.*|package\.json|bun\.lock)$' /tmp/storybook-changed-files.txt; then
             echo "should-run=true" >> "$GITHUB_OUTPUT"
             echo "reason=relevant frontend or Storybook files changed" >> "$GITHUB_OUTPUT"
           else
@@ -204,6 +204,7 @@ jobs:
           fi
 
       - name: Run Storybook snapshot tests
+        if: steps.storybook-changes.outputs.should-run == 'true'
         id: snapshot_tests
         working-directory: apps/native
         run: bun run test:storybook:ci
