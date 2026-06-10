@@ -2,7 +2,7 @@ import path from "node:path";
 import react from "@vitejs/plugin-react";
 import storybookTest from "@storybook/addon-vitest/vitest-plugin";
 import type {} from "@vitest/browser/providers/playwright";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 const uiPackageRoot = path.resolve(repoRoot, "packages/ui/src");
@@ -15,8 +15,32 @@ const storybookPlugins = await storybookTest({
   configDir: path.join(import.meta.dirname, ".storybook"),
 });
 
+const storybookOptimizeDeps = [
+  "@radix-ui/react-popover",
+  "@radix-ui/react-slot",
+  "@react-three/drei",
+  "@react-three/fiber",
+  "class-variance-authority",
+  "clsx",
+  "lucide-react",
+  "lottie-react",
+  "monaco-editor-textmate",
+  "monaco-textmate",
+  "onigasm",
+  "tailwind-merge",
+  "three",
+];
+const storybookSnapshotExcludes = [
+  // React Three Fiber can hang in headless CI WebGL contexts. Keep this story
+  // available in Storybook, but exclude it from automated snapshot runs.
+  "src/components/nixmac-mascot/NixmacMascot3D.stories.tsx",
+];
+
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    include: storybookOptimizeDeps,
+  },
   resolve: {
     alias: [
       {
@@ -82,6 +106,7 @@ export default defineConfig({
         },
         test: {
           name: "storybook",
+          exclude: [...configDefaults.exclude, ...storybookSnapshotExcludes],
           browser: {
             enabled: true,
             provider: "playwright",

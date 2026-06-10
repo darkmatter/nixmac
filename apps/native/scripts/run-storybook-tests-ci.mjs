@@ -10,19 +10,37 @@ const storyRoots = [
   path.resolve(repoRoot, "packages/ui/src"),
 ];
 const storyFileSuffixes = [".stories.ts", ".stories.tsx"];
-// Each batch re-spins a Chromium + reloads the Storybook/Vite env (the big
-// "prepare" cost), so larger batches mean fewer restarts and a faster run, at
-// the price of more memory held per process. Override via STORYBOOK_BATCH_SIZE.
-const batchSize = Math.max(1, Number(process.env.STORYBOOK_BATCH_SIZE) || 6);
-// Budget scales with batch size (~60s/file) plus a fixed startup allowance so a
-// bigger batch isn't SIGKILLed just for doing more work.
-const perBatchTimeoutMs = 30_000 + batchSize * 60_000;
+const skippedSnapshotStoryFiles = new Set([
+  // Keep in sync with storybookSnapshotExcludes in vitest.config.ts. This CI
+  // wrapper discovers story files itself, before handing explicit files to Vitest.
+  path.resolve(appRoot, "src/components/nixmac-mascot/NixmacMascot3D.stories.tsx"),
+]);
+// Small batches keep one hung story from consuming most of the workflow budget.
+// Override via STORYBOOK_BATCH_SIZE if a runner proves stable enough for more.
+// For larger batches, also raise STORYBOOK_BATCH_TIMEOUT_MS so per-file budget
+// does not shrink under the capped default.
+const batchSize = Math.max(1, Number(process.env.STORYBOOK_BATCH_SIZE) || 2);
+const batchTimeoutOverrideMs = Number(process.env.STORYBOOK_BATCH_TIMEOUT_MS);
+const defaultBatchTimeoutMs = 30_000 + Math.min(batchSize * 60_000, 120_000);
+const perBatchTimeoutMs =
+  Number.isFinite(batchTimeoutOverrideMs) && batchTimeoutOverrideMs > 0
+    ? batchTimeoutOverrideMs
+    : defaultBatchTimeoutMs;
+// Individual retry runs should identify a hung story quickly enough to finish
+// before the workflow-level timeout kills the whole job without logs.
+const retryTimeoutOverrideMs = Number(process.env.STORYBOOK_RETRY_TIMEOUT_MS);
+const perRetryTimeoutMs =
+  Number.isFinite(retryTimeoutOverrideMs) && retryTimeoutOverrideMs > 0
+    ? retryTimeoutOverrideMs
+    : 90_000;
 
 // Aggregated record of every story whose snapshot failed, consumed by the
 // failed-story screenshot pipeline (scripts/resolve-failed-stories.mjs).
 const failedStoriesFile = path.join(appRoot, "test-results", "failed-stories.json");
 /** @type {Array<{ file: string, name: string }>} */
 const failedStories = [];
+
+class BatchTimeoutError extends Error {}
 
 function recordFailure(file, name) {
   const relFile = path.relative(appRoot, path.resolve(file));
@@ -61,7 +79,11 @@ async function listStoryFiles(directory) {
         return listStoryFiles(absolutePath);
       }
 
-      if (entry.isFile() && storyFileSuffixes.some((suffix) => entry.name.endsWith(suffix))) {
+      if (
+        entry.isFile() &&
+        storyFileSuffixes.some((suffix) => entry.name.endsWith(suffix)) &&
+        !skippedSnapshotStoryFiles.has(absolutePath)
+      ) {
         return [path.relative(process.cwd(), absolutePath)];
       }
 
@@ -82,7 +104,7 @@ function chunkFiles(files) {
   return chunks;
 }
 
-function runVitestForBatch(files, reportPath) {
+function runVitestForBatch(files, reportPath, timeoutMs = perBatchTimeoutMs) {
   return new Promise((resolve, reject) => {
     const label = files.join(", ");
 
@@ -114,16 +136,18 @@ function runVitestForBatch(files, reportPath) {
           child.kill("SIGKILL");
         }
       }, 5_000).unref();
-    }, perBatchTimeoutMs);
+    }, timeoutMs);
 
     child.on("exit", (code, signal) => {
       clearTimeout(timeout);
       console.log("##[endgroup]");
 
       if (timedOut) {
-        // No reliable per-story report on a hard timeout; mark the batch wholesale.
-        for (const file of files) recordFailure(file, "(timed out)");
-        reject(new Error(`Timed out after ${perBatchTimeoutMs / 1000}s while running ${label}`));
+        reject(
+          new BatchTimeoutError(
+            `Timed out after ${timeoutMs / 1000}s while running ${label}`
+          )
+        );
         return;
       }
 
@@ -141,6 +165,41 @@ function runVitestForBatch(files, reportPath) {
       reject(error);
     });
   });
+}
+
+async function runBatchWithTimeoutRetry(files, reportPath, index) {
+  try {
+    await runVitestForBatch(files, reportPath);
+    await collectFailuresFromReport(reportPath, files);
+    return true;
+  } catch (error) {
+    if (error instanceof BatchTimeoutError && files.length > 1) {
+      console.error(`::warning::${error.message}; retrying files individually`);
+      let allRetriesPassed = true;
+
+      for (const [fileIndex, file] of files.entries()) {
+        const retryReportPath = path.join(reportDir, `batch-${index}-retry-${fileIndex}.json`);
+        try {
+          await runVitestForBatch([file], retryReportPath, perRetryTimeoutMs);
+          await collectFailuresFromReport(retryReportPath, [file]);
+        } catch (retryError) {
+          console.error(`::error::${retryError.message}`);
+          allRetriesPassed = false;
+          await collectFailuresFromReport(retryReportPath, [file]);
+        }
+
+        if (!allRetriesPassed && failedStories.length >= maxFailuresToCollect) {
+          break;
+        }
+      }
+
+      return allRetriesPassed;
+    }
+
+    console.error(`::error::${error.message}`);
+    await collectFailuresFromReport(reportPath, files);
+    return false;
+  }
 }
 
 const storyFiles = (await Promise.all(storyRoots.map(listStoryFiles))).flat().sort();
@@ -163,13 +222,9 @@ const reportDir = await mkdtempReportDir();
 try {
   for (const [index, storyFileBatch] of batches.entries()) {
     const reportPath = path.join(reportDir, `batch-${index}.json`);
-    try {
-      await runVitestForBatch(storyFileBatch, reportPath);
-    } catch (error) {
-      console.error(`::error::${error.message}`);
+    const passed = await runBatchWithTimeoutRetry(storyFileBatch, reportPath, index);
+    if (!passed) {
       process.exitCode = 1;
-    } finally {
-      await collectFailuresFromReport(reportPath, storyFileBatch);
     }
 
     if (process.exitCode === 1 && failedStories.length >= maxFailuresToCollect) {

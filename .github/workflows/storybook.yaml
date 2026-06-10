@@ -22,15 +22,76 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
+      - name: Detect Storybook-relevant changes
+        id: storybook-changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "should-run=true" >> "$GITHUB_OUTPUT"
+            echo "reason=push event" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          merge_base=$(git merge-base \
+            "origin/${{ github.base_ref }}" \
+            "${{ github.event.pull_request.head.sha }}")
+          changed_files="${RUNNER_TEMP:-/tmp}/storybook-changed-files.txt"
+          git diff --name-only \
+            "$merge_base" \
+            "${{ github.event.pull_request.head.sha }}" \
+            > "$changed_files"
+
+          is_storybook_relevant_file() {
+            case "$1" in
+              .github/workflows/storybook.yaml|.github/actions/setup/action.yml)
+                return 0 ;;
+              package.json|bun.lock|bunfig.toml|devenv.nix|devenv.yaml|devenv.lock|flake.nix|flake.lock|tsconfig.json)
+                return 0 ;;
+              apps/native/package.json|apps/native/components.json|apps/native/vite.config.ts|apps/native/vitest.config.ts|apps/native/tsconfig.json|apps/native/creevey.config.ts|apps/native/index.html)
+                return 0 ;;
+              packages/ui/package.json|packages/ui/components.json|packages/ui/tsconfig.json)
+                return 0 ;;
+              apps/native/.storybook/*|apps/native/public/*|apps/native/scripts/*|apps/native/shared/*|apps/native/src/*)
+                return 0 ;;
+              packages/ui/src/*)
+                return 0 ;;
+              apps/native/tailwind.config.js|apps/native/tailwind.config.ts|apps/native/tailwind.config.cjs|apps/native/tailwind.config.mjs)
+                return 0 ;;
+              apps/native/postcss.config.js|apps/native/postcss.config.ts|apps/native/postcss.config.cjs|apps/native/postcss.config.mjs)
+                return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
+          matching_file=""
+          while IFS= read -r changed_file; do
+            if is_storybook_relevant_file "$changed_file"; then
+              matching_file="$changed_file"
+              break
+            fi
+          done < "$changed_files"
+
+          if [ -n "$matching_file" ]; then
+            echo "should-run=true" >> "$GITHUB_OUTPUT"
+            echo "reason=relevant frontend or Storybook file changed: $matching_file" >> "$GITHUB_OUTPUT"
+          else
+            echo "should-run=false" >> "$GITHUB_OUTPUT"
+            echo "reason=no frontend or Storybook files changed" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: ./.github/actions/setup
+        if: steps.storybook-changes.outputs.should-run == 'true'
         with:
           darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
 
       - name: Resolve secrets
+        if: steps.storybook-changes.outputs.should-run == 'true'
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
         run: |
@@ -51,6 +112,7 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Check Playwright browser availability
+        if: steps.storybook-changes.outputs.should-run == 'true'
         working-directory: apps/native
         run: |
           bunx playwright install --dry-run chromium
@@ -72,16 +134,19 @@ jobs:
           '
 
       - name: Build Storybook
+        if: steps.storybook-changes.outputs.should-run == 'true'
         working-directory: apps/native
         run: bun run build-storybook
 
       - name: Create Cloudflare Pages project (if needed)
+        if: steps.storybook-changes.outputs.should-run == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ env.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
         run: bunx wrangler pages project create nixmac-storybook --production-branch=main 2>/dev/null || true
 
       - name: Deploy to Cloudflare Pages
+        if: steps.storybook-changes.outputs.should-run == 'true'
         id: deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ env.CLOUDFLARE_API_TOKEN }}
@@ -102,7 +167,7 @@ jobs:
           echo "deployment-url=$url" >> "$GITHUB_OUTPUT"
 
       - name: Publish Storybook deployment link
-        if: steps.deploy.outputs.deployment-url != ''
+        if: steps.storybook-changes.outputs.should-run == 'true' && steps.deploy.outputs.deployment-url != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
@@ -135,7 +200,7 @@ jobs:
           EOF
 
       - name: Comment Storybook preview URL on PR
-        if: always() && !cancelled() && github.event_name == 'pull_request' && steps.deploy.outputs.deployment-url != ''
+        if: always() && !cancelled() && steps.storybook-changes.outputs.should-run == 'true' && github.event_name == 'pull_request' && steps.deploy.outputs.deployment-url != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -170,6 +235,7 @@ jobs:
           fi
 
       - name: Run Storybook snapshot tests
+        if: steps.storybook-changes.outputs.should-run == 'true'
         id: snapshot_tests
         working-directory: apps/native
         run: bun run test:storybook:ci
@@ -196,7 +262,8 @@ jobs:
         continue-on-error: true
         working-directory: apps/native
         run: |
-          export VITE_CREEVEY_SKIP_REGEX="$(cat test-results/creevey-skip-regex.txt)"
+          VITE_CREEVEY_SKIP_REGEX="$(cat test-results/creevey-skip-regex.txt)"
+          export VITE_CREEVEY_SKIP_REGEX
           bun run build-storybook
           python3 -m http.server 6100 --directory storybook-static >/tmp/creevey-storybook.log 2>&1 &
           SB_PID=$!
@@ -256,7 +323,7 @@ jobs:
           fi
 
       - name: Check for snapshot staleness
-        if: always() && !cancelled()
+        if: always() && !cancelled() && steps.storybook-changes.outputs.should-run == 'true'
         working-directory: apps/native
         run: |
           if git diff --name-only | grep -q '__snapshots__'; then
@@ -266,7 +333,7 @@ jobs:
           fi
 
       - name: Upload snapshot diffs on failure
-        if: failure()
+        if: failure() && steps.storybook-changes.outputs.should-run == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: storybook-snapshot-diffs
@@ -283,7 +350,11 @@ jobs:
           if [ -n "$DEPLOY_URL" ]; then
             echo "[Open Storybook preview]($DEPLOY_URL)" >> "$GITHUB_STEP_SUMMARY"
           fi
-          if [ "${{ job.status }}" == "success" ]; then
+          if [ "${{ steps.storybook-changes.outcome }}" != "success" ]; then
+            echo "Storybook change detection did not complete successfully." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ steps.storybook-changes.outputs.should-run }}" != "true" ]; then
+            echo "Skipped Storybook build, deploy, and snapshots: ${{ steps.storybook-changes.outputs.reason }}." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ job.status }}" == "success" ]; then
             echo "All Storybook snapshot tests passed" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "Storybook snapshot tests failed" >> "$GITHUB_STEP_SUMMARY"

@@ -21,9 +21,8 @@ const touched = [...modified, ...created];
 // File classifiers
 // ---------------------------------------------------------------------------
 //
-// Only apps/native exists in this repo — the web app lives in
-// darkmatter/nixmac-web. No packages/ workspace, no DB migrations,
-// no infra/ dir. Secrets are sops-encrypted at ops/secrets/secrets.yaml.
+// The web app lives in darkmatter/nixmac-web. This repo has apps/native plus
+// shared packages, but the app-level review nudges below focus on native PRs.
 
 const UI_COMPONENT_RE = /^apps\/native\/src\/components\/.+\.tsx$/;
 const STORY_RE = /\.stories\.tsx?$/;
@@ -91,6 +90,7 @@ const substantiveTestPlan = getSubstantiveTestPlanText(testPlanSection);
 
 const newUiComponents = matches(isUiComponent)(created);
 const newStories = matches(isStory)(created);
+const touchedStories = matches(isStory)(touched);
 const newRustModules = matches(isRustSource)(created);
 const newTsSourceFiles = matches(isTsSource)(created);
 const newTsTests = matches(isTsTest)(created);
@@ -157,17 +157,13 @@ function checkUiComponentStories(): void {
   const missing: string[] = [];
   for (const componentPath of newUiComponents) {
     const expectedStory = componentPath.replace(/\.tsx$/, ".stories.tsx");
-    const baseName = componentPath
-      .split("/")
-      .pop()
-      ?.replace(/\.tsx$/, "");
+    const componentDir = componentPath.slice(0, componentPath.lastIndexOf("/"));
 
     const hasMatchingStory =
-      newStories.includes(expectedStory) ||
-      (baseName !== undefined &&
-        newStories.some((story) =>
-          story.toLowerCase().includes(baseName.toLowerCase()),
-        ));
+      touchedStories.includes(expectedStory) ||
+      touchedStories.some(
+        (story) => story.slice(0, story.lastIndexOf("/")) === componentDir,
+      );
 
     if (!hasMatchingStory) {
       missing.push(componentPath);
@@ -176,7 +172,7 @@ function checkUiComponentStories(): void {
 
   if (missing.length > 0) {
     warn(
-      `New UI components were added without a Storybook story. Consider adding a sibling \`*.stories.tsx\` file:\n${codeBlock(missing)}`,
+      `New UI components were added without a touched Storybook story in the same directory. Consider adding a sibling or aggregate \`*.stories.tsx\` file:\n${codeBlock(missing)}`,
     );
   }
 }
