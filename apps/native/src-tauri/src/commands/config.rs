@@ -18,6 +18,26 @@ pub async fn config_get(app: AppHandle) -> Result<types::Config, String> {
     })
 }
 
+/// Gets the hostname that we're running on, does not touch config but is used
+/// for UI convenience and onboarding defaults.
+/// The name of this function is specificlly chosen to NOT get confused
+/// with an actual config read.
+#[tauri::command]
+pub async fn get_this_hostname() -> Result<String, String> {
+    // Use the system `hostname` command to get the current hostname, which is more reliable than Rust's std::env::var("HOSTNAME")
+    let output = std::process::Command::new("hostname")
+        .output()
+        .map_err(|e| capture_err("get_this_hostname", e))?;
+    if !output.status.success() {
+        return Err(format!(
+            "Failed to get hostname: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    let hostname = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    Ok(hostname)
+}
+
 /// Sets the nix-darwin host attribute (e.g., "Coopers-MacBook-Pro").
 #[tauri::command]
 pub async fn config_set_host_attr(

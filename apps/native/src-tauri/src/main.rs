@@ -467,6 +467,7 @@ fn run_gui_mode(
             commands::config::config_prepare_new_dir,
             commands::config::config_pick_dir,
             commands::config::flake_exists_at,
+            commands::config::get_this_hostname,
             commands::config::path_exists,
             commands::config::path_normalize,
             commands::config::config_pick_zip,
