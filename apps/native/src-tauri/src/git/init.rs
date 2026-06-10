@@ -51,6 +51,7 @@ pub fn is_repo_root(dir: &Path) -> bool {
     actual == expected
 }
 
+#[allow(dead_code)]
 pub fn init_repo(dir: &str) -> Result<()> {
     let path = Path::new(dir);
 
