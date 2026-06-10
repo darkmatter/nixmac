@@ -2,6 +2,7 @@ use super::helpers::{capture_err, handle_new_config_dir};
 use crate::bootstrap::{default_config, import};
 use crate::storage::store;
 use crate::{shared_types, types, utils};
+use std::fs::DirEntry;
 use std::path::{Component, Path, PathBuf};
 use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
@@ -255,8 +256,72 @@ fn resolve_import_target(dir_name: Option<String>) -> Result<PathBuf, String> {
     Ok(home.join(name))
 }
 
-/// Returns true when `path` is absent or an empty directory (ignoring Finder
-/// metadata). Import targets must be empty so we never clobber existing files.
+fn is_finder_metadata(entry: &DirEntry) -> Result<bool, String> {
+    let name = entry.file_name();
+    let file_type = entry
+        .file_type()
+        .map_err(|e| format!("Failed to inspect {}: {}", entry.path().display(), e))?;
+    Ok(name.to_str() == Some(".DS_Store") && !file_type.is_dir())
+}
+
+fn is_transient_nixmac_dir(path: &Path) -> Result<bool, String> {
+    let metadata = std::fs::symlink_metadata(path)
+        .map_err(|e| format!("Failed to inspect {}: {}", path.display(), e))?;
+    if !metadata.file_type().is_dir() {
+        return Ok(false);
+    }
+
+    for entry in std::fs::read_dir(path)
+        .map_err(|e| format!("Failed to read directory {}: {}", path.display(), e))?
+    {
+        let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+        let name = entry.file_name();
+        let name = name.to_str().unwrap_or("");
+        let file_type = entry
+            .file_type()
+            .map_err(|e| format!("Failed to inspect {}: {}", entry.path().display(), e))?;
+
+        if !file_type.is_file() || !matches!(name, ".DS_Store" | "README.md" | "settings.json") {
+            return Ok(false);
+        }
+    }
+
+    Ok(true)
+}
+
+fn is_import_scaffold(entry: &DirEntry) -> Result<bool, String> {
+    let name = entry.file_name();
+    if is_finder_metadata(entry)? {
+        return Ok(true);
+    }
+    Ok(name.to_str() == Some(".nixmac") && is_transient_nixmac_dir(&entry.path())?)
+}
+
+fn clear_import_scaffold(path: &Path) -> Result<(), String> {
+    let ds_store = path.join(".DS_Store");
+    if ds_store.exists() {
+        std::fs::remove_file(&ds_store)
+            .map_err(|e| format!("Failed to clear {}: {}", ds_store.display(), e))?;
+    }
+
+    let nixmac = path.join(".nixmac");
+    if nixmac.exists() {
+        if !is_transient_nixmac_dir(&nixmac)? {
+            return Err(format!(
+                "Refusing to clear non-transient import scaffold: {}",
+                nixmac.display()
+            ));
+        }
+        std::fs::remove_dir_all(&nixmac)
+            .map_err(|e| format!("Failed to clear {}: {}", nixmac.display(), e))?;
+    }
+
+    Ok(())
+}
+
+/// Returns true when `path` is absent or contains only import scaffolding
+/// created by macOS/nixmac before the import runs. Import targets must not
+/// contain user repo content, since the import writes into this directory.
 fn is_importable_target(path: &Path) -> Result<bool, String> {
     if !path.exists() {
         return Ok(true);
@@ -267,18 +332,20 @@ fn is_importable_target(path: &Path) -> Result<bool, String> {
             path.display()
         ));
     }
-    let has_entries = std::fs::read_dir(path)
-        .map_err(|e| format!("Failed to read directory: {}", e))?
-        .filter_map(|e| e.ok())
-        .any(|entry| entry.file_name().to_str() != Some(".DS_Store"));
-    Ok(!has_entries)
+    for entry in std::fs::read_dir(path).map_err(|e| format!("Failed to read directory: {}", e))? {
+        let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+        if !is_import_scaffold(&entry)? {
+            return Ok(false);
+        }
+    }
+
+    Ok(true)
 }
 
 /// Validates and prepares an import target directory.
 ///
-/// On success the directory is guaranteed to be absent or *truly* empty: a
-/// lone `.DS_Store` (which `is_importable_target` tolerates, since the folder
-/// looks empty in Finder) is removed so libgit2 clone, which rejects a
+/// On success the directory is guaranteed to be absent or *truly* empty:
+/// tolerated scaffold entries are removed so libgit2 clone, which rejects a
 /// non-empty destination, succeeds.
 fn prepare_import_target(dir_name: Option<String>) -> Result<PathBuf, String> {
     let target = resolve_import_target(dir_name)?;
@@ -290,11 +357,7 @@ fn prepare_import_target(dir_name: Option<String>) -> Result<PathBuf, String> {
         );
     }
     if target.exists() {
-        let ds_store = target.join(".DS_Store");
-        if ds_store.exists() {
-            std::fs::remove_file(&ds_store)
-                .map_err(|e| format!("Failed to clear {}: {}", ds_store.display(), e))?;
-        }
+        clear_import_scaffold(&target)?;
     }
     Ok(target)
 }
@@ -403,6 +466,65 @@ mod tests {
 
         let _ = fs::remove_dir_all(ds_only);
         let _ = fs::remove_dir_all(with_git);
+    }
+
+    #[test]
+    fn importable_target_treats_transient_nixmac_dir_as_empty() {
+        let dir = temp_dir("import-nixmac-only");
+        fs::create_dir_all(dir.join(".nixmac")).expect("create transient nixmac dir");
+        fs::write(dir.join(".nixmac").join("README.md"), "# .nixmac\n")
+            .expect("create generated readme");
+        fs::write(dir.join(".nixmac").join("settings.json"), "{}\n")
+            .expect("create generated settings");
+
+        assert!(is_importable_target(&dir).expect("nixmac-only path"));
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn importable_target_rejects_nixmac_repo_content() {
+        let dir = temp_dir("import-nixmac-content");
+        fs::create_dir_all(dir.join(".nixmac").join("homebrew")).expect("create nixmac module dir");
+        fs::write(
+            dir.join(".nixmac").join("homebrew").join("default.nix"),
+            "{ }",
+        )
+        .expect("create nixmac module");
+
+        assert!(!is_importable_target(&dir).expect("nixmac repo content path"));
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn prepare_import_target_clears_transient_nixmac_before_import() {
+        let name = format!(
+            ".darwin-import-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("system time should be after epoch")
+                .as_nanos()
+        );
+        let home = dirs::home_dir().expect("home directory");
+        let target = home.join(&name);
+        fs::create_dir_all(target.join(".nixmac")).expect("create transient nixmac dir");
+        fs::write(target.join(".nixmac").join("README.md"), "# .nixmac\n")
+            .expect("create generated readme");
+
+        let prepared = prepare_import_target(Some(name)).expect("prepare import target");
+
+        assert_eq!(prepared, target);
+        assert!(prepared.exists());
+        assert!(!prepared.join(".nixmac").exists());
+        assert_eq!(
+            fs::read_dir(&prepared)
+                .expect("read prepared target")
+                .count(),
+            0
+        );
+
+        let _ = fs::remove_dir_all(prepared);
     }
 
     #[test]
