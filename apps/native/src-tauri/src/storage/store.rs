@@ -280,7 +280,7 @@ pub fn set_evolve_model<R: Runtime>(app: &AppHandle<R>, model: &str) -> Result<(
 
 /// Gets the stored OpenRouter API key.
 pub fn get_openrouter_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
-    get_secret_pref(app, "openrouterApiKey")
+    get_secret_pref_normalized(app, "openrouterApiKey")
 }
 
 pub fn set_openrouter_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()> {
@@ -289,7 +289,7 @@ pub fn set_openrouter_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Resu
 
 /// Gets the stored OpenAI API key (for direct OpenAI access).
 pub fn get_openai_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
-    get_secret_pref(app, "openaiApiKey")
+    get_secret_pref_normalized(app, "openaiApiKey")
 }
 
 pub fn set_openai_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()> {
@@ -322,7 +322,7 @@ pub fn set_vllm_api_base_url<R: Runtime>(app: &AppHandle<R>, url: &str) -> Resul
 
 /// Gets the stored vLLM API key (optional — vllm direct endpoint may not require one).
 pub fn get_vllm_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
-    get_secret_pref(app, "vllmApiKey")
+    get_secret_pref_normalized(app, "vllmApiKey")
 }
 
 pub fn set_vllm_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()> {
@@ -496,14 +496,18 @@ fn keychain_store_for<R: Runtime>(app: &AppHandle<R>, key: &str) -> KeychainStor
 
 fn get_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> Result<Option<String>> {
     if e2e_mock_system_enabled() {
-        return Ok(normalize_secret(get_string_pref_raw(app, key)?));
+        return get_string_pref_raw(app, key);
     }
 
     let keychain = keychain_store_for(app, key);
-    keychain
-        .get()
-        .map(normalize_secret)
-        .map_err(anyhow::Error::from)
+    keychain.get().map_err(anyhow::Error::from)
+}
+
+fn get_secret_pref_normalized<R: Runtime>(
+    app: &AppHandle<R>,
+    key: &'static str,
+) -> Result<Option<String>> {
+    Ok(normalize_secret(get_secret_pref(app, key)?))
 }
 
 fn set_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str, value: &str) -> Result<()> {
@@ -599,7 +603,7 @@ pub fn delete_sync_account<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
 
 /// Gets the per-device HMAC secret from the keychain.
 pub fn get_sync_secret<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
-    get_secret_pref(app, SYNC_SECRET_KEYCHAIN_KEY)
+    get_secret_pref_normalized(app, SYNC_SECRET_KEYCHAIN_KEY)
 }
 
 /// Stores the per-device HMAC secret in the keychain.
