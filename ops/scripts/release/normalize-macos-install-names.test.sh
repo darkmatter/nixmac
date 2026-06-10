@@ -4,14 +4,30 @@ set -euo pipefail
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 SCRIPT="$SCRIPT_DIR/normalize-macos-install-names.sh"
 TMP_DIR=$(mktemp -d)
-trap 'rm -rf "$TMP_DIR"' EXIT
+cleanup() {
+	if [ "${CREATED_TAURI_SHIM:-0}" -eq 1 ]; then
+		rm -f "$TAURI_SHIM"
+	fi
+	if [ "${CREATED_TAURI_BIN_DIR:-0}" -eq 1 ]; then
+		rmdir "$TAURI_BIN_DIR" 2>/dev/null || true
+	fi
+	if [ "${CREATED_NODE_MODULES_DIR:-0}" -eq 1 ]; then
+		rmdir "$TAURI_NODE_MODULES_DIR" 2>/dev/null || true
+	fi
+	rm -rf "$TMP_DIR"
+}
+trap cleanup EXIT
 
 FAKE_BIN="$TMP_DIR/bin"
 INSTALL_NAME_TOOL_LOG="$TMP_DIR/install-name-tool.log"
 TAURI_SIGNER_LOG="$TMP_DIR/tauri-signer.log"
 CODESIGN_LOG="$TMP_DIR/codesign.log"
 TAURI_SHIM="$SCRIPT_DIR/../../../apps/native/node_modules/.bin/tauri"
+TAURI_BIN_DIR=$(dirname "$TAURI_SHIM")
+TAURI_NODE_MODULES_DIR=$(dirname "$TAURI_BIN_DIR")
 CREATED_TAURI_SHIM=0
+CREATED_TAURI_BIN_DIR=0
+CREATED_NODE_MODULES_DIR=0
 mkdir -p "$FAKE_BIN"
 touch "$INSTALL_NAME_TOOL_LOG"
 export INSTALL_NAME_TOOL_LOG
@@ -19,19 +35,17 @@ export TAURI_SIGNER_LOG
 export CODESIGN_LOG
 
 if [ ! -x "$TAURI_SHIM" ]; then
-	mkdir -p "$(dirname "$TAURI_SHIM")"
+	if [ ! -d "$TAURI_NODE_MODULES_DIR" ]; then
+		CREATED_NODE_MODULES_DIR=1
+	fi
+	if [ ! -d "$TAURI_BIN_DIR" ]; then
+		CREATED_TAURI_BIN_DIR=1
+	fi
+	mkdir -p "$TAURI_BIN_DIR"
 	touch "$TAURI_SHIM"
 	chmod +x "$TAURI_SHIM"
 	CREATED_TAURI_SHIM=1
 fi
-
-cleanup() {
-	if [ "$CREATED_TAURI_SHIM" -eq 1 ]; then
-		rm -f "$TAURI_SHIM"
-	fi
-	rm -rf "$TMP_DIR"
-}
-trap cleanup EXIT
 
 cat >"$FAKE_BIN/otool" <<'SH'
 #!/usr/bin/env bash
@@ -87,7 +101,7 @@ fi
 
 target="${!#}"
 printf '%s\n' "signed $target" >>"$TAURI_SIGNER_LOG"
-printf '%s\n' "fresh signature"
+printf '%s\n' "fresh signature" >"${target}.sig"
 SH
 chmod +x "$FAKE_BIN/bun"
 

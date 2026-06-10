@@ -247,7 +247,6 @@ refresh_updater_signature() {
 	local absolute_tar_path
 	local before_hash
 	local after_hash
-	local refreshed_sig_path
 
 	if [ ! -f "$sig_path" ]; then
 		echo "No updater signature found for $tar_path; skipping signature refresh."
@@ -261,23 +260,21 @@ refresh_updater_signature() {
 
 	absolute_tar_path=$(absolute_path "$tar_path")
 	before_hash=$(shasum -a 256 "$sig_path" | awk '{print $1}')
-	refreshed_sig_path=$(mktemp "$TMP_DIR/updater-signature.XXXXXX")
 
 	echo "Refreshing updater signature: $sig_path"
 	if command -v bun >/dev/null 2>&1 && [ -x "$REPO_ROOT/apps/native/node_modules/.bin/tauri" ]; then
-		bun --cwd "$REPO_ROOT/apps/native" tauri signer sign "$absolute_tar_path" >"$refreshed_sig_path"
+		bun --cwd "$REPO_ROOT/apps/native" tauri signer sign "$absolute_tar_path"
 	elif command -v tauri >/dev/null 2>&1; then
-		tauri signer sign "$absolute_tar_path" >"$refreshed_sig_path"
+		tauri signer sign "$absolute_tar_path"
 	else
 		echo "ERROR: Tauri CLI is required to refresh updater signature for $tar_path" >&2
 		exit 2
 	fi
 
-	if [ ! -s "$refreshed_sig_path" ]; then
+	if [ ! -s "$sig_path" ]; then
 		echo "ERROR: Tauri signer did not produce a non-empty signature for $tar_path" >&2
 		exit 2
 	fi
-	mv "$refreshed_sig_path" "$sig_path"
 
 	after_hash=$(shasum -a 256 "$sig_path" | awk '{print $1}')
 	if [ "$before_hash" = "$after_hash" ]; then
