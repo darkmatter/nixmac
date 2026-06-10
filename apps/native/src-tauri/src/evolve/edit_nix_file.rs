@@ -1,8 +1,8 @@
 use crate::evolve::types::SemanticFileEdit;
 use anyhow::{Context, Result};
 use log::{debug, info};
-use rnix::SyntaxNode;
 use rnix::ast::{AttrSet, List};
+use rnix::SyntaxNode;
 use rnix::{Parse, Root};
 use rowan::ast::AstNode;
 use rowan::{TextRange, TextSize};
@@ -541,6 +541,7 @@ fn find_list_for_attrpath(root: &SyntaxNode, content: &str, attrpath: &str) -> O
 ///
 /// This is intentionally conservative: it only returns a path when the file has exactly
 /// one list assignment. Files with multiple lists need the caller to say which one.
+#[expect(dead_code, reason = "kept for shorthand tool-call inference")]
 pub(crate) fn infer_single_list_attrpath(content: &str) -> Result<Option<String>> {
     let parsed: Parse<Root> = Root::parse(content);
     let root: Root = parsed
