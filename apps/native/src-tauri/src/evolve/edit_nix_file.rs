@@ -537,7 +537,7 @@ fn find_list_for_attrpath(root: &SyntaxNode, content: &str, attrpath: &str) -> O
     None
 }
 
-pub(crate) fn list_attrpaths(content: &str) -> Result<Vec<String>> {
+pub(crate) fn list_attrpath_occurrences(content: &str) -> Result<Vec<String>> {
     let parsed: Parse<Root> = Root::parse(content);
     let root: Root = parsed
         .ok()
@@ -553,6 +553,16 @@ pub(crate) fn list_attrpaths(content: &str) -> Result<Vec<String>> {
             }
         }
     }
+
+    attrpaths.sort();
+
+    Ok(attrpaths)
+}
+
+pub(crate) fn list_attrpaths(content: &str) -> Result<Vec<String>> {
+    let mut attrpaths = list_attrpath_occurrences(content)?;
+    attrpaths.sort();
+    attrpaths.dedup();
 
     Ok(attrpaths)
 }
