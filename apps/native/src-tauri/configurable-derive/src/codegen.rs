@@ -54,7 +54,7 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
             }
 
             #[doc(hidden)]
-            pub fn __configurable_load_value_wry(
+            pub fn __configurable_load_wry(
                 app: &::tauri::AppHandle<::tauri::Wry>,
             ) -> ::std::result::Result<::serde_json::Value, ::anyhow::Error> {
                 let __current = Self::load(app)?;
@@ -76,7 +76,7 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
             ::configurable::ConfigurableMeta {
                 name: #name_str,
                 schema_fn: #name::__configurable_schema_wry,
-                load_value_fn: #name::__configurable_load_value_wry,
+                load_fn: #name::__configurable_load_wry,
                 set_fn: #name::__configurable_set_wry,
             }
         }

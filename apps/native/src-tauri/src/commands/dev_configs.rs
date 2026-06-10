@@ -27,7 +27,7 @@ fn snapshot_for(
     app: &AppHandle,
 ) -> anyhow::Result<ConfigurableSnapshot> {
     let schema = (meta.schema_fn)();
-    let current = (meta.load_value_fn)(app)?;
+    let current = (meta.load_fn)(app)?;
     let values = schema
         .fields
         .iter()
