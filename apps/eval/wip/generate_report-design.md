@@ -251,11 +251,11 @@ Each `case_*_result.json` knows its own model/provider, but there's
 no run-level manifest (start time, end time, command-line args, eval
 host, git SHA of the nixmac binary). For the headline section I can
 either (a) derive from the cases (model = mode of `evolveModel`,
-date = mtime of newest result file) or (b) require a `run_meta.json`
+date = mtime of newest result file) or (b) require a `meta.json`
 that `run_evals.py` writes. (a) is good enough; (b) is nicer but is
 yet another runtime change. Go with (a)?
 
-ANSWER = (b) + (a) when run_meta is not there)
+ANSWER = (b) + (a) when meta is not there)
 
 **Q4. Diff rendering.**
 Three options:

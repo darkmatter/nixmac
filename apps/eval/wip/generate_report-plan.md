@@ -13,7 +13,7 @@ Decisions from the design doc that shape this plan:
   runtime changes.
 - New deps allowed: **Jinja2** for templating, **Pygments** for
   diff syntax highlighting.
-- `run_evals.py` will write a `run_meta.json` alongside results;
+- `run_evals.py` will write a `meta.json` alongside results;
   `generate_report.py` falls back to deriving metadata from the
   result files when it's absent.
 - `--compare path/to/previous/report/` reads a `manifest.json` to
@@ -29,7 +29,7 @@ apps/eval/
 ├── generate_report.py            ← new, CLI entrypoint (thin)
 ├── report/                       ← new package
 │   ├── __init__.py
-│   ├── loader.py                 ← reads result JSONs + CSV + golden expectations + run_meta + log
+│   ├── loader.py                 ← reads result JSONs + CSV + golden expectations + meta + log
 │   ├── viewmodel.py              ← CaseView / RunView dataclasses (the report's "model")
 │   ├── stats.py                  ← thin wrapper around calc_stats with extra rollups
 │   ├── diff_html.py              ← unified-diff → HTML (Pygments-backed)
@@ -65,7 +65,7 @@ Rationale for a package rather than one big file:
    data/results/case_*.json ─┐
    data/test_prompts.csv ────┤
    data/golden_set_*.json ───┼──► loader.load() ──► RunView ──► render.write() ──► out_dir/
-   data/run_meta.json   ─────┤                                       ▲
+   data/meta.json       ─────┤                                       ▲
    *.out (eval log)    ─────┤                                       │
    (compare report)    ─────┘                                       │
                                                                     │
@@ -137,7 +137,7 @@ class RunMeta:
     nixmac_git_sha: str | None
     eval_host: str | None
     cli_args: str | None
-    sourced_from: str            # "run_meta.json" or "derived"
+    sourced_from: str            # "meta.json" or "derived"
 
 @dataclass(frozen=True)
 class Segment:
@@ -167,12 +167,12 @@ These types are explicit on purpose. The templates only see a
 
 ### `report/loader.py`
 
-- `load(results_dir, csv_path, golden_path, run_meta_path, log_path, golden_only) -> RunView`
+- `load(results_dir, csv_path, golden_path, meta_path, log_path, golden_only) -> RunView`
 - Reads each `case_*_result.json`. Skips files missing a `grade` block,
   warns to stderr with the case ID.
 - Joins each case to: the CSV row (for category/subcategory/priority/
   notes), the golden expectations (for `is_golden`).
-- Builds `RunMeta` from `run_meta.json` if present; otherwise derives:
+- Builds `RunMeta` from `meta.json` if present; otherwise derives:
   - `evolve_models` = sorted unique values from cases
   - `run_started_at` / `run_finished_at` = min/max of result file
     mtimes
@@ -245,7 +245,7 @@ def main() -> None:
         results_dir=args.input_dir,
         csv_path=args.csv,
         golden_path=args.expectations,
-        run_meta_path=args.run_meta,
+        meta_path=args.meta,
         log_path=args.log,
         golden_only=args.golden_only,
     )
@@ -262,7 +262,7 @@ CLI surface (matches what's already shown in the design doc):
 -o, --output-dir      (default data/report)
     --csv             (default data/test_prompts.csv)
     --expectations    (default data/golden_set_expectations.json)
-    --run-meta        (default data/run_meta.json — optional)
+    --meta            (default data/meta.json — optional)
     --log             (default: auto-detect *.out in cwd, else none)
     --golden-only
     --compare PATH    (path to a previous report dir with manifest.json)
@@ -273,7 +273,7 @@ CLI surface (matches what's already shown in the design doc):
 These are intentionally small and live in commits separate from the
 main script. None are blocking the v1 happy path.
 
-1. **`run_evals.py` writes `run_meta.json`.** New helper at the end
+1. **`run_evals.py` writes `meta.json`.** New helper at the end
    of `main()` that dumps:
 
    ```json
@@ -325,7 +325,7 @@ is incremental polish.
 
 **P3 — Run metadata.**
 
-- `run_evals.py` writes `run_meta.json` (the external change).
+- `run_evals.py` writes `meta.json` (the external change).
 - Loader consumes it; falls back to derived.
 - Headline displays git SHA, host, CLI args.
 
@@ -387,10 +387,10 @@ tweaks.
 These don't block starting — defaults are listed — but call them out
 on review:
 
-- **`run_meta.json` location.** I propose `data/run_meta.json`
+- **`meta.json` location.** I propose `data/meta.json`
   (one per results dir). If we plan to keep multiple result
   directories around, it should live alongside the results
-  (`data/results/run_meta.json`). Slight preference for the latter
+  (`data/results/meta.json`). Slight preference for the latter
   ANSWER: latter.
 - **Pygments lexer for non-`.nix` files in diffs.** Default to `text`
   to avoid wrong guesses. Worth keeping a small `.ext → lexer` map
