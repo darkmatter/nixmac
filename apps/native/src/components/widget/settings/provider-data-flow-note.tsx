@@ -5,6 +5,9 @@
 // get_effective_openai_compatible_credential in src-tauri/src/storage/store.rs),
 // and Ollama only stays on-machine when its base URL is local.
 // Starter-access/proxy provider modes will need their own entry here (ENG-542).
+// Known limitation (ENG-555): backend env overrides (OLLAMA_API_BASE,
+// EVOLVE_PROVIDER, SUMMARY_AI_PROVIDER) are not surfaced through ui_get_prefs,
+// so notes reflect stored configuration; env-overridden routing can differ.
 
 export interface ProviderDataFlowPrefs {
   openrouterApiKey?: string;

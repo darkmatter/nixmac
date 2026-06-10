@@ -135,11 +135,13 @@ export function AiModelsTab({
     evolveProviderField.state.value,
     providerPrefs,
     cliStatus,
+    evolveModelField.state.value,
   );
   const summaryProviderError = getProviderConfigInvalidReason(
     summaryProviderField.state.value,
     providerPrefs,
     cliStatus,
+    summaryModelField.state.value,
   );
 
   return (
