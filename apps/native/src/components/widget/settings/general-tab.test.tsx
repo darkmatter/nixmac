@@ -5,11 +5,11 @@ import { tauriAPI } from "@/ipc/api";
 import { GeneralTab } from "./general-tab";
 
 vi.mock("@tauri-apps/api/app", () => ({
-  getVersion: vi.fn().mockResolvedValue("0.0.0-test"),
+  getVersion: vi.fn<() => Promise<string>>().mockResolvedValue("0.0.0-test"),
 }));
 
 vi.mock("@tauri-apps/plugin-shell", () => ({
-  open: vi.fn().mockResolvedValue(undefined),
+  open: vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/components/widget/controls/directory-picker", () => ({
@@ -23,29 +23,31 @@ vi.mock("@/components/widget/controls/bootstrap-config", () => ({
 vi.mock("@/ipc/api", () => ({
   tauriAPI: {
     ui: {
-      setPrefs: vi.fn().mockResolvedValue(undefined),
+      setPrefs: vi
+        .fn<(prefs: { productAnalyticsEnabled?: boolean; sendDiagnostics?: boolean }) => Promise<void>>()
+        .mockResolvedValue(undefined),
     },
   },
 }));
 
 const sendDiagnosticsField = {
   state: { value: false },
-  handleChange: vi.fn(),
+  handleChange: vi.fn<(value: boolean) => void>(),
 };
 
 const productAnalyticsField = {
   state: { value: true },
-  handleChange: vi.fn(),
+  handleChange: vi.fn<(value: boolean) => void>(),
 };
 
 const telemetry = {
-  captureError: vi.fn(),
-  captureEvent: vi.fn(),
+  captureError: vi.fn<(error: unknown) => void>(),
+  captureEvent: vi.fn<(event: { name: string }) => void>(),
   diagnosticsEnabled: false,
   productAnalyticsEnabled: true,
-  reset: vi.fn(),
-  setDiagnosticsEnabled: vi.fn(),
-  setProductAnalyticsEnabled: vi.fn(),
+  reset: vi.fn<() => void>(),
+  setDiagnosticsEnabled: vi.fn<(enabled: boolean) => void>(),
+  setProductAnalyticsEnabled: vi.fn<(enabled: boolean) => void>(),
 };
 
 vi.mock("@/lib/telemetry/context", () => ({
@@ -54,14 +56,14 @@ vi.mock("@/lib/telemetry/context", () => ({
 
 const baseProps = {
   configDir: "/Users/test/.darwin",
-  handleRefreshHosts: vi.fn(),
+  handleRefreshHosts: vi.fn<() => void>(),
   hasFlake: true,
   host: "Test-MacBook",
   hosts: ["Test-MacBook"],
   productAnalyticsField: productAnalyticsField as never,
-  saveHost: vi.fn(),
+  saveHost: vi.fn<(value: string) => void>(),
   sendDiagnosticsField: sendDiagnosticsField as never,
-  setSettingsOpen: vi.fn(),
+  setSettingsOpen: vi.fn<(open: boolean) => void>(),
 };
 
 describe("GeneralTab", () => {
@@ -99,6 +101,9 @@ describe("GeneralTab", () => {
       expect(telemetry.setProductAnalyticsEnabled).toHaveBeenCalledWith(false);
     });
     expect(telemetry.captureEvent).toHaveBeenCalledWith({ name: "product_analytics_opt_out" });
+    expect(telemetry.captureEvent.mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(tauriAPI.ui.setPrefs).mock.invocationCallOrder[0],
+    );
   });
 
   it("persists diagnostics without changing product analytics", async () => {

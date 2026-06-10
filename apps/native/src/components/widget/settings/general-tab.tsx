@@ -158,12 +158,13 @@ export function GeneralTab({
                 const previousValue = !!productAnalyticsField.state.value;
                 productAnalyticsField.handleChange(checked);
                 try {
-                  await tauriAPI.ui.setPrefs({ productAnalyticsEnabled: checked });
                   if (checked) {
+                    await tauriAPI.ui.setPrefs({ productAnalyticsEnabled: true });
                     telemetry.setProductAnalyticsEnabled(true);
                     telemetry.captureEvent({ name: "product_analytics_opt_in" });
                   } else {
                     telemetry.captureEvent({ name: "product_analytics_opt_out" });
+                    await tauriAPI.ui.setPrefs({ productAnalyticsEnabled: false });
                     telemetry.setProductAnalyticsEnabled(false);
                   }
                 } catch (error) {
