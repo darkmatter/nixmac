@@ -9,7 +9,7 @@ import { ConfigDirBadge } from "@/components/widget/badges/config-dir-badge";
 import { GitignoreBadge } from "@/components/widget/badges/gitignore-badge";
 import { RepoImport } from "@/components/widget/controls/repo-import";
 import { FolderOpen, FolderPlus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { tauriAPI } from "@/ipc/api";
 
 type DirectoryPickerProps = {
@@ -38,12 +38,16 @@ export function DirectoryPicker({
   const configDir = useWidgetStore((state) => state.configDir);
   const { pickDir, prepareNewDir, setDir } = useDarwinConfig();
   const isSetupFlow = flow === "setup";
+  const telemetryOptions = {
+    telemetrySurface: isSetupFlow ? "onboarding" : "settings",
+  } as const;
 
   const [value, setValue] = useState<string>(configDir || "");
   const [setupChoice, setSetupChoice] = useState<SetupChoice>(isSetupFlow ? "new" : "existing");
   const [directoryName, setDirectoryName] = useState<string>(() => getDirectoryName(configDir));
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const [showPrivacyNote, setShowPrivacyNote] = useState(false);
+  const suppressNextBlurSubmitRef = useRef(false);
 
   useEffect(() => {
     setShowPrivacyNote(Boolean(configDir && !configDir.endsWith("/.darwin")));
@@ -89,7 +93,7 @@ export function DirectoryPicker({
     if (!normalizedPath) return false;
 
     try {
-      const result = await prepareNewDir(normalizedPath);
+      const result = await prepareNewDir(normalizedPath, telemetryOptions);
       setValue(result.dir);
       setValidationMessage(null);
       onConfigured?.();
@@ -106,7 +110,7 @@ export function DirectoryPicker({
     if (!normalizedPath) return false;
     if (!(await validateDirectoryExists(normalizedPath))) return false;
     try {
-      const result = await setDir(normalizedPath);
+      const result = await setDir(normalizedPath, telemetryOptions);
       setValue(result.dir);
       onConfigured?.();
       return true;
@@ -117,11 +121,20 @@ export function DirectoryPicker({
     }
   };
 
-  const onBlur = () => { submit(); };
+  const onBlur = () => {
+    if (suppressNextBlurSubmitRef.current) {
+      suppressNextBlurSubmitRef.current = false;
+      return;
+    }
+    void submit();
+  };
   const onKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Enter") return;
     const target = e.currentTarget;
-    if (await submit()) target.blur();
+    if (await submit()) {
+      suppressNextBlurSubmitRef.current = true;
+      target.blur();
+    }
   };
   const onNewKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Enter") return;
@@ -130,7 +143,7 @@ export function DirectoryPicker({
   };
 
   const onPickDir = async () => {
-    const result = await pickDir();
+    const result = await pickDir(telemetryOptions);
     if (!result) return;
     setValue(result.dir);
     onConfigured?.();
@@ -229,7 +242,10 @@ export function DirectoryPicker({
         )}
 
         {setupChoice === "import" ? (
-          <RepoImport onImported={() => onConfigured?.()} />
+          <RepoImport
+            onImported={() => onConfigured?.()}
+            telemetrySurface={telemetryOptions.telemetrySurface}
+          />
         ) : setupChoice === "new" ? (
           <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
             <div className="flex items-center gap-2">

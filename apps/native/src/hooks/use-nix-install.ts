@@ -1,10 +1,46 @@
 import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI, ipcRenderer } from "@/ipc/api";
+import { getTelemetry } from "@/lib/telemetry/instance";
+import type {
+  NixSetupTarget,
+  NixSetupTrigger,
+} from "@/lib/telemetry/events";
 import type {
   NixDarwinRebuildEndEvent,
   NixInstallEndEvent,
   NixInstallProgressEvent,
 } from "@/ipc/types";
+
+const captureNixSetupStarted = (
+  target: NixSetupTarget,
+  trigger: NixSetupTrigger,
+) => {
+  getTelemetry().captureEvent({
+    name: "nix_setup_started",
+    props: { target, trigger },
+  });
+};
+
+const captureNixSetupFinished = (target: NixSetupTarget, ok: boolean) => {
+  getTelemetry().captureEvent({
+    name: ok ? "nix_setup_completed" : "nix_setup_failed",
+    props: { target },
+  });
+};
+
+const resolveInstallEndTarget = (
+  startedTarget: NixSetupTarget,
+  payload: NixInstallEndEvent,
+  phase: NixInstallProgressEvent["phase"] | null,
+): NixSetupTarget => {
+  if (
+    !payload.ok &&
+    (payload.error_type === "darwin_rebuild" || phase === "prefetching")
+  ) {
+    return "nix_darwin";
+  }
+  return startedTarget;
+};
 
 const checkNix = async () => {
     try {
@@ -17,8 +53,10 @@ const checkNix = async () => {
     }
 };
 
-const installNix = async () => {
+const installNix = async (trigger: NixSetupTrigger = "user") => {
     const store = useWidgetStore.getState();
+    const target: NixSetupTarget = store.nixInstalled ? "nix_darwin" : "nix";
+    captureNixSetupStarted(target, trigger);
     store.setNixInstalling(true);
     store.setNixInstallPhase(null);
     store.setNixDownloadProgress(null);
@@ -37,11 +75,17 @@ const installNix = async () => {
 
     const unlistenEnd = await ipcRenderer.on<NixInstallEndEvent>("nix:install:end", (event) => {
       const current = useWidgetStore.getState();
+      const terminalTarget = resolveInstallEndTarget(
+        target,
+        event.payload,
+        current.nixInstallPhase,
+      );
       current.setNixInstalling(false);
       current.setNixInstallPhase(null);
       current.setNixDownloadProgress(null);
       current.setNixInstalled(event.payload.ok);
       current.setDarwinRebuildAvailable(event.payload.darwin_rebuild_available ?? false);
+      captureNixSetupFinished(terminalTarget, event.payload.ok);
 
       if (!event.payload.ok) {
         current.setError(
@@ -61,6 +105,7 @@ const installNix = async () => {
       store.setNixInstallPhase(null);
       store.setNixDownloadProgress(null);
       store.setError(msg);
+      captureNixSetupFinished(target, false);
       unlistenProgress();
       unlistenEnd();
     }
@@ -68,6 +113,7 @@ const installNix = async () => {
 
 const prefetchDarwinRebuild = async () => {
     const store = useWidgetStore.getState();
+    captureNixSetupStarted("nix_darwin", "automatic");
     store.setDarwinRebuildPrefetching(true);
     store.setError(null);
 
@@ -75,6 +121,7 @@ const prefetchDarwinRebuild = async () => {
       const current = useWidgetStore.getState();
       current.setDarwinRebuildPrefetching(false);
       current.setDarwinRebuildAvailable(event.payload.ok);
+      captureNixSetupFinished("nix_darwin", event.payload.ok);
 
       if (!event.payload.ok) {
         current.setError(event.payload.error ?? "Failed to set up nix-darwin.");
@@ -89,6 +136,7 @@ const prefetchDarwinRebuild = async () => {
       const msg = (e as Error)?.message || String(e);
       store.setDarwinRebuildPrefetching(false);
       store.setError(msg);
+      captureNixSetupFinished("nix_darwin", false);
       unlistenEnd();
     }
 };

@@ -5,27 +5,9 @@
  * pipeline: OTEL spans for diagnostics, PostHog for product analytics.
  */
 
-export type TelemetryEvent =
-  | { name: "app_launched"; props?: { environment: string } }
-  | { name: "app_ready"; props?: { boot_ms?: number } }
-  | {
-    name: "evolve_started";
-    props?: { provider: string; has_custom_model: boolean };
-  }
-  | {
-    name: "evolve_completed";
-    props: { step: string };
-  }
-  | {
-    name: "evolve_failed";
-    props?: { stage: "build" | "agent" | "apply" };
-  }
-  | { name: "rollback_performed" }
-  | { name: "settings_changed"; props: { setting: string } }
-  | { name: "diagnostics_opt_in" }
-  | { name: "diagnostics_opt_out" }
-  | { name: "product_analytics_opt_in" }
-  | { name: "product_analytics_opt_out" };
+import type { TelemetryEvent } from "./events";
+
+export type { TelemetryEvent } from "./events";
 
 export interface TelemetryProvider {
   /** Record a product event. Goes only to PostHog and is product-consent gated. */

@@ -264,7 +264,9 @@ export function SettingsDialog() {
                         host={host}
                         hosts={hosts}
                         productAnalyticsField={productAnalyticsField}
-                        saveHost={saveHost}
+                        saveHost={(value) =>
+                          saveHost(value, { telemetrySurface: "settings" })
+                        }
                         sendDiagnosticsField={sendDiagnosticsField}
                         setSettingsOpen={setSettingsOpen}
                       />

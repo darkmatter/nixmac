@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
+import type { TelemetrySurface } from "@/hooks/use-darwin-config";
 import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
@@ -12,9 +13,14 @@ import { useEffect, useState } from "react";
 interface BootstrapConfigProps {
   label: string;
   onSuccess?: () => void;
+  telemetrySurface?: TelemetrySurface;
 }
 
-export function BootstrapConfig({ label, onSuccess }: BootstrapConfigProps) {
+export function BootstrapConfig({
+  label,
+  onSuccess,
+  telemetrySurface = "settings",
+}: BootstrapConfigProps) {
   const [hostname, setHostname] = useState("macbook");
   const [localError, setLocalError] = useState<string | null>(null);
   const { bootstrap, isBootstrapping } = useDarwinConfig();
@@ -44,7 +50,9 @@ export function BootstrapConfig({ label, onSuccess }: BootstrapConfigProps) {
 
   const handleBootstrap = async (): Promise<void> => {
     setLocalError(null);
-    await bootstrap(needsInitialCommit ? "" : hostname);
+    await bootstrap(needsInitialCommit ? "" : hostname, {
+      telemetrySurface,
+    });
     const storeError = useWidgetStore.getState().error;
     if (storeError) {
       setLocalError(storeError);

@@ -51,7 +51,7 @@ export function NixSetupStep() {
   // The backend handles running the prefetch directly (no Terminal).
   useEffect(() => {
     if (nixInstalled === true && darwinRebuildAvailable === false && !nixInstalling && !error) {
-      installNix();
+      installNix("automatic");
     }
   }, [nixInstalled, darwinRebuildAvailable, nixInstalling, error, installNix]);
 
@@ -98,7 +98,7 @@ export function NixSetupStep() {
                       ? "nix-darwin needs to be set up. Click below to continue."
                       : "Nix is not installed on this system. Click below to install it using the standard macOS installer."}
                   </p>
-                  <Button onClick={installNix} className="w-full">
+                  <Button onClick={() => installNix("user")} className="w-full">
                     <Download className="mr-2 h-4 w-4" />
                     {nixInstalled ? "Set up nix-darwin" : "Install Nix"}
                   </Button>
@@ -164,7 +164,11 @@ export function NixSetupStep() {
             <div className="space-y-4">
               <p className="text-destructive text-sm">{error}</p>
               <div className="flex gap-2">
-                <Button onClick={installNix} variant="default" className="flex-1">
+                <Button
+                  onClick={() => installNix("user")}
+                  variant="default"
+                  className="flex-1"
+                >
                   Try Again
                 </Button>
                 <Button onClick={checkNix} variant="outline" className="flex-1">

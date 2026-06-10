@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { preparePostHogEvent, sanitizeDiagnosticText } from "./sanitize";
+import { TELEMETRY_EVENT_PROPERTY_KEYS } from "./events";
 import type { TelemetryEvent } from "./types";
 
 describe("telemetry product event sanitization", () => {
@@ -64,6 +65,43 @@ describe("telemetry product event sanitization", () => {
     ).toEqual({
       name: "app_ready",
       props: { boot_ms: 1234 },
+    });
+  });
+
+  it("keeps every registered product event behind explicit property allowlists", () => {
+    expect(Object.keys(TELEMETRY_EVENT_PROPERTY_KEYS).sort()).toEqual([
+      "app_launched",
+      "app_ready",
+      "apply_completed",
+      "apply_started",
+      "diagnostics_opt_in",
+      "diagnostics_opt_out",
+      "evolve_completed",
+      "evolve_failed",
+      "evolve_started",
+      "nix_setup_completed",
+      "nix_setup_failed",
+      "nix_setup_started",
+      "onboarding_completed",
+      "onboarding_step_completed",
+      "product_analytics_opt_in",
+      "product_analytics_opt_out",
+      "rollback_performed",
+      "settings_changed",
+    ]);
+
+    const prepared = preparePostHogEvent({
+      name: "apply_completed",
+      props: {
+        error: "raw failure token sk-test",
+        result: "success",
+        source: "changes",
+      },
+    } as unknown as TelemetryEvent);
+
+    expect(prepared).toEqual({
+      name: "apply_completed",
+      props: { result: "success", source: "changes" },
     });
   });
 

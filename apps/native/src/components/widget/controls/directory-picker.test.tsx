@@ -9,7 +9,9 @@ import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
 // Mocks
 // ---------------------------------------------------------------------------
 
-const mockPickDir = vi.fn();
+const mockPickDir = vi.fn<
+  () => Promise<{ dir: string; evolveState: never; hosts: string[] | null } | null>
+>();
 const mockNormalize = vi.fn<(p: string) => Promise<string | null>>();
 const mockExists = vi.fn<(p: string) => Promise<boolean>>();
 const mockSetDir =
@@ -155,6 +157,26 @@ describe("<DirectoryPicker>", () => {
     expect(s.configDir).toBe("/Users/me/.darwin");
     expect(s.host).toBe("");
     expect(s.hosts).toEqual(["mbp", "workbook"]);
+  });
+
+  it("does not resubmit setup directory selection when Enter blurs the input", async () => {
+    mockNormalize.mockResolvedValue("/Users/me/.darwin");
+    mockSetDir.mockResolvedValue({
+      dir: "/Users/me/.darwin",
+      evolveState: {} as never,
+      hosts: ["mbp"],
+    });
+
+    render(<DirectoryPicker flow="setup" label="Config directory" />);
+    fireEvent.click(screen.getByRole("tab", { name: "Existing" }));
+    const input = screen.getByLabelText("Config directory");
+
+    fireEvent.change(input, { target: { value: "/Users/me/.darwin" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    await waitFor(() => {
+      expect(mockSetDir).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("uses empty hosts when setDir has no hosts and still persists the dir", async () => {

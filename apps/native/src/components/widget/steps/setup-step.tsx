@@ -81,9 +81,17 @@ export function SetupStep() {
               </p>
             </>
           ) : (
-            <BootstrapConfig label="2. Configuration" />
+            <BootstrapConfig
+              label="2. Configuration"
+              telemetrySurface="onboarding"
+            />
           )}
-          <Button disabled={!effectiveHost} onClick={() => saveHost(effectiveHost)}>
+          <Button
+            disabled={!effectiveHost}
+            onClick={() =>
+              saveHost(effectiveHost, { telemetrySurface: "onboarding" })
+            }
+          >
             Next
           </Button>
         </div>

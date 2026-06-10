@@ -72,7 +72,10 @@ const handleEvolve = async () => {
   store.appendLog(`\n> Evolving: "${store.evolvePrompt}"\n`);
 
   // Track evolution start
-  getTelemetry().captureEvent({ name: "evolve_started" });
+  getTelemetry().captureEvent({
+    name: "evolve_started",
+    props: { source: "prompt" },
+  });
   // Set up evolve event listener
   const unlistenEvolve = await ipcRenderer.on<EvolveEvent>(EVOLVE_EVENT_CHANNEL, (event) => {
     if (event.payload) {
@@ -117,7 +120,13 @@ const handleEvolve = async () => {
     // Track successful evolution
     if (result?.evolveState) {
       const step = result.evolveState.step;
-      getTelemetry().captureEvent({ name: "evolve_completed", props: { step } });
+      getTelemetry().captureEvent({
+        name: "evolve_completed",
+        props: {
+          outcome: isConversational ? "conversational" : "changes",
+          step,
+        },
+      });
     }
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
