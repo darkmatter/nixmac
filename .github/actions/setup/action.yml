@@ -1,13 +1,22 @@
 name: "Setup nixmac CI"
 description: >
-  Install Determinate Nix (skips if already installed), build the devenv profile
-  via `devenv shell` to get bun/node/rust/sops/age/etc. on PATH, and install JS
+  Install Determinate Nix (skips if already installed), provide the devenv
+  profile (bun/node/rust/sops/age/etc. on PATH), and install JS deps.
+  The devenv profile's store path is cached via actions/cache keyed on the
+  devenv inputs; warm runs substitute the profile from binary caches instead
+  of re-evaluating devenv, which costs 5-10 minutes on ephemeral runners.
   NOTE: You MUST run actions/checkout before this action — local composite
   actions need the repo on disk before they can be resolved.
 
 inputs:
   install-bun-deps:
     description: "Run bun install --frozen-lockfile"
+    required: false
+    default: "true"
+  install-devenv:
+    description: >
+      Provide the devenv profile on PATH. Set false for jobs that only need
+      nix itself (e.g. nix fmt) to skip the expensive devenv eval/build.
     required: false
     default: "true"
   setup-rust:
@@ -45,23 +54,76 @@ runs:
     # Pull pre-built devenv packages from devenv.cachix.org (free, no auth).
     # This avoids building devenv and its deps from source.
     - name: Configure devenv Cachix cache
+      if: ${{ inputs.install-devenv == 'true' }}
       uses: cachix/cachix-action@v17
       with:
         name: devenv
         skipPush: true
 
-    - name: Set devenv profile path
+    # languages.python uses nixpkgs-python, whose builds are NOT on
+    # cache.nixos.org. Without this cache, CI compiles CPython from source
+    # (~10 minutes of gcc on GitHub-hosted runners).
+    - name: Configure nixpkgs-python Cachix cache
+      if: ${{ inputs.install-devenv == 'true' }}
+      uses: cachix/cachix-action@v17
+      with:
+        name: nixpkgs-python
+        skipPush: true
+
+    # The devenv profile is a plain store path. Caching that path (plus the
+    # env vars devenv exports) lets warm runs skip installing the devenv CLI
+    # and evaluating devenv entirely — `nix build <path>` just substitutes the
+    # closure from the configured binary caches. The closure reaches the
+    # darkmatter cache via cachix-action's post-job push from the run that
+    # built it.
+    - name: Restore devenv profile pointer
+      if: ${{ inputs.install-devenv == 'true' }}
+      id: devenv-cache
+      uses: actions/cache/restore@v4
+      with:
+        path: .devenv-ci
+        key: devenv-profile-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.nix', 'devenv.yaml', 'devenv.lock', 'flake.nix', 'flake.lock', 'treefmt.nix', 'nix/**') }}
+
+    - name: Substitute cached devenv profile
+      if: ${{ inputs.install-devenv == 'true' && steps.devenv-cache.outputs.cache-hit == 'true' }}
+      id: devenv-realise
       shell: bash
       run: |
         set -euo pipefail
 
-        echo "DEVENV_PROFILE=${RUNNER_TEMP}/devenv-profile-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${GITHUB_JOB}" >> "$GITHUB_ENV"
+        profile_path="$(cat .devenv-ci/profile-path)"
+        ok=true
 
+        mkdir -p .devenv
+        if ! nix build "$profile_path" --out-link .devenv/profile; then
+          ok=false
+        fi
+
+        # Realise store paths referenced only by exported env vars (e.g.
+        # PLAYWRIGHT_BROWSERS_PATH) that may live outside the profile closure.
+        if [ "$ok" = "true" ] && [ -s .devenv-ci/extra-paths ]; then
+          if ! xargs nix-store --realise < .devenv-ci/extra-paths > /dev/null; then
+            ok=false
+          fi
+        fi
+
+        if [ "$ok" != "true" ]; then
+          echo "Cached devenv profile is not substitutable; falling back to a full devenv build."
+          rm -f .devenv/profile
+        fi
+        echo "ok=$ok" >> "$GITHUB_OUTPUT"
+
+    # `nix build` instead of `nix profile install`: no profile manifest
+    # locking (concurrent jobs on shared runners contend on it), and the
+    # version is pinned so a new devenv release can't change CI behavior
+    # underneath us.
     - name: Install devenv
+      if: ${{ inputs.install-devenv == 'true' && steps.devenv-realise.outputs.ok != 'true' }}
       shell: bash
-      run: nix profile install --profile "${DEVENV_PROFILE:?}" github:cachix/devenv/latest
+      run: nix build github:cachix/devenv/v2.1.2 --out-link "${RUNNER_TEMP}/devenv-cli"
 
     - name: Build devenv profile
+      if: ${{ inputs.install-devenv == 'true' && steps.devenv-realise.outputs.ok != 'true' }}
       shell: bash
       env:
         NIXPKGS_ALLOW_UNFREE: 1
@@ -71,31 +133,20 @@ runs:
         # Build the devenv profile by entering the shell with a trivial command.
         # This creates .devenv/profile symlink with all packages on PATH.
         # Do NOT use `devenv ci` — it runs the test suite which may fail.
-        "${DEVENV_PROFILE:?}/bin/devenv" shell --impure -- echo ready
+        "${RUNNER_TEMP}/devenv-cli/bin/devenv" shell --impure -- echo ready
 
-    - name: Add devenv tools to PATH
+    - name: Record devenv profile pointer
+      if: ${{ inputs.install-devenv == 'true' && steps.devenv-realise.outputs.ok != 'true' }}
       shell: bash
+      env:
+        NIXPKGS_ALLOW_UNFREE: 1
       run: |
         set -euo pipefail
 
-        # After `devenv shell`, .devenv/profile is a symlink to the nix store path
-        # containing all packages (bun, node, sops, age, rust, etc.)
-        if [[ -L .devenv/profile ]]; then
-          profile_path="$(readlink -f .devenv/profile)"
-          echo "${profile_path}/bin" >> "$GITHUB_PATH"
-        else
-          echo "ERROR: .devenv/profile symlink not found after devenv shell"
-          exit 1
-        fi
+        mkdir -p .devenv-ci
+        readlink -f .devenv/profile > .devenv-ci/profile-path
 
-        echo "${DEVENV_PROFILE:?}/bin" >> "$GITHUB_PATH"
-
-    - name: Export devenv environment
-      shell: bash
-      run: |
-        set -euo pipefail
-
-        "${DEVENV_PROFILE:?}/bin/devenv" shell -- bash -c '
+        "${RUNNER_TEMP}/devenv-cli/bin/devenv" shell --impure -- bash -c '
           for name in \
             LD_LIBRARY_PATH \
             LIBRARY_PATH \
@@ -108,7 +159,42 @@ runs:
               printf "%s=%s\n" "$name" "$value"
             fi
           done
-        ' >> "$GITHUB_ENV" 2>/dev/null
+        ' > .devenv-ci/env 2>/dev/null
+
+        # Trim env values like /nix/store/<hash>-pkg/lib down to the top-level
+        # store path — nix-store --realise only accepts store path roots.
+        grep -oE '/nix/store/[a-z0-9]{32}-[^:/" ]+' .devenv-ci/env | sort -u > .devenv-ci/extra-paths || true
+
+    - name: Save devenv profile pointer
+      if: ${{ inputs.install-devenv == 'true' && steps.devenv-realise.outputs.ok != 'true' && steps.devenv-cache.outputs.cache-hit != 'true' }}
+      uses: actions/cache/save@v4
+      with:
+        path: .devenv-ci
+        key: ${{ steps.devenv-cache.outputs.cache-primary-key }}
+
+    - name: Add devenv tools to PATH
+      if: ${{ inputs.install-devenv == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        # .devenv/profile is a symlink to the nix store path containing all
+        # packages (bun, node, sops, age, rust, etc.)
+        if [[ -L .devenv/profile ]]; then
+          profile_path="$(readlink -f .devenv/profile)"
+          echo "${profile_path}/bin" >> "$GITHUB_PATH"
+        else
+          echo "ERROR: .devenv/profile symlink not found"
+          exit 1
+        fi
+
+    - name: Export devenv environment
+      if: ${{ inputs.install-devenv == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        cat .devenv-ci/env >> "$GITHUB_ENV"
 
     - name: Install Rust toolchain
       if: inputs.setup-rust == 'true'
