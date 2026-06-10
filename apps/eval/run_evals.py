@@ -31,11 +31,11 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 # Location where we store JSON evaluation results during test runs
 RESULTS_DIR: Path = SCRIPT_DIR / "data/results"
 
-# Default nix config template
-CONFIG_TEMPLATE_DIR: Path = (
-    SCRIPT_DIR.parent.parent
-    / "vendor/nixmac/apps/native/templates/nix-darwin-determinate"
-)
+# Directory holding all bundled nix-darwin templates (one subdir per template).
+TEMPLATES_DIR: Path = SCRIPT_DIR.parent.parent / "vendor/nixmac/apps/native/templates"
+
+# Template used when no --base-config is supplied.
+DEFAULT_TEMPLATE_NAME = "nix-darwin-determinate"
 
 # Default nixmac binary from the vendored public repo submodule (build with `cargo build` there).
 DEFAULT_NIXMAC = SCRIPT_DIR.parent.parent / "vendor/nixmac/target/debug/nixmac"
@@ -143,10 +143,11 @@ def _get_eval_hostname() -> str:
         return "localhost"
 
 
-def create_nix_config_git_repo(hostname: str | None = None):
+def create_nix_config_git_repo(template_dir: Path, hostname: str | None = None):
     """
-    Create a temporary nix config git repo from the template, with hostname
-    and platform placeholders replaced, ready for nix-darwin evaluation.
+    Create a temporary nix config git repo from `template_dir`, with hostname
+    and platform placeholders replaced (where present), ready for nix-darwin
+    evaluation.
 
     Mirrors the production template-processing path in default_config.rs:
     replaces HOSTNAME_PLACEHOLDER, USERNAME_PLACEHOLDER, and
@@ -155,8 +156,15 @@ def create_nix_config_git_repo(hostname: str | None = None):
     # Create temporary directory
     tmpdir = Path(tempfile.mkdtemp(prefix="nix-config-"))
 
-    # Copy template into temp dir (full recursive copy, preserve all files)
-    shutil.copytree(CONFIG_TEMPLATE_DIR, tmpdir, dirs_exist_ok=True)
+    # Copy template into temp dir (full recursive copy, preserve all files).
+    # Ignore any .git from the source so we always init a fresh repo and
+    # don't inherit the source's branch state or bloat the temp dir.
+    shutil.copytree(
+        template_dir,
+        tmpdir,
+        dirs_exist_ok=True,
+        ignore=shutil.ignore_patterns(".git"),
+    )
 
     if hostname is None:
         hostname = _get_eval_hostname()
@@ -214,6 +222,7 @@ def create_nix_config_git_repo(hostname: str | None = None):
 def run_test_case(
     case: EvalTestCase,
     nixmac: Path,
+    template_dir: Path,
     evolve_model: str | None = None,
     summary_model: str | None = None,
     openai_key: str | None = None,
@@ -235,7 +244,7 @@ def run_test_case(
     config_dir: Path | None = None
     result_dir: Path | None = None
     try:
-        config_dir = create_nix_config_git_repo(hostname=eval_hostname)
+        config_dir = create_nix_config_git_repo(template_dir, hostname=eval_hostname)
         print(f"Created git repo with config at: {config_dir}")
 
         # Generate nixmac settings.json pointing to the config dir
@@ -424,6 +433,10 @@ def main(parsed_args: argparse.Namespace) -> None:
     old_handler = signal.signal(signal.SIGINT, _sigint_handler)
 
     try:
+        # Resolve the nix-darwin baseline once per run.
+        template_dir = TEMPLATES_DIR / DEFAULT_TEMPLATE_NAME
+        print(f"Using nix-darwin baseline: {template_dir}")
+
         # Parse comma-delimited rows into list[int]
         rows: list[int] | None
         if parsed_args.rows:
@@ -491,6 +504,7 @@ def main(parsed_args: argparse.Namespace) -> None:
                 result = run_test_case(
                     case,
                     nixmac_path,
+                    template_dir,
                     parsed_args.evolve_model,
                     parsed_args.summary_model,
                     parsed_args.openai_key,
