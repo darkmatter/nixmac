@@ -95,7 +95,7 @@ pub fn dry_run_build_check(
 ///
 /// This spawns the rebuild in a background thread and emits events:
 /// - `darwin:apply:data`: Emitted for each line of output with `{"chunk": "..."}`
-/// - `darwin:apply:end`: Emitted on completion with `{"ok": bool, "code": int, "error_type": string, "error": string, "log_file": string}`
+/// - `darwin:apply:end`: Emitted on completion with `{"ok": bool, "code": int, "error_type": string, "error": string, "system_untouched": bool | null, "log_file": string}`
 pub fn apply_stream(
     app: &AppHandle,
     config_dir: &str,
@@ -427,6 +427,7 @@ pub fn activate_store_path_stream(
                             "code": result.code,
                             "error_type": error_type,
                             "error": error,
+                            "system_untouched": activation_failure_left_system_untouched(error_type),
                         }),
                     );
                 }
@@ -440,6 +441,7 @@ pub fn activate_store_path_stream(
                         "code": -1,
                         "error_type": "generic_error",
                         "error": format!("Activation failed: {}", e),
+                        "system_untouched": true,
                     }),
                 );
             }
@@ -543,6 +545,7 @@ fn handle_activation_error(result: &ActivateResult, log_path: &Path) -> serde_js
             "code": -128,
             "error_type": "user_cancelled",
             "error": "Activation cancelled by user",
+            "system_untouched": true,
         });
     }
 
@@ -577,6 +580,7 @@ fn handle_activation_error(result: &ActivateResult, log_path: &Path) -> serde_js
             "code": -129,
             "log_file": log_path.to_string_lossy(),
             "error_type": "authorization_denied",
+            "system_untouched": false,
             "error": format!(
                 "Authorization denied — administrator credentials required.\n\nDetails:\n{}",
                 details
@@ -612,8 +616,27 @@ fn handle_activation_error(result: &ActivateResult, log_path: &Path) -> serde_js
         "code": result.code,
         "log_file": log_path.to_string_lossy(),
         "error_type": "generic_error",
+        "system_untouched": false,
         "error": format!("Activation failed (exit code {}):\n{}", result.code, stderr_tail),
     })
+}
+
+fn activation_failure_left_system_untouched(error_type: &str) -> bool {
+    matches!(error_type, "user_cancelled")
+}
+
+#[cfg(test)]
+mod activation_safety_tests {
+    use super::activation_failure_left_system_untouched;
+
+    #[test]
+    fn only_explicit_cancellation_is_known_untouched() {
+        assert!(activation_failure_left_system_untouched("user_cancelled"));
+        assert!(!activation_failure_left_system_untouched(
+            "authorization_denied"
+        ));
+        assert!(!activation_failure_left_system_untouched("generic_error"));
+    }
 }
 
 /// Internal function to run darwin-rebuild with proper streaming.
@@ -630,6 +653,7 @@ fn run_darwin_rebuild(
             "ok": false,
             "code": -1,
             "error_type": "generic_error",
+            "system_untouched": true,
             "error": format!("Failed to create log file: {}", e),
         })
     })?;
@@ -681,6 +705,7 @@ fn run_darwin_rebuild(
                 "code": -1,
                 "log_file": log_path.to_string_lossy(),
                 "error_type": "generic_error",
+                "system_untouched": true,
                 "error": format!("Build step failed to execute: {}", e),
             })
         })?;
@@ -710,6 +735,7 @@ fn run_darwin_rebuild(
             "log_file": log_path.to_string_lossy(),
             "error": err_msg,
             "error_type": "build_error",
+            "system_untouched": true,
         }));
     }
 
@@ -726,6 +752,7 @@ fn run_darwin_rebuild(
             "code": -1,
             "log_file": log_path.to_string_lossy(),
             "error_type": "generic_error",
+            "system_untouched": true,
             "error": format!("Activation step failed to execute: {}", e),
         })
     })?;

@@ -78,7 +78,7 @@ export function useRebuildStream() {
         if (!event.payload.ok) {
           const errorType = event.payload.error_type ?? "generic_error";
           const errorMessage = event.payload.error ?? "Rebuild failed";
-          currentStore.setRebuildError(errorType, errorMessage);
+          currentStore.setRebuildError(errorType, errorMessage, event.payload.system_untouched ?? undefined);
         }
 
         unlistenData();
@@ -137,7 +137,7 @@ export function useRebuildStream() {
         }
       } catch (e: unknown) {
         const msg = (e as Error)?.message || String(e);
-        useWidgetStore.getState().setRebuildError("generic_error", msg);
+        useWidgetStore.getState().setRebuildError("generic_error", msg, true);
         useWidgetStore.getState().setRebuildComplete(false);
         useWidgetStore.getState().setProcessing(false);
         unlistenData();
