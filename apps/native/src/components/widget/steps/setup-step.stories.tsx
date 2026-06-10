@@ -23,6 +23,41 @@ const meta = preview.meta({
 
 export default meta;
 
+function installSetupMocks() {
+  if (typeof window === "undefined") return;
+
+  (window as any).__TAURI_INTERNALS__ = {
+    invoke: async (cmd: string, args?: Record<string, unknown>) => {
+      if (cmd === "path_normalize") {
+        const input = String(args?.input ?? "");
+        return input.startsWith("~/") ? `/Users/demo/${input.slice(2)}` : input;
+      }
+
+      if (cmd === "config_prepare_new_dir") {
+        return {
+          dir: String(args?.dir ?? "/Users/demo/.darwin"),
+          evolveState: null,
+          hosts: [],
+        };
+      }
+
+      if (cmd === "flake_exists_at" || cmd === "flake_exists") {
+        return false;
+      }
+
+      if (cmd === "path_exists") {
+        return true;
+      }
+
+      if (cmd === "config_set_host_attr" || cmd === "bootstrap_default_config") {
+        return { ok: true };
+      }
+
+      return null;
+    },
+  };
+}
+
 function SetupStepStory({
   configDir = "",
   host = "",
@@ -50,4 +85,36 @@ export const Empty = meta.story({
 
 export const DefaultDirectoryWithoutFlake = meta.story({
   render: () => <SetupStepStory configDir="/Users/demo/.darwin" />,
+});
+
+function MockedSetupStory({
+  configDir,
+  hosts,
+  host = "",
+}: {
+  configDir: string;
+  hosts: string[];
+  host?: string;
+}) {
+  installSetupMocks();
+
+  useEffect(() => {
+    const store = useWidgetStore.getState();
+    store.setConfigDir(configDir);
+    store.setHosts(hosts);
+    store.setHost(host);
+    store.setBootstrapping(false);
+    store.setError(null);
+  }, [configDir, host, hosts]);
+
+  return <SetupStep />;
+}
+
+export const DefaultConfigRequired = meta.story({
+  render: () => (
+    <MockedSetupStory
+      configDir="/Users/demo/.darwin"
+      hosts={[]}
+    />
+  ),
 });

@@ -1,8 +1,8 @@
 use crate::evolve::age::ensure_age_key;
-use crate::evolve::edit_nix_file::{
+use crate::evolve::file_ops::join_in_dir;
+use crate::evolve::nix_file_editor::{
     apply_semantic_edit, nix_builtins_path_meta_value, nix_expr_meta_value,
 };
-use crate::evolve::file_ops::join_in_dir;
 use crate::evolve::sops::{
     edit_secret_blocking, encrypt_in_place, ensure_secret_file, ensure_sops_config,
 };
@@ -407,7 +407,7 @@ mod tests {
         execute_ensure_secret, fallback_binding_target, is_sops_secret_path,
         normalize_binding_target, secret_path_relative_to_target_file,
     };
-    use crate::evolve::edit_nix_file::{builtins_path_expression, nix_expr_meta_value};
+    use crate::evolve::nix_file_editor::{builtins_path_expression, nix_expr_meta_value};
     use serde_json::json;
     use std::process::Command;
 
