@@ -1,10 +1,27 @@
 import { tauriAPI } from "@/ipc/api";
+import type { UiPrefs } from "@/ipc/types";
+import { listen } from "@tauri-apps/api/event";
 import { createTelemetryProvider } from "./provider";
 import { setTelemetryProvider } from "./instance";
 import { noopProvider } from "./noop";
 import type { TelemetryProvider } from "./types";
 
 const E2E_MODE = import.meta.env.VITE_NIXMAC_E2E_MODE === "true";
+const GLOBAL_PREFERENCES_CHANGED_EVENT = "global_preferences_changed";
+type GlobalPreferencesChangedPayload = Pick<
+  UiPrefs,
+  "productAnalyticsEnabled" | "sendDiagnostics"
+>;
+
+function listenForTelemetryPreferenceChanges(provider: TelemetryProvider): void {
+  void listen<GlobalPreferencesChangedPayload>(
+    GLOBAL_PREFERENCES_CHANGED_EVENT,
+    ({ payload }) => {
+      provider.setDiagnosticsEnabled(payload.sendDiagnostics);
+      provider.setProductAnalyticsEnabled(payload.productAnalyticsEnabled);
+    },
+  );
+}
 
 /**
  * Bootstrap the unified telemetry provider for this session.
@@ -68,5 +85,6 @@ export async function initTelemetry(): Promise<TelemetryProvider> {
   );
 
   setTelemetryProvider(provider);
+  listenForTelemetryPreferenceChanges(provider);
   return provider;
 }
