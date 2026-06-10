@@ -2,7 +2,9 @@
 
 use anyhow::{anyhow, Result};
 
-use crate::evolve::edit_nix_file::{apply_semantic_edit, list_attrpaths};
+use crate::evolve::edit_nix_file::{
+    apply_semantic_edit, list_attrpath_occurrences, list_attrpaths,
+};
 use crate::evolve::file_ops::resolve_existing_path_in_dir;
 use crate::evolve::gitignore::is_ignored_by_matcher;
 use crate::evolve::messages::Tool;
@@ -284,7 +286,25 @@ fn infer_shorthand_list_path(ctx: &ToolCtx, file_path: &str, action: &str) -> Re
     let candidates = list_attrpaths(&content)?;
 
     match candidates.as_slice() {
-        [only] => Ok(only.clone()),
+        [only] => {
+            if action == "remove" {
+                let occurrences = list_attrpath_occurrences(&content)?;
+                let occurrence_count = occurrences
+                    .iter()
+                    .filter(|candidate| *candidate == only)
+                    .count();
+                if occurrence_count > 1 {
+                    return Err(anyhow!(
+                        "edit_nix_file.remove: missing path. Shorthand remove is ambiguous because '{}' appears in multiple list nodes in '{}'. Use the object shape with an explicit path: {{ \"action\": {{ \"remove\": {{ \"path\": \"{}\", \"values\": [...] }} }}, \"path\": \"{}\" }}",
+                        only,
+                        file_path,
+                        only,
+                        file_path
+                    ));
+                }
+            }
+            Ok(only.clone())
+        }
         _ => Err(anyhow!(
             "edit_nix_file.{}: missing path. Shorthand action needs sibling attr_path when the target file does not have exactly one list attribute path. Prefer the object shape: {{ \"action\": {{ \"{}\": {{ \"path\": \"<attribute.path>\", \"values\": [...] }} }}, \"path\": \"{}\" }}",
             action,
