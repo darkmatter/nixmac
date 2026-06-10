@@ -21,9 +21,6 @@ type DirectoryPickerProps = {
 
 type SetupChoice = "new" | "existing" | "import";
 
-const INITIAL_HINT =
-  "Select your own, or proceed below for defaults";
-
 function getDirectoryName(path: string | undefined): string {
   if (!path) return ".darwin";
   return path.split("/").filter(Boolean).pop() || ".darwin";
@@ -158,15 +155,11 @@ export function DirectoryPicker({
     }
   }
 
-  function validateOrInitial(path: string | undefined, fallback: string): void {
-    setValidationMessage(path?.endsWith("/.darwin") ? INITIAL_HINT : fallback);
-  }
-
   async function validateDirectoryExists(path: string): Promise<boolean> {
     try {
       const exists = await tauriAPI.path.exists(path);
       if (!exists) {
-        validateOrInitial(path, `Directory does not exist: ${path}`);
+        setValidationMessage(`Directory does not exist: ${path}`);
         return false;
       }
 
@@ -186,7 +179,7 @@ export function DirectoryPicker({
         return true;
       }
 
-      validateOrInitial(path, "flake.nix not found in this directory");
+      setValidationMessage("flake.nix not found in this directory");
       return false;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
@@ -268,7 +261,7 @@ export function DirectoryPicker({
           </div>
         )}
         {validationMessage && (
-          <p className={`text-xs ${validationMessage === INITIAL_HINT ? "text-teal-300" : "text-rose-300"}`}>
+          <p className="text-rose-300 text-xs">
             {validationMessage}
           </p>
         )}
