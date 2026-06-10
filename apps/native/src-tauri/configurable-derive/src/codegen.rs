@@ -45,8 +45,8 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
         impl #name {
             #methods
 
-            // Wry-specialized shims for the type-erased registry. Generic
-            // functions can't be cast to fn pointers; these monomorphic
+            // Wry-specialized shims for the type-erased compile-time registry.
+            // Generic functions can't be cast to fn pointers; these monomorphic
             // wrappers can.
             #[doc(hidden)]
             pub fn __configurable_schema_wry(
@@ -62,6 +62,16 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
                 value: ::serde_json::Value,
             ) -> ::std::result::Result<(), ::anyhow::Error> {
                 Self::set_field(app, key, value)
+            }
+        }
+
+        // Push this configurable into the inventory collection so
+        // `inventory::iter::<ConfigurableMeta>()` enumerates it at runtime.
+        ::configurable::inventory::submit! {
+            ::configurable::ConfigurableMeta {
+                name: #name_str,
+                schema_fn: #name::__configurable_schema_wry,
+                set_field_fn: #name::__configurable_set_field_wry,
             }
         }
     })

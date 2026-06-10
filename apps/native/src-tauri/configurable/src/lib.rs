@@ -40,6 +40,10 @@ use specta::Type;
 
 pub use configurable_derive::Configurable;
 
+// Re-exported so derive output can write `::configurable::inventory::submit!`
+// without consumers needing to add the crate themselves.
+pub use inventory;
+
 // =============================================================================
 // Schema types — flow to TS via specta
 // =============================================================================
@@ -106,3 +110,25 @@ pub struct ConfigurableSchema {
     pub description: Option<String>,
     pub fields: Vec<ConfigField>,
 }
+
+// =============================================================================
+// Compile-time registry — populated by the derive via `inventory::submit!`
+// =============================================================================
+
+/// Static metadata for one `#[derive(Configurable)]` struct.
+///
+/// The derive macro pushes one of these per struct via `inventory::submit!`
+/// at link time, so iterating every registered configurable is just a walk
+/// over `inventory::iter::<ConfigurableMeta>()` — no runtime registry, no
+/// app-startup registration step.
+pub struct ConfigurableMeta {
+    /// Stable Rust-side name of the configurable state type.
+    pub name: &'static str,
+    /// Returns the UI schema with current values populated.
+    pub schema_fn: fn(&tauri::AppHandle<tauri::Wry>) -> anyhow::Result<ConfigurableSchema>,
+    /// Writes one validated field value into the managed observable.
+    pub set_field_fn:
+        fn(&tauri::AppHandle<tauri::Wry>, &str, serde_json::Value) -> anyhow::Result<()>,
+}
+
+inventory::collect!(ConfigurableMeta);

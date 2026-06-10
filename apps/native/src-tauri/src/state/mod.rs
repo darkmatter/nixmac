@@ -13,9 +13,6 @@
 //! Adding a new state type: define the struct, pick a persistence backend
 //! from `crate::observable`, and construct an `Observable<T>` during Tauri
 //! setup with `.emit_to()` and `.persist_to()` attached as needed.
-//!
-//! The `slice` submodule survives only for the runtime `SliceRegistry` used
-//! by the developer-settings UI; B1 in the followup plan retires it.
 
 pub mod build_state;
 pub mod completion_log;
@@ -23,5 +20,4 @@ pub mod drift_notifications;
 pub mod evolve_state;
 pub mod preferences;
 pub mod session_log;
-pub mod slice;
 pub mod watcher;

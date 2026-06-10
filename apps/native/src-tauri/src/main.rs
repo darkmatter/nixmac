@@ -340,9 +340,6 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                     .setup(|app| {
                         app.manage(state::preferences::load_global_observable(app.handle())?);
                         app.manage(evolve::config::load_observable(app.handle())?);
-                        evolve::config::register_slice_config(
-                            &app.state::<state::slice::SliceRegistry>(),
-                        )?;
                         app.manage(state::evolve_state::load_observable(app.handle())?);
                         Ok(())
                     })
@@ -457,9 +454,6 @@ fn run_gui_mode(
         .plugin(tauri_plugin_upload::init())
         .plugin(tauri_plugin_macos_permissions::init())
         .plugin(tauri_plugin_notification::init())
-        // Configurable slices register here during setup so dev settings
-        // commands can update typed state without opening store files directly.
-        .manage(state::slice::SliceRegistry::default())
         .invoke_handler(tauri::generate_handler![
             // Configuration
             commands::config::config_get,
@@ -593,7 +587,6 @@ fn run_gui_mode(
 
             app.manage(state::preferences::load_global_observable(handle)?);
             app.manage(evolve::config::load_observable(handle)?);
-            evolve::config::register_slice_config(&app.state::<state::slice::SliceRegistry>())?;
             app.manage(state::evolve_state::load_observable(handle)?);
 
             // Initialize SQLite database before any consumer that reads the

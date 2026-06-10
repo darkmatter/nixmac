@@ -3,9 +3,10 @@
 //! Storage is repo-scoped — values live under `<config_dir>/.nixmac/settings.json`
 //! so they ride along with the user's nix config repo across machines.
 //!
-//! The struct is managed as an `Observable<EvolutionLimits>` at startup and
-//! registered with the slice registry so Developer settings can render and
-//! update it without opening store files directly.
+//! The struct is managed as an `Observable<EvolutionLimits>` at startup. The
+//! derive macro pushes its metadata into the compile-time `inventory`
+//! collection so Developer settings can render and update it without opening
+//! store files directly.
 
 use anyhow::Result;
 use configurable::Configurable;
@@ -16,7 +17,6 @@ use tauri::{AppHandle, Runtime};
 
 use crate::observable::{ConfiguredRepoScopedJson, Observable, Persistence};
 use crate::state::preferences;
-use crate::state::slice::{RegisteredSliceConfig, SliceRegistry};
 
 pub const EVOLUTION_LIMITS_CHANGED_EVENT: &str = "evolution_limits_changed";
 
@@ -78,13 +78,6 @@ pub fn load_observable<R: Runtime>(app: &AppHandle<R>) -> Result<Observable<Evol
         .persist_to(persistence))
 }
 
-pub fn register_slice_config(registry: &SliceRegistry) -> Result<()> {
-    registry.register(RegisteredSliceConfig {
-        name: "EvolutionLimits",
-        schema_fn: EvolutionLimits::__configurable_schema_wry,
-        set_field_fn: EvolutionLimits::__configurable_set_field_wry,
-    })
-}
 
 #[cfg(test)]
 mod tests {
