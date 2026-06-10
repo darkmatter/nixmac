@@ -148,7 +148,6 @@ Orchestrates the summarization pipeline from raw git diffs to DB-persisted chang
 - `model_calls.rs` — AI API calls for hunk/group/commit-message summarization
 - `build_prompt.rs` — Constructs prompts
 - `simplify_grouped.rs` — Converts semantic maps into simplified forms for AI input
-- `queue_summarizer.rs` — Background service draining the queued_summaries table
 - `token_budgets.rs` — Computes input/output token allocations
 - `model_output_types.rs` — Structured AI response types
 - `sumlog.rs` — Toggleable debug logging
