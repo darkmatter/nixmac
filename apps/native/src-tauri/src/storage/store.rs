@@ -8,7 +8,7 @@ use crate::shared_types;
 use crate::storage::credential_store::{CredentialStore, KeychainStore};
 
 use anyhow::Result;
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{de::DeserializeOwned, Serialize};
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_store::{Store, StoreExt};
@@ -16,6 +16,7 @@ use tauri_plugin_store::{Store, StoreExt};
 const STORE_PATH: &str = "settings.json";
 pub const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
 pub const OPENAI_BASE_URL: &str = "https://api.openai.com/v1";
+pub const DEFAULT_AI_PROVIDER: &str = "openrouter";
 
 // =============================================================================
 // Preference Tab Keys
@@ -220,6 +221,16 @@ pub fn get_summary_provider<R: Runtime>(app: &AppHandle<R>) -> Result<Option<Str
     get_string_pref(app, "summaryProvider")
 }
 
+/// Gets the summary provider that backend routing will use.
+///
+/// Priority: stored setting, then `SUMMARY_AI_PROVIDER`, then OpenRouter.
+pub fn get_effective_summary_provider<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
+    Ok(resolve_provider_with_env_fallback(
+        get_summary_provider(app)?,
+        "SUMMARY_AI_PROVIDER",
+    ))
+}
+
 pub fn set_summary_provider<R: Runtime>(app: &AppHandle<R>, provider: &str) -> Result<()> {
     let store = get_store(app)?;
     store.set("summaryProvider", serde_json::json!(provider));
@@ -240,6 +251,16 @@ pub fn set_summary_model<R: Runtime>(app: &AppHandle<R>, model: &str) -> Result<
 
 pub fn get_evolve_provider<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
     get_string_pref(app, "evolveProvider")
+}
+
+/// Gets the evolution provider that backend routing will use.
+///
+/// Priority: stored setting, then `EVOLVE_PROVIDER`, then OpenRouter.
+pub fn get_effective_evolve_provider<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
+    Ok(resolve_provider_with_env_fallback(
+        get_evolve_provider(app)?,
+        "EVOLVE_PROVIDER",
+    ))
 }
 
 pub fn set_evolve_provider<R: Runtime>(app: &AppHandle<R>, provider: &str) -> Result<()> {
@@ -285,6 +306,17 @@ pub fn set_openai_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<(
 /// Gets the stored Ollama API base URL.
 pub fn get_ollama_api_base_url<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
     get_string_pref(app, "ollamaApiBaseUrl")
+}
+
+/// Gets the Ollama base URL that backend routing will use before applying its localhost default.
+///
+/// Priority: stored setting, then `OLLAMA_API_BASE`.
+pub fn get_effective_ollama_api_base_url<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
+    Ok(resolve_with_env_fallback(
+        get_ollama_api_base_url(app)?,
+        "OLLAMA_API_BASE",
+        None,
+    ))
 }
 
 pub fn set_ollama_api_base_url<R: Runtime>(app: &AppHandle<R>, url: &str) -> Result<()> {
@@ -381,6 +413,21 @@ pub fn get_env_openai_compatible_credential() -> Option<(String, &'static str)> 
 
 fn read_non_empty_env(name: &str) -> Option<String> {
     normalize_env_secret(crate::e2e_runtime::value(name))
+}
+
+fn resolve_provider_with_env_fallback(stored: Option<String>, env_name: &str) -> String {
+    resolve_with_env_fallback(stored, env_name, Some(DEFAULT_AI_PROVIDER))
+        .expect("provider resolver always includes a default")
+}
+
+fn resolve_with_env_fallback(
+    stored: Option<String>,
+    env_name: &str,
+    default: Option<&'static str>,
+) -> Option<String> {
+    stored
+        .or_else(|| read_non_empty_env(env_name))
+        .or_else(|| default.map(str::to_string))
 }
 
 fn normalize_env_secret(value: Option<String>) -> Option<String> {
@@ -829,6 +876,66 @@ mod tests {
         assert_eq!(
             normalize_env_secret(Some("  sk-abc123  ".to_string())),
             Some("sk-abc123".to_string())
+        );
+    }
+
+    #[test]
+    fn provider_env_fallback_uses_stored_provider_first() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore = crate::test_support::EnvVarRestore::capture(&["EVOLVE_PROVIDER"]);
+        std::env::set_var("EVOLVE_PROVIDER", "ollama");
+
+        assert_eq!(
+            resolve_provider_with_env_fallback(Some("vllm".to_string()), "EVOLVE_PROVIDER"),
+            "vllm"
+        );
+    }
+
+    #[test]
+    fn provider_env_fallback_uses_env_when_stored_provider_is_missing() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore = crate::test_support::EnvVarRestore::capture(&["SUMMARY_AI_PROVIDER"]);
+        std::env::set_var("SUMMARY_AI_PROVIDER", " ollama ");
+
+        assert_eq!(
+            resolve_provider_with_env_fallback(None, "SUMMARY_AI_PROVIDER"),
+            "ollama"
+        );
+    }
+
+    #[test]
+    fn provider_env_fallback_defaults_to_openrouter() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore = crate::test_support::EnvVarRestore::capture(&["SUMMARY_AI_PROVIDER"]);
+        std::env::remove_var("SUMMARY_AI_PROVIDER");
+
+        assert_eq!(
+            resolve_provider_with_env_fallback(None, "SUMMARY_AI_PROVIDER"),
+            DEFAULT_AI_PROVIDER
+        );
+    }
+
+    #[test]
+    fn ollama_base_url_env_fallback_uses_env_when_stored_url_is_missing() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore = crate::test_support::EnvVarRestore::capture(&["OLLAMA_API_BASE"]);
+        std::env::set_var("OLLAMA_API_BASE", " https://ollama.example.test ");
+
+        assert_eq!(
+            resolve_with_env_fallback(None, "OLLAMA_API_BASE", None).as_deref(),
+            Some("https://ollama.example.test")
+        );
+    }
+
+    #[test]
+    fn ollama_base_url_env_fallback_does_not_apply_a_default() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore = crate::test_support::EnvVarRestore::capture(&["OLLAMA_API_BASE"]);
+        std::env::remove_var("OLLAMA_API_BASE");
+
+        assert_eq!(
+            resolve_with_env_fallback(None, "OLLAMA_API_BASE", None),
+            None
         );
     }
 

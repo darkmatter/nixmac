@@ -19,11 +19,15 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, Strin
     let send_diagnostics =
         wrap_result_and_capture_err("ui_get_prefs", store::get_send_diagnostics(&app))?;
 
-    let evolve_provider =
-        wrap_result_and_capture_err("ui_get_prefs", store::get_evolve_provider(&app))?;
+    let evolve_provider = Some(wrap_result_and_capture_err(
+        "ui_get_prefs",
+        store::get_effective_evolve_provider(&app),
+    )?);
     let evolve_model = wrap_result_and_capture_err("ui_get_prefs", store::get_evolve_model(&app))?;
-    let summary_provider =
-        wrap_result_and_capture_err("ui_get_prefs", store::get_summary_provider(&app))?;
+    let summary_provider = Some(wrap_result_and_capture_err(
+        "ui_get_prefs",
+        store::get_effective_summary_provider(&app),
+    )?);
     let summary_model =
         wrap_result_and_capture_err("ui_get_prefs", store::get_summary_model(&app))?;
 
@@ -32,8 +36,10 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, Strin
     let max_build_attempts = Some(store::get_max_build_attempts(&app).unwrap_or(5));
     let max_output_tokens =
         Some(store::get_max_output_tokens(&app).unwrap_or(store::DEFAULT_MAX_OUTPUT_TOKENS));
-    let ollama_api_base_url: Option<String> =
-        wrap_result_and_capture_err("ui_get_prefs", store::get_ollama_api_base_url(&app))?;
+    let ollama_api_base_url: Option<String> = wrap_result_and_capture_err(
+        "ui_get_prefs",
+        store::get_effective_ollama_api_base_url(&app),
+    )?;
     let vllm_api_base_url: Option<String> =
         wrap_result_and_capture_err("ui_get_prefs", store::get_vllm_api_base_url(&app))?;
     let vllm_api_key =
