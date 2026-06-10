@@ -29,7 +29,9 @@ export function getCachedPrefs(): Promise<DarwinPrefs> {
   pendingPrefs = invoke<DarwinPrefs>("ui_get_prefs")
     .then(async (prefs) => {
       const migration = migrateLegacyOpenaiProviderPrefs(prefs);
-      const nextPrefs = migration.update ? { ...prefs, ...migration.values } : prefs;
+      const nextPrefs: DarwinPrefs = migration.update
+        ? ({ ...prefs, ...migration.update } as DarwinPrefs)
+        : prefs;
 
       if (migration.update) {
         await invoke<OkResult>("ui_set_prefs", { prefs: migration.update });
