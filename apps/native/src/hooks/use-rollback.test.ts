@@ -1,4 +1,5 @@
 import type { EvolveState, GitStatus } from "@/ipc/types";
+import type { TelemetryEvent } from "@/lib/telemetry/types";
 import { useWidgetStore } from "@/stores/widget-store";
 import { mirrorEvolveState } from "@/viewmodel/evolve";
 import { mirrorGitState } from "@/viewmodel/git";
@@ -7,10 +8,25 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useRollback } from "./use-rollback";
 
 const mocks = vi.hoisted(() => ({
-  finalizeRollback: vi.fn(),
-  findChangeMap: vi.fn(),
-  rollbackErase: vi.fn(),
-  triggerRebuild: vi.fn(),
+  captureEvent: vi.fn<(event: TelemetryEvent) => void>(),
+  finalizeRollback: vi.fn<
+    (
+      storePath: string,
+      changesetId: number | null,
+    ) => Promise<{ evolveState: EvolveState; gitStatus: GitStatus }>
+  >(),
+  findChangeMap: vi.fn<() => Promise<void>>(),
+  rollbackErase: vi.fn<
+    () => Promise<{
+      evolveState: EvolveState;
+      gitStatus: GitStatus;
+      rollbackChangesetId: number;
+      rollbackStorePath: string;
+    }>
+  >(),
+  triggerRebuild: vi.fn<
+    (options: { onSuccess?: () => Promise<void> }) => Promise<void>
+  >(),
 }));
 
 vi.mock("@/ipc/api", () => ({
@@ -31,6 +47,12 @@ vi.mock("@/hooks/use-rebuild-stream", () => ({
 vi.mock("@/hooks/use-summary", () => ({
   useSummary: () => ({
     findChangeMap: mocks.findChangeMap,
+  }),
+}));
+
+vi.mock("@/lib/telemetry/instance", () => ({
+  getTelemetry: () => ({
+    captureEvent: mocks.captureEvent,
   }),
 }));
 
@@ -106,6 +128,10 @@ describe("useRollback", () => {
     expect(mocks.triggerRebuild).toHaveBeenCalledTimes(1);
     expect(useWidgetStore.getState().isProcessing).toBe(true);
     expect(mocks.findChangeMap).not.toHaveBeenCalled();
+    expect(mocks.captureEvent).toHaveBeenCalledWith({
+      name: "rollback_performed",
+      props: { source: "changes" },
+    });
   });
 
   it("refreshes the change map after rollback rebuild finalization succeeds", async () => {

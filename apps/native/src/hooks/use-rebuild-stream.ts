@@ -102,6 +102,9 @@ export function useRebuildStream() {
           } catch (e) {
             console.error("Failed to check permissions:", e);
           }
+          if (options?.onFailure) {
+            await options.onFailure();
+          }
           await refreshGitStatus({ cache: true });
           currentStore.setProcessing(false);
           return;
@@ -140,6 +143,9 @@ export function useRebuildStream() {
         useWidgetStore.getState().setRebuildError("generic_error", msg);
         useWidgetStore.getState().setRebuildComplete(false);
         useWidgetStore.getState().setProcessing(false);
+        if (options?.onFailure) {
+          await options.onFailure();
+        }
         unlistenData();
         unlistenSummary();
         unlistenEnd();

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
+import type { TelemetrySurface } from "@/hooks/use-darwin-config";
 import { FileArchive, FolderInput, GitBranch } from "lucide-react";
 import { useState } from "react";
 
@@ -12,11 +13,15 @@ type ImportSource = "github" | "zip";
 interface RepoImportProps {
   /** Called once the imported configuration has been selected as the config dir. */
   onImported?: () => void;
+  telemetrySurface?: TelemetrySurface;
 }
 
 const DEFAULT_DIR = ".darwin";
 
-export function RepoImport({ onImported }: RepoImportProps) {
+export function RepoImport({
+  onImported,
+  telemetrySurface = "settings",
+}: RepoImportProps) {
   const { importGithub, importZip, pickZip } = useDarwinConfig();
 
   const [source, setSource] = useState<ImportSource>("github");
@@ -46,7 +51,9 @@ export function RepoImport({ onImported }: RepoImportProps) {
       setError("Enter a GitHub reference like owner/repo");
       return;
     }
-    void runImport(() => importGithub(repoRef.trim(), targetName));
+    void runImport(() =>
+      importGithub(repoRef.trim(), targetName, { telemetrySurface }),
+    );
   };
 
   const onPickZip = async () => {
@@ -60,7 +67,7 @@ export function RepoImport({ onImported }: RepoImportProps) {
       setError("Choose a .zip archive to import");
       return;
     }
-    void runImport(() => importZip(zipPath, targetName));
+    void runImport(() => importZip(zipPath, targetName, { telemetrySurface }));
   };
 
   return (

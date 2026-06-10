@@ -32,7 +32,7 @@ const PRIVACY_SUPER_PROPERTIES = {
   $ip: null,
   $process_person_profile: false,
 } as const;
-const PRODUCT_ANALYTICS_EVENT_ID_PREFIX = "nixmac-product-analytics-event";
+const PRODUCT_ANALYTICS_SESSION_ID_PREFIX = "nixmac-product-analytics-session";
 
 const registerPostHogSuperProperties = (config: TelemetryConfig) => {
   posthog.register({
@@ -50,17 +50,18 @@ const optInPostHogCapturing = (
 
 const postHogCaptureUrl = (host: string) => `${host.replace(/\/$/, "")}/capture/`;
 
-const createProductAnalyticsEventId = () => {
+const createProductAnalyticsSessionId = () => {
   if (globalThis.crypto?.randomUUID) {
-    return `${PRODUCT_ANALYTICS_EVENT_ID_PREFIX}-${globalThis.crypto.randomUUID()}`;
+    return `${PRODUCT_ANALYTICS_SESSION_ID_PREFIX}-${globalThis.crypto.randomUUID()}`;
   }
-  return `${PRODUCT_ANALYTICS_EVENT_ID_PREFIX}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${PRODUCT_ANALYTICS_SESSION_ID_PREFIX}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 };
 
 const sendPostHogProductEvent = (
   config: TelemetryConfig,
   name: string,
   props: Record<string, unknown>,
+  sessionId: string,
   fetchImpl: typeof fetch = fetch,
 ) =>
   fetchImpl(postHogCaptureUrl(config.host), {
@@ -69,10 +70,10 @@ const sendPostHogProductEvent = (
       event: name,
       properties: {
         ...PRIVACY_SUPER_PROPERTIES,
-        // PostHog requires a distinct_id. Use a per-event anonymous ID so
-        // events are not linked to a persisted machine/user identity and are
-        // not collapsed into one shared actor.
-        distinct_id: createProductAnalyticsEventId(),
+        // PostHog requires a distinct_id for funnels. Use a per-launch
+        // anonymous ID held only in memory, so same-session events connect
+        // without creating a persisted machine/user identifier.
+        distinct_id: sessionId,
         environment: config.environment,
         release: config.release,
         token: config.key,
@@ -136,6 +137,7 @@ export function createTelemetryProvider(
   let diagnosticsEnabled = initialState.diagnosticsEnabled;
   let productAnalyticsEnabled = initialState.productAnalyticsEnabled;
   let posthogStarted = false;
+  const productAnalyticsSessionId = createProductAnalyticsSessionId();
 
   const tracerProvider = new WebTracerProvider({
     resource: resourceFromAttributes({
@@ -182,7 +184,12 @@ export function createTelemetryProvider(
     captureEvent(event: TelemetryEvent) {
       if (!productAnalyticsEnabled) return;
       const prepared = preparePostHogEvent(event);
-      void sendPostHogProductEvent(config, prepared.name, prepared.props);
+      void sendPostHogProductEvent(
+        config,
+        prepared.name,
+        prepared.props,
+        productAnalyticsSessionId,
+      );
     },
 
     captureError(error: Error, context?: Record<string, unknown>) {

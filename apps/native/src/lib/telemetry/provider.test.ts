@@ -99,7 +99,7 @@ describe("createTelemetryProvider", () => {
         $geoip_disable: true,
         $ip: null,
         $process_person_profile: false,
-        distinct_id: expect.stringMatching(/^nixmac-product-analytics-event-/),
+        distinct_id: expect.stringMatching(/^nixmac-product-analytics-session-/),
         environment: "test",
         release: "0.0.0-test",
         stage: "build",
@@ -175,7 +175,7 @@ describe("createTelemetryProvider", () => {
         $geoip_disable: true,
         $ip: null,
         $process_person_profile: false,
-        distinct_id: expect.stringMatching(/^nixmac-product-analytics-event-/),
+        distinct_id: expect.stringMatching(/^nixmac-product-analytics-session-/),
         environment: "production",
         release: "0.0.0-test",
         token: "phc_test",
@@ -184,28 +184,33 @@ describe("createTelemetryProvider", () => {
     expect(telemetry.diagnosticsEnabled).toBe(true);
   });
 
-  it("uses per-event anonymous PostHog IDs instead of collapsing clients into one actor", () => {
+  it("uses a per-launch anonymous PostHog session ID so funnels connect within the session", () => {
     const telemetry = createTelemetryProvider(config, {
       diagnosticsEnabled: false,
       productAnalyticsEnabled: true,
     });
 
     telemetry.captureEvent({ name: "app_launched" });
-    telemetry.captureEvent({ name: "rollback_performed" });
+    telemetry.captureEvent({
+      name: "apply_completed",
+      props: { result: "success", source: "changes" },
+    });
 
     const payloads = mocks.fetch.mock.calls.map(([, init]) =>
       JSON.parse((init as RequestInit).body as string),
     ) as Array<{ properties: Record<string, unknown> }>;
 
     expect(payloads[0]?.properties.distinct_id).toEqual(
-      expect.stringMatching(/^nixmac-product-analytics-event-/),
+      expect.stringMatching(/^nixmac-product-analytics-session-/),
     );
     expect(payloads[1]?.properties.distinct_id).toEqual(
-      expect.stringMatching(/^nixmac-product-analytics-event-/),
+      expect.stringMatching(/^nixmac-product-analytics-session-/),
     );
-    expect(payloads[0]?.properties.distinct_id).not.toBe(
+    expect(payloads[0]?.properties.distinct_id).toBe(
       payloads[1]?.properties.distinct_id,
     );
+    expect(payloads[0]?.properties).not.toHaveProperty("$session_id");
+    expect(payloads[1]?.properties).not.toHaveProperty("$session_id");
   });
 
   it("initializes PostHog with passive capture features disabled", () => {

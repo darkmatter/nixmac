@@ -39,6 +39,14 @@ The provider must register these privacy super-properties for every event:
 - `$geoip_disable: true`
 - `$ip: null`
 
+PostHog requires an actor key to calculate funnels. nixmac uses an anonymous
+per-launch session ID as `distinct_id`. The value is generated in memory, is
+never persisted, and is not derived from the machine, user, config path, host
+name, account, or API credentials. This enables within-session funnels while
+preserving the no persistent user/machine identity privacy boundary. Funnels
+that span app restarts should be treated as lower bound measurements unless a
+future privacy decision explicitly introduces a persisted anonymous install ID.
+
 The provider must also register these non-user super-properties for dashboard
 filtering:
 
@@ -71,13 +79,42 @@ Initial ENG-230 product events:
 - `app_ready`
   - allowed properties: `boot_ms`
 - `evolve_started`
-  - allowed properties: `provider`, `has_custom_model`
+  - allowed properties: `provider`, `has_custom_model`, `source`
+  - allowed values: `source = prompt`
 - `evolve_completed`
-  - allowed properties: `step`
+  - allowed properties: `step`, `outcome`
+  - allowed values: `outcome = changes | conversational`
 - `evolve_failed`
   - allowed properties: `stage`
+  - allowed values: `stage = agent | apply | build`
 - `rollback_performed`
-  - allowed properties: none
+  - allowed properties: `source`
+  - allowed values: `source = changes`
+- `apply_started`
+  - allowed properties: `source`
+  - allowed values: `source = changes | history | manual_confirm`
+- `apply_completed`
+  - allowed properties: `source`, `result`
+  - allowed values: `source = changes | history | manual_confirm`,
+    `result = success | failure`
+- `onboarding_step_completed`
+  - allowed properties: `step`, `source`
+  - allowed values:
+    - `step = config_directory | host_configuration`
+    - `source = github_import | manual | picker | zip_import`
+- `onboarding_completed`
+  - allowed properties: `step`
+  - allowed values: `step = host_configuration`
+- `nix_setup_started`
+  - allowed properties: `target`, `trigger`
+  - allowed values: `target = nix | nix_darwin`,
+    `trigger = automatic | user`
+- `nix_setup_completed`
+  - allowed properties: `target`
+  - allowed values: `target = nix | nix_darwin`
+- `nix_setup_failed`
+  - allowed properties: `target`
+  - allowed values: `target = nix | nix_darwin`
 - `settings_changed`
   - allowed properties: `setting`
 - `diagnostics_opt_in`
@@ -89,8 +126,45 @@ Initial ENG-230 product events:
 - `product_analytics_opt_out`
   - allowed properties: none
 
-Richer onboarding, review/apply, and session-duration events should be added in
-follow-up work only after they have explicit allowlisted property contracts.
+Website acquisition events and starter-access events are not native app events
+yet. Track them under ENG-534/ENG-544 once those surfaces have concrete event
+boundaries and the same explicit property contracts.
+
+## Canonical PostHog Funnels
+
+Build dashboards from these event sequences. Filter all insights by
+`environment` and `release`.
+
+- Native activation:
+  `app_launched` -> `app_ready` -> `onboarding_step_completed`
+  where `step = config_directory` -> `onboarding_step_completed`
+  where `step = host_configuration` -> `onboarding_completed` ->
+  `evolve_started` -> `apply_completed` where `result = success`.
+- AI value loop:
+  `evolve_started` -> `evolve_completed` where `outcome = changes` ->
+  `apply_started` -> `apply_completed` where `result = success`.
+- Conversational follow-up loop:
+  `evolve_started` -> `evolve_completed` where `outcome = conversational`.
+- Nix setup:
+  `nix_setup_started` -> `nix_setup_completed`, with a sibling trend for
+  `nix_setup_failed` by `target`.
+- Recovery health:
+  `apply_completed` where `result = success` -> `rollback_performed`.
+- Consent health:
+  trend `product_analytics_opt_out` divided by `app_launched` for the same
+  time window. Do not model opt-out users as a segment after opt-out; once
+  product analytics is disabled, future events intentionally stop.
+
+Expected launch dashboard cards:
+
+- app launches by release/environment;
+- activation completion rate;
+- first evolve-to-successful-apply conversion;
+- evolve failure rate by stage;
+- apply success rate by source;
+- rollback rate after successful apply;
+- Nix setup completion/failure by target;
+- product analytics opt-out rate.
 
 ## Real-Send Smoke Test
 

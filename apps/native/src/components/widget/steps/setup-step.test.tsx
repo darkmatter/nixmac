@@ -53,7 +53,11 @@ describe("<SetupStep>", () => {
     const next = await screen.findByRole("button", { name: "Next" });
     fireEvent.click(next);
 
-    await waitFor(() => expect(mockSaveHost).toHaveBeenCalledWith("mbp"));
+    await waitFor(() =>
+      expect(mockSaveHost).toHaveBeenCalledWith("mbp", {
+        telemetrySurface: "onboarding",
+      }),
+    );
     expect(mockSaveHost).not.toHaveBeenCalledWith("");
   });
 });

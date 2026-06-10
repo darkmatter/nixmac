@@ -1,4 +1,5 @@
 import type { EvolveState, EvolutionResult, GitStatus, SemanticChangeMap } from "@/ipc/types";
+import type { TelemetryEvent } from "@/lib/telemetry/types";
 import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import { mirrorChangeMapState } from "@/viewmodel/change-map";
@@ -8,30 +9,37 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useEvolve } from "./use-evolve";
 
 const mocks = vi.hoisted(() => ({
-  evolve: vi.fn(),
-  promptHistoryAdd: vi.fn(),
-  promptHistoryGet: vi.fn(),
-  on: vi.fn(),
+  captureEvent: vi.fn<(event: TelemetryEvent) => void>(),
+  evolve: vi.fn<() => Promise<EvolutionResult>>(),
+  promptHistoryAdd: vi.fn<(prompt: string) => Promise<void>>(),
+  promptHistoryGet: vi.fn<() => Promise<string[]>>(),
+  on: vi.fn<() => Promise<() => void>>(),
 }));
 
 vi.mock("@/ipc/api", () => ({
   tauriAPI: {
     darwin: {
       evolve: mocks.evolve,
-      evolveFromManual: vi.fn(),
-      buildCheck: vi.fn(),
+      evolveFromManual: vi.fn<() => Promise<void>>(),
+      buildCheck: vi.fn<() => Promise<unknown>>(),
     },
     promptHistory: {
       add: mocks.promptHistoryAdd,
       get: mocks.promptHistoryGet,
     },
     summarizedChanges: {
-      findChangeMap: vi.fn(),
+      findChangeMap: vi.fn<() => Promise<void>>(),
     },
   },
   ipcRenderer: {
     on: mocks.on,
   },
+}));
+
+vi.mock("@/lib/telemetry/instance", () => ({
+  getTelemetry: () => ({
+    captureEvent: mocks.captureEvent,
+  }),
 }));
 
 const gitStatus: GitStatus = {
@@ -109,5 +117,13 @@ describe("useEvolve", () => {
 
     expect(useViewModel.getState().changeMap).toBe(existingMap);
     expect(useWidgetStore.getState().conversationalResponse).toBe("No file changes needed.");
+    expect(mocks.captureEvent).toHaveBeenCalledWith({
+      name: "evolve_started",
+      props: { source: "prompt" },
+    });
+    expect(mocks.captureEvent).toHaveBeenCalledWith({
+      name: "evolve_completed",
+      props: { outcome: "conversational", step: "evolve" },
+    });
   });
 });

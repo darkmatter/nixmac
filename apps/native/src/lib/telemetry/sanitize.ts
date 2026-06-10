@@ -13,6 +13,7 @@
  */
 
 import type { TelemetryEvent } from "./types";
+import { TELEMETRY_EVENT_PROPERTY_KEYS } from "./events";
 
 const REDACTED = "[REDACTED]";
 const REDACTED_APP_CONTENT = "[REDACTED_APP_CONTENT]";
@@ -141,19 +142,10 @@ export interface PreparedPostHogEvent {
   props: Record<string, boolean | number | string>;
 }
 
-const POSTHOG_ALLOWED_PROPERTIES = {
-  app_launched: ["environment"],
-  app_ready: ["boot_ms"],
-  evolve_started: ["provider", "has_custom_model"],
-  evolve_completed: ["step"],
-  evolve_failed: ["stage"],
-  rollback_performed: [],
-  settings_changed: ["setting"],
-  diagnostics_opt_in: [],
-  diagnostics_opt_out: [],
-  product_analytics_opt_in: [],
-  product_analytics_opt_out: [],
-} satisfies Record<ProductEventName, readonly string[]>;
+const POSTHOG_ALLOWED_PROPERTIES = TELEMETRY_EVENT_PROPERTY_KEYS satisfies Record<
+  ProductEventName,
+  readonly string[]
+>;
 
 const isPrimitiveProductValue = (
   value: unknown,

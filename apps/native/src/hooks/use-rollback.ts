@@ -28,7 +28,10 @@ export function useRollback() {
       store.appendLog("✓ Changes discarded\n");
 
       // Track rollback
-      getTelemetry().captureEvent({ name: "rollback_performed" });
+      getTelemetry().captureEvent({
+        name: "rollback_performed",
+        props: { source: "changes" },
+      });
 
       if (result.rollbackStorePath && wasCommittable) {
         await triggerRebuild({
