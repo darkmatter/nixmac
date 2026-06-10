@@ -58,9 +58,9 @@ function installSetupMocks() {
 }
 
 function SetupStory() {
-  useEffect(() => {
-    installSetupMocks();
+  installSetupMocks();
 
+  useEffect(() => {
     const store = useWidgetStore.getState();
     store.setConfigDir("");
     store.setHosts([]);
