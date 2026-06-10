@@ -1,19 +1,24 @@
 //! Tauri commands that walk the compile-time configurable registry.
 //!
-//! Frontend calls `dev_configs_list` to enumerate every `#[derive(Configurable)]`
-//! struct in the codebase. Each entry returns as a [`ConfigurableSnapshot`]:
-//! the static schema (labels, types, ranges, defaults — same value every call)
-//! paired with the current values pulled from the managed observable. Edits go
-//! back through `dev_config_set`, which dispatches by struct name to the
-//! registered shim emitted by the derive and replaces the whole struct in one
-//! Serde-validated write.
+//! The dev-settings UI fetches metadata in two halves:
+//!
+//! - [`dev_configs_schemas`] returns the static `ConfigurableSchema` for every
+//!   `#[derive(Configurable)]` struct. Same value every call — cacheable.
+//! - [`dev_configs_values`] returns the current store-backed value of each
+//!   configurable as a JSON object, keyed by struct name. Refresh this after
+//!   `dev_config_set` instead of re-fetching the schemas.
+//!
+//! Edits go back through `dev_config_set`, which dispatches by struct name to
+//! the registered shim emitted by the derive and replaces the whole struct in
+//! one Serde-validated write.
 //!
 //! The registry itself lives in `inventory`: the derive macro pushes one
 //! `ConfigurableMeta` per struct at compile time, so these commands never
 //! see a runtime registry handle.
 
 use super::helpers::capture_err;
-use configurable::{inventory, ConfigFieldValue, ConfigurableMeta, ConfigurableSnapshot};
+use configurable::{inventory, ConfigurableMeta, ConfigurableSchema};
+use std::collections::HashMap;
 use tauri::AppHandle;
 
 fn find_meta(struct_name: &str) -> Option<&'static ConfigurableMeta> {
@@ -22,34 +27,26 @@ fn find_meta(struct_name: &str) -> Option<&'static ConfigurableMeta> {
         .find(|meta| meta.name == struct_name)
 }
 
-fn snapshot_for(
-    meta: &ConfigurableMeta,
-    app: &AppHandle,
-) -> anyhow::Result<ConfigurableSnapshot> {
-    let schema = (meta.schema_fn)();
-    let current = (meta.load_fn)(app)?;
-    let values = schema
-        .fields
-        .iter()
-        .map(|field| ConfigFieldValue {
-            key: field.key.clone(),
-            current: current
-                .get(&field.key)
-                .cloned()
-                .unwrap_or(serde_json::Value::Null),
-        })
-        .collect();
-    Ok(ConfigurableSnapshot { schema, values })
+/// Enumerate the static schema for every registered Configurable struct.
+#[tauri::command]
+pub async fn dev_configs_schemas(_app: AppHandle) -> Result<Vec<ConfigurableSchema>, String> {
+    Ok(inventory::iter::<ConfigurableMeta>()
+        .into_iter()
+        .map(|meta| (meta.schema_fn)())
+        .collect())
 }
 
-/// Enumerate every registered Configurable struct with its current values.
+/// Fetch the current store-backed value of every registered Configurable
+/// struct. Keyed by struct name (matches `ConfigurableSchema::name`).
 #[tauri::command]
-pub async fn dev_configs_list(app: AppHandle) -> Result<Vec<ConfigurableSnapshot>, String> {
+pub async fn dev_configs_values(
+    app: AppHandle,
+) -> Result<HashMap<String, serde_json::Value>, String> {
     inventory::iter::<ConfigurableMeta>()
         .into_iter()
-        .map(|meta| snapshot_for(meta, &app))
-        .collect::<anyhow::Result<Vec<_>>>()
-        .map_err(|e| capture_err("dev_configs_list", e))
+        .map(|meta| (meta.load_fn)(&app).map(|v| (meta.name.to_string(), v)))
+        .collect::<anyhow::Result<HashMap<_, _>>>()
+        .map_err(|e| capture_err("dev_configs_values", e))
 }
 
 /// Replace one Configurable struct with a new whole-struct payload.
@@ -76,10 +73,17 @@ mod tests {
 
     #[test]
     fn command_signatures_match_frontend_contract() {
-        fn assert_list_command<F, Fut>(_f: F)
+        fn assert_schemas_command<F, Fut>(_f: F)
         where
             F: Fn(AppHandle) -> Fut,
-            Fut: Future<Output = Result<Vec<ConfigurableSnapshot>, String>>,
+            Fut: Future<Output = Result<Vec<ConfigurableSchema>, String>>,
+        {
+        }
+
+        fn assert_values_command<F, Fut>(_f: F)
+        where
+            F: Fn(AppHandle) -> Fut,
+            Fut: Future<Output = Result<HashMap<String, serde_json::Value>, String>>,
         {
         }
 
@@ -90,7 +94,8 @@ mod tests {
         {
         }
 
-        assert_list_command(dev_configs_list);
+        assert_schemas_command(dev_configs_schemas);
+        assert_values_command(dev_configs_values);
         assert_set_command(dev_config_set);
     }
 

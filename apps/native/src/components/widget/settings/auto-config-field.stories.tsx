@@ -55,7 +55,8 @@ const fields: Array<{ schema: ConfigFieldSchema; current: JsonValue }> = [
 
 function installDevConfigMock() {
   tauriAPI.devConfigs = {
-    list: async () => [],
+    schemas: async () => [],
+    values: async () => ({}),
     set: async () => undefined,
   };
 }

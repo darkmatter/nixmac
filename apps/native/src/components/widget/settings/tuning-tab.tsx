@@ -1,5 +1,5 @@
 import { tauriAPI } from "@/ipc/api";
-import type { ConfigurableSnapshot, JsonValue } from "@/ipc/types";
+import type { ConfigurableSchema, JsonValue } from "@/ipc/types";
 import { SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { AutoConfigField } from "@/components/widget/settings/auto-config-field";
@@ -15,15 +15,20 @@ import { BackupRestoreSection } from "@/components/widget/settings/backup-restor
  * Also includes Backup & Restore for settings export/import.
  */
 export function TuningTab() {
-  const [snapshots, setSnapshots] = useState<ConfigurableSnapshot[]>([]);
+  const [schemas, setSchemas] = useState<ConfigurableSchema[]>([]);
+  const [values, setValues] = useState<Record<string, JsonValue>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const next = await tauriAPI.devConfigs.list();
+      const [nextSchemas, nextValues] = await Promise.all([
+        tauriAPI.devConfigs.schemas(),
+        tauriAPI.devConfigs.values(),
+      ]);
       // In environments where the Tauri command isn't registered (Storybook,
-      // tests), invoke can resolve with null instead of an array.
-      setSnapshots(Array.isArray(next) ? next : []);
+      // tests), invoke can resolve with null.
+      setSchemas(Array.isArray(nextSchemas) ? nextSchemas : []);
+      setValues(nextValues ?? {});
       setLoadError(null);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : String(err));
@@ -59,18 +64,15 @@ export function TuningTab() {
         )}
 
         <div className="space-y-5">
-          {snapshots.map((snapshot, index) => (
-            <SnapshotSection
-              key={snapshot.schema.name}
-              snapshot={snapshot}
-              showHeader={snapshots.length > 1}
+          {schemas.map((schema) => (
+            <SchemaSection
+              key={schema.name}
+              schema={schema}
+              structValues={readStructValues(values, schema.name)}
+              showHeader={schemas.length > 1}
               onCommit={async (key, value) => {
-                const next = await commitField(snapshot, key, value);
-                setSnapshots((prev) => {
-                  const copy = prev.slice();
-                  copy[index] = next;
-                  return copy;
-                });
+                const next = await commitField(values, schema.name, key, value);
+                setValues(next);
               }}
             />
           ))}
@@ -83,12 +85,14 @@ export function TuningTab() {
   );
 }
 
-function SnapshotSection({
-  snapshot,
+function SchemaSection({
+  schema,
+  structValues,
   showHeader,
   onCommit,
 }: {
-  snapshot: ConfigurableSnapshot;
+  schema: ConfigurableSchema;
+  structValues: Record<string, JsonValue>;
   showHeader: boolean;
   onCommit: (key: string, value: unknown) => Promise<void>;
 }) {
@@ -96,47 +100,48 @@ function SnapshotSection({
     <section className="space-y-3">
       {showHeader && (
         <div>
-          <h3 className="font-medium text-xs">{snapshot.schema.displayName}</h3>
-          {snapshot.schema.description && (
-            <p className="text-muted-foreground text-[10px]">{snapshot.schema.description}</p>
+          <h3 className="font-medium text-xs">{schema.displayName}</h3>
+          {schema.description && (
+            <p className="text-muted-foreground text-[10px]">{schema.description}</p>
           )}
         </div>
       )}
       <div className="grid grid-cols-2 gap-4">
-        {snapshot.schema.fields.map((field) => {
-          const current = snapshot.values.find((v) => v.key === field.key)?.current ?? null;
-          return (
-            <AutoConfigField
-              key={field.key}
-              structName={snapshot.schema.name}
-              field={field}
-              current={current}
-              onCommit={onCommit}
-            />
-          );
-        })}
+        {schema.fields.map((field) => (
+          <AutoConfigField
+            key={field.key}
+            structName={schema.name}
+            field={field}
+            current={structValues[field.key] ?? null}
+            onCommit={onCommit}
+          />
+        ))}
       </div>
     </section>
   );
 }
 
+function readStructValues(
+  values: Record<string, JsonValue>,
+  structName: string,
+): Record<string, JsonValue> {
+  const v = values[structName];
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, JsonValue>) : {};
+}
+
 /**
- * Builds the whole-struct payload by overlaying the new value on the snapshot's
- * existing values, POSTs it via `devConfigs.set`, and returns the next snapshot
- * so the parent can keep its state in sync.
+ * Builds the whole-struct payload by overlaying the new value on the struct's
+ * existing values, POSTs it via `devConfigs.set`, and returns the next values
+ * map so the parent can keep its state in sync.
  */
 async function commitField(
-  snapshot: ConfigurableSnapshot,
+  values: Record<string, JsonValue>,
+  structName: string,
   key: string,
   value: unknown,
-): Promise<ConfigurableSnapshot> {
-  const nextValues = snapshot.values.map((v) =>
-    v.key === key ? { ...v, current: value as JsonValue } : v,
-  );
-  const payload: Record<string, unknown> = {};
-  for (const v of nextValues) {
-    payload[v.key] = v.current;
-  }
-  await tauriAPI.devConfigs.set(snapshot.schema.name, payload);
-  return { ...snapshot, values: nextValues };
+): Promise<Record<string, JsonValue>> {
+  const currentStruct = readStructValues(values, structName);
+  const nextStruct = { ...currentStruct, [key]: value as JsonValue };
+  await tauriAPI.devConfigs.set(structName, nextStruct);
+  return { ...values, [structName]: nextStruct };
 }

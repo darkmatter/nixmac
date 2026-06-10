@@ -206,8 +206,7 @@ evolveState: EvolveState }
  * Static description of one Configurable field.
  * 
  * Produced by the derive macro with no runtime context; the same value every
- * call. Pair with a [`ConfigFieldValue`] (matched by `key`) to get the
- * current store-backed value for rendering.
+ * call. Joined with the current store-backed value by `key` at render time.
  */
 export type ConfigFieldSchema = { 
 /**
@@ -232,19 +231,13 @@ ty: FieldType;
 default: JsonValue }
 
 /**
- * Current value for one Configurable field, keyed identically to its
- * [`ConfigFieldSchema`]. Sent alongside the schema in the dev-settings IPC
- * response so the frontend can render initial input state.
- */
-export type ConfigFieldValue = { key: string; current: JsonValue }
-
-/**
  * One section in the auto-rendered settings panel — corresponds to one
- * `#[derive(Configurable)]` struct. Static metadata only; no current values.
+ * `#[derive(Configurable)]` struct. Static metadata only; current values are
+ * fetched separately and joined by struct name + field key on the frontend.
  */
 export type ConfigurableSchema = { 
 /**
- * Unique stable identifier (struct's Rust name). Used by `set_field` to
+ * Unique stable identifier (struct's Rust name). Used by the setter to
  * dispatch to the right registered configurable.
  */
 name: string; 
@@ -256,12 +249,6 @@ displayName: string;
  * Optional one-line description shown under the title.
  */
 description?: string | null; fields: ConfigFieldSchema[] }
-
-/**
- * Joined-at-the-boundary response for `dev_configs_list`: the static schema
- * plus the current values loaded from the managed observable.
- */
-export type ConfigurableSnapshot = { schema: ConfigurableSchema; values: ConfigFieldValue[] }
 
 /**
  * Payload for `darwin:apply:data`.
@@ -295,7 +282,7 @@ error: string | null;
 /**
  * Whether the failed operation completed before changing system state.
  */
-system_untouched: boolean | null;
+system_untouched: boolean | null; 
 /**
  * Path to the captured rebuild log, when available.
  */

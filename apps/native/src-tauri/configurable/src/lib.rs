@@ -81,8 +81,7 @@ pub struct EnumVariant {
 /// Static description of one Configurable field.
 ///
 /// Produced by the derive macro with no runtime context; the same value every
-/// call. Pair with a [`ConfigFieldValue`] (matched by `key`) to get the
-/// current store-backed value for rendering.
+/// call. Joined with the current store-backed value by `key` at render time.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ConfigFieldSchema {
@@ -99,22 +98,13 @@ pub struct ConfigFieldSchema {
     pub default: serde_json::Value,
 }
 
-/// Current value for one Configurable field, keyed identically to its
-/// [`ConfigFieldSchema`]. Sent alongside the schema in the dev-settings IPC
-/// response so the frontend can render initial input state.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct ConfigFieldValue {
-    pub key: String,
-    pub current: serde_json::Value,
-}
-
 /// One section in the auto-rendered settings panel — corresponds to one
-/// `#[derive(Configurable)]` struct. Static metadata only; no current values.
+/// `#[derive(Configurable)]` struct. Static metadata only; current values are
+/// fetched separately and joined by struct name + field key on the frontend.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ConfigurableSchema {
-    /// Unique stable identifier (struct's Rust name). Used by `set_field` to
+    /// Unique stable identifier (struct's Rust name). Used by the setter to
     /// dispatch to the right registered configurable.
     pub name: String,
     /// Title shown above the section in the UI.
@@ -123,15 +113,6 @@ pub struct ConfigurableSchema {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     pub fields: Vec<ConfigFieldSchema>,
-}
-
-/// Joined-at-the-boundary response for `dev_configs_list`: the static schema
-/// plus the current values loaded from the managed observable.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct ConfigurableSnapshot {
-    pub schema: ConfigurableSchema,
-    pub values: Vec<ConfigFieldValue>,
 }
 
 // =============================================================================

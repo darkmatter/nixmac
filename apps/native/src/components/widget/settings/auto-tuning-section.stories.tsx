@@ -3,47 +3,51 @@
 import preview from "#storybook/preview";
 import { AutoTuningSection } from "@/components/widget/settings/auto-tuning-section";
 import { tauriAPI } from "@/ipc/api";
-import type { ConfigurableSnapshot } from "@/ipc/types";
+import type { ConfigurableSchema, JsonValue } from "@/ipc/types";
 import { waitFor, within } from "storybook/test";
 
-const snapshots: ConfigurableSnapshot[] = [
+const schemas: ConfigurableSchema[] = [
   {
-    schema: {
-      name: "EvolutionLimits",
-      displayName: "Evolution",
-      description: "How long the agent will try before giving up.",
-      fields: [
-        {
-          key: "maxTokenBudget",
-          label: "Max token budget",
-          help: "Provider-reported tokens before the agent stops. Lower is faster but may not finish complex changes.",
-          ty: { kind: "number", min: 1000, max: 1000000, step: 1000 },
-          default: 50000,
-        },
-        {
-          key: "maxBuildAttempts",
-          label: "Max build attempts",
-          help: "Failed builds before giving up on a run.",
-          ty: { kind: "number", min: 1, max: 20, step: 1 },
-          default: 5,
-        },
-      ],
-    },
-    values: [
-      { key: "maxTokenBudget", current: 50000 },
-      { key: "maxBuildAttempts", current: 5 },
+    name: "EvolutionLimits",
+    displayName: "Evolution",
+    description: "How long the agent will try before giving up.",
+    fields: [
+      {
+        key: "maxTokenBudget",
+        label: "Max token budget",
+        help: "Provider-reported tokens before the agent stops. Lower is faster but may not finish complex changes.",
+        ty: { kind: "number", min: 1000, max: 1000000, step: 1000 },
+        default: 50000,
+      },
+      {
+        key: "maxBuildAttempts",
+        label: "Max build attempts",
+        help: "Failed builds before giving up on a run.",
+        ty: { kind: "number", min: 1, max: 20, step: 1 },
+        default: 5,
+      },
     ],
   },
 ];
 
-function installDevConfigMock(next: ConfigurableSnapshot[] | Error) {
+const values: Record<string, JsonValue> = {
+  EvolutionLimits: {
+    maxTokenBudget: 50000,
+    maxBuildAttempts: 5,
+  },
+};
+
+function installDevConfigMock(
+  schemasOrError: ConfigurableSchema[] | Error,
+) {
   tauriAPI.devConfigs = {
-    list: async () => {
-      if (next instanceof Error) {
-        throw next;
+    schemas: async () => {
+      if (schemasOrError instanceof Error) {
+        throw schemasOrError;
       }
-      return next;
+      return schemasOrError;
     },
+    values: async () => values,
     set: async () => undefined,
   };
 }
@@ -67,7 +71,7 @@ export default meta;
 export const EvolutionSettings = meta.story({
   decorators: [
     (Story) => {
-      installDevConfigMock(snapshots);
+      installDevConfigMock(schemas);
       return <Story />;
     },
   ],

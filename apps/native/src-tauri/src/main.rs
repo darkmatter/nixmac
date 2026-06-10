@@ -531,7 +531,8 @@ fn run_gui_mode(
             commands::settings_io::settings_export,
             commands::settings_io::settings_import,
             // Configurable registry (auto-UI for dev settings)
-            commands::dev_configs::dev_configs_list,
+            commands::dev_configs::dev_configs_schemas,
+            commands::dev_configs::dev_configs_values,
             commands::dev_configs::dev_config_set,
             // Model cache
             commands::ui_prefs::get_cached_models,
