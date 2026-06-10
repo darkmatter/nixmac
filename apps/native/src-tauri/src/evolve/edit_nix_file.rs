@@ -537,6 +537,37 @@ fn find_list_for_attrpath(root: &SyntaxNode, content: &str, attrpath: &str) -> O
     None
 }
 
+/// Infer the editable list attrpath for shorthand tool calls that omit one.
+///
+/// This is intentionally conservative: it only returns a path when the file has
+/// exactly one list assignment. Files with multiple lists need the caller to say
+/// which one.
+pub(crate) fn infer_single_list_attrpath(content: &str) -> Result<Option<String>> {
+    let parsed: Parse<Root> = Root::parse(content);
+    let root: Root = parsed
+        .ok()
+        .context("Failed to parse Nix content when inferring list attrpath")?;
+    let root_node = root.syntax().clone();
+
+    let mut inferred = None;
+    for node in root_node.descendants() {
+        if List::cast(node.clone()).is_some() {
+            let list_start = text_size_to_usize(node.text_range().start());
+            if let Some(full_path) = list_full_attrpath(content, list_start) {
+                if inferred.as_deref() == Some(full_path.as_str()) {
+                    continue;
+                }
+                if inferred.is_some() {
+                    return Ok(None);
+                }
+                inferred = Some(full_path);
+            }
+        }
+    }
+
+    Ok(inferred)
+}
+
 fn append_values_to_existing_list(
     content: &str,
     list_node: &SyntaxNode,

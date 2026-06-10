@@ -1,10 +1,15 @@
 //! `edit_nix_file` tool: semantic Add/Remove/Set/SetAttrs edits to Nix files.
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 
-use crate::evolve::edit_nix_file::apply_semantic_edit;
+use crate::evolve::edit_nix_file::{apply_semantic_edit, infer_single_list_attrpath};
+use crate::evolve::file_ops::resolve_existing_path_in_dir;
+use crate::evolve::gitignore::is_ignored_by_matcher;
 use crate::evolve::messages::Tool;
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
+use crate::evolve::utils::normalize_relative_path;
+
+use std::path::Path;
 
 use super::{ensure_nixmac_edit_allowed, quote_homebrew_list_values, ToolCtx, ToolResult};
 
@@ -248,6 +253,55 @@ fn ensure_action_payload_is_object<'a>(
     Ok(payload)
 }
 
+fn parse_values(value: &serde_json::Value, context: &str) -> Result<Vec<String>> {
+    let values = value
+        .as_array()
+        .ok_or_else(|| anyhow!("{}: missing values array", context))?;
+
+    if values.is_empty() {
+        return Err(anyhow!("{}: values array must not be empty", context));
+    }
+
+    values
+        .iter()
+        .map(|item| {
+            item.as_str()
+                .map(str::to_string)
+                .ok_or_else(|| anyhow!("{}: values must be strings", context))
+        })
+        .collect()
+}
+
+fn resolve_shorthand_attr_path(
+    ctx: &ToolCtx,
+    file_path: &str,
+    action_name: &str,
+) -> Result<String> {
+    if let Some(attr_path) = ctx.args["attr_path"]
+        .as_str()
+        .filter(|p| !p.trim().is_empty())
+    {
+        return Ok(attr_path.to_string());
+    }
+
+    let relative_path = normalize_relative_path(Path::new(file_path))?;
+    if is_ignored_by_matcher(ctx.gitignore_matcher, &relative_path, false) {
+        return Err(anyhow!("Cannot edit gitignored file: {}", file_path));
+    }
+
+    let target = resolve_existing_path_in_dir(ctx.repo_root, file_path)?;
+    let content = std::fs::read_to_string(&target)
+        .with_context(|| format!("Failed to read {}", target.display()))?;
+
+    infer_single_list_attrpath(&content)?.ok_or_else(|| {
+        anyhow!(
+            "edit_nix_file.{}: missing path. Provide action.{}.path or attr_path when the file has zero or multiple list assignments",
+            action_name,
+            action_name
+        )
+    })
+}
+
 pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
     let args = ctx.args;
     let path = args["path"]
@@ -258,134 +312,141 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
     }
     ensure_nixmac_edit_allowed("edit_nix_file", path)?;
 
-    // Expect `action` to be an object like { "add": { "path": "a.b", "values": ["v"] } }
+    // Expect `action` to be an object like { "add": { "path": "a.b", "values": ["v"] } }.
+    // Also keep the legacy add/remove shorthand accepted by existing tool tests.
     let action_val = &args["action"];
-    if !action_val.is_object() {
-        if let Some(action) = action_name(action_val) {
-            return Err(explain_string_action(args, action));
+    let action = if let Some(shorthand) = action_val.as_str() {
+        match shorthand {
+            "add" => {
+                let attr_path = resolve_shorthand_attr_path(ctx, path, "add")?;
+                let values = quote_homebrew_list_values(
+                    &attr_path,
+                    parse_values(&args["values"], "edit_nix_file.add")?,
+                );
+                FileEditAction::Add {
+                    path: attr_path,
+                    values,
+                }
+            }
+            "remove" => {
+                let attr_path = resolve_shorthand_attr_path(ctx, path, "remove")?;
+                let values = quote_homebrew_list_values(
+                    &attr_path,
+                    parse_values(&args["values"], "edit_nix_file.remove")?,
+                );
+                FileEditAction::Remove {
+                    path: attr_path,
+                    values,
+                }
+            }
+            action => return Err(explain_string_action(args, action)),
         }
-        return Err(anyhow!("edit_nix_file: action must be an object"));
-    }
-
-    let parse_values = |value: &serde_json::Value, context: &str| -> Result<Vec<String>> {
-        let values = value
-            .as_array()
-            .ok_or_else(|| anyhow!("{}: missing values array", context))?;
-
-        if values.is_empty() {
-            return Err(anyhow!("{}: values array must not be empty", context));
+    } else {
+        if !action_val.is_object() {
+            return Err(anyhow!("edit_nix_file: action must be an object"));
         }
 
-        values
-            .iter()
-            .map(|item| {
-                item.as_str()
-                    .map(str::to_string)
-                    .ok_or_else(|| anyhow!("{}: values must be strings", context))
-            })
-            .collect()
-    };
+        // Require exactly one discriminant to avoid ambiguous ordering (e.g. simultaneous add+remove).
+        // TODO: Allow multiple actions per call once ordering semantics are defined.
+        let has_add = action_val.get("add").is_some();
+        let has_remove = action_val.get("remove").is_some();
+        let has_set = action_val.get("set").is_some();
+        let has_set_attrs = action_val.get("set_attrs").is_some();
 
-    // Require exactly one discriminant to avoid ambiguous ordering (e.g. simultaneous add+remove).
-    // TODO: Allow multiple actions per call once ordering semantics are defined.
-    let has_add = action_val.get("add").is_some();
-    let has_remove = action_val.get("remove").is_some();
-    let has_set = action_val.get("set").is_some();
-    let has_set_attrs = action_val.get("set_attrs").is_some();
+        let present_count =
+            (has_add as u8) + (has_remove as u8) + (has_set as u8) + (has_set_attrs as u8);
+        if present_count != 1 {
+            return Err(anyhow!(
+                "edit_nix_file: action must contain exactly one of 'add', 'remove', 'set', or 'set_attrs'"
+            ));
+        }
 
-    let present_count =
-        (has_add as u8) + (has_remove as u8) + (has_set as u8) + (has_set_attrs as u8);
-    if present_count != 1 {
-        return Err(anyhow!(
-            "edit_nix_file: action must contain exactly one of 'add', 'remove', 'set', or 'set_attrs'"
-        ));
-    }
-
-    let action = if has_add {
-        let add_obj = ensure_action_payload_is_object(action_val, "add")?;
-        let attr_path = add_obj["path"]
+        if has_add {
+            let add_obj = ensure_action_payload_is_object(action_val, "add")?;
+            let attr_path = add_obj["path"]
             .as_str()
             .ok_or_else(|| {
                 anyhow!(
                     "edit_nix_file.add: missing action path. Put the list attribute path inside action.add.path, e.g. {{ \"action\": {{ \"add\": {{ \"path\": \"environment.systemPackages\", \"values\": [...] }} }}, \"path\": \"modules/darwin/packages.nix\" }}"
                 )
             })?;
-        let values = quote_homebrew_list_values(
-            attr_path,
-            parse_values(&add_obj["values"], "edit_nix_file.add")?,
-        );
-        FileEditAction::Add {
-            path: attr_path.to_string(),
-            values,
-        }
-    } else if action_val.get("remove").is_some() {
-        let rem_obj = ensure_action_payload_is_object(action_val, "remove")?;
-        let attr_path = rem_obj["path"]
+            let values = quote_homebrew_list_values(
+                attr_path,
+                parse_values(&add_obj["values"], "edit_nix_file.add")?,
+            );
+            FileEditAction::Add {
+                path: attr_path.to_string(),
+                values,
+            }
+        } else if action_val.get("remove").is_some() {
+            let rem_obj = ensure_action_payload_is_object(action_val, "remove")?;
+            let attr_path = rem_obj["path"]
             .as_str()
             .ok_or_else(|| {
                 anyhow!(
                     "edit_nix_file.remove: missing action path. Put the list attribute path inside action.remove.path, e.g. {{ \"action\": {{ \"remove\": {{ \"path\": \"environment.systemPackages\", \"values\": [...] }} }}, \"path\": \"modules/darwin/packages.nix\" }}"
                 )
             })?;
-        let values = quote_homebrew_list_values(
-            attr_path,
-            parse_values(&rem_obj["values"], "edit_nix_file.remove")?,
-        );
-        FileEditAction::Remove {
-            path: attr_path.to_string(),
-            values,
-        }
-    } else if action_val.get("set").is_some() {
-        let set_obj = ensure_action_payload_is_object(action_val, "set")?;
-        let attr_path = set_obj["path"]
+            let values = quote_homebrew_list_values(
+                attr_path,
+                parse_values(&rem_obj["values"], "edit_nix_file.remove")?,
+            );
+            FileEditAction::Remove {
+                path: attr_path.to_string(),
+                values,
+            }
+        } else if action_val.get("set").is_some() {
+            let set_obj = ensure_action_payload_is_object(action_val, "set")?;
+            let attr_path = set_obj["path"]
             .as_str()
             .ok_or_else(|| {
                 anyhow!(
                     "edit_nix_file.set: missing action path. Put the scalar option path inside action.set.path, e.g. {{ \"action\": {{ \"set\": {{ \"path\": \"services.tailscale.enable\", \"value\": true }} }}, \"path\": \"modules/darwin/services.nix\" }}"
                 )
             })?;
-        let value = set_obj
-            .get("value")
-            .ok_or_else(|| anyhow!("edit_nix_file.set: missing value"))?
-            .clone();
+            let value = set_obj
+                .get("value")
+                .ok_or_else(|| anyhow!("edit_nix_file.set: missing value"))?
+                .clone();
 
-        match value {
-            serde_json::Value::Bool(_)
-            | serde_json::Value::String(_)
-            | serde_json::Value::Number(_)
-            | serde_json::Value::Null => {}
-            _ => {
-                return Err(anyhow!(
-                    "edit_nix_file.set: value must be a scalar JSON value"
-                ));
+            match value {
+                serde_json::Value::Bool(_)
+                | serde_json::Value::String(_)
+                | serde_json::Value::Number(_)
+                | serde_json::Value::Null => {}
+                _ => {
+                    return Err(anyhow!(
+                        "edit_nix_file.set: value must be a scalar JSON value"
+                    ));
+                }
             }
-        }
 
-        FileEditAction::Set {
-            path: attr_path.to_string(),
-            value,
-        }
-    } else if has_set_attrs {
-        let set_attrs_obj = ensure_action_payload_is_object(action_val, "set_attrs")?;
-        let attr_path = set_attrs_obj["path"]
+            FileEditAction::Set {
+                path: attr_path.to_string(),
+                value,
+            }
+        } else if has_set_attrs {
+            let set_attrs_obj = ensure_action_payload_is_object(action_val, "set_attrs")?;
+            let attr_path = set_attrs_obj["path"]
             .as_str()
             .ok_or_else(|| {
                 anyhow!(
                     "edit_nix_file.set_attrs: missing action path. Put the attrset option path inside action.set_attrs.path, e.g. {{ \"action\": {{ \"set_attrs\": {{ \"path\": \"launchd.user.agents\", \"attrs\": {{...}} }} }}, \"path\": \"modules/darwin/services.nix\" }}"
                 )
             })?;
-        let attrs_val = set_attrs_obj
-            .get("attrs")
-            .ok_or_else(|| anyhow!("edit_nix_file.set_attrs: missing attrs"))?;
-        let attrs_map = attrs_val
-            .as_object()
-            .ok_or_else(|| anyhow!("edit_nix_file.set_attrs: attrs must be an object"))?;
-        FileEditAction::SetAttrs {
-            path: attr_path.to_string(),
-            attrs: attrs_map.clone(),
+            let attrs_val = set_attrs_obj
+                .get("attrs")
+                .ok_or_else(|| anyhow!("edit_nix_file.set_attrs: missing attrs"))?;
+            let attrs_map = attrs_val
+                .as_object()
+                .ok_or_else(|| anyhow!("edit_nix_file.set_attrs: attrs must be an object"))?;
+            FileEditAction::SetAttrs {
+                path: attr_path.to_string(),
+                attrs: attrs_map.clone(),
+            }
+        } else {
+            return Err(anyhow!("Unsupported edit_nix_file action object"));
         }
-    } else {
-        return Err(anyhow!("Unsupported edit_nix_file action object"));
     };
 
     apply_semantic_edit(
