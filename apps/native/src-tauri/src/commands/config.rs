@@ -20,11 +20,25 @@ pub async fn config_get(app: AppHandle) -> Result<types::Config, String> {
 
 /// Gets the hostname that we're running on, does not touch config but is used
 /// for UI convenience and onboarding defaults.
-/// The name of this function is specificlly chosen to NOT get confused
+/// The name of this function is specifically chosen to NOT get confused
 /// with an actual config read.
 #[tauri::command]
 pub async fn get_this_hostname() -> Result<String, String> {
-    // Use the system `hostname` command to get the current hostname, which is more reliable than Rust's std::env::var("HOSTNAME")
+    // Prefer `scutil --get LocalHostName`: unlike `hostname`, it never carries
+    // the `.local` suffix, which would otherwise end up in the generated
+    // darwinConfigurations."<hostname>" flake attribute.
+    if let Ok(output) = std::process::Command::new("scutil")
+        .args(["--get", "LocalHostName"])
+        .output()
+    {
+        if output.status.success() {
+            let name = sanitize_hostname(&String::from_utf8_lossy(&output.stdout));
+            if !name.is_empty() {
+                return Ok(name);
+            }
+        }
+    }
+
     let output = std::process::Command::new("hostname")
         .output()
         .map_err(|e| capture_err("get_this_hostname", e))?;
@@ -34,8 +48,17 @@ pub async fn get_this_hostname() -> Result<String, String> {
             String::from_utf8_lossy(&output.stderr)
         ));
     }
-    let hostname = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    Ok(hostname)
+    Ok(sanitize_hostname(&String::from_utf8_lossy(&output.stdout)))
+}
+
+/// Strips whitespace and the mDNS `.local` suffix so the result is usable as a
+/// nix-darwin configuration attribute name.
+fn sanitize_hostname(raw: &str) -> String {
+    let trimmed = raw.trim();
+    trimmed
+        .strip_suffix(".local")
+        .unwrap_or(trimmed)
+        .to_string()
 }
 
 /// Sets the nix-darwin host attribute (e.g., "Coopers-MacBook-Pro").
@@ -454,5 +477,18 @@ mod tests {
         assert!(validate_new_dir_location(&home.join(".darwin-test")).is_ok());
         assert!(validate_new_dir_location(&home.join("configs").join("darwin")).is_err());
         assert!(validate_new_dir_location(Path::new("/tmp/darwin")).is_err());
+    }
+
+    #[test]
+    fn sanitize_hostname_strips_local_suffix_and_whitespace() {
+        assert_eq!(
+            sanitize_hostname("Coopers-MacBook-Pro.local\n"),
+            "Coopers-MacBook-Pro"
+        );
+        assert_eq!(
+            sanitize_hostname("Coopers-MacBook-Pro"),
+            "Coopers-MacBook-Pro"
+        );
+        assert_eq!(sanitize_hostname("  \n"), "");
     }
 }
