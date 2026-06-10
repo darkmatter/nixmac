@@ -83,9 +83,11 @@ export function SetupStep() {
           ) : (
             <BootstrapConfig label="2. Configuration" />
           )}
-          <Button disabled={!effectiveHost} onClick={() => saveHost(effectiveHost)}>
-            Next
-          </Button>
+          {hasHosts && (
+            <Button disabled={!effectiveHost} onClick={() => saveHost(effectiveHost)}>
+              Next
+            </Button>
+          )}
         </div>
       )}
     </div>
