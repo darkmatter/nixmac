@@ -1,8 +1,10 @@
+//! `nix_file_editor`: Apply "smart"" edits to Nix files, such as adding/removing packages from a list or setting scalar values.
+
 use crate::evolve::types::SemanticFileEdit;
 use anyhow::{Context, Result};
 use log::{debug, info};
-use rnix::ast::{AttrSet, List};
 use rnix::SyntaxNode;
+use rnix::ast::{AttrSet, List};
 use rnix::{Parse, Root};
 use rowan::ast::AstNode;
 use rowan::{TextRange, TextSize};
@@ -104,6 +106,7 @@ fn render_nix_scalar(value: &serde_json::Value) -> Result<String> {
 }
 
 fn render_nix_attr_key(key: &str) -> String {
+    let key = normalize_nix_attr_key_input(key);
     let mut chars = key.chars();
     let starts_with_valid = chars
         .next()
@@ -113,10 +116,46 @@ fn render_nix_attr_key(key: &str) -> String {
         chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-' || ch == '\'');
 
     if starts_with_valid && rest_valid {
-        key.to_string()
+        key
     } else {
-        render_nix_string(key)
+        render_nix_string(&key)
     }
+}
+
+/// Accept attrset keys supplied either as raw attribute names (`foo.bar`) or as
+/// Nix quoted attr syntax (`"foo.bar"`). In the quoted form, the quotes delimit
+/// an attr segment; they are not part of the option key itself.
+/// This comes up in cases like system.defaults.NSGlobalDomain."com.apple.sound.beep.feedback"
+fn normalize_nix_attr_key_input(key: &str) -> String {
+    if key.len() < 2 || !key.starts_with('"') || !key.ends_with('"') {
+        return key.to_string();
+    }
+
+    let inner = &key[1..key.len() - 1];
+    let mut normalized = String::new();
+    let mut chars = inner.chars();
+    while let Some(ch) = chars.next() {
+        if ch != '\\' {
+            normalized.push(ch);
+            continue;
+        }
+
+        match chars.next() {
+            Some('"') => normalized.push('"'),
+            Some('\\') => normalized.push('\\'),
+            Some('n') => normalized.push('\n'),
+            Some('r') => normalized.push('\r'),
+            Some('t') => normalized.push('\t'),
+            Some('$') => normalized.push('$'),
+            Some(other) => {
+                normalized.push('\\');
+                normalized.push(other);
+            }
+            None => normalized.push('\\'),
+        }
+    }
+
+    normalized
 }
 
 fn render_nix_value(value: &serde_json::Value) -> Result<String> {
@@ -508,7 +547,7 @@ fn find_statement_end(content: &str, start: usize) -> Option<usize> {
             '(' => paren_depth += 1,
             ')' => paren_depth = paren_depth.saturating_sub(1),
             ';' if bracket_depth == 0 && brace_depth == 0 && paren_depth == 0 => {
-                return Some(absolute)
+                return Some(absolute);
             }
             _ => {}
         }
@@ -537,63 +576,34 @@ fn find_list_for_attrpath(root: &SyntaxNode, content: &str, attrpath: &str) -> O
     None
 }
 
-pub(crate) fn list_attrpath_occurrences(content: &str) -> Result<Vec<String>> {
+/// Infer the editable list attrpath for shorthand tool calls that omit one.
+///
+/// This is intentionally conservative: it only returns a path when the file has exactly
+/// one list assignment. Files with multiple lists need the caller to say which one.
+pub(crate) fn infer_single_list_attrpath(content: &str) -> Result<Option<String>> {
     let parsed: Parse<Root> = Root::parse(content);
     let root: Root = parsed
         .ok()
-        .context("Failed to parse Nix content when inferring list attribute paths")?;
+        .context("Failed to parse Nix content when inferring list attrpath")?;
     let root_node = root.syntax().clone();
-    let mut attrpaths = Vec::new();
 
+    let mut inferred = None;
     for node in root_node.descendants() {
         if List::cast(node.clone()).is_some() {
             let list_start = text_size_to_usize(node.text_range().start());
             if let Some(full_path) = list_full_attrpath(content, list_start) {
-                attrpaths.push(full_path);
-            }
-        }
-    }
-
-    attrpaths.sort();
-
-    Ok(attrpaths)
-}
-
-pub(crate) fn outer_list_occurrences_for_attrpath(content: &str, attrpath: &str) -> Result<usize> {
-    let parsed: Parse<Root> = Root::parse(content);
-    let root: Root = parsed
-        .ok()
-        .context("Failed to parse Nix content when checking list attribute path occurrences")?;
-    let target = normalize_attrpath_for_match(attrpath);
-    let mut ranges = Vec::new();
-
-    for node in root.syntax().descendants() {
-        if List::cast(node.clone()).is_some() {
-            let list_start = text_size_to_usize(node.text_range().start());
-            if let Some(full_path) = list_full_attrpath(content, list_start) {
-                if normalize_attrpath_for_match(&full_path) == target {
-                    ranges.push(text_range_to_usize_range(node.text_range()));
+                if inferred.as_deref() == Some(full_path.as_str()) {
+                    continue;
                 }
+                if inferred.is_some() {
+                    return Ok(None);
+                }
+                inferred = Some(full_path);
             }
         }
     }
 
-    Ok(ranges
-        .iter()
-        .filter(|range| {
-            !ranges
-                .iter()
-                .any(|other| other.start < range.start && range.end < other.end)
-        })
-        .count())
-}
-
-pub(crate) fn list_attrpaths(content: &str) -> Result<Vec<String>> {
-    let mut attrpaths = list_attrpath_occurrences(content)?;
-    attrpaths.sort();
-    attrpaths.dedup();
-
-    Ok(attrpaths)
+    Ok(inferred)
 }
 
 fn append_values_to_existing_list(
@@ -1178,11 +1188,11 @@ environment.systemPackages = with pkgs; [
         ];"#;
 
         assert!(
-        edited.contains(expected),
-        "expected firefox to append at the end while preserving list comment/spacing structure.\nExpected:\n{}\n\nActual:\n{}",
-        expected,
-        edited
-    );
+            edited.contains(expected),
+            "expected firefox to append at the end while preserving list comment/spacing structure.\nExpected:\n{}\n\nActual:\n{}",
+            expected,
+            edited
+        );
     }
 
     #[test]
@@ -1426,6 +1436,30 @@ environment.systemPackages = with pkgs; [
         assert!(
             edited.contains("serviceConfig = { Label = \"org.myapp.service\"; RunAtLoad = true; StandardErrorPath = \"/tmp/myapp.err.log\"; StandardOutPath = \"/tmp/myapp.out.log\"; };"),
             "expected nested object to render as Nix attrset"
+        );
+    }
+
+    #[test]
+    fn set_attrs_treats_quoted_key_input_as_nix_attr_syntax() {
+        let mut attrs = serde_json::Map::new();
+        attrs.insert(
+            "NSGlobalDomain".to_string(),
+            serde_json::json!({
+                "\"com.apple.sound.beep.feedback\"": 0,
+                "KeyRepeat": 2
+            }),
+        );
+
+        let edited = set_attrs(WITH_PKGS_EMPTY, "system.defaults", &attrs)
+            .expect("set_attrs should support quoted Nix attr key input");
+
+        assert!(
+            edited.contains("\"com.apple.sound.beep.feedback\" = 0;"),
+            "expected quoted attr syntax without embedded quote characters"
+        );
+        assert!(
+            !edited.contains("\"\\\"com.apple.sound.beep.feedback\\\"\" = 0;"),
+            "expected quotes not to become part of the attr key"
         );
     }
 

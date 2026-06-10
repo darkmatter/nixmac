@@ -10,35 +10,24 @@ const storyRoots = [
   path.resolve(repoRoot, "packages/ui/src"),
 ];
 const storyFileSuffixes = [".stories.ts", ".stories.tsx"];
-const skippedSnapshotStoryFiles = new Set([
-  // React Three Fiber can hang in headless CI WebGL contexts. Keep this story
-  // available in Storybook, but exclude it from automated snapshot batches.
-  path.resolve(appRoot, "src/components/nixmac-mascot/NixmacMascot3D.stories.tsx"),
-]);
-// Small batches keep one hung story from consuming most of the workflow budget.
-// Override via STORYBOOK_BATCH_SIZE if a runner proves stable enough for more.
+// Each batch re-spins a Chromium + reloads the Storybook/Vite env (the big
+// "prepare" cost), so larger batches mean fewer restarts at the price of more
+// memory held per process. Override via STORYBOOK_BATCH_SIZE.
+// Default is 2: at 6, the batch that stacks monaco (nix-editor) and
+// three.js/WebGL (NixmacMascot3D) in one Chromium wedges the process — three
+// stories complete, then it hangs until the batch timeout kills it
+// (deterministic on every develop run since 3b650d57). Batch 2 keeps the
+// heavy stories in separate processes and the whole test phase is ~85s anyway.
 const batchSize = Math.max(1, Number(process.env.STORYBOOK_BATCH_SIZE) || 2);
-const batchTimeoutOverrideMs = Number(process.env.STORYBOOK_BATCH_TIMEOUT_MS);
-const defaultBatchTimeoutMs = 30_000 + Math.min(batchSize * 60_000, 120_000);
-const perBatchTimeoutMs =
-  Number.isFinite(batchTimeoutOverrideMs) && batchTimeoutOverrideMs > 0
-    ? batchTimeoutOverrideMs
-    : defaultBatchTimeoutMs;
-// Individual retry runs should identify a hung story quickly enough to finish
-// before the workflow-level timeout kills the whole job without logs.
-const retryTimeoutOverrideMs = Number(process.env.STORYBOOK_RETRY_TIMEOUT_MS);
-const perRetryTimeoutMs =
-  Number.isFinite(retryTimeoutOverrideMs) && retryTimeoutOverrideMs > 0
-    ? retryTimeoutOverrideMs
-    : 60_000;
+// Budget scales with batch size (~60s/file) plus a fixed startup allowance so a
+// bigger batch isn't SIGKILLed just for doing more work.
+const perBatchTimeoutMs = 30_000 + batchSize * 60_000;
 
 // Aggregated record of every story whose snapshot failed, consumed by the
 // failed-story screenshot pipeline (scripts/resolve-failed-stories.mjs).
 const failedStoriesFile = path.join(appRoot, "test-results", "failed-stories.json");
 /** @type {Array<{ file: string, name: string }>} */
 const failedStories = [];
-
-class BatchTimeoutError extends Error {}
 
 function recordFailure(file, name) {
   const relFile = path.relative(appRoot, path.resolve(file));
@@ -77,11 +66,7 @@ async function listStoryFiles(directory) {
         return listStoryFiles(absolutePath);
       }
 
-      if (
-        entry.isFile() &&
-        storyFileSuffixes.some((suffix) => entry.name.endsWith(suffix)) &&
-        !skippedSnapshotStoryFiles.has(absolutePath)
-      ) {
+      if (entry.isFile() && storyFileSuffixes.some((suffix) => entry.name.endsWith(suffix))) {
         return [path.relative(process.cwd(), absolutePath)];
       }
 
@@ -102,7 +87,7 @@ function chunkFiles(files) {
   return chunks;
 }
 
-function runVitestForBatch(files, reportPath, timeoutMs = perBatchTimeoutMs) {
+function runVitestForBatch(files, reportPath) {
   return new Promise((resolve, reject) => {
     const label = files.join(", ");
 
@@ -134,18 +119,16 @@ function runVitestForBatch(files, reportPath, timeoutMs = perBatchTimeoutMs) {
           child.kill("SIGKILL");
         }
       }, 5_000).unref();
-    }, timeoutMs);
+    }, perBatchTimeoutMs);
 
     child.on("exit", (code, signal) => {
       clearTimeout(timeout);
       console.log("##[endgroup]");
 
       if (timedOut) {
-        reject(
-          new BatchTimeoutError(
-            `Timed out after ${timeoutMs / 1000}s while running ${label}`
-          )
-        );
+        // No reliable per-story report on a hard timeout; mark the batch wholesale.
+        for (const file of files) recordFailure(file, "(timed out)");
+        reject(new Error(`Timed out after ${perBatchTimeoutMs / 1000}s while running ${label}`));
         return;
       }
 
@@ -163,41 +146,6 @@ function runVitestForBatch(files, reportPath, timeoutMs = perBatchTimeoutMs) {
       reject(error);
     });
   });
-}
-
-async function runBatchWithTimeoutRetry(files, reportPath, index) {
-  try {
-    await runVitestForBatch(files, reportPath);
-    await collectFailuresFromReport(reportPath, files);
-    return true;
-  } catch (error) {
-    if (error instanceof BatchTimeoutError && files.length > 1) {
-      console.error(`::warning::${error.message}; retrying files individually`);
-      let allRetriesPassed = true;
-
-      for (const [fileIndex, file] of files.entries()) {
-        const retryReportPath = path.join(reportDir, `batch-${index}-retry-${fileIndex}.json`);
-        try {
-          await runVitestForBatch([file], retryReportPath, perRetryTimeoutMs);
-          await collectFailuresFromReport(retryReportPath, [file]);
-        } catch (retryError) {
-          console.error(`::error::${retryError.message}`);
-          allRetriesPassed = false;
-          await collectFailuresFromReport(retryReportPath, [file]);
-        }
-
-        if (!allRetriesPassed && failedStories.length >= maxFailuresToCollect) {
-          break;
-        }
-      }
-
-      return allRetriesPassed;
-    }
-
-    console.error(`::error::${error.message}`);
-    await collectFailuresFromReport(reportPath, files);
-    return false;
-  }
 }
 
 const storyFiles = (await Promise.all(storyRoots.map(listStoryFiles))).flat().sort();
@@ -220,9 +168,13 @@ const reportDir = await mkdtempReportDir();
 try {
   for (const [index, storyFileBatch] of batches.entries()) {
     const reportPath = path.join(reportDir, `batch-${index}.json`);
-    const passed = await runBatchWithTimeoutRetry(storyFileBatch, reportPath, index);
-    if (!passed) {
+    try {
+      await runVitestForBatch(storyFileBatch, reportPath);
+    } catch (error) {
+      console.error(`::error::${error.message}`);
       process.exitCode = 1;
+    } finally {
+      await collectFailuresFromReport(reportPath, storyFileBatch);
     }
 
     if (process.exitCode === 1 && failedStories.length >= maxFailuresToCollect) {

@@ -24,7 +24,11 @@ vi.mock("@/hooks/use-darwin-config", () => ({
 }));
 
 vi.mock("@/components/widget/controls/directory-picker", () => ({
-  DirectoryPicker: () => <div data-testid="directory-picker" />,
+  DirectoryPicker: ({ onConfigured }: { onConfigured?: () => void }) => (
+    <button type="button" data-testid="directory-picker" onClick={() => onConfigured?.()}>
+      Configure directory
+    </button>
+  ),
 }));
 
 vi.mock("@/components/widget/controls/bootstrap-config", () => ({
@@ -55,5 +59,17 @@ describe("<SetupStep>", () => {
 
     await waitFor(() => expect(mockSaveHost).toHaveBeenCalledWith("mbp"));
     expect(mockSaveHost).not.toHaveBeenCalledWith("");
+  });
+
+  it("does not show Next while waiting to create a default configuration", async () => {
+    widgetState.configDir = "/Users/me/.nixmac";
+    widgetState.hosts = [];
+    widgetState.host = "";
+
+    render(<SetupStep />);
+    fireEvent.click(screen.getByTestId("directory-picker"));
+
+    expect(await screen.findByTestId("bootstrap-config")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Next" })).not.toBeInTheDocument();
   });
 });

@@ -54,6 +54,7 @@ export const tauriAPI = {
       invoke<SetDirResult>("config_import_github", { repoRef, dirName: dirName ?? null }),
     importZip: (zipPath: string, dirName?: string) =>
       invoke<SetDirResult>("config_import_zip", { zipPath, dirName: dirName ?? null }),
+    getThisHostname: () => invoke<string>("get_this_hostname"),
   },
   account: {
     status: () => invoke<AuthStatus>("account_status"),
