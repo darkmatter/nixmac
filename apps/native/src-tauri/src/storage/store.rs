@@ -5,10 +5,10 @@
 
 use crate::git::query::repo_root;
 use crate::shared_types;
-use crate::storage::credential_store::{CredentialStore, KeychainStore};
+use crate::storage::credential_store::{CredentialStore, CredentialStoreError, KeychainStore};
 
 use anyhow::Result;
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{de::DeserializeOwned, Serialize};
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_store::{Store, StoreExt};
@@ -384,6 +384,10 @@ fn read_non_empty_env(name: &str) -> Option<String> {
 }
 
 fn normalize_env_secret(value: Option<String>) -> Option<String> {
+    normalize_secret(value)
+}
+
+fn normalize_secret(value: Option<String>) -> Option<String> {
     value
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
@@ -475,7 +479,7 @@ where
     if let Some(value) = env_value {
         return Ok(Some(value));
     }
-    fallback()
+    Ok(normalize_secret(fallback()?))
 }
 
 fn keychain_store_for<R: Runtime>(app: &AppHandle<R>, key: &str) -> KeychainStore<R> {
@@ -492,12 +496,27 @@ fn get_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> Result<
 }
 
 fn set_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str, value: &str) -> Result<()> {
+    if value.trim().is_empty() {
+        return delete_secret_pref(app, key);
+    }
+
     if e2e_mock_system_enabled() {
         return set_string_pref(app, key, value);
     }
 
     let keychain = keychain_store_for(app, key);
-    keychain.set(value).map_err(anyhow::Error::from)
+    write_secret_pref(&keychain, value).map_err(anyhow::Error::from)
+}
+
+fn write_secret_pref<S: CredentialStore + ?Sized>(
+    store: &S,
+    value: &str,
+) -> std::result::Result<(), CredentialStoreError> {
+    if value.trim().is_empty() {
+        return store.delete();
+    }
+
+    store.set(value)
 }
 
 fn delete_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> Result<()> {
@@ -786,6 +805,7 @@ pub fn add_to_prompt_history<R: Runtime>(app: &AppHandle<R>, prompt: &str) -> Re
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::storage::credential_store::InMemoryStore;
     use std::sync::atomic::{AtomicBool, Ordering};
 
     #[test]
@@ -818,6 +838,25 @@ mod tests {
     }
 
     #[test]
+    fn no_env_rejects_empty_and_whitespace_fallback_values() {
+        let empty = resolve_secret_with_env_override(None, || Ok(Some(String::new()))).unwrap();
+        let whitespace =
+            resolve_secret_with_env_override(None, || Ok(Some("  \n\t  ".to_string()))).unwrap();
+
+        assert_eq!(empty, None);
+        assert_eq!(whitespace, None);
+    }
+
+    #[test]
+    fn no_env_trims_non_empty_fallback_value() {
+        let result =
+            resolve_secret_with_env_override(None, || Ok(Some("  store-secret  ".to_string())))
+                .unwrap();
+
+        assert_eq!(result.as_deref(), Some("store-secret"));
+    }
+
+    #[test]
     fn normalize_env_secret_rejects_empty_and_whitespace_values() {
         assert_eq!(normalize_env_secret(None), None);
         assert_eq!(normalize_env_secret(Some("".to_string())), None);
@@ -847,6 +886,31 @@ mod tests {
 
         assert_eq!(result.as_deref(), Some("store-secret"));
         assert!(fallback_called.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn stored_empty_openrouter_key_falls_back_to_openai_credential() {
+        let openrouter_key =
+            resolve_secret_with_env_override(None, || Ok(Some(String::new()))).unwrap();
+        let openai_key =
+            resolve_secret_with_env_override(None, || Ok(Some("sk-openai".to_string()))).unwrap();
+
+        let credential = if let Some(key) = openrouter_key {
+            Some((key, OPENROUTER_BASE_URL))
+        } else {
+            openai_key.map(|key| (key, OPENAI_BASE_URL))
+        };
+
+        assert_eq!(credential, Some(("sk-openai".to_string(), OPENAI_BASE_URL)));
+    }
+
+    #[test]
+    fn writing_empty_secret_deletes_existing_value() {
+        let store = InMemoryStore::with_value(Some("sk-existing".to_string()));
+
+        write_secret_pref(&store, "  \n\t  ").unwrap();
+
+        assert_eq!(store.get().unwrap(), None);
     }
 
     #[test]
