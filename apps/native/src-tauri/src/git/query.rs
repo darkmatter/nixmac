@@ -5,7 +5,7 @@ use git2::{DiffOptions, Oid, Repository};
 use tauri::AppHandle;
 
 use crate::{
-    git::{file_diff_to_change, init::require_repo, is_sensitive_or_opaque, FileDiff},
+    git::{FileDiff, file_diff_to_change, init::require_repo, is_sensitive_or_opaque},
     shared_types::{ChangeType, GitFileStatus, GitStatus},
 };
 

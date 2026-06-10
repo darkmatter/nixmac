@@ -129,9 +129,8 @@ mod tests {
 
     #[test]
     fn missing_fields_use_defaults() {
-        let limits: EvolutionLimits = serde_json::from_value(serde_json::json!({
-        }))
-        .expect("limits deserialize");
+        let limits: EvolutionLimits =
+            serde_json::from_value(serde_json::json!({})).expect("limits deserialize");
 
         assert_eq!(limits.max_token_budget, 50_000);
         assert_eq!(limits.max_build_attempts, 5);

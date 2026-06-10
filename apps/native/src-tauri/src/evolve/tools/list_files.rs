@@ -1,20 +1,22 @@
 //! `list_files` tool: glob the config directory (gitignore-aware).
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use log::{debug, info};
 use std::path::Component;
 
+use crate::evolve::IGNORED_DIRS;
 use crate::evolve::file_ops::{ensure_path_under_base, join_in_dir};
 use crate::evolve::gitignore::is_ignored_by_matcher;
 use crate::evolve::messages::Tool;
-use crate::evolve::IGNORED_DIRS;
 
 use super::{ToolCtx, ToolResult};
 
 pub(crate) fn definition() -> Tool {
     Tool {
         name: "list_files".to_string(),
-        description: "List files in the config directory. Use glob patterns to find specific file types.".to_string(),
+        description:
+            "List files in the config directory. Use glob patterns to find specific file types."
+                .to_string(),
         parameters: serde_json::json!({
             "type": "object",
             "properties": {

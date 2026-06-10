@@ -412,7 +412,7 @@ mod tests {
             channel: "test-channel".to_string(),
             version: "13.2".to_string(),
             description: "Extensible package for writing and formatting TeX files in GNU Emacs and XEmacs".to_string(),
-            install_via: SearchResultInstallTarget::Either,  
+            install_via: SearchResultInstallTarget::Either,
             additional_info: None,
         })), ("empty", 0, None )];
         let fake_package_classifier = |_package_name: &str| SearchResultInstallTarget::Either;

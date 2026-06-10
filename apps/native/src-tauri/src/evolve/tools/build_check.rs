@@ -13,7 +13,8 @@ pub(crate) fn definition() -> Tool {
         description: "Validate the Nix flake by running a dry-run build. This checks for syntax \
                      errors and evaluation errors WITHOUT actually building derivations. \
                      Call this BEFORE calling 'done' to ensure your changes are valid. \
-                     If the build fails, analyze the error and fix it before trying again.".to_string(),
+                     If the build fails, analyze the error and fix it before trying again."
+            .to_string(),
         parameters: serde_json::json!({
             "type": "object",
             "properties": {

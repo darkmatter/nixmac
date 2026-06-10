@@ -1,10 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import { mirrorChangeMapState } from "@/viewmodel/change-map";
 import { tauriAPI } from "@/ipc/api";
 import type { UpdateChannel } from "@/ipc/types";
+import { usePrefs } from "@/hooks/use-prefs";
 import { useUpdater } from "@/hooks/use-updater";
 import { getVersion } from "@tauri-apps/api/app";
 import {
@@ -17,6 +19,7 @@ import {
   History,
   Pin,
   RotateCcw,
+  Sparkles,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -24,6 +27,8 @@ const VERSION_PATTERN = /^[0-9]+(?:\.[0-9]+){0,2}(?:-[a-zA-Z0-9.-]+)?$/;
 
 export function DeveloperTab() {
   const { installVersion, relaunch, clearPinnedVersion } = useUpdater();
+  const { setPref } = usePrefs();
+  const experimentalSpinningMascot = useWidgetStore((s) => s.experimentalSpinningMascot);
   const pinnedVersion = useWidgetStore((s) => s.pinnedVersion);
   const setPinnedVersion = useWidgetStore((s) => s.setPinnedVersion);
   const updateChannel = useWidgetStore((s) => s.updateChannel);
@@ -179,6 +184,27 @@ export function DeveloperTab() {
               builds — the dev binary doesn't ship the updater plugin.
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Experimental features */}
+      <div className="rounded-lg border border-border p-3">
+        <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+          <Sparkles className="h-3.5 w-3.5" />
+          Experimental
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <div className="text-sm">Spinning mascot</div>
+            <div className="text-muted-foreground text-xs">
+              Show a spinning 3D nixmac mascot in the bottom-right corner of your screen while an
+              evolution or build is running. Takes effect after restarting nixmac.
+            </div>
+          </div>
+          <Switch
+            checked={experimentalSpinningMascot}
+            onCheckedChange={(checked) => setPref("experimentalSpinningMascot", checked)}
+          />
         </div>
       </div>
 

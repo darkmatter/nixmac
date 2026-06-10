@@ -24,12 +24,12 @@ pub mod lifecycle;
 /// Directories ignored by file listing and search helpers.
 pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
-use crate::evolve::utils::{escape_user_query, format_duration_secs, short_hash};
+use crate::evolve::utils::{escape_user_query, format_duration_secs};
 use crate::git::query::repo_root;
 // Re-export public API
 use crate::shared_types::{Evolution, EvolutionState, FileEdit};
 use crate::system::nix;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use chrono::Utc;
 use log::{debug, error, info, warn};
 use regex::Regex;
@@ -41,15 +41,16 @@ use std::sync::Arc;
 use std::time::Duration;
 use tauri::{AppHandle, Runtime};
 use tokio::time::sleep;
-use tools::{create_tools, execute_tool, ToolResult};
+use tools::{ToolResult, create_tools, execute_tool};
 pub use types::{EvolutionProgress, EvolutionRunError};
 
 use crate::{
     statistics, store,
-    types::{emit_evolve_event, EvolveEvent},
+    types::{EvolveEvent, emit_evolve_event},
     utils as global_utils,
+    utils::short_hash,
 };
-use chat_memory::{to_provider_context_messages, ChatMessage, Role as ChatMemoryRole};
+use chat_memory::{ChatMessage, Role as ChatMemoryRole, to_provider_context_messages};
 
 pub(crate) use chat_memory::session_chat_memory_store;
 use config_dir_context::format_config_dir_context;
@@ -826,7 +827,8 @@ pub async fn generate_evolution<R: Runtime>(
 
     // Read configurable limits from store (hot-reloaded on every run).
     let config::EvolutionLimits {
-        mut max_build_attempts, ..
+        mut max_build_attempts,
+        ..
     } = config::EvolutionLimits::load(app)
         .inspect_err(|e| warn!("EvolutionLimits::load failed ({e}); using defaults"))
         .unwrap_or_default();
@@ -836,8 +838,7 @@ pub async fn generate_evolution<R: Runtime>(
     let interactive_limit_prompt = !banned_tools.contains(&"ask_user");
     info!(
         "Limits: max_token_budget={}, max_build_attempts={}",
-        max_token_budget,
-        max_build_attempts,
+        max_token_budget, max_build_attempts,
     );
 
     let tools = create_tools(banned_tools);
@@ -1061,7 +1062,13 @@ pub async fn generate_evolution<R: Runtime>(
             );
             emit_evolve_event(
                 app,
-                EvolveEvent::api_response(start_time, iteration, usage.total, total_tokens, max_token_budget),
+                EvolveEvent::api_response(
+                    start_time,
+                    iteration,
+                    usage.total,
+                    total_tokens,
+                    max_token_budget,
+                ),
             );
         }
 
@@ -1850,12 +1857,12 @@ fn process_tool_result(
                 }
 
                 let msg = Message::Tool {
-            tool_call_id: tool_call_id.to_string(),
-            content: format!(
-                "{}\n\nUse the 'think' tool to analyze the error, then fix the issue and run build_check again.",
-                model_output
-            ),
-        };
+                    tool_call_id: tool_call_id.to_string(),
+                    content: format!(
+                        "{}\n\nUse the 'think' tool to analyze the error, then fix the issue and run build_check again.",
+                        model_output
+                    ),
+                };
                 (msg, Some(false))
             }
         }
@@ -1908,8 +1915,8 @@ fn process_tool_result(
 #[cfg(test)]
 mod tests {
     use super::{
-        filter_evolution_messages, process_tool_result, read_file_dedup_key, store_tool_result,
         Evolution, EvolutionMessage, EvolutionState, FileEdit, Message, Retention, ToolResult,
+        filter_evolution_messages, process_tool_result, read_file_dedup_key, store_tool_result,
     };
 
     fn build_result(success: bool) -> ToolResult {

@@ -1,13 +1,13 @@
 //! `edit_file` tool: find-and-replace edits to a file.
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use log::info;
 
 use crate::evolve::file_ops::apply_file_edits;
 use crate::evolve::messages::Tool;
 use crate::shared_types::FileEdit;
 
-use super::{ensure_nixmac_edit_allowed, ToolCtx, ToolResult};
+use super::{ToolCtx, ToolResult, ensure_nixmac_edit_allowed};
 
 pub(crate) fn definition() -> Tool {
     Tool {

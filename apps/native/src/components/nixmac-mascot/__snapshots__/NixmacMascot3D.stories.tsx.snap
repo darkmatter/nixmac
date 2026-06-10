@@ -1,0 +1,5 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Spinning 1`] = `"<div aria-label="nixmac mascot" data-slot="nixmac-mascot-lottie" style="width: 200px; height: 200px;"></div>"`;
+
+exports[`Static 1`] = `"<div aria-label="nixmac mascot" data-slot="nixmac-mascot-lottie" style="width: 200px; height: 200px;"></div>"`;

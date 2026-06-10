@@ -1,0 +1,118 @@
+/*
+  nixmac mascot — CSS 3D cube.
+
+  A real 6-face cube (perspective + transform-style: preserve-3d). The front face
+  is the animated mascot; the cube hops and turns on its Y axis to reveal a
+  device-style back face and the dark side edges (the chip's "thickness").
+
+  Why CSS 3D and not Lottie: Lottie is 2D and can't represent a cube. CSS 3D gives
+  real depth — back + side faces, perspective — with no 3D engine.
+*/
+
+.nixmac-cube-scene {
+  display: inline-block;
+  width: var(--cube-size, 160px);
+  height: var(--cube-size, 160px);
+  perspective: 900px;
+
+  /* ── tune the personality ── */
+  --hop-period: 8s; /* how often he hops + turns (bigger = rarer) */
+}
+
+.nixmac-cube {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.nixmac-cube__face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 13%; /* matches the icon's rounded square */
+  backface-visibility: hidden; /* a face only shows when it points at you */
+}
+.nixmac-cube__face svg,
+.nixmac-cube__face .nixmac-mascot {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* The front mascot supplies its own idle animation (blink/smile/pulse); the cube
+   owns all motion now, so silence the mascot's 2D hop here. Higher specificity
+   than `.nixmac-mascot { animation: … }`, so it wins regardless of import order. */
+.nixmac-cube .nixmac-mascot {
+  animation: none;
+}
+
+/* 6 faces, each pushed out by half the cube edge */
+.nixmac-cube__face--front {
+  transform: translateZ(calc(var(--cube-size) / 2));
+}
+.nixmac-cube__face--back {
+  transform: rotateY(180deg) translateZ(calc(var(--cube-size) / 2));
+}
+.nixmac-cube__face--right {
+  transform: rotateY(90deg) translateZ(calc(var(--cube-size) / 2));
+}
+.nixmac-cube__face--left {
+  transform: rotateY(-90deg) translateZ(calc(var(--cube-size) / 2));
+}
+.nixmac-cube__face--top {
+  transform: rotateX(90deg) translateZ(calc(var(--cube-size) / 2));
+}
+.nixmac-cube__face--bottom {
+  transform: rotateX(-90deg) translateZ(calc(var(--cube-size) / 2));
+}
+
+/* dark "thickness" of the chip, lightly shaded so the solid reads in 3D */
+.nixmac-cube__face--right {
+  background: linear-gradient(90deg, #242424, #141414);
+}
+.nixmac-cube__face--left {
+  background: linear-gradient(90deg, #141414, #242424);
+}
+.nixmac-cube__face--top {
+  background: linear-gradient(#2a2a2a, #161616);
+}
+.nixmac-cube__face--bottom {
+  background: linear-gradient(#141414, #0c0c0c);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .nixmac-cube {
+    animation: nixmac-cube-hop var(--hop-period) infinite ease-in-out;
+  }
+}
+
+/* Hop on translateY, spin on the Y axis (reveals back + sides). Squash only while
+   front-facing (rotateY ≈ 0/360) so the 3D turn never shears. */
+@keyframes nixmac-cube-hop {
+  0%,
+  66% {
+    transform: translateY(0) rotateY(0deg) scale(1, 1);
+  }
+  70% {
+    transform: translateY(3%) rotateY(0deg) scale(1.08, 0.92);
+  } /* crouch  */
+  74% {
+    transform: translateY(-4%) rotateY(0deg) scale(0.94, 1.06);
+  } /* takeoff */
+  82% {
+    transform: translateY(-16%) rotateY(180deg) scale(1, 1);
+  } /* peak — back to camera */
+  90% {
+    transform: translateY(0) rotateY(352deg) scale(1.08, 0.92);
+  } /* land    */
+  93% {
+    transform: translateY(0) rotateY(360deg) scale(0.98, 1.02);
+  } /* rebound */
+  96%,
+  100% {
+    transform: translateY(0) rotateY(360deg) scale(1, 1);
+  }
+}
