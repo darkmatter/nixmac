@@ -4,7 +4,7 @@ use crate::evolve::types::SemanticFileEdit;
 use anyhow::{Context, Result};
 use log::{debug, info};
 use rnix::SyntaxNode;
-use rnix::ast::{AttrSet, List};
+use rnix::ast::{AttrSet, HasEntry, List};
 use rnix::{Parse, Root};
 use rowan::ast::AstNode;
 use rowan::{TextRange, TextSize};
@@ -606,6 +606,65 @@ pub(crate) fn infer_single_list_attrpath(content: &str) -> Result<Option<String>
     Ok(inferred)
 }
 
+/// Resolve a dot-separated `attrpath` to the value expression it is assigned,
+/// descending through attrset *literals* (`a = { b = …; }`) as well as flat
+/// dotted assignments (`a.b = …`) and any mix of the two. Returns the value
+/// node if the leaf is defined anywhere, regardless of its type.
+///
+/// This is the structural counterpart to `find_assignment_value_range`, which
+/// matches only a flat dotted LHS and so cannot see a leaf nested inside an
+/// attrset literal — the case that let `add()` insert a duplicate assignment.
+///
+/// Known limitation: a quoted key containing dots (e.g.
+/// `NSGlobalDomain."com.apple.sound.beep.feedback"`) is one AST segment but
+/// splits into several here, so such paths won't resolve. That matches the
+/// existing dot-splitting behaviour elsewhere in this module.
+fn find_attrpath_value_node(root: &SyntaxNode, attrpath: &str) -> Option<SyntaxNode> {
+    let target: Vec<String> = attrpath
+        .split('.')
+        .map(normalize_attrpath_for_match)
+        .filter(|segment| !segment.is_empty())
+        .collect();
+    if target.is_empty() {
+        return None;
+    }
+
+    // The top-level expression of a module is its outermost attrset.
+    let top = AttrSet::cast(root.clone()).or_else(|| root.descendants().find_map(AttrSet::cast))?;
+    resolve_in_attrset(&top, &target)
+}
+
+fn resolve_in_attrset(attrset: &AttrSet, target: &[String]) -> Option<SyntaxNode> {
+    for entry in attrset.attrpath_values() {
+        let Some(attrpath) = entry.attrpath() else {
+            continue;
+        };
+        let key: Vec<String> = attrpath
+            .attrs()
+            .map(|attr| normalize_attrpath_for_match(&attr.syntax().text().to_string()))
+            .collect();
+        // The entry's key must be a (possibly partial) prefix of what we want.
+        if key.is_empty() || key.len() > target.len() || key[..] != target[..key.len()] {
+            continue;
+        }
+        let Some(value) = entry.value() else {
+            continue;
+        };
+        let value_node = value.syntax().clone();
+        if key.len() == target.len() {
+            return Some(value_node);
+        }
+        // Strict prefix: the remaining segments must resolve inside this
+        // entry's attrset value (e.g. `dock` matched, `mru-spaces` is inside).
+        if let Some(inner) = AttrSet::cast(value_node) {
+            if let Some(found) = resolve_in_attrset(&inner, &target[key.len()..]) {
+                return Some(found);
+            }
+        }
+    }
+    None
+}
+
 fn append_values_to_existing_list(
     content: &str,
     list_node: &SyntaxNode,
@@ -719,7 +778,20 @@ fn add(content: &str, attrpath: &str, values: &[String]) -> Result<String> {
     let root_node_ref: &SyntaxNode = root.syntax();
     let root_node: SyntaxNode = root_node_ref.clone();
 
-    if let Some(list_node) = find_list_for_attrpath(&root_node, content, attrpath) {
+    // Resolve the attrpath structurally (through attrset literals as well as
+    // flat dotted assignments) so we can tell "already defined" from "absent"
+    // even when the definition is nested inside an attrset.
+    let resolved = find_attrpath_value_node(&root_node, attrpath);
+
+    // An existing list to append to: the flat fast-path first, then a nested
+    // list the resolver found (e.g. defined deeper than one attrset level).
+    let existing_list = find_list_for_attrpath(&root_node, content, attrpath).or_else(|| {
+        resolved
+            .clone()
+            .filter(|node| List::cast(node.clone()).is_some())
+    });
+
+    if let Some(list_node) = existing_list {
         debug!("Found existing list for {}", attrpath);
         let mut items = extract_package_list(&list_node)?;
         let mut values_to_append = Vec::new();
@@ -744,11 +816,12 @@ fn add(content: &str, attrpath: &str, values: &[String]) -> Result<String> {
         return append_values_to_existing_list(content, &list_node, &values_to_append);
     }
 
-    // No list was found at this attrpath. If the attrpath already exists as a
-    // non-list assignment (e.g. `programs.git = { enable = true; };`), inserting
-    // a fresh `attrpath = [ ... ];` would produce two assignments to the same
-    // attribute — invalid Nix. Refuse rather than silently corrupt the file.
-    if find_assignment_value_range(content, attrpath).is_some() {
+    // No appendable list was found. If the attrpath is already defined as a
+    // non-list — whether flat (`programs.git = { … };`) or nested inside an
+    // attrset literal (`system.defaults.dock = { mru-spaces = 0; };`) —
+    // inserting a fresh `attrpath = [ … ];` would produce two assignments to
+    // the same attribute, which is invalid Nix. Refuse rather than corrupt it.
+    if resolved.is_some() {
         return Err(anyhow::anyhow!(
             "Cannot add list values to '{}': it already exists and is not a list",
             attrpath
@@ -1100,6 +1173,52 @@ environment.systemPackages = with pkgs; [
             err.to_string().contains("not a list"),
             "unexpected error: {err:#}"
         );
+    }
+
+    #[test]
+    fn add_refuses_to_duplicate_nested_attrset_leaf() {
+        // `mru-spaces` is defined *nested inside* an attrset literal, not as a
+        // flat `system.defaults.dock.mru-spaces = ...` assignment. The flat-only
+        // guard missed this and `add()` inserted a duplicate; the structural
+        // resolver must catch it and error instead.
+        let src =
+            "{\n  system.defaults.dock = {\n    magnification = 1;\n    mru-spaces = 0;\n  };\n}\n";
+        let err = add(src, "system.defaults.dock.mru-spaces", &["foo".to_string()])
+            .expect_err("add to a nested non-list leaf should error, not duplicate it");
+        assert!(
+            err.to_string().contains("not a list"),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
+    fn add_inserts_new_leaf_under_existing_attrset() {
+        // A genuinely-absent leaf must still be inserted (no false positive from
+        // the resolver just because a sibling attrset exists at a prefix).
+        let src = "{\n  system.defaults.dock = {\n    mru-spaces = 0;\n  };\n}\n";
+        let out = add(src, "environment.systemPackages", &["foo".to_string()])
+            .expect("adding a brand-new attrpath should succeed");
+        assert_eq!(
+            out.matches("environment.systemPackages").count(),
+            1,
+            "new attr should be inserted exactly once"
+        );
+    }
+
+    #[test]
+    fn add_appends_to_list_nested_in_attrset() {
+        // A list nested deeper than `find_list_for_attrpath` reconstructs must be
+        // appended to via the resolver, not duplicated.
+        let src =
+            "{\n  programs.foo = {\n    settings = {\n      tags = [ \"a\" ];\n    };\n  };\n}\n";
+        let out = add(src, "programs.foo.settings.tags", &["b".to_string()])
+            .expect("appending to a nested list should succeed");
+        assert_eq!(
+            out.matches("tags =").count(),
+            1,
+            "nested list must not be duplicated"
+        );
+        assert!(out.contains('b'), "appended value should be present: {out}");
     }
 
     #[test]
