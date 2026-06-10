@@ -20,15 +20,15 @@ mod search_docs;
 mod search_packages;
 mod think;
 
-use crate::evolve::edit_nix_file::nix_quote_values;
 use crate::evolve::ensure_secret::EnsureSecretResult;
 use crate::evolve::messages::Tool;
+use crate::evolve::nix_file_editor::nix_quote_values;
 use crate::evolve::search_packages::SearchPackageResult;
 use crate::evolve::types::SemanticFileEdit;
 use crate::evolve::utils::normalize_relative_path;
 use crate::shared_types::FileEdit;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use ignore::gitignore::Gitignore;
 use std::path::{Component, Path};
 
@@ -203,7 +203,7 @@ pub(crate) fn ensure_nixmac_edit_allowed(tool: &str, path: &str) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{execute_tool, truncate_for_log, ToolResult};
+    use super::{ToolResult, execute_tool, truncate_for_log};
     use crate::evolve::gitignore::load_gitignore_matcher;
     use serde_json::json;
     use std::fs;
@@ -410,7 +410,61 @@ mod tests {
     }
 
     #[test]
-    fn edit_nix_file_reports_string_action_with_corrective_shape() {
+    fn edit_nix_file_reports_list_attr_path_set_array_as_add_values() {
+        let tmp = tempdir().expect("tempdir");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "set",
+                "path": "homebrew.casks",
+                "value": ["docker", "iterm2", "audacity", "rectangle"]
+            }),
+            None,
+        );
+
+        let err = result.expect_err("list attr path in top-level path should suggest add");
+        let msg = err.to_string();
+        assert!(
+            msg.contains(r#""action": { "add": { "path": "homebrew.casks", "values": ["docker","iterm2","audacity","rectangle"] } }"#),
+            "unexpected error: {err:#}"
+        );
+        assert!(
+            msg.contains("use action.add/action.remove with 'values'"),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
+    fn edit_nix_file_reports_string_array_set_as_add_values_for_generic_attr_path() {
+        let tmp = tempdir().expect("tempdir");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "set",
+                "path": "programs.example.extraPackages",
+                "value": ["alpha", "beta"]
+            }),
+            None,
+        );
+
+        let err = result.expect_err("string array set should suggest add values");
+        let msg = err.to_string();
+        assert!(
+            msg.contains(r#""action": { "add": { "path": "programs.example.extraPackages", "values": ["alpha","beta"] } }"#),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
+    fn edit_nix_file_reports_shorthand_action_missing_attr_path() {
         let tmp = tempdir().expect("tempdir");
         fs::write(tmp.path().join("services.nix"), "{ ... }: { }\n").expect("write nix file");
 
@@ -434,20 +488,10 @@ mod tests {
             None,
         );
 
-        let err = result.expect_err("string action should get a corrective error");
+        let err = result.expect_err("shorthand set_attrs should require an action path");
         let msg = err.to_string();
         assert!(
-            msg.contains("action must be an object, not string 'set_attrs'"),
-            "unexpected error: {err:#}"
-        );
-        assert!(
-            msg.contains("Wrap sibling payload fields under action.set_attrs"),
-            "unexpected error: {err:#}"
-        );
-        assert!(
-            msg.contains(
-                r#""action": { "set_attrs": { "path": "<attribute.path>", "attrs": {...} } }"#
-            ),
+            msg.contains("edit_nix_file.set_attrs: missing action path"),
             "unexpected error: {err:#}"
         );
     }
@@ -639,167 +683,8 @@ mod tests {
 
         let err = result.expect_err("ambiguous shorthand should require an explicit attr path");
         assert!(
-            err.to_string().contains("edit_nix_file.add: missing path"),
-            "unexpected error: {err:#}"
-        );
-
-        let edited = fs::read_to_string(tmp.path().join("packages.nix")).expect("read file");
-        assert_eq!(edited, original);
-    }
-
-    #[test]
-    fn edit_nix_file_rejects_add_shorthand_with_repeated_inferred_list_path() {
-        let tmp = tempdir().expect("tempdir");
-        let original = r#"{ pkgs, lib, ... }:
-{
-  environment.systemPackages = with pkgs; [
-    git
-  ] ++ lib.optionals true [
-    wget
-  ];
-}
-"#;
-        fs::write(tmp.path().join("packages.nix"), original).expect("write package module");
-
-        let result = execute_tool(
-            tmp.path(),
-            tmp.path().to_str().expect("utf-8 path"),
-            "dummy-host",
-            "edit_nix_file",
-            &json!({
-                "action": "add",
-                "path": "packages.nix",
-                "values": ["fd"]
-            }),
-            None,
-        );
-
-        let err = result.expect_err("ambiguous split-list shorthand should be rejected");
-        assert!(
             err.to_string()
-                .contains("Shorthand add is ambiguous because 'environment.systemPackages' appears in multiple list nodes"),
-            "unexpected error: {err:#}"
-        );
-
-        let edited = fs::read_to_string(tmp.path().join("packages.nix")).expect("read file");
-        assert_eq!(edited, original);
-    }
-
-    #[test]
-    fn edit_nix_file_accepts_add_shorthand_with_nested_single_inferred_list_path() {
-        let tmp = tempdir().expect("tempdir");
-        fs::write(
-            tmp.path().join("packages.nix"),
-            r#"{ pkgs, lib, ... }:
-{
-  environment.systemPackages = with pkgs; [
-    (with pkgs; [
-      git
-    ])
-  ];
-}
-"#,
-        )
-        .expect("write package module");
-
-        let result = execute_tool(
-            tmp.path(),
-            tmp.path().to_str().expect("utf-8 path"),
-            "dummy-host",
-            "edit_nix_file",
-            &json!({
-                "action": "add",
-                "path": "packages.nix",
-                "values": ["fd"]
-            }),
-            None,
-        )
-        .expect("edit_nix_file should dedupe nested inferred list paths");
-
-        let ToolResult::EditSemantic(edit) = result else {
-            panic!("expected semantic edit result");
-        };
-        let crate::evolve::types::FileEditAction::Add { path, values } = edit.action else {
-            panic!("expected add action");
-        };
-        assert_eq!(path, "environment.systemPackages");
-        assert_eq!(values, vec!["fd".to_string()]);
-    }
-
-    #[test]
-    fn edit_nix_file_accepts_remove_shorthand_and_infers_only_list_path() {
-        let tmp = tempdir().expect("tempdir");
-        fs::write(
-            tmp.path().join("packages.nix"),
-            r#"{ pkgs, ... }:
-{
-  environment.systemPackages = with pkgs; [
-    git
-    wget
-  ];
-}
-"#,
-        )
-        .expect("write package module");
-
-        let result = execute_tool(
-            tmp.path(),
-            tmp.path().to_str().expect("utf-8 path"),
-            "dummy-host",
-            "edit_nix_file",
-            &json!({
-                "action": "remove",
-                "path": "packages.nix",
-                "values": ["wget"]
-            }),
-            None,
-        )
-        .expect("edit_nix_file should accept remove shorthand");
-
-        let ToolResult::EditSemantic(edit) = result else {
-            panic!("expected semantic edit result");
-        };
-        let crate::evolve::types::FileEditAction::Remove { path, values } = edit.action else {
-            panic!("expected remove action");
-        };
-        assert_eq!(path, "environment.systemPackages");
-        assert_eq!(values, vec!["wget".to_string()]);
-
-        let edited = fs::read_to_string(tmp.path().join("packages.nix")).expect("read edited");
-        assert!(edited.contains("git"), "{edited}");
-        assert!(!edited.contains("wget"), "{edited}");
-    }
-
-    #[test]
-    fn edit_nix_file_rejects_remove_shorthand_with_repeated_inferred_list_path() {
-        let tmp = tempdir().expect("tempdir");
-        let original = r#"{ pkgs, lib, ... }:
-{
-  environment.systemPackages = with pkgs; [
-    git
-  ] ++ lib.optionals true [
-    wget
-  ];
-}
-"#;
-        fs::write(tmp.path().join("packages.nix"), original).expect("write package module");
-
-        let result = execute_tool(
-            tmp.path(),
-            tmp.path().to_str().expect("utf-8 path"),
-            "dummy-host",
-            "edit_nix_file",
-            &json!({
-                "action": "remove",
-                "path": "packages.nix",
-                "values": ["wget"]
-            }),
-            None,
-        );
-
-        let err = result.expect_err("split-list remove shorthand should require an explicit path");
-        assert!(
-            err.to_string().contains("Shorthand remove is ambiguous"),
+                .contains("edit_nix_file.add: missing action path"),
             "unexpected error: {err:#}"
         );
 

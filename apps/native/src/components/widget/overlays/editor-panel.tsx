@@ -52,10 +52,8 @@ export function EditorPanel({ disableEditorRuntime = false }: { disableEditorRun
         </div>
         <Suspense
           fallback={
-            <div className="relative flex flex-col overflow-hidden flex-1" data-slot="nix-editor">
-              <div className="flex flex-1 items-center justify-center text-muted-foreground text-sm">
-                Loading editor...
-              </div>
+            <div className="flex flex-1 items-center justify-center text-muted-foreground text-sm">
+              Loading editor...
             </div>
           }
         >

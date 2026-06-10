@@ -80,6 +80,8 @@ pub struct RepoScopedJson {
     path: PathBuf,
 }
 
+/// Repo-scoped persistence that waits for the app's config directory to be set
+/// before doing anything.
 impl RepoScopedJson {
     /// Build a repo-scoped persistence backend from an already resolved path.
     pub fn new(path: impl Into<PathBuf>) -> Self {
@@ -107,6 +109,51 @@ impl Persistence for RepoScopedJson {
     }
 
     fn flush(&self, value: &Value) -> Result<()> {
+        crate::storage::configurable_scope::ensure_repo_store_dir_for_path(&self.path)?;
         write_json_file(&self.path, value)
+    }
+}
+
+/// Repo-scoped JSON persistence that follows the app's explicitly configured
+/// config directory.
+///
+/// This intentionally ignores the onboarding default (`~/.darwin`) until the
+/// user has confirmed a directory. That keeps first-launch reads and accidental
+/// pre-setup writes from making a clone/import target non-empty, which is disallowed
+/// later in the UI and therefore bad.
+#[derive(Debug, Clone)]
+pub struct ConfiguredRepoScopedJson<R: Runtime> {
+    app: tauri::AppHandle<R>,
+}
+
+impl<R: Runtime> ConfiguredRepoScopedJson<R> {
+    pub fn new(app: tauri::AppHandle<R>) -> Self {
+        Self { app }
+    }
+
+    fn path(&self) -> Result<Option<PathBuf>> {
+        let Some(config_dir) = crate::storage::store::get_config_dir_if_set(&self.app)? else {
+            return Ok(None);
+        };
+        Ok(Some(PathBuf::from(
+            crate::storage::configurable_scope::repo_store_path_for_config_dir(&config_dir)?,
+        )))
+    }
+}
+
+impl<R: Runtime> Persistence for ConfiguredRepoScopedJson<R> {
+    fn load(&self) -> Result<Option<Value>> {
+        let Some(path) = self.path()? else {
+            return Ok(None);
+        };
+        read_json_file(&path)
+    }
+
+    fn flush(&self, value: &Value) -> Result<()> {
+        let Some(path) = self.path()? else {
+            return Ok(());
+        };
+        crate::storage::configurable_scope::ensure_repo_store_dir_for_path(&path)?;
+        write_json_file(&path, value)
     }
 }

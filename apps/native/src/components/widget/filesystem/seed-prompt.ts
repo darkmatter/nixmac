@@ -40,14 +40,11 @@ export function seedForUntrackedItem(file: FsFile, item: CandidateItem): string 
 }
 
 /**
- * Build a prompt seed for the BeginStep "Untracked" banner — addresses
- * the full untracked surface across all candidate sections.
+ * Build a prompt seed for the BeginStep "Untracked" banner by stacking
+ * the same itemized prompt used for each candidate section.
  */
 export function seedForUntrackedBanner(files: FsFile[]): string {
   const candidates = files.filter((f) => f.status === "candidate" && f.items?.length);
   if (!candidates.length) return "Track everything that isn't in my config yet.";
-  const sections = candidates
-    .map((f) => `- ${f.title} (${f.items?.length ?? 0} items, would land in ${f.destination ?? "config"})`)
-    .join("\n");
-  return `Track everything that isn't in my config yet:\n${sections}\n`;
+  return candidates.map(seedForUntrackedSection).join("\n");
 }

@@ -6,8 +6,10 @@
 //! machines on the next clone/pull — settings persist across reinstalls and
 //! sync across devices without any explicit backup/restore step.
 //!
-//! The first time the path is requested, the `.nixmac/` directory is created
-//! and a short README is written explaining what the file is.
+//! Callers that intend to write repo-scoped settings should ensure the
+//! `.nixmac/` directory first by using `ensure_repo_store_dir_for_path`;
+//! read-only startup paths can resolve the settings location without mutating
+//! a not-yet-confirmed config directory.
 
 use crate::storage::store;
 use anyhow::Result;
@@ -36,8 +38,11 @@ If you'd rather not commit these settings, add `.nixmac/` to your
 defaults on next launch.
 ";
 
-/// Absolute path to `<config_dir>/.nixmac/settings.json`. The `.nixmac/`
-/// directory and the explanatory `README.md` are created on first call.
+/// Absolute path to `<config_dir>/.nixmac/settings.json`.
+///
+/// This resolver is read-only: **IT DOES NOT AUTOMAGICALLY CREATE `.nixmac/`**. Use
+/// `ensure_repo_store_dir_for_path` before writes that should materialize the
+/// managed settings directory.
 pub fn repo_store_path<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
     let config_dir = store::get_config_dir(app)?;
     repo_store_path_for_config_dir(&config_dir)
@@ -45,6 +50,15 @@ pub fn repo_store_path<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
 
 pub(crate) fn repo_store_path_for_config_dir(config_dir: &str) -> Result<String> {
     let dir = Path::new(&config_dir).join(REPO_DIR_NAME);
+    Ok(dir.join(REPO_SETTINGS_FILE).to_string_lossy().to_string())
+}
+
+/// Ensure the parent `.nixmac/` directory exists for a repo-scoped settings
+/// file and create the explanatory README when missing.
+pub(crate) fn ensure_repo_store_dir_for_path(path: impl AsRef<Path>) -> Result<()> {
+    let Some(dir) = path.as_ref().parent() else {
+        return Ok(());
+    };
     std::fs::create_dir_all(&dir)?;
     let readme = dir.join(REPO_README_FILE);
     if !readme.exists() {
@@ -53,19 +67,41 @@ pub(crate) fn repo_store_path_for_config_dir(config_dir: &str) -> Result<String>
         // mount.
         let _ = std::fs::write(&readme, REPO_README_CONTENT);
     }
-    Ok(dir.join(REPO_SETTINGS_FILE).to_string_lossy().to_string())
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
-    fn repo_store_path_creates_managed_dir_and_readme() {
+    fn repo_store_path_does_not_create_managed_dir() {
         let temp = tempfile::tempdir().expect("create tempdir");
 
         let path = repo_store_path_for_config_dir(temp.path().to_str().expect("utf-8 temp path"))
             .expect("resolve repo-scoped store path");
+
+        let expected_dir = temp.path().join(REPO_DIR_NAME);
+        assert_eq!(
+            path,
+            expected_dir
+                .join(REPO_SETTINGS_FILE)
+                .to_string_lossy()
+                .to_string()
+        );
+        assert!(!expected_dir.exists());
+    }
+
+    #[test]
+    fn ensure_repo_store_dir_creates_managed_dir_and_readme() {
+        let temp = tempfile::tempdir().expect("create tempdir");
+
+        let path = PathBuf::from(
+            repo_store_path_for_config_dir(temp.path().to_str().expect("utf-8 temp path"))
+                .expect("resolve repo-scoped store path"),
+        );
+        ensure_repo_store_dir_for_path(&path).expect("ensure repo store dir");
 
         let expected_dir = temp.path().join(REPO_DIR_NAME);
         assert_eq!(
@@ -90,12 +126,31 @@ mod tests {
         std::fs::create_dir_all(&dir).expect("create managed dir");
         std::fs::write(dir.join(REPO_README_FILE), "custom note").expect("write custom README");
 
-        let _ = repo_store_path_for_config_dir(temp.path().to_str().expect("utf-8 temp path"))
-            .expect("resolve repo-scoped store path");
+        let path = PathBuf::from(
+            repo_store_path_for_config_dir(temp.path().to_str().expect("utf-8 temp path"))
+                .expect("resolve repo-scoped store path"),
+        );
+        ensure_repo_store_dir_for_path(&path).expect("ensure repo store dir");
 
         assert_eq!(
             std::fs::read_to_string(dir.join(REPO_README_FILE)).expect("read README"),
             "custom note"
+        );
+    }
+
+    #[test]
+    fn ensure_repo_store_dir_accepts_file_path() {
+        let temp = tempfile::tempdir().expect("create tempdir");
+        let path: PathBuf = temp.path().join(REPO_DIR_NAME).join(REPO_SETTINGS_FILE);
+
+        ensure_repo_store_dir_for_path(&path).expect("ensure repo store dir");
+
+        assert!(temp.path().join(REPO_DIR_NAME).is_dir());
+        assert!(
+            temp.path()
+                .join(REPO_DIR_NAME)
+                .join(REPO_README_FILE)
+                .is_file()
         );
     }
 }
