@@ -70,7 +70,8 @@ fi
 
 target="${!#}"
 printf '%s\n' "signed $target" >>"$TAURI_SIGNER_LOG"
-printf '%s\n' "fresh signature"
+printf '%s\n' "fresh signature" >"$target.sig"
+printf '%s\n' "Signature generated for $target"
 SH
 chmod +x "$FAKE_BIN/bun"
 
@@ -169,6 +170,12 @@ if ! grep -F "apps/native/src-tauri/entitlements.plist" "$CODESIGN_LOG" >/dev/nu
 	exit 1
 fi
 
+if ! grep -F -- "--options runtime" "$CODESIGN_LOG" >/dev/null; then
+	echo "expected updater tarball app signing to use Developer ID options when a signing keychain exists" >&2
+	cat "$CODESIGN_LOG" >&2
+	exit 1
+fi
+
 if ! grep -F "signed $ABS_TAR_PATH" "$TAURI_SIGNER_LOG" >/dev/null; then
 	echo "expected updater tarball signature to be refreshed" >&2
 	cat "$TAURI_SIGNER_LOG" >&2
@@ -178,6 +185,25 @@ fi
 if ! grep -F "fresh signature" "$TMP_DIR/nixmac.app.tar.gz.sig" >/dev/null; then
 	echo "expected updater tarball signature file to be replaced" >&2
 	cat "$TMP_DIR/nixmac.app.tar.gz.sig" >&2
+	exit 1
+fi
+
+: >"$CODESIGN_LOG"
+make_app "$TMP_DIR/AdhocFallback.app" nix-iconv-adhoc
+(
+	export RUNNER_TEMP="$TMP_DIR/runner-without-keychain"
+	run_normalizer "$TMP_DIR/AdhocFallback.app"
+)
+
+if ! grep -F "AdhocFallback.app" "$CODESIGN_LOG" >/dev/null; then
+	echo "expected normalized app to be ad-hoc signed when no signing keychain exists" >&2
+	cat "$CODESIGN_LOG" >&2
+	exit 1
+fi
+
+if ! grep -F -- "--sign -" "$CODESIGN_LOG" >/dev/null; then
+	echo "expected fallback signing to use an ad-hoc identity" >&2
+	cat "$CODESIGN_LOG" >&2
 	exit 1
 fi
 

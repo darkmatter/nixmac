@@ -133,29 +133,39 @@ normalize_app() {
 	done < <(find "$app_path" -type f -print0)
 }
 
+require_codesign() {
+	local app_path="$1"
+
+	if ! command -v codesign >/dev/null 2>&1; then
+		echo "ERROR: codesign is required to code sign $app_path" >&2
+		exit 2
+	fi
+}
+
 sign_app_if_certificate_available() {
 	local app_path="$1"
 	local keychain_path
 	local identity
 
+	require_codesign "$app_path"
+
 	if [ -z "${RUNNER_TEMP:-}" ]; then
-		echo "No GitHub Actions temp directory available; skipping code signing for $app_path."
+		echo "No GitHub Actions temp directory available; ad-hoc signing normalized app: $app_path"
+		codesign --force --deep --sign - "$app_path"
+		codesign --verify --verbose "$app_path"
 		return
 	fi
 
 	keychain_path="${RUNNER_TEMP}/app-signing.keychain-db"
 	if [ ! -f "$keychain_path" ]; then
-		echo "No code-signing keychain found; skipping code signing for $app_path."
+		echo "No code-signing keychain found; ad-hoc signing normalized app: $app_path"
+		codesign --force --deep --sign - "$app_path"
+		codesign --verify --verbose "$app_path"
 		return
 	fi
 
 	if ! command -v security >/dev/null 2>&1; then
 		echo "ERROR: security is required to code sign $app_path" >&2
-		exit 2
-	fi
-
-	if ! command -v codesign >/dev/null 2>&1; then
-		echo "ERROR: codesign is required to code sign $app_path" >&2
 		exit 2
 	fi
 
@@ -221,6 +231,7 @@ normalize_dmg() {
 
 	while IFS= read -r app_path; do
 		normalize_app "$app_path"
+		sign_app_if_certificate_available "$app_path"
 	done < <(find "$mount_point" -maxdepth 2 -name "*.app" -type d)
 
 	detach_with_retry "$mount_point"
@@ -234,7 +245,8 @@ refresh_updater_signature() {
 	local tar_path="$1"
 	local sig_path="${tar_path}.sig"
 	local absolute_tar_path
-	local refreshed_sig
+	local before_hash
+	local after_hash
 
 	if [ ! -f "$sig_path" ]; then
 		echo "No updater signature found for $tar_path; skipping signature refresh."
@@ -247,25 +259,28 @@ refresh_updater_signature() {
 	fi
 
 	absolute_tar_path=$(absolute_path "$tar_path")
-	refreshed_sig="$TMP_DIR/$(basename "$tar_path").sig"
-	rm -f "$refreshed_sig"
+	before_hash=$(shasum -a 256 "$sig_path" | awk '{print $1}')
 
 	echo "Refreshing updater signature: $sig_path"
 	if command -v bun >/dev/null 2>&1 && [ -x "$REPO_ROOT/apps/native/node_modules/.bin/tauri" ]; then
-		bun --cwd "$REPO_ROOT/apps/native" tauri signer sign "$absolute_tar_path" >"$refreshed_sig"
+		bun --cwd "$REPO_ROOT/apps/native" tauri signer sign "$absolute_tar_path"
 	elif command -v tauri >/dev/null 2>&1; then
-		tauri signer sign "$absolute_tar_path" >"$refreshed_sig"
+		tauri signer sign "$absolute_tar_path"
 	else
 		echo "ERROR: Tauri CLI is required to refresh updater signature for $tar_path" >&2
 		exit 2
 	fi
 
-	if [ ! -s "$refreshed_sig" ]; then
+	if [ ! -s "$sig_path" ]; then
 		echo "ERROR: Tauri signer did not produce a non-empty signature for $tar_path" >&2
 		exit 2
 	fi
 
-	mv "$refreshed_sig" "$sig_path"
+	after_hash=$(shasum -a 256 "$sig_path" | awk '{print $1}')
+	if [ "$before_hash" = "$after_hash" ]; then
+		echo "ERROR: Tauri signer left $sig_path unchanged after repacking $tar_path" >&2
+		exit 2
+	fi
 }
 
 normalize_updater_tarball() {
@@ -309,6 +324,7 @@ for target in "$@"; do
 			;;
 		*.app)
 			normalize_app "$target"
+			sign_app_if_certificate_available "$target"
 			;;
 		*.dmg)
 			normalize_dmg "$target"

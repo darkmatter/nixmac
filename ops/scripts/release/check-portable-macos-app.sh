@@ -49,6 +49,84 @@ record_violation() {
 	printf '%s\t%s\t%s\n' "$file" "$dependency" "$reason" >>"$VIOLATIONS_FILE"
 }
 
+absolute_existing_path() {
+	local path="$1"
+	local dir
+	local base
+
+	dir=$(cd "$(dirname "$path")" && pwd -P)
+	base=$(basename "$path")
+	printf '%s/%s\n' "$dir" "$base"
+}
+
+resolve_relative_symlink_target() {
+	local link_path="$1"
+	local target="$2"
+	local link_dir
+	local target_dir
+	local target_base
+	local resolved_dir
+
+	link_dir=$(cd "$(dirname "$link_path")" && pwd -P)
+	target_dir=$(dirname "$target")
+	target_base=$(basename "$target")
+
+	if ! resolved_dir=$(cd "$link_dir/$target_dir" 2>/dev/null && pwd -P); then
+		printf '%s/%s\n' "$link_dir" "$target"
+		return 1
+	fi
+
+	printf '%s/%s\n' "$resolved_dir" "$target_base"
+}
+
+check_symlink() {
+	local app_path="$1"
+	local link_path="$2"
+	local target
+	local resolved_target
+
+	if ! target=$(readlink "$link_path"); then
+		record_violation "$link_path" "" "unreadable symlink"
+		return
+	fi
+
+	case "$target" in
+		"")
+			record_violation "$link_path" "$target" "empty symlink target"
+			return
+			;;
+		/nix/store/*)
+			record_violation "$link_path" "$target" "nix store symlink target"
+			return
+			;;
+		*.devenv*)
+			record_violation "$link_path" "$target" "devenv symlink target"
+			return
+			;;
+		/*)
+			resolved_target="$target"
+			;;
+		*)
+			resolved_target=$(resolve_relative_symlink_target "$link_path" "$target") || true
+			;;
+	esac
+
+	if [ ! -e "$resolved_target" ]; then
+		record_violation "$link_path" "$target" "broken symlink target"
+		return
+	fi
+
+	case "$resolved_target" in
+		"$app_path" | "$app_path"/*)
+			return
+			;;
+		*)
+			record_violation "$link_path" "$target" "symlink points outside app bundle"
+			return
+			;;
+	esac
+}
+
 check_dependency() {
 	local file="$1"
 	local dependency="$2"
@@ -183,16 +261,23 @@ check_macho_file() {
 
 check_app() {
 	local app_path="$1"
+	local app_root
 
 	if [ ! -d "$app_path" ]; then
 		echo "ERROR: app path does not exist: $app_path" >&2
 		exit 2
 	fi
 
+	app_root=$(absolute_existing_path "$app_path")
+
 	echo "Checking portable Mach-O dependencies in $app_path"
 	while IFS= read -r -d '' file; do
 		check_macho_file "$file"
 	done < <(find "$app_path" -type f -print0)
+
+	while IFS= read -r -d '' link_path; do
+		check_symlink "$app_root" "$link_path"
+	done < <(find "$app_path" -type l -print0)
 }
 
 check_dmg() {

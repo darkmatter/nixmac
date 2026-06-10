@@ -134,6 +134,10 @@ make_app "$TMP_DIR/NixRpath.app" bad-rpath-nix
 make_app "$TMP_DIR/RelativeRpath.app" bad-rpath-relative
 make_app "$TMP_DIR/SystemRpath.app" system-rpath
 make_app "$TMP_DIR/LoadCommandFailure.app" bad-load-command-inspection
+make_app "$TMP_DIR/SymlinkEscape.app" clean
+mkdir -p "$TMP_DIR/external"
+printf 'external dylib\n' >"$TMP_DIR/external/libcustom.dylib"
+ln -s "$TMP_DIR/external/libcustom.dylib" "$TMP_DIR/SymlinkEscape.app/Contents/MacOS/libcustom.dylib"
 
 assert_passes "$TMP_DIR/Clean.app"
 assert_passes "$TMP_DIR/SystemRpath.app"
@@ -146,6 +150,7 @@ assert_fails_with "libcustom.dylib" "$TMP_DIR/RelativeDependency.app"
 assert_fails_with "/nix/store/example-libiconv/lib" "$TMP_DIR/NixRpath.app"
 assert_fails_with "../Frameworks" "$TMP_DIR/RelativeRpath.app"
 assert_fails_with "failed to inspect load commands" "$TMP_DIR/LoadCommandFailure.app"
+assert_fails_with "symlink points outside app bundle" "$TMP_DIR/SymlinkEscape.app"
 
 if command -v hdiutil >/dev/null 2>&1; then
 	DMG_ROOT="$TMP_DIR/dmg-root"
