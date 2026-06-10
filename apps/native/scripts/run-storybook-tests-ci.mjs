@@ -26,7 +26,11 @@ const perBatchTimeoutMs =
     : defaultBatchTimeoutMs;
 // Individual retry runs should identify a hung story quickly enough to finish
 // before the workflow-level timeout kills the whole job without logs.
-const perRetryTimeoutMs = Number(process.env.STORYBOOK_RETRY_TIMEOUT_MS) || 60_000;
+const retryTimeoutOverrideMs = Number(process.env.STORYBOOK_RETRY_TIMEOUT_MS);
+const perRetryTimeoutMs =
+  Number.isFinite(retryTimeoutOverrideMs) && retryTimeoutOverrideMs > 0
+    ? retryTimeoutOverrideMs
+    : 60_000;
 
 // Aggregated record of every story whose snapshot failed, consumed by the
 // failed-story screenshot pipeline (scripts/resolve-failed-stories.mjs).
