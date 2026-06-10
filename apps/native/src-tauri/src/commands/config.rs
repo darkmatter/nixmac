@@ -6,6 +6,17 @@ use std::path::{Component, Path, PathBuf};
 use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
 
+const DEFAULT_BOOTSTRAP_HOSTNAME: &str = "macbook";
+
+fn hostname_or_default(raw_hostname: &[u8]) -> String {
+    let hostname = String::from_utf8_lossy(raw_hostname).trim().to_string();
+    if hostname.is_empty() {
+        DEFAULT_BOOTSTRAP_HOSTNAME.to_string()
+    } else {
+        hostname
+    }
+}
+
 /// Returns the current configuration including the flake directory and host attribute.
 #[tauri::command]
 pub async fn config_get(app: AppHandle) -> Result<types::Config, String> {
@@ -16,6 +27,15 @@ pub async fn config_get(app: AppHandle) -> Result<types::Config, String> {
         config_dir,
         host_attr,
     })
+}
+
+/// Returns the current machine hostname for setup defaults.
+#[tauri::command]
+pub async fn config_default_hostname() -> Result<String, String> {
+    match std::process::Command::new("hostname").output() {
+        Ok(output) if output.status.success() => Ok(hostname_or_default(&output.stdout)),
+        _ => Ok(DEFAULT_BOOTSTRAP_HOSTNAME.to_string()),
+    }
 }
 
 /// Sets the nix-darwin host attribute (e.g., "Coopers-MacBook-Pro").
@@ -434,5 +454,18 @@ mod tests {
         assert!(validate_new_dir_location(&home.join(".darwin-test")).is_ok());
         assert!(validate_new_dir_location(&home.join("configs").join("darwin")).is_err());
         assert!(validate_new_dir_location(Path::new("/tmp/darwin")).is_err());
+    }
+
+    #[test]
+    fn hostname_or_default_trims_hostname_output() {
+        assert_eq!(
+            hostname_or_default(b"Scotts-MacBook-Pro\n"),
+            "Scotts-MacBook-Pro"
+        );
+    }
+
+    #[test]
+    fn hostname_or_default_uses_fallback_for_blank_output() {
+        assert_eq!(hostname_or_default(b"\n  \t"), DEFAULT_BOOTSTRAP_HOSTNAME);
     }
 }

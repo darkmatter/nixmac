@@ -48,6 +48,7 @@ export const tauriAPI = {
     setDir: (dir: string) => invoke<SetDirResult>("config_set_dir", { dir }),
     prepareNewDir: (dir: string) => invoke<SetDirResult>("config_prepare_new_dir", { dir }),
     pickDir: () => invoke<SetDirResult | null>("config_pick_dir"),
+    defaultHostname: () => invoke<string>("config_default_hostname"),
     setHostAttr: (host: string) => invoke<OkResult>("config_set_host_attr", { host }),
     pickZip: () => invoke<string | null>("config_pick_zip"),
     importGithub: (repoRef: string, dirName?: string) =>

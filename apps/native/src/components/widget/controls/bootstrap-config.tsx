@@ -14,13 +14,41 @@ interface BootstrapConfigProps {
   onSuccess?: () => void;
 }
 
+const DEFAULT_HOSTNAME = "macbook";
+
 export function BootstrapConfig({ label, onSuccess }: BootstrapConfigProps) {
-  const [hostname, setHostname] = useState("macbook");
+  const [hostname, setHostname] = useState(DEFAULT_HOSTNAME);
+  const [hostnamePlaceholder, setHostnamePlaceholder] = useState(DEFAULT_HOSTNAME);
   const [localError, setLocalError] = useState<string | null>(null);
   const { bootstrap, isBootstrapping } = useDarwinConfig();
   const configDir = useWidgetStore((state) => state.configDir);
   const gitStatus = useViewModel((state) => state.git);
   const [flakeExists, setFlakeExists] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadDefaultHostname = async () => {
+      let nextHostname = DEFAULT_HOSTNAME;
+
+      try {
+        nextHostname = (await tauriAPI.config.defaultHostname()).trim() || DEFAULT_HOSTNAME;
+      } catch {}
+
+      if (cancelled) return;
+
+      setHostnamePlaceholder(nextHostname);
+      setHostname((currentHostname) =>
+        currentHostname === DEFAULT_HOSTNAME ? nextHostname : currentHostname,
+      );
+    };
+
+    void loadDefaultHostname();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     setLocalError(null);
@@ -73,7 +101,7 @@ export function BootstrapConfig({ label, onSuccess }: BootstrapConfigProps) {
                 type="text"
                 value={hostname}
                 onChange={(e) => setHostname(e.target.value)}
-                placeholder="macbook"
+                placeholder={hostnamePlaceholder}
                 className="font-mono text-xs"
                 disabled={isBootstrapping}
               />
