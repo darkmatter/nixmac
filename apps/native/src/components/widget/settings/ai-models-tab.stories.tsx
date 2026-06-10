@@ -140,6 +140,24 @@ export const RemoteOllama = meta.story({
   ),
 });
 
+// Regression (PR #364 review): a typed-but-unsaved OpenRouter key lives in
+// form state only — the note must keep describing the persisted route (OpenAI).
+export const TypedUnsavedKeyKeepsPersistedRoute = meta.story({
+  render: () => (
+    <AiModelsTabFixture
+      dataFlowPrefs={{ openaiApiKey: "sk-oai-storybook" }}
+      initialValues={{
+        evolveProvider: "openrouter",
+        evolveModel: "anthropic/claude-sonnet-4",
+        summaryProvider: "openrouter",
+        summaryModel: "openai/gpt-4o-mini",
+        openrouterApiKey: "sk-or-typed-but-not-verified",
+        openaiApiKey: "sk-oai-storybook",
+      }}
+    />
+  ),
+});
+
 export const OpenAiCompatible = meta.story({
   render: () => (
     <AiModelsTabFixture

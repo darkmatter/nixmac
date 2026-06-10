@@ -73,9 +73,27 @@ export function SettingsDialog() {
   }, [developerMode, activeTab]);
   const [openrouterKeyStatus, setOpenrouterKeyStatus] = useState<ApiKeyStatus>("idle");
   const openrouterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  // Persisted (saved) values only — the data-flow note must describe where
+  // Effective persisted values only — the data-flow note must describe where
   // requests actually route, and form state can hold typed-but-unsaved keys.
+  // Always re-read from getPrefs (env-aware effective values) after a write
+  // rather than mirroring raw UI values: clearing the UI key, for example,
+  // does not clear an env-injected credential the backend will keep using.
   const [persistedDataFlowPrefs, setPersistedDataFlowPrefs] = useState<ProviderDataFlowPrefs>({});
+
+  const refreshDataFlowPrefs = async () => {
+    try {
+      const prefs = await tauriAPI.ui.getPrefs();
+      if (prefs) {
+        setPersistedDataFlowPrefs({
+          openrouterApiKey: prefs.openrouterApiKey ?? "",
+          openaiApiKey: prefs.openaiApiKey ?? "",
+          ollamaApiBaseUrl: prefs.ollamaApiBaseUrl ?? "",
+        });
+      }
+    } catch (err) {
+      console.error("Failed to refresh data-flow prefs:", err);
+    }
+  };
 
   const { saveHost } = useDarwinConfig();
 
@@ -83,7 +101,7 @@ export function SettingsDialog() {
     if (!key) {
       setOpenrouterKeyStatus("idle");
       await tauriAPI.ui.setPrefs({ openrouterApiKey: "" });
-      setPersistedDataFlowPrefs((p) => ({ ...p, openrouterApiKey: "" }));
+      await refreshDataFlowPrefs();
       return;
     }
 
@@ -99,7 +117,7 @@ export function SettingsDialog() {
       if (response.ok) {
         setOpenrouterKeyStatus("valid");
         await tauriAPI.ui.setPrefs({ openrouterApiKey: key });
-        setPersistedDataFlowPrefs((p) => ({ ...p, openrouterApiKey: key }));
+        await refreshDataFlowPrefs();
       } else {
         setOpenrouterKeyStatus("invalid");
       }
@@ -111,7 +129,7 @@ export function SettingsDialog() {
 
   const saveOllamaUrl = async (url: string) => {
     await tauriAPI.ui.setPrefs({ ollamaApiBaseUrl: url });
-    setPersistedDataFlowPrefs((p) => ({ ...p, ollamaApiBaseUrl: url }));
+    await refreshDataFlowPrefs();
     // Clear cached Ollama models when the base URL changes
     await tauriAPI.models.clearCached("ollama");
   };
