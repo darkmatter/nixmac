@@ -18,9 +18,12 @@ const skippedSnapshotStoryFiles = new Set([
 // Small batches keep one hung story from consuming most of the workflow budget.
 // Override via STORYBOOK_BATCH_SIZE if a runner proves stable enough for more.
 const batchSize = Math.max(1, Number(process.env.STORYBOOK_BATCH_SIZE) || 2);
-const defaultBatchTimeoutMs = Math.min(30_000 + batchSize * 60_000, 120_000);
+const batchTimeoutOverrideMs = Number(process.env.STORYBOOK_BATCH_TIMEOUT_MS);
+const defaultBatchTimeoutMs = 30_000 + Math.min(batchSize * 60_000, 120_000);
 const perBatchTimeoutMs =
-  Number(process.env.STORYBOOK_BATCH_TIMEOUT_MS) || defaultBatchTimeoutMs;
+  Number.isFinite(batchTimeoutOverrideMs) && batchTimeoutOverrideMs > 0
+    ? batchTimeoutOverrideMs
+    : defaultBatchTimeoutMs;
 // Individual retry runs should identify a hung story quickly enough to finish
 // before the workflow-level timeout kills the whole job without logs.
 const perRetryTimeoutMs = Number(process.env.STORYBOOK_RETRY_TIMEOUT_MS) || 60_000;
