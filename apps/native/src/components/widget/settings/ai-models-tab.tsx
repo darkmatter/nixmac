@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/select";
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
 import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/ai-provider-validation";
+import { ProviderDataFlowNote } from "./provider-data-flow-note";
 import { tauriAPI } from "@/ipc/api";
 import type { CliToolsState } from "@/ipc/types";
 import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
@@ -69,6 +70,7 @@ function useProviderPrefs(form: AiModelsTabProps["form"]) {
     openrouterApiKey: "",
     openaiApiKey: "",
     vllmApiBaseUrl: "",
+    ollamaApiBaseUrl: "",
   });
 
   useEffect(() => {
@@ -78,6 +80,7 @@ function useProviderPrefs(form: AiModelsTabProps["form"]) {
         openrouterApiKey: v.openrouterApiKey ?? "",
         openaiApiKey: v.openaiApiKey ?? "",
         vllmApiBaseUrl: v.vllmApiBaseUrl ?? "",
+        ollamaApiBaseUrl: v.ollamaApiBaseUrl ?? "",
       });
     });
 
@@ -87,6 +90,7 @@ function useProviderPrefs(form: AiModelsTabProps["form"]) {
       openrouterApiKey: v.openrouterApiKey ?? "",
       openaiApiKey: v.openaiApiKey ?? "",
       vllmApiBaseUrl: v.vllmApiBaseUrl ?? "",
+      ollamaApiBaseUrl: v.ollamaApiBaseUrl ?? "",
     });
 
     return () => subscription.unsubscribe();
@@ -184,6 +188,10 @@ export function AiModelsTab({
                 {evolveProviderError && (
                   <p className="text-destructive text-xs">{evolveProviderError}</p>
                 )}
+                <ProviderDataFlowNote
+                  provider={evolveProviderField.state.value}
+                  prefs={providerPrefs}
+                />
               </div>
               <div className="space-y-2">
                 <form.Subscribe
@@ -272,6 +280,10 @@ export function AiModelsTab({
                 {summaryProviderError && (
                   <p className="text-destructive text-xs">{summaryProviderError}</p>
                 )}
+                <ProviderDataFlowNote
+                  provider={summaryProviderField.state.value}
+                  prefs={providerPrefs}
+                />
               </div>
               <div className="space-y-2">
                 <form.Subscribe
