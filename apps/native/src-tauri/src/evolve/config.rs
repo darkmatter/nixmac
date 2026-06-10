@@ -16,7 +16,7 @@ use tauri::{AppHandle, Runtime};
 
 use crate::state::preferences;
 use crate::state::slice::{
-    Persistence, RegisteredSliceConfig, RepoScopedJson, Slice, SliceRegistry,
+    ConfiguredRepoScopedJson, Persistence, RegisteredSliceConfig, Slice, SliceRegistry,
 };
 
 pub const EVOLUTION_LIMITS_CHANGED_EVENT: &str = "evolution_limits_changed";
@@ -72,11 +72,7 @@ impl Default for EvolutionLimits {
 }
 
 pub fn load_slice<R: Runtime>(app: &AppHandle<R>) -> Result<Slice<EvolutionLimits>> {
-    let persistence: Arc<dyn Persistence> =
-        match crate::storage::configurable_scope::repo_store_path(app) {
-            Ok(path) => Arc::new(RepoScopedJson::new(path)),
-            Err(_) => Arc::new(preferences::VolatileJson),
-        };
+    let persistence: Arc<dyn Persistence> = Arc::new(ConfiguredRepoScopedJson::new(app.clone()));
     let initial = preferences::load_or_default::<EvolutionLimits>(persistence.as_ref())?;
 
     Ok(Slice::new(
