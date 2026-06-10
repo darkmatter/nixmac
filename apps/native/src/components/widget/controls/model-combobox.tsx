@@ -39,9 +39,6 @@ const OPENAI_MODELS = [
   "gpt-4o-mini",
   "gpt-4.1",
   "gpt-4.1-mini",
-  "o3",
-  "o3-mini",
-  "o4-mini",
 ] as const;
 
 async function fetchOpenRouterModels(): Promise<string[]> {

@@ -60,11 +60,21 @@ export function createVerifiedApiKeyHandler({
   let requestId = 0;
   let saveQueue = Promise.resolve();
 
+  type SaveResult = "saved" | "stale" | "failed";
+
   const saveIfCurrent = async (currentRequestId: number, key: string) => {
     const queuedSave = saveQueue.then(async () => {
-      if (currentRequestId !== requestId) return false;
-      await saveKey(key);
-      return currentRequestId === requestId;
+      if (currentRequestId !== requestId) return "stale" satisfies SaveResult;
+      try {
+        await saveKey(key);
+      } catch {
+        return currentRequestId === requestId
+          ? "failed"
+          : ("stale" satisfies SaveResult);
+      }
+      return currentRequestId === requestId
+        ? "saved"
+        : ("stale" satisfies SaveResult);
     });
     saveQueue = queuedSave.then(
       () => undefined,
@@ -78,7 +88,8 @@ export function createVerifiedApiKeyHandler({
     const trimmedKey = key.trim();
     if (!trimmedKey) {
       setStatus("idle");
-      await saveIfCurrent(currentRequestId, "");
+      const saveResult = await saveIfCurrent(currentRequestId, "");
+      if (saveResult === "failed") setStatus("invalid");
       return;
     }
 
@@ -87,8 +98,12 @@ export function createVerifiedApiKeyHandler({
     if (currentRequestId !== requestId) return;
 
     if (valid) {
-      const savedCurrent = await saveIfCurrent(currentRequestId, trimmedKey);
-      if (!savedCurrent) return;
+      const saveResult = await saveIfCurrent(currentRequestId, trimmedKey);
+      if (saveResult === "stale") return;
+      if (saveResult === "failed") {
+        setStatus("invalid");
+        return;
+      }
       setStatus("valid");
       return;
     }

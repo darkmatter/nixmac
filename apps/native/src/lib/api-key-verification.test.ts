@@ -7,7 +7,7 @@ import {
 } from "./api-key-verification";
 
 const mocks = vi.hoisted(() => ({
-  invoke: vi.fn(),
+  invoke: vi.fn<(command: string, args?: unknown) => Promise<boolean>>(),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -15,6 +15,9 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 const okResponse = { ok: true } as Response;
+type FetchLike = (input: string, init?: RequestInit) => Promise<Pick<Response, "ok">>;
+type SaveKey = (key: string) => Promise<void>;
+type VerifyKey = (key: string) => Promise<boolean>;
 
 describe("api key verification", () => {
   beforeEach(() => {
@@ -44,7 +47,7 @@ describe("api key verification", () => {
   });
 
   it("preserves OpenRouter endpoint and authorization behavior", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(okResponse);
+    const fetchImpl = vi.fn<FetchLike>().mockResolvedValue(okResponse);
 
     await expect(verifyOpenrouterApiKey("sk-or", fetchImpl)).resolves.toBe(true);
 
@@ -58,8 +61,8 @@ describe("api key verification", () => {
 describe("verified API key save flow", () => {
   it("clears stored key and resets to idle for blank keys", async () => {
     const statuses: ApiKeyStatus[] = [];
-    const saveKey = vi.fn();
-    const verifyKey = vi.fn();
+    const saveKey = vi.fn<SaveKey>();
+    const verifyKey = vi.fn<VerifyKey>();
     const handleKey = createVerifiedApiKeyHandler({
       saveKey,
       setStatus: (status) => statuses.push(status),
@@ -75,10 +78,10 @@ describe("verified API key save flow", () => {
 
   it("saves trimmed keys only after successful verification", async () => {
     const events: string[] = [];
-    const saveKey = vi.fn(async (key: string) => {
+    const saveKey = vi.fn<SaveKey>(async (key) => {
       events.push(`save:${key}`);
     });
-    const verifyKey = vi.fn().mockResolvedValue(true);
+    const verifyKey = vi.fn<VerifyKey>().mockResolvedValue(true);
     const handleKey = createVerifiedApiKeyHandler({
       saveKey,
       setStatus: (status) => events.push(`status:${status}`),
@@ -94,8 +97,8 @@ describe("verified API key save flow", () => {
 
   it("marks invalid keys without saving them", async () => {
     const statuses: ApiKeyStatus[] = [];
-    const saveKey = vi.fn();
-    const verifyKey = vi.fn().mockResolvedValue(false);
+    const saveKey = vi.fn<SaveKey>();
+    const verifyKey = vi.fn<VerifyKey>().mockResolvedValue(false);
     const handleKey = createVerifiedApiKeyHandler({
       saveKey,
       setStatus: (status) => statuses.push(status),
@@ -108,13 +111,46 @@ describe("verified API key save flow", () => {
     expect(saveKey).not.toHaveBeenCalled();
   });
 
+  it("marks verified keys invalid when saving fails", async () => {
+    const statuses: ApiKeyStatus[] = [];
+    const saveKey = vi.fn<SaveKey>().mockRejectedValue(new Error("keychain denied"));
+    const verifyKey = vi.fn<VerifyKey>().mockResolvedValue(true);
+    const handleKey = createVerifiedApiKeyHandler({
+      saveKey,
+      setStatus: (status) => statuses.push(status),
+      verifyKey,
+    });
+
+    await handleKey("sk-openai");
+
+    expect(statuses).toEqual(["verifying", "invalid"]);
+    expect(saveKey).toHaveBeenCalledWith("sk-openai");
+  });
+
+  it("marks blank keys invalid when clearing storage fails", async () => {
+    const statuses: ApiKeyStatus[] = [];
+    const saveKey = vi.fn<SaveKey>().mockRejectedValue(new Error("keychain denied"));
+    const verifyKey = vi.fn<VerifyKey>();
+    const handleKey = createVerifiedApiKeyHandler({
+      saveKey,
+      setStatus: (status) => statuses.push(status),
+      verifyKey,
+    });
+
+    await handleKey("");
+
+    expect(statuses).toEqual(["idle", "invalid"]);
+    expect(saveKey).toHaveBeenCalledWith("");
+    expect(verifyKey).not.toHaveBeenCalled();
+  });
+
   it("ignores stale verification results after a newer edit", async () => {
     const events: string[] = [];
-    const saveKey = vi.fn(async (key: string) => {
+    const saveKey = vi.fn<SaveKey>(async (key) => {
       events.push(`save:${key}`);
     });
     let resolveVerification: (valid: boolean) => void = () => {};
-    const verifyKey = vi.fn(
+    const verifyKey = vi.fn<VerifyKey>(
       () =>
         new Promise<boolean>((resolve) => {
           resolveVerification = resolve;
@@ -140,7 +176,7 @@ describe("verified API key save flow", () => {
   it("replays a newer clear after an older verified save has already started", async () => {
     const events: string[] = [];
     let resolveFirstSave: () => void = () => {};
-    const saveKey = vi.fn(async (key: string) => {
+    const saveKey = vi.fn<SaveKey>(async (key) => {
       events.push(`save:start:${key}`);
       if (key === "sk-old") {
         await new Promise<void>((resolve) => {
@@ -149,7 +185,7 @@ describe("verified API key save flow", () => {
       }
       events.push(`save:end:${key}`);
     });
-    const verifyKey = vi.fn().mockResolvedValue(true);
+    const verifyKey = vi.fn<VerifyKey>().mockResolvedValue(true);
     const handleKey = createVerifiedApiKeyHandler({
       saveKey,
       setStatus: (status) => events.push(`status:${status}`),

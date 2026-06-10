@@ -8,7 +8,7 @@ use crate::shared_types;
 use crate::storage::credential_store::{CredentialStore, KeychainStore};
 
 use anyhow::Result;
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{de::DeserializeOwned, Serialize};
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_store::{Store, StoreExt};
@@ -378,6 +378,10 @@ fn read_non_empty_env(name: &str) -> Option<String> {
 }
 
 fn normalize_env_secret(value: Option<String>) -> Option<String> {
+    normalize_secret(value)
+}
+
+fn normalize_secret(value: Option<String>) -> Option<String> {
     value
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
@@ -478,20 +482,27 @@ fn keychain_store_for<R: Runtime>(app: &AppHandle<R>, key: &str) -> KeychainStor
 
 fn get_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> Result<Option<String>> {
     if e2e_mock_system_enabled() {
-        return get_string_pref_raw(app, key);
+        return Ok(normalize_secret(get_string_pref_raw(app, key)?));
     }
 
     let keychain = keychain_store_for(app, key);
-    keychain.get().map_err(anyhow::Error::from)
+    keychain
+        .get()
+        .map(normalize_secret)
+        .map_err(anyhow::Error::from)
 }
 
 fn set_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str, value: &str) -> Result<()> {
+    let Some(value) = normalize_secret(Some(value.to_string())) else {
+        return delete_secret_pref(app, key);
+    };
+
     if e2e_mock_system_enabled() {
-        return set_string_pref(app, key, value);
+        return set_string_pref(app, key, &value);
     }
 
     let keychain = keychain_store_for(app, key);
-    keychain.set(value).map_err(anyhow::Error::from)
+    keychain.set(&value).map_err(anyhow::Error::from)
 }
 
 fn delete_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> Result<()> {
@@ -823,6 +834,17 @@ mod tests {
         assert_eq!(
             normalize_env_secret(Some("  sk-abc123  ".to_string())),
             Some("sk-abc123".to_string())
+        );
+    }
+
+    #[test]
+    fn normalize_secret_rejects_empty_stored_values() {
+        assert_eq!(normalize_secret(None), None);
+        assert_eq!(normalize_secret(Some("".to_string())), None);
+        assert_eq!(normalize_secret(Some("   \n\t ".to_string())), None);
+        assert_eq!(
+            normalize_secret(Some("  sk-stored  ".to_string())),
+            Some("sk-stored".to_string())
         );
     }
 
