@@ -242,6 +242,21 @@ describe("rebuild lifecycle", () => {
     expect(r.success).toBeUndefined();
   });
 
+  it("startRebuild stores retry options for failed operation retries", () => {
+    const store = createWidgetStore();
+    const onSuccess = async () => {};
+
+    store.getState().startRebuild("rollback", {
+      storePath: "/nix/store/previous-system",
+      onSuccess,
+    });
+
+    expect(store.getState().rebuild.retryOptions).toEqual({
+      storePath: "/nix/store/previous-system",
+      onSuccess,
+    });
+  });
+
   it("appendRebuildLine caps buffered lines at 50", () => {
     const store = createWidgetStore();
     store.getState().startRebuild("apply");
@@ -299,7 +314,7 @@ describe("rebuild lifecycle", () => {
 
   it("clearRebuild resets back to initialRebuildState", () => {
     const store = createWidgetStore();
-    store.getState().startRebuild("apply");
+    store.getState().startRebuild("apply", { storePath: "/nix/store/old-system" });
     store.getState().appendRebuildLine({ id: 1, text: "x", type: "stdout" });
     store.getState().clearRebuild();
     expect(store.getState().rebuild).toEqual(initialRebuildState);

@@ -1,4 +1,4 @@
-import { useWidgetStore, type RebuildContext } from "@/stores/widget-store";
+import { useWidgetStore, type RebuildContext, type RebuildRetryOptions } from "@/stores/widget-store";
 import { tauriAPI, ipcRenderer } from "@/ipc/api";
 import type {
   DarwinApplyDataEvent,
@@ -8,12 +8,8 @@ import type {
 import { useRef } from "react";
 import { useGitOperations } from "./use-git-operations";
 
-interface RebuildOptions {
+interface RebuildOptions extends RebuildRetryOptions {
   context: RebuildContext;
-  /** When set, activates this nix store path instead of triggering a full rebuild. */
-  storePath?: string;
-  onSuccess?: () => Promise<void>;
-  onFailure?: () => Promise<void>;
 }
 
 /**
@@ -26,7 +22,11 @@ export function useRebuildStream() {
 
   const triggerRebuild = async (options: RebuildOptions) => {
       const store = useWidgetStore.getState();
-      store.startRebuild(options.context);
+      store.startRebuild(options.context, {
+        storePath: options.storePath,
+        onSuccess: options.onSuccess,
+        onFailure: options.onFailure,
+      });
       rebuildLineIdRef.current = 1;
 
       // For store-path activation (no log summarizer), also populate summary lines.

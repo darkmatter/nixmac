@@ -357,14 +357,14 @@ function RawConsoleOutput({ lines, children }: { lines: string[]; children?: Rea
 export function RebuildOverlayPanel() {
   const { handleRollback } = useRollback();
   const { triggerRebuild } = useRebuildStream();
-  const { isRunning, lines, rawLines, success, errorType, errorMessage, context, systemUntouched } =
+  const { isRunning, lines, rawLines, success, errorType, errorMessage, context, systemUntouched, retryOptions } =
     useWidgetStore((state) => state.rebuild);
   const isRollback = context === "rollback";
   const systemSafetyMessage = getSystemSafetyMessage(systemUntouched, context);
 
   const handleRetry = async () => {
     useWidgetStore.getState().setProcessing(true, "cancel");
-    await triggerRebuild({ context: "rollback" });
+    await triggerRebuild({ context: "rollback", ...retryOptions });
   };
 
   const handleDismiss = () => {

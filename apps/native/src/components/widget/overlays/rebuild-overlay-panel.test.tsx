@@ -1,9 +1,14 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RebuildOverlayPanel } from "@/components/widget/overlays/rebuild-overlay-panel";
 import { initialRebuildState, useWidgetStore, type RebuildState } from "@/stores/widget-store";
+
+const mocks = vi.hoisted(() => ({
+  handleRollback: vi.fn(),
+  triggerRebuild: vi.fn(),
+}));
 
 vi.mock("motion/react", async () => {
   const React = await import("react");
@@ -27,13 +32,13 @@ vi.mock("motion/react", async () => {
 
 vi.mock("@/hooks/use-rebuild-stream", () => ({
   useRebuildStream: () => ({
-    triggerRebuild: vi.fn<() => void>(),
+    triggerRebuild: mocks.triggerRebuild,
   }),
 }));
 
 vi.mock("@/hooks/use-rollback", () => ({
   useRollback: () => ({
-    handleRollback: vi.fn<() => void>(),
+    handleRollback: mocks.handleRollback,
   }),
 }));
 
@@ -62,6 +67,8 @@ async function renderWithRebuildState(rebuild: Partial<RebuildState>) {
 
 describe("<RebuildOverlayPanel>", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.triggerRebuild.mockResolvedValue(undefined);
     act(() => {
       useWidgetStore.getState().clearRebuild();
     });
@@ -98,5 +105,32 @@ describe("<RebuildOverlayPanel>", () => {
     });
 
     expect(screen.queryByText(safetyMessage)).not.toBeInTheDocument();
+  });
+
+  it("retries a failed rollback with its captured store path and finalization callbacks", async () => {
+    const onSuccess = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    const onFailure = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+
+    await renderWithRebuildState({
+      context: "rollback",
+      errorType: "authorization_denied",
+      errorMessage: "Activation denied",
+      retryOptions: {
+        storePath: "/nix/store/previous-system",
+        onSuccess,
+        onFailure,
+      },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /retry rollback/i }));
+    });
+
+    expect(mocks.triggerRebuild).toHaveBeenCalledWith({
+      context: "rollback",
+      storePath: "/nix/store/previous-system",
+      onSuccess,
+      onFailure,
+    });
   });
 });

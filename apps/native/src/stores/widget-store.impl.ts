@@ -52,6 +52,13 @@ export interface RebuildLine {
 
 export type RebuildContext = "rollback" | "apply";
 
+export interface RebuildRetryOptions {
+  /** When set, retry activates this nix store path instead of triggering a full rebuild. */
+  storePath?: string;
+  onSuccess?: () => Promise<void>;
+  onFailure?: () => Promise<void>;
+}
+
 export interface RebuildState {
   isRunning: boolean;
   context: RebuildContext;
@@ -62,6 +69,7 @@ export interface RebuildState {
   errorType?: RebuildErrorType;
   errorMessage?: string;
   systemUntouched?: boolean;
+  retryOptions?: RebuildRetryOptions;
 }
 
 export interface WidgetState {
@@ -237,7 +245,7 @@ interface WidgetActions {
   setCommitMessageSuggestion: (msg: string | null) => void;
 
   // Rebuild state
-  startRebuild: (context: RebuildContext) => void;
+  startRebuild: (context: RebuildContext, retryOptions?: RebuildRetryOptions) => void;
   appendRebuildLine: (line: RebuildLine) => void;
   appendRawLine: (line: string) => void;
   setRebuildError: (errorType: RebuildErrorType, errorMessage: string, systemUntouched?: boolean) => void;
@@ -261,6 +269,7 @@ export const initialRebuildState: RebuildState = {
   errorType: undefined,
   errorMessage: undefined,
   systemUntouched: undefined,
+  retryOptions: undefined,
 };
 
 const initialWidgetState: WidgetState = {
@@ -446,7 +455,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setCommitMessageSuggestion: (commitMessageSuggestion) => set({ commitMessageSuggestion }),
 
     // Rebuild state
-    startRebuild: (context) =>
+    startRebuild: (context, retryOptions) =>
       set({
         rebuild: {
           isRunning: true,
@@ -458,6 +467,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
           errorType: undefined,
           errorMessage: undefined,
           systemUntouched: undefined,
+          retryOptions,
         },
       }),
     appendRebuildLine: (line) =>
