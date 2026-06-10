@@ -13,7 +13,7 @@ const meta = preview.meta({
   },
   decorators: [
     (Story: React.ComponentType) => (
-      <div className="relative m-2 h-[600px] w-[400px] overflow-hidden rounded-xl border border-border bg-background shadow-2xl">
+      <div className="relative m-2 h-[760px] w-[400px] overflow-auto rounded-xl border border-border bg-background shadow-2xl">
         <Story />
       </div>
     ),
