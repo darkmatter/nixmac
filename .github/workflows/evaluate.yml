@@ -37,9 +37,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - uses: ./.github/actions/setup
+      # tsc only needs bun + node_modules — skip the nix/devenv setup, which
+      # costs ~10 minutes on GitHub-hosted runners.
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
         with:
-          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+          bun-version-file: package.json
+
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+
       - name: Type-check native app
         working-directory: apps/native
         run: bunx tsc --noEmit
@@ -53,10 +60,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      # `nix fmt` only evaluates the flake's formatter — the devenv profile
+      # is not needed, and skipping it saves ~10 minutes on hosted runners.
       - uses: ./.github/actions/setup
         with:
           darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
           install-bun-deps: false
+          install-devenv: false
       - name: Check changed Nix and shell files
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
