@@ -86,11 +86,19 @@ def resolve_base_config(
     if local.is_dir():
         return local
 
-    # 3) git URL (C3 — not implemented yet).
+    # 3) git URL → shallow clone once into `clone_into`.
     if _looks_like_git_url(base_config):
-        raise NotImplementedError(
-            f"git URL --base-config not supported yet: {base_config}"
+        clone_into.mkdir(parents=True, exist_ok=True)
+        kwargs: dict[str, Any] = {"depth": 1, "single_branch": True}
+        if base_config_ref:
+            kwargs["branch"] = base_config_ref
+        print(
+            f"Cloning {base_config}"
+            + (f" @ {base_config_ref}" if base_config_ref else "")
+            + f" into {clone_into}"
         )
+        Repo.clone_from(base_config, str(clone_into), **kwargs)
+        return clone_into
 
     raise ValueError(
         f"--base-config {base_config!r} is not a bundled template name, "
@@ -480,12 +488,18 @@ def main(parsed_args: argparse.Namespace) -> None:
 
     old_handler = signal.signal(signal.SIGINT, _sigint_handler)
 
+    # Session-level clone dir, only allocated if --base-config is a URL.
+    clone_dir: Path | None = None
+    base_config_arg = getattr(parsed_args, "base_config", None)
+    if base_config_arg and _looks_like_git_url(base_config_arg):
+        clone_dir = Path(tempfile.mkdtemp(prefix="eval-base-config-"))
+
     try:
         # Resolve the nix-darwin baseline once per run.
         template_dir = resolve_base_config(
-            getattr(parsed_args, "base_config", None),
+            base_config_arg,
             getattr(parsed_args, "base_config_ref", None),
-            clone_into=Path(tempfile.gettempdir()),  # unused without --base-config-ref
+            clone_into=clone_dir or Path(tempfile.gettempdir()),
         )
         print(f"Using nix-darwin baseline: {template_dir}")
 
@@ -595,6 +609,12 @@ def main(parsed_args: argparse.Namespace) -> None:
             pass
 
         restore_nixmac_settings(backups)
+
+        # Clean up the session-level cloned base config, if any.
+        if clone_dir is not None:
+            print(f"Cleaning up cloned base config directory: {clone_dir}")
+            with suppress(Exception):
+                shutil.rmtree(clone_dir)
 
 
 if __name__ == "__main__":

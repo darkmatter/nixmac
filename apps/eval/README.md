@@ -136,6 +136,12 @@ python run_evals.py --csv data/test_prompts.csv --base-config minimal
 # A local nix-darwin configuration on disk
 python run_evals.py --csv data/test_prompts.csv \
   --base-config ~/.darwin --host my-mac
+
+# A git repo (shallow-cloned for the duration of the run)
+python run_evals.py --csv data/test_prompts.csv \
+  --base-config https://github.com/me/dotfiles.git \
+  --base-config-ref main \
+  --host my-mac
 ```
 
 When `--base-config` points at a real config (not a bundled template),
