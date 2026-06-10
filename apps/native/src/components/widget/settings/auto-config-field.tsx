@@ -10,28 +10,31 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { tauriAPI } from "@/ipc/api";
-import type { ConfigField } from "@/ipc/types";
+import type { ConfigFieldSchema, JsonValue } from "@/ipc/types";
 import { Info } from "lucide-react";
 import { useState } from "react";
 
 interface Props {
   /** Stable identifier of the Configurable struct this field belongs to. */
   structName: string;
-  /** Field metadata + current value, sourced from the backend registry. */
-  field: ConfigField;
+  /** Static field metadata sourced from the backend schema. */
+  field: ConfigFieldSchema;
+  /** Current value loaded from the managed observable, looked up by key
+   *  from the snapshot's `values` array. */
+  current: JsonValue;
   /** Called after a successful save with the new value so the parent can
    *  refresh the schema or surface a status message. Optional. */
   onSaved?: (key: string, value: unknown) => void;
 }
 
 /**
- * Renders the appropriate control for a `ConfigField` based on `field.ty.kind`
- * and writes changes back through `tauriAPI.devConfigs.set`. Local optimistic
- * state keeps the input snappy while the backend persists. On error, reverts
- * and surfaces the message inline.
+ * Renders the appropriate control for a `ConfigFieldSchema` based on
+ * `field.ty.kind` and writes changes back through `tauriAPI.devConfigs.set`.
+ * Local optimistic state keeps the input snappy while the backend persists.
+ * On error, reverts and surfaces the message inline.
  */
-export function AutoConfigField({ structName, field, onSaved }: Props) {
-  const [value, setValue] = useState<unknown>(field.current);
+export function AutoConfigField({ structName, field, current, onSaved }: Props) {
+  const [value, setValue] = useState<unknown>(current);
   const [error, setError] = useState<string | null>(null);
 
   const commit = async (next: unknown) => {

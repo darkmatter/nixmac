@@ -1,7 +1,7 @@
 import { tauriAPI } from "@/ipc/api";
-import type { ConfigurableSchema } from "@/ipc/types";
+import type { ConfigurableSnapshot, JsonValue } from "@/ipc/types";
 import { SlidersHorizontal } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AutoConfigField } from "@/components/widget/settings/auto-config-field";
 import { BackupRestoreSection } from "@/components/widget/settings/backup-restore-section";
 
@@ -15,7 +15,7 @@ import { BackupRestoreSection } from "@/components/widget/settings/backup-restor
  * Also includes Backup & Restore for settings export/import.
  */
 export function TuningTab() {
-  const [schemas, setSchemas] = useState<ConfigurableSchema[]>([]);
+  const [snapshots, setSnapshots] = useState<ConfigurableSnapshot[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -23,7 +23,7 @@ export function TuningTab() {
       const next = await tauriAPI.devConfigs.list();
       // In environments where the Tauri command isn't registered (Storybook,
       // tests), invoke can resolve with null instead of an array.
-      setSchemas(Array.isArray(next) ? next : []);
+      setSnapshots(Array.isArray(next) ? next : []);
       setLoadError(null);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : String(err));
@@ -59,26 +59,12 @@ export function TuningTab() {
         )}
 
         <div className="space-y-5">
-          {schemas.map((schema) => (
-            <section key={schema.name} className="space-y-3">
-              {schemas.length > 1 && (
-                <div>
-                  <h3 className="font-medium text-xs">{schema.displayName}</h3>
-                  {schema.description && (
-                    <p className="text-muted-foreground text-[10px]">{schema.description}</p>
-                  )}
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                {schema.fields.map((field) => (
-                  <AutoConfigField
-                    key={field.key}
-                    structName={schema.name}
-                    field={field}
-                  />
-                ))}
-              </div>
-            </section>
+          {snapshots.map((snapshot) => (
+            <SnapshotSection
+              key={snapshot.schema.name}
+              snapshot={snapshot}
+              showHeader={snapshots.length > 1}
+            />
           ))}
         </div>
       </div>
@@ -86,5 +72,44 @@ export function TuningTab() {
       {/* Backup & Restore */}
       <BackupRestoreSection />
     </div>
+  );
+}
+
+function SnapshotSection({
+  snapshot,
+  showHeader,
+}: {
+  snapshot: ConfigurableSnapshot;
+  showHeader: boolean;
+}) {
+  const valuesByKey = useMemo(() => {
+    const map = new Map<string, JsonValue>();
+    for (const value of snapshot.values) {
+      map.set(value.key, value.current);
+    }
+    return map;
+  }, [snapshot.values]);
+
+  return (
+    <section className="space-y-3">
+      {showHeader && (
+        <div>
+          <h3 className="font-medium text-xs">{snapshot.schema.displayName}</h3>
+          {snapshot.schema.description && (
+            <p className="text-muted-foreground text-[10px]">{snapshot.schema.description}</p>
+          )}
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-4">
+        {snapshot.schema.fields.map((field) => (
+          <AutoConfigField
+            key={field.key}
+            structName={snapshot.schema.name}
+            field={field}
+            current={valuesByKey.get(field.key) ?? null}
+          />
+        ))}
+      </div>
+    </section>
   );
 }

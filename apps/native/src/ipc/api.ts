@@ -11,7 +11,7 @@ import type {
   CommitResult,
   Config as DarwinConfig,
   ConfigEditApplyResult,
-  ConfigurableSchema,
+  ConfigurableSnapshot,
   EvolveCancelResult,
   EvolutionResult,
   EvolveState,
@@ -142,7 +142,7 @@ export const tauriAPI = {
     import: () => invoke<ImportResult | null>("settings_import"),
   },
   devConfigs: {
-    list: () => invoke<ConfigurableSchema[]>("dev_configs_list"),
+    list: () => invoke<ConfigurableSnapshot[]>("dev_configs_list"),
     set: (structName: string, key: string, value: unknown) =>
       invoke<void>("dev_config_set", { structName, key, value }),
   },

@@ -49,10 +49,16 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
             // Generic functions can't be cast to fn pointers; these monomorphic
             // wrappers can.
             #[doc(hidden)]
-            pub fn __configurable_schema_wry(
+            pub fn __configurable_schema_wry() -> ::configurable::ConfigurableSchema {
+                Self::schema()
+            }
+
+            #[doc(hidden)]
+            pub fn __configurable_load_value_wry(
                 app: &::tauri::AppHandle<::tauri::Wry>,
-            ) -> ::std::result::Result<::configurable::ConfigurableSchema, ::anyhow::Error> {
-                Self::schema(app)
+            ) -> ::std::result::Result<::serde_json::Value, ::anyhow::Error> {
+                let __current = Self::load(app)?;
+                ::std::result::Result::Ok(::serde_json::to_value(&__current)?)
             }
 
             #[doc(hidden)]
@@ -71,6 +77,7 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
             ::configurable::ConfigurableMeta {
                 name: #name_str,
                 schema_fn: #name::__configurable_schema_wry,
+                load_value_fn: #name::__configurable_load_value_wry,
                 set_field_fn: #name::__configurable_set_field_wry,
             }
         }
@@ -90,9 +97,10 @@ fn description_expr(description: Option<&String>) -> TokenStream2 {
 
 /// Emits the generated `load`, `schema`, and `set_field` methods.
 ///
-/// All generated methods target the managed `Slice<T>` for the derived type.
-/// That keeps persistence and UI change events behind the slice guard instead
-/// of letting each configurable type choose its own storage path.
+/// `schema` is intentionally context-free: it returns a `ConfigurableSchema`
+/// built from the derive attributes alone, with no `AppHandle` involved. The
+/// dev-settings command joins it with current values at the IPC boundary via
+/// `load_value` so the static metadata stays cacheable.
 fn build_scope_methods(
     name: &syn::Ident,
     name_str: &str,
@@ -130,18 +138,15 @@ fn build_scope_methods(
             })
         }
 
-        pub fn schema<R: ::tauri::Runtime>(
-            app: &::tauri::AppHandle<R>,
-        ) -> ::std::result::Result<::configurable::ConfigurableSchema, ::anyhow::Error> {
-            let __current = Self::load(app)?;
-            ::std::result::Result::Ok(::configurable::ConfigurableSchema {
+        pub fn schema() -> ::configurable::ConfigurableSchema {
+            ::configurable::ConfigurableSchema {
                 name: #name_str.to_string(),
                 display_name: #display_name.to_string(),
                 description: #description_expr,
                 fields: ::std::vec![
                     #(#schema_fields)*
                 ],
-            })
+            }
         }
 
         pub fn set_field<R: ::tauri::Runtime>(

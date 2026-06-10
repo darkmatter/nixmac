@@ -203,9 +203,13 @@ gitStatus: GitStatus;
 evolveState: EvolveState }
 
 /**
- * Per-field description rendered into a UI control.
+ * Static description of one Configurable field.
+ * 
+ * Produced by the derive macro with no runtime context; the same value every
+ * call. Pair with a [`ConfigFieldValue`] (matched by `key`) to get the
+ * current store-backed value for rendering.
  */
-export type ConfigField = { 
+export type ConfigFieldSchema = { 
 /**
  * Key as written to the underlying store (typically camelCase).
  */
@@ -225,15 +229,18 @@ ty: FieldType;
 /**
  * Default if the store has no value yet.
  */
-default: JsonValue; 
+default: JsonValue }
+
 /**
- * Current value loaded from the store.
+ * Current value for one Configurable field, keyed identically to its
+ * [`ConfigFieldSchema`]. Sent alongside the schema in the dev-settings IPC
+ * response so the frontend can render initial input state.
  */
-current: JsonValue }
+export type ConfigFieldValue = { key: string; current: JsonValue }
 
 /**
  * One section in the auto-rendered settings panel — corresponds to one
- * `#[derive(Configurable)]` struct.
+ * `#[derive(Configurable)]` struct. Static metadata only; no current values.
  */
 export type ConfigurableSchema = { 
 /**
@@ -248,7 +255,13 @@ displayName: string;
 /**
  * Optional one-line description shown under the title.
  */
-description?: string | null; fields: ConfigField[] }
+description?: string | null; fields: ConfigFieldSchema[] }
+
+/**
+ * Joined-at-the-boundary response for `dev_configs_list`: the static schema
+ * plus the current values loaded from the managed observable.
+ */
+export type ConfigurableSnapshot = { schema: ConfigurableSchema; values: ConfigFieldValue[] }
 
 /**
  * Payload for `darwin:apply:data`.

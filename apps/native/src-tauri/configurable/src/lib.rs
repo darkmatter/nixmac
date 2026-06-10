@@ -5,12 +5,14 @@
 //! returns to settings/dev tooling.
 //!
 //! Derive `Configurable` on a struct to:
-//!   1. Generate a `load(app)` method that reads the managed slice, falling
-//!      back to per-field defaults when the slice is not yet registered.
-//!   2. Expose a rich schema (`schema()`) describing every field's
-//!      type, label, help text, range, and default value.
-//!   3. Generate Wry-specialized shim methods that callers can register with
-//!      the slice registry.
+//!   1. Generate a `load(app)` method that reads the managed observable,
+//!      falling back to per-field defaults when it isn't yet managed.
+//!   2. Expose a static schema (`schema()`) describing every field's type,
+//!      label, help text, range, and default value. No `AppHandle` needed —
+//!      the schema is the same value every call and trivially cacheable.
+//!   3. Push the type into a compile-time `inventory` collection so the dev
+//!      settings UI can enumerate every configurable without explicit
+//!      registration.
 //!
 //! ```ignore
 //! use configurable::Configurable;
@@ -32,7 +34,7 @@
 //! }
 //!
 //! let limits = EvolutionLimits::load(&app)?;
-//! let schema = EvolutionLimits::schema(&app)?;
+//! let schema = EvolutionLimits::schema();
 //! ```
 
 use serde::{Deserialize, Serialize};
@@ -76,10 +78,14 @@ pub struct EnumVariant {
     pub label: String,
 }
 
-/// Per-field description rendered into a UI control.
+/// Static description of one Configurable field.
+///
+/// Produced by the derive macro with no runtime context; the same value every
+/// call. Pair with a [`ConfigFieldValue`] (matched by `key`) to get the
+/// current store-backed value for rendering.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct ConfigField {
+pub struct ConfigFieldSchema {
     /// Key as written to the underlying store (typically camelCase).
     pub key: String,
     /// Human-readable label rendered above the input.
@@ -91,12 +97,20 @@ pub struct ConfigField {
     pub ty: FieldType,
     /// Default if the store has no value yet.
     pub default: serde_json::Value,
-    /// Current value loaded from the store.
+}
+
+/// Current value for one Configurable field, keyed identically to its
+/// [`ConfigFieldSchema`]. Sent alongside the schema in the dev-settings IPC
+/// response so the frontend can render initial input state.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ConfigFieldValue {
+    pub key: String,
     pub current: serde_json::Value,
 }
 
 /// One section in the auto-rendered settings panel — corresponds to one
-/// `#[derive(Configurable)]` struct.
+/// `#[derive(Configurable)]` struct. Static metadata only; no current values.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ConfigurableSchema {
@@ -108,7 +122,16 @@ pub struct ConfigurableSchema {
     /// Optional one-line description shown under the title.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    pub fields: Vec<ConfigField>,
+    pub fields: Vec<ConfigFieldSchema>,
+}
+
+/// Joined-at-the-boundary response for `dev_configs_list`: the static schema
+/// plus the current values loaded from the managed observable.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ConfigurableSnapshot {
+    pub schema: ConfigurableSchema,
+    pub values: Vec<ConfigFieldValue>,
 }
 
 // =============================================================================
@@ -124,8 +147,11 @@ pub struct ConfigurableSchema {
 pub struct ConfigurableMeta {
     /// Stable Rust-side name of the configurable state type.
     pub name: &'static str,
-    /// Returns the UI schema with current values populated.
-    pub schema_fn: fn(&tauri::AppHandle<tauri::Wry>) -> anyhow::Result<ConfigurableSchema>,
+    /// Returns the static UI schema. Same value every call; no app needed.
+    pub schema_fn: fn() -> ConfigurableSchema,
+    /// Loads the current state as a JSON object so the dev-settings command
+    /// can join it with the static schema by field key.
+    pub load_value_fn: fn(&tauri::AppHandle<tauri::Wry>) -> anyhow::Result<serde_json::Value>,
     /// Writes one validated field value into the managed observable.
     pub set_field_fn:
         fn(&tauri::AppHandle<tauri::Wry>, &str, serde_json::Value) -> anyhow::Result<()>,

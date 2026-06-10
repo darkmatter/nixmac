@@ -117,14 +117,12 @@ fn generate_field(field: &syn::Field, name_str: &str) -> syn::Result<FieldCode> 
             #ident: #default,
         },
         schema_field: quote! {
-            ::configurable::ConfigField {
+            ::configurable::ConfigFieldSchema {
                 key: #key.to_string(),
                 label: #label.to_string(),
                 help: #help_expr,
                 ty: #ty_expr,
                 default: ::serde_json::json!(#default),
-                current: ::serde_json::to_value(&__current.#ident)
-                    .unwrap_or_else(|_| ::serde_json::json!(#default)),
             },
         },
         set_field_arm: quote! {

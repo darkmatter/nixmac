@@ -1,17 +1,18 @@
 //! Tauri commands that walk the compile-time configurable registry.
 //!
 //! Frontend calls `dev_configs_list` to enumerate every `#[derive(Configurable)]`
-//! struct in the codebase, get its schema (labels, types, ranges, current
-//! values), and render a section per struct. Edits go back through
-//! `dev_config_set`, which dispatches by struct name to the registered shim
-//! emitted by the derive.
+//! struct in the codebase. Each entry returns as a [`ConfigurableSnapshot`]:
+//! the static schema (labels, types, ranges, defaults — same value every call)
+//! paired with the current values pulled from the managed observable. Edits go
+//! back through `dev_config_set`, which dispatches by struct name to the
+//! registered shim emitted by the derive.
 //!
 //! The registry itself lives in `inventory`: the derive macro pushes one
 //! `ConfigurableMeta` per struct at compile time, so these commands never
 //! see a runtime registry handle.
 
 use super::helpers::capture_err;
-use configurable::{inventory, ConfigurableMeta, ConfigurableSchema};
+use configurable::{inventory, ConfigFieldValue, ConfigurableMeta, ConfigurableSnapshot};
 use tauri::AppHandle;
 
 fn find_meta(struct_name: &str) -> Option<&'static ConfigurableMeta> {
@@ -20,12 +21,32 @@ fn find_meta(struct_name: &str) -> Option<&'static ConfigurableMeta> {
         .find(|meta| meta.name == struct_name)
 }
 
+fn snapshot_for(
+    meta: &ConfigurableMeta,
+    app: &AppHandle,
+) -> anyhow::Result<ConfigurableSnapshot> {
+    let schema = (meta.schema_fn)();
+    let current = (meta.load_value_fn)(app)?;
+    let values = schema
+        .fields
+        .iter()
+        .map(|field| ConfigFieldValue {
+            key: field.key.clone(),
+            current: current
+                .get(&field.key)
+                .cloned()
+                .unwrap_or(serde_json::Value::Null),
+        })
+        .collect();
+    Ok(ConfigurableSnapshot { schema, values })
+}
+
 /// Enumerate every registered Configurable struct with its current values.
 #[tauri::command]
-pub async fn dev_configs_list(app: AppHandle) -> Result<Vec<ConfigurableSchema>, String> {
+pub async fn dev_configs_list(app: AppHandle) -> Result<Vec<ConfigurableSnapshot>, String> {
     inventory::iter::<ConfigurableMeta>()
         .into_iter()
-        .map(|meta| (meta.schema_fn)(&app))
+        .map(|meta| snapshot_for(meta, &app))
         .collect::<anyhow::Result<Vec<_>>>()
         .map_err(|e| capture_err("dev_configs_list", e))
 }
@@ -53,7 +74,7 @@ mod tests {
         fn assert_list_command<F, Fut>(_f: F)
         where
             F: Fn(AppHandle) -> Fut,
-            Fut: Future<Output = Result<Vec<ConfigurableSchema>, String>>,
+            Fut: Future<Output = Result<Vec<ConfigurableSnapshot>, String>>,
         {
         }
 
