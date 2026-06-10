@@ -20,9 +20,9 @@ mod search_docs;
 mod search_packages;
 mod think;
 
-use crate::evolve::edit_nix_file::nix_quote_values;
 use crate::evolve::ensure_secret::EnsureSecretResult;
 use crate::evolve::messages::Tool;
+use crate::evolve::nix_file_editor::nix_quote_values;
 use crate::evolve::search_packages::SearchPackageResult;
 use crate::evolve::types::SemanticFileEdit;
 use crate::evolve::utils::normalize_relative_path;
@@ -410,7 +410,7 @@ mod tests {
     }
 
     #[test]
-    fn edit_nix_file_reports_string_action_with_corrective_shape() {
+    fn edit_nix_file_reports_shorthand_action_missing_attr_path() {
         let tmp = tempdir().expect("tempdir");
         fs::write(tmp.path().join("services.nix"), "{ ... }: { }\n").expect("write nix file");
 
@@ -434,20 +434,10 @@ mod tests {
             None,
         );
 
-        let err = result.expect_err("string action should get a corrective error");
+        let err = result.expect_err("shorthand set_attrs should require an action path");
         let msg = err.to_string();
         assert!(
-            msg.contains("action must be an object, not string 'set_attrs'"),
-            "unexpected error: {err:#}"
-        );
-        assert!(
-            msg.contains("Wrap sibling payload fields under action.set_attrs"),
-            "unexpected error: {err:#}"
-        );
-        assert!(
-            msg.contains(
-                r#""action": { "set_attrs": { "path": "<attribute.path>", "attrs": {...} } }"#
-            ),
+            msg.contains("edit_nix_file.set_attrs: missing action path"),
             "unexpected error: {err:#}"
         );
     }
@@ -639,7 +629,8 @@ mod tests {
 
         let err = result.expect_err("ambiguous shorthand should require an explicit attr path");
         assert!(
-            err.to_string().contains("edit_nix_file.add: missing path"),
+            err.to_string()
+                .contains("edit_nix_file.add: missing action path"),
             "unexpected error: {err:#}"
         );
 

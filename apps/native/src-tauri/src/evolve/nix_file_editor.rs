@@ -1,3 +1,5 @@
+//! `nix_file_editor`: Apply "smart"" edits to Nix files, such as adding/removing packages from a list or setting scalar values.
+
 use crate::evolve::types::SemanticFileEdit;
 use anyhow::{Context, Result};
 use log::{debug, info};

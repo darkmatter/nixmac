@@ -2,10 +2,10 @@
 
 use anyhow::{Result, anyhow};
 
-use crate::evolve::edit_nix_file::{apply_semantic_edit, infer_single_list_attrpath};
 use crate::evolve::file_ops::resolve_existing_path_in_dir;
 use crate::evolve::gitignore::is_ignored_by_matcher;
 use crate::evolve::messages::Tool;
+use crate::evolve::nix_file_editor::{apply_semantic_edit, infer_single_list_attrpath};
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
 use crate::evolve::utils::normalize_relative_path;
 
@@ -175,6 +175,36 @@ fn action_name(value: &serde_json::Value) -> Option<&str> {
     None
 }
 
+/// For the shorthand format, look for a sibling field with likely name that indicates the attribute
+/// path.
+fn sibling_attr_path(args: &serde_json::Value) -> Option<String> {
+    [
+        "attr_path",
+        "attrPath",
+        "action_path",
+        "target",
+        "target_path",
+    ]
+    .iter()
+    .find_map(|key| args.get(*key).and_then(|value| value.as_str()))
+    .map(str::to_string)
+}
+
+fn infer_attr_path_from_file(ctx: &ToolCtx, path: &str) -> Result<Option<String>> {
+    let normalized_path = normalize_relative_path(std::path::Path::new(path))?;
+    if is_ignored_by_matcher(ctx.gitignore_matcher, &normalized_path, false) {
+        return Err(anyhow!(
+            "edit_nix_file: '{}' is ignored by .gitignore in git repository; refusing to infer action path",
+            path
+        ));
+    }
+
+    let full_path = resolve_existing_path_in_dir(ctx.repo_root, path)?;
+    let content = std::fs::read_to_string(&full_path)
+        .map_err(|e| anyhow!("edit_nix_file: failed to read {}: {}", path, e))?;
+    infer_single_list_attrpath(&content)
+}
+
 /// Build a compact example call that shows where the file path and action path belong.
 fn corrective_action_shape(action: &str, attr_path: &str) -> String {
     let payload = match action {
@@ -210,29 +240,6 @@ fn explain_attr_path_used_as_file_path(args: &serde_json::Value, path: &str) -> 
     )
 }
 
-/// Explain the shorthand action shape without executing it, so the agent can retry correctly.
-fn explain_string_action(args: &serde_json::Value, action: &str) -> anyhow::Error {
-    let payload_fields = match action {
-        "add" | "remove" => "path and values",
-        "set" => "path and value",
-        "set_attrs" => "path and attrs",
-        _ => "the required payload fields",
-    };
-    let likely_attr_path = args["path"]
-        .as_str()
-        .filter(|path| looks_like_attr_path(path));
-    let attr_path = likely_attr_path.unwrap_or("<attribute.path>");
-    let correction = corrective_action_shape(action, attr_path);
-
-    anyhow!(
-        "edit_nix_file: action must be an object, not string '{}'. Wrap sibling payload fields under action.{} with {}. Top-level 'path' must remain the .nix file path. Correct shape: {}",
-        action,
-        action,
-        payload_fields,
-        correction
-    )
-}
-
 /// Ensure the selected action contains the expected object payload before reading fields from it.
 fn ensure_action_payload_is_object<'a>(
     action_val: &'a serde_json::Value,
@@ -251,6 +258,63 @@ fn ensure_action_payload_is_object<'a>(
     Ok(payload)
 }
 
+/// Convert the shorthand action format into the full action object format for downstream processing.
+/// For add/remove, if no path is provided, attempt to infer it from the file when there is exactly one list attribute.
+/// If there is more than one list attribute or the file is git-ignored, inference is skipped and an error is returned if the path is missing.
+fn shorthand_action_object(
+    ctx: &ToolCtx,
+    path: &str,
+    action_name: &str,
+    args: &serde_json::Value,
+) -> Result<serde_json::Value> {
+    let action_key = match action_name {
+        "add" | "remove" | "set" | "set_attrs" => action_name,
+        _ => {
+            return Err(anyhow!(
+                "edit_nix_file: unsupported shorthand action '{}'; expected add, remove, set, or set_attrs",
+                action_name
+            ));
+        }
+    };
+
+    let attr_path = sibling_attr_path(args);
+    let inferred_path = if attr_path.is_none() && matches!(action_key, "add" | "remove") {
+        infer_attr_path_from_file(ctx, path)?
+    } else {
+        None
+    };
+
+    let attr_path = attr_path.or(inferred_path);
+
+    let mut payload = serde_json::Map::new();
+    if let Some(attr_path) = attr_path {
+        payload.insert("path".to_string(), serde_json::Value::String(attr_path));
+    }
+
+    match action_key {
+        "add" | "remove" => {
+            if let Some(values) = args.get("values") {
+                payload.insert("values".to_string(), values.clone());
+            }
+        }
+        "set" => {
+            if let Some(value) = args.get("value") {
+                payload.insert("value".to_string(), value.clone());
+            }
+        }
+        "set_attrs" => {
+            if let Some(attrs) = args.get("attrs") {
+                payload.insert("attrs".to_string(), attrs.clone());
+            }
+        }
+        _ => unreachable!(),
+    }
+
+    let mut action = serde_json::Map::new();
+    action.insert(action_key.to_string(), serde_json::Value::Object(payload));
+    Ok(serde_json::Value::Object(action))
+}
+
 pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
     let args = ctx.args;
     let path = args["path"]
@@ -261,14 +325,19 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
     }
     ensure_nixmac_edit_allowed("edit_nix_file", path)?;
 
-    // Expect `action` to be an object like { "add": { "path": "a.b", "values": ["v"] } }
-    let action_val = &args["action"];
-    if !action_val.is_object() {
-        if let Some(action) = action_name(action_val) {
-            return Err(explain_string_action(args, action));
-        }
-        return Err(anyhow!("edit_nix_file: action must be an object"));
-    }
+    // Prefer an object like { "add": { "path": "a.b", "values": ["v"] } }, but
+    // tolerate shorthand calls like { "action": "add", "path": "file.nix", "values": ["v"] }.
+    let normalized_action;
+    let action_val = if let Some(action_name) = args["action"].as_str() {
+        normalized_action = shorthand_action_object(ctx, path, action_name, args)?;
+        &normalized_action
+    } else if args["action"].is_object() {
+        &args["action"]
+    } else {
+        return Err(anyhow!(
+            "edit_nix_file: action must be an object or shorthand string"
+        ));
+    };
 
     let parse_values = |value: &serde_json::Value, context: &str| -> Result<Vec<String>> {
         let values = value
