@@ -57,21 +57,32 @@ function installSetupMocks() {
   };
 }
 
-function SetupStory() {
+type SetupStoryProps = {
+  configDir: string;
+  hosts: string[];
+  host?: string;
+};
+
+function SetupStory({ configDir, hosts, host = "" }: SetupStoryProps) {
   installSetupMocks();
 
   useEffect(() => {
     const store = useWidgetStore.getState();
-    store.setConfigDir("");
-    store.setHosts([]);
-    store.setHost("");
+    store.setConfigDir(configDir);
+    store.setHosts(hosts);
+    store.setHost(host);
     store.setBootstrapping(false);
     store.setError(null);
-  }, []);
+  }, [configDir, host, hosts]);
 
   return <SetupStep />;
 }
 
-export const NewDirectory = meta.story({
-  render: () => <SetupStory />,
+export const DefaultConfigRequired = meta.story({
+  render: () => (
+    <SetupStory
+      configDir="/Users/demo/.darwin"
+      hosts={[]}
+    />
+  ),
 });
