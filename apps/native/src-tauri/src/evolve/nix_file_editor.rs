@@ -3,8 +3,8 @@
 use crate::evolve::types::SemanticFileEdit;
 use anyhow::{Context, Result};
 use log::{debug, info};
-use rnix::ast::{AttrSet, List};
 use rnix::SyntaxNode;
+use rnix::ast::{AttrSet, List};
 use rnix::{Parse, Root};
 use rowan::ast::AstNode;
 use rowan::{TextRange, TextSize};

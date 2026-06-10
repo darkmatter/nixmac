@@ -20,9 +20,9 @@ mod search_docs;
 mod search_packages;
 mod think;
 
-use crate::evolve::nix_file_editor::nix_quote_values;
 use crate::evolve::ensure_secret::EnsureSecretResult;
 use crate::evolve::messages::Tool;
+use crate::evolve::nix_file_editor::nix_quote_values;
 use crate::evolve::search_packages::SearchPackageResult;
 use crate::evolve::types::SemanticFileEdit;
 use crate::evolve::utils::normalize_relative_path;

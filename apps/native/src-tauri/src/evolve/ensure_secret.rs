@@ -8,7 +8,7 @@ use crate::evolve::sops::{
 };
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use ignore::gitignore::Gitignore;
 use serde::{Deserialize, Serialize};
 use std::path::{Component, Path, PathBuf};
