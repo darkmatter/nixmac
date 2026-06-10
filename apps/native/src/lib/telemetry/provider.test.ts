@@ -4,14 +4,14 @@ import { createTelemetryProvider } from "./provider";
 import type { TelemetryEvent } from "./types";
 
 const mocks = vi.hoisted(() => ({
-  capture: vi.fn(),
-  fetch: vi.fn(),
-  init: vi.fn(),
-  invoke: vi.fn(),
-  optIn: vi.fn(),
-  optOut: vi.fn(),
-  register: vi.fn(),
-  reset: vi.fn(),
+  capture: vi.fn<() => void>(),
+  fetch: vi.fn<(input: string, init?: RequestInit) => Promise<Pick<Response, "ok">>>(),
+  init: vi.fn<(key: string, options: { loaded?: (ph: unknown) => void }) => void>(),
+  invoke: vi.fn<() => Promise<void>>(),
+  optIn: vi.fn<(options?: { captureEventName: false }) => void>(),
+  optOut: vi.fn<() => void>(),
+  register: vi.fn<(properties: Record<string, unknown>) => void>(),
+  reset: vi.fn<() => void>(),
 }));
 
 vi.mock("posthog-js", () => ({
@@ -99,7 +99,7 @@ describe("createTelemetryProvider", () => {
         $geoip_disable: true,
         $ip: null,
         $process_person_profile: false,
-        distinct_id: "nixmac-product-analytics",
+        distinct_id: expect.stringMatching(/^nixmac-product-analytics-event-/),
         environment: "test",
         release: "0.0.0-test",
         stage: "build",
@@ -175,13 +175,37 @@ describe("createTelemetryProvider", () => {
         $geoip_disable: true,
         $ip: null,
         $process_person_profile: false,
-        distinct_id: "nixmac-product-analytics",
+        distinct_id: expect.stringMatching(/^nixmac-product-analytics-event-/),
         environment: "production",
         release: "0.0.0-test",
         token: "phc_test",
       },
     });
     expect(telemetry.diagnosticsEnabled).toBe(true);
+  });
+
+  it("uses per-event anonymous PostHog IDs instead of collapsing clients into one actor", () => {
+    const telemetry = createTelemetryProvider(config, {
+      diagnosticsEnabled: false,
+      productAnalyticsEnabled: true,
+    });
+
+    telemetry.captureEvent({ name: "app_launched" });
+    telemetry.captureEvent({ name: "rollback_performed" });
+
+    const payloads = mocks.fetch.mock.calls.map(([, init]) =>
+      JSON.parse((init as RequestInit).body as string),
+    ) as Array<{ properties: Record<string, unknown> }>;
+
+    expect(payloads[0]?.properties.distinct_id).toEqual(
+      expect.stringMatching(/^nixmac-product-analytics-event-/),
+    );
+    expect(payloads[1]?.properties.distinct_id).toEqual(
+      expect.stringMatching(/^nixmac-product-analytics-event-/),
+    );
+    expect(payloads[0]?.properties.distinct_id).not.toBe(
+      payloads[1]?.properties.distinct_id,
+    );
   });
 
   it("initializes PostHog with passive capture features disabled", () => {

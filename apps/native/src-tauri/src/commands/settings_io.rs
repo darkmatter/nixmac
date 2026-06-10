@@ -72,6 +72,8 @@ fn collect_slice_export_entries(
 
     if let Some(global) = app.try_state::<Slice<GlobalPreferences>>() {
         let mut prefs = global.read_sync().clone();
+        prefs.send_diagnostics =
+            store::get_send_diagnostics(app).map_err(|e| capture_err("settings_export", e))?;
         prefs.product_analytics_enabled = store::get_product_analytics_enabled(app)
             .map_err(|e| capture_err("settings_export", e))?;
         merge_export_object(
@@ -163,13 +165,24 @@ pub async fn settings_import(app: AppHandle) -> Result<Option<ImportResult>, Str
     let keys_imported = entries.len();
 
     if let Some(global) = app.try_state::<Slice<GlobalPreferences>>() {
-        let prefs = serde_json::from_value::<GlobalPreferences>(imported_value.clone())
+        let mut prefs = serde_json::from_value::<GlobalPreferences>(imported_value.clone())
             .map_err(|e| capture_err("settings_import", e))?;
+        if !entries.contains_key("sendDiagnostics") {
+            prefs.send_diagnostics =
+                store::get_send_diagnostics(&app).map_err(|e| capture_err("settings_import", e))?;
+        }
+        if !entries.contains_key("productAnalyticsEnabled") {
+            prefs.product_analytics_enabled = store::get_product_analytics_enabled(&app)
+                .map_err(|e| capture_err("settings_import", e))?;
+        }
+        let send_diagnostics = prefs.send_diagnostics;
         let product_analytics_enabled = prefs.product_analytics_enabled;
         {
             let mut global = global.write_sync(&app);
             *global = prefs;
         }
+        store::set_send_diagnostics(&app, send_diagnostics)
+            .map_err(|e| capture_err("settings_import", e))?;
         store::set_product_analytics_enabled(&app, product_analytics_enabled)
             .map_err(|e| capture_err("settings_import", e))?;
     }

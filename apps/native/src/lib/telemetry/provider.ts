@@ -32,7 +32,7 @@ const PRIVACY_SUPER_PROPERTIES = {
   $ip: null,
   $process_person_profile: false,
 } as const;
-const PRODUCT_ANALYTICS_DISTINCT_ID = "nixmac-product-analytics";
+const PRODUCT_ANALYTICS_EVENT_ID_PREFIX = "nixmac-product-analytics-event";
 
 const registerPostHogSuperProperties = (config: TelemetryConfig) => {
   posthog.register({
@@ -50,6 +50,13 @@ const optInPostHogCapturing = (
 
 const postHogCaptureUrl = (host: string) => `${host.replace(/\/$/, "")}/capture/`;
 
+const createProductAnalyticsEventId = () => {
+  if (globalThis.crypto?.randomUUID) {
+    return `${PRODUCT_ANALYTICS_EVENT_ID_PREFIX}-${globalThis.crypto.randomUUID()}`;
+  }
+  return `${PRODUCT_ANALYTICS_EVENT_ID_PREFIX}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+};
+
 const sendPostHogProductEvent = (
   config: TelemetryConfig,
   name: string,
@@ -62,7 +69,10 @@ const sendPostHogProductEvent = (
       event: name,
       properties: {
         ...PRIVACY_SUPER_PROPERTIES,
-        distinct_id: PRODUCT_ANALYTICS_DISTINCT_ID,
+        // PostHog requires a distinct_id. Use a per-event anonymous ID so
+        // events are not linked to a persisted machine/user identity and are
+        // not collapsed into one shared actor.
+        distinct_id: createProductAnalyticsEventId(),
         environment: config.environment,
         release: config.release,
         token: config.key,

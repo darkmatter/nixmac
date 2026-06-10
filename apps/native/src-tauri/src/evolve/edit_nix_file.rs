@@ -559,6 +559,35 @@ pub(crate) fn list_attrpath_occurrences(content: &str) -> Result<Vec<String>> {
     Ok(attrpaths)
 }
 
+pub(crate) fn outer_list_occurrences_for_attrpath(content: &str, attrpath: &str) -> Result<usize> {
+    let parsed: Parse<Root> = Root::parse(content);
+    let root: Root = parsed
+        .ok()
+        .context("Failed to parse Nix content when checking list attribute path occurrences")?;
+    let target = normalize_attrpath_for_match(attrpath);
+    let mut ranges = Vec::new();
+
+    for node in root.syntax().descendants() {
+        if List::cast(node.clone()).is_some() {
+            let list_start = text_size_to_usize(node.text_range().start());
+            if let Some(full_path) = list_full_attrpath(content, list_start) {
+                if normalize_attrpath_for_match(&full_path) == target {
+                    ranges.push(text_range_to_usize_range(node.text_range()));
+                }
+            }
+        }
+    }
+
+    Ok(ranges
+        .iter()
+        .filter(|range| {
+            !ranges
+                .iter()
+                .any(|other| other.start < range.start && range.end < other.end)
+        })
+        .count())
+}
+
 pub(crate) fn list_attrpaths(content: &str) -> Result<Vec<String>> {
     let mut attrpaths = list_attrpath_occurrences(content)?;
     attrpaths.sort();

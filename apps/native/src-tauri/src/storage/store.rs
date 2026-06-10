@@ -8,7 +8,7 @@ use crate::shared_types;
 use crate::storage::credential_store::{CredentialStore, KeychainStore};
 
 use anyhow::Result;
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{de::DeserializeOwned, Serialize};
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_store::{Store, StoreExt};
@@ -207,6 +207,15 @@ pub fn get_send_diagnostics<R: Runtime>(app: &AppHandle<R>) -> Result<bool> {
 }
 
 pub fn set_send_diagnostics<R: Runtime>(app: &AppHandle<R>, send: bool) -> Result<()> {
+    let product_analytics_enabled = get_product_analytics_enabled(app)?;
+    if let Some(global) =
+        app.try_state::<crate::state::slice::Slice<crate::state::preferences::GlobalPreferences>>()
+    {
+        let mut global = global.write_sync(app);
+        global.send_diagnostics = send;
+        global.product_analytics_enabled = product_analytics_enabled;
+    }
+
     let store = get_store(app)?;
     store.set("sendDiagnostics", serde_json::json!(send));
     store.save()?;
@@ -227,14 +236,13 @@ pub fn get_product_analytics_enabled<R: Runtime>(app: &AppHandle<R>) -> Result<b
     Ok(true)
 }
 
-pub fn set_product_analytics_enabled<R: Runtime>(
-    app: &AppHandle<R>,
-    enabled: bool,
-) -> Result<()> {
+pub fn set_product_analytics_enabled<R: Runtime>(app: &AppHandle<R>, enabled: bool) -> Result<()> {
+    let send_diagnostics = get_send_diagnostics(app)?;
     if let Some(global) =
         app.try_state::<crate::state::slice::Slice<crate::state::preferences::GlobalPreferences>>()
     {
         let mut global = global.write_sync(app);
+        global.send_diagnostics = send_diagnostics;
         global.product_analytics_enabled = enabled;
     }
 
