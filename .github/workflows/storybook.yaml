@@ -101,6 +101,17 @@ jobs:
           echo "Storybook preview: $url"
           echo "deployment-url=$url" >> "$GITHUB_OUTPUT"
 
+      # Story-level digest of new/changed/removed stories vs the PR base,
+      # rendered into the sticky comment so reviewers can see what changed.
+      - name: Build story-change digest
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        working-directory: apps/native
+        env:
+          BASE_REF: origin/${{ github.base_ref }}
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: node scripts/build-storybook-digest.mjs
+
       - name: Publish Storybook deployment link
         if: steps.deploy.outputs.deployment-url != ''
         env:
@@ -145,6 +156,10 @@ jobs:
         run: |
           set -euo pipefail
           MARKER='<!-- nixmac-storybook-preview -->'
+          DIGEST=""
+          if [ -f apps/native/test-results/storybook-digest.md ]; then
+            DIGEST=$(cat apps/native/test-results/storybook-digest.md)
+          fi
           BODY=$(cat <<EOF
           ${MARKER}
           ### 🎨 Storybook preview
@@ -152,6 +167,8 @@ jobs:
           [Open Storybook preview](${DEPLOY_URL})
 
           Updated for ${SHA}
+
+          ${DIGEST}
           EOF
           )
 

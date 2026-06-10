@@ -3,8 +3,9 @@
   lib,
   config,
   ...
-}: let
- playwright-driver = pkgs.playwright-driver;
+}:
+let
+  playwright-driver = pkgs.playwright-driver;
   playwright-driver-browsers = pkgs.playwright-driver.browsers;
 
   playright-file = builtins.readFile "${playwright-driver}/browsers.json";
@@ -37,6 +38,7 @@ lib.mkIf (!config.container.isBuilding) {
     pkgs.pyright
     pkgs.ruff
     pkgs.yq
+    pkgs.playwright
 
     # Python packages used in one-off scripts
     pkgs.python312Packages.requests
@@ -143,7 +145,7 @@ lib.mkIf (!config.container.isBuilding) {
   languages.javascript.bun.enable = true;
 
   env.SOPS_KEYSERVICE = "tcp://100.116.189.36:5000";
-   # TODO: add MacOS support to omit this
+  # TODO: add MacOS support to omit this
   env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH = "${playwright-driver-browsers}/chromium-${playwright-chromium-revision}/chrome-linux/chrome";
   # This is used by npx playwright --{ui,debug,...}
   env.PLAYWRIGHT_BROWSERS_PATH = "${playwright-driver-browsers}";

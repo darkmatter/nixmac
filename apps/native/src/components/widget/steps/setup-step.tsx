@@ -19,14 +19,14 @@ export function SetupStep() {
   const configDir = useWidgetStore((state) => state.configDir);
   const hosts = useWidgetStore((state) => state.hosts);
   const host = useWidgetStore((state) => state.host);
-  const [configDirConfirmed, setConfigDirConfirmed] = useState(false);
+  const [configDirConfirmed, setConfigDirConfirmed] = useState(() => Boolean(configDir));
   const [selectedHost, setSelectedHost] = useState<string>("");
 
   const { saveHost } = useDarwinConfig();
 
   useEffect(() => {
-    if (hosts.length > 0) setConfigDirConfirmed(true);
-  }, [hosts.length]);
+    setConfigDirConfirmed(Boolean(configDir));
+  }, [configDir]);
 
   const hasConfigDir = Boolean(configDir) && configDirConfirmed;
   const hasHosts = hasConfigDir && hosts.length > 0;
@@ -83,9 +83,11 @@ export function SetupStep() {
           ) : (
             <BootstrapConfig label="2. Configuration" />
           )}
-          <Button disabled={!effectiveHost} onClick={() => saveHost(effectiveHost)}>
-            Next
-          </Button>
+          {hasHosts && (
+            <Button disabled={!effectiveHost} onClick={() => saveHost(effectiveHost)}>
+              Next
+            </Button>
+          )}
         </div>
       )}
     </div>

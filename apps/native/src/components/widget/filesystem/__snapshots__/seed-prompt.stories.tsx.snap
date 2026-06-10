@@ -1,10 +1,34 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`Banner Seed 1`] = `
-"<pre class="m-0 max-w-[700px] whitespace-pre-wrap rounded-md border border-border bg-card/40 p-3 font-mono text-[11px] text-teal-200 leading-[1.5]">Track everything that isn't in my config yet:
-- 11 apps installed by hand (11 items, would land in modules/darwin/homebrew.nix)
-- 8 untracked settings (8 items, would land in modules/darwin/defaults.nix)
-- 4 apps auto-start at login (4 items, would land in modules/darwin/services.nix)
+"<pre class="m-0 max-w-[700px] whitespace-pre-wrap rounded-md border border-border bg-card/40 p-3 font-mono text-[11px] text-teal-200 leading-[1.5]">Track these items by adding them to modules/darwin/homebrew.nix:
+- docker (Docker Desktop · 4.32.0)
+- obs (OBS Studio · 30.2.3)
+- iterm2 (iTerm2 · 3.5.1)
+- vlc (VLC media player · 3.0.20)
+- figma (Figma · 124.4.0)
+- spotify (Spotify · 1.2.45)
+- slack (Slack · 4.40.0)
+- zoom (Zoom · 6.1.10)
+- discord (Discord · 0.0.310)
+- notion (Notion · 4.1.0)
+- audacity (Audacity · 3.6.4)
+
+Track these items by adding them to modules/darwin/defaults.nix:
+- Dock — magnification on (dock magnification = 1)
+- Finder — show path bar (finder ShowPathbar = 1)
+- Trackpad — three-finger drag (trackpad TrackpadThreeFingerDrag = 1)
+- Keyboard — fast key repeat (NSGlobalDomain KeyRepeat = 2)
+- Mission Control — disable rearrange (dock mru-spaces = 0)
+- Hot corners — bottom-right: lock screen (dock wvous-br-corner = 13)
+- Menu bar — show date (menuExtraClock ShowDate = 1)
+- Sound — feedback off (NSGlobalDomain "com.apple.sound.beep.feedback" = 0)
+
+Track these items by adding them to modules/darwin/services.nix:
+- Rectangle (/Applications/Rectangle.app)
+- Raycast (/Applications/Raycast.app)
+- 1Password (/Applications/1Password.app)
+- Hammerspoon (/Applications/Hammerspoon.app)
 </pre>"
 `;
 
@@ -28,7 +52,7 @@ exports[`Per File Seeds 1`] = `
 - Keyboard — fast key repeat (NSGlobalDomain KeyRepeat = 2)
 - Mission Control — disable rearrange (dock mru-spaces = 0)
 - Hot corners — bottom-right: lock screen (dock wvous-br-corner = 13)
-- Menu bar — show date (menuextra.clock ShowDate = 1)
+- Menu bar — show date (menuExtraClock ShowDate = 1)
 - Sound — feedback off (NSGlobalDomain "com.apple.sound.beep.feedback" = 0)
 </pre></td></tr><tr class="border-border/40 border-b last:border-b-0"><td class="px-3 py-2 align-top font-mono text-[10.5px] text-muted-foreground">Login items</td><td class="px-3 py-2 align-top"><pre class="m-0 whitespace-pre-wrap break-words font-mono text-[10.5px] text-teal-200 leading-[1.5]">Track these items by adding them to modules/darwin/services.nix:
 - Rectangle (/Applications/Rectangle.app)

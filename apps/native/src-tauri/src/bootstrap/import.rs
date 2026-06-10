@@ -8,13 +8,13 @@
 //! `~/.darwin`) so the rest of onboarding can proceed exactly as if the user
 //! had selected an existing flake.
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use std::fs::{self, File};
 use std::io::{self, Read};
 #[cfg(unix)]
 use std::os::unix::{
     ffi::OsStrExt,
-    fs::{symlink, PermissionsExt},
+    fs::{PermissionsExt, symlink},
 };
 use std::path::{Component, Path, PathBuf};
 

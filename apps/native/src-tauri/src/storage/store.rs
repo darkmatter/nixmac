@@ -97,6 +97,20 @@ pub fn get_config_dir<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
     Ok(home.join(".darwin").to_string_lossy().to_string())
 }
 
+/// Gets the flake configuration directory only when it was explicitly
+/// configured, avoiding the onboarding default of `~/.darwin`.
+pub fn get_config_dir_if_set<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
+    if let Some(dir) = e2e_env_value("NIXMAC_E2E_CONFIG_DIR") {
+        return Ok(Some(dir));
+    }
+
+    let store = get_store(app)?;
+
+    Ok(store
+        .get("configDir")
+        .and_then(|dir| dir.as_str().map(ToString::to_string)))
+}
+
 /// Gets the git repository root for the current workspace.
 ///
 /// If not stored, it is derived from configDir using `git rev-parse`,
