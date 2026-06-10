@@ -61,7 +61,7 @@ pub mod json_io;
 pub mod persistence;
 pub mod registry;
 
-pub use persistence::{AppDataJson, Persistence, RepoScopedJson};
+pub use persistence::{AppDataJson, ConfiguredRepoScopedJson, Persistence};
 pub use registry::{RegisteredSliceConfig, SliceRegistry};
 
 use anyhow::{Context, Result};
@@ -202,9 +202,9 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::persistence::RepoScopedJson;
     use super::{
-        AppDataJson, Persistence, RegisteredSliceConfig, RepoScopedJson, Slice, SliceEventEmitter,
-        SliceRegistry,
+        AppDataJson, Persistence, RegisteredSliceConfig, Slice, SliceEventEmitter, SliceRegistry,
     };
     use anyhow::Result;
     use serde::{Deserialize, Serialize};

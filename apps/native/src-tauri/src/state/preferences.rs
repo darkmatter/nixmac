@@ -9,7 +9,6 @@
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use specta::Type;
 use std::sync::Arc;
 use tauri::{AppHandle, Runtime};
@@ -96,28 +95,10 @@ where
     Ok(T::default())
 }
 
-/// No-op persistence backend used when the storage path is unavailable.
-///
-/// During onboarding the config directory may not be set yet, so
-/// repo-scoped slices fall back to this. Reads return `None` (treated as
-/// "use defaults") and writes are silently discarded. Once the user selects
-/// a config dir, the slice is reloaded with a real backend.
-#[derive(Debug, Default)]
-pub(crate) struct VolatileJson;
-
-impl Persistence for VolatileJson {
-    fn load(&self) -> Result<Option<Value>> {
-        Ok(None)
-    }
-
-    fn flush(&self, _: &Value) -> Result<()> {
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::Value;
     use serde_json::json;
     use std::sync::Mutex;
 

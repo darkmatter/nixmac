@@ -1,5 +1,5 @@
-use crate::evolve::edit_nix_file::{apply_semantic_edit, nix_quote_values};
 use crate::evolve::file_ops::resolve_path_in_dir_allow_create;
+use crate::evolve::nix_file_editor::{apply_semantic_edit, nix_quote_values};
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
 use crate::shared_types::HomebrewState;
 use crate::system::nix_ast_lists::parse_string_lists_by_attrpath;

@@ -20,9 +20,9 @@ mod search_docs;
 mod search_packages;
 mod think;
 
-use crate::evolve::edit_nix_file::nix_quote_values;
 use crate::evolve::ensure_secret::EnsureSecretResult;
 use crate::evolve::messages::Tool;
+use crate::evolve::nix_file_editor::nix_quote_values;
 use crate::evolve::search_packages::SearchPackageResult;
 use crate::evolve::types::SemanticFileEdit;
 use crate::evolve::utils::normalize_relative_path;
@@ -410,7 +410,61 @@ mod tests {
     }
 
     #[test]
-    fn edit_nix_file_reports_string_action_with_corrective_shape() {
+    fn edit_nix_file_reports_list_attr_path_set_array_as_add_values() {
+        let tmp = tempdir().expect("tempdir");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "set",
+                "path": "homebrew.casks",
+                "value": ["docker", "iterm2", "audacity", "rectangle"]
+            }),
+            None,
+        );
+
+        let err = result.expect_err("list attr path in top-level path should suggest add");
+        let msg = err.to_string();
+        assert!(
+            msg.contains(r#""action": { "add": { "path": "homebrew.casks", "values": ["docker","iterm2","audacity","rectangle"] } }"#),
+            "unexpected error: {err:#}"
+        );
+        assert!(
+            msg.contains("use action.add/action.remove with 'values'"),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
+    fn edit_nix_file_reports_string_array_set_as_add_values_for_generic_attr_path() {
+        let tmp = tempdir().expect("tempdir");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "set",
+                "path": "programs.example.extraPackages",
+                "value": ["alpha", "beta"]
+            }),
+            None,
+        );
+
+        let err = result.expect_err("string array set should suggest add values");
+        let msg = err.to_string();
+        assert!(
+            msg.contains(r#""action": { "add": { "path": "programs.example.extraPackages", "values": ["alpha","beta"] } }"#),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
+    fn edit_nix_file_reports_shorthand_action_missing_attr_path() {
         let tmp = tempdir().expect("tempdir");
         fs::write(tmp.path().join("services.nix"), "{ ... }: { }\n").expect("write nix file");
 
@@ -434,20 +488,10 @@ mod tests {
             None,
         );
 
-        let err = result.expect_err("string action should get a corrective error");
+        let err = result.expect_err("shorthand set_attrs should require an action path");
         let msg = err.to_string();
         assert!(
-            msg.contains("action must be an object, not string 'set_attrs'"),
-            "unexpected error: {err:#}"
-        );
-        assert!(
-            msg.contains("Wrap sibling payload fields under action.set_attrs"),
-            "unexpected error: {err:#}"
-        );
-        assert!(
-            msg.contains(
-                r#""action": { "set_attrs": { "path": "<attribute.path>", "attrs": {...} } }"#
-            ),
+            msg.contains("edit_nix_file.set_attrs: missing action path"),
             "unexpected error: {err:#}"
         );
     }
@@ -639,7 +683,8 @@ mod tests {
 
         let err = result.expect_err("ambiguous shorthand should require an explicit attr path");
         assert!(
-            err.to_string().contains("edit_nix_file.add: missing path"),
+            err.to_string()
+                .contains("edit_nix_file.add: missing action path"),
             "unexpected error: {err:#}"
         );
 
