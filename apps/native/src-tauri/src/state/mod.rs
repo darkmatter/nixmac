@@ -26,7 +26,7 @@ pub mod completion_log;
 pub mod drift_notifications;
 pub mod evolve_state;
 pub mod preferences;
+pub mod session_log;
 /// Generic state slices used by runtime state and scoped preferences.
 pub mod slice;
-pub mod session_log;
 pub mod watcher;
