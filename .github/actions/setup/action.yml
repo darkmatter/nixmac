@@ -137,6 +137,12 @@ runs:
       shell: bash
       env:
         NIXPKGS_ALLOW_UNFREE: 1
+        # devenv keeps home-level state (GC roots) in $XDG_DATA_HOME/devenv.
+        # Point it at a job-scoped dir: on shared persistent runners the
+        # default ~/.local/share/devenv can be unwritable (e.g. root-owned
+        # from a past sudo invocation), and per-job state is better hygiene
+        # on shared runners anyway.
+        XDG_DATA_HOME: ${{ runner.temp }}/devenv-xdg-data
       run: |
         set -euo pipefail
 
@@ -150,6 +156,8 @@ runs:
       shell: bash
       env:
         NIXPKGS_ALLOW_UNFREE: 1
+        # Must match the Build step so devenv reuses the same state dir.
+        XDG_DATA_HOME: ${{ runner.temp }}/devenv-xdg-data
       run: |
         set -euo pipefail
 
