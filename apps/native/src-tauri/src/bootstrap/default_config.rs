@@ -9,7 +9,7 @@ use std::path::Path;
 use std::process::Command;
 use tauri::{AppHandle, Manager};
 
-use crate::git;
+use crate::bootstrap::import;
 use crate::storage::store;
 use crate::system::nix;
 
@@ -190,17 +190,8 @@ pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
     // If a flake.nix already exists, just make the initial git commit without
     // copying any template files (the user brought their own config).
     if dest_path.join("flake.nix").exists() {
-        git::init::init_repo(&dir).map_err(|e| format!("Failed to init git: {}", e))?;
-        let info = git::commit_all(&dir, "chore: initial nix-darwin configuration")
-            .map_err(|e| format!("Failed to commit: {}", e))?;
-        if let Err(e) = git::tag_commit(
-            &dir,
-            &format!("nixmac-base-{}", &info.hash[..8]),
-            &info.hash,
-            false,
-        ) {
-            log::warn!("Failed to tag initial commit as base: {}", e);
-        }
+        import::ensure_initial_commit(dest_path)
+            .map_err(|e| format!("Failed to create initial commit: {}", e))?;
         return Ok(());
     }
 
@@ -225,17 +216,8 @@ pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
     copy_template_dir(&template_path, dest_path, hostname, platform, &username)?;
 
     // Initialize git repository and commit templates (without flake.lock)
-    git::init::init_repo(&dir).map_err(|e| format!("Failed to init git: {}", e))?;
-    let info = git::commit_all(&dir, "chore: initial nix-darwin configuration")
-        .map_err(|e| format!("Failed to commit: {}", e))?;
-    if let Err(e) = git::tag_commit(
-        &dir,
-        &format!("nixmac-base-{}", &info.hash[..8]),
-        &info.hash,
-        false,
-    ) {
-        log::warn!("Failed to tag initial commit as base: {}", e);
-    }
+    import::ensure_initial_commit(dest_path)
+        .map_err(|e| format!("Failed to create initial commit: {}", e))?;
 
     if nix::is_nix_installed() {
         if let Err(e) = finalize_flake_lock(app) {
@@ -271,16 +253,8 @@ pub fn finalize_flake_lock(app: &AppHandle) -> Result<(), String> {
     }
 
     // Stage lock file and commit
-    let info = git::commit_all(&dir, "chore: add flake.lock")
+    import::create_base_commit(Path::new(&dir), "chore: add flake.lock")
         .map_err(|e| format!("Failed to commit flake.lock: {}", e))?;
-    if let Err(e) = git::tag_commit(
-        &dir,
-        &format!("nixmac-base-{}", &info.hash[..8]),
-        &info.hash,
-        false,
-    ) {
-        log::warn!("Failed to tag flake.lock commit as base: {}", e);
-    }
 
     Ok(())
 }

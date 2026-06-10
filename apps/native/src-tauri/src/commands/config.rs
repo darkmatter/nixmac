@@ -366,6 +366,7 @@ pub async fn config_import_zip(
         .await
         .map_err(|e| capture_err("config_import_zip", e))?
         .map_err(|e| capture_err("config_import_zip", e))?;
+    import::ensure_initial_commit(&target).map_err(|e| capture_err("config_import_zip", e))?;
 
     finalize_imported_dir(&app, &target)
 }

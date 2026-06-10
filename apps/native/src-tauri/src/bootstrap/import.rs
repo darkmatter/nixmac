@@ -8,9 +8,13 @@
 //! `~/.darwin`) so the rest of onboarding can proceed exactly as if the user
 //! had selected an existing flake.
 
-use anyhow::{Context, Result, anyhow, bail};
+use anyhow::{anyhow, bail, Context, Result};
 use std::fs::File;
 use std::path::{Component, Path, PathBuf};
+
+use crate::git;
+
+pub const INITIAL_CONFIG_COMMIT_MESSAGE: &str = "chore: initial nix-darwin configuration";
 
 /// A parsed GitHub/git reference ready to clone.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -207,6 +211,31 @@ pub fn extract_zip(zip_path: &Path, dest: &Path) -> Result<()> {
     Ok(())
 }
 
+pub fn create_base_commit(dir: &Path, message: &str) -> Result<git::CommitInfo> {
+    let dir_str = dir.to_string_lossy();
+    let info = git::commit_all(&dir_str, message)
+        .with_context(|| format!("failed to create base commit in {}", dir.display()))?;
+    if let Err(e) = git::tag_commit(
+        &dir_str,
+        &format!("nixmac-base-{}", &info.hash[..8]),
+        &info.hash,
+        false,
+    ) {
+        log::warn!("Failed to tag base commit: {}", e);
+    }
+    Ok(info)
+}
+
+/// Ensures `dir` is an exact Git repository root and creates the adoption commit.
+///
+/// This intentionally does not discover parent repositories: `~/.darwin` must
+/// become its own repository even when `~` is already tracked by a dotfiles repo.
+pub fn ensure_initial_commit(dir: &Path) -> Result<git::CommitInfo> {
+    git::init::init_repo_root(dir)
+        .with_context(|| format!("failed to initialize {}", dir.display()))?;
+    create_base_commit(dir, INITIAL_CONFIG_COMMIT_MESSAGE)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -337,5 +366,50 @@ mod tests {
 
         assert!(dest.join("flake.nix").exists());
         assert!(dest.join("modules/base.nix").exists());
+    }
+
+    fn head_id(repo_path: &Path) -> git2::Oid {
+        git2::Repository::open(repo_path)
+            .unwrap()
+            .head()
+            .unwrap()
+            .target()
+            .unwrap()
+    }
+
+    #[test]
+    fn ensure_initial_commit_uses_exact_root_inside_parent_repo() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let home = tmp.path().join("home");
+        let config_dir = home.join(".darwin");
+        let home_str = home.to_string_lossy();
+
+        git::init::init_repo(&home_str).unwrap();
+        std::fs::write(home.join("dotfiles.nix"), "{ parent = true; }\n").unwrap();
+        let parent_initial = git::commit_all(&home_str, "parent initial").unwrap();
+        std::fs::create_dir_all(&config_dir).unwrap();
+        std::fs::write(
+            config_dir.join("flake.nix"),
+            "{ description = \"test\"; }\n",
+        )
+        .unwrap();
+
+        let info = ensure_initial_commit(&config_dir).unwrap();
+
+        assert!(git::init::is_repo_root(&config_dir));
+        assert_eq!(head_id(&home).to_string(), parent_initial.hash);
+        assert!(git::read_tags(&home_str, &parent_initial.hash).is_empty());
+
+        let config_repo = git2::Repository::open(&config_dir).unwrap();
+        let commit = config_repo
+            .find_commit(git2::Oid::from_str(&info.hash).unwrap())
+            .unwrap();
+        assert_eq!(commit.message().unwrap(), INITIAL_CONFIG_COMMIT_MESSAGE);
+        assert!(git::read_tags(&config_dir.to_string_lossy(), &info.hash)
+            .contains(&format!("nixmac-base-{}", &info.hash[..8])));
+        assert!(
+            config_repo.revparse_single("HEAD:flake.nix").is_ok(),
+            "config flake should be committed in the nested repository"
+        );
     }
 }
