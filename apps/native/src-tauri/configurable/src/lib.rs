@@ -152,9 +152,9 @@ pub struct ConfigurableMeta {
     /// Loads the current state as a JSON object so the dev-settings command
     /// can join it with the static schema by field key.
     pub load_value_fn: fn(&tauri::AppHandle<tauri::Wry>) -> anyhow::Result<serde_json::Value>,
-    /// Writes one validated field value into the managed observable.
-    pub set_field_fn:
-        fn(&tauri::AppHandle<tauri::Wry>, &str, serde_json::Value) -> anyhow::Result<()>,
+    /// Replaces the managed observable's value with a deserialized
+    /// whole-struct payload. Serde validates every field in one pass.
+    pub set_fn: fn(&tauri::AppHandle<tauri::Wry>, serde_json::Value) -> anyhow::Result<()>,
 }
 
 inventory::collect!(ConfigurableMeta);

@@ -9,7 +9,6 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { tauriAPI } from "@/ipc/api";
 import type { ConfigFieldSchema, JsonValue } from "@/ipc/types";
 import { Info } from "lucide-react";
 import { useState } from "react";
@@ -22,18 +21,20 @@ interface Props {
   /** Current value loaded from the managed observable, looked up by key
    *  from the snapshot's `values` array. */
   current: JsonValue;
-  /** Called after a successful save with the new value so the parent can
-   *  refresh the schema or surface a status message. Optional. */
-  onSaved?: (key: string, value: unknown) => void;
+  /** Called when the user commits a new value. The parent owns the whole
+   *  snapshot, so it builds the full struct payload and POSTs it via the
+   *  whole-struct `devConfigs.set`. Must reject on backend failure so this
+   *  component can revert its optimistic UI state. */
+  onCommit: (key: string, value: unknown) => Promise<void>;
 }
 
 /**
  * Renders the appropriate control for a `ConfigFieldSchema` based on
- * `field.ty.kind` and writes changes back through `tauriAPI.devConfigs.set`.
- * Local optimistic state keeps the input snappy while the backend persists.
- * On error, reverts and surfaces the message inline.
+ * `field.ty.kind`. Local optimistic state keeps the input snappy while the
+ * parent persists the whole struct; on backend failure, `onCommit` rejects
+ * and this component reverts and surfaces the message inline.
  */
-export function AutoConfigField({ structName, field, current, onSaved }: Props) {
+export function AutoConfigField({ structName, field, current, onCommit }: Props) {
   const [value, setValue] = useState<unknown>(current);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,8 +43,7 @@ export function AutoConfigField({ structName, field, current, onSaved }: Props) 
     setValue(next);
     setError(null);
     try {
-      await tauriAPI.devConfigs.set(structName, field.key, next);
-      onSaved?.(field.key, next);
+      await onCommit(field.key, next);
     } catch (e) {
       setValue(previous);
       setError(e instanceof Error ? e.message : String(e));

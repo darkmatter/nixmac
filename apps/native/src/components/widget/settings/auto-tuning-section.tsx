@@ -1,7 +1,7 @@
 import { tauriAPI } from "@/ipc/api";
 import type { ConfigurableSnapshot, JsonValue } from "@/ipc/types";
 import { SlidersHorizontal } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AutoConfigField } from "@/components/widget/settings/auto-config-field";
 
 /**
@@ -47,11 +47,24 @@ export function AutoTuningSection() {
       )}
 
       <div className="space-y-5">
-        {snapshots.map((snapshot) => (
+        {snapshots.map((snapshot, index) => (
           <SnapshotSection
             key={snapshot.schema.name}
             snapshot={snapshot}
             showHeader={snapshots.length > 1}
+            onCommit={async (key, value) => {
+              const next = await commitField(snapshot, key, value);
+              // Mutate the local snapshot in place so the next field commit
+              // reads back the freshly persisted value. React doesn't re-render
+              // anything because AutoConfigField owns its own field-level
+              // optimistic state; the snapshot is only consulted on the next
+              // commit's payload construction.
+              setSnapshots((prev) => {
+                const copy = prev.slice();
+                copy[index] = next;
+                return copy;
+              });
+            }}
           />
         ))}
       </div>
@@ -62,18 +75,12 @@ export function AutoTuningSection() {
 function SnapshotSection({
   snapshot,
   showHeader,
+  onCommit,
 }: {
   snapshot: ConfigurableSnapshot;
   showHeader: boolean;
+  onCommit: (key: string, value: unknown) => Promise<void>;
 }) {
-  const valuesByKey = useMemo(() => {
-    const map = new Map<string, JsonValue>();
-    for (const value of snapshot.values) {
-      map.set(value.key, value.current);
-    }
-    return map;
-  }, [snapshot.values]);
-
   return (
     <section className="space-y-3">
       {showHeader && (
@@ -85,15 +92,43 @@ function SnapshotSection({
         </div>
       )}
       <div className="grid grid-cols-2 gap-4">
-        {snapshot.schema.fields.map((field) => (
-          <AutoConfigField
-            key={field.key}
-            structName={snapshot.schema.name}
-            field={field}
-            current={valuesByKey.get(field.key) ?? null}
-          />
-        ))}
+        {snapshot.schema.fields.map((field) => {
+          const current = snapshot.values.find((v) => v.key === field.key)?.current ?? null;
+          return (
+            <AutoConfigField
+              key={field.key}
+              structName={snapshot.schema.name}
+              field={field}
+              current={current}
+              onCommit={onCommit}
+            />
+          );
+        })}
       </div>
     </section>
   );
+}
+
+/**
+ * Builds the whole-struct payload by overlaying the new value on the snapshot's
+ * existing values, POSTs it via `devConfigs.set`, and returns the next snapshot
+ * so the parent can keep its state in sync.
+ *
+ * The backend (Serde) clobbers any concurrent backend-side edits to other
+ * fields — that's fine for a single-user dev settings panel.
+ */
+async function commitField(
+  snapshot: ConfigurableSnapshot,
+  key: string,
+  value: unknown,
+): Promise<ConfigurableSnapshot> {
+  const nextValues = snapshot.values.map((v) =>
+    v.key === key ? { ...v, current: value as JsonValue } : v,
+  );
+  const payload: Record<string, unknown> = {};
+  for (const v of nextValues) {
+    payload[v.key] = v.current;
+  }
+  await tauriAPI.devConfigs.set(snapshot.schema.name, payload);
+  return { ...snapshot, values: nextValues };
 }

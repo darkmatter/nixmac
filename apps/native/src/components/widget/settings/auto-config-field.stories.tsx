@@ -88,6 +88,7 @@ export const Controls = meta.story({
           structName="EvolutionLimits"
           field={schema}
           current={current}
+          onCommit={async () => undefined}
         />
       ))}
     </div>

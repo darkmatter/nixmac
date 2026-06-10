@@ -143,8 +143,13 @@ export const tauriAPI = {
   },
   devConfigs: {
     list: () => invoke<ConfigurableSnapshot[]>("dev_configs_list"),
-    set: (structName: string, key: string, value: unknown) =>
-      invoke<void>("dev_config_set", { structName, key, value }),
+    /**
+     * Replace a Configurable struct with a whole-struct payload. `value` must
+     * be the full struct (every field), not a partial update — Serde validates
+     * the whole thing in one pass on the backend.
+     */
+    set: (structName: string, value: Record<string, unknown>) =>
+      invoke<void>("dev_config_set", { structName, value }),
   },
   models: {
     getCached: (provider: string) => invoke<string[] | null>("get_cached_models", { provider }),

@@ -31,7 +31,7 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
         .display_name
         .clone()
         .unwrap_or_else(|| name_str.clone());
-    let fields = generate_fields(named_fields(&input)?, &name_str)?;
+    let fields = generate_fields(named_fields(&input)?)?;
     let methods = build_scope_methods(
         name,
         &name_str,
@@ -62,12 +62,11 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
             }
 
             #[doc(hidden)]
-            pub fn __configurable_set_field_wry(
+            pub fn __configurable_set_wry(
                 app: &::tauri::AppHandle<::tauri::Wry>,
-                key: &str,
                 value: ::serde_json::Value,
             ) -> ::std::result::Result<(), ::anyhow::Error> {
-                Self::set_field(app, key, value)
+                Self::set(app, value)
             }
         }
 
@@ -78,7 +77,7 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
                 name: #name_str,
                 schema_fn: #name::__configurable_schema_wry,
                 load_value_fn: #name::__configurable_load_value_wry,
-                set_field_fn: #name::__configurable_set_field_wry,
+                set_fn: #name::__configurable_set_wry,
             }
         }
     })
@@ -95,12 +94,16 @@ fn description_expr(description: Option<&String>) -> TokenStream2 {
     }
 }
 
-/// Emits the generated `load`, `schema`, and `set_field` methods.
+/// Emits the generated `load`, `schema`, and `set` methods.
 ///
 /// `schema` is intentionally context-free: it returns a `ConfigurableSchema`
 /// built from the derive attributes alone, with no `AppHandle` involved. The
 /// dev-settings command joins it with current values at the IPC boundary via
 /// `load_value` so the static metadata stays cacheable.
+///
+/// `set` takes the whole struct as a single JSON payload. One Serde
+/// deserialize validates every field at once; there is no per-field dispatch
+/// table because the type system already knows the shape of `Self`.
 fn build_scope_methods(
     name: &syn::Ident,
     name_str: &str,
@@ -115,7 +118,6 @@ fn build_scope_methods(
     };
     let default_inits = fields.default_inits;
     let schema_fields = fields.schema_fields;
-    let set_field_arms = fields.set_field_arms;
 
     // The derive is observable-only: reads mirror the managed observable, and
     // writes go through the observable guard so persistence and change events
@@ -149,9 +151,8 @@ fn build_scope_methods(
             }
         }
 
-        pub fn set_field<R: ::tauri::Runtime>(
+        pub fn set<R: ::tauri::Runtime>(
             app: &::tauri::AppHandle<R>,
-            key: &str,
             value: ::serde_json::Value,
         ) -> ::std::result::Result<(), ::anyhow::Error> {
             let __observable =
@@ -160,14 +161,12 @@ fn build_scope_methods(
                         "Configurable {}: {} observable is not managed",
                         #name_str, #scope_name,
                     ))?;
+            let __next: Self = ::serde_json::from_value(value).map_err(|e| {
+                ::anyhow::anyhow!("Configurable {}: invalid payload: {}", #name_str, e)
+            })?;
             let mut __state = __observable.write_sync();
-            match key {
-                #(#set_field_arms)*
-                other => ::std::result::Result::Err(::anyhow::anyhow!(
-                    "Configurable {}: unknown field `{}`",
-                    #name_str, other,
-                )),
-            }
+            *__state = __next;
+            ::std::result::Result::Ok(())
         }
     }
 }
