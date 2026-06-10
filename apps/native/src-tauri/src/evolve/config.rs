@@ -48,6 +48,24 @@ pub struct EvolutionLimits {
     pub max_build_attempts: usize,
 
     #[config(
+        default = 3,
+        key = "maxRepeatedEditFailures",
+        label = "Max repeated edit failures",
+        range = 1..=10,
+        help = "Consecutive failures editing the same Nix file before asking whether to keep trying.",
+    )]
+    pub max_repeated_edit_failures: usize,
+
+    #[config(
+        default = 25_000,
+        key = "maxTokensWithoutProgress",
+        label = "Max tokens without progress",
+        range = 1_000..=1_000_000,
+        help = "Provider-reported tokens without a successful edit before asking whether to keep trying.",
+    )]
+    pub max_tokens_without_progress: u32,
+
+    #[config(
         default = 32_768,
         key = "maxOutputTokens",
         label = "Max output tokens",
@@ -66,6 +84,8 @@ impl Default for EvolutionLimits {
         Self {
             max_token_budget: 50_000,
             max_build_attempts: 5,
+            max_repeated_edit_failures: 3,
+            max_tokens_without_progress: 25_000,
             max_output_tokens: 32_768,
         }
     }
@@ -104,6 +124,8 @@ mod tests {
 
         assert_eq!(limits.max_token_budget, 50_000);
         assert_eq!(limits.max_build_attempts, 5);
+        assert_eq!(limits.max_repeated_edit_failures, 3);
+        assert_eq!(limits.max_tokens_without_progress, 25_000);
         assert_eq!(limits.max_output_tokens, 32_768);
     }
 
@@ -112,6 +134,8 @@ mod tests {
         let limits: EvolutionLimits = serde_json::from_value(serde_json::json!({
             "maxTokenBudget": 80_000,
             "maxBuildAttempts": 3,
+            "maxRepeatedEditFailures": 2,
+            "maxTokensWithoutProgress": 12_000,
             "maxOutputTokens": 16_384,
             "developerMode": true
         }))
@@ -122,6 +146,8 @@ mod tests {
             EvolutionLimits {
                 max_token_budget: 80_000,
                 max_build_attempts: 3,
+                max_repeated_edit_failures: 2,
+                max_tokens_without_progress: 12_000,
                 max_output_tokens: 16_384,
             }
         );
@@ -134,6 +160,8 @@ mod tests {
 
         assert_eq!(limits.max_token_budget, 50_000);
         assert_eq!(limits.max_build_attempts, 5);
+        assert_eq!(limits.max_repeated_edit_failures, 3);
+        assert_eq!(limits.max_tokens_without_progress, 25_000);
         assert_eq!(limits.max_output_tokens, 32_768);
     }
 }

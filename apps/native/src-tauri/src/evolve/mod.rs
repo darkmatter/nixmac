@@ -29,7 +29,7 @@ use crate::git::query::repo_root;
 // Re-export public API
 use crate::shared_types::{Evolution, EvolutionState, FileEdit};
 use crate::system::nix;
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use chrono::Utc;
 use log::{debug, error, info, warn};
 use regex::Regex;
@@ -41,16 +41,16 @@ use std::sync::Arc;
 use std::time::Duration;
 use tauri::{AppHandle, Runtime};
 use tokio::time::sleep;
-use tools::{ToolResult, create_tools, execute_tool};
+use tools::{create_tools, execute_tool, ToolResult};
 pub use types::{EvolutionProgress, EvolutionRunError};
 
 use crate::{
     statistics, store,
-    types::{EvolveEvent, emit_evolve_event},
+    types::{emit_evolve_event, EvolveEvent},
     utils as global_utils,
     utils::short_hash,
 };
-use chat_memory::{ChatMessage, Role as ChatMemoryRole, to_provider_context_messages};
+use chat_memory::{to_provider_context_messages, ChatMessage, Role as ChatMemoryRole};
 
 pub(crate) use chat_memory::session_chat_memory_store;
 use config_dir_context::format_config_dir_context;
@@ -546,12 +546,27 @@ fn restore_historical_evolution_messages() -> Vec<EvolutionMessage> {
     historical_ev_msgs
 }
 
-const LIMIT_DECISION_CONTINUE: &str = "Yes, keep going";
-const LIMIT_DECISION_STOP: &str = "Stop";
+const LIMIT_DECISION_CONTINUE: &str = "Keep trying";
+const LIMIT_DECISION_STOP: &str = "Stop and review";
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum EvolutionLimitKind {
     BuildAttempts,
+    RepeatedEditFailures,
+    TokensWithoutProgress,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct EvolutionLimitTrigger {
+    kind: EvolutionLimitKind,
+    prompt: String,
+    stop_summary: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct RepeatedEditFailureTracker {
+    path: Option<String>,
+    count: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -561,28 +576,78 @@ enum LimitDecision {
     Cancelled,
 }
 
-impl EvolutionLimitKind {
-    fn attempts_label(self, attempts: usize) -> String {
-        match self {
-            Self::BuildAttempts => format!("{} build attempts", attempts),
-        }
-    }
-
-    fn prompt(self, attempts: usize) -> String {
-        format!(
-            "The AI has made {}. Keep going?",
-            self.attempts_label(attempts)
-        )
-    }
-
-    fn stop_summary(self, attempts: usize) -> String {
-        match self {
-            Self::BuildAttempts => format!(
-                "Evolution stopped after reaching {}. You can review the current changes or continue with a follow-up prompt.",
-                self.attempts_label(attempts)
+impl EvolutionLimitTrigger {
+    fn build_attempts(attempts: usize) -> Self {
+        let label = format!("{} build attempts", attempts);
+        Self {
+            kind: EvolutionLimitKind::BuildAttempts,
+            prompt: format!("The AI has made {label}. Keep trying?"),
+            stop_summary: format!(
+                "Evolution stopped after reaching {label}. You can review the current changes or continue with a follow-up prompt."
             ),
         }
     }
+
+    fn repeated_edit_failures(path: &str, failures: usize) -> Self {
+        Self {
+            kind: EvolutionLimitKind::RepeatedEditFailures,
+            prompt: format!(
+                "I'm having trouble applying this change — keep trying or stop? The edit to {path} has failed {failures} consecutive times."
+            ),
+            stop_summary: format!(
+                "Evolution stopped after {failures} consecutive failed edit attempts on {path}. You can review the current state or continue with a follow-up prompt."
+            ),
+        }
+    }
+
+    fn tokens_without_progress(tokens: u32, threshold: u32) -> Self {
+        Self {
+            kind: EvolutionLimitKind::TokensWithoutProgress,
+            prompt: format!(
+                "The AI has used {tokens} tokens without a successful edit, exceeding the {threshold} token threshold. Keep trying or stop?"
+            ),
+            stop_summary: format!(
+                "Evolution stopped after using {tokens} tokens without a successful edit. You can review the current state or continue with a follow-up prompt."
+            ),
+        }
+    }
+}
+
+impl RepeatedEditFailureTracker {
+    fn record_failure(&mut self, path: &str) -> usize {
+        if self.path.as_deref() == Some(path) {
+            self.count += 1;
+        } else {
+            self.path = Some(path.to_string());
+            self.count = 1;
+        }
+        self.count
+    }
+
+    fn clear(&mut self) {
+        self.path = None;
+        self.count = 0;
+    }
+}
+
+fn failed_nix_edit_path(tool_name: &str, args: &serde_json::Value) -> Option<String> {
+    if !matches!(tool_name, "edit_nix_file" | "edit_file") {
+        return None;
+    }
+
+    let path = args.get("path")?.as_str()?.trim();
+    if path.ends_with(".nix") {
+        Some(path.to_string())
+    } else {
+        None
+    }
+}
+
+fn is_successful_edit_result(result: &ToolResult) -> bool {
+    matches!(
+        result,
+        ToolResult::Edit(_) | ToolResult::EditSemantic(_) | ToolResult::EnsureSecret(_)
+    )
 }
 
 fn should_continue_after_limit(answer: &str) -> bool {
@@ -591,6 +656,7 @@ fn should_continue_after_limit(answer: &str) -> bool {
         || normalized == "y"
         || normalized == "continue"
         || normalized == "keep going"
+        || normalized == "keep trying"
         || normalized == LIMIT_DECISION_CONTINUE.to_ascii_lowercase()
 }
 
@@ -598,11 +664,10 @@ async fn ask_to_continue_after_limit<R: Runtime>(
     app: &AppHandle<R>,
     start_time: i64,
     iteration: usize,
-    limit_kind: EvolutionLimitKind,
-    attempts: usize,
+    trigger: &EvolutionLimitTrigger,
     interactive: bool,
 ) -> LimitDecision {
-    let prompt = limit_kind.prompt(attempts);
+    let prompt = trigger.prompt.as_str();
 
     if !interactive {
         info!(
@@ -628,7 +693,7 @@ async fn ask_to_continue_after_limit<R: Runtime>(
         EvolveEvent::question(
             start_time,
             iteration,
-            &prompt,
+            prompt,
             &Some(vec![
                 LIMIT_DECISION_CONTINUE.to_string(),
                 LIMIT_DECISION_STOP.to_string(),
@@ -657,7 +722,11 @@ async fn ask_to_continue_after_limit<R: Runtime>(
             info!("User chose to continue after reaching an evolution limit");
             emit_evolve_event(
                 app,
-                EvolveEvent::info(start_time, Some(iteration), "Continuing evolution..."),
+                EvolveEvent::info(
+                    start_time,
+                    Some(iteration),
+                    &format!("Continuing evolution after {:?} gate...", trigger.kind),
+                ),
             );
             LimitDecision::Continue
         }
@@ -680,10 +749,9 @@ fn finish_after_limit_stop<R: Runtime>(
     evolution: &mut Evolution,
     start_time: i64,
     iteration: usize,
-    limit_kind: EvolutionLimitKind,
-    attempts: usize,
+    trigger: &EvolutionLimitTrigger,
 ) {
-    let summary = limit_kind.stop_summary(attempts);
+    let summary = trigger.stop_summary.as_str();
     info!("{}", summary);
     emit_evolve_event(
         app,
@@ -691,7 +759,7 @@ fn finish_after_limit_stop<R: Runtime>(
     );
     emit_evolve_event(app, EvolveEvent::complete(start_time, iteration, &summary));
 
-    evolution.summary = Some(summary);
+    evolution.summary = Some(summary.to_string());
     evolution.state = if evolution.edits.is_empty() {
         EvolutionState::Conversational
     } else {
@@ -827,18 +895,24 @@ pub async fn generate_evolution<R: Runtime>(
 
     // Read configurable limits from store (hot-reloaded on every run).
     let config::EvolutionLimits {
+        max_token_budget,
         mut max_build_attempts,
-        ..
+        max_repeated_edit_failures,
+        max_tokens_without_progress,
+        max_output_tokens: _,
     } = config::EvolutionLimits::load(app)
         .inspect_err(|e| warn!("EvolutionLimits::load failed ({e}); using defaults"))
         .unwrap_or_default();
-    let max_token_budget =
-        store::get_max_token_budget(app).unwrap_or(store::DEFAULT_MAX_TOKEN_BUDGET);
     let max_build_attempts_increment = max_build_attempts.max(1);
+    let max_repeated_edit_failures = max_repeated_edit_failures.max(1);
+    let max_tokens_without_progress = max_tokens_without_progress.max(1);
     let interactive_limit_prompt = !banned_tools.contains(&"ask_user");
     info!(
-        "Limits: max_token_budget={}, max_build_attempts={}",
-        max_token_budget, max_build_attempts,
+        "Limits: max_token_budget={}, max_build_attempts={}, max_repeated_edit_failures={}, max_tokens_without_progress={}",
+        max_token_budget,
+        max_build_attempts,
+        max_repeated_edit_failures,
+        max_tokens_without_progress,
     );
 
     let tools = create_tools(banned_tools);
@@ -852,6 +926,8 @@ pub async fn generate_evolution<R: Runtime>(
     let mut build_attempts: usize = 0;
     let mut build_verified = false;
     let mut total_tokens: u32 = 0;
+    let mut tokens_at_last_successful_edit: u32 = 0;
+    let mut repeated_edit_failures = RepeatedEditFailureTracker::default();
     let chat_memory_store = session_chat_memory_store();
 
     // Restore only persisted conversational history (user/assistant, NOT tool)
@@ -1055,7 +1131,7 @@ pub async fn generate_evolution<R: Runtime>(
 
         // Track token usage
         if let Some(usage) = &response.usage {
-            total_tokens += usage.total;
+            total_tokens = total_tokens.saturating_add(usage.total);
             info!(
                 "📊 Tokens | this_call: {} (in={}, out={}) | total_session: {}",
                 usage.total, usage.input, usage.output, total_tokens
@@ -1335,6 +1411,10 @@ pub async fn generate_evolution<R: Runtime>(
                                     .into());
                                 }
                             };
+                            if is_successful_edit_result(res) {
+                                tokens_at_last_successful_edit = total_tokens;
+                                repeated_edit_failures.clear();
+                            }
                             messages.push(store_tool_result(msg, tool_name, iteration, tool_key));
 
                             match break_signal {
@@ -1386,6 +1466,50 @@ Do not invent tool names and do not place tool invocations in assistant content.
                                 iteration,
                                 tool_key,
                             ));
+
+                            if let Some(path) = failed_nix_edit_path(tool_name, &args) {
+                                let failures = repeated_edit_failures.record_failure(&path);
+                                if failures >= max_repeated_edit_failures {
+                                    let trigger = EvolutionLimitTrigger::repeated_edit_failures(
+                                        &path, failures,
+                                    );
+                                    match ask_to_continue_after_limit(
+                                        app,
+                                        start_time,
+                                        iteration,
+                                        &trigger,
+                                        interactive_limit_prompt,
+                                    )
+                                    .await
+                                    {
+                                        LimitDecision::Continue => {
+                                            repeated_edit_failures.clear();
+                                        }
+                                        LimitDecision::Stop => {
+                                            finish_after_limit_stop(
+                                                app,
+                                                &mut evolution,
+                                                start_time,
+                                                iteration,
+                                                &trigger,
+                                            );
+                                            should_break = true;
+                                            break;
+                                        }
+                                        LimitDecision::Cancelled => {
+                                            evolution.state = EvolutionState::Failed;
+                                            return Err(EvolutionRunError::from_state(
+                                                session_control::EVOLUTION_CANCELLED_MSG,
+                                                &evolution,
+                                                iteration,
+                                                build_attempts,
+                                                total_tokens,
+                                            )
+                                            .into());
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -1439,12 +1563,12 @@ Do not invent tool names and do not place tool invocations in assistant content.
                 "⚠️ Evolution reached maximum build attempts ({}) - asking whether to continue",
                 max_build_attempts
             );
+            let trigger = EvolutionLimitTrigger::build_attempts(build_attempts);
             match ask_to_continue_after_limit(
                 app,
                 start_time,
                 iteration,
-                EvolutionLimitKind::BuildAttempts,
-                build_attempts,
+                &trigger,
                 interactive_limit_prompt,
             )
             .await
@@ -1454,14 +1578,51 @@ Do not invent tool names and do not place tool invocations in assistant content.
                     info!("Extending max build attempts to {}", max_build_attempts);
                 }
                 LimitDecision::Stop => {
-                    finish_after_limit_stop(
-                        app,
-                        &mut evolution,
-                        start_time,
+                    finish_after_limit_stop(app, &mut evolution, start_time, iteration, &trigger);
+                    break;
+                }
+                LimitDecision::Cancelled => {
+                    evolution.state = EvolutionState::Failed;
+                    return Err(EvolutionRunError::from_state(
+                        session_control::EVOLUTION_CANCELLED_MSG,
+                        &evolution,
                         iteration,
-                        EvolutionLimitKind::BuildAttempts,
                         build_attempts,
+                        total_tokens,
+                    )
+                    .into());
+                }
+            }
+        }
+
+        let tokens_without_progress = total_tokens.saturating_sub(tokens_at_last_successful_edit);
+        if tokens_without_progress >= max_tokens_without_progress {
+            warn!(
+                "⚠️ Evolution used {} tokens without a successful edit (threshold {}) - asking whether to continue",
+                tokens_without_progress, max_tokens_without_progress
+            );
+            let trigger = EvolutionLimitTrigger::tokens_without_progress(
+                tokens_without_progress,
+                max_tokens_without_progress,
+            );
+            match ask_to_continue_after_limit(
+                app,
+                start_time,
+                iteration,
+                &trigger,
+                interactive_limit_prompt,
+            )
+            .await
+            {
+                LimitDecision::Continue => {
+                    tokens_at_last_successful_edit = total_tokens;
+                    info!(
+                        "Resetting no-progress token counter at {} total tokens",
+                        total_tokens
                     );
+                }
+                LimitDecision::Stop => {
+                    finish_after_limit_stop(app, &mut evolution, start_time, iteration, &trigger);
                     break;
                 }
                 LimitDecision::Cancelled => {
@@ -1915,8 +2076,10 @@ fn process_tool_result(
 #[cfg(test)]
 mod tests {
     use super::{
-        Evolution, EvolutionMessage, EvolutionState, FileEdit, Message, Retention, ToolResult,
-        filter_evolution_messages, process_tool_result, read_file_dedup_key, store_tool_result,
+        failed_nix_edit_path, filter_evolution_messages, is_successful_edit_result,
+        process_tool_result, read_file_dedup_key, should_continue_after_limit, store_tool_result,
+        Evolution, EvolutionLimitTrigger, EvolutionMessage, EvolutionState, FileEdit, Message,
+        RepeatedEditFailureTracker, Retention, ToolResult,
     };
 
     fn build_result(success: bool) -> ToolResult {
@@ -1946,6 +2109,66 @@ mod tests {
             0,
         )
         .expect("process_tool_result should not error in these cases");
+    }
+
+    #[test]
+    fn repeated_edit_failure_tracker_counts_same_path_only() {
+        let mut tracker = RepeatedEditFailureTracker::default();
+
+        assert_eq!(tracker.record_failure("modules/darwin/packages.nix"), 1);
+        assert_eq!(tracker.record_failure("modules/darwin/packages.nix"), 2);
+        assert_eq!(tracker.record_failure("modules/home/packages.nix"), 1);
+
+        tracker.clear();
+
+        assert_eq!(tracker.record_failure("modules/darwin/packages.nix"), 1);
+    }
+
+    #[test]
+    fn failed_nix_edit_path_tracks_nix_edit_tools_only() {
+        let nix_args = serde_json::json!({ "path": "modules/darwin/packages.nix" });
+        let json_args = serde_json::json!({ "path": ".nixmac/homebrew/data.json" });
+
+        assert_eq!(
+            failed_nix_edit_path("edit_nix_file", &nix_args),
+            Some("modules/darwin/packages.nix".to_string())
+        );
+        assert_eq!(
+            failed_nix_edit_path("edit_file", &nix_args),
+            Some("modules/darwin/packages.nix".to_string())
+        );
+        assert_eq!(failed_nix_edit_path("edit_file", &json_args), None);
+        assert_eq!(failed_nix_edit_path("read_file", &nix_args), None);
+    }
+
+    #[test]
+    fn successful_edit_result_detects_progress_tools() {
+        assert!(is_successful_edit_result(&ToolResult::Edit(FileEdit {
+            path: "configuration.nix".to_string(),
+            search: "a".to_string(),
+            replace: "b".to_string(),
+        })));
+        assert!(!is_successful_edit_result(&build_result(true)));
+    }
+
+    #[test]
+    fn limit_gate_accepts_keep_trying_choice() {
+        assert!(should_continue_after_limit("Keep trying"));
+        assert!(should_continue_after_limit("keep going"));
+        assert!(!should_continue_after_limit("Stop and review"));
+    }
+
+    #[test]
+    fn repeated_edit_limit_prompt_explains_failure() {
+        let trigger =
+            EvolutionLimitTrigger::repeated_edit_failures("modules/darwin/packages.nix", 3);
+
+        assert!(trigger
+            .prompt
+            .contains("I'm having trouble applying this change"));
+        assert!(trigger.prompt.contains("modules/darwin/packages.nix"));
+        assert!(trigger.prompt.contains("3 consecutive times"));
+        assert!(trigger.stop_summary.contains("failed edit attempts"));
     }
 
     // Bug 1: build_verified latched true on the first passing build and was never

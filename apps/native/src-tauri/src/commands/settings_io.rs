@@ -242,6 +242,8 @@ mod tests {
             serde_json::to_value(EvolutionLimits {
                 max_token_budget: 80_000,
                 max_build_attempts: 4,
+                max_repeated_edit_failures: 3,
+                max_tokens_without_progress: 25_000,
                 max_output_tokens: 16_384,
             })
             .unwrap(),
