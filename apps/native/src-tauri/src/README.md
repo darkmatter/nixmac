@@ -50,9 +50,10 @@ Each file (apply, cli_tool, config, debug, editor, evolve, evolve_state, feedbac
 ### `db/` — SQLite persistence
 
 - `schema.rs` — Runs migrations
+- `pool.rs`, `tables.rs` — Diesel r2d2 connection pool and `table!` declarations
 - `commits.rs`, `evolutions.rs` — CRUD for their respective tables
 - `changesets.rs` — Shared insert helpers for changeset tables
-- `store_new_changeset.rs`, `store_evolved_changeset.rs`, `store_bare_changeset.rs` — Persist summarization pipeline results
+- `store_whole_diff_changeset.rs`, `store_bare_changeset.rs` — Persist summarization pipeline results
 - `restore_commits.rs` — Tracks restore-origin provenance
 
 **Called by:** history, summarize, evolve/lifecycle, managed_edits, state/watcher
@@ -139,19 +140,19 @@ Shared "managed edit" pattern (prepare, apply, finalize into review flow).
 
 ### `summarize/` — AI-powered change summarization
 
-Orchestrates the summarization pipeline from raw git diffs to DB-persisted changesets.
+Orchestrates summarization of a git diff into a DB-persisted changeset.
+The current pipeline issues one model call over the full diff and stores
+the resulting commit message (PR #330 replaced an earlier per-hunk
+grouping scheme).
 
-- `mod.rs` — Top-level `new_changeset` flow
-- `find_existing.rs` — Queries DB for existing summarized changes
+- `mod.rs` — Top-level `new_changeset` / `summarize_since` flow
+- `find_existing.rs` — Queries DB for existing summarized changesets
 - `group_existing.rs` — Builds SemanticChangeMap from found changesets
-- `assignments.rs` — Reconciles model output into DB-writable assignments
-- `model_calls.rs` — AI API calls for hunk/group/commit-message summarization
-- `build_prompt.rs` — Constructs prompts
-- `simplify_grouped.rs` — Converts semantic maps into simplified forms for AI input
+- `model_calls.rs` — AI API call for the whole-diff summary
+- `build_prompt.rs` — Constructs the whole-diff prompt
 - `token_budgets.rs` — Computes input/output token allocations
-- `model_output_types.rs` — Structured AI response types
 - `sumlog.rs` — Toggleable debug logging
-- `pipelines/` — fresh_changeset, evolved_changeset, history, commit_message implementations
+- `pipelines/` — `whole_diff`, `history`, and `commit_message` entry points
 
 **Called by:** commands::summarize, evolve/lifecycle, state/watcher, history
 
