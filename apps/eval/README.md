@@ -137,10 +137,15 @@ python run_evals.py --csv data/test_prompts.csv --base-config minimal
 python run_evals.py --csv data/test_prompts.csv \
   --base-config ~/.darwin --host my-mac
 
-# A git repo (shallow-cloned for the duration of the run)
+# A git repo (shallow-cloned for the duration of the run).
+# Refs use Nix flake-URL syntax — drop them in the URL itself.
 python run_evals.py --csv data/test_prompts.csv \
-  --base-config https://github.com/me/dotfiles.git \
-  --base-config-ref main \
+  --base-config github:me/dotfiles/main \
+  --host my-mac
+
+# Same thing as a plain git URL with ?ref=
+python run_evals.py --csv data/test_prompts.csv \
+  --base-config 'https://github.com/me/dotfiles.git?ref=main' \
   --host my-mac
 ```
 

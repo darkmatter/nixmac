@@ -52,15 +52,53 @@ args: argparse.Namespace | None = None
 
 def _looks_like_git_url(value: str) -> bool:
     """Heuristic: is `value` a git URL rather than a local path?"""
+    if value.startswith(("git+", "github:")):
+        return True
+    head = value.split("?", 1)[0]
     return (
-        value.startswith(("http://", "https://", "git@", "ssh://", "git://"))
-        or value.endswith(".git")
+        head.startswith(("http://", "https://", "git@", "ssh://", "git://"))
+        or head.endswith(".git")
     )
+
+
+def _parse_flake_url(value: str) -> tuple[str, str | None]:
+    """Parse a flake-style git URL into (clone_url, ref).
+
+    Accepted forms:
+      github:user/repo[/ref]                         — GitHub shorthand
+      git+https://host/repo[.git][?ref=X]            — flake git+ prefix
+      https://host/repo[.git][?ref=X]                — plain git URL
+      git@host:user/repo.git[?ref=X]                 — ssh
+    """
+    if value.startswith("github:"):
+        rest = value[len("github:"):]
+        # Strip any query string for safety; refs in github: come via the path.
+        rest = rest.split("?", 1)[0]
+        parts = rest.split("/", 2)
+        if len(parts) < 2 or not parts[0] or not parts[1]:
+            raise ValueError(
+                f"github: URL must be github:user/repo[/ref]: {value!r}"
+            )
+        user, repo = parts[0], parts[1]
+        ref = parts[2] if len(parts) == 3 and parts[2] else None
+        return f"https://github.com/{user}/{repo}", ref
+
+    if value.startswith("git+"):
+        value = value[len("git+"):]
+
+    if "?" in value:
+        base, qs = value.split("?", 1)
+        from urllib.parse import parse_qs
+
+        params = parse_qs(qs)
+        ref = params.get("ref", [None])[0]
+        return base, ref
+
+    return value, None
 
 
 def resolve_base_config(
     base_config: str | None,
-    base_config_ref: str | None,
     clone_into: Path,
 ) -> Path:
     """Resolve --base-config into a directory holding a nix-darwin config.
@@ -69,7 +107,7 @@ def resolve_base_config(
     - None → bundled DEFAULT_TEMPLATE_NAME under TEMPLATES_DIR.
     - bundled template name (subdir of TEMPLATES_DIR) → that subdir.
     - local directory → that directory.
-    - git URL → shallow clone into `clone_into` (C3, not yet implemented).
+    - flake-style git URL → shallow clone into `clone_into`.
 
     The caller owns the lifetime of any temp directories it passed in.
     """
@@ -86,18 +124,19 @@ def resolve_base_config(
     if local.is_dir():
         return local
 
-    # 3) git URL → shallow clone once into `clone_into`.
+    # 3) flake-style git URL → shallow clone once into `clone_into`.
     if _looks_like_git_url(base_config):
+        clone_url, ref = _parse_flake_url(base_config)
         clone_into.mkdir(parents=True, exist_ok=True)
         kwargs: dict[str, Any] = {"depth": 1, "single_branch": True}
-        if base_config_ref:
-            kwargs["branch"] = base_config_ref
+        if ref:
+            kwargs["branch"] = ref
         print(
-            f"Cloning {base_config}"
-            + (f" @ {base_config_ref}" if base_config_ref else "")
+            f"Cloning {clone_url}"
+            + (f" @ {ref}" if ref else "")
             + f" into {clone_into}"
         )
-        Repo.clone_from(base_config, str(clone_into), **kwargs)
+        Repo.clone_from(clone_url, str(clone_into), **kwargs)
         return clone_into
 
     raise ValueError(
@@ -498,7 +537,6 @@ def main(parsed_args: argparse.Namespace) -> None:
         # Resolve the nix-darwin baseline once per run.
         template_dir = resolve_base_config(
             base_config_arg,
-            getattr(parsed_args, "base_config_ref", None),
             clone_into=clone_dir or Path(tempfile.gettempdir()),
         )
         print(f"Using nix-darwin baseline: {template_dir}")
@@ -673,16 +711,10 @@ if __name__ == "__main__":
         help=(
             "Baseline nix-darwin config to evaluate against. Accepts a "
             "bundled template name (minimal | base | nix-darwin-determinate "
-            "| nixos-unified), a local directory, or (later) a git URL. "
+            "| nixos-unified), a local directory, or a flake-style git URL "
+            "(github:user/repo[/ref], git+https://..., or https://...?ref=X). "
             f"Default: {DEFAULT_TEMPLATE_NAME}."
         ),
-    )
-    parser.add_argument(
-        "--base-config-ref",
-        dest="base_config_ref",
-        type=str,
-        default=None,
-        help="Git ref to check out when --base-config is a URL (default: HEAD).",
     )
 
     parser.add_argument(

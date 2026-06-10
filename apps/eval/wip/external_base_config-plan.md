@@ -46,10 +46,15 @@ python run_evals.py --csv ... --vllm-url ...
 # point at a local nix-darwin config (a directory)
 python run_evals.py --csv ... --base-config ~/.darwin --host my-mac
 
-# point at a git repo (shallow-cloned to a temp dir before each case)
+# point at a git repo (shallow-cloned once per run).
+# Refs go inside the URL, Nix flake-style — no separate --ref flag.
 python run_evals.py --csv ... \
-    --base-config https://github.com/me/dotfiles.git \
-    --base-config-ref main \
+    --base-config github:me/dotfiles/main \
+    --host my-mac
+
+# Same thing via a plain git URL with ?ref=
+python run_evals.py --csv ... \
+    --base-config 'https://github.com/me/dotfiles.git?ref=main' \
     --host my-mac
 
 # also support one of the other bundled templates by name
@@ -61,10 +66,21 @@ The flag accepts three shapes, in priority order:
 1. **A bundled template name** (`minimal`, `base`, `nix-darwin-determinate`,
    `nixos-unified`) — resolved against `apps/native/templates/<name>`.
    Same machinery as today, just selectable.
+
 1. **A local directory** — copied as-is (no `.git` from the source is
    preserved; we always init a fresh repo, see *Git handling* below).
-1. **A git URL** (heuristic: `http(s)://`, `git@`, or ends in `.git`) —
-   shallow-cloned to a per-case temp dir, then treated like (2).
+
+1. **A flake-style git URL** — shallow-cloned once into a session-level
+   temp dir, then treated like (2). Accepted shapes:
+
+   - `github:user/repo[/ref]` (GitHub shorthand)
+   - `git+https://host/repo[.git][?ref=X]` (flake `git+` prefix)
+   - `https://host/repo[.git][?ref=X]` (plain git URL with query string)
+   - `git@host:user/repo.git[?ref=X]` (ssh)
+
+   The ref (`?ref=` query param, or the third path segment in `github:`)
+   is the only sub-attribute supported in v1. `?rev=<sha>` is *not*
+   supported yet — it requires either a full clone or `fetch --depth 1 <sha>` (server-dependent); use a branch or tag name instead.
 
 `--host` becomes effectively required when `--base-config` is a real
 config (since the config likely doesn't have `HOSTNAME_PLACEHOLDER` and
@@ -101,12 +117,19 @@ today's behavior).
 
 **Shallow clone with `--depth=1`.** GitPython is already a dep
 (`Repo.clone_from(url, dir, depth=1, single_branch=True, branch=ref)`).
-`--base-config-ref` defaults to the repo's default branch.
+When no ref is present in the URL, the clone follows the remote's
+default branch.
+
+**Ref lives in the URL, not in a separate flag.** Nix flake URLs put
+the ref in the URL itself (`github:user/repo/main` or
+`https://...?ref=main`); a separate `--base-config-ref` flag would be
+redundant and split state across two arguments. `_parse_flake_url`
+extracts the ref before handing the bare URL to `git clone`.
 
 **No caching.** Re-cloning on every invocation is fine. Caching adds
-correctness questions (cache invalidation on `--base-config-ref`
-changes, stale clones across sessions) that aren't worth the few
-seconds saved.
+correctness questions (cache invalidation when the ref's tip moves,
+stale clones across sessions) that aren't worth the few seconds
+saved.
 
 **Resolution order in `--base-config`.** Try bundled-template-name
 first (cheap string compare), then local path (`Path(...).is_dir()`),
@@ -128,15 +151,21 @@ All in `apps/eval/run_evals.py`. No nixmac binary changes; the
 
 ### 1. Resolve `--base-config` into a template directory
 
-New helper:
+Two helpers — one to split a flake-style URL into its parts, one to
+turn a `--base-config` argument into a directory:
 
 ```python
-TEMPLATES_DIR: Path = SCRIPT_DIR.parent / "native/templates"
+TEMPLATES_DIR: Path = SCRIPT_DIR.parent.parent / "vendor/nixmac/apps/native/templates"
 DEFAULT_TEMPLATE_NAME = "nix-darwin-determinate"
+
+def _parse_flake_url(value: str) -> tuple[str, str | None]:
+    """Parse a flake-style git URL into (clone_url, ref).
+
+    Accepts: github:user/repo[/ref], git+<url>[?ref=X], <url>[?ref=X].
+    """
 
 def resolve_base_config(
     base_config: str | None,
-    base_config_ref: str | None,
     clone_into: Path,
 ) -> Path:
     """Return a directory holding a nix-darwin config to be used as the
@@ -145,7 +174,8 @@ def resolve_base_config(
     - None → bundled DEFAULT_TEMPLATE_NAME under TEMPLATES_DIR.
     - bundled template name → TEMPLATES_DIR / name.
     - local path that is_dir() → that path.
-    - URL-shaped string → shallow clone into `clone_into`.
+    - flake-style git URL → shallow clone into `clone_into`, with the
+      ref taken from the URL (no separate flag).
     """
 ```
 
@@ -182,20 +212,16 @@ parser.add_argument(
     type=str,
     default=None,
     help=(
-        "Baseline nix-darwin config to evaluate against. Accepts: "
-        "a bundled template name (minimal|base|nix-darwin-determinate|"
-        "nixos-unified), a local directory, or a git URL. "
+        "Baseline nix-darwin config to evaluate against. Accepts a "
+        "bundled template name (minimal | base | nix-darwin-determinate "
+        "| nixos-unified), a local directory, or a flake-style git URL "
+        "(github:user/repo[/ref], git+https://..., or https://...?ref=X). "
         "Default: nix-darwin-determinate."
     ),
 )
-parser.add_argument(
-    "--base-config-ref",
-    dest="base_config_ref",
-    type=str,
-    default=None,
-    help="Git ref to check out when --base-config is a URL (default: HEAD).",
-)
 ```
+
+Just one flag — refs go in the URL. No `--base-config-ref`.
 
 ### 5. Run metadata
 
@@ -236,13 +262,14 @@ revertable.
 - Add `--base-config` CLI flag.
 - README: document the new flag.
 
-**C3 — Git URL support.**
+**C3 — Git URL support (with flake-style ref-in-URL).**
 
+- Add `_parse_flake_url` helper for `github:`, `git+`, `?ref=`.
 - Add URL branch to `resolve_base_config`: shallow clone with
   GitPython into a session-level temp dir.
-- Add `--base-config-ref`.
 - Cleanup: remove cloned dir in `main()`'s `finally`.
 - README: amend with the git-URL example.
+- No separate ref flag — refs live inside the URL.
 
 **C4 — Provenance in `meta.json`.**
 
@@ -312,6 +339,14 @@ on review:
   like dirs).
 
   ANSWER: single flag
+
+- **Ref in a separate flag or inside the URL?** Both work, but a
+  separate `--base-config-ref` splits state across two arguments and
+  doesn't match how anyone else (Nix flakes, `pip install`,
+  `cargo`, …) does it. Flake URLs put the ref in the URL itself.
+
+  ANSWER: ref-in-URL, flake style (`github:user/repo/ref`,
+  `?ref=…`).
 
 - **What happens when `--base-config` is a local path that *is* a
   git working tree?** Today: we copy the worktree only and init a
