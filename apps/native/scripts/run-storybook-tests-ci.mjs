@@ -11,9 +11,14 @@ const storyRoots = [
 ];
 const storyFileSuffixes = [".stories.ts", ".stories.tsx"];
 // Each batch re-spins a Chromium + reloads the Storybook/Vite env (the big
-// "prepare" cost), so larger batches mean fewer restarts and a faster run, at
-// the price of more memory held per process. Override via STORYBOOK_BATCH_SIZE.
-const batchSize = Math.max(1, Number(process.env.STORYBOOK_BATCH_SIZE) || 6);
+// "prepare" cost), so larger batches mean fewer restarts at the price of more
+// memory held per process. Override via STORYBOOK_BATCH_SIZE.
+// Default is 2: at 6, the batch that stacks monaco (nix-editor) and
+// three.js/WebGL (NixmacMascot3D) in one Chromium wedges the process — three
+// stories complete, then it hangs until the batch timeout kills it
+// (deterministic on every develop run since 3b650d57). Batch 2 keeps the
+// heavy stories in separate processes and the whole test phase is ~85s anyway.
+const batchSize = Math.max(1, Number(process.env.STORYBOOK_BATCH_SIZE) || 2);
 // Budget scales with batch size (~60s/file) plus a fixed startup allowance so a
 // bigger batch isn't SIGKILLed just for doing more work.
 const perBatchTimeoutMs = 30_000 + batchSize * 60_000;
