@@ -10,11 +10,28 @@ FAKE_BIN="$TMP_DIR/bin"
 INSTALL_NAME_TOOL_LOG="$TMP_DIR/install-name-tool.log"
 TAURI_SIGNER_LOG="$TMP_DIR/tauri-signer.log"
 CODESIGN_LOG="$TMP_DIR/codesign.log"
+TAURI_SHIM="$SCRIPT_DIR/../../../apps/native/node_modules/.bin/tauri"
+CREATED_TAURI_SHIM=0
 mkdir -p "$FAKE_BIN"
 touch "$INSTALL_NAME_TOOL_LOG"
 export INSTALL_NAME_TOOL_LOG
 export TAURI_SIGNER_LOG
 export CODESIGN_LOG
+
+if [ ! -x "$TAURI_SHIM" ]; then
+	mkdir -p "$(dirname "$TAURI_SHIM")"
+	touch "$TAURI_SHIM"
+	chmod +x "$TAURI_SHIM"
+	CREATED_TAURI_SHIM=1
+fi
+
+cleanup() {
+	if [ "$CREATED_TAURI_SHIM" -eq 1 ]; then
+		rm -f "$TAURI_SHIM"
+	fi
+	rm -rf "$TMP_DIR"
+}
+trap cleanup EXIT
 
 cat >"$FAKE_BIN/otool" <<'SH'
 #!/usr/bin/env bash
@@ -70,8 +87,7 @@ fi
 
 target="${!#}"
 printf '%s\n' "signed $target" >>"$TAURI_SIGNER_LOG"
-printf '%s\n' "fresh signature" >"$target.sig"
-printf '%s\n' "Signature generated for $target"
+printf '%s\n' "fresh signature"
 SH
 chmod +x "$FAKE_BIN/bun"
 
