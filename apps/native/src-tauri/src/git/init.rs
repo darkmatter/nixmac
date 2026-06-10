@@ -21,6 +21,9 @@ pub fn is_repo(dir: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// `.gitignore` contents seeded into newly initialized configuration repos.
+pub const SEED_GITIGNORE: &str = "node_modules\nresult\nrelease\ndist\ndist-electron\n";
+
 pub fn init_repo(dir: &str) -> Result<()> {
     let path = Path::new(dir);
 
@@ -31,10 +34,7 @@ pub fn init_repo(dir: &str) -> Result<()> {
         let gitignore_path = path.join(".gitignore");
 
         if !gitignore_path.exists() {
-            std::fs::write(
-                gitignore_path,
-                "node_modules\nresult\nrelease\ndist\ndist-electron\n",
-            )?;
+            std::fs::write(gitignore_path, SEED_GITIGNORE)?;
         }
     }
 

@@ -6,8 +6,11 @@
 //!
 //! Both land the configuration at the user's chosen directory (default
 //! `~/.darwin`) so the rest of onboarding can proceed exactly as if the user
-//! had selected an existing flake.
+//! had selected an existing flake. Zip archives (e.g. GitHub "Download ZIP")
+//! contain no `.git`, so after extraction the imported files are committed as
+//! the configuration's base state via [`ensure_initial_commit`].
 
+use crate::git;
 use anyhow::{Context, Result, anyhow, bail};
 use std::fs::File;
 use std::path::{Component, Path, PathBuf};
@@ -207,6 +210,58 @@ pub fn extract_zip(zip_path: &Path, dest: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Length of the commit-hash prefix in `nixmac-base-*` tag names, matching the
+/// tags `bootstrap::default_config` creates.
+const BASE_TAG_HASH_LEN: usize = 8;
+
+/// Ensures `dest` is a git repository with the imported files committed as the
+/// configuration's base state.
+///
+/// * If `dest` already is a repository (the archive shipped its own `.git`),
+///   this is a no-op — parity with the clone path, which arrives with history
+///   intact.
+/// * Otherwise a repository is initialized *at exactly `dest`*, the standard
+///   `.gitignore` is seeded when absent, and all non-ignored files are
+///   committed with the same message and `nixmac-base-*` tag that `bootstrap`
+///   uses, so history classification treats the imported state as the
+///   adoption baseline.
+///
+/// Repo detection deliberately uses `Repository::open`, not
+/// `Repository::discover` (which `git::init::is_repo` is built on): `discover`
+/// walks up parent directories, so for a user whose home directory is itself a
+/// git repository it would mistake the parent repo for `dest`'s — and the
+/// follow-up commit would stage the user's entire home directory into it.
+/// Initializing at the exact root makes that setup work correctly instead:
+/// `commit_all`'s discovery stops at the fresh `dest/.git`.
+///
+/// Ignore rules — the archive's own `.gitignore` or the seeded defaults — are
+/// respected: matched files stay on disk but untracked, exactly how
+/// `bootstrap` adopts an existing configuration directory. An archive whose
+/// ignore rules exclude everything fails with `nothing to commit`.
+pub fn ensure_initial_commit(dest: &Path) -> Result<()> {
+    if git2::Repository::open(dest).is_ok() {
+        return Ok(());
+    }
+
+    git2::Repository::init(dest)
+        .with_context(|| format!("failed to init git repository at {}", dest.display()))?;
+    let gitignore = dest.join(".gitignore");
+    if !gitignore.exists() {
+        std::fs::write(&gitignore, git::init::SEED_GITIGNORE)
+            .with_context(|| format!("failed to write {}", gitignore.display()))?;
+    }
+
+    let dest_str = dest.to_string_lossy();
+    let info = git::commit_all(&dest_str, "chore: initial nix-darwin configuration")
+        .context("failed to commit imported configuration")?;
+    let tag = format!("nixmac-base-{}", &info.hash[..BASE_TAG_HASH_LEN]);
+    if let Err(e) = git::tag_commit(&dest_str, &tag, &info.hash, false) {
+        log::warn!("Failed to tag imported initial commit as base: {}", e);
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -337,5 +392,135 @@ mod tests {
 
         assert!(dest.join("flake.nix").exists());
         assert!(dest.join("modules/base.nix").exists());
+    }
+
+    #[test]
+    fn ensure_initial_commit_creates_repo_commit_and_base_tag() {
+        let tmp = tempfile::TempDir::new().expect("create temp dir");
+        let dest = tmp.path().join("config");
+        std::fs::create_dir_all(&dest).expect("create dest");
+        std::fs::write(dest.join("flake.nix"), "{ }").expect("write flake");
+
+        ensure_initial_commit(&dest).expect("adopt imported config");
+
+        let repo = git2::Repository::open(&dest).expect("repo exists at dest");
+        let head = repo
+            .head()
+            .expect("HEAD exists")
+            .peel_to_commit()
+            .expect("HEAD is a commit");
+        assert_eq!(
+            head.message().unwrap_or_default(),
+            "chore: initial nix-darwin configuration"
+        );
+        let tags = repo.tag_names(Some("nixmac-base-*")).expect("read tags");
+        assert_eq!(tags.len(), 1);
+        assert!(dest.join(".gitignore").exists(), "seeds standard gitignore");
+    }
+
+    #[test]
+    fn ensure_initial_commit_noops_for_existing_repo() {
+        let tmp = tempfile::TempDir::new().expect("create temp dir");
+        let dest = tmp.path().join("repo");
+        std::fs::create_dir_all(&dest).expect("create dest");
+        git2::Repository::init(&dest).expect("init repo");
+        std::fs::write(dest.join("flake.nix"), "{ }").expect("write flake");
+        let first = git::commit_all(&dest.to_string_lossy(), "user commit").expect("user commit");
+
+        ensure_initial_commit(&dest).expect("no-op for existing repo");
+
+        let repo = git2::Repository::open(&dest).expect("open repo");
+        let head = repo
+            .head()
+            .expect("HEAD exists")
+            .peel_to_commit()
+            .expect("HEAD is a commit");
+        assert_eq!(head.id().to_string(), first.hash, "HEAD unchanged");
+        let tags = repo.tag_names(Some("nixmac-base-*")).expect("read tags");
+        assert_eq!(tags.len(), 0, "no base tag added to user history");
+    }
+
+    #[test]
+    fn ensure_initial_commit_inits_nested_repo_without_touching_parent() {
+        let tmp = tempfile::TempDir::new().expect("create temp dir");
+        let outer = tmp.path();
+        git2::Repository::init(outer).expect("init outer repo");
+        std::fs::write(outer.join("README.md"), "outer").expect("write outer file");
+        let outer_head =
+            git::commit_all(&outer.to_string_lossy(), "outer commit").expect("outer commit");
+
+        let dest = outer.join("imported");
+        std::fs::create_dir_all(&dest).expect("create dest");
+        std::fs::write(dest.join("flake.nix"), "{ }").expect("write flake");
+
+        ensure_initial_commit(&dest).expect("adopt nested config");
+
+        let nested = git2::Repository::open(&dest).expect("repo created at exact dest");
+        nested
+            .head()
+            .expect("nested HEAD exists")
+            .peel_to_commit()
+            .expect("nested HEAD is a commit");
+
+        let outer_repo = git2::Repository::open(outer).expect("open outer repo");
+        let head = outer_repo
+            .head()
+            .expect("outer HEAD exists")
+            .peel_to_commit()
+            .expect("outer HEAD is a commit");
+        assert_eq!(
+            head.id().to_string(),
+            outer_head.hash,
+            "parent repo untouched"
+        );
+        let tags = outer_repo
+            .tag_names(Some("nixmac-base-*"))
+            .expect("read outer tags");
+        assert_eq!(tags.len(), 0, "no tag leaked into parent repo");
+    }
+
+    #[test]
+    fn ensure_initial_commit_respects_archive_gitignore_for_partial_content() {
+        let tmp = tempfile::TempDir::new().expect("create temp dir");
+        let dest = tmp.path().join("config");
+        std::fs::create_dir_all(&dest).expect("create dest");
+        std::fs::write(dest.join(".gitignore"), "result\n").expect("write gitignore");
+        std::fs::write(dest.join("flake.nix"), "{ }").expect("write flake");
+        std::fs::write(dest.join("result"), "build output").expect("write ignored file");
+
+        ensure_initial_commit(&dest).expect("adopt partially ignored config");
+
+        let repo = git2::Repository::open(&dest).expect("open repo");
+        let tree = repo
+            .head()
+            .expect("HEAD exists")
+            .peel_to_commit()
+            .expect("HEAD is a commit")
+            .tree()
+            .expect("commit tree");
+        assert!(tree.get_name("flake.nix").is_some(), "flake.nix committed");
+        assert!(
+            tree.get_name(".gitignore").is_some(),
+            "archive gitignore committed"
+        );
+        assert!(
+            tree.get_name("result").is_none(),
+            "ignored file stays untracked, matching bootstrap adoption"
+        );
+        assert!(dest.join("result").exists(), "ignored file stays on disk");
+    }
+
+    #[test]
+    fn ensure_initial_commit_errors_when_gitignore_ignores_everything() {
+        let tmp = tempfile::TempDir::new().expect("create temp dir");
+        let dest = tmp.path().join("config");
+        std::fs::create_dir_all(&dest).expect("create dest");
+        std::fs::write(dest.join(".gitignore"), "*\n").expect("write gitignore");
+
+        let err = ensure_initial_commit(&dest).expect_err("nothing stageable must surface");
+        assert!(
+            format!("{err:#}").contains("nothing to commit"),
+            "unexpected error chain: {err:#}"
+        );
     }
 }
