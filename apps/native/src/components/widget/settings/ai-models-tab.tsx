@@ -8,7 +8,10 @@ import {
 } from "@/components/ui/select";
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
 import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/ai-provider-validation";
-import { ProviderDataFlowNote } from "./provider-data-flow-note";
+import {
+  ProviderDataFlowNote,
+  type ProviderDataFlowPrefs,
+} from "./provider-data-flow-note";
 import { tauriAPI } from "@/ipc/api";
 import type { CliToolsState } from "@/ipc/types";
 import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
@@ -25,6 +28,9 @@ interface AiModelsTabProps {
   summaryModelField: AnyFieldApi;
   // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
   form: ReactFormExtendedApi<any, any, any, any, any, any, any, any, any, any, any, any>;
+  /** Persisted (saved) provider config — drives the data-flow notes so they
+   * describe actual routing, not typed-but-unsaved form state. */
+  dataFlowPrefs: ProviderDataFlowPrefs;
 }
 
 const CLI_PROVIDERS = [
@@ -70,7 +76,6 @@ function useProviderPrefs(form: AiModelsTabProps["form"]) {
     openrouterApiKey: "",
     openaiApiKey: "",
     vllmApiBaseUrl: "",
-    ollamaApiBaseUrl: "",
   });
 
   useEffect(() => {
@@ -80,7 +85,6 @@ function useProviderPrefs(form: AiModelsTabProps["form"]) {
         openrouterApiKey: v.openrouterApiKey ?? "",
         openaiApiKey: v.openaiApiKey ?? "",
         vllmApiBaseUrl: v.vllmApiBaseUrl ?? "",
-        ollamaApiBaseUrl: v.ollamaApiBaseUrl ?? "",
       });
     });
 
@@ -90,7 +94,6 @@ function useProviderPrefs(form: AiModelsTabProps["form"]) {
       openrouterApiKey: v.openrouterApiKey ?? "",
       openaiApiKey: v.openaiApiKey ?? "",
       vllmApiBaseUrl: v.vllmApiBaseUrl ?? "",
-      ollamaApiBaseUrl: v.ollamaApiBaseUrl ?? "",
     });
 
     return () => subscription.unsubscribe();
@@ -104,6 +107,7 @@ export function AiModelsTab({
   summaryProviderField,
   summaryModelField,
   form,
+  dataFlowPrefs,
 }: AiModelsTabProps) {
   const cliStatus = useCliToolStatus();
   const providerPrefs = useProviderPrefs(form);
@@ -192,7 +196,7 @@ export function AiModelsTab({
                 )}
                 <ProviderDataFlowNote
                   provider={evolveProviderField.state.value}
-                  prefs={providerPrefs}
+                  prefs={dataFlowPrefs}
                 />
               </div>
               <div className="space-y-2">
@@ -284,7 +288,7 @@ export function AiModelsTab({
                 )}
                 <ProviderDataFlowNote
                   provider={summaryProviderField.state.value}
-                  prefs={providerPrefs}
+                  prefs={dataFlowPrefs}
                 />
               </div>
               <div className="space-y-2">

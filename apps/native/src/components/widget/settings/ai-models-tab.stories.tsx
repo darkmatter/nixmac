@@ -2,6 +2,7 @@
 import preview from "#storybook/preview";
 import { useMemo, useState } from "react";
 import { AiModelsTab } from "./ai-models-tab";
+import type { ProviderDataFlowPrefs } from "./provider-data-flow-note";
 
 type ModelValues = {
   evolveProvider: string;
@@ -11,7 +12,6 @@ type ModelValues = {
   openrouterApiKey: string;
   openaiApiKey: string;
   vllmApiBaseUrl: string;
-  ollamaApiBaseUrl: string;
 };
 
 const DEFAULT_VALUES: ModelValues = {
@@ -22,10 +22,15 @@ const DEFAULT_VALUES: ModelValues = {
   openrouterApiKey: "",
   openaiApiKey: "",
   vllmApiBaseUrl: "",
-  ollamaApiBaseUrl: "",
 };
 
-function AiModelsTabFixture({ initialValues }: { initialValues?: Partial<ModelValues> }) {
+function AiModelsTabFixture({
+  initialValues,
+  dataFlowPrefs = {},
+}: {
+  initialValues?: Partial<ModelValues>;
+  dataFlowPrefs?: ProviderDataFlowPrefs;
+}) {
   const [values, setValues] = useState<ModelValues>({
     ...DEFAULT_VALUES,
     ...initialValues,
@@ -53,6 +58,7 @@ function AiModelsTabFixture({ initialValues }: { initialValues?: Partial<ModelVa
   return (
     <div className="w-[560px] rounded-lg border bg-background p-6">
       <AiModelsTab
+        dataFlowPrefs={dataFlowPrefs}
         evolveModelField={field("evolveModel")}
         evolveProviderField={field("evolveProvider")}
         form={form as any}
@@ -79,6 +85,7 @@ export const CliProviders = meta.story({
 export const CloudProviders = meta.story({
   render: () => (
     <AiModelsTabFixture
+      dataFlowPrefs={{ openrouterApiKey: "sk-or-storybook" }}
       initialValues={{
         evolveProvider: "openrouter",
         evolveModel: "anthropic/claude-sonnet-4",
@@ -93,6 +100,7 @@ export const CloudProviders = meta.story({
 export const CloudFallbackToOpenAi = meta.story({
   render: () => (
     <AiModelsTabFixture
+      dataFlowPrefs={{ openaiApiKey: "sk-oai-storybook" }}
       initialValues={{
         evolveProvider: "openrouter",
         evolveModel: "anthropic/claude-sonnet-4",
@@ -107,12 +115,12 @@ export const CloudFallbackToOpenAi = meta.story({
 export const LocalOllama = meta.story({
   render: () => (
     <AiModelsTabFixture
+      dataFlowPrefs={{ ollamaApiBaseUrl: "http://localhost:11434" }}
       initialValues={{
         evolveProvider: "ollama",
         evolveModel: "llama3.1",
         summaryProvider: "ollama",
         summaryModel: "llama3.1",
-        ollamaApiBaseUrl: "http://localhost:11434",
       }}
     />
   ),
@@ -121,12 +129,12 @@ export const LocalOllama = meta.story({
 export const RemoteOllama = meta.story({
   render: () => (
     <AiModelsTabFixture
+      dataFlowPrefs={{ ollamaApiBaseUrl: "http://ollama.example.com:11434" }}
       initialValues={{
         evolveProvider: "ollama",
         evolveModel: "llama3.1",
         summaryProvider: "ollama",
         summaryModel: "llama3.1",
-        ollamaApiBaseUrl: "http://ollama.example.com:11434",
       }}
     />
   ),

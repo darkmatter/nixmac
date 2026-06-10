@@ -9,6 +9,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { AccountTab } from "@/components/widget/settings/account-tab";
 import { AiModelsTab } from "@/components/widget/settings/ai-models-tab";
 import { ApiKeysTab } from "@/components/widget/settings/api-keys-tab";
+import type { ProviderDataFlowPrefs } from "@/components/widget/settings/provider-data-flow-note";
 import { DeveloperTab } from "@/components/widget/settings/developer-tab";
 import { GeneralTab } from "@/components/widget/settings/general-tab";
 import { PreferencesTab } from "@/components/widget/settings/preferences-tab";
@@ -72,6 +73,9 @@ export function SettingsDialog() {
   }, [developerMode, activeTab]);
   const [openrouterKeyStatus, setOpenrouterKeyStatus] = useState<ApiKeyStatus>("idle");
   const openrouterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Persisted (saved) values only — the data-flow note must describe where
+  // requests actually route, and form state can hold typed-but-unsaved keys.
+  const [persistedDataFlowPrefs, setPersistedDataFlowPrefs] = useState<ProviderDataFlowPrefs>({});
 
   const { saveHost } = useDarwinConfig();
 
@@ -79,6 +83,7 @@ export function SettingsDialog() {
     if (!key) {
       setOpenrouterKeyStatus("idle");
       await tauriAPI.ui.setPrefs({ openrouterApiKey: "" });
+      setPersistedDataFlowPrefs((p) => ({ ...p, openrouterApiKey: "" }));
       return;
     }
 
@@ -94,6 +99,7 @@ export function SettingsDialog() {
       if (response.ok) {
         setOpenrouterKeyStatus("valid");
         await tauriAPI.ui.setPrefs({ openrouterApiKey: key });
+        setPersistedDataFlowPrefs((p) => ({ ...p, openrouterApiKey: key }));
       } else {
         setOpenrouterKeyStatus("invalid");
       }
@@ -105,6 +111,7 @@ export function SettingsDialog() {
 
   const saveOllamaUrl = async (url: string) => {
     await tauriAPI.ui.setPrefs({ ollamaApiBaseUrl: url });
+    setPersistedDataFlowPrefs((p) => ({ ...p, ollamaApiBaseUrl: url }));
     // Clear cached Ollama models when the base URL changes
     await tauriAPI.models.clearCached("ollama");
   };
@@ -151,6 +158,11 @@ export function SettingsDialog() {
           form.setFieldValue("sendDiagnostics", prefs.sendDiagnostics ?? false);
 
           setOpenrouterKeyStatus(prefs.openrouterApiKey ? "valid" : "idle");
+          setPersistedDataFlowPrefs({
+            openrouterApiKey: prefs.openrouterApiKey ?? "",
+            openaiApiKey: prefs.openaiApiKey ?? "",
+            ollamaApiBaseUrl: prefs.ollamaApiBaseUrl ?? "",
+          });
         }
       } catch (err) {
         console.error("Failed to load settings:", err);
@@ -317,6 +329,7 @@ export function SettingsDialog() {
                           <form.Field name="summaryModel">
                             {(summaryModelField) => (
                               <AiModelsTab
+                                dataFlowPrefs={persistedDataFlowPrefs}
                                 evolveModelField={evolveModelField}
                                 evolveProviderField={evolveProviderField}
                                 form={form}
