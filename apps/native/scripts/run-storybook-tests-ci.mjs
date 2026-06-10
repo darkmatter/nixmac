@@ -15,13 +15,12 @@ const skippedSnapshotStoryFiles = new Set([
   // available in Storybook, but exclude it from automated snapshot batches.
   path.resolve(appRoot, "src/components/nixmac-mascot/NixmacMascot3D.stories.tsx"),
 ]);
-// Each batch re-spins a Chromium + reloads the Storybook/Vite env (the big
-// "prepare" cost), so larger batches mean fewer restarts and a faster run, at
-// the price of more memory held per process. Override via STORYBOOK_BATCH_SIZE.
-const batchSize = Math.max(1, Number(process.env.STORYBOOK_BATCH_SIZE) || 6);
-// Budget scales with batch size (~60s/file) plus a fixed startup allowance so a
-// bigger batch isn't SIGKILLed just for doing more work.
-const perBatchTimeoutMs = 30_000 + batchSize * 60_000;
+// Small batches keep one hung story from consuming most of the workflow budget.
+// Override via STORYBOOK_BATCH_SIZE if a runner proves stable enough for more.
+const batchSize = Math.max(1, Number(process.env.STORYBOOK_BATCH_SIZE) || 2);
+const defaultBatchTimeoutMs = Math.min(30_000 + batchSize * 60_000, 120_000);
+const perBatchTimeoutMs =
+  Number(process.env.STORYBOOK_BATCH_TIMEOUT_MS) || defaultBatchTimeoutMs;
 // Individual retry runs should identify a hung story quickly enough to finish
 // before the workflow-level timeout kills the whole job without logs.
 const perRetryTimeoutMs = Number(process.env.STORYBOOK_RETRY_TIMEOUT_MS) || 60_000;
