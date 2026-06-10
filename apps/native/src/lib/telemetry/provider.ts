@@ -151,6 +151,7 @@ export function createTelemetryProvider(
   posthog.init(config.key, {
     api_host: config.host,
     autocapture: false,
+    advanced_disable_flags: true,
     capture_pageview: false,
     capture_pageleave: false,
     disable_session_recording: true,

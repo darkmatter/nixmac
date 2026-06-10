@@ -217,6 +217,7 @@ describe("createTelemetryProvider", () => {
     expect(mocks.init).toHaveBeenCalledWith(
       "phc_test",
       expect.objectContaining({
+        advanced_disable_flags: true,
         autocapture: false,
         capture_pageleave: false,
         capture_pageview: false,
