@@ -410,6 +410,60 @@ mod tests {
     }
 
     #[test]
+    fn edit_nix_file_reports_list_attr_path_set_array_as_add_values() {
+        let tmp = tempdir().expect("tempdir");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "set",
+                "path": "homebrew.casks",
+                "value": ["docker", "iterm2", "audacity", "rectangle"]
+            }),
+            None,
+        );
+
+        let err = result.expect_err("list attr path in top-level path should suggest add");
+        let msg = err.to_string();
+        assert!(
+            msg.contains(r#""action": { "add": { "path": "homebrew.casks", "values": ["docker","iterm2","audacity","rectangle"] } }"#),
+            "unexpected error: {err:#}"
+        );
+        assert!(
+            msg.contains("use action.add/action.remove with 'values'"),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
+    fn edit_nix_file_reports_string_array_set_as_add_values_for_generic_attr_path() {
+        let tmp = tempdir().expect("tempdir");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "set",
+                "path": "programs.example.extraPackages",
+                "value": ["alpha", "beta"]
+            }),
+            None,
+        );
+
+        let err = result.expect_err("string array set should suggest add values");
+        let msg = err.to_string();
+        assert!(
+            msg.contains(r#""action": { "add": { "path": "programs.example.extraPackages", "values": ["alpha","beta"] } }"#),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
     fn edit_nix_file_reports_shorthand_action_missing_attr_path() {
         let tmp = tempdir().expect("tempdir");
         fs::write(tmp.path().join("services.nix"), "{ ... }: { }\n").expect("write nix file");
