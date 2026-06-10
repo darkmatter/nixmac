@@ -12,6 +12,8 @@ type CurrentStepState = {
   nixInstalled: boolean | null;
   darwinRebuildAvailable: boolean | null;
   isBootstrapping: boolean;
+  aiProviderOnboardingComplete: boolean;
+  prefsLoaded: boolean;
   showHistory: boolean;
   showFilesystem: boolean;
   evolveState: EvolveState | null;
@@ -41,6 +43,10 @@ export function computeCurrentStep(state: CurrentStepState): WidgetStep {
   }
 
   if (!(hasConfigDir && hasHost)) {
+    return "setup";
+  }
+
+  if (state.prefsLoaded && !state.aiProviderOnboardingComplete) {
     return "setup";
   }
 

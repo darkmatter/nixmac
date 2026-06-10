@@ -44,11 +44,13 @@ nixmac_pp_seed_local_validation_settings() {
     jq -n \
         --arg configDir "$config_dir" \
         --arg hostAttr "$host_attr" \
+        --arg providerBaseUrl "${VLLM_API_BASE:-http://localhost:8000/v1}" \
         '{
             configDir: $configDir,
             hostAttr: $hostAttr,
             evolveProvider: "vllm",
             summaryProvider: "vllm",
+            vllmApiBaseUrl: $providerBaseUrl,
             evolveModel: "gpt-oss-120b",
             summaryModel: "gpt-oss-120b",
             maxTokenBudget: 50000,
@@ -549,9 +551,10 @@ nixmac_pp_redacted_text_snapshot() {
     dir="$E2E_DIAGNOSTIC_DIR/text"
     mkdir -p "$dir"
     path="$dir/${label//[^a-zA-Z0-9._-]/_}.txt"
-    raw=$(nixmac_text)
+	raw=$(nixmac_text)
 
-    printf '%s' "$raw" | node --input-type=module -e '
+	# shellcheck disable=SC2016
+	printf '%s' "$raw" | node --input-type=module -e '
 import path from "node:path";
 
 const repoRoot = process.argv[1];

@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
+import { verifyOpenrouterApiKey } from "@/lib/openrouter-key-validation";
 import { cn } from "@/lib/utils";
 import { type SettingsTab, useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
@@ -13,7 +14,7 @@ import { DeveloperTab } from "@/components/widget/settings/developer-tab";
 import { GeneralTab } from "@/components/widget/settings/general-tab";
 import { PreferencesTab } from "@/components/widget/settings/preferences-tab";
 import { TuningTab } from "@/components/widget/settings/tuning-tab";
-type ApiKeyStatus = "idle" | "verifying" | "valid" | "invalid";
+type ApiKeyStatus = "idle" | "verifying" | "valid" | "invalid" | "unavailable";
 
 function normalizeProvider(provider?: string | null) {
   return provider === "openai" ? "openrouter" : (provider ?? "openrouter");
@@ -78,28 +79,26 @@ export function SettingsDialog() {
   const verifyOpenrouterKey = async (key: string) => {
     if (!key) {
       setOpenrouterKeyStatus("idle");
-      await tauriAPI.ui.setPrefs({ openrouterApiKey: "" });
+      try {
+        await tauriAPI.ui.setPrefs({ openrouterApiKey: "" });
+      } catch {
+        setOpenrouterKeyStatus("unavailable");
+      }
       return;
     }
 
     setOpenrouterKeyStatus("verifying");
     try {
-      const response = await fetch("https://openrouter.ai/api/v1/auth/key", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${key}`,
-        },
-      });
-
-      if (response.ok) {
-        setOpenrouterKeyStatus("valid");
-        await tauriAPI.ui.setPrefs({ openrouterApiKey: key });
-      } else {
-        setOpenrouterKeyStatus("invalid");
+      const verification = await verifyOpenrouterApiKey(key);
+      if (!verification.ok) {
+        setOpenrouterKeyStatus(verification.reason === "invalid" ? "invalid" : "unavailable");
+        return;
       }
-    } catch (error) {
-      console.error("Error verifying OpenRouter API key:", error);
-      setOpenrouterKeyStatus("invalid");
+
+      await tauriAPI.ui.setPrefs({ openrouterApiKey: key });
+      setOpenrouterKeyStatus("valid");
+    } catch {
+      setOpenrouterKeyStatus("unavailable");
     }
   };
 

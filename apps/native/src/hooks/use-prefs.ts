@@ -1,5 +1,24 @@
 import { useWidgetStore, type BoolPrefKey } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
+import type { UiPrefs } from "@/ipc/types";
+import { getProviderConfigInvalidReason } from "@/lib/ai-provider-validation";
+
+export function hasConfiguredAiProvider(prefs: UiPrefs): boolean {
+  const providerPrefs = {
+    openrouterApiKey: prefs.openrouterApiKey ?? "",
+    openaiApiKey: prefs.openaiApiKey ?? "",
+    vllmApiBaseUrl: prefs.vllmApiBaseUrl ?? "",
+  };
+  const evolveProvider = prefs.evolveProvider ?? "openrouter";
+  const summaryProvider = prefs.summaryProvider ?? "openrouter";
+  const evolveConfigured =
+    getProviderConfigInvalidReason(evolveProvider, providerPrefs, null, prefs.evolveModel) === null;
+  const summaryConfigured =
+    getProviderConfigInvalidReason(summaryProvider, providerPrefs, null, prefs.summaryModel) ===
+    null;
+
+  return evolveConfigured && summaryConfigured;
+}
 
 export function usePrefs() {
   const loadPrefs = async () => {
@@ -19,6 +38,15 @@ export function usePrefs() {
       useWidgetStore.getState().setDeveloperMode(prefs.developerMode ?? false);
       useWidgetStore.getState().setPinnedVersion(prefs.pinnedVersion ?? null);
       useWidgetStore.getState().setUpdateChannel(prefs.updateChannel ?? "stable");
+      useWidgetStore
+        .getState()
+        .setAiProviderOnboardingComplete(
+          hasConfiguredAiProvider(prefs) || prefs.aiProviderOnboardingSkipped,
+        );
+    } else {
+      // If preferences are temporarily unavailable, avoid trapping users in a setup step
+      // whose save/skip actions would depend on the same unavailable preference store.
+      useWidgetStore.getState().setAiProviderOnboardingComplete(true);
     }
     useWidgetStore.getState().setPrefsLoaded(true);
   };

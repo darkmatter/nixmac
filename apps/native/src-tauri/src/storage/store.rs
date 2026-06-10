@@ -43,6 +43,9 @@ pub const DEVELOPER_MODE_KEY: &str = "developerMode";
 pub const PINNED_VERSION_KEY: &str = "pinnedVersion";
 pub const UPDATE_CHANNEL_KEY: &str = "updateChannel";
 
+// Onboarding preference keys
+pub const AI_PROVIDER_ONBOARDING_SKIPPED_KEY: &str = "aiProviderOnboardingSkipped";
+
 // nixmac account + non-GitHub sync keys
 pub const SYNC_SERVER_URL_KEY: &str = "syncServerUrl";
 pub const SYNC_ACCOUNT_ID_KEY: &str = "syncAccountId";

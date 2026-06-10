@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { BootstrapConfig } from "@/components/widget/controls/bootstrap-config";
 import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
+import { AiProviderSetup } from "@/components/widget/steps/ai-provider-setup";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { useWidgetStore } from "@/stores/widget-store";
 import { Monitor } from "lucide-react";
@@ -19,6 +20,9 @@ export function SetupStep() {
   const configDir = useWidgetStore((state) => state.configDir);
   const hosts = useWidgetStore((state) => state.hosts);
   const host = useWidgetStore((state) => state.host);
+  const aiProviderOnboardingComplete = useWidgetStore(
+    (state) => state.aiProviderOnboardingComplete,
+  );
   const [configDirConfirmed, setConfigDirConfirmed] = useState(() => Boolean(configDir));
   const [selectedHost, setSelectedHost] = useState<string>("");
 
@@ -31,6 +35,7 @@ export function SetupStep() {
   const hasConfigDir = Boolean(configDir) && configDirConfirmed;
   const hasHosts = hasConfigDir && hosts.length > 0;
   const effectiveHost = selectedHost || host;
+  const canStart = hasHosts && Boolean(effectiveHost) && aiProviderOnboardingComplete;
 
   return (
     <div className="flex flex-col items-center justify-center space-y-6 py-8">
@@ -83,12 +88,20 @@ export function SetupStep() {
           ) : (
             <BootstrapConfig label="2. Configuration" />
           )}
-          {hasHosts && (
-            <Button disabled={!effectiveHost} onClick={() => saveHost(effectiveHost)}>
-              Next
-            </Button>
-          )}
         </div>
+      )}
+
+      {hasConfigDir && (hasHosts || host) && (
+        <>
+          <hr className="w-96 mx-auto" />
+          <AiProviderSetup />
+        </>
+      )}
+
+      {canStart && (
+        <Button onClick={() => saveHost(effectiveHost)}>
+          Start using nixmac
+        </Button>
       )}
     </div>
   );

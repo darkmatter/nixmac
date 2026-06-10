@@ -61,6 +61,8 @@ pub struct UiPrefs {
     pub pinned_version: Option<String>,
     /// Auto-update channel used when no explicit version pin is active.
     pub update_channel: UpdateChannel,
+    /// Whether the user explicitly chose to continue onboarding without an AI provider.
+    pub ai_provider_onboarding_skipped: bool,
 }
 
 /// Partial update to UI preferences — every field is optional so the caller
@@ -119,6 +121,8 @@ pub struct UiPrefsUpdate {
     pub pinned_version: Option<Option<String>>,
     /// Auto-update channel preference update.
     pub update_channel: Option<UpdateChannel>,
+    /// AI provider onboarding skip preference update.
+    pub ai_provider_onboarding_skipped: Option<bool>,
 }
 
 /// Lightweight update metadata returned by the channel-aware updater command.

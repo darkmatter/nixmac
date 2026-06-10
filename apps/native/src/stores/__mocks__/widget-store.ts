@@ -83,6 +83,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
         ? real.getState().hosts
         : ["Demo-MacBook-Pro", "Work-MacBook"],
     host: real.getState().host || "Demo-MacBook-Pro",
+    aiProviderOnboardingComplete: true,
   });
 
   // Replace the dialog-opening actions with no-ops so a transient JS error
