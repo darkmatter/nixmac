@@ -121,3 +121,24 @@ python run_evals.py --csv data/test_prompts.csv \
   --evolve-model gpt-4 \
   --openai-key YOUR_API_KEY
 ```
+
+### Choose the nix-darwin baseline
+
+By default, every test case starts from the bundled
+`nix-darwin-determinate` template. Use `--base-config` to point the
+suite at a different baseline so you can compare how the same prompts
+behave on different starting points.
+
+```sh
+# A different bundled template
+python run_evals.py --csv data/test_prompts.csv --base-config minimal
+
+# A local nix-darwin configuration on disk
+python run_evals.py --csv data/test_prompts.csv \
+  --base-config ~/.darwin --host my-mac
+```
+
+When `--base-config` points at a real config (not a bundled template),
+its `.nix` files won't contain the `HOSTNAME_PLACEHOLDER` markers the
+suite normally substitutes, so you'll typically want to pass `--host`
+matching a `darwinConfigurations.<name>` entry in your config.

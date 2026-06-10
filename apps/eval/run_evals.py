@@ -50,6 +50,54 @@ NIXMAC_SETTINGS_PATH: Path = NIXMAC_CONFIG_DIR / "settings.json"
 args: argparse.Namespace | None = None
 
 
+def _looks_like_git_url(value: str) -> bool:
+    """Heuristic: is `value` a git URL rather than a local path?"""
+    return (
+        value.startswith(("http://", "https://", "git@", "ssh://", "git://"))
+        or value.endswith(".git")
+    )
+
+
+def resolve_base_config(
+    base_config: str | None,
+    base_config_ref: str | None,
+    clone_into: Path,
+) -> Path:
+    """Resolve --base-config into a directory holding a nix-darwin config.
+
+    Resolution order:
+    - None → bundled DEFAULT_TEMPLATE_NAME under TEMPLATES_DIR.
+    - bundled template name (subdir of TEMPLATES_DIR) → that subdir.
+    - local directory → that directory.
+    - git URL → shallow clone into `clone_into` (C3, not yet implemented).
+
+    The caller owns the lifetime of any temp directories it passed in.
+    """
+    if base_config is None:
+        return TEMPLATES_DIR / DEFAULT_TEMPLATE_NAME
+
+    # 1) bundled template name?
+    candidate = TEMPLATES_DIR / base_config
+    if candidate.is_dir():
+        return candidate
+
+    # 2) local directory path?
+    local = Path(base_config).expanduser()
+    if local.is_dir():
+        return local
+
+    # 3) git URL (C3 — not implemented yet).
+    if _looks_like_git_url(base_config):
+        raise NotImplementedError(
+            f"git URL --base-config not supported yet: {base_config}"
+        )
+
+    raise ValueError(
+        f"--base-config {base_config!r} is not a bundled template name, "
+        f"an existing directory, or a git URL"
+    )
+
+
 @dataclass
 class EvalTestCase:
     row: int
@@ -434,8 +482,23 @@ def main(parsed_args: argparse.Namespace) -> None:
 
     try:
         # Resolve the nix-darwin baseline once per run.
-        template_dir = TEMPLATES_DIR / DEFAULT_TEMPLATE_NAME
+        template_dir = resolve_base_config(
+            getattr(parsed_args, "base_config", None),
+            getattr(parsed_args, "base_config_ref", None),
+            clone_into=Path(tempfile.gettempdir()),  # unused without --base-config-ref
+        )
         print(f"Using nix-darwin baseline: {template_dir}")
+
+        # When the user pointed at a real config (not a bundled template),
+        # the placeholder substitution becomes a no-op, so --host must
+        # match a darwinConfigurations entry in the config. Warn if not set.
+        if parsed_args.base_config is not None and not parsed_args.host:
+            derived = _get_eval_hostname()
+            print(
+                f"Warning: using derived host {derived!r} against external "
+                f"--base-config; pass --host to match a darwinConfigurations "
+                f"entry in your config."
+            )
 
         # Parse comma-delimited rows into list[int]
         rows: list[int] | None
@@ -581,6 +644,26 @@ if __name__ == "__main__":
         help="vLLM API key (if required)",
     )
     parser.add_argument("--host", type=str, default=None, help="Host name for your Mac")
+
+    parser.add_argument(
+        "--base-config",
+        dest="base_config",
+        type=str,
+        default=None,
+        help=(
+            "Baseline nix-darwin config to evaluate against. Accepts a "
+            "bundled template name (minimal | base | nix-darwin-determinate "
+            "| nixos-unified), a local directory, or (later) a git URL. "
+            f"Default: {DEFAULT_TEMPLATE_NAME}."
+        ),
+    )
+    parser.add_argument(
+        "--base-config-ref",
+        dest="base_config_ref",
+        type=str,
+        default=None,
+        help="Git ref to check out when --base-config is a URL (default: HEAD).",
+    )
 
     parser.add_argument(
         "--max-iterations",
