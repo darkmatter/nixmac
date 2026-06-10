@@ -24,6 +24,22 @@ const CLI_NOTE = (cliLabel: string) =>
   `Your prompts and config context are passed to the ${cliLabel} on your machine. Where they go next depends on that tool's own account and configuration.`;
 
 const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]", "::1", "0.0.0.0"]);
+const IPV4_PARTS = 4;
+const LOOPBACK_IPV4_PREFIX = 127;
+const MAX_IPV4_OCTET = 255;
+
+function isLoopbackIpv4Hostname(hostname: string): boolean {
+  const octets = hostname.split(".");
+  if (octets.length !== IPV4_PARTS) return false;
+
+  const numbers = octets.map((octet) => {
+    if (!/^\d+$/.test(octet)) return null;
+    const value = Number(octet);
+    return value <= MAX_IPV4_OCTET ? value : null;
+  });
+
+  return numbers.every((octet) => octet !== null) && numbers[0] === LOOPBACK_IPV4_PREFIX;
+}
 
 /** True when the URL clearly points at this machine. Unparseable or
  * non-loopback hosts return false so we never overclaim locality. */
@@ -35,7 +51,7 @@ export function isLocalEndpoint(rawUrl: string): boolean {
   } catch {
     return false;
   }
-  return LOCAL_HOSTNAMES.has(hostname) || hostname.startsWith("127.");
+  return LOCAL_HOSTNAMES.has(hostname) || isLoopbackIpv4Hostname(hostname);
 }
 
 export function getProviderDataFlowNote(

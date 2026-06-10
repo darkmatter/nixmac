@@ -14,6 +14,7 @@ describe("isLocalEndpoint", () => {
 
   it.each([
     "http://ollama.example.com:11434",
+    "http://127.example.com:11434",
     "https://10.0.0.5:11434",
     "http://my-mac.tailnet.ts.net:11434",
     "not a url at all ::",
