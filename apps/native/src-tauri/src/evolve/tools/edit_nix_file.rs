@@ -3,7 +3,7 @@
 use anyhow::{anyhow, Result};
 
 use crate::evolve::edit_nix_file::{
-    apply_semantic_edit, list_attrpath_occurrences, list_attrpaths,
+    apply_semantic_edit, list_attrpaths, outer_list_occurrences_for_attrpath,
 };
 use crate::evolve::file_ops::resolve_existing_path_in_dir;
 use crate::evolve::gitignore::is_ignored_by_matcher;
@@ -279,21 +279,17 @@ fn infer_shorthand_list_path(ctx: &ToolCtx, file_path: &str, action: &str) -> Re
 
     match candidates.as_slice() {
         [only] => {
-            if action == "remove" {
-                let occurrences = list_attrpath_occurrences(&content)?;
-                let occurrence_count = occurrences
-                    .iter()
-                    .filter(|candidate| *candidate == only)
-                    .count();
-                if occurrence_count > 1 {
-                    return Err(anyhow!(
-                        "edit_nix_file.remove: missing path. Shorthand remove is ambiguous because '{}' appears in multiple list nodes in '{}'. Use the object shape with an explicit path: {{ \"action\": {{ \"remove\": {{ \"path\": \"{}\", \"values\": [...] }} }}, \"path\": \"{}\" }}",
-                        only,
-                        file_path,
-                        only,
-                        file_path
-                    ));
-                }
+            if outer_list_occurrences_for_attrpath(&content, only)? > 1 {
+                return Err(anyhow!(
+                    "edit_nix_file.{}: missing path. Shorthand {} is ambiguous because '{}' appears in multiple list nodes in '{}'. Rewrite the split list into one list before using shorthand, or use the object shape with an explicit path only if editing the first matching list is intended: {{ \"action\": {{ \"{}\": {{ \"path\": \"{}\", \"values\": [...] }} }}, \"path\": \"{}\" }}",
+                    action,
+                    action,
+                    only,
+                    file_path,
+                    action,
+                    only,
+                    file_path
+                ));
             }
             Ok(only.clone())
         }

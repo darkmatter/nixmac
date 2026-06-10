@@ -648,6 +648,85 @@ mod tests {
     }
 
     #[test]
+    fn edit_nix_file_rejects_add_shorthand_with_repeated_inferred_list_path() {
+        let tmp = tempdir().expect("tempdir");
+        let original = r#"{ pkgs, lib, ... }:
+{
+  environment.systemPackages = with pkgs; [
+    git
+  ] ++ lib.optionals true [
+    wget
+  ];
+}
+"#;
+        fs::write(tmp.path().join("packages.nix"), original).expect("write package module");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "add",
+                "path": "packages.nix",
+                "values": ["fd"]
+            }),
+            None,
+        );
+
+        let err = result.expect_err("ambiguous split-list shorthand should be rejected");
+        assert!(
+            err.to_string()
+                .contains("Shorthand add is ambiguous because 'environment.systemPackages' appears in multiple list nodes"),
+            "unexpected error: {err:#}"
+        );
+
+        let edited = fs::read_to_string(tmp.path().join("packages.nix")).expect("read file");
+        assert_eq!(edited, original);
+    }
+
+    #[test]
+    fn edit_nix_file_accepts_add_shorthand_with_nested_single_inferred_list_path() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(
+            tmp.path().join("packages.nix"),
+            r#"{ pkgs, lib, ... }:
+{
+  environment.systemPackages = with pkgs; [
+    (with pkgs; [
+      git
+    ])
+  ];
+}
+"#,
+        )
+        .expect("write package module");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "add",
+                "path": "packages.nix",
+                "values": ["fd"]
+            }),
+            None,
+        )
+        .expect("edit_nix_file should dedupe nested inferred list paths");
+
+        let ToolResult::EditSemantic(edit) = result else {
+            panic!("expected semantic edit result");
+        };
+        let crate::evolve::types::FileEditAction::Add { path, values } = edit.action else {
+            panic!("expected add action");
+        };
+        assert_eq!(path, "environment.systemPackages");
+        assert_eq!(values, vec!["fd".to_string()]);
+    }
+
+    #[test]
     fn edit_nix_file_accepts_remove_shorthand_and_infers_only_list_path() {
         let tmp = tempdir().expect("tempdir");
         fs::write(
