@@ -44,8 +44,13 @@ runs:
       with:
         extra-conf: ${{ inputs.extra-nix-conf }}
 
+    # continue-on-error on the cachix steps: some persistent self-hosted
+    # runners have a Nix install whose runner user is not in trusted-users,
+    # so `cachix use` cannot add substituters and exits 1. Degrading to
+    # "build without binary caches" beats failing the whole job there.
     - name: Configure darkmatter Cachix cache
       if: ${{ inputs.darkmatter-cachix-auth-token != '' }}
+      continue-on-error: true
       uses: cachix/cachix-action@v17
       with:
         name: darkmatter
@@ -55,6 +60,7 @@ runs:
     # This avoids building devenv and its deps from source.
     - name: Configure devenv Cachix cache
       if: ${{ inputs.install-devenv == 'true' }}
+      continue-on-error: true
       uses: cachix/cachix-action@v17
       with:
         name: devenv
@@ -65,6 +71,7 @@ runs:
     # (~10 minutes of gcc on GitHub-hosted runners).
     - name: Configure nixpkgs-python Cachix cache
       if: ${{ inputs.install-devenv == 'true' }}
+      continue-on-error: true
       uses: cachix/cachix-action@v17
       with:
         name: nixpkgs-python
@@ -73,16 +80,19 @@ runs:
     # The devenv profile is a plain store path. Caching that path (plus the
     # env vars devenv exports) lets warm runs skip installing the devenv CLI
     # and evaluating devenv entirely — `nix build <path>` just substitutes the
-    # closure from the configured binary caches. The closure reaches the
-    # darkmatter cache via cachix-action's post-job push from the run that
-    # built it.
+    # closure from the configured binary caches. The pointer is only saved
+    # after the closure has verifiably been pushed to the darkmatter cache
+    # (see "Push devenv profile" below), so a cache hit implies the profile
+    # is downloadable.
+    # Key namespace v2: v1 pointers were saved while cachix pushes were
+    # silently failing (403), so they reference paths no cache can serve.
     - name: Restore devenv profile pointer
       if: ${{ inputs.install-devenv == 'true' }}
       id: devenv-cache
       uses: actions/cache/restore@v4
       with:
         path: .devenv-ci
-        key: devenv-profile-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.nix', 'devenv.yaml', 'devenv.lock', 'flake.nix', 'flake.lock', 'treefmt.nix', 'nix/**') }}
+        key: devenv-profile-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.nix', 'devenv.yaml', 'devenv.lock', 'flake.nix', 'flake.lock', 'treefmt.nix', 'nix/**') }}
 
     - name: Substitute cached devenv profile
       if: ${{ inputs.install-devenv == 'true' && steps.devenv-cache.outputs.cache-hit == 'true' }}
@@ -165,8 +175,45 @@ runs:
         # store path — nix-store --realise only accepts store path roots.
         grep -oE '/nix/store/[a-z0-9]{32}-[^:/" ]+' .devenv-ci/env | sort -u > .devenv-ci/extra-paths || true
 
+    # Push the profile closure synchronously and verify it is actually
+    # downloadable before trusting it. cachix-action's post-job push is not
+    # enough: it swallows per-path API errors (e.g. 403 from a token without
+    # write permission) and reports success, which would poison the pointer
+    # cache with paths nothing can serve.
+    - name: Push devenv profile to darkmatter Cachix
+      if: ${{ inputs.install-devenv == 'true' && steps.devenv-realise.outputs.ok != 'true' }}
+      id: devenv-push
+      shell: bash
+      env:
+        CACHIX_AUTH_TOKEN: ${{ inputs.darkmatter-cachix-auth-token }}
+      run: |
+        set -euo pipefail
+
+        ok=false
+        profile_path="$(cat .devenv-ci/profile-path)"
+
+        if [ -z "${CACHIX_AUTH_TOKEN:-}" ]; then
+          echo "::warning::No darkmatter Cachix auth token; skipping devenv profile push, the profile pointer will not be cached."
+        elif ! command -v cachix > /dev/null; then
+          echo "::warning::cachix is not on PATH; skipping devenv profile push, the profile pointer will not be cached."
+        else
+          if { echo "$profile_path"; cat .devenv-ci/extra-paths; } | xargs cachix push darkmatter; then
+            # Belt and braces: confirm the profile narinfo is really served.
+            # Pushes have failed silently before while reporting success.
+            if nix path-info --store https://darkmatter.cachix.org "$profile_path" > /dev/null 2>&1; then
+              ok=true
+            else
+              echo "::warning::devenv profile push reported success but ${profile_path} is not downloadable from darkmatter.cachix.org; the profile pointer will not be cached. Check that DARKMATTER_CACHIX_AUTH_TOKEN has write permission."
+            fi
+          else
+            echo "::warning::cachix push to darkmatter failed; the profile pointer will not be cached. Check that DARKMATTER_CACHIX_AUTH_TOKEN has write permission."
+          fi
+        fi
+
+        echo "ok=$ok" >> "$GITHUB_OUTPUT"
+
     - name: Save devenv profile pointer
-      if: ${{ inputs.install-devenv == 'true' && steps.devenv-realise.outputs.ok != 'true' && steps.devenv-cache.outputs.cache-hit != 'true' }}
+      if: ${{ inputs.install-devenv == 'true' && steps.devenv-push.outputs.ok == 'true' && steps.devenv-cache.outputs.cache-hit != 'true' }}
       uses: actions/cache/save@v4
       with:
         path: .devenv-ci
