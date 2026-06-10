@@ -775,6 +775,43 @@ mod tests {
     }
 
     #[test]
+    fn edit_nix_file_rejects_remove_shorthand_with_repeated_inferred_list_path() {
+        let tmp = tempdir().expect("tempdir");
+        let original = r#"{ pkgs, lib, ... }:
+{
+  environment.systemPackages = with pkgs; [
+    git
+  ] ++ lib.optionals true [
+    wget
+  ];
+}
+"#;
+        fs::write(tmp.path().join("packages.nix"), original).expect("write package module");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "action": "remove",
+                "path": "packages.nix",
+                "values": ["wget"]
+            }),
+            None,
+        );
+
+        let err = result.expect_err("split-list remove shorthand should require an explicit path");
+        assert!(
+            err.to_string().contains("Shorthand remove is ambiguous"),
+            "unexpected error: {err:#}"
+        );
+
+        let edited = fs::read_to_string(tmp.path().join("packages.nix")).expect("read file");
+        assert_eq!(edited, original);
+    }
+
+    #[test]
     fn edit_nix_file_quotes_homebrew_remove_values() {
         let tmp = tempdir().expect("tempdir");
         fs::write(
