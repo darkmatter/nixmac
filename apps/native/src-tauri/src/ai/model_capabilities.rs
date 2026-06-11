@@ -37,9 +37,7 @@ fn supports_custom_temperature_for_normalized_model(model: &str) -> bool {
 }
 
 fn max_completion_tokens_for_normalized_model(model: &str) -> Option<u32> {
-    if matches!(model, "gpt-4o" | "gpt-4o-mini")
-        || model.starts_with("gpt-4o-")
-    {
+    if matches!(model, "gpt-4o" | "gpt-4o-mini") || model.starts_with("gpt-4o-") {
         Some(GPT_4O_MAX_COMPLETION_TOKENS)
     } else {
         None
@@ -86,7 +84,7 @@ pub fn capabilities_for_model(model: &str) -> ModelCapabilities {
 
 #[cfg(test)]
 mod tests {
-    use super::{capabilities_for_model, DEFAULT_CONTEXT_WINDOW_TOKENS};
+    use super::{DEFAULT_CONTEXT_WINDOW_TOKENS, capabilities_for_model};
 
     #[test]
     fn reasoning_models_do_not_support_custom_temperature() {

@@ -727,7 +727,9 @@ pub async fn generate_evolution<R: Runtime>(
     let requested_provider_type = store_provider.or_else(|| std::env::var("EVOLVE_PROVIDER").ok());
     let store_model = store::get_evolve_model(app).ok().flatten();
     let configured_evolve_model = configured_model(store_model.clone(), "EVOLVE_MODEL");
-    let (provider_type, used_legacy_openai_fallback) = if let Some(provider) = requested_provider_type {
+    let (provider_type, used_legacy_openai_fallback) = if let Some(provider) =
+        requested_provider_type
+    {
         if provider != "openai" {
             (provider, false)
         } else {
@@ -1982,9 +1984,9 @@ fn process_tool_result(
 #[cfg(test)]
 mod tests {
     use super::{
+        Evolution, EvolutionMessage, EvolutionState, FileEdit, Message, Retention, ToolResult,
         filter_evolution_messages, normalize_openai_max_output_tokens, process_tool_result,
-        read_file_dedup_key, store_tool_result, Evolution, EvolutionMessage, EvolutionState,
-        FileEdit, Message, Retention, ToolResult,
+        read_file_dedup_key, store_tool_result,
     };
 
     fn build_result(success: bool) -> ToolResult {
