@@ -308,6 +308,7 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
         Some(cli::Commands::Evolve {
             prompt,
             config,
+            max_iterations,
             max_output_tokens,
             max_token_budget,
             evolve_provider,
@@ -365,6 +366,7 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                 let cfg = cli::EvolveConfig {
                     prompt,
                     config,
+                    max_iterations,
                     max_output_tokens,
                     max_token_budget,
                     evolve_provider,

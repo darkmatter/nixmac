@@ -7,12 +7,12 @@ import type { ConfigField } from "@/ipc/types";
 
 const fields: ConfigField[] = [
   {
-    key: "maxTokenBudget",
-    label: "Max token budget",
-    help: "Provider-reported tokens before the agent stops.",
-    ty: { kind: "number", min: 1000, max: 1000000, step: 1000 },
-    default: 50000,
-    current: 50000,
+    key: "maxIterations",
+    label: "Max iterations",
+    help: "API calls before the agent stops.",
+    ty: { kind: "number", min: 1, max: 200, step: 1 },
+    default: 25,
+    current: 25,
   },
   {
     key: "autoSummarize",

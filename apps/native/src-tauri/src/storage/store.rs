@@ -54,6 +54,7 @@ pub const SYNC_SECRET_KEYCHAIN_KEY: &str = "nixmacSyncSecret";
 /// Default sync server when the user has not configured a custom endpoint.
 pub const DEFAULT_SYNC_BASE_URL: &str = "https://sync.nixmac.app";
 
+pub const DEFAULT_MAX_ITERATIONS: usize = 25;
 pub const DEFAULT_MAX_OUTPUT_TOKENS: usize = 32_768;
 pub const DEFAULT_MAX_TOKEN_BUDGET: u32 = 50_000;
 const KEYCHAIN_SERVICE: &str = "com.darkmatter.nixmac";
@@ -622,6 +623,37 @@ fn get_repo_store<R: Runtime>(
     let path = crate::storage::configurable_scope::repo_store_path(app)?;
     let store = app.store(&path)?;
     Ok(store)
+}
+
+/// Gets the maximum iterations for evolution (default: 25). Repo-scoped.
+pub fn get_max_iterations<R: Runtime>(app: &AppHandle<R>) -> Result<usize> {
+    if let Some(limits) =
+        app.try_state::<crate::state::slice::Slice<crate::evolve::config::EvolutionLimits>>()
+    {
+        return Ok(limits.read_sync().max_iterations);
+    }
+
+    let value = get_repo_store(app)
+        .ok()
+        .and_then(|s| s.get("maxIterations"))
+        .and_then(|v| serde_json::from_value::<usize>(v).ok())
+        .unwrap_or(DEFAULT_MAX_ITERATIONS);
+    Ok(value)
+}
+
+pub fn set_max_iterations<R: Runtime>(app: &AppHandle<R>, max: usize) -> Result<()> {
+    if let Some(limits) =
+        app.try_state::<crate::state::slice::Slice<crate::evolve::config::EvolutionLimits>>()
+    {
+        let mut limits = limits.write_sync(app);
+        limits.max_iterations = max;
+        return Ok(());
+    }
+
+    let store = get_repo_store(app)?;
+    store.set("maxIterations", serde_json::json!(max));
+    store.save()?;
+    Ok(())
 }
 
 /// Gets the maximum token budget for evolution (default: 50,000).
