@@ -1,5 +1,5 @@
 use super::{ChatCompletionProvider, TokenUsage};
-use crate::ai::model_capabilities::supports_custom_temperature;
+use crate::ai::model_capabilities::capabilities_for_model;
 use crate::ai::provider_errors::{classify_openai_error, friendly_provider_error};
 use anyhow::Result;
 use async_openai::{
@@ -81,7 +81,7 @@ impl ChatCompletionProvider for OpenAIClient {
             ])
             .max_completion_tokens(max_tokens);
 
-        if supports_custom_temperature(&self.model) {
+        if capabilities_for_model(&self.model).supports_custom_temperature {
             request_builder.temperature(temperature);
         }
 
@@ -158,7 +158,7 @@ impl ChatCompletionProvider for OpenAIClient {
             .max_completion_tokens(max_tokens)
             .response_format(ResponseFormat::JsonObject);
 
-        if supports_custom_temperature(&self.model) {
+        if capabilities_for_model(&self.model).supports_custom_temperature {
             request_builder.temperature(temperature);
         }
 

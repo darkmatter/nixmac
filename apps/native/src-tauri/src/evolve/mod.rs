@@ -45,6 +45,7 @@ use tools::{ToolResult, create_tools, execute_tool};
 pub use types::{EvolutionProgress, EvolutionRunError};
 
 use crate::{
+    ai::model_capabilities::capabilities_for_model,
     statistics, store,
     types::{EvolveEvent, emit_evolve_event},
     utils as global_utils,
@@ -100,27 +101,11 @@ fn normalize_max_output_tokens(value: usize) -> u32 {
     value.max(1).min(u32::MAX as usize) as u32
 }
 
-// OpenAI's gpt-4o family rejects max_completion_tokens above 16,384 even
-// though other first-party models exposed in the UI accept the app default.
-const OPENAI_GPT_4O_MAX_COMPLETION_TOKENS: u32 = 16_384;
-
 fn normalize_openai_max_output_tokens(model: &str, value: usize) -> u32 {
     let normalized = normalize_max_output_tokens(value);
-    let model = model
-        .strip_prefix("openai/")
-        .unwrap_or(model)
-        .to_ascii_lowercase();
-
-    let model_limit = if matches!(model.as_str(), "gpt-4o" | "gpt-4o-mini")
-        || model.starts_with("gpt-4o-")
-        || model.starts_with("gpt-4o-mini-")
-    {
-        Some(OPENAI_GPT_4O_MAX_COMPLETION_TOKENS)
-    } else {
-        None
-    };
-
-    model_limit.map_or(normalized, |limit| normalized.min(limit))
+    // Called only in the direct OpenAI branch. OpenRouter-compatible requests
+    // keep their provider-level behavior even when the slug contains gpt-4o.
+    capabilities_for_model(model).clamp_max_completion_tokens(normalized)
 }
 
 /// Return short hex prefix for correlation of error messages without risking sensitive content exposure.
