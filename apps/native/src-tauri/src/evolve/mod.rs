@@ -729,11 +729,7 @@ fn finish_after_limit_stop<R: Runtime>(
     emit_evolve_event(app, EvolveEvent::complete(start_time, iteration, &summary));
 
     evolution.summary = Some(summary);
-    evolution.state = if evolution.edits.is_empty() {
-        EvolutionState::Conversational
-    } else {
-        EvolutionState::Generated
-    };
+    evolution.state = EvolutionState::LimitReached;
 }
 
 /// Generate an evolution from a user prompt using OpenAI function calling.

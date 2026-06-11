@@ -282,7 +282,7 @@ error: string | null;
 /**
  * Whether the failed operation completed before changing system state.
  */
-system_untouched: boolean | null;
+system_untouched: boolean | null; 
 /**
  * Path to the captured rebuild log, when available.
  */
@@ -422,7 +422,14 @@ export type EvolutionState =
 /**
  * Agent responded conversationally without making any environment changes.
  */
-"conversational"
+"conversational" | 
+/**
+ * Evolution was stopped because a safety limit was reached
+ * (iterations, build attempts, token budget, or stale progress).
+ * Distinguishes "we cut it off" from "the agent finished" so
+ * the eval harness can score runaways correctly.
+ */
+"limitReached"
 
 /**
  * Telemetry counters from a completed evolution run.

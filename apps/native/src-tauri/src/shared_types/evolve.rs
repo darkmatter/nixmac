@@ -207,6 +207,11 @@ pub enum EvolutionState {
     Failed,
     /// Agent responded conversationally without making any environment changes.
     Conversational,
+    /// Evolution was stopped because a safety limit was reached
+    /// (iterations, build attempts, token budget, or stale progress).
+    /// Distinguishes "we cut it off" from "the agent finished" so
+    /// the eval harness can score runaways correctly.
+    LimitReached,
 }
 
 /// Telemetry counters from a completed evolution run.
