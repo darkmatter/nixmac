@@ -253,13 +253,18 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
 
     let (ok, output_value, failure_message) = match outcome {
         Ok(output) => {
-            let is_conversational =
-                output.telemetry.state == crate::shared_types::EvolutionState::Conversational;
-
-            if is_conversational {
-                println!("(conversational response — no changes made)");
-            } else {
-                println!("Evolution completed successfully");
+            match output.telemetry.state {
+                crate::shared_types::EvolutionState::Conversational => {
+                    println!("(conversational response — no changes made)");
+                }
+                crate::shared_types::EvolutionState::LimitReached => {
+                    println!(
+                        "Evolution stopped after reaching a safety limit (iterations, build attempts, token budget, or stale progress). Review any partial changes and re-run with adjusted limits to continue."
+                    );
+                }
+                _ => {
+                    println!("Evolution completed successfully");
+                }
             }
 
             let output_value = match serde_json::to_value(&output) {
