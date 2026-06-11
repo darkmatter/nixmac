@@ -493,6 +493,7 @@ fn run_gui_mode(
             #[cfg(debug_assertions)]
             commands::debug::e2e_mark_boot_stage,
             // Homebrew
+            commands::homebrew::homebrew_add_casks,
             commands::homebrew::homebrew_apply_diff,
             commands::homebrew::homebrew_get_state_diff,
             // Git

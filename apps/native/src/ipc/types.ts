@@ -282,7 +282,7 @@ error: string | null;
 /**
  * Whether the failed operation completed before changing system state.
  */
-system_untouched: boolean | null;
+system_untouched: boolean | null; 
 /**
  * Path to the captured rebuild log, when available.
  */
@@ -1052,6 +1052,8 @@ isOrphanedRestore: boolean;
  * Whether this history item has been undone by a later restore operation.
  */
 isUndone: boolean }
+
+export type HomebrewCaskItem = { name: string; version: string | null }
 
 /**
  * Current Homebrew package state detected on the machine.

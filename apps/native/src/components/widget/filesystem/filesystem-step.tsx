@@ -2,9 +2,13 @@
 
 import { useEffect, useState } from "react";
 
+import { tauriAPI } from "@/ipc/api";
 import { useWidgetStore } from "@/stores/widget-store";
+import { mirrorChangeMapState } from "@/viewmodel/change-map";
+import { mirrorEvolveState } from "@/viewmodel/evolve";
+import { mirrorGitState } from "@/viewmodel/git";
 
-import { FILES, SECTIONS, type FsFile, type SectionId } from "./data";
+import { FILES, SECTIONS, type CandidateItem, type FsFile, type SectionId } from "./data";
 import { FileList } from "./file-list";
 import { SectionTabs } from "./section-tabs";
 import { seedForFile } from "./seed-prompt";
@@ -57,6 +61,27 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
 
   const onEditWithPrompt = (file: FsFile) => seed(seedForFile(file));
   const onTrack = (text: string) => seed(text);
+  // Add future direct managed-edit trackers here (for example, system defaults)
+  // and pass them down alongside the fallback prompt seeding handler.
+  const onTrackHomebrewCasks = async (items: CandidateItem[]) => {
+    const store = useWidgetStore.getState();
+    store.setProcessing(true, "apply");
+    try {
+      const result = await tauriAPI.homebrew.addCasks(
+        items.map((item) => ({
+          name: item.name,
+          version: item.version ?? null,
+        })),
+      );
+      mirrorEvolveState(result.evolveState);
+      mirrorChangeMapState(result.changeMap);
+      mirrorGitState(result.gitStatus);
+      store.setRecommendedPrompt(undefined);
+      setShowFilesystem(false);
+    } finally {
+      store.setProcessing(false);
+    }
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="filesystem-step">
@@ -66,6 +91,7 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
         files={files}
         onEditWithPrompt={onEditWithPrompt}
         onTrack={onTrack}
+        onTrackHomebrewCasks={onTrackHomebrewCasks}
       />
       <div className="shrink-0 border-border/50 border-t bg-card/40 px-3 py-1.5 text-[10.5px] text-muted-foreground">
         Use these as starting points — every change goes through the standard plan → review → save flow.
