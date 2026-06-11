@@ -724,33 +724,48 @@ pub async fn generate_evolution<R: Runtime>(
 
     // Determine provider
     let store_provider = store::get_evolve_provider(app).ok().flatten();
-    let has_openai_provider_credential =
-        store::get_effective_openai_provider_credential(app)?.is_some();
-    let has_openrouter_provider_credential =
-        store::get_effective_openrouter_provider_credential(app)?.is_some();
-    let requested_provider_type = crate::ai::providers::resolve_unconfigured_openai_compatible_provider(
-        store_provider.or_else(|| std::env::var("EVOLVE_PROVIDER").ok()),
-        has_openai_provider_credential,
-        has_openrouter_provider_credential,
-    );
+    let requested_provider_type = store_provider.or_else(|| std::env::var("EVOLVE_PROVIDER").ok());
     let store_model = store::get_evolve_model(app).ok().flatten();
     let configured_evolve_model = configured_model(store_model.clone(), "EVOLVE_MODEL");
-    let provider_type = if requested_provider_type == "openai" {
-        let resolved_provider = crate::ai::providers::resolve_legacy_openai_provider(
-            requested_provider_type.clone(),
-            configured_evolve_model.as_deref(),
-            has_openai_provider_credential,
-            has_openrouter_provider_credential,
-        );
-        if resolved_provider == "openrouter" {
-            info!("Using OpenRouter for legacy OpenAI evolve provider compatibility");
+    let (provider_type, used_legacy_openai_fallback) = if let Some(provider) = requested_provider_type {
+        if provider != "openai" {
+            (provider, false)
+        } else {
+            let has_openai_provider_credential =
+                store::get_effective_openai_provider_credential(app)?.is_some();
+            let has_openrouter_provider_credential =
+                store::get_effective_openrouter_provider_credential(app)?.is_some();
+
+            let resolved_provider = crate::ai::providers::resolve_legacy_openai_provider(
+                provider,
+                configured_evolve_model.as_deref(),
+                has_openai_provider_credential,
+                has_openrouter_provider_credential,
+            );
+            if resolved_provider == "openrouter" {
+                info!("Using OpenRouter for legacy OpenAI evolve provider compatibility");
+            }
+            let used_legacy_openai_fallback = resolved_provider == "openrouter";
+
+            (resolved_provider, used_legacy_openai_fallback)
         }
-        resolved_provider
     } else {
-        requested_provider_type.clone()
+        let has_openai_provider_credential =
+            store::get_effective_openai_provider_credential(app)?.is_some();
+        let has_openrouter_provider_credential =
+            store::get_effective_openrouter_provider_credential(app)?.is_some();
+        let resolved_provider =
+            crate::ai::providers::resolve_unconfigured_openai_compatible_provider(
+                None,
+                has_openai_provider_credential,
+                has_openrouter_provider_credential,
+            );
+        if resolved_provider == "openai" {
+            info!("Using OpenAI evolve provider because only an OpenAI credential is configured");
+        }
+
+        (resolved_provider, false)
     };
-    let used_legacy_openai_fallback =
-        requested_provider_type == "openai" && provider_type == "openrouter";
 
     info!("");
     info!("════════════════════════════════════════════════════════════════");

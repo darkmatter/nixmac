@@ -149,9 +149,19 @@ fn has_openrouter_provider_credential<R: Runtime>(
 
 fn resolve_summary_provider<R: Runtime>(
     app_handle: Option<&AppHandle<R>>,
-    provider: String,
+    provider: Option<String>,
     model: Option<&str>,
 ) -> Result<(String, bool)> {
+    let provider = if let Some(provider) = provider {
+        provider
+    } else {
+        resolve_unconfigured_openai_compatible_provider(
+            None,
+            has_openai_provider_credential(app_handle)?,
+            has_openrouter_provider_credential(app_handle)?,
+        )
+    };
+
     if provider != "openai" {
         return Ok((provider, false));
     }
@@ -179,17 +189,16 @@ pub fn create_provider<R: Runtime>(
         .and_then(|app| crate::storage::store::get_summary_provider(app).ok())
         .flatten();
 
-    let provider = resolve_unconfigured_openai_compatible_provider(
-        store_provider.or_else(|| std::env::var("SUMMARY_AI_PROVIDER").ok()),
-        has_openai_provider_credential(app_handle)?,
-        has_openrouter_provider_credential(app_handle)?,
-    );
+    let configured_provider = store_provider.or_else(|| std::env::var("SUMMARY_AI_PROVIDER").ok());
     let store_model = app_handle
         .and_then(|app| crate::storage::store::get_summary_model(app).ok())
         .flatten();
     let configured_summary_model = configured_model(store_model.clone(), "SUMMARY_MODEL");
-    let (provider, used_legacy_openai_fallback) =
-        resolve_summary_provider(app_handle, provider, configured_summary_model.as_deref())?;
+    let (provider, used_legacy_openai_fallback) = resolve_summary_provider(
+        app_handle,
+        configured_provider,
+        configured_summary_model.as_deref(),
+    )?;
 
     match provider.as_str() {
         "claude" | "codex" | "opencode" => {
