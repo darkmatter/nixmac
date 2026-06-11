@@ -558,10 +558,6 @@ enum EvolutionLimitKind {
     NoProgress,
     MaxIterations,
     BuildAttempts,
-    // Enforced in the next commit; the variant lands here so the
-    // method arms and the loop guard can be split across two commits
-    // that each compile cleanly.
-    #[allow(dead_code)]
     TokenBudget,
 }
 
@@ -869,7 +865,7 @@ pub async fn generate_evolution<R: Runtime>(
     // Read configurable limits from store (hot-reloaded on every run).
     let config::EvolutionLimits {
         mut max_build_attempts,
-        max_token_budget,
+        mut max_token_budget,
         mut max_iterations,
         ..
     } = config::EvolutionLimits::load(app)
@@ -882,6 +878,7 @@ pub async fn generate_evolution<R: Runtime>(
     let max_iterations_before_edit_increment = max_iterations_before_edit.max(1);
     let max_iterations_increment = max_iterations.max(1);
     let max_build_attempts_increment = max_build_attempts.max(1);
+    let max_token_budget_increment = max_token_budget.max(1);
     let interactive_limit_prompt = !banned_tools.contains(&"ask_user");
     info!(
         "Limits: max_token_budget={}, max_iterations_before_edit={} ({}%), max_build_attempts={}, max_iterations={}",
@@ -1122,6 +1119,54 @@ pub async fn generate_evolution<R: Runtime>(
                     max_token_budget,
                 ),
             );
+        }
+
+        // Safety limits -- Token budget. Caps cumulative session tokens
+        // (in addition to the per-call max_output_tokens). Skipped if
+        // the provider didn't report usage; the iteration guard below
+        // is the fallback for those providers.
+        if total_tokens >= max_token_budget {
+            warn!(
+                "⚠️ Evolution reached token budget ({}/{}) - asking whether to continue",
+                total_tokens, max_token_budget,
+            );
+            match ask_to_continue_after_limit(
+                app,
+                start_time,
+                iteration,
+                EvolutionLimitKind::TokenBudget,
+                total_tokens as usize,
+                interactive_limit_prompt,
+            )
+            .await
+            {
+                LimitDecision::Continue => {
+                    max_token_budget = max_token_budget.saturating_add(max_token_budget_increment);
+                    info!("Extending token budget to {}", max_token_budget);
+                }
+                LimitDecision::Stop => {
+                    finish_after_limit_stop(
+                        app,
+                        &mut evolution,
+                        start_time,
+                        iteration,
+                        EvolutionLimitKind::TokenBudget,
+                        total_tokens as usize,
+                    );
+                    break;
+                }
+                LimitDecision::Cancelled => {
+                    evolution.state = EvolutionState::Failed;
+                    return Err(EvolutionRunError::from_state(
+                        session_control::EVOLUTION_CANCELLED_MSG,
+                        &evolution,
+                        iteration,
+                        build_attempts,
+                        total_tokens,
+                    )
+                    .into());
+                }
+            }
         }
 
         let assistant_msg = response.message;
