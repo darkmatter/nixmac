@@ -26,6 +26,11 @@ DEFAULT_EVOLVE_MODEL = "gpt-oss-120b"
 DEFAULT_SUMMARY_MODEL = "gpt-4o"
 DEFAULT_MAX_ITERATIONS = 25
 
+# Wall-clock cap per case. Defense-in-depth against runaway loops in the
+# nixmac binary (e.g. an evolve session that never converges). 0 = no
+# timeout. See apps/eval/wip/evolve_limits-plan.md for the proper fix.
+DEFAULT_CASE_TIMEOUT_SECONDS = 600
+
 SCRIPT_DIR = Path(__file__).parent.resolve()
 
 # Location where we store JSON evaluation results during test runs
@@ -325,6 +330,7 @@ def run_test_case(
     auth_props: dict | None = None,
     max_iterations: int | None = None,
     host: str | None = None,
+    case_timeout: int | None = None,
 ) -> Any:
     """Run a single test case.
 
@@ -365,7 +371,38 @@ def run_test_case(
         # the stop_requested handler until after the child exits.
         # This way we don't have to Ctrl-C O(n) times stop a long-running test suite.
         cmd = [str(nixmac), "evolve", case.request, "--out", str(out_path)]
-        subprocess.run(cmd, check=False)
+        timed_out = False
+        timeout_seconds = case_timeout if case_timeout and case_timeout > 0 else None
+        # Run in a new session so subprocess.run can kill the whole process
+        # group on timeout (nixmac shells out to nix / nixos-rebuild / git;
+        # we don't want orphans burning CPU after we cut the parent).
+        try:
+            subprocess.run(
+                cmd,
+                check=False,
+                timeout=timeout_seconds,
+                start_new_session=True,
+            )
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            print(
+                f"Case {case.num}: wall-clock timeout after "
+                f"{timeout_seconds}s; killed nixmac. "
+                f"See apps/eval/wip/evolve_limits-plan.md for the proper fix."
+            )
+
+        # If we timed out, prefer a structured stub so the result is recorded
+        # but graders can distinguish a timeout from a successful or
+        # model-decided stop.
+        if timed_out:
+            stub = {
+                "success": False,
+                "error": f"case timed out after {timeout_seconds}s",
+                "case": case.num,
+                "command": cmd,
+                "state": "timeout",
+            }
+            return stub
 
         # Read and return the evolution result if present
         if out_path.exists():
@@ -627,6 +664,7 @@ def main(parsed_args: argparse.Namespace) -> None:
                     auth_props,
                     parsed_args.max_iterations,
                     parsed_args.host,
+                    case_timeout=parsed_args.case_timeout,
                 )
             except KeyboardInterrupt:
                 # Signal handler also sets `stop_requested`; ensure we record
@@ -723,6 +761,18 @@ if __name__ == "__main__":
         type=int,
         default=None,
         help=f"Maximum iterations for evolution (default: {DEFAULT_MAX_ITERATIONS})",
+    )
+
+    parser.add_argument(
+        "--case-timeout",
+        dest="case_timeout",
+        type=int,
+        default=DEFAULT_CASE_TIMEOUT_SECONDS,
+        help=(
+            "Wall-clock timeout per case, in seconds. Defense-in-depth "
+            "against runaway loops in the nixmac binary. Pass 0 to "
+            f"disable. Default: {DEFAULT_CASE_TIMEOUT_SECONDS}s."
+        ),
     )
 
     parser.add_argument(
