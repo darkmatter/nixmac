@@ -9,9 +9,11 @@ import {
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
 import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/ai-provider-validation";
 import { tauriAPI } from "@/ipc/api";
+import { getTelemetry } from "@/lib/telemetry/instance";
 import type { CliToolsState } from "@/ipc/types";
+import type { SettingsChangedSetting } from "@/lib/telemetry/events";
 import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface AiModelsTabProps {
   // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
@@ -103,6 +105,20 @@ export function AiModelsTab({
 }: AiModelsTabProps) {
   const cliStatus = useCliToolStatus();
   const providerPrefs = useProviderPrefs(form);
+  const pendingModelSettings = useRef(new Set<SettingsChangedSetting>());
+  const captureSettingsChanged = (setting: SettingsChangedSetting) => {
+    getTelemetry().captureEvent({
+      name: "settings_changed",
+      props: { setting, surface: "gui" },
+    });
+  };
+  const markModelSettingChanged = (setting: SettingsChangedSetting) => {
+    pendingModelSettings.current.add(setting);
+  };
+  const flushModelSettingChanged = (setting: SettingsChangedSetting) => {
+    if (!pendingModelSettings.current.delete(setting)) return;
+    captureSettingsChanged(setting);
+  };
 
   const renderProviderItems = () => (
     <>
@@ -171,6 +187,8 @@ export function AiModelsTab({
                       evolveProvider: value,
                       evolveModel: defaultModel,
                     });
+                    captureSettingsChanged("evolve_provider");
+                    captureSettingsChanged("evolve_model");
                   }}
                   value={evolveProviderField.state.value}
                 >
@@ -204,8 +222,12 @@ export function AiModelsTab({
                           onChange={async (e) => {
                             evolveModelField.handleChange(e.target.value);
                             await tauriAPI.ui.setPrefs({ evolveModel: e.target.value });
+                            markModelSettingChanged("evolve_model");
                           }}
-                          onBlur={evolveModelField.handleBlur}
+                          onBlur={() => {
+                            evolveModelField.handleBlur();
+                            flushModelSettingChanged("evolve_model");
+                          }}
                           placeholder="Leave empty for CLI default"
                         />
                       ) : (
@@ -215,8 +237,12 @@ export function AiModelsTab({
                           onChange={async (value) => {
                             evolveModelField.handleChange(value);
                             await tauriAPI.ui.setPrefs({ evolveModel: value });
+                            markModelSettingChanged("evolve_model");
                           }}
-                          onBlur={evolveModelField.handleBlur}
+                          onBlur={() => {
+                            evolveModelField.handleBlur();
+                            flushModelSettingChanged("evolve_model");
+                          }}
                           placeholder={
                             evolveProvider === "ollama"
                               ? ""
@@ -259,6 +285,8 @@ export function AiModelsTab({
                       summaryProvider: value,
                       summaryModel: defaultModel,
                     });
+                    captureSettingsChanged("summary_provider");
+                    captureSettingsChanged("summary_model");
                   }}
                   value={summaryProviderField.state.value}
                 >
@@ -292,8 +320,12 @@ export function AiModelsTab({
                           onChange={async (e) => {
                             summaryModelField.handleChange(e.target.value);
                             await tauriAPI.ui.setPrefs({ summaryModel: e.target.value });
+                            markModelSettingChanged("summary_model");
                           }}
-                          onBlur={summaryModelField.handleBlur}
+                          onBlur={() => {
+                            summaryModelField.handleBlur();
+                            flushModelSettingChanged("summary_model");
+                          }}
                           placeholder="Leave empty for CLI default"
                         />
                       ) : (
@@ -303,8 +335,12 @@ export function AiModelsTab({
                           onChange={async (value) => {
                             summaryModelField.handleChange(value);
                             await tauriAPI.ui.setPrefs({ summaryModel: value });
+                            markModelSettingChanged("summary_model");
                           }}
-                          onBlur={summaryModelField.handleBlur}
+                          onBlur={() => {
+                            summaryModelField.handleBlur();
+                            flushModelSettingChanged("summary_model");
+                          }}
                           placeholder={
                             summaryProvider === "ollama"
                               ? "llama3.1"

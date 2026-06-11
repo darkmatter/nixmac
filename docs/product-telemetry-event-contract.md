@@ -87,6 +87,11 @@ Initial ENG-230 product events:
 - `evolve_failed`
   - allowed properties: `stage`
   - allowed values: `stage = agent | apply | build`
+- `error_occurred`
+  - allowed properties: `category`, `surface`
+  - allowed values:
+    - `category = agent | authorization_denied | build_error | evaluation_error | full_disk_access | generic_error | infinite_recursion | user_cancelled`
+    - `surface = gui | cli`
 - `rollback_performed`
   - allowed properties: `source`
   - allowed values: `source = changes`
@@ -97,6 +102,26 @@ Initial ENG-230 product events:
   - allowed properties: `source`, `result`
   - allowed values: `source = changes | history | manual_confirm`,
     `result = success | failure`
+- `review_accepted`
+  - allowed properties: `changed_file_count`, `surface`
+  - allowed values: `surface = gui | cli`
+- `review_rejected`
+  - allowed properties: `changed_file_count`, `surface`
+  - allowed values: `surface = gui | cli`
+- `history_restore_started`
+  - allowed properties: `changed_file_count`, `surface`
+  - allowed values: `surface = gui | cli`
+- `history_restore_completed`
+  - allowed properties: `changed_file_count`, `surface`
+  - allowed values: `surface = gui | cli`
+- `history_restore_failed`
+  - allowed properties: `changed_file_count`, `category`, `surface`
+  - allowed values:
+    - `category = agent | authorization_denied | build_error | evaluation_error | full_disk_access | generic_error | infinite_recursion | user_cancelled`
+    - `surface = gui | cli`
+- `onboarding_started`
+  - allowed properties: `surface`
+  - allowed values: `surface = gui | cli`
 - `onboarding_step_completed`
   - allowed properties: `step`, `source`
   - allowed values:
@@ -116,7 +141,13 @@ Initial ENG-230 product events:
   - allowed properties: `target`
   - allowed values: `target = nix | nix_darwin`
 - `settings_changed`
-  - allowed properties: `setting`
+  - allowed properties: `setting`, `surface`
+  - allowed values:
+    - `setting = evolve_provider | evolve_model | summary_provider | summary_model`
+    - `surface = gui | cli`
+- `settings_opened`
+  - allowed properties: `surface`
+  - allowed values: `surface = gui | cli`
 - `diagnostics_opt_in`
   - allowed properties: none
 - `diagnostics_opt_out`
@@ -130,26 +161,38 @@ Website acquisition events and starter-access events are not native app events
 yet. Track them under ENG-534/ENG-544 once those surfaces have concrete event
 boundaries and the same explicit property contracts.
 
+True process-exit `session_ended`/`app_closed` events are intentionally not
+emitted from the WebView. The native app hides the main window instead of
+closing it, so browser unload hooks would produce false telemetry. Implement
+that boundary from Rust process-exit/session state work before adding those
+events to this contract. `onboarding_abandoned` is also intentionally deferred:
+derive it in PostHog from `onboarding_started` without `onboarding_completed`,
+or add it later from a durable native session boundary.
+
 ## Canonical PostHog Funnels
 
 Build dashboards from these event sequences. Filter all insights by
 `environment` and `release`.
 
 - Native activation:
-  `app_launched` -> `app_ready` -> `onboarding_step_completed`
+  `app_launched` -> `app_ready` -> `onboarding_started` ->
+  `onboarding_step_completed`
   where `step = config_directory` -> `onboarding_step_completed`
   where `step = host_configuration` -> `onboarding_completed` ->
   `evolve_started` -> `apply_completed` where `result = success`.
 - AI value loop:
   `evolve_started` -> `evolve_completed` where `outcome = changes` ->
-  `apply_started` -> `apply_completed` where `result = success`.
+  `review_accepted` -> `apply_started` -> `apply_completed`
+  where `result = success`.
 - Conversational follow-up loop:
   `evolve_started` -> `evolve_completed` where `outcome = conversational`.
 - Nix setup:
   `nix_setup_started` -> `nix_setup_completed`, with a sibling trend for
   `nix_setup_failed` by `target`.
 - Recovery health:
-  `apply_completed` where `result = success` -> `rollback_performed`.
+  `apply_completed` where `result = success` -> `rollback_performed`,
+  plus `history_restore_started` -> `history_restore_completed` /
+  `history_restore_failed`.
 - Consent health:
   trend `product_analytics_opt_out` divided by `app_launched` for the same
   time window. Do not model opt-out users as a segment after opt-out; once

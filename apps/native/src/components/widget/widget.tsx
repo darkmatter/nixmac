@@ -35,22 +35,61 @@ import { useTrayEvents } from "@/hooks/use-tray-events";
 import { loadConfig, loadHosts, loadEvolveState } from "@/hooks/use-widget-initialization";
 import { useSummary } from "@/hooks/use-summary";
 import { markBootStage } from "@/lib/boot-diagnostics";
+import { getTelemetry } from "@/lib/telemetry/instance";
 import { useEvolveMascot } from "@/hooks/use-evolve-mascot";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { UpdateBanner } from "@/components/widget/layout/update-banner";
 import { startViewModelSync } from "@/viewmodel";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
 import { setupWidgetTestHelpers } from "@/utils/widget-test-helpers";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * Main nixmac window / widget component.
  */
 
+let onboardingStartedTelemetryCaptured = false;
+
+export function __resetOnboardingStartedTelemetryForTests() {
+  onboardingStartedTelemetryCaptured = false;
+}
+
+function captureOnboardingStartedIfNeeded() {
+  if (onboardingStartedTelemetryCaptured) return;
+
+  const state = useWidgetStore.getState();
+  const permissionsIncomplete =
+    state.permissionsChecked &&
+    state.permissionsState &&
+    !state.permissionsState.allRequiredGranted;
+  const nixReady =
+    state.nixInstalled === true && state.darwinRebuildAvailable === true;
+  // Count only first-run setup entry. A stale configured host after prior setup
+  // can also land on the setup step, but it is a repair flow rather than activation.
+  const setupRequired =
+    state.isBootstrapping || !state.configDir || !state.host;
+
+  if (permissionsIncomplete || !nixReady || !setupRequired) return;
+
+  getTelemetry().captureEvent({
+    name: "onboarding_started",
+    props: { surface: "gui" },
+  });
+  onboardingStartedTelemetryCaptured = true;
+}
+
 export function DarwinWidget() {
   markBootStage("darwin-widget-render");
 
   const step = useCurrentStep();
+  const [startupLoadComplete, setStartupLoadComplete] = useState(false);
+  const configDir = useWidgetStore((state) => state.configDir);
+  const host = useWidgetStore((state) => state.host);
+  const isBootstrapping = useWidgetStore((state) => state.isBootstrapping);
+  const nixInstalled = useWidgetStore((state) => state.nixInstalled);
+  const darwinRebuildAvailable = useWidgetStore((state) => state.darwinRebuildAvailable);
+  const permissionsChecked = useWidgetStore((state) => state.permissionsChecked);
+  const permissionsState = useWidgetStore((state) => state.permissionsState);
   const { getInitialStatus } = useGitOperations();
   const { checkNix } = useNixInstall();
   const { checkPermissions } = usePermissions();
@@ -66,6 +105,22 @@ export function DarwinWidget() {
 
   // Listen for tray menu events (Send Feedback, Settings)
   useTrayEvents();
+
+  useEffect(() => {
+    if (startupLoadComplete && step === "setup") {
+      captureOnboardingStartedIfNeeded();
+    }
+  }, [
+    configDir,
+    darwinRebuildAvailable,
+    host,
+    isBootstrapping,
+    nixInstalled,
+    permissionsChecked,
+    permissionsState,
+    startupLoadComplete,
+    step,
+  ]);
 
   // Set up test helpers for error handlers and widget store (development only)
   useEffect(() => {
@@ -118,6 +173,9 @@ export function DarwinWidget() {
         await checkNix();
         await loadHosts();
         await loadEvolveState();
+        if (!cancelled) {
+          setStartupLoadComplete(true);
+        }
         await getInitialStatus();
         await loadPrefs();
         await findChangeMap();

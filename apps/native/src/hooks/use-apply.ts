@@ -14,6 +14,7 @@ import { mirrorGitState } from "@/viewmodel/git";
  */
 export function useApply() {
   const { triggerRebuild } = useRebuildStream();
+  const changedFileCount = () => useViewModel.getState().git?.files.length ?? 0;
 
   const captureApplyStarted = (source: ApplySource) => {
     getTelemetry().captureEvent({
@@ -49,6 +50,10 @@ export function useApply() {
   const handleApply = async () => {
     const store = useWidgetStore.getState();
     store.setProcessing(true, "apply");
+    getTelemetry().captureEvent({
+      name: "review_accepted",
+      props: { changed_file_count: changedFileCount(), surface: "gui" },
+    });
     captureApplyStarted("changes");
 
     await triggerRebuild({

@@ -4,14 +4,29 @@ import { mirrorEvolveState } from "@/viewmodel/evolve";
 import { SystemDefaultsCTA } from "./system-defaults-cta";
 
 const { scanDefaults } = vi.hoisted(() => ({
-  scanDefaults: vi.fn(),
+  scanDefaults: vi.fn<() => Promise<{
+    defaults: ReturnType<typeof defaultSetting>[];
+    totalScanned: number;
+  }>>(),
 }));
+
+const storage = new Map<string, string>();
+
+Object.defineProperty(globalThis, "localStorage", {
+  configurable: true,
+  value: {
+    clear: () => storage.clear(),
+    getItem: (key: string) => storage.get(key) ?? null,
+    removeItem: (key: string) => storage.delete(key),
+    setItem: (key: string, value: string) => storage.set(key, value),
+  },
+});
 
 vi.mock("@/ipc/api", () => ({
   tauriAPI: {
     scanner: {
       scanDefaults,
-      applyDefaults: vi.fn(),
+      applyDefaults: vi.fn<() => Promise<void>>(),
     },
   },
 }));

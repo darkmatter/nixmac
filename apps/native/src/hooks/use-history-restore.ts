@@ -3,7 +3,9 @@ import { useWidgetStore } from "@/stores/widget-store";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useHistory } from "@/hooks/use-history";
 import { tauriAPI } from "@/ipc/api";
-import type { HistoryItem } from "@/ipc/types";
+import type { HistoryItem, RebuildErrorType } from "@/ipc/types";
+import { toTelemetryErrorCategory } from "@/lib/telemetry/events";
+import { getTelemetry } from "@/lib/telemetry/instance";
 import { useViewModel } from "@/stores/view-model";
 import { mirrorGitState } from "@/viewmodel/git";
 
@@ -239,22 +241,68 @@ export function useHistoryRestore(
   }
 
   const doRestore = async (hash: string) => {
+    const changedFileCount = history.find((item) => item.hash === hash)?.fileCount ?? 0;
     setRestoringHash(hash);
     setProcessing(true);
+    getTelemetry().captureEvent({
+      name: "history_restore_started",
+      props: { changed_file_count: changedFileCount, surface: "gui" },
+    });
     try {
       await tauriAPI.darwin.prepareRestore(hash);
       await triggerRebuild({
         context: "rollback",
         onSuccess: async () => {
-          const result = await tauriAPI.darwin.finalizeRestore(hash);
-          mirrorGitState(result);
-          await loadHistory();
+          let terminalEventCaptured = false;
+          try {
+            const result = await tauriAPI.darwin.finalizeRestore(hash);
+            mirrorGitState(result);
+            getTelemetry().captureEvent({
+              name: "history_restore_completed",
+              props: { changed_file_count: changedFileCount, surface: "gui" },
+            });
+            terminalEventCaptured = true;
+            await loadHistory();
+          } catch (error) {
+            if (!terminalEventCaptured) {
+              getTelemetry().captureEvent({
+                name: "history_restore_failed",
+                props: {
+                  category: "generic_error",
+                  changed_file_count: changedFileCount,
+                  surface: "gui",
+                },
+              });
+            }
+            throw error;
+          }
         },
-        onFailure: async () => {
-          await tauriAPI.darwin.abortRestore();
+        onFailure: async (errorType?: RebuildErrorType | null) => {
+          getTelemetry().captureEvent({
+            name: "history_restore_failed",
+            props: {
+              category: toTelemetryErrorCategory(errorType),
+              changed_file_count: changedFileCount,
+              surface: "gui",
+            },
+          });
+          try {
+            await tauriAPI.darwin.abortRestore();
+          } catch (error) {
+            console.error("Failed to abort history restore:", error);
+            // Preserve the original rebuild failure path after terminal telemetry is captured.
+          }
         },
       });
     } catch {
+      getTelemetry().captureEvent({
+        name: "history_restore_failed",
+        props: {
+          category: "generic_error",
+          changed_file_count: changedFileCount,
+          surface: "gui",
+        },
+      });
       setProcessing(false);
     } finally {
       setRestoringHash(null);

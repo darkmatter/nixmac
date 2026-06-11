@@ -149,6 +149,12 @@ const handleEvolve = async () => {
       // Track evolution failure
       const stage = msg.toLowerCase().includes("build") ? "build" : msg.toLowerCase().includes("apply") ? "apply" : "agent";
       getTelemetry().captureEvent({ name: "evolve_failed", props: { stage: stage as "build" | "agent" | "apply" } });
+      if (stage === "agent") {
+        getTelemetry().captureEvent({
+          name: "error_occurred",
+          props: { category: "agent", surface: "gui" },
+        });
+      }
     }
     await findChangeMap();
   } finally {

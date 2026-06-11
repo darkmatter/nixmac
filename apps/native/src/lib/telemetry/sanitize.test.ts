@@ -27,7 +27,7 @@ describe("telemetry product event sanitization", () => {
       props: {
         setting: "api key sk-test-secret@example.com /Users/farhan/.ssh/id_ed25519",
       },
-    });
+    } as unknown as TelemetryEvent);
 
     expect(prepared.props.setting).toContain("[REDACTED]");
     expect(prepared.props.setting).toContain("/Users/[REDACTED_USER]");
@@ -41,7 +41,7 @@ describe("telemetry product event sanitization", () => {
       props: {
         setting: "https://nixmac.com/settings?token=secret&email=a@example.com",
       },
-    });
+    } as unknown as TelemetryEvent);
 
     expect(prepared.props.setting).toBe("https://nixmac.com/settings");
   });
@@ -76,18 +76,26 @@ describe("telemetry product event sanitization", () => {
       "apply_started",
       "diagnostics_opt_in",
       "diagnostics_opt_out",
+      "error_occurred",
       "evolve_completed",
       "evolve_failed",
       "evolve_started",
+      "history_restore_completed",
+      "history_restore_failed",
+      "history_restore_started",
       "nix_setup_completed",
       "nix_setup_failed",
       "nix_setup_started",
       "onboarding_completed",
+      "onboarding_started",
       "onboarding_step_completed",
       "product_analytics_opt_in",
       "product_analytics_opt_out",
+      "review_accepted",
+      "review_rejected",
       "rollback_performed",
       "settings_changed",
+      "settings_opened",
     ]);
 
     const prepared = preparePostHogEvent({
@@ -102,6 +110,39 @@ describe("telemetry product event sanitization", () => {
     expect(prepared).toEqual({
       name: "apply_completed",
       props: { result: "success", source: "changes" },
+    });
+  });
+
+  it("keeps activation-flow additions restricted to aggregate enum payloads", () => {
+    expect(
+      preparePostHogEvent({
+        name: "review_accepted",
+        props: {
+          changed_file_count: 2,
+          diff: "secret diff",
+          file_path: "/Users/farhan/.nixmac/flake.nix",
+          prompt: "install docker",
+          surface: "gui",
+        },
+      } as unknown as TelemetryEvent),
+    ).toEqual({
+      name: "review_accepted",
+      props: { changed_file_count: 2, surface: "gui" },
+    });
+
+    expect(
+      preparePostHogEvent({
+        name: "history_restore_failed",
+        props: {
+          category: "build_error",
+          error: "raw failure token sk-test",
+          log: "full build log",
+          surface: "gui",
+        },
+      } as unknown as TelemetryEvent),
+    ).toEqual({
+      name: "history_restore_failed",
+      props: { category: "build_error", surface: "gui" },
     });
   });
 

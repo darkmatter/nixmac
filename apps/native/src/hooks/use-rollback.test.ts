@@ -111,7 +111,14 @@ describe("useRollback", () => {
     const store = useWidgetStore.getState();
     store.setEvolvePrompt("Install vim");
     mirrorEvolveState(committableEvolveState);
-    mirrorGitState(cleanGitStatus);
+    mirrorGitState({
+      ...cleanGitStatus,
+      files: [
+        { changeType: "edited", path: "flake.nix" },
+        { changeType: "removed", path: "old.nix" },
+        { changeType: "new", path: "new.nix" },
+      ],
+    });
     store.setProcessing(false);
     store.setGenerating(false);
     store.setError(null);
@@ -131,6 +138,10 @@ describe("useRollback", () => {
     expect(mocks.captureEvent).toHaveBeenCalledWith({
       name: "rollback_performed",
       props: { source: "changes" },
+    });
+    expect(mocks.captureEvent).toHaveBeenCalledWith({
+      name: "review_rejected",
+      props: { changed_file_count: 3, surface: "gui" },
     });
   });
 

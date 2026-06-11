@@ -1,10 +1,16 @@
-import { useWidgetStore, type RebuildContext } from "@/stores/widget-store";
+import {
+  useWidgetStore,
+  type RebuildContext,
+  type RebuildErrorType,
+} from "@/stores/widget-store";
 import { tauriAPI, ipcRenderer } from "@/ipc/api";
 import type {
   DarwinApplyDataEvent,
   DarwinApplyEndEvent,
   DarwinApplySummaryEvent,
 } from "@/ipc/types";
+import { getTelemetry } from "@/lib/telemetry/instance";
+import { toTelemetryErrorCategory } from "@/lib/telemetry/events";
 import { useRef } from "react";
 import { useGitOperations } from "./use-git-operations";
 
@@ -13,7 +19,7 @@ interface RebuildOptions {
   /** When set, activates this nix store path instead of triggering a full rebuild. */
   storePath?: string;
   onSuccess?: () => Promise<void>;
-  onFailure?: () => Promise<void>;
+  onFailure?: (errorType?: RebuildErrorType | null) => Promise<void>;
 }
 
 /**
@@ -79,6 +85,13 @@ export function useRebuildStream() {
           const errorType = event.payload.error_type ?? "generic_error";
           const errorMessage = event.payload.error ?? "Rebuild failed";
           currentStore.setRebuildError(errorType, errorMessage);
+          getTelemetry().captureEvent({
+            name: "error_occurred",
+            props: {
+              category: toTelemetryErrorCategory(errorType),
+              surface: "gui",
+            },
+          });
         }
 
         unlistenData();
@@ -103,7 +116,7 @@ export function useRebuildStream() {
             console.error("Failed to check permissions:", e);
           }
           if (options?.onFailure) {
-            await options.onFailure();
+            await options.onFailure(event.payload.error_type);
           }
           await refreshGitStatus({ cache: true });
           currentStore.setProcessing(false);
@@ -125,7 +138,7 @@ export function useRebuildStream() {
           currentStore.setProcessing(false);
         } else {
           if (options?.onFailure) {
-            await options.onFailure();
+            await options.onFailure(event.payload.error_type);
           }
           await refreshGitStatus({ cache: true });
           currentStore.setProcessing(false);
@@ -143,8 +156,12 @@ export function useRebuildStream() {
         useWidgetStore.getState().setRebuildError("generic_error", msg);
         useWidgetStore.getState().setRebuildComplete(false);
         useWidgetStore.getState().setProcessing(false);
+        getTelemetry().captureEvent({
+          name: "error_occurred",
+          props: { category: "generic_error", surface: "gui" },
+        });
         if (options?.onFailure) {
-          await options.onFailure();
+          await options.onFailure("generic_error");
         }
         unlistenData();
         unlistenSummary();

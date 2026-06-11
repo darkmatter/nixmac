@@ -12,10 +12,12 @@ import { getTelemetry } from "@/lib/telemetry/instance";
 export function useRollback() {
   const { triggerRebuild } = useRebuildStream();
   const { findChangeMap } = useSummary();
+  const changedFileCount = () => useViewModel.getState().git?.files.length ?? 0;
 
   const handleRollback = async () => {
     const store = useWidgetStore.getState();
     const wasCommittable = useViewModel.getState().evolve?.committable === true;
+    const reviewChangedFileCount = changedFileCount();
 
     store.setProcessing(true, "cancel");
     store.appendLog("\n> Discarding changes...\n");
@@ -31,6 +33,10 @@ export function useRollback() {
       getTelemetry().captureEvent({
         name: "rollback_performed",
         props: { source: "changes" },
+      });
+      getTelemetry().captureEvent({
+        name: "review_rejected",
+        props: { changed_file_count: reviewChangedFileCount, surface: "gui" },
       });
 
       if (result.rollbackStorePath && wasCommittable) {

@@ -1,6 +1,7 @@
 import type { EvolveState, GitStatus } from "@/ipc/types";
 import type { TelemetryEvent } from "@/lib/telemetry/types";
 import { useWidgetStore } from "@/stores/widget-store";
+import { mirrorGitState } from "@/viewmodel/git";
 import { renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useApply } from "./use-apply";
@@ -68,6 +69,13 @@ describe("useApply telemetry", () => {
     mocks.finalizeApply.mockResolvedValue({ evolveState, gitStatus });
     mocks.triggerRebuild.mockResolvedValue(undefined);
     useWidgetStore.getState().setProcessing(false);
+    mirrorGitState({
+      ...gitStatus,
+      files: [
+        { changeType: "edited", path: "flake.nix" },
+        { changeType: "new", path: "modules/home.nix" },
+      ],
+    });
   });
 
   afterEach(() => {
@@ -85,6 +93,10 @@ describe("useApply telemetry", () => {
     expect(mocks.captureEvent).toHaveBeenCalledWith({
       name: "apply_started",
       props: { source: "changes" },
+    });
+    expect(mocks.captureEvent).toHaveBeenCalledWith({
+      name: "review_accepted",
+      props: { changed_file_count: 2, surface: "gui" },
     });
     expect(mocks.captureEvent).toHaveBeenCalledWith({
       name: "apply_completed",

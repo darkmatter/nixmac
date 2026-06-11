@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { cn } from "@/lib/utils";
+import { getTelemetry } from "@/lib/telemetry/instance";
 import { type SettingsTab, useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 import { useForm } from "@tanstack/react-form";
@@ -74,6 +75,15 @@ export function SettingsDialog() {
   const openrouterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { saveHost } = useDarwinConfig();
+
+  useEffect(() => {
+    if (isOpen) {
+      getTelemetry().captureEvent({
+        name: "settings_opened",
+        props: { surface: "gui" },
+      });
+    }
+  }, [isOpen]);
 
   const verifyOpenrouterKey = async (key: string) => {
     if (!key) {

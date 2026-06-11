@@ -5,7 +5,7 @@ import { useWidgetStore } from "@/stores/widget-store";
 import { mirrorChangeMapState } from "@/viewmodel/change-map";
 import { mirrorEvolveState } from "@/viewmodel/evolve";
 import { mirrorGitState } from "@/viewmodel/git";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useEvolve } from "./use-evolve";
 
 const mocks = vi.hoisted(() => ({
@@ -67,6 +67,7 @@ const evolveState: EvolveState = {
 describe("useEvolve", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(console, "error").mockImplementation(() => {});
     mocks.promptHistoryAdd.mockResolvedValue(undefined);
     mocks.promptHistoryGet.mockResolvedValue([]);
     mocks.on.mockResolvedValue(vi.fn());
@@ -82,6 +83,10 @@ describe("useEvolve", () => {
     mirrorChangeMapState(null);
     mirrorGitState(null);
     mirrorEvolveState(null);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("preserves the current change map for conversational follow-ups", async () => {
@@ -124,6 +129,42 @@ describe("useEvolve", () => {
     expect(mocks.captureEvent).toHaveBeenCalledWith({
       name: "evolve_completed",
       props: { outcome: "conversational", step: "evolve" },
+    });
+  });
+
+  it("emits category-only error telemetry for agent evolution failures", async () => {
+    mocks.evolve.mockRejectedValue(new Error("agent crashed"));
+
+    const store = useWidgetStore.getState();
+    store.setEvolvePrompt("install vim");
+
+    await useEvolve().handleEvolve();
+
+    expect(mocks.captureEvent).toHaveBeenCalledWith({
+      name: "evolve_failed",
+      props: { stage: "agent" },
+    });
+    expect(mocks.captureEvent).toHaveBeenCalledWith({
+      name: "error_occurred",
+      props: { category: "agent", surface: "gui" },
+    });
+  });
+
+  it("does not convert build/apply message substrings into error_occurred categories", async () => {
+    mocks.evolve.mockRejectedValue(new Error("build failed while applying changes"));
+
+    const store = useWidgetStore.getState();
+    store.setEvolvePrompt("install vim");
+
+    await useEvolve().handleEvolve();
+
+    expect(mocks.captureEvent).toHaveBeenCalledWith({
+      name: "evolve_failed",
+      props: { stage: "build" },
+    });
+    expect(mocks.captureEvent).not.toHaveBeenCalledWith({
+      name: "error_occurred",
+      props: { category: "build_error", surface: "gui" },
     });
   });
 });

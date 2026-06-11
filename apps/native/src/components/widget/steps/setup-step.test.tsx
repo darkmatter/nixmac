@@ -1,8 +1,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import type { TelemetryEvent } from "@/lib/telemetry/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockSaveHost, widgetState } = vi.hoisted(() => ({
+const { mockCaptureEvent, mockSaveHost, widgetState } = vi.hoisted(() => ({
+  mockCaptureEvent: vi.fn<(event: TelemetryEvent) => void>(),
   mockSaveHost: vi.fn<(host: string) => Promise<void>>(),
   widgetState: {
     configDir: "",
@@ -31,6 +33,12 @@ vi.mock("@/components/widget/controls/bootstrap-config", () => ({
   BootstrapConfig: () => <div data-testid="bootstrap-config" />,
 }));
 
+vi.mock("@/lib/telemetry/instance", () => ({
+  getTelemetry: () => ({
+    captureEvent: mockCaptureEvent,
+  }),
+}));
+
 import { SetupStep } from "./setup-step";
 
 describe("<SetupStep>", () => {
@@ -39,8 +47,15 @@ describe("<SetupStep>", () => {
     widgetState.hosts = [];
     widgetState.host = "";
     widgetState.error = null;
+    mockCaptureEvent.mockReset();
     mockSaveHost.mockReset();
     mockSaveHost.mockResolvedValue();
+  });
+
+  it("does not emit onboarding telemetry from a transient setup render", () => {
+    render(<SetupStep />);
+
+    expect(mockCaptureEvent).not.toHaveBeenCalled();
   });
 
   it("persists the displayed host when Next is clicked without changing the dropdown", async () => {
