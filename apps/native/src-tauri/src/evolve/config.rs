@@ -56,10 +56,11 @@ pub struct EvolutionLimits {
     pub max_output_tokens: usize,
 }
 
-// Matches the `#[config(default = ...)]` values above. Used as the fallback
-// in evolve::mod when EvolutionLimits::load fails (e.g. config_dir not yet
-// set during onboarding); deriving `Default` would produce zeros, which
-// would be wrong here.
+// Matches the `#[config(default = ...)]` values above. Reached during
+// startup when the repo's settings.json is absent or unreadable (see
+// `preferences::load_or_default`), and on the dev-settings whole-struct
+// `set` path when an incoming JSON payload is missing fields. Deriving
+// `Default` would produce zeros, which would be wrong here.
 impl Default for EvolutionLimits {
     fn default() -> Self {
         Self {
@@ -77,7 +78,6 @@ pub fn load_observable<R: Runtime>(app: &AppHandle<R>) -> Result<Observable<Evol
         .emit_to(app, EVOLUTION_LIMITS_CHANGED_EVENT)
         .persist_to(persistence))
 }
-
 
 #[cfg(test)]
 mod tests {

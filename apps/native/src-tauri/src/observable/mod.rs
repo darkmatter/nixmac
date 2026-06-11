@@ -178,7 +178,11 @@ mod tests {
         }
 
         let events = captured.lock().unwrap();
-        assert_eq!(events.len(), 1, "subscriber fires once per write guard drop");
+        assert_eq!(
+            events.len(),
+            1,
+            "subscriber fires once per write guard drop"
+        );
         assert_eq!(
             events[0],
             DemoState {

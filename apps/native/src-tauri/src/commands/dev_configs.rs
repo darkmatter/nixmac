@@ -17,7 +17,7 @@
 //! see a runtime registry handle.
 
 use super::helpers::capture_err;
-use configurable::{inventory, ConfigurableMeta, ConfigurableSchema};
+use configurable::{ConfigurableMeta, ConfigurableSchema, inventory};
 use std::collections::HashMap;
 use tauri::AppHandle;
 

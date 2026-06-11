@@ -53,7 +53,6 @@ impl AppDataJson {
             .context("failed to resolve app data directory")?;
         Ok(Self::new(app_data.join(file_name)))
     }
-
 }
 
 impl Persistence for AppDataJson {
@@ -92,7 +91,6 @@ impl RepoScopedJson {
             crate::storage::configurable_scope::repo_store_path(app)?,
         ))
     }
-
 }
 
 impl Persistence for RepoScopedJson {
@@ -159,7 +157,11 @@ mod tests {
     fn json_persistence_round_trips_by_scope_path() {
         let temp = tempfile::tempdir().expect("temp dir");
         let app_data_path = temp.path().join("app-data").join("settings.json");
-        let repo_path = temp.path().join("repo").join(".nixmac").join("settings.json");
+        let repo_path = temp
+            .path()
+            .join("repo")
+            .join(".nixmac")
+            .join("settings.json");
         let app_data = AppDataJson::new(&app_data_path);
         let repo_scoped = RepoScopedJson::new(&repo_path);
 
