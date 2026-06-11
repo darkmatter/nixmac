@@ -558,6 +558,21 @@ enum EvolutionLimitKind {
     NoProgress,
     MaxIterations,
     BuildAttempts,
+    // Enforced in the next commit; the variant lands here so the
+    // method arms and the loop guard can be split across two commits
+    // that each compile cleanly.
+    #[allow(dead_code)]
+    TokenBudget,
+}
+
+fn format_token_count(tokens: usize) -> String {
+    if tokens >= 1_000_000 {
+        format!("{:.1}M", tokens as f64 / 1_000_000.0)
+    } else if tokens >= 1_000 {
+        format!("{:.1}K", tokens as f64 / 1_000.0)
+    } else {
+        tokens.to_string()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -572,14 +587,21 @@ impl EvolutionLimitKind {
         match self {
             Self::BuildAttempts => format!("{} build attempts", attempts),
             Self::NoProgress | Self::MaxIterations => format!("{} attempts", attempts),
+            Self::TokenBudget => format!("{} tokens", format_token_count(attempts)),
         }
     }
 
     fn prompt(self, attempts: usize) -> String {
-        format!(
-            "The AI has made {}. Keep going?",
-            self.attempts_label(attempts)
-        )
+        match self {
+            Self::TokenBudget => format!(
+                "The AI has used {}. Keep going?",
+                self.attempts_label(attempts)
+            ),
+            _ => format!(
+                "The AI has made {}. Keep going?",
+                self.attempts_label(attempts)
+            ),
+        }
     }
 
     fn stop_summary(self, attempts: usize) -> String {
@@ -594,6 +616,10 @@ impl EvolutionLimitKind {
             ),
             Self::BuildAttempts => format!(
                 "Evolution stopped after reaching {}. You can review the current changes or continue with a follow-up prompt.",
+                self.attempts_label(attempts)
+            ),
+            Self::TokenBudget => format!(
+                "Evolution stopped after consuming {}. You can review the current changes or continue with a follow-up prompt.",
                 self.attempts_label(attempts)
             ),
         }
@@ -843,15 +869,12 @@ pub async fn generate_evolution<R: Runtime>(
     // Read configurable limits from store (hot-reloaded on every run).
     let config::EvolutionLimits {
         mut max_build_attempts,
+        max_token_budget,
+        mut max_iterations,
         ..
     } = config::EvolutionLimits::load(app)
         .inspect_err(|e| warn!("EvolutionLimits::load failed ({e}); using defaults"))
         .unwrap_or_default();
-    let legacy_max_iterations =
-        store::get_max_iterations(app).unwrap_or(store::DEFAULT_MAX_ITERATIONS);
-    let max_token_budget =
-        store::get_max_token_budget(app).unwrap_or(store::DEFAULT_MAX_TOKEN_BUDGET);
-    let mut max_iterations = legacy_max_iterations;
     let mut max_iterations_before_edit = std::cmp::max(
         1,
         (max_iterations * MAX_ITERATIONS_BEFORE_EDIT_PERCENT) / 100,

@@ -656,12 +656,26 @@ pub fn set_max_iterations<R: Runtime>(app: &AppHandle<R>, max: usize) -> Result<
     Ok(())
 }
 
-/// Gets the maximum token budget for evolution (default: 50,000).
+/// Gets the maximum token budget for evolution (default: 50,000). Repo-scoped.
 pub fn get_max_token_budget<R: Runtime>(app: &AppHandle<R>) -> Result<u32> {
+    if let Some(limits) =
+        app.try_state::<crate::state::slice::Slice<crate::evolve::config::EvolutionLimits>>()
+    {
+        return Ok(limits.read_sync().max_token_budget);
+    }
+
     Ok(get_json_pref(app, "maxTokenBudget")?.unwrap_or(DEFAULT_MAX_TOKEN_BUDGET))
 }
 
 pub fn set_max_token_budget<R: Runtime>(app: &AppHandle<R>, max: u32) -> Result<()> {
+    if let Some(limits) =
+        app.try_state::<crate::state::slice::Slice<crate::evolve::config::EvolutionLimits>>()
+    {
+        let mut limits = limits.write_sync(app);
+        limits.max_token_budget = max;
+        return Ok(());
+    }
+
     let store = get_store(app)?;
     store.set("maxTokenBudget", serde_json::json!(max));
     store.save()?;
