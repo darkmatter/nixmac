@@ -18,16 +18,3 @@ pub async fn get_evolve_state(app: AppHandle) -> Result<shared_types::EvolveStat
 pub async fn clear_evolve_state(app: AppHandle) -> Result<shared_types::EvolveState, String> {
     evolve_state::clear(&app).map_err(|e| capture_err("clear_evolve_state", e))
 }
-
-// DEPRECATED: compat aliases for the renamed commands above; delete in
-// Stage 5 of docs/2026-06-12-viewmodel-completion-plan.md.
-
-#[tauri::command]
-pub async fn routing_state_get(app: AppHandle) -> Result<shared_types::EvolveState, String> {
-    get_evolve_state(app).await
-}
-
-#[tauri::command]
-pub async fn routing_state_clear(app: AppHandle) -> Result<shared_types::EvolveState, String> {
-    clear_evolve_state(app).await
-}

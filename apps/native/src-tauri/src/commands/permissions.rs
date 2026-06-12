@@ -21,15 +21,6 @@ pub async fn refresh_permissions(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-// DEPRECATED: compat alias; probes and returns the state directly. Delete in
-// Stage 5 of docs/2026-06-12-viewmodel-completion-plan.md.
-#[tauri::command]
-pub async fn permissions_check_all(
-    app: AppHandle,
-) -> Result<shared_types::PermissionsState, String> {
-    Ok(permissions_state::refresh(&app))
-}
-
 /// Request a specific permission by ID.
 /// For programmatic permissions (desktop, documents), this triggers the OS prompt.
 /// For manual permissions (full-disk), this opens System Settings.

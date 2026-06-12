@@ -4,7 +4,7 @@ import { Fragment } from "react";
 import { cn } from "@/lib/utils";
 import { useUiState } from "@/stores/ui-state";
 import { useViewModel } from "@/stores/view-model";
-import { useCurrentStep } from "@/stores/widget-store";
+import { useCurrentStep } from "@/hooks/use-current-step";
 import { Check } from "lucide-react";
 
 const STEPS = [

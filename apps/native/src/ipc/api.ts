@@ -213,7 +213,6 @@ export const tauriAPI = {
     get: () => invoke<PermissionsState | null>("get_permissions"),
     /** Probe all macOS permissions; the result arrives via `permissions_changed`. */
     refresh: () => invoke<void>("refresh_permissions"),
-    checkAll: () => invoke<PermissionsState>("permissions_check_all"),
     request: (permissionId: string) => invoke<Permission>("permissions_request", { permissionId }),
     // macOS-specific permission checks via tauri-plugin-macos-permissions
     checkFullDiskAccess: () => checkFullDiskAccessPermission(),

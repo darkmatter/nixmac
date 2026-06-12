@@ -521,8 +521,6 @@ fn run_gui_mode(
             // Routing state
             commands::evolve_state::get_evolve_state,
             commands::evolve_state::clear_evolve_state,
-            commands::evolve_state::routing_state_get,
-            commands::evolve_state::routing_state_clear,
             commands::apply::get_nix_install_state,
             commands::apply::get_rebuild_status,
             commands::apply::nix_check,
@@ -571,7 +569,6 @@ fn run_gui_mode(
             // Permissions
             commands::permissions::get_permissions,
             commands::permissions::refresh_permissions,
-            commands::permissions::permissions_check_all,
             commands::permissions::permissions_request,
             // System defaults scanner
             commands::system_defaults::get_recommended_prompt,

@@ -33,7 +33,7 @@ import { useTrayEvents } from "@/hooks/use-tray-events";
 import { markBootStage } from "@/lib/boot-diagnostics";
 import { useEvolveMascot } from "@/hooks/use-evolve-mascot";
 import { useUiState } from "@/stores/ui-state";
-import { useCurrentStep } from "@/stores/widget-store";
+import { useCurrentStep } from "@/hooks/use-current-step";
 import { UpdateBanner } from "@/components/widget/layout/update-banner";
 import { startViewModelSync } from "@/viewmodel";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";

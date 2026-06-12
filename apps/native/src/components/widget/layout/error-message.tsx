@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { EVOLUTION_CANCELLED_MSG } from "@/lib/constants";
 import { useUiState } from "@/stores/ui-state";
-import { useCurrentStep } from "@/stores/widget-store";
+import { useCurrentStep } from "@/hooks/use-current-step";
 import { FeedbackType } from "@/types/feedback";
 import { Settings } from "lucide-react";
 import { useEffect, useRef } from "react";

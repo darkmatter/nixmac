@@ -1,3 +1,4 @@
+import { useViewModel } from "@/stores/view-model";
 import type {
   GlobalPreferences,
   NixInstallState,
@@ -72,4 +73,28 @@ export function makeRebuildStatus(overrides: Partial<RebuildStatus> = {}): Rebui
     systemUntouched: null,
     ...overrides,
   };
+}
+
+/**
+ * Seed the ViewModel with the Storybook/test bypass invariants: permissions
+ * granted, Nix installed with nix-darwin available, and a demo config
+ * selected — so a widget mounted inside a story never falls into the
+ * permissions/setup/nix-setup screens. Story-level seeding (which runs after
+ * this) can still override any field.
+ */
+export function seedViewModelBypass(): void {
+  const current = useViewModel.getState();
+  useViewModel.setState({
+    permissions: makeGrantedPermissions(),
+    permissionsHydrated: true,
+    nixInstall: makeNixInstallState(),
+    preferences:
+      current.preferences ??
+      makeGlobalPreferences({
+        hostAttr: "Demo-MacBook-Pro",
+        configDir: "/Users/demo/.darwin",
+        repoRoot: "/Users/demo/.darwin",
+      }),
+    hosts: current.hosts.length > 0 ? current.hosts : ["Demo-MacBook-Pro", "Work-MacBook"],
+  });
 }

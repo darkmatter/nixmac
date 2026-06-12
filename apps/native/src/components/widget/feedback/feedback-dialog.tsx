@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { useUiState } from "@/stores/ui-state";
-import { useCurrentStep } from "@/stores/widget-store";
+import { useCurrentStep } from "@/hooks/use-current-step";
 import {
   Dialog,
   DialogContent,

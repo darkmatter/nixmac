@@ -4,19 +4,23 @@ import { DocsContainer } from "@storybook/addon-docs/blocks";
 import type { DocsContainerProps } from "@storybook/addon-docs/blocks";
 import type { Decorator } from "@storybook/react-vite";
 import { definePreview } from "@storybook/react-vite";
-import { sb } from "storybook/test";
 import { useEffect } from "react";
 import { themes, useTheme } from "storybook/theming";
 import "./mocks/tauri-runtime";
 import "../src/index.css";
 
-// Replace the widget-store module wholesale with a clamped variant that
-// can never drift the nix-setup / permissions / feedback-dialog
-// bypasses. The redirect target is `apps/native/src/stores/__mocks__/widget-store.ts`.
-//
-// Storybook's mocker resolves the path via Node's `require.resolve`, which
-// doesn't know about `.ts` extensions — so we spell it out.
-sb.mock(import("../src/stores/widget-store.ts"));
+import { seedViewModelBypass } from "../src/utils/test-fixtures";
+
+/**
+ * Decorator that seeds the ViewModel bypass invariants (permissions granted,
+ * Nix ready, demo config) before every story render. Replaces the old
+ * widget-store manual mock; story decorators run after this and can
+ * override any field.
+ */
+const withViewModelBypass: Decorator = (Story) => {
+  seedViewModelBypass();
+  return <Story />;
+};
 
 /**
  * Decorator that applies the dark theme class to the document.
@@ -108,7 +112,7 @@ const preview = definePreview({
     // 👇 Set the initial background color
     backgrounds: { value: "dark" },
   },
-  decorators: [withDarkTheme],
+  decorators: [withViewModelBypass, withDarkTheme],
 });
 
 export default preview;
