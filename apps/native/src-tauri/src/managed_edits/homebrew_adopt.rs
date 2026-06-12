@@ -202,7 +202,9 @@ pub async fn apply_homebrew_diff(
 }
 
 /// Scan the system for Homebrew packages, casks, and taps.
-/// Only includes explicitly installed brews and casks (via `--installed-on-request`), not their dependencies.
+/// Only includes explicitly installed brews and casks not their dependencies.
+/// Note that generally speaking, `brew list --casks` does *not* count dependences, and
+/// the `--installed-on-request` flag is not valid for casks.
 /// Excludes default taps (homebrew/core, homebrew/cask).
 /// If homebrew is not installed, returns an empty state with is_installed set to false.
 pub fn scan_homebrew() -> HomebrewState {
@@ -485,7 +487,9 @@ fn add_homebrew_items_to_config(
     let casks = items
         .iter()
         .filter(|item| item.item_type == HomebrewItemType::Cask)
-        .map(|item| item.name.clone())
+        .map(|item| item.name.trim())
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
         .collect::<Vec<_>>();
     if !casks.is_empty() {
         merge_json_array(&mut data, "casks", &casks)?;
@@ -494,7 +498,9 @@ fn add_homebrew_items_to_config(
     let brews = items
         .iter()
         .filter(|item| item.item_type == HomebrewItemType::Brew)
-        .map(|item| item.name.clone())
+        .map(|item| item.name.trim())
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
         .collect::<Vec<_>>();
     if !brews.is_empty() {
         merge_json_array(&mut data, "brews", &brews)?;
@@ -503,7 +509,9 @@ fn add_homebrew_items_to_config(
     let taps = items
         .iter()
         .filter(|item| item.item_type == HomebrewItemType::Tap)
-        .map(|item| item.name.clone())
+        .map(|item| item.name.trim())
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
         .collect::<Vec<_>>();
     if !taps.is_empty() {
         merge_json_array(&mut data, "taps", &taps)?;

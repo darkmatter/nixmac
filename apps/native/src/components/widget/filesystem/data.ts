@@ -403,7 +403,7 @@ const HOMEBREW_SECTIONS: HomebrewSectionDefinition[] = [
     emptyTitle: "No untracked Homebrew brews",
     foundDescription: "Homebrew brews already on disk but not declared in your flake.",
     emptyDescription: "Every detected Homebrew brew is already declared in your config.",
-    scanCommand: "brew list --formula",
+    scanCommand: "brew list --formula --installed-on-request",
   },
 ];
 
