@@ -1827,8 +1827,9 @@ mod tests {
 
     // Create a test that runs the scanner on the current system and prints the results.
     // Leave it off by default.
-    //#[test]
-    #[allow(dead_code)]
+    #[test]
+    #[ignore = "Runs against the local system; enable explicitly when debugging the defaults scanner."]
+    #[cfg(target_os = "macos")]
     fn test_scan_system_defaults() {
         let scan = scan_system_defaults();
         println!(
