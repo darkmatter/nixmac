@@ -1,0 +1,79 @@
+name: Update Snapshots
+
+# Regenerates Storybook snapshot baselines and opens a PR when they drift.
+# Runs on a nightly schedule and on manual trigger. The workflow:
+#   1. Checks out develop
+#   2. Runs `bun run test:update-snapshots` (vitest --update)
+#   3. If any __snapshots__ files changed, opens/updates a PR
+#
+# The PR is labelled `snapshots` so it's easy to find and review.
+# Merging the PR brings baselines back in sync with the component tree.
+
+on:
+  schedule:
+    # 10:00 UTC daily — an hour after the nightly release cron so it
+    # operates on a develop that already includes the latest merge.
+    - cron: "0 10 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: update-snapshots
+  cancel-in-progress: true
+
+jobs:
+  update-snapshots:
+    name: Update Storybook Snapshots
+    runs-on: [self-hosted, linux]
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup
+        with:
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+
+      - name: Install Playwright browsers
+        working-directory: apps/native
+        run: bunx playwright install chromium
+
+      - name: Update snapshots
+        working-directory: apps/native
+        run: bun run test:update-snapshots
+
+      - name: Check for changes
+        id: check
+        run: |
+          set -euo pipefail
+          changed=$(git diff --name-only -- '__snapshots__' '**/__snapshots__/**')
+          if [ -n "$changed" ]; then
+            count=$(echo "$changed" | wc -l | tr -d ' ')
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "count=$count" >> "$GITHUB_OUTPUT"
+            echo "### $count snapshot file(s) updated" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            echo "$changed" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Snapshots are up to date — no changes." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Create pull request
+        if: steps.check.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: chore/update-snapshots
+          title: "chore: update Storybook snapshots"
+          body: |
+            Automated snapshot update from the `update-snapshots` workflow.
+
+            Run `bun run test:update-snapshots` locally to preview the same changes.
+          labels: snapshots
+          commit-message: "chore: update Storybook snapshots"
+          delete-branch: true
