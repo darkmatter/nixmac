@@ -27,7 +27,7 @@ pub enum ChangeType {
 }
 
 /// Individual file status parsed from diff headers.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct GitFileStatus {
     /// Repository-relative file path.
@@ -37,7 +37,7 @@ pub struct GitFileStatus {
 }
 
 /// Comprehensive git repository status.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct GitStatus {
     /// Changed files parsed from git status/diff output.
@@ -59,7 +59,7 @@ pub struct GitStatus {
 }
 
 /// Payload emitted on `git_state_changed` by the git status watcher.
-#[derive(Debug, Clone, Serialize, Type)]
+#[derive(Debug, Clone, Serialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct GitState {
     /// Latest git status snapshot, if it could be read.

@@ -273,9 +273,8 @@ pub async fn backup_evolve_and_record_changeset(
 
     emit_evolve_event(app, EvolveEvent::analyzing(start_time_s, None));
 
-    // fire-and-forget: cache write. We hold `final_status` in memory; a store write
-    // failure here does not block the evolution result from being returned.
-    let _ = store::set_cached_git_status(app, &final_status);
+    // Record the post-evolution status; the cell write emits `git_state_changed`.
+    crate::state::git_state::update_status(app, final_status.clone());
 
     // Insert a DB evolution record and run the appropriate summarization pipeline.
     let (db_evolution_id, new_changeset_id) = store_metadata(app, &final_status).await;

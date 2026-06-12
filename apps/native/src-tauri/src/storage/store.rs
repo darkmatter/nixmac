@@ -4,7 +4,6 @@
 //! This provides a simple key-value interface for preferences.
 
 use crate::git::query::repo_root;
-use crate::shared_types;
 use crate::storage::credential_store::{CredentialStore, KeychainStore};
 
 use anyhow::Result;
@@ -774,35 +773,6 @@ pub fn set_cached_models<R: Runtime>(
     let store = get_store(app)?;
     let key = format!("cachedModels_{}", provider);
     store.set(&key, serde_json::json!(models));
-    store.save()?;
-    Ok(())
-}
-
-// =============================================================================
-// Git Status Cache
-// =============================================================================
-
-/// Gets the cached git status.
-pub fn get_cached_git_status<R: Runtime>(
-    app: &AppHandle<R>,
-) -> Result<Option<shared_types::GitStatus>> {
-    let store = get_store(app)?;
-
-    if let Some(val) = store.get("cachedGitStatus") {
-        if let Ok(status) = serde_json::from_value::<shared_types::GitStatus>(val.clone()) {
-            return Ok(Some(status));
-        }
-    }
-    Ok(None)
-}
-
-/// Sets the cached git status.
-pub fn set_cached_git_status<R: Runtime>(
-    app: &AppHandle<R>,
-    status: &shared_types::GitStatus,
-) -> Result<()> {
-    let store = get_store(app)?;
-    store.set("cachedGitStatus", serde_json::to_value(status)?);
     store.save()?;
     Ok(())
 }

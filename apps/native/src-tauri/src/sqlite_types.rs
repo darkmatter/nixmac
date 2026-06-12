@@ -37,7 +37,7 @@ pub struct Prompt {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Change {
     pub id: i64,

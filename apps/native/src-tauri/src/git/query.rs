@@ -327,15 +327,11 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     })
 }
 
-/// Gets status and caches it to loop in watcher
+/// Gets status and records it in the git-state cell (which notifies the frontend).
 pub fn status_and_cache<R: tauri::Runtime>(dir: &str, app: &AppHandle<R>) -> Result<GitStatus> {
     let status = status(dir)?;
-    cache_status(app, &status)?;
+    crate::state::git_state::update_status(app, status.clone());
     Ok(status)
-}
-
-pub fn cache_status<R: tauri::Runtime>(app: &AppHandle<R>, status: &GitStatus) -> Result<()> {
-    crate::storage::store::set_cached_git_status(app, status)
 }
 
 /// Gets the FileDiffs that represent the evolution results between two commits.

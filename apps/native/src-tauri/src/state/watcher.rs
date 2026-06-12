@@ -5,8 +5,7 @@
 //! which is kept in sync by both this watcher and the evolution/summarize handlers.
 
 use crate::shared_types::GitState;
-use crate::state::{build_state, drift_notifications, evolve_state};
-use crate::storage::store;
+use crate::state::{build_state, drift_notifications, evolve_state, git_state};
 use crate::{db, git, summarize};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -95,15 +94,12 @@ where
             if let Some(ref dir) = current_dir {
                 match git::status(dir) {
                     Ok(status) => {
-                        // Compare against the store-persisted cache (source of truth).
-                        // Both this watcher and evolution/summarize keep the cache in sync.
-                        let cached_json = store::get_cached_git_status(&app_handle)
-                            .ok()
-                            .flatten()
-                            .and_then(|s| serde_json::to_string(&s).ok());
-                        let current_json = serde_json::to_string(&status).ok();
+                        // Compare against the in-memory cell (last-known state).
+                        // Both this watcher and the mutating commands write it.
+                        let current = git_state::get(&app_handle);
+                        let status_changed = current.git_status.as_ref() != Some(&status);
 
-                        if current_json != cached_json || external_build_detected {
+                        if status_changed || external_build_detected {
                             let pool = app_handle.state::<db::DbPool>();
                             let change_map =
                                 summarize::find_existing::for_current_state(&pool, dir)
@@ -120,18 +116,22 @@ where
                                 Some(&status),
                                 external_build_detected,
                             );
-                            // One emit per slice — frontend listens on its dedicated channel.
-                            // fire-and-forget: window may not be connected yet.
-                            let _ = app_handle.emit(
-                                "git_state_changed",
+                            // The external-build flag is sticky while the status stays
+                            // put (the frontend keeps showing the banner) and clears on
+                            // the next status change, matching the pre-cell emissions.
+                            let flag = external_build_detected
+                                || (current.external_build_detected && !status_changed);
+                            // The cell write emits `git_state_changed`; one emit per
+                            // slice — frontend listens on its dedicated channel.
+                            git_state::update(
+                                &app_handle,
                                 GitState {
-                                    git_status: Some(status.clone()),
-                                    external_build_detected,
+                                    git_status: Some(status),
+                                    external_build_detected: flag,
                                 },
                             );
+                            // fire-and-forget: window may not be connected yet.
                             let _ = app_handle.emit("change_map_changed", change_map);
-                            // fire-and-forget: git status cache write; watcher holds the live value.
-                            let _ = store::set_cached_git_status(&app_handle, &status);
                         }
                     }
                     Err(e) => {

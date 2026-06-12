@@ -342,6 +342,7 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                         app.manage(state::preferences::load_global_observable(app.handle())?);
                         app.manage(evolve::config::load_observable(app.handle())?);
                         app.manage(state::evolve_state::load_observable(app.handle())?);
+                        app.manage(state::git_state::load_observable(app.handle()));
                         Ok(())
                     })
                     .build(context)
@@ -494,6 +495,7 @@ fn run_gui_mode(
             commands::homebrew::homebrew_apply_diff,
             commands::homebrew::homebrew_get_state_diff,
             // Git
+            commands::git::get_git_state,
             commands::git::git_status,
             commands::git::git_status_and_cache,
             commands::git::git_commit,
@@ -598,6 +600,7 @@ fn run_gui_mode(
             app.manage(state::preferences::load_global_observable(handle)?);
             app.manage(evolve::config::load_observable(handle)?);
             app.manage(state::evolve_state::load_observable(handle)?);
+            app.manage(state::git_state::load_observable(handle));
 
             // Initialize SQLite database before any consumer that reads the
             // managed DbPool from app state.

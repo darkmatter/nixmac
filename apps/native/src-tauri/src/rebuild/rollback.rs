@@ -33,9 +33,8 @@ pub fn rollback_erase<R: Runtime>(app: &AppHandle<R>) -> Result<RollbackResult> 
     }
 
     let final_status = git::status(&repo_root).context("Failed to get final git status")?;
-    // fire-and-forget: best-effort cache update. `final_status` is returned via
-    // RollbackResult regardless; a store write failure must not abort the rollback.
-    let _ = store::set_cached_git_status(app, &final_status);
+    // Record the post-rollback status; the cell write emits `git_state_changed`.
+    crate::state::git_state::update_status(app, final_status.clone());
     let evolve_state = evolve_state::set(app, EvolveState::default(), &final_status.changes)
         .context("Failed to clear evolve state")?;
 

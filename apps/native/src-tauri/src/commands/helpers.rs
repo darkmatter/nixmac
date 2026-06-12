@@ -31,9 +31,7 @@ pub(super) fn handle_new_config_dir(
         .map(|s| s.changes.clone())
         .unwrap_or_default();
     if let Some(ref s) = git_status {
-        // fire-and-forget: cache is a best-effort perf optimization; watcher and evolution
-        // will re-populate it. A store write failure here must not block dir switch.
-        let _ = store::set_cached_git_status(app, s);
+        crate::state::git_state::update_status(app, s.clone());
     }
     watcher::start_watching(app.clone(), dir.to_string(), 2500);
     let evolve_state = evolve_state::set(app, shared_types::EvolveState::default(), &changes)
