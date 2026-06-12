@@ -5,6 +5,15 @@ use crate::shared_types;
 use crate::storage::store;
 use tauri::AppHandle;
 
+/// Returns the global preferences slice (no secrets, no API keys).
+#[tauri::command]
+pub async fn get_global_preferences(
+    app: AppHandle,
+) -> Result<crate::state::preferences::GlobalPreferences, String> {
+    crate::state::preferences::try_read(&app)
+        .ok_or_else(|| "GlobalPreferences observable is not managed".to_string())
+}
+
 /// Returns all UI preferences.
 #[tauri::command]
 pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, String> {

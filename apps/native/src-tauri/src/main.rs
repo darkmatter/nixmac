@@ -534,6 +534,7 @@ fn run_gui_mode(
             commands::summarize::summarize_current,
             commands::summarize::generate_commit_message,
             // UI preferences
+            commands::ui_prefs::get_global_preferences,
             commands::ui_prefs::ui_get_prefs,
             commands::ui_prefs::ui_set_prefs,
             commands::ui_prefs::verify_openai_api_key,
