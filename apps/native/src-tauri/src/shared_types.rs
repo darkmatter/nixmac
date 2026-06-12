@@ -12,6 +12,8 @@ mod evolve;
 mod feedback;
 #[path = "shared_types/git.rs"]
 mod git;
+#[path = "shared_types/managed_edits.rs"]
+mod managed_edits;
 #[path = "shared_types/prefs.rs"]
 mod prefs;
 #[path = "shared_types/settings_io.rs"]
@@ -25,6 +27,7 @@ pub use events::*;
 pub use evolve::*;
 pub use feedback::*;
 pub use git::*;
+pub use managed_edits::*;
 pub use prefs::*;
 pub use settings_io::*;
 pub use system::*;

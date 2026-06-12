@@ -1053,6 +1053,8 @@ isOrphanedRestore: boolean;
  */
 isUndone: boolean }
 
+export type HomebrewCaskItem = { name: string; version: string | null }
+
 /**
  * Current Homebrew package state detected on the machine.
  */

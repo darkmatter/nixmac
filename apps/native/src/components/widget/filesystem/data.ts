@@ -6,6 +6,7 @@ export type CandidateItem = {
   detail: string;
   installedAt: string;
   attr: string;
+  version?: string;
 };
 
 export type FsFile = {
@@ -280,17 +281,17 @@ creation_rules:
       scanCommand: "brew list --cask",
       scannedAt: "scanned 14 min ago",
       items: [
-        { name: "docker", detail: "Docker Desktop · 4.32.0", installedAt: "Mar 12", attr: 'homebrew.casks = [ "docker" ];' },
-        { name: "obs", detail: "OBS Studio · 30.2.3", installedAt: "Feb 28", attr: 'homebrew.casks = [ "obs" ];' },
-        { name: "iterm2", detail: "iTerm2 · 3.5.1", installedAt: "Jan 09", attr: 'homebrew.casks = [ "iterm2" ];' },
-        { name: "vlc", detail: "VLC media player · 3.0.20", installedAt: "Jan 02", attr: 'homebrew.casks = [ "vlc" ];' },
-        { name: "figma", detail: "Figma · 124.4.0", installedAt: "2025-12-18", attr: 'homebrew.casks = [ "figma" ];' },
-        { name: "spotify", detail: "Spotify · 1.2.45", installedAt: "2025-11-30", attr: 'homebrew.casks = [ "spotify" ];' },
-        { name: "slack", detail: "Slack · 4.40.0", installedAt: "2025-11-21", attr: 'homebrew.casks = [ "slack" ];' },
-        { name: "zoom", detail: "Zoom · 6.1.10", installedAt: "2025-11-15", attr: 'homebrew.casks = [ "zoom" ];' },
-        { name: "discord", detail: "Discord · 0.0.310", installedAt: "2025-10-04", attr: 'homebrew.casks = [ "discord" ];' },
-        { name: "notion", detail: "Notion · 4.1.0", installedAt: "2025-09-22", attr: 'homebrew.casks = [ "notion" ];' },
-        { name: "audacity", detail: "Audacity · 3.6.4", installedAt: "2025-08-11", attr: 'homebrew.casks = [ "audacity" ];' },
+        { name: "docker", detail: "Docker Desktop · 4.32.0", installedAt: "Mar 12", attr: 'homebrew.casks = [ "docker" ];', version: "4.32.0" },
+        { name: "obs", detail: "OBS Studio · 30.2.3", installedAt: "Feb 28", attr: 'homebrew.casks = [ "obs" ];', version: "30.2.3" },
+        { name: "iterm2", detail: "iTerm2 · 3.5.1", installedAt: "Jan 09", attr: 'homebrew.casks = [ "iterm2" ];', version: "3.5.1" },
+        { name: "vlc", detail: "VLC media player · 3.0.20", installedAt: "Jan 02", attr: 'homebrew.casks = [ "vlc" ];', version: "3.0.20" },
+        { name: "figma", detail: "Figma · 124.4.0", installedAt: "2025-12-18", attr: 'homebrew.casks = [ "figma" ];', version: "124.4.0" },
+        { name: "spotify", detail: "Spotify · 1.2.45", installedAt: "2025-11-30", attr: 'homebrew.casks = [ "spotify" ];', version: "1.2.45" },
+        { name: "slack", detail: "Slack · 4.40.0", installedAt: "2025-11-21", attr: 'homebrew.casks = [ "slack" ];', version: "4.40.0" },
+        { name: "zoom", detail: "Zoom · 6.1.10", installedAt: "2025-11-15", attr: 'homebrew.casks = [ "zoom" ];', version: "6.1.10" },
+        { name: "discord", detail: "Discord · 0.0.310", installedAt: "2025-10-04", attr: 'homebrew.casks = [ "discord" ];', version: "0.0.310" },
+        { name: "notion", detail: "Notion · 4.1.0", installedAt: "2025-09-22", attr: 'homebrew.casks = [ "notion" ];', version: "4.1.0" },
+        { name: "audacity", detail: "Audacity · 3.6.4", installedAt: "2025-08-11", attr: 'homebrew.casks = [ "audacity" ];', version: "3.6.4" },
       ],
     },
     {
