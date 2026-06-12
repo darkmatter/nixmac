@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 import { HoverClickPopoverIcon } from "@/components/ui/hover-click-popover-icon";
 import { ConfigDirBadge } from "@/components/widget/badges/config-dir-badge";
 import { GitignoreBadge } from "@/components/widget/badges/gitignore-badge";
@@ -35,7 +35,7 @@ export function DirectoryPicker({
   flow = "existing",
   onConfigured,
 }: DirectoryPickerProps) {
-  const configDir = useWidgetStore((state) => state.configDir);
+  const configDir = useViewModel((state) => state.preferences?.configDir ?? "");
   const { pickDir, prepareNewDir, setDir } = useDarwinConfig();
   const isSetupFlow = flow === "setup";
 

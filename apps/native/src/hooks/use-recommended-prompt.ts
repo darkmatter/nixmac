@@ -1,15 +1,15 @@
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
 import { tauriAPI } from "@/ipc/api";
 import { useEffect } from "react";
 
 export function useRecommendedPrompt() {
-  const recommendation = useWidgetStore((s) => s.recommendedPrompt);
+  const recommendation = useUiState((s) => s.recommendedPrompt);
 
   const refresh = () => {
     tauriAPI.scanner
       .getRecommendedPrompt()
       .then((result) => {
-        useWidgetStore.getState().setRecommendedPrompt(result);
+        useUiState.getState().setRecommendedPrompt(result);
       })
       .catch(() => {});
   };

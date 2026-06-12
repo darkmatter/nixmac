@@ -29,11 +29,11 @@ const VERSION_PATTERN = /^[0-9]+(?:\.[0-9]+){0,2}(?:-[a-zA-Z0-9.-]+)?$/;
 export function DeveloperTab() {
   const { installVersion, relaunch, clearPinnedVersion } = useUpdater();
   const { setPref } = usePrefs();
-  const experimentalSpinningMascot = useWidgetStore((s) => s.experimentalSpinningMascot);
-  const pinnedVersion = useWidgetStore((s) => s.pinnedVersion);
-  const setPinnedVersion = useWidgetStore((s) => s.setPinnedVersion);
-  const updateChannel = useWidgetStore((s) => s.updateChannel);
-  const setUpdateChannel = useWidgetStore((s) => s.setUpdateChannel);
+  const experimentalSpinningMascot = useViewModel(
+    (s) => s.preferences?.experimentalSpinningMascot ?? false,
+  );
+  const pinnedVersion = useViewModel((s) => s.preferences?.pinnedVersion ?? null);
+  const updateChannel = useViewModel((s) => s.preferences?.updateChannel ?? "stable");
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);
   const [versionInput, setVersionInput] = useState("");
   const [installing, setInstalling] = useState(false);
@@ -61,8 +61,8 @@ export function DeveloperTab() {
     setInstalling(true);
     try {
       await installVersion(target);
-      // Sync local store immediately — persistence already happened on the Rust side.
-      setPinnedVersion(target);
+      // Persistence happened on the Rust side; the preferences event
+      // round-trip updates the ViewModel.
       setStatusMessage(`Installed v${target}. Relaunching…`);
       await relaunch();
     } catch (err) {
@@ -76,7 +76,6 @@ export function DeveloperTab() {
     setErrorMessage(null);
     try {
       await clearPinnedVersion();
-      setPinnedVersion(null);
       setStatusMessage("Cleared pinned version. The auto-updater will check for the latest on next launch.");
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : String(err));
@@ -84,10 +83,9 @@ export function DeveloperTab() {
   };
 
   const handleSetChannel = async (channel: UpdateChannel) => {
-    const previous = updateChannel;
     setErrorMessage(null);
-    setUpdateChannel(channel);
     try {
+      // The `global_preferences_changed` round-trip updates the ViewModel.
       await tauriAPI.ui.setPrefs({ updateChannel: channel });
       setStatusMessage(
         channel === "stable"
@@ -95,7 +93,6 @@ export function DeveloperTab() {
           : "Using develop updates. The next auto-update check will read the develop channel."
       );
     } catch (err) {
-      setUpdateChannel(previous);
       setErrorMessage(err instanceof Error ? err.message : String(err));
     }
   };
@@ -119,9 +116,8 @@ export function DeveloperTab() {
           ...state.build,
           externalBuildDetected: false,
         },
+        promptHistory: [],
       }));
-      useWidgetStore.getState().setPromptHistory([]);
-      useWidgetStore.getState().setPinnedVersion(null);
       setStatusMessage(
         "Cleared Tauri stores: settings.json, evolve-state.json, and build-state.json. Relaunch or reopen settings to reload defaults.",
       );
@@ -158,7 +154,6 @@ export function DeveloperTab() {
   const handleDisableDeveloper = async () => {
     try {
       await tauriAPI.ui.setPrefs({ developerMode: false });
-      useWidgetStore.getState().setDeveloperMode(false);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : String(err));
     }

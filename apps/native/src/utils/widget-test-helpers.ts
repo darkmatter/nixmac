@@ -55,7 +55,7 @@ export function setupWidgetTestHelpers() {
       return state.isProcessing && state.processingAction === "evolve";
     },
     getPromptHistory: () => {
-      return [...(useWidgetStore.getState().promptHistory ?? [])];
+      return [...useViewModel.getState().promptHistory];
     },
     getChangeMap: () => {
       return JSON.stringify(useViewModel.getState().changeMap);
@@ -64,7 +64,6 @@ export function setupWidgetTestHelpers() {
       const state = useWidgetStore.getState();
       const ui = useUiState.getState();
       ui.setEvolvePrompt("");
-      state.setPromptHistory([]);
       ui.clearLogs();
       state.clearEvolveEvents();
       state.setConversationalResponse(null);

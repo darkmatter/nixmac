@@ -1,9 +1,18 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useUiState } from "@/stores/ui-state";
+import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import { initialRebuildState } from "@/types/rebuild";
 import { useEvolveMascot } from "./use-evolve-mascot";
+import { makeGlobalPreferences as makePrefs } from "@/utils/test-fixtures";
+
+
+function setSpinningMascot(enabled: boolean) {
+  useViewModel.setState({
+    preferences: makePrefs({ experimentalSpinningMascot: enabled }),
+  });
+}
 
 const mocks = vi.hoisted(() => ({
   show: vi.fn().mockResolvedValue(undefined),
@@ -22,8 +31,8 @@ vi.mock("@/ipc/api", () => ({
 describe("useEvolveMascot", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setSpinningMascot(false);
     useWidgetStore.setState({
-      experimentalSpinningMascot: false,
       rebuild: initialRebuildState,
     });
     useUiState.setState({ isGenerating: false });
@@ -36,7 +45,7 @@ describe("useEvolveMascot", () => {
     expect(mocks.show).not.toHaveBeenCalled();
 
     act(() => {
-      useWidgetStore.getState().setBoolPref("experimentalSpinningMascot", true);
+      setSpinningMascot(true);
       useUiState.getState().setGenerating(true);
     });
 
@@ -53,7 +62,7 @@ describe("useEvolveMascot", () => {
     const { unmount } = renderHook(() => useEvolveMascot());
 
     act(() => {
-      useWidgetStore.getState().setBoolPref("experimentalSpinningMascot", true);
+      setSpinningMascot(true);
       useWidgetStore.getState().startRebuild("apply");
     });
 

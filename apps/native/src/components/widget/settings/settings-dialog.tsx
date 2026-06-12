@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { cn } from "@/lib/utils";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 import { useUiState, type SettingsTab } from "@/stores/ui-state";
 import { tauriAPI } from "@/ipc/api";
+import { refreshHostsSnapshot } from "@/viewmodel/preferences";
 import { useForm } from "@tanstack/react-form";
 import { Bot, FolderOpen, Key, Settings2, SlidersHorizontal, UserCircle2, Wrench } from "lucide-react";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
@@ -53,13 +54,10 @@ export function SettingsDialog() {
     settingsActiveTab,
     setSettingsOpen,
   } = useUiState();
-  const {
-    configDir,
-    hosts,
-    host,
-    setHosts,
-    developerMode,
-  } = useWidgetStore();
+  const configDir = useViewModel((s) => s.preferences?.configDir ?? "");
+  const hosts = useViewModel((s) => s.hosts);
+  const host = useViewModel((s) => s.preferences?.hostAttr ?? "");
+  const developerMode = useViewModel((s) => s.preferences?.developerMode ?? false);
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
 
   // Deep-link to a specific tab when requested, otherwise reset to general
@@ -175,12 +173,7 @@ export function SettingsDialog() {
   }, [isOpen, form]);
 
   const handleRefreshHosts = async () => {
-    try {
-      const hs = await tauriAPI.flake.listHosts();
-      setHosts(hs);
-    } catch (e) {
-      console.error("Failed to refresh hosts:", e);
-    }
+    await refreshHostsSnapshot();
   };
 
   const hasFlake = hosts.length > 0;

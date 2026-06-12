@@ -10,7 +10,7 @@ export function mirrorChangeMapState(changeMap: SemanticChangeMap | null): void 
 
 export function startChangeMapSync(): Promise<() => void> {
   return bindBackendSlice({
-    hydrate: () => tauriAPI.summarizedChanges.findChangeMap(),
+    hydrate: () => tauriAPI.summarizedChanges.getChangeMap(),
     event: "change_map_changed",
     mirror: mirrorChangeMapState,
     onEvent: () => void refreshHistorySnapshot(),

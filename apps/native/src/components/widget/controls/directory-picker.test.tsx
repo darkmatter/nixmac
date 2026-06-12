@@ -3,8 +3,9 @@ import "@testing-library/jest-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useUiState } from "@/stores/ui-state";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
+import { makeGlobalPreferences as makePrefs } from "@/utils/test-fixtures";
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -41,11 +42,13 @@ vi.mock("@/ipc/api", () => ({
 // Helpers
 // ---------------------------------------------------------------------------
 
+// Config dir/host/hosts live in the ViewModel preferences slice now: the
+// backend emits `global_preferences_changed` after config mutations and the
+// preferences sync module mirrors it. Tests seed the ViewModel directly to
+// simulate that round-trip.
+
 function resetStore() {
-  const s = useWidgetStore.getState();
-  s.setConfigDir("");
-  s.setHost("");
-  s.setHosts([]);
+  useViewModel.setState({ preferences: null, hosts: [] });
   useUiState.getState().setBootstrapping(false);
 }
 
@@ -94,7 +97,7 @@ describe("<DirectoryPicker>", () => {
   });
 
   it("renders the label, sublabel, and initial value from the store", () => {
-    useWidgetStore.getState().setConfigDir("/Users/me/.darwin");
+    useViewModel.setState({ preferences: makePrefs({ configDir: "/Users/me/.darwin" }) });
     render(<DirectoryPicker label="Config directory" subLabel="flake root" />);
 
     expect(screen.getByText("Config directory")).toBeInTheDocument();
@@ -113,7 +116,7 @@ describe("<DirectoryPicker>", () => {
     expect(mockSetDir).not.toHaveBeenCalled();
   });
 
-  it("shows a non-existence error and does NOT update the store when the dir is missing", async () => {
+  it("shows a non-existence error and does NOT persist when the dir is missing", async () => {
     mockExists.mockResolvedValue(false);
 
     render(<DirectoryPicker label="Config directory" />);
@@ -125,17 +128,15 @@ describe("<DirectoryPicker>", () => {
     ).toBeInTheDocument();
 
     expect(mockSetDir).not.toHaveBeenCalled();
-    expect(useWidgetStore.getState().configDir).toBe("");
   });
 
-  it("on a valid path, normalizes, persists, clears host, and refreshes the hosts list", async () => {
+  it("on a valid path, normalizes, persists, and clears the host attr", async () => {
     mockNormalize.mockResolvedValue("/Users/me/.darwin");
     mockSetDir.mockResolvedValue({
       dir: "/Users/me/.darwin",
       evolveState: {} as never,
       hosts: ["mbp", "workbook"],
     });
-    useWidgetStore.getState().setHost("old-host");
 
     render(<DirectoryPicker label="Config directory" />);
     typeAndBlur(screen.getByLabelText("Config directory"), "  /Users/me/.darwin  ");
@@ -150,30 +151,9 @@ describe("<DirectoryPicker>", () => {
     expect(mockNormalize).toHaveBeenCalledWith("/Users/me/.darwin");
     expect(mockExists).toHaveBeenCalledWith("/Users/me/.darwin");
     expect(mockSetDir).toHaveBeenCalledWith("/Users/me/.darwin");
+    // The new dir resets the host attr; the resulting config arrives via
+    // the `global_preferences_changed` round-trip, not a local store write.
     expect(mockSetHostAttr).toHaveBeenCalledWith("");
-
-    const s = useWidgetStore.getState();
-    expect(s.configDir).toBe("/Users/me/.darwin");
-    expect(s.host).toBe("");
-    expect(s.hosts).toEqual(["mbp", "workbook"]);
-  });
-
-  it("uses empty hosts when setDir has no hosts and still persists the dir", async () => {
-    mockNormalize.mockResolvedValue("/Users/me/.darwin");
-    mockSetDir.mockResolvedValue({
-      dir: "/Users/me/.darwin",
-      evolveState: {} as never,
-      hosts: null,
-    });
-
-    render(<DirectoryPicker label="Config directory" />);
-    typeAndBlur(screen.getByLabelText("Config directory"), "/Users/me/.darwin");
-
-    await waitFor(() => {
-      expect(mockSetDir).toHaveBeenCalledWith("/Users/me/.darwin");
-    });
-    expect(useWidgetStore.getState().configDir).toBe("/Users/me/.darwin");
-    expect(useWidgetStore.getState().hosts).toEqual([]);
   });
 
   it("ignores setHostAttr failures without breaking the happy path", async () => {
@@ -189,13 +169,10 @@ describe("<DirectoryPicker>", () => {
     typeAndBlur(screen.getByLabelText("Config directory"), "/Users/me/.darwin");
 
     await waitFor(() => {
-      const state = useWidgetStore.getState();
-      expect(state.configDir).toBe("/Users/me/.darwin");
-      expect(state.hosts).toEqual(["mbp"]);
+      expect(mockSetDir).toHaveBeenCalledWith("/Users/me/.darwin");
     });
-
-    expect(useWidgetStore.getState().configDir).toBe("/Users/me/.darwin");
-    expect(useWidgetStore.getState().hosts).toEqual(["mbp"]);
+    // No validation error surfaced.
+    expect(screen.queryByText(/host-attr persist failed/i)).not.toBeInTheDocument();
   });
 
   it("surfaces setDir errors as a validation message", async () => {
@@ -206,8 +183,8 @@ describe("<DirectoryPicker>", () => {
     typeAndBlur(screen.getByLabelText("Config directory"), "/Users/me/.darwin");
 
     expect(await screen.findByText("permission denied")).toBeInTheDocument();
-    // Store should not be updated if setDir threw.
-    expect(useWidgetStore.getState().configDir).toBe("");
+    // The ViewModel should not be updated if setDir threw.
+    expect(useViewModel.getState().preferences?.configDir ?? "").toBe("");
   });
 
   it("invokes useDarwinConfig().pickDir when the Browse button is clicked", () => {
@@ -221,9 +198,10 @@ describe("<DirectoryPicker>", () => {
 
     render(<DirectoryPicker label="Config directory" />);
 
-    // External store change (e.g. via the native Browse dialog):
+    // External ViewModel change (e.g. the preferences event after the
+    // native Browse dialog persisted a new dir):
     act(() => {
-      useWidgetStore.getState().setConfigDir("/Users/me/.darwin");
+      useViewModel.setState({ preferences: makePrefs({ configDir: "/Users/me/.darwin" }) });
     });
 
     // Wait for the effect's async chain to resolve. If a validation message appeared,
@@ -242,7 +220,7 @@ describe("<DirectoryPicker>", () => {
     render(<DirectoryPicker label="Config directory" />);
 
     act(() => {
-      useWidgetStore.getState().setConfigDir("/Users/me/empty");
+      useViewModel.setState({ preferences: makePrefs({ configDir: "/Users/me/empty" }) });
     });
 
     expect(

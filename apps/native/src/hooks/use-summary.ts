@@ -1,5 +1,5 @@
 import { useUiState } from "@/stores/ui-state";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 import { tauriAPI } from "@/ipc/api";
 import { mirrorChangeMapState } from "@/viewmodel/change-map";
 
@@ -40,7 +40,7 @@ const generateCurrentSummary = async () => {
 };
 
 const summarizeOnFocus = () => {
-  if (useWidgetStore.getState().autoSummarizeOnFocus) {
+  if (useViewModel.getState().preferences?.autoSummarizeOnFocus) {
     generateCurrentSummary();
   }
 };

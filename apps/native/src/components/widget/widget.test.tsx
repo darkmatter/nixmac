@@ -4,6 +4,7 @@ import { useWidgetStore } from "@/stores/widget-store";
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DarwinWidget } from "./widget";
+import { makeGlobalPreferences as makePrefs } from "@/utils/test-fixtures";
 
 // Mock Tauri API
 vi.mock("@/ipc/api", () => ({
@@ -39,9 +40,7 @@ vi.mock("@/components/widget/summaries/diff-section", () => ({
 
 // Mock hooks
 vi.mock("@/hooks/use-widget-initialization", () => ({
-  loadConfig: vi.fn().mockResolvedValue(undefined),
-  loadHosts: vi.fn().mockResolvedValue(undefined),
-  recoverFromGitState: vi.fn().mockResolvedValue(undefined),
+  loadEvolveState: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/hooks/use-git-operations", () => ({
@@ -65,13 +64,16 @@ vi.mock("@/hooks/use-summary", () => ({
 describe("DarwinWidget", () => {
   beforeEach(() => {
     // Reset store to initial state before each test
-    const store = useWidgetStore.getState();
-    store.setConfigDir("/Users/test/nixmac");
-    store.setHosts(["Test-MacBook"]);
-    store.setHost("Test-MacBook");
-    useViewModel.setState({ git: null });
+    useViewModel.setState({
+      git: null,
+      preferences: makePrefs({
+        configDir: "/Users/test/nixmac",
+        hostAttr: "Test-MacBook",
+      }),
+      hosts: ["Test-MacBook"],
+    });
     useUiState.setState({ ...initialUiState });
-    store.clearEvolveEvents();
+    useWidgetStore.getState().clearEvolveEvents();
   });
 
   it("renders without crashing", () => {
@@ -80,9 +82,10 @@ describe("DarwinWidget", () => {
   });
 
   it("renders setup step when no config", () => {
-    const store = useWidgetStore.getState();
-    store.setConfigDir("");
-    store.setHost("");
+    useViewModel.setState({
+      preferences: makePrefs({ configDir: null, hostAttr: null }),
+      hosts: [],
+    });
 
     const { container } = render(<DarwinWidget />);
     expect(container).toBeTruthy();

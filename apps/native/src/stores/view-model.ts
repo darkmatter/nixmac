@@ -20,6 +20,7 @@ import type {
   EvolveEvent,
   EvolveState,
   GitStatus,
+  GlobalPreferences,
   HistoryItem,
   PermissionsState,
   SemanticChangeMap,
@@ -63,7 +64,14 @@ export type ViewModel = {
   changeMap: SemanticChangeMap | null;
   history: HistoryItem[];
   rebuild: RebuildView;
+  /** Mirrored `GlobalPreferences`; null until the slice hydrates. */
+  preferences: GlobalPreferences | null;
+  /** Hosts listed from the flake; refreshed when preferences change. */
+  hosts: string[];
   permissions: PermissionsState | null;
+  /** True once the permissions slice has hydrated (even to null). */
+  permissionsHydrated: boolean;
+  promptHistory: string[];
   nix: NixView;
   darwinRebuild: DarwinRebuildView;
   evolution: EvolutionView;
@@ -81,7 +89,11 @@ export const useViewModel = create<ViewModel>()(() => ({
   rebuild: {
     isRunning: false,
   },
+  preferences: null,
+  hosts: [],
   permissions: null,
+  permissionsHydrated: false,
+  promptHistory: [],
   nix: {
     installed: null,
     installing: false,

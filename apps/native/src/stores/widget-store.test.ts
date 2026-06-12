@@ -12,100 +12,34 @@ describe("createWidgetStore — initial state", () => {
     const store = createWidgetStore();
     const s = store.getState();
 
-    expect(s.configDir).toBe("");
-    expect(s.hosts).toEqual([]);
-    expect(s.host).toBe("");
-    expect(s.permissionsChecked).toBe(false);
-    expect(s.permissionsState).toBeNull();
     expect(s.nixInstalled).toBeNull();
     expect(s.darwinRebuildAvailable).toBeNull();
     expect(s.evolveEvents).toEqual([]);
     expect(s.rebuild).toEqual(initialRebuildState);
-    // recommendedPrompt distinguishes "never fetched" (undefined) from "none" (null).
-    expect(s.recommendedPrompt).toBeUndefined();
-    // confirmation prefs default on for safety.
-    expect(s.confirmBuild).toBe(true);
-    expect(s.confirmClear).toBe(true);
-    expect(s.confirmRollback).toBe(true);
-    expect(s.scanHomebrewOnStartup).toBe(true);
+    expect(s.conversationalResponse).toBeNull();
+    expect(s.evolutionTelemetry).toBeNull();
   });
 
   it("merges initialState overrides over the defaults", () => {
     const store = createWidgetStore({
-      configDir: "/Users/me/.darwin",
-      hosts: ["mbp"],
-      host: "mbp",
-      permissionsChecked: true,
+      nixInstalled: true,
+      darwinRebuildAvailable: true,
     });
     const s = store.getState();
-    expect(s.configDir).toBe("/Users/me/.darwin");
-    expect(s.hosts).toEqual(["mbp"]);
-    expect(s.host).toBe("mbp");
-    expect(s.permissionsChecked).toBe(true);
+    expect(s.nixInstalled).toBe(true);
+    expect(s.darwinRebuildAvailable).toBe(true);
     // Unrelated defaults are preserved.
-    expect(s.promptHistory).toEqual([]);
+    expect(s.evolveEvents).toEqual([]);
     expect(s.rebuild).toEqual(initialRebuildState);
   });
 
   it("creates independent store instances (no shared state across factory calls)", () => {
     const a = createWidgetStore();
     const b = createWidgetStore();
-    a.getState().setConfigDir("/a");
-    b.getState().setConfigDir("/b");
-    expect(a.getState().configDir).toBe("/a");
-    expect(b.getState().configDir).toBe("/b");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Simple setters
-// ---------------------------------------------------------------------------
-
-describe("widget store — simple setters", () => {
-  it("setConfigDir / setHosts / setHost update their respective fields", () => {
-    const store = createWidgetStore();
-    store.getState().setConfigDir("/etc/nix-darwin");
-    store.getState().setHosts(["one", "two"]);
-    store.getState().setHost("one");
-
-    const s = store.getState();
-    expect(s.configDir).toBe("/etc/nix-darwin");
-    expect(s.hosts).toEqual(["one", "two"]);
-    expect(s.host).toBe("one");
-  });
-
-});
-
-// ---------------------------------------------------------------------------
-// Confirmation preferences
-// ---------------------------------------------------------------------------
-
-describe("confirmation preferences", () => {
-  it("setBoolPref updates only the targeted key", () => {
-    const store = createWidgetStore();
-    store.getState().setBoolPref("confirmBuild", false);
-    const s = store.getState();
-    expect(s.confirmBuild).toBe(false);
-    expect(s.confirmClear).toBe(true);
-    expect(s.confirmRollback).toBe(true);
-  });
-
-  it("initConfirmPrefs fills missing keys with true", () => {
-    const store = createWidgetStore();
-    store.getState().initConfirmPrefs({ confirmBuild: false });
-    const s = store.getState();
-    expect(s.confirmBuild).toBe(false);
-    // missing keys -> default true
-    expect(s.confirmClear).toBe(true);
-    expect(s.confirmRollback).toBe(true);
-  });
-
-  it("setBoolPref toggles scanHomebrewOnStartup", () => {
-    const store = createWidgetStore();
-    store.getState().setBoolPref("scanHomebrewOnStartup", false);
-    const s = store.getState();
-    expect(s.scanHomebrewOnStartup).toBe(false);
-    expect(s.confirmBuild).toBe(true);
+    a.getState().setNixInstalled(true);
+    b.getState().setNixInstalled(false);
+    expect(a.getState().nixInstalled).toBe(true);
+    expect(b.getState().nixInstalled).toBe(false);
   });
 });
 

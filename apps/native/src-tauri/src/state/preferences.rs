@@ -8,13 +8,12 @@
 //! intentionally excluded.
 
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
-use specta::Type;
+use serde::Deserialize;
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, Runtime};
 
 use crate::observable::{AppDataJson, Observable, Persistence};
-use crate::shared_types::UpdateChannel;
+pub use crate::shared_types::GlobalPreferences;
 
 const GLOBAL_PREFERENCES_PATH: &str = "global-preferences.json";
 
@@ -24,59 +23,6 @@ const GLOBAL_PREFERENCES_PATH: &str = "global-preferences.json";
 const LEGACY_MIGRATED_MARKER: &str = "globalPreferencesMigratedV1";
 
 pub const GLOBAL_PREFERENCES_CHANGED_EVENT: &str = "global_preferences_changed";
-
-/// Preferences local to this app installation.
-#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq, Eq)]
-#[serde(rename_all = "camelCase", default)]
-pub struct GlobalPreferences {
-    pub host_attr: Option<String>,
-    pub config_dir: Option<String>,
-    pub repo_root: Option<String>,
-    pub send_diagnostics: bool,
-    pub evolve_provider: Option<String>,
-    pub evolve_model: Option<String>,
-    pub summary_provider: Option<String>,
-    pub summary_model: Option<String>,
-    pub ollama_api_base_url: Option<String>,
-    pub vllm_api_base_url: Option<String>,
-    pub confirm_build: bool,
-    pub confirm_clear: bool,
-    pub confirm_rollback: bool,
-    pub auto_summarize_on_focus: bool,
-    pub scan_homebrew_on_startup: bool,
-    pub default_to_diff_tab: bool,
-    pub experimental_spinning_mascot: bool,
-    pub developer_mode: bool,
-    pub pinned_version: Option<String>,
-    pub update_channel: UpdateChannel,
-}
-
-impl Default for GlobalPreferences {
-    fn default() -> Self {
-        Self {
-            host_attr: None,
-            config_dir: None,
-            repo_root: None,
-            send_diagnostics: false,
-            evolve_provider: None,
-            evolve_model: None,
-            summary_provider: None,
-            summary_model: None,
-            ollama_api_base_url: None,
-            vllm_api_base_url: None,
-            confirm_build: true,
-            confirm_clear: true,
-            confirm_rollback: true,
-            auto_summarize_on_focus: false,
-            scan_homebrew_on_startup: true,
-            default_to_diff_tab: false,
-            experimental_spinning_mascot: false,
-            developer_mode: false,
-            pinned_version: None,
-            update_channel: UpdateChannel::default(),
-        }
-    }
-}
 
 pub fn load_global_observable<R: Runtime>(
     app: &AppHandle<R>,
@@ -172,6 +118,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::shared_types::UpdateChannel;
     use serde_json::Value;
     use serde_json::json;
     use std::sync::Mutex;

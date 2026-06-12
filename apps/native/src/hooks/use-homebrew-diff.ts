@@ -2,7 +2,6 @@
 
 import { tauriAPI } from "@/ipc/api";
 import { useUiState } from "@/stores/ui-state";
-import { useWidgetStore } from "@/stores/widget-store";
 import type { HomebrewState } from "@/ipc/types";
 import { mirrorChangeMapState } from "@/viewmodel/change-map";
 import { mirrorEvolveState } from "@/viewmodel/evolve";
@@ -54,7 +53,6 @@ export function useHomebrewDiff(enabled = true) {
 
   const applyDiff = useCallback(async () => {
     if (!diff || !hasDiffItems(diff)) return;
-    const store = useWidgetStore.getState();
     setIsApplying(true);
     useUiState.getState().setProcessing(true, "apply");
     try {
@@ -62,7 +60,7 @@ export function useHomebrewDiff(enabled = true) {
       mirrorEvolveState(result.evolveState);
       mirrorChangeMapState(result.changeMap);
       mirrorGitState(result.gitStatus);
-      store.setRecommendedPrompt(undefined);
+      useUiState.getState().setRecommendedPrompt(undefined);
       // Clear so we re-fetch on next render (the watcher will also advance the step).
       setDiff(null);
     } catch (e: unknown) {

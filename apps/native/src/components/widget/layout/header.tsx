@@ -23,9 +23,15 @@ export function Header() {
   // Flash the feedback icon when an error occurs (subscribe to detect all changes)
   useEffect(() => {
     return useUiState.subscribe((state, prevState) => {
+      const viewModel = useViewModel.getState();
       const step = computeCurrentStep({
         ...useWidgetStore.getState(),
-        evolveState: useViewModel.getState().evolve,
+        configDir: viewModel.preferences?.configDir ?? "",
+        host: viewModel.preferences?.hostAttr ?? "",
+        hosts: viewModel.hosts,
+        permissionsState: viewModel.permissions,
+        permissionsChecked: viewModel.permissionsHydrated,
+        evolveState: viewModel.evolve,
         showHistory: state.showHistory,
         showFilesystem: state.showFilesystem,
         isBootstrapping: state.isBootstrapping,

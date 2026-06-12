@@ -21,7 +21,9 @@ import type {
   FeedbackShareOptions,
   FileDiffContents,
   FinalizeApplyResult,
+  GitState,
   GitStatus,
+  GlobalPreferences,
   HomebrewItem,
   HomebrewState,
   HistoryItem,
@@ -72,6 +74,7 @@ export const tauriAPI = {
     pull: () => invoke<SyncResult>("sync_pull"),
   },
   git: {
+    state: () => invoke<GitState>("get_git_state"),
     status: () => invoke<GitStatus>("git_status"),
     statusAndCache: () => invoke<GitStatus>("git_status_and_cache"),
     commit: (message: string) => invoke<CommitResult>("git_commit", { message }),
@@ -109,6 +112,7 @@ export const tauriAPI = {
     normalize: (input: string) => invoke<string>("path_normalize", { input }),
   },
   summarizedChanges: {
+    getChangeMap: () => invoke<SemanticChangeMap>("get_change_map"),
     findChangeMap: () => invoke<SemanticChangeMap>("find_change_map"),
     summarizeCurrent: () => invoke<SemanticChangeMap>("summarize_current"),
     generateCommitMessage: () => invoke<string>("generate_commit_message"),
@@ -136,6 +140,9 @@ export const tauriAPI = {
   ui: {
     getPrefs: getCachedPrefs,
     setPrefs,
+  },
+  preferences: {
+    get: () => invoke<GlobalPreferences>("get_global_preferences"),
   },
   settings: {
     export: (includeSecrets: boolean) =>
@@ -200,6 +207,10 @@ export const tauriAPI = {
       invoke<ConfigEditApplyResult>("apply_system_defaults", { defaults }),
   },
   permissions: {
+    /** Last-known permissions from the backend cell; null = never probed. */
+    get: () => invoke<PermissionsState | null>("get_permissions"),
+    /** Probe all macOS permissions; the result arrives via `permissions_changed`. */
+    refresh: () => invoke<void>("refresh_permissions"),
     checkAll: () => invoke<PermissionsState>("permissions_check_all"),
     request: (permissionId: string) => invoke<Permission>("permissions_request", { permissionId }),
     // macOS-specific permission checks via tauri-plugin-macos-permissions

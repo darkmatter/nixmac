@@ -1,66 +1,14 @@
-import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
-import type { PermissionStatus, PermissionsState } from "@/ipc/types";
 
 /**
- * Hook for checking and managing macOS permissions.
+ * Hook for checking macOS permissions.
  *
- * Check all permissions and update the store.
- * Always marks permissions as checked, even on failure.
+ * `checkPermissions` asks the backend to probe all permissions; the result
+ * arrives via the `permissions_changed` event and is mirrored into the
+ * ViewModel by the permissions sync module.
  */
-
-const checkPermissions = async (): Promise<PermissionsState | null> => {
-  const store = useWidgetStore.getState();
-
-  try {
-    const rustPermissions = await tauriAPI.permissions.checkAll();
-
-    // Determine FDA status by OR-ing the plugin and backend results: if
-    // either source reports granted, the grant is real. The plugin's probe
-    // set is narrow (Safari + stocks container only), and the backend
-    // probes a wider set, so a single source can be wrong in either
-    // direction.
-    const backendFdaPermission = rustPermissions.permissions.find((p) => p.id === "full-disk");
-    const backendFdaStatus: PermissionStatus = backendFdaPermission?.status ?? "unknown";
-
-    let fdaStatus: PermissionStatus = backendFdaStatus;
-    try {
-      const pluginGranted = await tauriAPI.permissions.checkFullDiskAccess();
-      if (pluginGranted || backendFdaStatus === "granted") {
-        fdaStatus = "granted";
-      } else if (backendFdaStatus === "pending" || backendFdaStatus === "unknown") {
-        fdaStatus = "denied";
-      } else {
-        fdaStatus = backendFdaStatus;
-      }
-    } catch (e) {
-      console.warn(
-        "[permissions] Plugin FDA check failed – falling back to backend result:",
-        backendFdaStatus,
-        e,
-      );
-    }
-
-    const updatedPermissions = rustPermissions.permissions.map((p) =>
-      p.id === "full-disk" ? { ...p, status: fdaStatus } : p,
-    );
-
-    const allRequiredGranted = updatedPermissions
-      .filter((p) => p.required)
-      .every((p) => p.status === "granted");
-
-    const combinedState: PermissionsState = {
-      ...rustPermissions,
-      permissions: updatedPermissions,
-      allRequiredGranted,
-    };
-
-    store.setPermissionsState(combinedState);
-    return combinedState;
-  } finally {
-    // set permission checked flag even on error
-    store.setPermissionsChecked(true);
-  }
+const checkPermissions = async (): Promise<void> => {
+  await tauriAPI.permissions.refresh();
 };
 
 export function usePermissions() {

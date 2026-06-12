@@ -7,7 +7,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useUiState } from "@/stores/ui-state";
-import { useWidgetStore } from "@/stores/widget-store";
 import type { SystemDefault, SystemDefaultsScan } from "@/ipc/types";
 import { tauriAPI } from "@/ipc/api";
 import { useViewModel } from "@/stores/view-model";
@@ -91,7 +90,7 @@ export function SystemDefaultsCTA() {
       mirrorChangeMapState(result.changeMap);
       mirrorGitState(result.gitStatus);
       // Invalidate recommended prompt — settings changed
-      useWidgetStore.getState().setRecommendedPrompt(undefined);
+      useUiState.getState().setRecommendedPrompt(undefined);
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
       console.error("[SystemDefaultsCTA] apply failed:", msg);

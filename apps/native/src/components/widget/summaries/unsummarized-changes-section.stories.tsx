@@ -1,7 +1,7 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
 import { useViewModel } from "@/stores/view-model";
-import { useWidgetStore } from "@/stores/widget-store";
+import { makeGlobalPreferences } from "@/utils/test-fixtures";
 import type { ChangeWithRichType } from "@/components/widget/utils";
 import type { SemanticChangeMap } from "@/ipc/types";
 import { useEffect } from "react";
@@ -105,9 +105,10 @@ function setup({
   configDir?: string;
 }) {
   useEffect(() => {
-    const store = useWidgetStore.getState();
-    useViewModel.setState({ changeMap });
-    store.setConfigDir(configDir);
+    useViewModel.setState({
+      changeMap,
+      preferences: makeGlobalPreferences({ configDir }),
+    });
   }, []);
 
   return (

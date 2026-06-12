@@ -87,23 +87,12 @@ export function useRebuildStream() {
         unlistenSummary();
         unlistenEnd();
 
-        // Handle Full Disk Access error
+        // Handle Full Disk Access error: re-probe permissions; the backend
+        // writes the cell and `permissions_changed` mirrors it into the
+        // ViewModel, routing the UI to the permissions step.
         if (event.payload.error_type === "full_disk_access") {
-          try {
-            const permissionsState = await tauriAPI.permissions.checkAll();
-            const updatedPermissions = permissionsState.permissions.map((p) =>
-              p.id === "full-disk" ? { ...p, status: "denied" as const, required: true } : p,
-            );
-            const updatedState = {
-              ...permissionsState,
-              permissions: updatedPermissions,
-              allRequiredGranted: false,
-            };
-            currentStore.setPermissionsState(updatedState);
-            currentStore.clearRebuild();
-          } catch (e) {
-            console.error("Failed to check permissions:", e);
-          }
+          void tauriAPI.permissions.refresh();
+          currentStore.clearRebuild();
           await refreshGitStatus({ cache: true });
           useUiState.getState().setProcessing(false);
           return;

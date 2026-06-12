@@ -32,14 +32,10 @@ const buildCheck = async () => {
   return await tauriAPI.darwin.buildCheck();
 };
 
-const refreshPromptHistory = async (prompt?: string) => {
-  if (prompt) {
-    await tauriAPI.promptHistory.add(prompt).catch(console.error);
-  }
-  tauriAPI.promptHistory
-    .get()
-    .then((history) => useWidgetStore.getState().setPromptHistory(history))
-    .catch(console.error);
+const refreshPromptHistory = async (prompt: string) => {
+  // The backend mutation emits `prompt_history_changed`; the sync module
+  // mirrors the payload into the ViewModel.
+  await tauriAPI.promptHistory.add(prompt).catch(console.error);
 };
 
 const findChangeMap = async (): Promise<void> => {

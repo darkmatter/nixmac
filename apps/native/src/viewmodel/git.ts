@@ -18,10 +18,7 @@ export function mirrorGitState(git: GitStatus | null, externalBuildDetected = fa
 export async function startGitSync(): Promise<() => void> {
   const [stateUnlisten, errorUnlisten] = await Promise.all([
     bindBackendSlice<GitState>({
-      hydrate: async () => ({
-        gitStatus: await tauriAPI.git.status(),
-        externalBuildDetected: false,
-      }),
+      hydrate: () => tauriAPI.git.state(),
       event: "git_state_changed",
       mirror: ({ gitStatus, externalBuildDetected }) =>
         mirrorGitState(gitStatus, externalBuildDetected),

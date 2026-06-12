@@ -1,20 +1,15 @@
-import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 
 /**
  * Hook for managing prompt history.
- * Handles fetching and optionally adding prompts to history.
+ *
+ * Adding a prompt mutates the backend, which emits `prompt_history_changed`;
+ * the prompt-history sync module mirrors the payload into the ViewModel.
  */
-const refreshPromptHistory = async (prompt?: string) => {
-  if (prompt) {
-    await tauriAPI.promptHistory.add(prompt).catch(console.error);
-  }
-  tauriAPI.promptHistory
-    .get()
-    .then((history) => useWidgetStore.getState().setPromptHistory(history))
-    .catch(console.error);
+const addToPromptHistory = async (prompt: string) => {
+  await tauriAPI.promptHistory.add(prompt).catch(console.error);
 };
 
 export function usePromptHistory() {
-  return { refreshPromptHistory };
+  return { addToPromptHistory };
 }

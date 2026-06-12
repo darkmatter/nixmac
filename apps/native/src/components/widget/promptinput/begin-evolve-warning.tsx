@@ -16,7 +16,6 @@ import { useGitOperations } from "@/hooks/use-git-operations";
 import { useRollback } from "@/hooks/use-rollback";
 import { useViewModel } from "@/stores/view-model";
 import { useUiState } from "@/stores/ui-state";
-import { useWidgetStore } from "@/stores/widget-store";
 import { Loader2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -32,7 +31,7 @@ type BuildCheckStatus = "checking" | "passed" | "failed";
 export function BeginEvolveWarning({ open, onOpenChange, handleEvolve }: BeginEvolveWarningProps) {
   const gitStatus = useViewModel((s) => s.git);
   const evolvePrompt = useUiState((s) => s.evolvePrompt);
-  const configDir = useWidgetStore((s) => s.configDir);
+  const configDir = useViewModel((s) => s.preferences?.configDir ?? "");
   const files = gitStatus?.files ?? [];
 
   const { evolveFromManual, buildCheck } = useEvolve();

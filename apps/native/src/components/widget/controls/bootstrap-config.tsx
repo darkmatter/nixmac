@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { useViewModel } from "@/stores/view-model";
 import { useUiState } from "@/stores/ui-state";
-import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 import { AlertCircle, GitCommit, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -22,7 +21,7 @@ export function BootstrapConfig({ label, onSuccess }: BootstrapConfigProps) {
   const [hostnamePlaceholder, setHostnamePlaceholder] = useState(DEFAULT_HOSTNAME);
   const [localError, setLocalError] = useState<string | null>(null);
   const { bootstrap, isBootstrapping } = useDarwinConfig();
-  const configDir = useWidgetStore((state) => state.configDir);
+  const configDir = useViewModel((state) => state.preferences?.configDir ?? "");
   const gitStatus = useViewModel((state) => state.git);
   const [flakeExists, setFlakeExists] = useState(false);
 

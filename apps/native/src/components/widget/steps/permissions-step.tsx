@@ -1,6 +1,6 @@
 "use client";
 
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 import { tauriAPI } from "@/ipc/api";
 import type { Permission, PermissionStatus } from "@/ipc/types";
 import { Button } from "@/components/ui/button";
@@ -9,108 +9,38 @@ import { Shield, Check, X, AlertCircle, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 
 /**
- * Check FDA permission using the native plugin and update the permissions state.
- * For local development, set VITE_NIXMAC_SKIP_PERMISSIONS=true to skip the FDA check
- * and assume Full Disk Access is granted.
- */
-async function checkAndUpdateFDAPermission(permissions: Permission[]): Promise<Permission[]> {
-  try {
-    const skipFDA = import.meta.env.VITE_NIXMAC_SKIP_PERMISSIONS === "true";
-    const pluginGranted = skipFDA || (await tauriAPI.permissions.checkFullDiskAccess());
-    // OR plugin result with the backend's own probe (already in `permissions`)
-    // so a single narrow source can't wrongly force "denied".
-    const backendGranted = permissions.some(
-      (p) => p.id === "full-disk" && p.status === "granted",
-    );
-    const fdaGranted = pluginGranted || backendGranted;
-    return permissions.map((p) =>
-      p.id === "full-disk"
-        ? {
-            ...p,
-            status: (fdaGranted ? "granted" : "denied") as PermissionStatus,
-          }
-        : p,
-    );
-  } catch (error) {
-    console.error("Failed to check FDA via plugin:", error);
-    return permissions;
-  }
-}
-
-/**
  * Permissions step component - checks and requests macOS permissions
  * required for proper operation of nix-darwin.
+ *
+ * The permissions state is mirrored from the backend cell into the
+ * ViewModel; this component only triggers probes/requests and the
+ * `permissions_changed` round-trip updates the display.
  */
 export function PermissionsStep() {
-  const permissionsState = useWidgetStore((state) => state.permissionsState);
-  const setPermissionsState = useWidgetStore((state) => state.setPermissionsState);
+  const permissionsState = useViewModel((state) => state.permissions);
   const [isLoading, setIsLoading] = useState<string | null>(null);
 
   // Refresh permissions when the component mounts
   useEffect(() => {
-    const refreshPermissions = async () => {
-      try {
-        const state = await tauriAPI.permissions.checkAll();
-        // Use the native plugin for accurate FDA check
-        const updatedPermissions = await checkAndUpdateFDAPermission(state.permissions);
-        const allRequiredGranted = updatedPermissions
-          .filter((p) => p.required)
-          .every((p) => p.status === "granted");
-        setPermissionsState({
-          ...state,
-          permissions: updatedPermissions,
-          allRequiredGranted,
-        });
-      } catch (error) {
-        console.error("Failed to check permissions:", error);
-      }
-    };
-    refreshPermissions();
-  }, [setPermissionsState]);
+    tauriAPI.permissions.refresh().catch((error) => {
+      console.error("Failed to check permissions:", error);
+    });
+  }, []);
 
   const handleRequestPermission = async (permissionId: string) => {
     setIsLoading(permissionId);
     try {
-      // For FDA, use the native plugin to request
       if (permissionId === "full-disk") {
+        // For FDA, use the native plugin to request
         await tauriAPI.permissions.requestFullDiskAccess();
         // Wait a bit for user to potentially grant access, then re-check
         await new Promise((resolve) => setTimeout(resolve, 1000));
-        const updatedPermissions = await checkAndUpdateFDAPermission(
-          permissionsState?.permissions ?? [],
-        );
-
-        if (permissionsState) {
-          const allRequiredGranted = updatedPermissions
-            .filter((p) => p.required)
-            .every((p) => p.status === "granted");
-
-          setPermissionsState({
-            ...permissionsState,
-            permissions: updatedPermissions,
-            allRequiredGranted,
-          });
-        }
       } else {
         // For other permissions, use the backend
-        const updatedPermission = await tauriAPI.permissions.request(permissionId);
-
-        // Update the permission in the state
-        if (permissionsState) {
-          const updatedPermissions = permissionsState.permissions.map((p) =>
-            p.id === permissionId ? updatedPermission : p,
-          );
-          const allRequiredGranted = updatedPermissions
-            .filter((p) => p.required)
-            .every((p) => p.status === "granted");
-
-          setPermissionsState({
-            ...permissionsState,
-            permissions: updatedPermissions,
-            allRequiredGranted,
-          });
-        }
+        await tauriAPI.permissions.request(permissionId);
       }
+      // Re-probe; the cell write emits `permissions_changed`.
+      await tauriAPI.permissions.refresh();
     } catch (error) {
       console.error("Failed to request permission:", error);
     } finally {
@@ -121,17 +51,7 @@ export function PermissionsStep() {
   const handleRefreshAll = async () => {
     setIsLoading("all");
     try {
-      const state = await tauriAPI.permissions.checkAll();
-      // Use the native plugin for accurate FDA check
-      const updatedPermissions = await checkAndUpdateFDAPermission(state.permissions);
-      const allRequiredGranted = updatedPermissions
-        .filter((p) => p.required)
-        .every((p) => p.status === "granted");
-      setPermissionsState({
-        ...state,
-        permissions: updatedPermissions,
-        allRequiredGranted,
-      });
+      await tauriAPI.permissions.refresh();
     } catch (error) {
       console.error("Failed to refresh permissions:", error);
     } finally {

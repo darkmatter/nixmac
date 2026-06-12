@@ -12,12 +12,12 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useUiState } from "@/stores/ui-state";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 import { ClockIcon } from "lucide-react";
 import { useState } from "react";
 
 export function PromptHistoryBadge() {
-  const history = useWidgetStore((s) => s.promptHistory);
+  const history = useViewModel((s) => s.promptHistory);
   const evolvePrompt = useUiState((s) => s.evolvePrompt);
   const setEvolvePrompt = useUiState((s) => s.setEvolvePrompt);
   const isProcessing = useUiState((s) => s.isProcessing);

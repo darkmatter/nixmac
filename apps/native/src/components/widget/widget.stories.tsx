@@ -4,6 +4,7 @@ import type { EvolveEvent, GitStatus } from "@/ipc/types";
 import { useUiState } from "@/stores/ui-state";
 import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
+import { makeGlobalPreferences } from "@/utils/test-fixtures";
 import type { SemanticChangeMap } from "@/ipc/types";
 import type React from "react";
 import { useEffect } from "react";
@@ -221,10 +222,21 @@ function StoryWidget({ storeState }: { storeState?: StoreState }) {
     const store = useWidgetStore.getState();
     const ui = useUiState.getState();
 
-    // Set store state
-    if (storeState?.configDir !== undefined) store.setConfigDir(storeState.configDir);
-    if (storeState?.hosts !== undefined) store.setHosts(storeState.hosts);
-    if (storeState?.host !== undefined) store.setHost(storeState.host);
+    // Set store state (config now lives in the ViewModel preferences slice)
+    if (
+      storeState?.configDir !== undefined ||
+      storeState?.host !== undefined ||
+      storeState?.hosts !== undefined
+    ) {
+      useViewModel.setState((s) => ({
+        preferences: makeGlobalPreferences({
+          ...(s.preferences ?? {}),
+          ...(storeState?.configDir !== undefined && { configDir: storeState.configDir }),
+          ...(storeState?.host !== undefined && { hostAttr: storeState.host }),
+        }),
+        ...(storeState?.hosts !== undefined && { hosts: storeState.hosts }),
+      }));
+    }
     if (storeState?.gitStatus !== undefined) useViewModel.setState({ git: storeState.gitStatus });
     if (storeState?.changeMap !== undefined) useViewModel.setState({ changeMap: storeState.changeMap });
     if (storeState?.evolvePrompt !== undefined) ui.setEvolvePrompt(storeState.evolvePrompt);

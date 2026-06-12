@@ -8,6 +8,7 @@
 // The split prevents Rust-driven state updates from clobbering local UI
 // concerns (e.g. closing a settings panel just because git status changed).
 
+import type { FileDiffContents, RecommendedPrompt } from "@/ipc/types";
 import { FeedbackType } from "@/types/feedback";
 import { create } from "zustand";
 
@@ -43,6 +44,10 @@ export type UiStateValues = {
   analyzingHistoryForHashes: Set<string>;
   isBootstrapping: boolean;
   commitMessageSuggestion: string | null;
+  /** On-demand query result: per-file diff contents prefetched for the diff view. */
+  fileDiffContents: Record<string, FileDiffContents>;
+  /** On-demand query result. `undefined` means "stale/unfetched"; `null` means "fetched and none found". */
+  recommendedPrompt: RecommendedPrompt | null | undefined;
 };
 
 /**
@@ -68,6 +73,8 @@ type UiStateActions = {
   removeAnalyzingHistoryHash: (hash: string) => void;
   setBootstrapping: (isBootstrapping: boolean) => void;
   setCommitMessageSuggestion: (msg: string | null) => void;
+  setFileDiffContents: (contents: Record<string, FileDiffContents>) => void;
+  setRecommendedPrompt: (prompt: RecommendedPrompt | null | undefined) => void;
 };
 
 export type UiState = UiStateValues & UiStateActions;
@@ -93,6 +100,8 @@ export const initialUiState: UiStateValues = {
   analyzingHistoryForHashes: new Set<string>(),
   isBootstrapping: false,
   commitMessageSuggestion: null,
+  fileDiffContents: {},
+  recommendedPrompt: undefined,
 };
 
 /**
@@ -138,4 +147,6 @@ export const useUiState = create<UiState>()((set) => ({
     }),
   setBootstrapping: (isBootstrapping) => set({ isBootstrapping }),
   setCommitMessageSuggestion: (commitMessageSuggestion) => set({ commitMessageSuggestion }),
+  setFileDiffContents: (fileDiffContents) => set({ fileDiffContents }),
+  setRecommendedPrompt: (recommendedPrompt) => set({ recommendedPrompt }),
 }));

@@ -1,10 +1,9 @@
-import { loadHosts } from "@/hooks/use-widget-initialization";
 import { useUiState } from "@/stores/ui-state";
-import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 import { mirrorChangeMapState } from "@/viewmodel/change-map";
 import { mirrorEvolveState } from "@/viewmodel/evolve";
 import { mirrorGitState } from "@/viewmodel/git";
+import { refreshHostsSnapshot } from "@/viewmodel/preferences";
 import { toast } from "sonner";
 
 /**
@@ -12,7 +11,7 @@ import { toast } from "sonner";
  * Provides functions for refreshing git status changes.
  */
 export const prefetchFileDiffContents = async (status: { changes: { filename: string }[] } | null) => {
-  const setFileDiffContents = useWidgetStore.getState().setFileDiffContents;
+  const setFileDiffContents = useUiState.getState().setFileDiffContents;
   if (!status) {
     setFileDiffContents({});
     return;
@@ -43,11 +42,7 @@ export const refreshGitStatus = async (options?: { cache?: boolean }) => {
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
     useUiState.getState().setError(msg);
-    if (msg.includes("is not a git repository")) {
-      useWidgetStore.getState().setHosts([]);
-    } else {
-      await loadHosts();
-    }
+    await refreshHostsSnapshot();
     return null;
   }
 };
@@ -60,11 +55,7 @@ const getInitialStatus = async () => {
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
     useUiState.getState().setError(msg);
-    if (msg.includes("is not a git repository")) {
-      useWidgetStore.getState().setHosts([]);
-    } else {
-      await loadHosts();
-    }
+    await refreshHostsSnapshot();
     return null;
   }
 };

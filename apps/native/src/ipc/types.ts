@@ -996,6 +996,14 @@ cleanHead: boolean;
 changes: Change[] }
 
 /**
+ * Preferences local to this app installation.
+ * 
+ * Hydrated via `get_global_preferences`; every mutation emits
+ * `global_preferences_changed` with the full struct as payload.
+ */
+export type GlobalPreferences = { hostAttr: string | null; configDir: string | null; repoRoot: string | null; sendDiagnostics: boolean; evolveProvider: string | null; evolveModel: string | null; summaryProvider: string | null; summaryModel: string | null; ollamaApiBaseUrl: string | null; vllmApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel }
+
+/**
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
  */
 export type HistoryItem = { 
