@@ -156,7 +156,7 @@ pub enum EvolveStep {
 
 /// Persisted evolve state stored in `evolve-state.json`.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 pub struct EvolveState {
     /// Active evolution database id.
     pub evolution_id: Option<i64>,

@@ -45,6 +45,18 @@ fn deserialize_persisted_state(value: Value) -> Option<EvolveState> {
     serde_json::from_value(value).ok()
 }
 
+/// Serialize only the session-owned fields. `step` and `committable` are
+/// derived on every recompute and must never be trusted from disk — the
+/// loaded defaults hold only until the first recompute corrects them.
+fn persisted_value(state: &EvolveState) -> Result<Value> {
+    let mut value = serde_json::to_value(state)?;
+    if let Some(fields) = value.as_object_mut() {
+        fields.remove("step");
+        fields.remove("committable");
+    }
+    Ok(value)
+}
+
 fn load_from_persistence(persistence: &dyn Persistence) -> Result<EvolveState> {
     Ok(persistence
         .load()?
@@ -57,7 +69,7 @@ fn persist_without_managed_observable<R: Runtime>(
     state: &EvolveState,
 ) -> Result<()> {
     let persistence = AppDataJson::for_app(app, EVOLVE_STATE_PATH)?;
-    persistence.flush(&serde_json::to_value(state)?)?;
+    persistence.flush(&persisted_value(state)?)?;
     let _ = app.emit(EVOLVE_STATE_CHANGED_EVENT, state);
     Ok(())
 }
@@ -67,7 +79,17 @@ pub fn load_observable<R: Runtime>(app: &AppHandle<R>) -> Result<Observable<Evol
     let initial = load_from_persistence(persistence.as_ref())?;
     Ok(Observable::new(initial)
         .emit_to(app, EVOLVE_STATE_CHANGED_EVENT)
-        .persist_to(persistence))
+        // Not `.persist_to`: the flushed JSON drops the derived fields.
+        .subscribe(move |state| match persisted_value(state) {
+            Ok(json) => {
+                if let Err(error) = persistence.flush(&json) {
+                    log::error!("evolve-state: failed to flush persistence: {error:#}");
+                }
+            }
+            Err(error) => {
+                log::error!("evolve-state: failed to serialize for persistence: {error:#}");
+            }
+        }))
 }
 
 /// Load the persisted evolve state, returning `EvolveState::default()` if absent or corrupt.
@@ -222,6 +244,38 @@ mod tests {
 
         assert_eq!(state.step, EvolveStep::Begin);
         assert!(cleared);
+    }
+
+    #[test]
+    fn persisted_value_strips_derived_fields() {
+        let state = EvolveState {
+            evolution_id: Some(7),
+            committable: true,
+            step: EvolveStep::Commit,
+            rollback_branch: Some("nixmac-evolve/evolution7-changeset1".to_string()),
+            ..Default::default()
+        };
+
+        let value = persisted_value(&state).expect("serializes");
+
+        assert!(value.get("step").is_none());
+        assert!(value.get("committable").is_none());
+        assert_eq!(value["evolutionId"], 7);
+        assert_eq!(
+            value["rollbackBranch"],
+            "nixmac-evolve/evolution7-changeset1"
+        );
+
+        // A stripped file round-trips: derived fields come back as defaults
+        // (recomputed on first use), session fields survive.
+        let loaded = deserialize_persisted_state(value).expect("stripped state deserializes");
+        assert_eq!(loaded.evolution_id, Some(7));
+        assert_eq!(
+            loaded.rollback_branch.as_deref(),
+            Some("nixmac-evolve/evolution7-changeset1")
+        );
+        assert_eq!(loaded.step, EvolveStep::Begin);
+        assert!(loaded.committable == false);
     }
 
     #[test]
