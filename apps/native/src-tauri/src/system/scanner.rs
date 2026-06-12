@@ -1825,6 +1825,26 @@ where
 mod tests {
     use super::*;
 
+    // Create a test that runs the scanner on the current system and prints the results.
+    // Leave it off by default.
+    #[test]
+    #[ignore = "Runs against the local system; enable explicitly when debugging the defaults scanner."]
+    #[cfg(target_os = "macos")]
+    fn test_scan_system_defaults() {
+        let scan = scan_system_defaults();
+        println!(
+            "Scanned {} settings, found {} non-defaults:",
+            scan.total_scanned,
+            scan.defaults.len()
+        );
+        for d in scan.defaults {
+            println!(
+                "- {} ({}): current='{}', default='{}'",
+                d.label, d.nix_key, d.current_value, d.default_value
+            );
+        }
+    }
+
     #[test]
     fn test_normalize_bool() {
         assert_eq!(normalize_bool("true"), "true");

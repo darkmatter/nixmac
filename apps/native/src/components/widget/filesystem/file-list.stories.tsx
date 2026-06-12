@@ -1,6 +1,12 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
-import { FILES, homebrewFilesFromDiff, replaceHomebrewPlaceholders } from "./data";
+import {
+  FILES,
+  homebrewFilesFromDiff,
+  replaceHomebrewPlaceholders,
+  replaceSystemDefaultsPlaceholder,
+  systemDefaultsFileFromScan,
+} from "./data";
 import { FileList } from "./file-list";
 import { SeedDisplay } from "./seed-display";
 import { seedForFile } from "./seed-prompt";
@@ -22,7 +28,29 @@ const storyHomebrew = homebrewFilesFromDiff({
   source: null,
   lastChecked: Math.floor(Date.now() / 1000) - 14 * 60,
 });
-const storyManageFiles = replaceHomebrewPlaceholders(FILES.manage, storyHomebrew);
+const storySystemDefaults = systemDefaultsFileFromScan({
+  totalScanned: 212,
+  defaults: [
+    {
+      nixKey: "system.defaults.dock.magnification",
+      label: "Enable Dock magnification",
+      category: "Dock",
+      currentValue: "1",
+      defaultValue: "false",
+    },
+    {
+      nixKey: "system.defaults.finder.ShowPathbar",
+      label: "Show path bar",
+      category: "Finder",
+      currentValue: "1",
+      defaultValue: "false",
+    },
+  ],
+});
+const storyManageFiles = replaceSystemDefaultsPlaceholder(
+  replaceHomebrewPlaceholders(FILES.manage, storyHomebrew),
+  storySystemDefaults,
+);
 
 export const SystemSection = meta.story({
   render: () => (

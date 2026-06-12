@@ -1,6 +1,6 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
-import { FILES, homebrewFilesFromDiff } from "./data";
+import { FILES, homebrewFilesFromDiff, systemDefaultsFileFromScan } from "./data";
 import { SeedDisplay } from "./seed-display";
 import { UntrackedCard } from "./untracked-card";
 
@@ -21,7 +21,25 @@ const [casks, taps, brews] = homebrewFilesFromDiff({
   source: null,
   lastChecked: Math.floor(Date.now() / 1000) - 14 * 60,
 });
-const defaults = FILES.manage.find((f) => f.id === "custom-defaults")!;
+const defaults = systemDefaultsFileFromScan({
+  totalScanned: 212,
+  defaults: [
+    {
+      nixKey: "system.defaults.dock.magnification",
+      label: "Enable Dock magnification",
+      category: "Dock",
+      currentValue: "1",
+      defaultValue: "false",
+    },
+    {
+      nixKey: "system.defaults.NSGlobalDomain.KeyRepeat",
+      label: "Key repeat speed",
+      category: "Keyboard",
+      currentValue: "2",
+      defaultValue: "6",
+    },
+  ],
+});
 const login = FILES.manage.find((f) => f.id === "login-items")!;
 
 export const HomebrewCasks = meta.story({
