@@ -344,6 +344,7 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                         app.manage(state::evolve_state::load_observable(app.handle())?);
                         app.manage(state::git_state::load_observable(app.handle()));
                         app.manage(state::change_map::load_observable(app.handle()));
+                        app.manage(state::permissions_state::load_observable(app.handle()));
                         Ok(())
                     })
                     .build(context)
@@ -564,6 +565,8 @@ fn run_gui_mode(
             commands::peek::evolve_mascot_show,
             commands::peek::evolve_mascot_hide,
             // Permissions
+            commands::permissions::get_permissions,
+            commands::permissions::refresh_permissions,
             commands::permissions::permissions_check_all,
             commands::permissions::permissions_request,
             // System defaults scanner
@@ -605,6 +608,7 @@ fn run_gui_mode(
             app.manage(state::evolve_state::load_observable(handle)?);
             app.manage(state::git_state::load_observable(handle));
             app.manage(state::change_map::load_observable(handle));
+            app.manage(state::permissions_state::load_observable(handle));
 
             // Initialize SQLite database before any consumer that reads the
             // managed DbPool from app state.
