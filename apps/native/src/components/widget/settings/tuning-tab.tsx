@@ -1,5 +1,5 @@
 import { tauriAPI } from "@/ipc/api";
-import type { ConfigurableSchema } from "@/ipc/types";
+import type { ConfigurableSchema, JsonValue } from "@/ipc/types";
 import { SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { AutoConfigField } from "@/components/widget/settings/auto-config-field";
@@ -16,14 +16,19 @@ import { BackupRestoreSection } from "@/components/widget/settings/backup-restor
  */
 export function TuningTab() {
   const [schemas, setSchemas] = useState<ConfigurableSchema[]>([]);
+  const [values, setValues] = useState<Record<string, JsonValue>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const next = await tauriAPI.devConfigs.list();
+      const [nextSchemas, nextValues] = await Promise.all([
+        tauriAPI.devConfigs.schemas(),
+        tauriAPI.devConfigs.values(),
+      ]);
       // In environments where the Tauri command isn't registered (Storybook,
-      // tests), invoke can resolve with null instead of an array.
-      setSchemas(Array.isArray(next) ? next : []);
+      // tests), invoke can resolve with null.
+      setSchemas(Array.isArray(nextSchemas) ? nextSchemas : []);
+      setValues(nextValues ?? {});
       setLoadError(null);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : String(err));
@@ -60,25 +65,16 @@ export function TuningTab() {
 
         <div className="space-y-5">
           {schemas.map((schema) => (
-            <section key={schema.name} className="space-y-3">
-              {schemas.length > 1 && (
-                <div>
-                  <h3 className="font-medium text-xs">{schema.displayName}</h3>
-                  {schema.description && (
-                    <p className="text-muted-foreground text-[10px]">{schema.description}</p>
-                  )}
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                {schema.fields.map((field) => (
-                  <AutoConfigField
-                    key={field.key}
-                    structName={schema.name}
-                    field={field}
-                  />
-                ))}
-              </div>
-            </section>
+            <SchemaSection
+              key={schema.name}
+              schema={schema}
+              structValues={readStructValues(values, schema.name)}
+              showHeader={schemas.length > 1}
+              onCommit={async (key, value) => {
+                const next = await commitField(values, schema.name, key, value);
+                setValues(next);
+              }}
+            />
           ))}
         </div>
       </div>
@@ -87,4 +83,65 @@ export function TuningTab() {
       <BackupRestoreSection />
     </div>
   );
+}
+
+function SchemaSection({
+  schema,
+  structValues,
+  showHeader,
+  onCommit,
+}: {
+  schema: ConfigurableSchema;
+  structValues: Record<string, JsonValue>;
+  showHeader: boolean;
+  onCommit: (key: string, value: unknown) => Promise<void>;
+}) {
+  return (
+    <section className="space-y-3">
+      {showHeader && (
+        <div>
+          <h3 className="font-medium text-xs">{schema.displayName}</h3>
+          {schema.description && (
+            <p className="text-muted-foreground text-[10px]">{schema.description}</p>
+          )}
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-4">
+        {schema.fields.map((field) => (
+          <AutoConfigField
+            key={field.key}
+            structName={schema.name}
+            field={field}
+            current={structValues[field.key] ?? null}
+            onCommit={onCommit}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function readStructValues(
+  values: Record<string, JsonValue>,
+  structName: string,
+): Record<string, JsonValue> {
+  const v = values[structName];
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, JsonValue>) : {};
+}
+
+/**
+ * Builds the whole-struct payload by overlaying the new value on the struct's
+ * existing values, POSTs it via `devConfigs.set`, and returns the next values
+ * map so the parent can keep its state in sync.
+ */
+async function commitField(
+  values: Record<string, JsonValue>,
+  structName: string,
+  key: string,
+  value: unknown,
+): Promise<Record<string, JsonValue>> {
+  const currentStruct = readStructValues(values, structName);
+  const nextStruct = { ...currentStruct, [key]: value as JsonValue };
+  await tauriAPI.devConfigs.set(structName, nextStruct);
+  return { ...values, [structName]: nextStruct };
 }

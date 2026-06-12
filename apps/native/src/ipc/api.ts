@@ -12,6 +12,7 @@ import type {
   Config as DarwinConfig,
   ConfigEditApplyResult,
   ConfigurableSchema,
+  JsonValue,
   EvolveCancelResult,
   EvolutionResult,
   EvolveState,
@@ -142,9 +143,25 @@ export const tauriAPI = {
     import: () => invoke<ImportResult | null>("settings_import"),
   },
   devConfigs: {
-    list: () => invoke<ConfigurableSchema[]>("dev_configs_list"),
-    set: (structName: string, key: string, value: unknown) =>
-      invoke<void>("dev_config_set", { structName, key, value }),
+    /**
+     * Returns the static schema for every registered Configurable struct.
+     * Same value every call — safe to cache.
+     */
+    schemas: () => invoke<ConfigurableSchema[]>("dev_configs_schemas"),
+    /**
+     * Returns the current store-backed value of every registered Configurable,
+     * keyed by struct name (matching `ConfigurableSchema.name`). Each value
+     * is the full struct as a JSON object. Refresh this after `set` instead
+     * of re-fetching schemas.
+     */
+    values: () => invoke<Record<string, JsonValue>>("dev_configs_values"),
+    /**
+     * Replace a Configurable struct with a whole-struct payload. `value` must
+     * be the full struct (every field), not a partial update — Serde validates
+     * the whole thing in one pass on the backend.
+     */
+    set: (structName: string, value: Record<string, unknown>) =>
+      invoke<void>("dev_config_set", { structName, value }),
   },
   models: {
     getCached: (provider: string) => invoke<string[] | null>("get_cached_models", { provider }),
