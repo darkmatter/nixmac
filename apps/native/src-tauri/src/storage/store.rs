@@ -788,6 +788,8 @@ pub fn set_cached_models<R: Runtime>(
 
 const MAX_PROMPT_HISTORY: usize = 20;
 
+pub const PROMPT_HISTORY_CHANGED_EVENT: &str = "prompt_history_changed";
+
 /// Gets the prompt history (most recent first).
 pub fn get_prompt_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<String>> {
     let store = get_store(app)?;
@@ -820,6 +822,10 @@ pub fn add_to_prompt_history<R: Runtime>(app: &AppHandle<R>, prompt: &str) -> Re
 
     store.set("promptHistory", serde_json::json!(history));
     store.save()?;
+    // Single mutation path for prompt history, so the change event lives
+    // here; the frontend mirrors it against get_prompt_history hydration.
+    use tauri::Emitter;
+    let _ = app.emit(PROMPT_HISTORY_CHANGED_EVENT, &history);
     Ok(())
 }
 
