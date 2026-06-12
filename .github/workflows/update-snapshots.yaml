@@ -1,7 +1,8 @@
 name: Update Snapshots
 
 # Regenerates Storybook snapshot baselines and opens a PR when they drift.
-# Run manually via workflow_dispatch. The workflow:
+# Triggered manually via workflow_dispatch (link posted in PR comments).
+# The workflow:
 #   1. Checks out develop
 #   2. Runs `bun run test:update-snapshots` (vitest --update)
 #   3. If any __snapshots__ files changed, opens/updates a PR
