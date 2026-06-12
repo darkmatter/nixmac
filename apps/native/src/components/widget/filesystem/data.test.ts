@@ -19,7 +19,7 @@ describe("untrackedCandidateItemCount", () => {
         iconName: "wiring",
         tone: "muted",
         status: "managed",
-        items: [{ name: "ignored", detail: "", installedAt: "", attr: "" }],
+        items: [{ name: "ignored", detail: "", installedAt: "", attr: "", source: "other" }],
       },
       {
         id: "empty-candidate",
@@ -40,8 +40,8 @@ describe("untrackedCandidateItemCount", () => {
         tone: "amber",
         status: "candidate",
         items: [
-          { name: "one", detail: "", installedAt: "", attr: "" },
-          { name: "two", detail: "", installedAt: "", attr: "" },
+          { name: "one", detail: "", installedAt: "", attr: "", source: "other" },
+          { name: "two", detail: "", installedAt: "", attr: "", source: "other" },
         ],
       },
     ];
@@ -115,7 +115,7 @@ describe("systemDefaultsFileFromScan", () => {
           iconName: "settings",
           tone: "blue",
           status: "candidate",
-          items: [{ name: "mock", detail: "", installedAt: "", attr: "" }],
+          items: [{ name: "mock", detail: "", installedAt: "", attr: "", source: "other" }],
         },
         {
           id: "login-items",
@@ -125,7 +125,7 @@ describe("systemDefaultsFileFromScan", () => {
           iconName: "warn",
           tone: "amber",
           status: "candidate",
-          items: [{ name: "kept", detail: "", installedAt: "", attr: "" }],
+          items: [{ name: "kept", detail: "", installedAt: "", attr: "", source: "other" }],
         },
       ],
       replacement,
