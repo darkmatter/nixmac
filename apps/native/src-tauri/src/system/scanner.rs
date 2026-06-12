@@ -1531,10 +1531,10 @@ fn parse_plist_value(line: &str) -> Option<String> {
 /// into account. Returns `true` if they are semantically different.
 fn values_differ(current: &str, factory: &str, val_type: ValType) -> bool {
     // macOS commonly omits keys whose factory value is null. In our scanner an
-    // empty string can represent that missing value, so treat it as equivalent
-    // to the explicit NULL_FLAG sentinel.
-    if factory == NULL_FLAG && current.trim().is_empty() {
-        return false;
+    // empty string can represent that missing value. If the factory is NULL_FLAG,
+    // any present value should be treated as drift.
+    if factory == NULL_FLAG {
+        return !current.trim().is_empty();
     }
 
     match val_type {

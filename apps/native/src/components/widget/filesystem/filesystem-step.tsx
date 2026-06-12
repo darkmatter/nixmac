@@ -140,7 +140,6 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
         homebrewItems,
       );
       mirrorApplyResult(result);
-      store.setRecommendedPrompt(undefined);
       setShowFilesystem(false);
       setHomebrewDiff(null);
     } finally {
