@@ -23,5 +23,6 @@ pub mod git_state;
 pub mod nix_install_state;
 pub mod permissions_state;
 pub mod preferences;
+pub mod rebuild_status;
 pub mod session_log;
 pub mod watcher;

@@ -117,6 +117,24 @@ pub struct LaunchdItem {
     pub working_directory: Option<String>,
 }
 
+/// Lifecycle status of the darwin-rebuild apply/activate streams.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Type, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RebuildStatus {
+    /// True while a rebuild stream is in flight.
+    pub is_running: bool,
+    /// Outcome of the last finished run; `None` while running or never run.
+    pub success: Option<bool>,
+    /// Exit code of the last finished run.
+    pub exit_code: Option<i32>,
+    /// Error class of the last failed run.
+    pub error_type: Option<String>,
+    /// Error message of the last failed run.
+    pub error_message: Option<String>,
+    /// Whether the failure left the system untouched.
+    pub system_untouched: Option<bool>,
+}
+
 /// A single macOS system default that differs from the factory value.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]

@@ -71,6 +71,12 @@ pub async fn finalize_rollback(
         .map_err(|e| capture_err("finalize_rollback", e))
 }
 
+/// Returns the lifecycle status of the current/last rebuild stream.
+#[tauri::command]
+pub async fn get_rebuild_status(app: AppHandle) -> Result<shared_types::RebuildStatus, String> {
+    Ok(crate::state::rebuild_status::get(&app))
+}
+
 /// Returns the last-known nix/darwin-rebuild installation status from the
 /// in-memory cell, without probing the system. `nix_check` is the probe.
 #[tauri::command]

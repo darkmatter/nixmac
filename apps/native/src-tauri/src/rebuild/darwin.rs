@@ -96,6 +96,15 @@ pub fn dry_run_build_check(
 /// This spawns the rebuild in a background thread and emits events:
 /// - `darwin:apply:data`: Emitted for each line of output with `{"chunk": "..."}`
 /// - `darwin:apply:end`: Emitted on completion with `{"ok": bool, "code": int, "error_type": string, "error": string, "system_untouched": bool | null, "log_file": string}`
+/// Emits the terminal `darwin:apply:end` event and records the outcome in
+/// the rebuild-status cell (which emits `rebuild_status_changed`).
+fn emit_apply_end(app: &AppHandle, payload: serde_json::Value) {
+    crate::state::rebuild_status::record_end(app, &payload);
+    // fire-and-forget: emit returns Err only when no listeners are registered
+    // (window may be hidden/destroyed). Missing this event is non-fatal.
+    let _ = app.emit("darwin:apply:end", payload);
+}
+
 pub fn apply_stream(
     app: &AppHandle,
     config_dir: &str,
@@ -105,6 +114,7 @@ pub fn apply_stream(
         "[darwin] apply_stream: config_dir={}, host_attr={}",
         config_dir, host_attr
     );
+    crate::state::rebuild_status::record_start(app);
 
     if e2e_mock_system_enabled() {
         let app_handle = app.clone();
@@ -141,8 +151,8 @@ pub fn apply_stream(
                     "success": true,
                 }),
             );
-            let _ = app_handle.emit(
-                "darwin:apply:end",
+            emit_apply_end(
+                &app_handle,
                 serde_json::json!({
                     "ok": true,
                     "code": 0,
@@ -164,7 +174,7 @@ pub fn apply_stream(
                 info!("[darwin] darwin-rebuild completed successfully");
                 // fire-and-forget: emit returns Err only when no listeners are registered
                 // (window may be hidden/destroyed). Missing this event is non-fatal.
-                let _ = app_handle.emit("darwin:apply:end", payload);
+                emit_apply_end(&app_handle, payload);
             }
             Err(error_payload) => {
                 let error_type = error_payload
@@ -176,7 +186,7 @@ pub fn apply_stream(
                     error_type
                 );
                 // fire-and-forget: same reasoning as the Ok branch above.
-                let _ = app_handle.emit("darwin:apply:end", error_payload);
+                emit_apply_end(&app_handle, error_payload);
             }
         }
     });
@@ -386,6 +396,7 @@ pub fn activate_store_path_stream(
         "[darwin] activate_store_path_stream: store_path={}",
         store_path
     );
+    crate::state::rebuild_status::record_start(app);
     let app_handle = app.clone();
 
     // All emit calls below are fire-and-forget: this closure runs in a background
@@ -410,8 +421,8 @@ pub fn activate_store_path_stream(
 
                 if result.success {
                     info!("[darwin] store path activation succeeded");
-                    let _ = app_handle.emit(
-                        "darwin:apply:end",
+                    emit_apply_end(
+                        &app_handle,
                         serde_json::json!({"ok": true, "code": result.code}),
                     );
                 } else {
@@ -420,8 +431,8 @@ pub fn activate_store_path_stream(
                         "[darwin] store path activation failed (code={}): {}",
                         result.code, error
                     );
-                    let _ = app_handle.emit(
-                        "darwin:apply:end",
+                    emit_apply_end(
+                        &app_handle,
                         serde_json::json!({
                             "ok": false,
                             "code": result.code,
@@ -434,8 +445,8 @@ pub fn activate_store_path_stream(
             }
             Err(e) => {
                 error!("[darwin] activate_store_path_stream error: {}", e);
-                let _ = app_handle.emit(
-                    "darwin:apply:end",
+                emit_apply_end(
+                    &app_handle,
                     serde_json::json!({
                         "ok": false,
                         "code": -1,

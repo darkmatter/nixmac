@@ -346,6 +346,7 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                         app.manage(state::change_map::load_observable(app.handle()));
                         app.manage(state::permissions_state::load_observable(app.handle()));
                         app.manage(state::nix_install_state::load_observable(app.handle()));
+                        app.manage(state::rebuild_status::load_observable(app.handle()));
                         Ok(())
                     })
                     .build(context)
@@ -523,6 +524,7 @@ fn run_gui_mode(
             commands::evolve_state::routing_state_get,
             commands::evolve_state::routing_state_clear,
             commands::apply::get_nix_install_state,
+            commands::apply::get_rebuild_status,
             commands::apply::nix_check,
             commands::apply::nix_install_start,
             commands::apply::darwin_rebuild_prefetch,
@@ -612,6 +614,7 @@ fn run_gui_mode(
             app.manage(state::change_map::load_observable(handle));
             app.manage(state::permissions_state::load_observable(handle));
             app.manage(state::nix_install_state::load_observable(handle));
+            app.manage(state::rebuild_status::load_observable(handle));
 
             // Initialize SQLite database before any consumer that reads the
             // managed DbPool from app state.
