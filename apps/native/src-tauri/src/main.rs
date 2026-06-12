@@ -513,6 +513,8 @@ fn run_gui_mode(
             commands::summarize::abort_restore,
             commands::summarize::finalize_restore,
             // Routing state
+            commands::evolve_state::get_evolve_state,
+            commands::evolve_state::clear_evolve_state,
             commands::evolve_state::routing_state_get,
             commands::evolve_state::routing_state_clear,
             commands::apply::nix_check,

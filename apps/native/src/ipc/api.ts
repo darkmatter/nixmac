@@ -208,8 +208,8 @@ export const tauriAPI = {
   },
 
   evolveState: {
-    get: () => invoke<EvolveState>("routing_state_get"),
-    clear: () => invoke<EvolveState>("routing_state_clear"),
+    get: () => invoke<EvolveState>("get_evolve_state"),
+    clear: () => invoke<EvolveState>("clear_evolve_state"),
   },
 
   history: {
