@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import { Clock, FolderTree, Settings, MessageSquarePlus } from "lucide-react";
 import { APP_NAME } from "../../../../shared/constants";
 import { useUiState } from "@/stores/ui-state";
-import { useWidgetStore } from "@/stores/widget-store";
 import { computeCurrentStep } from "@/components/widget/utils";
 import { useViewModel } from "@/stores/view-model";
 
@@ -25,7 +24,8 @@ export function Header() {
     return useUiState.subscribe((state, prevState) => {
       const viewModel = useViewModel.getState();
       const step = computeCurrentStep({
-        ...useWidgetStore.getState(),
+        nixInstalled: viewModel.nixInstall?.installed ?? null,
+        darwinRebuildAvailable: viewModel.nixInstall?.darwinRebuildAvailable ?? null,
         configDir: viewModel.preferences?.configDir ?? "",
         host: viewModel.preferences?.hostAttr ?? "",
         hosts: viewModel.hosts,

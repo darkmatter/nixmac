@@ -101,6 +101,8 @@ fn main() {
         .register::<shared_types::EvolveCancelResult>()
         .register::<shared_types::CommitResult>()
         .register::<shared_types::FinalizeApplyResult>()
+        .register::<shared_types::NixInstallState>()
+        .register::<shared_types::RebuildStatus>()
         .register::<shared_types::NixInstallPhase>()
         .register::<shared_types::NixInstallErrorType>()
         .register::<shared_types::NixInstallProgressEvent>()

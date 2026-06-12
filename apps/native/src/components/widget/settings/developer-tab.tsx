@@ -3,8 +3,9 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useViewModel } from "@/stores/view-model";
 import { useUiState } from "@/stores/ui-state";
-import { useWidgetStore } from "@/stores/widget-store";
 import { mirrorChangeMapState } from "@/viewmodel/change-map";
+import { clearEvolveEvents } from "@/viewmodel/evolution";
+import { clearRebuildLog } from "@/viewmodel/rebuild";
 import { tauriAPI } from "@/ipc/api";
 import type { UpdateChannel } from "@/ipc/types";
 import { usePrefs } from "@/hooks/use-prefs";
@@ -129,13 +130,14 @@ export function DeveloperTab() {
   };
 
   const handleClearUiBuffers = () => {
-    const store = useWidgetStore.getState();
-    useUiState.getState().clearLogs();
-    store.clearEvolveEvents();
+    const ui = useUiState.getState();
+    ui.clearLogs();
+    clearEvolveEvents();
     mirrorChangeMapState(null);
-    store.clearRebuild();
-    store.setConversationalResponse(null);
-    useUiState.getState().setCommitMessageSuggestion(null);
+    clearRebuildLog();
+    ui.setRebuildPanelDismissed(true);
+    ui.setConversationalResponse(null);
+    ui.setCommitMessageSuggestion(null);
     setStatusMessage("Cleared local UI debug buffers.");
     setErrorMessage(null);
   };

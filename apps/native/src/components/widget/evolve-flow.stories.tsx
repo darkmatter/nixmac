@@ -2,7 +2,6 @@
 import preview from "#storybook/preview";
 import { useUiState } from "@/stores/ui-state";
 import { useViewModel } from "@/stores/view-model";
-import { useWidgetStore } from "@/stores/widget-store";
 import type { EvolveEvent } from "@/ipc/types";
 import type { SemanticChangeMap, EvolveState, GitStatus, Change } from "@/ipc/types";
 import { useEffect, useRef } from "react";
@@ -167,9 +166,8 @@ function WidgetWithState({ storeState }: { storeState: Record<string, unknown> }
       isGenerating,
       evolvePrompt,
       commitMessageSuggestion,
-      ...widgetState
+      evolveEvents,
     } = storeState;
-    useWidgetStore.setState(widgetState);
     useUiState.setState({
       ...(isGenerating !== undefined && { isGenerating: isGenerating as boolean }),
       ...(evolvePrompt !== undefined && { evolvePrompt: evolvePrompt as string }),
@@ -181,6 +179,7 @@ function WidgetWithState({ storeState }: { storeState: Record<string, unknown> }
       evolve: (evolveState as EvolveState | undefined) ?? null,
       git: (gitStatus as GitStatus | undefined) ?? null,
       changeMap: (changeMap as SemanticChangeMap | undefined) ?? null,
+      ...(evolveEvents !== undefined && { evolveEvents: evolveEvents as EvolveEvent[] }),
     });
   }, [storeState]);
 
@@ -199,7 +198,7 @@ function AnimatedEvolveFlow() {
     // Phase 1: Start generating (show overlay with streaming events)
     const t1 = setTimeout(() => {
       useUiState.setState({ isGenerating: true });
-      useWidgetStore.setState({
+      useViewModel.setState({
         evolveEvents: [mockEvolveEvents[0]],
       });
     }, 800);
@@ -208,7 +207,7 @@ function AnimatedEvolveFlow() {
     // Stream events one by one
     for (let i = 1; i < mockEvolveEvents.length; i++) {
       const t = setTimeout(() => {
-        useWidgetStore.setState((state) => ({
+        useViewModel.setState((state) => ({
           evolveEvents: [...state.evolveEvents, mockEvolveEvents[i]],
         }));
       }, 800 + mockEvolveEvents[i].timestampMs);

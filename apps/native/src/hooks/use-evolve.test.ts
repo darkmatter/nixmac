@@ -1,7 +1,6 @@
 import type { EvolveState, EvolutionResult, GitStatus, SemanticChangeMap } from "@/ipc/types";
 import { initialUiState, useUiState } from "@/stores/ui-state";
 import { useViewModel } from "@/stores/view-model";
-import { useWidgetStore } from "@/stores/widget-store";
 import { mirrorChangeMapState } from "@/viewmodel/change-map";
 import { mirrorEvolveState } from "@/viewmodel/evolve";
 import { mirrorGitState } from "@/viewmodel/git";
@@ -64,10 +63,8 @@ describe("useEvolve", () => {
     mocks.promptHistoryGet.mockResolvedValue([]);
     mocks.on.mockResolvedValue(vi.fn());
 
-    const store = useWidgetStore.getState();
     useUiState.setState({ ...initialUiState });
-    store.clearEvolveEvents();
-    store.setConversationalResponse(null);
+    useViewModel.setState({ evolveEvents: [] });
     mirrorChangeMapState(null);
     mirrorGitState(null);
     mirrorEvolveState(null);
@@ -104,7 +101,7 @@ describe("useEvolve", () => {
     await useEvolve().handleEvolve();
 
     expect(useViewModel.getState().changeMap).toBe(existingMap);
-    expect(useWidgetStore.getState().conversationalResponse).toBe("No file changes needed.");
+    expect(useUiState.getState().conversationalResponse).toBe("No file changes needed.");
   });
 
   it("logs a stopped message when a safety limit is reached", async () => {

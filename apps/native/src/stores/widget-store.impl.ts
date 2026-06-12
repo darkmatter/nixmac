@@ -1,8 +1,7 @@
-import { initialRebuildState, type RebuildContext, type RebuildErrorType, type RebuildLine, type RebuildState } from "@/types/rebuild";
-import type {
-  EvolutionTelemetry,
-  EvolveEvent,
-} from "@/ipc/types";
+import { computeCurrentStep } from "@/components/widget/utils";
+import { useUiState } from "@/stores/ui-state";
+import { useViewModel } from "@/stores/view-model";
+import type { WidgetStep } from "@/types/widget";
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 
@@ -10,64 +9,17 @@ import { devtools } from "zustand/middleware";
 // Types
 // =============================================================================
 
-export interface WidgetState {
-  // Nix installation
-  nixInstalled: boolean | null; // null = not checked yet
+// All state previously held here has migrated:
+// - backend-mirrored fields (nix install, rebuild status/log, evolve events)
+//   live in `stores/view-model.ts`, synced by `src/viewmodel/*`;
+// - UI-owned fields (conversational response, evolution telemetry, rebuild
+//   context) live in `stores/ui-state.ts`.
+// The empty store shell remains only so the module surface keeps compiling;
+// deleting the file is a later stage.
+// biome-ignore lint/complexity/noBannedTypes: transitional empty state shape.
+export type WidgetState = {};
 
-  // nix-darwin (darwin-rebuild availability)
-  darwinRebuildAvailable: boolean | null; // null = not checked yet
-
-  // Evolution
-  evolveEvents: EvolveEvent[];
-  conversationalResponse: string | null;
-  evolutionTelemetry: EvolutionTelemetry | null;
-
-  // Rebuild state (for inline rebuild progress)
-  rebuild: RebuildState;
-}
-
-interface WidgetActions {
-  setNixInstalled: (installed: boolean | null) => void;
-  setDarwinRebuildAvailable: (available: boolean | null) => void;
-  setDarwinRebuildPrefetching: (prefetching: boolean) => void;
-
-  // Evolve events
-  appendEvolveEvent: (event: EvolveEvent) => void;
-  clearEvolveEvents: () => void;
-  setEvolutionTelemetry: (telemetry: EvolutionTelemetry | null) => void;
-
-  setConversationalResponse: (response: string | null) => void;
-
-  // Rebuild state
-  startRebuild: (context: RebuildContext) => void;
-  appendRebuildLine: (line: RebuildLine) => void;
-  appendRawLine: (line: string) => void;
-  setRebuildError: (errorType: RebuildErrorType, errorMessage: string, systemUntouched?: boolean) => void;
-  setRebuildComplete: (success: boolean, exitCode?: number) => void;
-  clearRebuild: () => void;
-}
-
-type WidgetStore = WidgetState & WidgetActions;
-
-// =============================================================================
-// Initial State
-// =============================================================================
-
-const initialWidgetState: WidgetState = {
-  // Nix
-  nixInstalled: null,
-
-  // nix-darwin
-  darwinRebuildAvailable: null,
-
-  // Evolution
-  evolveEvents: [],
-  conversationalResponse: null,
-  evolutionTelemetry: null,
-
-  // Rebuild
-  rebuild: initialRebuildState,
-};
+type WidgetStore = WidgetState;
 
 // =============================================================================
 // Store Factory
@@ -80,72 +32,8 @@ const initialWidgetState: WidgetState = {
 export function createWidgetStore(initialState?: Partial<WidgetState>) {
   return create<WidgetStore>()(
     devtools(
-      (set, _get) => ({
-    ...initialWidgetState,
-    ...initialState,
-
-    // Client-side UI state (NOT from server)
-    setNixInstalled: (nixInstalled) => set({ nixInstalled }),
-    setDarwinRebuildAvailable: (darwinRebuildAvailable) => set({ darwinRebuildAvailable }),
-    setDarwinRebuildPrefetching: (darwinRebuildPrefetching) => set({ darwinRebuildPrefetching }),
-
-    // Evolve events
-    appendEvolveEvent: (event) =>
-      set((state) => ({ evolveEvents: [...state.evolveEvents, event] })),
-    clearEvolveEvents: () => set({ evolveEvents: [] }),
-    setEvolutionTelemetry: (evolutionTelemetry) => set({ evolutionTelemetry }),
-
-    // Conversational response
-    setConversationalResponse: (conversationalResponse) => set({ conversationalResponse }),
-
-    // Rebuild state
-    startRebuild: (context) =>
-      set({
-        rebuild: {
-          isRunning: true,
-          context,
-          lines: [{ id: 0, text: "Preparing rebuild...", type: "info" }],
-          rawLines: [],
-          exitCode: undefined,
-          success: undefined,
-          errorType: undefined,
-          errorMessage: undefined,
-          systemUntouched: undefined,
-        },
-      }),
-    appendRebuildLine: (line) =>
-      set((state) => ({
-        rebuild: {
-          ...state.rebuild,
-          lines: [...state.rebuild.lines, line].slice(-50), // Keep last 50 lines
-        },
-      })),
-    appendRawLine: (line) =>
-      set((state) => ({
-        rebuild: {
-          ...state.rebuild,
-          rawLines: [...state.rebuild.rawLines, line].slice(-500), // Keep last 500 raw lines
-        },
-      })),
-    setRebuildError: (errorType, errorMessage, systemUntouched) =>
-      set((state) => ({
-        rebuild: {
-          ...state.rebuild,
-          errorType,
-          errorMessage,
-          systemUntouched,
-        },
-      })),
-    setRebuildComplete: (success, exitCode) =>
-      set((state) => ({
-        rebuild: {
-          ...state.rebuild,
-          isRunning: false,
-          success,
-          exitCode,
-        },
-      })),
-    clearRebuild: () => set({ rebuild: initialRebuildState }),
+      () => ({
+        ...initialState,
       }),
       {
         name: "widget-store",
@@ -164,3 +52,44 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
  * Use createWidgetStore() for isolated testing instances.
  */
 export const useWidgetStore = createWidgetStore();
+
+// =============================================================================
+// Derived routing hook
+// =============================================================================
+
+/**
+ * Hook to get the current widget step.
+ *
+ * Pure selectors over the two stores: backend-mirrored state (config,
+ * permissions, evolve, nix install) comes from the ViewModel, transient UI
+ * flags from UiState. Lives here (rather than `widget-store.ts`) so the
+ * Storybook manual mock can re-export the real implementation.
+ */
+export function useCurrentStep(): WidgetStep {
+  const evolveState = useViewModel((state) => state.evolve);
+  const configDir = useViewModel((state) => state.preferences?.configDir ?? "");
+  const host = useViewModel((state) => state.preferences?.hostAttr ?? "");
+  const hosts = useViewModel((state) => state.hosts);
+  const permissionsState = useViewModel((state) => state.permissions);
+  const permissionsChecked = useViewModel((state) => state.permissionsHydrated);
+  const nixInstalled = useViewModel((state) => state.nixInstall?.installed ?? null);
+  const darwinRebuildAvailable = useViewModel(
+    (state) => state.nixInstall?.darwinRebuildAvailable ?? null,
+  );
+  const showHistory = useUiState((state) => state.showHistory);
+  const showFilesystem = useUiState((state) => state.showFilesystem);
+  const isBootstrapping = useUiState((state) => state.isBootstrapping);
+  return computeCurrentStep({
+    nixInstalled,
+    darwinRebuildAvailable,
+    configDir,
+    host,
+    hosts,
+    permissionsState,
+    permissionsChecked,
+    evolveState,
+    showHistory,
+    showFilesystem,
+    isBootstrapping,
+  });
+}

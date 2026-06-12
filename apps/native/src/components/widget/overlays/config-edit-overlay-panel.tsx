@@ -1,7 +1,7 @@
 "use client";
 
 import { useUiState } from "@/stores/ui-state";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 import { Loader2 } from "lucide-react";
 
 /**
@@ -12,7 +12,7 @@ import { Loader2 } from "lucide-react";
 export function ConfigEditOverlayPanel() {
   const isProcessing = useUiState((s) => s.isProcessing);
   const processingAction = useUiState((s) => s.processingAction);
-  const rebuildRunning = useWidgetStore((s) => s.rebuild.isRunning);
+  const rebuildRunning = useViewModel((s) => s.rebuildStatus?.isRunning ?? false);
 
   if (!(isProcessing && processingAction === "apply") || rebuildRunning) {
     return null;

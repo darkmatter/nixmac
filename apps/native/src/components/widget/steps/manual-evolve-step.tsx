@@ -39,7 +39,7 @@ export function ManualEvolveStep() {
   const isApplyBusy = useUiState(
     (s) => s.isProcessing && s.processingAction === "apply",
   );
-  const rebuildRunning = useViewModel((s) => s.rebuild.isRunning);
+  const rebuildRunning = useViewModel((s) => s.rebuildStatus?.isRunning ?? false);
   const [buildStatus, setBuildStatus] = useState<BuildCheckStatus>("checking");
 
   const changeFingerprint = useMemo(

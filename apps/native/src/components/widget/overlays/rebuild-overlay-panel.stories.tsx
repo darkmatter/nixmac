@@ -1,30 +1,36 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import React, { useEffect } from "react";
 import { RebuildOverlayPanel } from "@/components/widget/overlays/rebuild-overlay-panel";
-import { useWidgetStore } from "@/stores/widget-store";
-import type { RebuildLine, RebuildState } from "@/types/rebuild";
+import type { RebuildStatus } from "@/ipc/types";
+import { useUiState } from "@/stores/ui-state";
+import { useViewModel } from "@/stores/view-model";
+import type { RebuildContext, RebuildLine } from "@/types/rebuild";
+import { makeRebuildStatus } from "@/utils/test-fixtures";
+
+type RebuildScenario = Partial<RebuildStatus> & {
+  context?: RebuildContext;
+  lines?: RebuildLine[];
+  rawLines?: string[];
+};
 
 /**
- * Decorator that sets the widget store's rebuild state before rendering.
+ * Decorator that seeds the ViewModel rebuild slices (and the UiState rebuild
+ * context) before rendering.
  */
-const withRebuildState = (rebuildState: Partial<RebuildState>) => {
-  const defaults: RebuildState = {
-    isRunning: false,
-    context: "apply",
-    lines: [],
-    rawLines: [],
-    exitCode: undefined,
-    success: undefined,
-    errorType: undefined,
-    errorMessage: undefined,
-    systemUntouched: undefined,
-  };
-
+const withRebuildState = ({ context = "apply", lines = [], rawLines = [], ...status }: RebuildScenario) => {
   return (Story: () => React.ReactNode) => {
     useEffect(() => {
-      useWidgetStore.setState({ rebuild: { ...defaults, ...rebuildState } });
+      useViewModel.setState({
+        rebuildStatus: makeRebuildStatus(status),
+        rebuildLog: { lines, rawLines },
+      });
+      useUiState.setState({ rebuildContext: context, rebuildPanelDismissed: false });
       return () => {
-        useWidgetStore.setState({ rebuild: defaults });
+        useViewModel.setState({
+          rebuildStatus: null,
+          rebuildLog: { lines: [], rawLines: [] },
+        });
+        useUiState.setState({ rebuildContext: "apply", rebuildPanelDismissed: false });
       };
     }, []);
 

@@ -1,4 +1,9 @@
-import type { GlobalPreferences, PermissionsState } from "@/ipc/types";
+import type {
+  GlobalPreferences,
+  NixInstallState,
+  PermissionsState,
+  RebuildStatus,
+} from "@/ipc/types";
 
 /**
  * Full `GlobalPreferences` value for tests and stories. Matches the backend
@@ -38,5 +43,33 @@ export function makeGrantedPermissions(): PermissionsState {
     permissions: [],
     allRequiredGranted: true,
     checkedAt: Date.now(),
+  };
+}
+
+/** Fully installed nix/darwin-rebuild snapshot for tests and stories. */
+export function makeNixInstallState(
+  overrides: Partial<NixInstallState> = {},
+): NixInstallState {
+  return {
+    installed: true,
+    darwinRebuildAvailable: true,
+    installing: false,
+    installPhase: null,
+    prefetching: false,
+    lastError: null,
+    ...overrides,
+  };
+}
+
+/** Idle rebuild status for tests and stories; override per scenario. */
+export function makeRebuildStatus(overrides: Partial<RebuildStatus> = {}): RebuildStatus {
+  return {
+    isRunning: false,
+    success: null,
+    exitCode: null,
+    errorType: null,
+    errorMessage: null,
+    systemUntouched: null,
+    ...overrides,
   };
 }

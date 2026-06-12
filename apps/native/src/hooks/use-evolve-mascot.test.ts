@@ -2,10 +2,11 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useUiState } from "@/stores/ui-state";
 import { useViewModel } from "@/stores/view-model";
-import { useWidgetStore } from "@/stores/widget-store";
-import { initialRebuildState } from "@/types/rebuild";
 import { useEvolveMascot } from "./use-evolve-mascot";
-import { makeGlobalPreferences as makePrefs } from "@/utils/test-fixtures";
+import {
+  makeGlobalPreferences as makePrefs,
+  makeRebuildStatus,
+} from "@/utils/test-fixtures";
 
 
 function setSpinningMascot(enabled: boolean) {
@@ -32,9 +33,7 @@ describe("useEvolveMascot", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setSpinningMascot(false);
-    useWidgetStore.setState({
-      rebuild: initialRebuildState,
-    });
+    useViewModel.setState({ rebuildStatus: null });
     useUiState.setState({ isGenerating: false });
   });
 
@@ -63,7 +62,7 @@ describe("useEvolveMascot", () => {
 
     act(() => {
       setSpinningMascot(true);
-      useWidgetStore.getState().startRebuild("apply");
+      useViewModel.setState({ rebuildStatus: makeRebuildStatus({ isRunning: true }) });
     });
 
     await waitFor(() => expect(mocks.show).toHaveBeenCalledTimes(1));

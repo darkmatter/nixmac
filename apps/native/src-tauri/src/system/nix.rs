@@ -402,6 +402,12 @@ pub fn install_nix_stream(app: &AppHandle) -> Result<()> {
     std::thread::spawn(move || {
         if let Err(e) = run_nix_install(&app_handle) {
             error!("[nix] install failed: {}", e);
+            crate::state::nix_install_state::record_install_end(
+                &app_handle,
+                false,
+                None,
+                Some(e.to_string()),
+            );
             let _ = app_handle.emit(
                 "nix:install:end",
                 serde_json::json!({

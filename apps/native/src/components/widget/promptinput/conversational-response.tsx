@@ -1,12 +1,12 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
 import { Bot, X } from "lucide-react";
 
 export function ConversationalResponse() {
-  const response = useWidgetStore((s) => s.conversationalResponse);
-  const setConversationalResponse = useWidgetStore((s) => s.setConversationalResponse);
+  const response = useUiState((s) => s.conversationalResponse);
+  const setConversationalResponse = useUiState((s) => s.setConversationalResponse);
 
   if (!response) return null;
 

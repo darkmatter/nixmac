@@ -3,7 +3,6 @@ import preview from "#storybook/preview";
 import type { EvolveEvent, GitStatus } from "@/ipc/types";
 import { useUiState } from "@/stores/ui-state";
 import { useViewModel } from "@/stores/view-model";
-import { useWidgetStore } from "@/stores/widget-store";
 import { makeGlobalPreferences } from "@/utils/test-fixtures";
 import type { SemanticChangeMap } from "@/ipc/types";
 import type React from "react";
@@ -219,7 +218,6 @@ interface StoreState {
  */
 function StoryWidget({ storeState }: { storeState?: StoreState }) {
   useEffect(() => {
-    const store = useWidgetStore.getState();
     const ui = useUiState.getState();
 
     // Set store state (config now lives in the ViewModel preferences slice)
@@ -247,10 +245,7 @@ function StoryWidget({ storeState }: { storeState?: StoreState }) {
     if (storeState?.error !== undefined) ui.setError(storeState.error);
 
     if (storeState?.evolveEvents !== undefined) {
-      store.clearEvolveEvents();
-      for (const event of storeState.evolveEvents) {
-        store.appendEvolveEvent(event);
-      }
+      useViewModel.setState({ evolveEvents: [...storeState.evolveEvents] });
     }
 
     if (storeState?.consoleLogs !== undefined) {

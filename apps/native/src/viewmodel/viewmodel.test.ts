@@ -1,21 +1,31 @@
 import type {
+  EvolveEvent,
   EvolveState,
   GitState,
   GitStatus,
   GlobalPreferences,
+  NixInstallState,
   PermissionsState,
+  RebuildStatus,
   SemanticChangeMap,
 } from "@/ipc/types";
 import { useUiState, initialUiState } from "@/stores/ui-state";
 import { useViewModel } from "@/stores/view-model";
-import { makeGlobalPreferences } from "@/utils/test-fixtures";
+import {
+  makeGlobalPreferences,
+  makeNixInstallState,
+  makeRebuildStatus,
+} from "@/utils/test-fixtures";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { startChangeMapSync } from "./change-map";
+import { startEvolutionSync } from "./evolution";
 import { startEvolveSync } from "./evolve";
 import { startGitSync } from "./git";
+import { startNixInstallSync } from "./nix-install";
 import { startPermissionsSync } from "./permissions";
 import { startPreferencesSync } from "./preferences";
 import { startPromptHistorySync } from "./prompt-history";
+import { startRebuildSync } from "./rebuild";
 
 const apiMocks = vi.hoisted(() => ({
   listeners: new Map<string, (event: { payload: unknown }) => void>(),
@@ -28,6 +38,9 @@ const apiMocks = vi.hoisted(() => ({
   promptHistory: [] as string[],
   hosts: [] as string[],
   listHosts: vi.fn(),
+  nixInstallState: null as NixInstallState | null,
+  rebuildStatus: null as RebuildStatus | null,
+  refreshPermissions: vi.fn<() => Promise<null>>(),
 }));
 
 vi.mock("@/ipc/api", () => ({
@@ -36,6 +49,14 @@ vi.mock("@/ipc/api", () => ({
       evolve: vi.fn(),
       evolveAnswer: vi.fn(),
       evolveCancel: vi.fn(),
+      rebuildStatus: vi.fn<() => Promise<RebuildStatus | null>>(() =>
+        Promise.resolve(apiMocks.rebuildStatus),
+      ),
+    },
+    nix: {
+      installState: vi.fn<() => Promise<NixInstallState | null>>(() =>
+        Promise.resolve(apiMocks.nixInstallState),
+      ),
     },
     evolveState: {
       get: vi.fn(() => Promise.resolve(apiMocks.evolveState)),
@@ -54,6 +75,7 @@ vi.mock("@/ipc/api", () => ({
     },
     permissions: {
       get: vi.fn(() => Promise.resolve(apiMocks.permissions)),
+      refresh: () => apiMocks.refreshPermissions(),
     },
     promptHistory: {
       get: vi.fn(() => Promise.resolve(apiMocks.promptHistory)),
@@ -86,6 +108,13 @@ describe("view model sync", () => {
     apiMocks.permissions = null;
     apiMocks.promptHistory = [];
     apiMocks.hosts = [];
+    apiMocks.nixInstallState = makeNixInstallState({
+      installed: null,
+      darwinRebuildAvailable: null,
+    });
+    apiMocks.rebuildStatus = makeRebuildStatus();
+    apiMocks.refreshPermissions.mockReset();
+    apiMocks.refreshPermissions.mockResolvedValue(null);
 
     useViewModel.setState({
       evolve: null,
@@ -97,6 +126,11 @@ describe("view model sync", () => {
       permissions: null,
       permissionsHydrated: false,
       promptHistory: [],
+      nixInstall: null,
+      nixDownloadProgress: null,
+      rebuildStatus: null,
+      rebuildLog: { lines: [], rawLines: [] },
+      evolveEvents: [],
     });
     useUiState.setState({ ...initialUiState });
   });
@@ -230,6 +264,142 @@ describe("view model sync", () => {
     apiMocks.listeners.get("permissions_changed")?.({ payload: next });
 
     expect(useViewModel.getState().permissions).toBe(next);
+
+    stop();
+    expect(apiMocks.unlisten).toHaveBeenCalledTimes(1);
+  });
+
+  it("hydrates and mirrors the nix-install slice, folding download progress", async () => {
+    const stop = await startNixInstallSync();
+
+    expect(useViewModel.getState().nixInstall).toBe(apiMocks.nixInstallState);
+
+    const installing = makeNixInstallState({
+      installed: false,
+      installing: true,
+      installPhase: "downloading",
+    });
+    apiMocks.listeners.get("nix_install_state_changed")?.({ payload: installing });
+    expect(useViewModel.getState().nixInstall).toBe(installing);
+
+    // Progress events with both fields fold into nixDownloadProgress.
+    apiMocks.listeners.get("nix:install:progress")?.({
+      payload: { phase: "downloading", downloaded: 10, total: 100 },
+    });
+    expect(useViewModel.getState().nixDownloadProgress).toEqual({ downloaded: 10, total: 100 });
+
+    // Events missing a field are ignored.
+    apiMocks.listeners.get("nix:install:progress")?.({
+      payload: { phase: "waiting-for-installer", downloaded: null, total: null },
+    });
+    expect(useViewModel.getState().nixDownloadProgress).toEqual({ downloaded: 10, total: 100 });
+
+    // Install finishing clears the progress; a recorded error surfaces in UI state.
+    const failed = makeNixInstallState({
+      installed: false,
+      installing: false,
+      lastError: "boom",
+    });
+    apiMocks.listeners.get("nix_install_state_changed")?.({ payload: failed });
+    expect(useViewModel.getState().nixDownloadProgress).toBeNull();
+    expect(useUiState.getState().error).toBe("boom");
+
+    stop();
+    expect(apiMocks.unlisten).toHaveBeenCalledTimes(2);
+  });
+
+  it("hydrates and mirrors the rebuild slice, resetting the log on new runs", async () => {
+    const stop = await startRebuildSync();
+
+    expect(useViewModel.getState().rebuildStatus).toBe(apiMocks.rebuildStatus);
+
+    // A new run resets the fold and seeds the preparing line.
+    useViewModel.setState({
+      rebuildLog: { lines: [{ id: 7, text: "stale", type: "info" }], rawLines: ["stale"] },
+    });
+    useUiState.getState().setRebuildPanelDismissed(true);
+    const running = makeRebuildStatus({ isRunning: true });
+    apiMocks.listeners.get("rebuild_status_changed")?.({ payload: running });
+
+    expect(useViewModel.getState().rebuildStatus).toBe(running);
+    expect(useViewModel.getState().rebuildLog.lines).toEqual([
+      { id: 0, text: "Preparing rebuild...", type: "info" },
+    ]);
+    expect(useViewModel.getState().rebuildLog.rawLines).toEqual([]);
+    expect(useUiState.getState().rebuildPanelDismissed).toBe(false);
+
+    // Output streams fold into the log.
+    apiMocks.listeners.get("darwin:apply:data")?.({ payload: { chunk: "raw a\nraw b\n" } });
+    expect(useViewModel.getState().rebuildLog.rawLines).toEqual(["raw a", "raw b"]);
+
+    apiMocks.listeners.get("darwin:apply:summary")?.({ payload: { text: "Building..." } });
+    apiMocks.listeners.get("darwin:apply:summary")?.({
+      payload: { text: "It broke", error: true, error_type: "build_error" },
+    });
+    expect(useViewModel.getState().rebuildLog.lines).toEqual([
+      { id: 0, text: "Preparing rebuild...", type: "info" },
+      { id: 1, text: "Building...", type: "info" },
+      { id: 2, text: "It broke", type: "stderr" },
+    ]);
+
+    // Run ending releases the processing flag.
+    useUiState.getState().setProcessing(true, "apply");
+    const done = makeRebuildStatus({ success: true, exitCode: 0 });
+    apiMocks.listeners.get("rebuild_status_changed")?.({ payload: done });
+    expect(useViewModel.getState().rebuildStatus).toBe(done);
+    expect(useUiState.getState().isProcessing).toBe(false);
+    expect(apiMocks.refreshPermissions).not.toHaveBeenCalled();
+
+    stop();
+    expect(apiMocks.unlisten).toHaveBeenCalledTimes(3);
+  });
+
+  it("re-probes permissions when a rebuild fails with full_disk_access", async () => {
+    const stop = await startRebuildSync();
+
+    apiMocks.listeners.get("rebuild_status_changed")?.({
+      payload: makeRebuildStatus({ isRunning: true }),
+    });
+    apiMocks.listeners.get("rebuild_status_changed")?.({
+      payload: makeRebuildStatus({
+        success: false,
+        errorType: "full_disk_access",
+        errorMessage: "needs FDA",
+      }),
+    });
+
+    expect(apiMocks.refreshPermissions).toHaveBeenCalledTimes(1);
+
+    stop();
+  });
+
+  it("folds the evolve event stream, resetting on start events", async () => {
+    const stop = await startEvolutionSync();
+
+    const start: EvolveEvent = {
+      raw: "Starting evolution...",
+      summary: "Starting evolution",
+      eventType: "start",
+      iteration: null,
+      timestampMs: 0,
+    };
+    const thinking: EvolveEvent = {
+      raw: "",
+      summary: "Thinking",
+      eventType: "thinking",
+      iteration: 1,
+      timestampMs: 100,
+    };
+
+    useViewModel.setState({ evolveEvents: [thinking] });
+    apiMocks.listeners.get("darwin:evolve:event")?.({ payload: start });
+    expect(useViewModel.getState().evolveEvents).toEqual([start]);
+
+    apiMocks.listeners.get("darwin:evolve:event")?.({ payload: thinking });
+    expect(useViewModel.getState().evolveEvents).toEqual([start, thinking]);
+
+    // Raw payloads append to the console log; empty ones do not.
+    expect(useUiState.getState().consoleLogs).toBe("Starting evolution...\n");
 
     stop();
     expect(apiMocks.unlisten).toHaveBeenCalledTimes(1);

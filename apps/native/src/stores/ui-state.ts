@@ -8,8 +8,9 @@
 // The split prevents Rust-driven state updates from clobbering local UI
 // concerns (e.g. closing a settings panel just because git status changed).
 
-import type { FileDiffContents, RecommendedPrompt } from "@/ipc/types";
+import type { EvolutionTelemetry, FileDiffContents, RecommendedPrompt } from "@/ipc/types";
 import { FeedbackType } from "@/types/feedback";
+import type { RebuildContext } from "@/types/rebuild";
 import { create } from "zustand";
 
 export type SettingsTab = "general" | "account" | "api-keys" | "ai-models" | "preferences" | "tuning" | "developer";
@@ -43,6 +44,14 @@ export type UiStateValues = {
   consoleLogs: string;
   analyzingHistoryForHashes: Set<string>;
   isBootstrapping: boolean;
+  /** What kind of rebuild the overlay panel is reporting on. */
+  rebuildContext: RebuildContext;
+  /** True once the user (or a successful run) dismissed the rebuild panel. */
+  rebuildPanelDismissed: boolean;
+  /** Command result: assistant reply when an evolve turned out conversational. */
+  conversationalResponse: string | null;
+  /** Command result: telemetry of the last evolve run. */
+  evolutionTelemetry: EvolutionTelemetry | null;
   commitMessageSuggestion: string | null;
   /** On-demand query result: per-file diff contents prefetched for the diff view. */
   fileDiffContents: Record<string, FileDiffContents>;
@@ -72,6 +81,10 @@ type UiStateActions = {
   addAnalyzingHistoryHash: (hash: string) => void;
   removeAnalyzingHistoryHash: (hash: string) => void;
   setBootstrapping: (isBootstrapping: boolean) => void;
+  setRebuildContext: (context: RebuildContext) => void;
+  setRebuildPanelDismissed: (dismissed: boolean) => void;
+  setConversationalResponse: (response: string | null) => void;
+  setEvolutionTelemetry: (telemetry: EvolutionTelemetry | null) => void;
   setCommitMessageSuggestion: (msg: string | null) => void;
   setFileDiffContents: (contents: Record<string, FileDiffContents>) => void;
   setRecommendedPrompt: (prompt: RecommendedPrompt | null | undefined) => void;
@@ -99,6 +112,10 @@ export const initialUiState: UiStateValues = {
   consoleLogs: "",
   analyzingHistoryForHashes: new Set<string>(),
   isBootstrapping: false,
+  rebuildContext: "apply",
+  rebuildPanelDismissed: false,
+  conversationalResponse: null,
+  evolutionTelemetry: null,
   commitMessageSuggestion: null,
   fileDiffContents: {},
   recommendedPrompt: undefined,
@@ -146,6 +163,10 @@ export const useUiState = create<UiState>()((set) => ({
       return { analyzingHistoryForHashes: next };
     }),
   setBootstrapping: (isBootstrapping) => set({ isBootstrapping }),
+  setRebuildContext: (rebuildContext) => set({ rebuildContext }),
+  setRebuildPanelDismissed: (rebuildPanelDismissed) => set({ rebuildPanelDismissed }),
+  setConversationalResponse: (conversationalResponse) => set({ conversationalResponse }),
+  setEvolutionTelemetry: (evolutionTelemetry) => set({ evolutionTelemetry }),
   setCommitMessageSuggestion: (commitMessageSuggestion) => set({ commitMessageSuggestion }),
   setFileDiffContents: (fileDiffContents) => set({ fileDiffContents }),
   setRecommendedPrompt: (recommendedPrompt) => set({ recommendedPrompt }),

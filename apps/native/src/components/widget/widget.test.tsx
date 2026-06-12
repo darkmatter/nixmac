@@ -1,6 +1,5 @@
 import { initialUiState, useUiState } from "@/stores/ui-state";
 import { useViewModel } from "@/stores/view-model";
-import { useWidgetStore } from "@/stores/widget-store";
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DarwinWidget } from "./widget";
@@ -71,9 +70,9 @@ describe("DarwinWidget", () => {
         hostAttr: "Test-MacBook",
       }),
       hosts: ["Test-MacBook"],
+      evolveEvents: [],
     });
     useUiState.setState({ ...initialUiState });
-    useWidgetStore.getState().clearEvolveEvents();
   });
 
   it("renders without crashing", () => {

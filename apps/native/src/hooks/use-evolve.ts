@@ -1,9 +1,6 @@
 import { EVOLUTION_CANCELLED_MSG } from "@/lib/constants";
 import { useUiState } from "@/stores/ui-state";
-import { useWidgetStore } from "@/stores/widget-store";
-import { EVOLVE_EVENT_CHANNEL } from "@/lib/constants";
-import { tauriAPI, ipcRenderer } from "@/ipc/api";
-import type { EvolveEvent } from "@/ipc/types";
+import { tauriAPI } from "@/ipc/api";
 import { formatDurationMs } from "@/lib/utils";
 import { useViewModel } from "@/stores/view-model";
 import { mirrorChangeMapState } from "@/viewmodel/change-map";
@@ -51,7 +48,6 @@ const findChangeMap = async (): Promise<void> => {
 
 const handleEvolve = async () => {
   // Get fresh state each time
-  const store = useWidgetStore.getState();
   const ui = useUiState.getState();
   if (!ui.evolvePrompt.trim()) {
     return;
@@ -63,23 +59,15 @@ const handleEvolve = async () => {
   ui.setGenerating(true);
   ui.setError(null);
   mirrorGitState(useViewModel.getState().git, false);
-  store.clearEvolveEvents();
   ui.clearLogs();
-  store.setConversationalResponse(null);
-  store.setEvolutionTelemetry(null);
+  ui.setConversationalResponse(null);
+  ui.setEvolutionTelemetry(null);
   ui.appendLog(`\n> Evolving: "${ui.evolvePrompt}"\n`);
 
-  // Track evolution start
+  // Track evolution start. The evolve event stream itself is folded into
+  // the ViewModel by `viewmodel/evolution.ts` (and reset on the run's
+  // `start` event), so no listener is needed here.
   getTelemetry().captureEvent({ name: "evolve_started" });
-  // Set up evolve event listener
-  const unlistenEvolve = await ipcRenderer.on<EvolveEvent>(EVOLVE_EVENT_CHANNEL, (event) => {
-    if (event.payload) {
-      useWidgetStore.getState().appendEvolveEvent(event.payload);
-      if (event.payload.raw) {
-        useUiState.getState().appendLog(`${event.payload.raw}\n`);
-      }
-    }
-  });
 
   try {
     // Run the unified evolution workflow
@@ -102,11 +90,11 @@ const handleEvolve = async () => {
       toast.success(completionMsg);
     }
     if (telemetry) {
-      useWidgetStore.getState().setEvolutionTelemetry(telemetry);
+      useUiState.getState().setEvolutionTelemetry(telemetry);
     }
 
     if (isConversational) {
-      useWidgetStore.getState().setConversationalResponse(result.conversationalResponse ?? null);
+      useUiState.getState().setConversationalResponse(result.conversationalResponse ?? null);
     }
     if (result?.gitStatus) {
       mirrorGitState(result.gitStatus);
@@ -151,7 +139,6 @@ const handleEvolve = async () => {
   } finally {
     useUiState.getState().setGenerating(false);
     useUiState.getState().setProcessing(false, "evolve");
-    unlistenEvolve();
   }
 };
 

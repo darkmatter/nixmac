@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { tauriAPI } from "@/ipc/api";
 import { useUiState } from "@/stores/ui-state";
 import { useViewModel } from "@/stores/view-model";
-import { useWidgetStore } from "@/stores/widget-store";
 
 /**
  * Experimental: drives the spinning-mascot corner-indicator window.
@@ -17,7 +16,7 @@ import { useWidgetStore } from "@/stores/widget-store";
 export function useEvolveMascot() {
   const enabled = useViewModel((s) => s.preferences?.experimentalSpinningMascot ?? false);
   const isGenerating = useUiState((s) => s.isGenerating);
-  const rebuildRunning = useWidgetStore((s) => s.rebuild.isRunning);
+  const rebuildRunning = useViewModel((s) => s.rebuildStatus?.isRunning ?? false);
 
   const shouldShow = enabled && (isGenerating || rebuildRunning);
 

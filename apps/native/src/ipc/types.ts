@@ -1264,6 +1264,36 @@ downloaded: number | null;
 total: number | null }
 
 /**
+ * Status of the nix / darwin-rebuild installation flow.
+ */
+export type NixInstallState = { 
+/**
+ * Whether nix is installed; `None` until first checked.
+ */
+installed: boolean | null; 
+/**
+ * Whether darwin-rebuild is available; `None` until first checked.
+ */
+darwinRebuildAvailable: boolean | null; 
+/**
+ * True while an install run is in flight.
+ */
+installing: boolean; 
+/**
+ * Current installer phase ("downloading", "waiting-for-installer",
+ * "prefetching"); `None` when idle.
+ */
+installPhase: string | null; 
+/**
+ * True while the standalone darwin-rebuild prefetch is in flight.
+ */
+prefetching: boolean; 
+/**
+ * Error from the last finished run, if it failed.
+ */
+lastError: string | null }
+
+/**
  * Generic acknowledgement returned by fire-and-forget commands.
  */
 export type OkResult = { 
@@ -1404,6 +1434,35 @@ export type RebuildErrorType =
  * Fallback for uncategorized failures.
  */
 "generic_error"
+
+/**
+ * Lifecycle status of the darwin-rebuild apply/activate streams.
+ */
+export type RebuildStatus = { 
+/**
+ * True while a rebuild stream is in flight.
+ */
+isRunning: boolean; 
+/**
+ * Outcome of the last finished run; `None` while running or never run.
+ */
+success: boolean | null; 
+/**
+ * Exit code of the last finished run.
+ */
+exitCode: number | null; 
+/**
+ * Error class of the last failed run.
+ */
+errorType: string | null; 
+/**
+ * Error message of the last failed run.
+ */
+errorMessage: string | null; 
+/**
+ * Whether the failure left the system untouched.
+ */
+systemUntouched: boolean | null }
 
 /**
  * A recommended prompt based on the user's current macOS settings.

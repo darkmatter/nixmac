@@ -11,11 +11,14 @@
 // function tears down all listeners on unmount.
 
 import { startChangeMapSync } from "./change-map";
+import { startEvolutionSync } from "./evolution";
 import { startEvolveSync } from "./evolve";
 import { startGitSync } from "./git";
+import { startNixInstallSync } from "./nix-install";
 import { startPermissionsSync } from "./permissions";
 import { startPreferencesSync } from "./preferences";
 import { startPromptHistorySync } from "./prompt-history";
+import { startRebuildSync } from "./rebuild";
 
 export async function startViewModelSync(): Promise<() => void> {
   const unlisteners: Array<() => void> = [];
@@ -27,6 +30,9 @@ export async function startViewModelSync(): Promise<() => void> {
     unlisteners.push(await startPreferencesSync());
     unlisteners.push(await startPermissionsSync());
     unlisteners.push(await startPromptHistorySync());
+    unlisteners.push(await startNixInstallSync());
+    unlisteners.push(await startRebuildSync());
+    unlisteners.push(await startEvolutionSync());
 
     return () => {
       for (const unlisten of unlisteners) {

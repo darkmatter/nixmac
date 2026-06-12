@@ -1,13 +1,8 @@
 import { useUiState } from "@/stores/ui-state";
-import { useWidgetStore } from "@/stores/widget-store";
 import type { RebuildContext } from "@/types/rebuild";
 import { tauriAPI, ipcRenderer } from "@/ipc/api";
-import type {
-  DarwinApplyDataEvent,
-  DarwinApplyEndEvent,
-  DarwinApplySummaryEvent,
-} from "@/ipc/types";
-import { useRef } from "react";
+import type { DarwinApplyEndEvent } from "@/ipc/types";
+import { setRebuildRawLineEcho } from "@/viewmodel/rebuild";
 import { useGitOperations } from "./use-git-operations";
 
 interface RebuildOptions {
@@ -21,86 +16,36 @@ interface RebuildOptions {
 /**
  * Shared hook for triggering darwin-rebuild with streaming overlay.
  * Used by both useApply and useRollback to show rebuild progress.
+ *
+ * Only per-invocation orchestration lives here (context, success/failure
+ * callbacks). Output folding and status mirroring are owned by
+ * `viewmodel/rebuild.ts`, which also releases the processing flag and
+ * re-probes permissions on Full Disk Access failures when the run ends.
  */
 export function useRebuildStream() {
   const { refreshGitStatus } = useGitOperations();
-  const rebuildLineIdRef = useRef(1);
 
   const triggerRebuild = async (options: RebuildOptions) => {
-      const store = useWidgetStore.getState();
-      store.startRebuild(options.context);
-      rebuildLineIdRef.current = 1;
+    useUiState.getState().setRebuildContext(options.context);
+    // Store-path activation has no log summarizer; let the rebuild slice
+    // echo raw output into the summary lines.
+    setRebuildRawLineEcho(options.storePath != null);
 
-      // For store-path activation (no log summarizer), also populate summary lines.
-      const unlistenData = await ipcRenderer.on<DarwinApplyDataEvent>("darwin:apply:data", (event) => {
-        const { chunk } = event.payload;
-        const newLines = chunk.split("\n").filter((line) => line.trim() !== "");
-        const currentStore = useWidgetStore.getState();
-        for (const line of newLines) {
-          currentStore.appendRawLine(line);
-          if (options.storePath) {
-            currentStore.appendRebuildLine({ id: rebuildLineIdRef.current++, text: line, type: "info" });
-          }
-        }
-      });
-
-      // Listen to AI-summarized log events
-      const unlistenSummary = await ipcRenderer.on<DarwinApplySummaryEvent>("darwin:apply:summary", (event) => {
-        const { text, complete, success, error, error_type } = event.payload;
-        const currentStore = useWidgetStore.getState();
-
-        if (complete) {
-          currentStore.appendRebuildLine({
-            id: rebuildLineIdRef.current++,
-            text,
-            type: success ? "info" : "stderr",
-          });
-          currentStore.setRebuildComplete(success ?? false);
-        } else if (error) {
-          currentStore.setRebuildError(error_type ?? "generic_error", text);
-          currentStore.appendRebuildLine({
-            id: rebuildLineIdRef.current++,
-            text,
-            type: "stderr",
-          });
-        } else {
-          currentStore.appendRebuildLine({
-            id: rebuildLineIdRef.current++,
-            text,
-            type: "info",
-          });
-        }
-      });
-
-      // Listen for rebuild end event
-      const unlistenEnd = await ipcRenderer.on<DarwinApplyEndEvent>("darwin:apply:end", async (event) => {
-        const currentStore = useWidgetStore.getState();
-        currentStore.setRebuildComplete(event.payload.ok, event.payload.code);
-
-        if (!event.payload.ok) {
-          const errorType = event.payload.error_type ?? "generic_error";
-          const errorMessage = event.payload.error ?? "Rebuild failed";
-          currentStore.setRebuildError(errorType, errorMessage, event.payload.system_untouched ?? undefined);
-        }
-
-        unlistenData();
-        unlistenSummary();
+    const unlistenEnd = await ipcRenderer.on<DarwinApplyEndEvent>(
+      "darwin:apply:end",
+      async (event) => {
         unlistenEnd();
 
-        // Handle Full Disk Access error: re-probe permissions; the backend
-        // writes the cell and `permissions_changed` mirrors it into the
-        // ViewModel, routing the UI to the permissions step.
+        // Full Disk Access error: the rebuild slice re-probes permissions;
+        // dismiss the panel so the UI can route to the permissions step.
         if (event.payload.error_type === "full_disk_access") {
-          void tauriAPI.permissions.refresh();
-          currentStore.clearRebuild();
+          useUiState.getState().setRebuildPanelDismissed(true);
           await refreshGitStatus({ cache: true });
-          useUiState.getState().setProcessing(false);
           return;
         }
 
-        // Handle success
         if (event.payload.ok) {
-          if (options?.onSuccess) {
+          if (options.onSuccess) {
             try {
               await options.onSuccess();
             } catch (e: unknown) {
@@ -109,33 +54,29 @@ export function useRebuildStream() {
             }
           }
           // Auto-dismiss rebuild panel after success (even if onSuccess failed)
-          useWidgetStore.getState().clearRebuild();
-          useUiState.getState().setProcessing(false);
+          useUiState.getState().setRebuildPanelDismissed(true);
         } else {
-          if (options?.onFailure) {
+          if (options.onFailure) {
             await options.onFailure();
           }
           await refreshGitStatus({ cache: true });
-          useUiState.getState().setProcessing(false);
         }
-      });
+      },
+    );
 
-      try {
-        if (options.storePath) {
-          await tauriAPI.darwin.activateStorePath(options.storePath);
-        } else {
-          await tauriAPI.darwin.applyStreamStart();
-        }
-      } catch (e: unknown) {
-        const msg = (e as Error)?.message || String(e);
-        useWidgetStore.getState().setRebuildError("generic_error", msg, true);
-        useWidgetStore.getState().setRebuildComplete(false);
-        useUiState.getState().setProcessing(false);
-        unlistenData();
-        unlistenSummary();
-        unlistenEnd();
+    try {
+      if (options.storePath) {
+        await tauriAPI.darwin.activateStorePath(options.storePath);
+      } else {
+        await tauriAPI.darwin.applyStreamStart();
       }
-    };
+    } catch (e: unknown) {
+      const msg = (e as Error)?.message || String(e);
+      useUiState.getState().setError(msg);
+      useUiState.getState().setProcessing(false);
+      unlistenEnd();
+    }
+  };
 
   return { triggerRebuild };
 }

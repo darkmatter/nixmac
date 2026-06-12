@@ -7,8 +7,9 @@ import { refreshGitStatus } from "@/hooks/use-git-operations";
 import { loadEvolveState } from "@/hooks/use-widget-initialization";
 import { useUiState } from "@/stores/ui-state";
 import { useViewModel } from "@/stores/view-model";
-import { useWidgetStore } from "@/stores/widget-store";
 import { mirrorChangeMapState } from "@/viewmodel/change-map";
+import { clearEvolveEvents } from "@/viewmodel/evolution";
+import { clearRebuildLog } from "@/viewmodel/rebuild";
 
 interface WidgetTestHelpers {
   /**
@@ -61,16 +62,17 @@ export function setupWidgetTestHelpers() {
       return JSON.stringify(useViewModel.getState().changeMap);
     },
     resetForTest: () => {
-      const state = useWidgetStore.getState();
       const ui = useUiState.getState();
       ui.setEvolvePrompt("");
       ui.clearLogs();
-      state.clearEvolveEvents();
-      state.setConversationalResponse(null);
+      clearEvolveEvents();
+      ui.setConversationalResponse(null);
       ui.setCommitMessageSuggestion(null);
       mirrorChangeMapState(null);
       ui.setError(null);
-      state.clearRebuild();
+      clearRebuildLog();
+      ui.setRebuildPanelDismissed(false);
+      ui.setRebuildContext("apply");
     },
     refreshGitStatus: async () => {
       await refreshGitStatus();
