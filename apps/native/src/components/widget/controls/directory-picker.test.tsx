@@ -248,4 +248,20 @@ describe("<DirectoryPicker>", () => {
       await screen.findByText(/flake\.nix not found in this directory/i),
     ).toBeInTheDocument();
   });
+
+  it("does not show the old default-directory hint in setup flow", async () => {
+    mockExists.mockResolvedValue(true);
+    mockFlakeExistsAt.mockResolvedValue(false);
+
+    render(<DirectoryPicker label="Config directory" flow="setup" />);
+
+    act(() => {
+      useWidgetStore.getState().setConfigDir("/Users/me/.darwin");
+    });
+
+    expect(
+      await screen.findByText(/flake\.nix not found in this directory/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/proceed below for defaults/i)).not.toBeInTheDocument();
+  });
 });
