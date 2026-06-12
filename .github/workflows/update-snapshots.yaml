@@ -1,7 +1,7 @@
 name: Update Snapshots
 
 # Regenerates Storybook snapshot baselines and opens a PR when they drift.
-# Runs on a nightly schedule and on manual trigger. The workflow:
+# Run manually via workflow_dispatch. The workflow:
 #   1. Checks out develop
 #   2. Runs `bun run test:update-snapshots` (vitest --update)
 #   3. If any __snapshots__ files changed, opens/updates a PR
@@ -10,10 +10,6 @@ name: Update Snapshots
 # Merging the PR brings baselines back in sync with the component tree.
 
 on:
-  schedule:
-    # 10:00 UTC daily — an hour after the nightly release cron so it
-    # operates on a develop that already includes the latest merge.
-    - cron: "0 10 * * *"
   workflow_dispatch:
 
 concurrency:
