@@ -1,6 +1,13 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
-import { FILES, homebrewFilesFromDiff, replaceHomebrewPlaceholders, type FsFile } from "./data";
+import {
+  FILES,
+  homebrewFilesFromDiff,
+  replaceHomebrewPlaceholders,
+  replaceSystemDefaultsPlaceholder,
+  systemDefaultsFileFromScan,
+  type FsFile,
+} from "./data";
 import {
   seedForFile,
   seedForUntrackedBanner,
@@ -14,7 +21,7 @@ import {
  * prompt bias copy without wiring up the full flow.
  */
 function SeedTable() {
-  const all = Object.values(FILES).flat();
+  const all = Object.values({ ...FILES, manage: storyManageFiles }).flat();
   return (
     <div className="grid gap-2">
       <div className="font-semibold text-[12px]">seedForFile (per managed/candidate file)</div>
@@ -65,7 +72,29 @@ const storyHomebrew = homebrewFilesFromDiff({
   source: null,
   lastChecked: Math.floor(Date.now() / 1000) - 14 * 60,
 });
-const storyManageFiles = replaceHomebrewPlaceholders(FILES.manage, storyHomebrew);
+const storySystemDefaults = systemDefaultsFileFromScan({
+  totalScanned: 212,
+  defaults: [
+    {
+      nixKey: "system.defaults.dock.magnification",
+      label: "Enable Dock magnification",
+      category: "Dock",
+      currentValue: "1",
+      defaultValue: "false",
+    },
+    {
+      nixKey: "system.defaults.finder.ShowPathbar",
+      label: "Show path bar",
+      category: "Finder",
+      currentValue: "1",
+      defaultValue: "false",
+    },
+  ],
+});
+const storyManageFiles = replaceSystemDefaultsPlaceholder(
+  replaceHomebrewPlaceholders(FILES.manage, storyHomebrew),
+  storySystemDefaults,
+);
 
 export const PerFileSeeds = meta.story({
   render: () => <SeedTable />,

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { tauriAPI } from "@/ipc/api";
+import { useSystemDefaultsScan } from "@/hooks/use-system-defaults-scan";
 import { useWidgetStore } from "@/stores/widget-store";
 import { mirrorChangeMapState } from "@/viewmodel/change-map";
 import { mirrorEvolveState } from "@/viewmodel/evolve";
@@ -15,6 +16,8 @@ import {
   SECTIONS,
   homebrewFilesFromDiff,
   replaceHomebrewPlaceholders,
+  replaceSystemDefaultsPlaceholder,
+  systemDefaultsFileFromScan,
   type CandidateItem,
   type FsFile,
   type SectionId,
@@ -48,6 +51,7 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
   const [activeSection, setActiveSection] = useState<SectionId>(initialSection);
   const [homebrewDiff, setHomebrewDiff] = useState<HomebrewState | null>(null);
   const [homebrewError, setHomebrewError] = useState<string | null>(null);
+  const { scan: systemDefaultsScan, error: systemDefaultsError } = useSystemDefaultsScan();
 
   // Clear the target on mount so a subsequent toggle from the header
   // (which passes no section) returns to the user's last view.
@@ -78,12 +82,17 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
     };
   }, []);
 
-  const filesBySection = {
-    ...FILES,
-    manage: replaceHomebrewPlaceholders(
+  const manageFiles = replaceSystemDefaultsPlaceholder(
+    replaceHomebrewPlaceholders(
       FILES.manage,
       homebrewFilesFromDiff(homebrewDiff, homebrewError),
     ),
+    systemDefaultsFileFromScan(systemDefaultsScan, systemDefaultsError),
+  );
+
+  const filesBySection = {
+    ...FILES,
+    manage: manageFiles,
   };
 
   const files = filesBySection[activeSection] ?? [];
@@ -106,13 +115,13 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
     store.setProcessing(true, "apply");
     try {
       const homebrewItems: HomebrewItem[] = items.map((item) => {
-        if (!item.kind) {
+        if (item.source !== "homebrew" || !item.itemType) {
           throw new Error(`Cannot track ${item.name}: missing Homebrew item type.`);
         }
         return {
           name: item.name,
           version: item.version ?? null,
-          itemType: item.kind,
+          itemType: item.itemType,
         };
       });
       const result = await tauriAPI.homebrew.addItems(
