@@ -61,23 +61,6 @@ pub struct ChangeSummary {
     pub created_at: i64,
 }
 
-#[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct QueuedSummary {
-    pub id: i64,
-    pub status: String,
-    pub attempted_count: i64,
-    pub prompt: String,
-    pub model_response: Option<String>,
-    pub group_summary_id: Option<i64>,
-    /// JSON-encoded `[{"hash": "...", "summary_id": N}]` pairs used by the
-    /// queue processor to link model output back to the right summary rows.
-    pub hash_own_summary_id_pairs: Option<String>,
-    /// One of `"NEW_SINGLE"`, `"NEW_GROUP"`, or `"EVOLVED_GROUP"`.
-    pub summary_type: String,
-}
-
 /// Groups Changes for a commit→base_commit pair. `commit_id` is NULL for speculative
 /// (uncommitted) changesets. Membership is stored in the `set_changes` join table.
 #[allow(dead_code)]

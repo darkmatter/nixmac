@@ -39,7 +39,7 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::Arc;
 use std::time::Duration;
-use tauri::{AppHandle, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 use tokio::time::sleep;
 use tools::{ToolResult, create_tools, execute_tool};
 pub use types::{EvolutionProgress, EvolutionRunError};
@@ -825,13 +825,17 @@ pub async fn generate_evolution<R: Runtime>(
         EvolveEvent::info(start_time, None, &format!("Target host: {}", host_attr)),
     );
 
-    // Read configurable limits from store (hot-reloaded on every run).
+    // Read configurable limits from the managed observable (hot-reloaded on
+    // every run). `app.state` panics if the observable isn't managed; that is
+    // intentional — it surfaces a startup misconfiguration immediately
+    // instead of silently swapping in field defaults.
     let config::EvolutionLimits {
         mut max_build_attempts,
         ..
-    } = config::EvolutionLimits::load(app)
-        .inspect_err(|e| warn!("EvolutionLimits::load failed ({e}); using defaults"))
-        .unwrap_or_default();
+    } = app
+        .state::<crate::observable::Observable<config::EvolutionLimits>>()
+        .read_sync()
+        .clone();
     let max_token_budget =
         store::get_max_token_budget(app).unwrap_or(store::DEFAULT_MAX_TOKEN_BUDGET);
     let max_build_attempts_increment = max_build_attempts.max(1);

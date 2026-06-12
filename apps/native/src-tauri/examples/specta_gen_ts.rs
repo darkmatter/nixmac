@@ -86,7 +86,7 @@ fn main() {
         .register::<shared_types::ExportResult>()
         .register::<shared_types::ImportResult>()
         .register::<configurable::ConfigurableSchema>()
-        .register::<configurable::ConfigField>()
+        .register::<configurable::ConfigFieldSchema>()
         .register::<configurable::FieldType>()
         .register::<configurable::EnumVariant>()
         .register::<shared_types::OkResult>()

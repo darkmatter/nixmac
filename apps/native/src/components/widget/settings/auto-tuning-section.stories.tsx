@@ -3,7 +3,7 @@
 import preview from "#storybook/preview";
 import { AutoTuningSection } from "@/components/widget/settings/auto-tuning-section";
 import { tauriAPI } from "@/ipc/api";
-import type { ConfigurableSchema } from "@/ipc/types";
+import type { ConfigurableSchema, JsonValue } from "@/ipc/types";
 import { waitFor, within } from "storybook/test";
 
 const schemas: ConfigurableSchema[] = [
@@ -18,7 +18,6 @@ const schemas: ConfigurableSchema[] = [
         help: "Provider-reported tokens before the agent stops. Lower is faster but may not finish complex changes.",
         ty: { kind: "number", min: 1000, max: 1000000, step: 1000 },
         default: 50000,
-        current: 50000,
       },
       {
         key: "maxBuildAttempts",
@@ -26,20 +25,29 @@ const schemas: ConfigurableSchema[] = [
         help: "Failed builds before giving up on a run.",
         ty: { kind: "number", min: 1, max: 20, step: 1 },
         default: 5,
-        current: 5,
       },
     ],
   },
 ];
 
-function installDevConfigMock(next: ConfigurableSchema[] | Error) {
+const values: Record<string, JsonValue> = {
+  EvolutionLimits: {
+    maxTokenBudget: 50000,
+    maxBuildAttempts: 5,
+  },
+};
+
+function installDevConfigMock(
+  schemasOrError: ConfigurableSchema[] | Error,
+) {
   tauriAPI.devConfigs = {
-    list: async () => {
-      if (next instanceof Error) {
-        throw next;
+    schemas: async () => {
+      if (schemasOrError instanceof Error) {
+        throw schemasOrError;
       }
-      return next;
+      return schemasOrError;
     },
+    values: async () => values,
     set: async () => undefined,
   };
 }

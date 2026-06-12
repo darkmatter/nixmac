@@ -3,9 +3,10 @@
 //! Storage is repo-scoped — values live under `<config_dir>/.nixmac/settings.json`
 //! so they ride along with the user's nix config repo across machines.
 //!
-//! The struct is managed as a `Slice<EvolutionLimits>` at startup and registered
-//! with the slice registry so Developer settings can render and update it
-//! without opening store files directly.
+//! The struct is managed as an `Observable<EvolutionLimits>` at startup. The
+//! derive macro pushes its metadata into the compile-time `inventory`
+//! collection so Developer settings can render and update it without opening
+//! store files directly.
 
 use anyhow::Result;
 use configurable::Configurable;
@@ -14,10 +15,8 @@ use specta::Type;
 use std::sync::Arc;
 use tauri::{AppHandle, Runtime};
 
+use crate::observable::{ConfiguredRepoScopedJson, Observable, Persistence};
 use crate::state::preferences;
-use crate::state::slice::{
-    ConfiguredRepoScopedJson, Persistence, RegisteredSliceConfig, Slice, SliceRegistry,
-};
 
 pub const EVOLUTION_LIMITS_CHANGED_EVENT: &str = "evolution_limits_changed";
 
@@ -57,10 +56,11 @@ pub struct EvolutionLimits {
     pub max_output_tokens: usize,
 }
 
-// Matches the `#[config(default = ...)]` values above. Used as the fallback
-// in evolve::mod when EvolutionLimits::load fails (e.g. config_dir not yet
-// set during onboarding); deriving `Default` would produce zeros, which
-// would be wrong here.
+// Matches the `#[config(default = ...)]` values above. Reached during
+// startup when the repo's settings.json is absent or unreadable (see
+// `preferences::load_or_default`), and on the dev-settings whole-struct
+// `set` path when an incoming JSON payload is missing fields. Deriving
+// `Default` would produce zeros, which would be wrong here.
 impl Default for EvolutionLimits {
     fn default() -> Self {
         Self {
@@ -71,23 +71,12 @@ impl Default for EvolutionLimits {
     }
 }
 
-pub fn load_slice<R: Runtime>(app: &AppHandle<R>) -> Result<Slice<EvolutionLimits>> {
+pub fn load_observable<R: Runtime>(app: &AppHandle<R>) -> Result<Observable<EvolutionLimits>> {
     let persistence: Arc<dyn Persistence> = Arc::new(ConfiguredRepoScopedJson::new(app.clone()));
     let initial = preferences::load_or_default::<EvolutionLimits>(persistence.as_ref())?;
-
-    Ok(Slice::new(
-        EVOLUTION_LIMITS_CHANGED_EVENT,
-        initial,
-        persistence,
-    ))
-}
-
-pub fn register_slice_config(registry: &SliceRegistry) -> Result<()> {
-    registry.register(RegisteredSliceConfig {
-        name: "EvolutionLimits",
-        schema_fn: EvolutionLimits::__configurable_schema_wry,
-        set_field_fn: EvolutionLimits::__configurable_set_field_wry,
-    })
+    Ok(Observable::new(initial)
+        .emit_to(app, EVOLUTION_LIMITS_CHANGED_EVENT)
+        .persist_to(persistence))
 }
 
 #[cfg(test)]

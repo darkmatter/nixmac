@@ -5,12 +5,14 @@
 //! returns to settings/dev tooling.
 //!
 //! Derive `Configurable` on a struct to:
-//!   1. Generate a `load(app)` method that reads the managed slice, falling
-//!      back to per-field defaults when the slice is not yet registered.
-//!   2. Expose a rich schema (`schema()`) describing every field's
-//!      type, label, help text, range, and default value.
-//!   3. Generate Wry-specialized shim methods that callers can register with
-//!      the slice registry.
+//!   1. Generate a `load(app)` method that reads the managed observable,
+//!      falling back to per-field defaults when it isn't yet managed.
+//!   2. Expose a static schema (`schema()`) describing every field's type,
+//!      label, help text, range, and default value. No `AppHandle` needed —
+//!      the schema is the same value every call and trivially cacheable.
+//!   3. Push the type into a compile-time `inventory` collection so the dev
+//!      settings UI can enumerate every configurable without explicit
+//!      registration.
 //!
 //! ```ignore
 //! use configurable::Configurable;
@@ -32,13 +34,17 @@
 //! }
 //!
 //! let limits = EvolutionLimits::load(&app)?;
-//! let schema = EvolutionLimits::schema(&app)?;
+//! let schema = EvolutionLimits::schema();
 //! ```
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
 pub use configurable_derive::Configurable;
+
+// Re-exported so derive output can write `::configurable::inventory::submit!`
+// without consumers needing to add the crate themselves.
+pub use inventory;
 
 // =============================================================================
 // Schema types — flow to TS via specta
@@ -72,10 +78,13 @@ pub struct EnumVariant {
     pub label: String,
 }
 
-/// Per-field description rendered into a UI control.
+/// Static description of one Configurable field.
+///
+/// Produced by the derive macro with no runtime context; the same value every
+/// call. Joined with the current store-backed value by `key` at render time.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct ConfigField {
+pub struct ConfigFieldSchema {
     /// Key as written to the underlying store (typically camelCase).
     pub key: String,
     /// Human-readable label rendered above the input.
@@ -87,16 +96,15 @@ pub struct ConfigField {
     pub ty: FieldType,
     /// Default if the store has no value yet.
     pub default: serde_json::Value,
-    /// Current value loaded from the store.
-    pub current: serde_json::Value,
 }
 
 /// One section in the auto-rendered settings panel — corresponds to one
-/// `#[derive(Configurable)]` struct.
+/// `#[derive(Configurable)]` struct. Static metadata only; current values are
+/// fetched separately and joined by struct name + field key on the frontend.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ConfigurableSchema {
-    /// Unique stable identifier (struct's Rust name). Used by `set_field` to
+    /// Unique stable identifier (struct's Rust name). Used by the setter to
     /// dispatch to the right registered configurable.
     pub name: String,
     /// Title shown above the section in the UI.
@@ -104,5 +112,30 @@ pub struct ConfigurableSchema {
     /// Optional one-line description shown under the title.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    pub fields: Vec<ConfigField>,
+    pub fields: Vec<ConfigFieldSchema>,
 }
+
+// =============================================================================
+// Compile-time registry — populated by the derive via `inventory::submit!`
+// =============================================================================
+
+/// Static metadata for one `#[derive(Configurable)]` struct.
+///
+/// The derive macro pushes one of these per struct via `inventory::submit!`
+/// at link time, so iterating every registered configurable is just a walk
+/// over `inventory::iter::<ConfigurableMeta>()` — no runtime registry, no
+/// app-startup registration step.
+pub struct ConfigurableMeta {
+    /// Stable Rust-side name of the configurable state type.
+    pub name: &'static str,
+    /// Returns the static UI schema. Same value every call; no app needed.
+    pub schema_fn: fn() -> ConfigurableSchema,
+    /// Loads the current state as a JSON object so the dev-settings command
+    /// can join it with the static schema by field key.
+    pub load_fn: fn(&tauri::AppHandle<tauri::Wry>) -> anyhow::Result<serde_json::Value>,
+    /// Replaces the managed observable's value with a deserialized
+    /// whole-struct payload. Serde validates every field in one pass.
+    pub set_fn: fn(&tauri::AppHandle<tauri::Wry>, serde_json::Value) -> anyhow::Result<()>,
+}
+
+inventory::collect!(ConfigurableMeta);
