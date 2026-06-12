@@ -4,6 +4,15 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   merge_group:
+  # Post-merge tripwire: re-run cargo check on develop itself so any compile
+  # breakage that slips past the pre-merge gate (merge-queue edge cases, the
+  # main->develop merge producing a broken tree from two green parents, a
+  # ruleset change) turns develop's commit status red quickly instead of
+  # costing the next person a confusing local build failure. Only the Rust
+  # Check job runs on push (see the per-job `if` guards below); the full build
+  # already gates the PR path.
+  push:
+    branches: [develop]
   workflow_dispatch:
 
 concurrency:
@@ -21,17 +30,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      # cargo check needs only the Rust toolchain plus the system C compiler
+      # (libgit2-sys / libsqlite3-sys build their vendored C with `cc`). It does
+      # not need the devenv profile (node/bun/sops/python) or JS deps, so skip
+      # both — that drops the ~8 min devenv provisioning to a ~1 min toolchain
+      # setup. This speeds up the PR check too; the full build (build.yaml) is
+      # unaffected and still provides heavyweight coverage.
       - uses: ./.github/actions/setup
         with:
           darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
           setup-rust: true
           rust-cache-workspaces: apps/native/src-tauri
+          install-devenv: false
+          install-bun-deps: false
       - name: Check Rust app crate
         working-directory: apps/native/src-tauri
         run: cargo check --locked
 
   typescript:
     name: TypeScript
+    # PR/merge-queue only — the develop push tripwire is cargo check alone.
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -53,6 +72,8 @@ jobs:
 
   treefmt:
     name: Treefmt
+    # PR/merge-queue only — the develop push tripwire is cargo check alone.
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
