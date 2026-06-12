@@ -116,6 +116,23 @@ pub fn get_ref_sha(dir: &str, ref_name: &str) -> Option<String> {
     Some(obj.id().to_string())
 }
 
+/// Returns the commit a nixmac backup branch was snapshotted from — the
+/// backup commit's first parent (`create_evolution_backup` commits the
+/// snapshot with HEAD as its sole parent). `None` when the branch is missing
+/// or doesn't point at a commit with a parent.
+///
+/// A session's backup is only meaningful while HEAD still equals this
+/// anchor: once the repository gains commits nixmac didn't make, restoring
+/// the snapshot would silently revert them.
+pub fn backup_anchor_commit(dir: &str, branch_name: &str) -> Option<String> {
+    let repo = git2::Repository::discover(dir).ok()?;
+    let obj = repo
+        .revparse_single(&format!("refs/heads/{branch_name}"))
+        .ok()?;
+    let commit = obj.peel_to_commit().ok()?;
+    commit.parent(0).ok().map(|parent| parent.id().to_string())
+}
+
 /// Returns true if HEAD can be resolved to a commit object.
 ///
 /// This is stricter than "HEAD exists":

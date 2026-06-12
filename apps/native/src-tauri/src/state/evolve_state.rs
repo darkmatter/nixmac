@@ -80,6 +80,38 @@ pub fn get<R: Runtime>(app: &AppHandle<R>) -> Result<EvolveState> {
     load_from_persistence(&persistence)
 }
 
+/// Clear the session fields when the recorded backup snapshot is no longer
+/// anchored at the current HEAD.
+///
+/// A session (active evolution id, rollback/backup branches, rollback store
+/// path) is only valid relative to the commit it started from — the backup
+/// commit's parent. When HEAD moves underneath nixmac (manual commits,
+/// external tooling), trusting the stale session resurrects a dead "Review"
+/// step on a clean repo, and discarding it would restore a snapshot that
+/// silently reverts commits nixmac never made.
+fn clear_stale_session<R: Runtime>(app: &AppHandle<R>, state: &mut EvolveState) {
+    let Some(branch) = state
+        .rollback_branch
+        .as_deref()
+        .or(state.backup_branch.as_deref())
+    else {
+        // No snapshot recorded — nothing destructive to guard against.
+        return;
+    };
+    let Ok(repo_root) = crate::storage::store::get_repo_root(app) else {
+        return;
+    };
+    let anchor = crate::git::backup_anchor_commit(&repo_root, branch);
+    let head = crate::git::get_ref_sha(&repo_root, "HEAD");
+    if anchor.is_some() && anchor == head {
+        return;
+    }
+    log::warn!(
+        "[evolve-state] session anchor mismatch (branch={branch}, anchor={anchor:?}, head={head:?}); clearing stale session"
+    );
+    *state = EvolveState::default();
+}
+
 /// Recompute `step` and `committable` from build and git states.
 ///
 /// Status is used to compare working tree to that at time of known build
@@ -88,6 +120,7 @@ pub fn set<R: Runtime>(
     mut state: EvolveState,
     current_changes: &[Change],
 ) -> Result<EvolveState> {
+    clear_stale_session(app, &mut state);
     let is_built = crate::state::build_state::current_state_built(app, current_changes);
     let has_changes = !current_changes.is_empty();
     state.recompute_step(is_built, has_changes);

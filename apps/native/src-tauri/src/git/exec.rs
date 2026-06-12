@@ -920,6 +920,46 @@ mod tests {
     }
 
     #[test]
+    fn test_backup_anchor_commit_tracks_head_at_snapshot_time() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("file.txt"), "initial\n").unwrap();
+        let head_at_snapshot = commit_all(&repo_dir_str, "initial").unwrap();
+
+        fs::write(repo_dir.join("file.txt"), "session changes\n").unwrap();
+        let backup_branch = create_evolution_backup(&repo_dir_str, Some(1), 1)
+            .unwrap()
+            .expect("expected backup branch");
+
+        // While HEAD hasn't moved, the anchor matches it — the session is live.
+        let anchor = crate::git::backup_anchor_commit(&repo_dir_str, &backup_branch);
+        assert_eq!(anchor.as_deref(), Some(head_at_snapshot.hash.as_str()));
+        assert_eq!(
+            anchor,
+            crate::git::get_ref_sha(&repo_dir_str, "HEAD"),
+            "live session: anchor equals HEAD"
+        );
+
+        // A commit made outside the session moves HEAD off the anchor.
+        fs::write(repo_dir.join("file.txt"), "manual commit\n").unwrap();
+        commit_all(&repo_dir_str, "manual change outside nixmac").unwrap();
+        assert_ne!(
+            crate::git::backup_anchor_commit(&repo_dir_str, &backup_branch),
+            crate::git::get_ref_sha(&repo_dir_str, "HEAD"),
+            "stale session: anchor no longer equals HEAD"
+        );
+
+        // Missing branches have no anchor.
+        assert_eq!(
+            crate::git::backup_anchor_commit(&repo_dir_str, "nixmac-evolve/missing"),
+            None
+        );
+    }
+
+    #[test]
     fn test_tag_commit_creates_lightweight_tag_and_respects_force() {
         let temp_dir = TempDir::new().unwrap();
         let repo_dir = temp_dir.path().join("repo");

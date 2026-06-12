@@ -14,7 +14,7 @@ pub use exec::{
 };
 
 #[allow(unused_imports)]
-pub use query::{current_branch, get_ref_sha, read_tags, status};
+pub use query::{backup_anchor_commit, current_branch, get_ref_sha, read_tags, status};
 
 use crate::sqlite_types::Change;
 use sha2::{Digest, Sha256};
