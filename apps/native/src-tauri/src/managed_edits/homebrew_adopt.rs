@@ -1,13 +1,13 @@
 use crate::evolve::file_ops::resolve_path_in_dir_allow_create;
 use crate::evolve::nix_file_editor::{apply_semantic_edit, nix_quote_values};
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
-use crate::shared_types::HomebrewState;
+use crate::shared_types::{HomebrewItemType, HomebrewState};
 use crate::system::nix_ast_lists::parse_string_lists_by_attrpath;
 use crate::system::scanner::inject_module_import;
 use crate::{managed_edits::managed_edit, shared_types};
 use anyhow::{Context, Result};
 use serde_json::{Map, Value};
-use shared_types::HomebrewCaskItem;
+use shared_types::HomebrewItem;
 use tauri::AppHandle;
 
 const NIXMAC_HOMEBREW_DATA_PATH: &str = ".nixmac/homebrew/data.json";
@@ -202,7 +202,9 @@ pub async fn apply_homebrew_diff(
 }
 
 /// Scan the system for Homebrew packages, casks, and taps.
-/// Only includes explicitly installed brews and casks (via `--installed-on-request`), not their dependencies.
+/// Only includes explicitly installed brews and casks not their dependencies.
+/// Note that generally speaking, `brew list --casks` does *not* count dependences, and
+/// the `--installed-on-request` flag is not valid for casks.
 /// Excludes default taps (homebrew/core, homebrew/cask).
 /// If homebrew is not installed, returns an empty state with is_installed set to false.
 pub fn scan_homebrew() -> HomebrewState {
@@ -221,10 +223,12 @@ pub fn scan_homebrew() -> HomebrewState {
                 .lines()
                 .map(str::to_owned)
                 .collect();
+        } else {
+            log::warn!("failed to scan Homebrew brews: brew command returned non-zero exit code");
         }
     }
     if let Ok(output) = std::process::Command::new("brew")
-        .args(["list", "--installed-on-request", "--cask"])
+        .args(["list", "--cask"])
         .env("PATH", crate::system::nix::get_nix_path())
         .output()
     {
@@ -233,6 +237,8 @@ pub fn scan_homebrew() -> HomebrewState {
                 .lines()
                 .map(str::to_owned)
                 .collect();
+        } else {
+            log::warn!("failed to scan Homebrew casks: brew command returned non-zero exit code");
         }
     }
     if let Ok(output) = std::process::Command::new("brew")
@@ -249,6 +255,8 @@ pub fn scan_homebrew() -> HomebrewState {
                 })
                 .map(str::to_owned)
                 .collect();
+        } else {
+            log::warn!("failed to scan Homebrew taps: brew command returned non-zero exit code");
         }
     }
 
@@ -451,30 +459,63 @@ fn ensure_nixmac_module_import(config_dir: &std::path::Path) -> Result<()> {
     Ok(())
 }
 
-fn add_homebrew_casks_to_config(
+fn add_homebrew_items_to_config(
     config_dir: &std::path::Path,
-    casks: &[HomebrewCaskItem],
+    items: &[HomebrewItem],
 ) -> Result<std::path::PathBuf> {
-    if casks.is_empty() {
-        return Err(anyhow::anyhow!("at least one Homebrew cask is required"));
+    if items.is_empty() {
+        return Err(anyhow::anyhow!("at least one Homebrew item is required"));
     }
 
-    let cask_names = casks
+    let item_names = items
         .iter()
-        .map(|cask| cask.name.trim())
+        .map(|item| item.name.trim())
         .filter(|name| !name.is_empty())
         .map(str::to_string)
         .collect::<Vec<_>>();
-    if cask_names.is_empty() {
+    if item_names.is_empty() {
         return Err(anyhow::anyhow!(
-            "at least one named Homebrew cask is required"
+            "at least one named Homebrew item is required"
         ));
     }
 
     ensure_nixmac_module_import(config_dir)?;
     let data_path = ensure_nixmac_homebrew_module(config_dir)?;
     let mut data = read_homebrew_data(&data_path)?;
-    merge_json_array(&mut data, "casks", &cask_names)?;
+
+    // Separate out the casks/brews/formulae so we can do 0..3 merge_json_array calls for each.
+    let casks = items
+        .iter()
+        .filter(|item| item.item_type == HomebrewItemType::Cask)
+        .map(|item| item.name.trim())
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    if !casks.is_empty() {
+        merge_json_array(&mut data, "casks", &casks)?;
+    }
+
+    let brews = items
+        .iter()
+        .filter(|item| item.item_type == HomebrewItemType::Brew)
+        .map(|item| item.name.trim())
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    if !brews.is_empty() {
+        merge_json_array(&mut data, "brews", &brews)?;
+    }
+
+    let taps = items
+        .iter()
+        .filter(|item| item.item_type == HomebrewItemType::Tap)
+        .map(|item| item.name.trim())
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    if !taps.is_empty() {
+        merge_json_array(&mut data, "taps", &taps)?;
+    }
 
     let rendered = serde_json::to_string_pretty(&data)?;
     std::fs::write(&data_path, format!("{}\n", rendered))
@@ -483,31 +524,31 @@ fn add_homebrew_casks_to_config(
     Ok(data_path)
 }
 
-/// Adds one or more Homebrew casks to the managed Nixmac Homebrew data file,
+/// Adds one or more Homebrew items to the managed Nixmac Homebrew data file,
 /// snapshots the pre-edit tree onto a rollback branch, and enters the managed
 /// review flow.
-pub async fn add_homebrew_casks(
+pub async fn add_homebrew_items(
     app: &AppHandle,
-    casks: Vec<HomebrewCaskItem>,
+    items: Vec<HomebrewItem>,
 ) -> Result<shared_types::ConfigEditApplyResult> {
-    let item_count = casks
+    let item_count = items
         .iter()
-        .filter(|cask| !cask.name.trim().is_empty())
+        .filter(|item| !item.name.trim().is_empty())
         .count();
-    if casks.is_empty() {
-        return Err(anyhow::anyhow!("at least one Homebrew cask is required"));
+    if items.is_empty() {
+        return Err(anyhow::anyhow!("at least one Homebrew item is required"));
     }
     if item_count == 0 {
         return Err(anyhow::anyhow!(
-            "at least one named Homebrew cask is required"
+            "at least one named Homebrew item is required"
         ));
     }
 
     let context = managed_edit::prepare_managed_edit(app)?;
     let dir = context.dir.clone();
 
-    add_homebrew_casks_to_config(std::path::Path::new(&dir), &casks)
-        .context("Failed to add Homebrew casks")?;
+    add_homebrew_items_to_config(std::path::Path::new(&dir), &items)
+        .context("Failed to add Homebrew items")?;
 
     let working_tree_status =
         crate::git::status(&dir).context("Failed to get working tree status for evolve state")?;
@@ -516,7 +557,7 @@ pub async fn add_homebrew_casks(
         context,
         working_tree_status,
         item_count,
-        "add_homebrew_casks",
+        "add_homebrew_items",
     )
     .await
 }
@@ -665,6 +706,8 @@ pub fn apply_homebrew_import(diff: HomebrewState, config_dir: &std::path::Path) 
 
 #[cfg(test)]
 mod tests {
+    use crate::shared_types::HomebrewItemType;
+
     use super::*;
 
     fn homebrew_state(
@@ -981,7 +1024,7 @@ mod tests {
     }
 
     #[test]
-    fn add_homebrew_casks_writes_managed_data_and_injects_flake_import() {
+    fn add_homebrew_items_writes_managed_data_and_injects_flake_import() {
         let temp = tempfile::tempdir().expect("tempdir should be created");
         let flake = temp.path().join("flake.nix");
         write_file(
@@ -1007,16 +1050,29 @@ mod tests {
 "#,
         );
 
-        let data_file = add_homebrew_casks_to_config(
+        // Make sure to test all three item types.
+        let data_file = add_homebrew_items_to_config(
             temp.path(),
             &[
-                HomebrewCaskItem {
+                HomebrewItem {
                     name: "docker".to_string(),
                     version: Some("4.32.0".to_string()),
+                    item_type: HomebrewItemType::Cask,
                 },
-                HomebrewCaskItem {
+                HomebrewItem {
                     name: " obs ".to_string(),
                     version: Some("30.2.3".to_string()),
+                    item_type: HomebrewItemType::Cask,
+                },
+                HomebrewItem {
+                    name: "git".to_string(),
+                    version: Some("2.42.0".to_string()),
+                    item_type: HomebrewItemType::Brew,
+                },
+                HomebrewItem {
+                    name: "homebrew/cask-fonts".to_string(),
+                    version: None,
+                    item_type: HomebrewItemType::Tap,
                 },
             ],
         )
@@ -1029,22 +1085,26 @@ mod tests {
         )
         .expect("homebrew data should parse");
         assert_eq!(json_string_array(&data, "casks"), vec!["docker", "obs"]);
-        assert_eq!(json_string_array(&data, "brews"), Vec::<String>::new());
-        assert_eq!(json_string_array(&data, "taps"), Vec::<String>::new());
+        assert_eq!(json_string_array(&data, "brews"), vec!["git"]);
+        assert_eq!(
+            json_string_array(&data, "taps"),
+            vec!["homebrew/cask-fonts"]
+        );
 
         let flake_content = std::fs::read_to_string(flake).expect("flake should remain readable");
         assert!(flake_content.contains("./.nixmac"));
     }
 
     #[test]
-    fn add_homebrew_casks_requires_flake_before_writing_module() {
+    fn add_homebrew_items_requires_flake_before_writing_module() {
         let temp = tempfile::tempdir().expect("tempdir should be created");
 
-        let err = add_homebrew_casks_to_config(
+        let err = add_homebrew_items_to_config(
             temp.path(),
-            &[HomebrewCaskItem {
+            &[HomebrewItem {
                 name: "iterm2".to_string(),
                 version: None,
+                item_type: HomebrewItemType::Cask,
             }],
         )
         .expect_err("managed Homebrew casks should require flake.nix");
