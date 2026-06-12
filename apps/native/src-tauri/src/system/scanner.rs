@@ -12,6 +12,8 @@ use std::process::Command;
 // =============================================================================
 // Types
 // =============================================================================
+// Magic string that indicates the default value is null.
+const NULL_FLAG: &str = "__NULL__";
 
 // =============================================================================
 // Domain value types
@@ -24,6 +26,7 @@ enum ValType {
     Int,
     Float,
     String,
+    StringFromIntMap,
 }
 
 /// Definition of a single scannable key.
@@ -40,6 +43,8 @@ struct KeyDef {
     val_type: ValType,
     /// The factory default value as a string
     factory_default: &'static str,
+    /// Map of int values to nix-darwin-compatible string representations (only for ValType::StringFromIntMap)
+    int_to_string_map: Option<&'static [(i32, &'static str)]>,
 }
 
 // =============================================================================
@@ -60,6 +65,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Dock",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "autohide-delay",
@@ -68,6 +74,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Dock",
                 val_type: ValType::Float,
                 factory_default: "0.24",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "autohide-time-modifier",
@@ -76,6 +83,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Dock",
                 val_type: ValType::Float,
                 factory_default: "0.5",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "expose-group-apps",
@@ -84,6 +92,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Dock",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "largesize",
@@ -92,6 +101,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Dock",
                 val_type: ValType::Int,
                 factory_default: "64",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "launchanim",
@@ -100,6 +110,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Dock",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "magnification",
@@ -108,6 +119,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Dock",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "mineffect",
@@ -116,6 +128,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Dock",
                 val_type: ValType::String,
                 factory_default: "genie",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "minimize-to-application",
@@ -124,6 +137,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Dock",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "mru-spaces",
@@ -132,6 +146,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Dock",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "orientation",
@@ -140,6 +155,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Dock",
                 val_type: ValType::String,
                 factory_default: "bottom",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "persistent-apps",
@@ -147,7 +163,8 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 label: "Persistent Dock apps (managed)",
                 category: "Dock",
                 val_type: ValType::String,
-                factory_default: "",
+                factory_default: NULL_FLAG,
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "persistent-others",
@@ -155,7 +172,8 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 label: "Persistent Dock folders (managed)",
                 category: "Dock",
                 val_type: ValType::String,
-                factory_default: "",
+                factory_default: NULL_FLAG,
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "show-process-indicators",
@@ -164,6 +182,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Dock",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "show-recents",
@@ -172,6 +191,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Dock",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "showhidden",
@@ -180,6 +200,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Dock",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "static-only",
@@ -188,6 +209,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Dock",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "tilesize",
@@ -196,6 +218,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Dock",
                 val_type: ValType::Int,
                 factory_default: "48",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "wvous-bl-corner",
@@ -204,6 +227,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Dock",
                 val_type: ValType::Int,
                 factory_default: "1",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "wvous-br-corner",
@@ -212,6 +236,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Dock",
                 val_type: ValType::Int,
                 factory_default: "1",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "wvous-tl-corner",
@@ -220,6 +245,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Dock",
                 val_type: ValType::Int,
                 factory_default: "1",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "wvous-tr-corner",
@@ -228,6 +254,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Dock",
                 val_type: ValType::Int,
                 factory_default: "1",
+                int_to_string_map: None,
             },
         ],
     ),
@@ -242,6 +269,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Finder",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "AppleShowAllFiles",
@@ -250,6 +278,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Finder",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "CreateDesktop",
@@ -258,6 +287,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Finder",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "FXDefaultSearchScope",
@@ -266,6 +296,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Finder",
                 val_type: ValType::String,
                 factory_default: "SCev",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "FXEnableExtensionChangeWarning",
@@ -274,6 +305,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Finder",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "FXPreferredViewStyle",
@@ -282,6 +314,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Finder",
                 val_type: ValType::String,
                 factory_default: "icnv",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "QuitMenuItem",
@@ -290,6 +323,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Finder",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "ShowPathbar",
@@ -298,6 +332,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Finder",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "ShowStatusBar",
@@ -306,6 +341,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Finder",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "_FXShowPosixPathInTitle",
@@ -314,6 +350,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Finder",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "_FXSortFoldersFirst",
@@ -322,6 +359,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Finder",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
         ],
     ),
@@ -336,6 +374,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "AppleEnableSwipeNavigateWithScrolls",
@@ -344,6 +383,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "AppleICUForce24HourTime",
@@ -352,6 +392,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "AppleInterfaceStyle",
@@ -359,7 +400,8 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 label: "Dark Mode",
                 category: "Global",
                 val_type: ValType::String,
-                factory_default: "",
+                factory_default: NULL_FLAG,
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "AppleInterfaceStyleSwitchesAutomatically",
@@ -368,6 +410,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "AppleMeasurementUnits",
@@ -376,6 +419,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::String,
                 factory_default: "Centimeters",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "AppleMetricUnits",
@@ -384,6 +428,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Int,
                 factory_default: "1",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "ApplePressAndHoldEnabled",
@@ -392,6 +437,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "AppleScrollerPagingBehavior",
@@ -400,6 +446,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "AppleShowAllExtensions",
@@ -408,6 +455,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "AppleShowScrollBars",
@@ -416,6 +464,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::String,
                 factory_default: "Automatic",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "AppleTemperatureUnit",
@@ -424,6 +473,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::String,
                 factory_default: "Celsius",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "AppleWindowTabbingMode",
@@ -432,6 +482,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::String,
                 factory_default: "always",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "InitialKeyRepeat",
@@ -440,6 +491,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Int,
                 factory_default: "25",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "KeyRepeat",
@@ -448,6 +500,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Int,
                 factory_default: "6",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "NSAutomaticCapitalizationEnabled",
@@ -456,6 +509,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "NSAutomaticDashSubstitutionEnabled",
@@ -464,6 +518,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "NSAutomaticInlinePredictionEnabled",
@@ -472,6 +527,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "NSAutomaticPeriodSubstitutionEnabled",
@@ -480,6 +536,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "NSAutomaticQuoteSubstitutionEnabled",
@@ -488,6 +545,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "NSAutomaticSpellingCorrectionEnabled",
@@ -496,6 +554,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "NSAutomaticWindowAnimationsEnabled",
@@ -504,6 +563,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "NSDisableAutomaticTermination",
@@ -512,6 +572,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "NSDocumentSaveNewDocumentsToCloud",
@@ -520,6 +581,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "NSNavPanelExpandedStateForSaveMode",
@@ -528,6 +590,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "NSNavPanelExpandedStateForSaveMode2",
@@ -536,6 +599,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "NSScrollAnimationEnabled",
@@ -544,6 +608,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "NSTableViewDefaultSizeMode",
@@ -552,6 +617,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Int,
                 factory_default: "2",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "NSTextShowsControlCharacters",
@@ -560,6 +626,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "NSWindowResizeTime",
@@ -568,6 +635,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Float,
                 factory_default: "0.2",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "NSWindowShouldDragOnGesture",
@@ -576,6 +644,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "PMPrintingExpandedStateForPrint",
@@ -584,6 +653,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "PMPrintingExpandedStateForPrint2",
@@ -592,6 +662,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "com.apple.mouse.tapBehavior",
@@ -599,7 +670,8 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 label: "Tap to click",
                 category: "Global",
                 val_type: ValType::Int,
-                factory_default: "0",
+                factory_default: NULL_FLAG,
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "com.apple.sound.beep.feedback",
@@ -608,6 +680,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Int,
                 factory_default: "1",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "com.apple.sound.beep.volume",
@@ -616,6 +689,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Float,
                 factory_default: "0.5",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "com.apple.springing.delay",
@@ -624,6 +698,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Float,
                 factory_default: "0.5",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "com.apple.springing.enabled",
@@ -632,6 +707,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "com.apple.swipescrolldirection",
@@ -640,6 +716,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "com.apple.trackpad.enableSecondaryClick",
@@ -648,6 +725,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "com.apple.trackpad.forceClick",
@@ -656,6 +734,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "com.apple.trackpad.scaling",
@@ -664,6 +743,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Global",
                 val_type: ValType::Float,
                 factory_default: "1.0",
+                int_to_string_map: None,
             },
         ],
     ),
@@ -676,8 +756,9 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 nix_key: "system.defaults.trackpad.ActuateDetents",
                 label: "Actuate detents haptic feedback",
                 category: "Trackpad",
-                val_type: ValType::Int,
-                factory_default: "1",
+                val_type: ValType::Bool,
+                factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "Clicking",
@@ -686,6 +767,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Trackpad",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "DragLock",
@@ -694,6 +776,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Trackpad",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "Dragging",
@@ -702,6 +785,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Trackpad",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "FirstClickThreshold",
@@ -710,6 +794,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Trackpad",
                 val_type: ValType::Int,
                 factory_default: "1",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "SecondClickThreshold",
@@ -718,6 +803,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Trackpad",
                 val_type: ValType::Int,
                 factory_default: "1",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "TrackpadRightClick",
@@ -726,6 +812,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Trackpad",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "TrackpadThreeFingerDrag",
@@ -734,6 +821,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Trackpad",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "TrackpadThreeFingerTapGesture",
@@ -742,6 +830,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Trackpad",
                 val_type: ValType::Int,
                 factory_default: "0",
+                int_to_string_map: None,
             },
         ],
     ),
@@ -756,6 +845,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Screenshot",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "location",
@@ -764,6 +854,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Screenshot",
                 val_type: ValType::String,
                 factory_default: "~/Desktop",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "show-thumbnail",
@@ -772,6 +863,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Screenshot",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "type",
@@ -780,6 +872,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Screenshot",
                 val_type: ValType::String,
                 factory_default: "png",
+                int_to_string_map: None,
             },
         ],
     ),
@@ -794,6 +887,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Login Window",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "GuestEnabled",
@@ -802,6 +896,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Login Window",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "LoginwindowText",
@@ -810,6 +905,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Login Window",
                 val_type: ValType::String,
                 factory_default: "",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "PowerOffDisabledWhileLoggedIn",
@@ -818,6 +914,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Login Window",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "RestartDisabled",
@@ -826,6 +923,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Login Window",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "RestartDisabledWhileLoggedIn",
@@ -834,6 +932,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Login Window",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "SHOWFULLNAME",
@@ -842,6 +941,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Login Window",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "ShutDownDisabled",
@@ -850,6 +950,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Login Window",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "ShutDownDisabledWhileLoggedIn",
@@ -858,6 +959,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Login Window",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "SleepDisabled",
@@ -866,6 +968,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Login Window",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
         ],
     ),
@@ -880,6 +983,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Screensaver",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "askForPasswordDelay",
@@ -888,6 +992,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Screensaver",
                 val_type: ValType::Int,
                 factory_default: "5",
+                int_to_string_map: None,
             },
         ],
     ),
@@ -901,6 +1006,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
             category: "Spaces",
             val_type: ValType::Bool,
             factory_default: "false",
+            int_to_string_map: None,
         }],
     ),
     // ── Window Manager ─────────────────────────────────────────────────────
@@ -914,6 +1020,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Window Manager",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "AutoHide",
@@ -922,6 +1029,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Window Manager",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "EnableStandardClickToShowDesktop",
@@ -930,6 +1038,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Window Manager",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "EnableTiledWindowMargins",
@@ -938,6 +1047,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Window Manager",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "GloballyEnabled",
@@ -946,6 +1056,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Window Manager",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "HideDesktop",
@@ -954,6 +1065,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Window Manager",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "StageManagerHideWidgets",
@@ -962,6 +1074,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Window Manager",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "StandardHideDesktopIcons",
@@ -970,6 +1083,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Window Manager",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "StandardHideWidgets",
@@ -978,6 +1092,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Window Manager",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
         ],
     ),
@@ -992,46 +1107,52 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Control Center",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "Bluetooth",
                 nix_key: "system.defaults.controlcenter.Bluetooth",
                 label: "Show Bluetooth in menu bar",
                 category: "Control Center",
-                val_type: ValType::Int,
-                factory_default: "0",
+                val_type: ValType::Bool,
+                factory_default: NULL_FLAG,
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "Display",
                 nix_key: "system.defaults.controlcenter.Display",
                 label: "Show Display in menu bar",
                 category: "Control Center",
-                val_type: ValType::Int,
-                factory_default: "0",
+                val_type: ValType::Bool,
+                factory_default: NULL_FLAG,
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "FocusModes",
                 nix_key: "system.defaults.controlcenter.FocusModes",
                 label: "Show Focus in menu bar",
                 category: "Control Center",
-                val_type: ValType::Int,
-                factory_default: "0",
+                val_type: ValType::Bool,
+                factory_default: NULL_FLAG,
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "NowPlaying",
                 nix_key: "system.defaults.controlcenter.NowPlaying",
                 label: "Show Now Playing in menu bar",
                 category: "Control Center",
-                val_type: ValType::Int,
-                factory_default: "0",
+                val_type: ValType::Bool,
+                factory_default: NULL_FLAG,
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "Sound",
                 nix_key: "system.defaults.controlcenter.Sound",
                 label: "Show Sound in menu bar",
                 category: "Control Center",
-                val_type: ValType::Int,
-                factory_default: "0",
+                val_type: ValType::Bool,
+                factory_default: NULL_FLAG,
+                int_to_string_map: None,
             },
         ],
     ),
@@ -1046,6 +1167,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Menu Bar Clock",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "IsAnalog",
@@ -1054,6 +1176,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Menu Bar Clock",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "Show24Hour",
@@ -1062,6 +1185,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Menu Bar Clock",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "ShowDate",
@@ -1070,6 +1194,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Menu Bar Clock",
                 val_type: ValType::Int,
                 factory_default: "0",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "ShowDayOfWeek",
@@ -1078,6 +1203,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Menu Bar Clock",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "ShowSeconds",
@@ -1086,6 +1212,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Menu Bar Clock",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
         ],
     ),
@@ -1095,10 +1222,16 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
         &[KeyDef {
             defaults_key: "AppleFnUsageType",
             nix_key: "system.defaults.hitoolbox.AppleFnUsageType",
-            label: "Fn key action (0=none, 1=input source, 2=emoji, 3=dictation)",
+            label: "Fn key action (0='Do Nothing', 1='Change Input Source', 2='Show Emoji & Symbols', 3='Start Dictation')",
             category: "Keyboard",
-            val_type: ValType::Int,
+            val_type: ValType::StringFromIntMap,
             factory_default: "2",
+            int_to_string_map: Some(&[
+                (0, "Do Nothing"),
+                (1, "Change Input Source"),
+                (2, "Show Emoji & Symbols"),
+                (3, "Start Dictation"),
+            ]),
         }],
     ),
     // ── Universal Access ──────────────────────────────────────────────────
@@ -1112,6 +1245,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Accessibility",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "closeViewZoomFollowsFocus",
@@ -1120,6 +1254,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Accessibility",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "mouseDriverCursorSize",
@@ -1128,6 +1263,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Accessibility",
                 val_type: ValType::Float,
                 factory_default: "1.0",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "reduceMotion",
@@ -1136,6 +1272,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Accessibility",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "reduceTransparency",
@@ -1144,6 +1281,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Accessibility",
                 val_type: ValType::Bool,
                 factory_default: "false",
+                int_to_string_map: None,
             },
         ],
     ),
@@ -1157,6 +1295,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
             category: "Security",
             val_type: ValType::Bool,
             factory_default: "true",
+            int_to_string_map: None,
         }],
     ),
     // ── Activity Monitor ──────────────────────────────────────────────────
@@ -1170,6 +1309,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Activity Monitor",
                 val_type: ValType::Int,
                 factory_default: "0",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "OpenMainWindow",
@@ -1178,6 +1318,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Activity Monitor",
                 val_type: ValType::Bool,
                 factory_default: "true",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "ShowCategory",
@@ -1186,6 +1327,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Activity Monitor",
                 val_type: ValType::Int,
                 factory_default: "100",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "SortColumn",
@@ -1194,6 +1336,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Activity Monitor",
                 val_type: ValType::String,
                 factory_default: "CPUUsage",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "SortDirection",
@@ -1202,6 +1345,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Activity Monitor",
                 val_type: ValType::Int,
                 factory_default: "0",
+                int_to_string_map: None,
             },
         ],
     ),
@@ -1215,6 +1359,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
             category: "Software Update",
             val_type: ValType::Bool,
             factory_default: "false",
+            int_to_string_map: None,
         }],
     ),
     // ── Magic Mouse ───────────────────────────────────────────────────────
@@ -1227,6 +1372,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
             category: "Mouse",
             val_type: ValType::String,
             factory_default: "TwoButton",
+            int_to_string_map: None,
         }],
     ),
     // ── SMB Server ────────────────────────────────────────────────────────
@@ -1240,6 +1386,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Sharing",
                 val_type: ValType::String,
                 factory_default: "",
+                int_to_string_map: None,
             },
             KeyDef {
                 defaults_key: "ServerDescription",
@@ -1248,6 +1395,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
                 category: "Sharing",
                 val_type: ValType::String,
                 factory_default: "",
+                int_to_string_map: None,
             },
         ],
     ),
@@ -1382,6 +1530,13 @@ fn parse_plist_value(line: &str) -> Option<String> {
 /// Compare a current value string against a factory default, taking value type
 /// into account. Returns `true` if they are semantically different.
 fn values_differ(current: &str, factory: &str, val_type: ValType) -> bool {
+    // macOS commonly omits keys whose factory value is null. In our scanner an
+    // empty string can represent that missing value, so treat it as equivalent
+    // to the explicit NULL_FLAG sentinel.
+    if factory == NULL_FLAG && current.trim().is_empty() {
+        return false;
+    }
+
     match val_type {
         ValType::Bool => {
             let cur = normalize_bool(current);
@@ -1399,6 +1554,11 @@ fn values_differ(current: &str, factory: &str, val_type: ValType) -> bool {
             (cur - fac).abs() > 0.001
         }
         ValType::String => current.trim() != factory.trim(),
+        ValType::StringFromIntMap => {
+            let cur: i64 = current.trim().parse().unwrap_or(0);
+            let fac: i64 = factory.trim().parse().unwrap_or(0);
+            cur != fac
+        }
     }
 }
 
@@ -1416,10 +1576,14 @@ fn normalize_bool(val: &str) -> &'static str {
 
 /// Scan all supported macOS defaults domains and return settings that differ
 /// from the factory defaults.
+/// If you want to make sure none of the KeyDefs are stale by running their
+/// results through a nix build you can play with the value of GENERATE_EVERYTHING.
 pub fn scan_system_defaults() -> SystemDefaultsScan {
     if let Some(scan) = e2e_system_defaults_scan() {
         return scan;
     }
+
+    const GENERATE_EVERYTHING: bool = false; // for testing: treat all keys as non-default
 
     let mut defaults = Vec::new();
     let mut total_scanned: usize = 0;
@@ -1432,10 +1596,18 @@ pub fn scan_system_defaults() -> SystemDefaultsScan {
 
             let current = match domain_values.get(def.defaults_key) {
                 Some(v) => v.as_str(),
-                None => continue, // key not set → using factory default
+                None => {
+                    if !GENERATE_EVERYTHING {
+                        continue;
+                    } else if def.factory_default == NULL_FLAG {
+                        ""
+                    } else {
+                        def.factory_default
+                    }
+                } // key not set → using factory default
             };
 
-            if values_differ(current, def.factory_default, def.val_type) {
+            if GENERATE_EVERYTHING || values_differ(current, def.factory_default, def.val_type) {
                 defaults.push(SystemDefault {
                     nix_key: def.nix_key.to_string(),
                     label: def.label.to_string(),
@@ -1525,8 +1697,15 @@ pub fn generate_system_defaults_nix(defaults: &[SystemDefault]) -> String {
 
 /// Convert a string value to appropriate Nix syntax based on content analysis.
 fn to_nix_value(value: &str, group: &str, attr: &str) -> String {
-    // Find the KeyDef to get the expected type
-    let val_type = find_val_type(group, attr);
+    // Find the KeyDef to get the expected type and conversion metadata.
+    let key_def = find_key_def(group, attr);
+    if key_def.is_some_and(|def| def.factory_default == NULL_FLAG)
+        && is_nullish_factory_value(value)
+    {
+        return "null".to_string();
+    }
+
+    let val_type = key_def.map(|def| def.val_type);
 
     match val_type {
         Some(ValType::Bool) => {
@@ -1558,21 +1737,35 @@ fn to_nix_value(value: &str, group: &str, attr: &str) -> String {
                 format!("\"{}\"", escape_nix_string(value))
             }
         }
+        Some(ValType::StringFromIntMap) => {
+            if let Ok(n) = value.trim().parse::<i32>() {
+                if let Some(map) = key_def.and_then(|def| def.int_to_string_map) {
+                    if let Some((_, mapped)) = map.iter().find(|(k, _)| *k == n) {
+                        return format!("\"{}\"", escape_nix_string(mapped));
+                    }
+                }
+            }
+            format!("\"{}\"", escape_nix_string(value))
+        }
         Some(ValType::String) | None => {
             format!("\"{}\"", escape_nix_string(value))
         }
     }
 }
 
-/// Find the ValType for a given group + attr combination.
-fn find_val_type(group: &str, attr: &str) -> Option<ValType> {
+fn is_nullish_factory_value(value: &str) -> bool {
+    value.trim().is_empty()
+}
+
+/// Find the KeyDef for a given group + attr combination.
+fn find_key_def(group: &str, attr: &str) -> Option<&'static KeyDef> {
     for (_, key_defs) in KEY_DEFS {
         for def in *key_defs {
             if let Some(last_dot) = rfind_unquoted_dot(def.nix_key) {
                 let def_group = &def.nix_key[..last_dot];
                 let def_attr = &def.nix_key[last_dot + 1..];
                 if def_group == group && def_attr == attr {
-                    return Some(def.val_type);
+                    return Some(def);
                 }
             }
         }
@@ -1908,6 +2101,19 @@ mod tests {
     }
 
     #[test]
+    fn test_values_differ_string_from_int_map() {
+        assert!(!values_differ("2", "2", ValType::StringFromIntMap));
+        assert!(values_differ("1", "2", ValType::StringFromIntMap));
+    }
+
+    #[test]
+    fn test_values_differ_null_flag_empty_current() {
+        assert!(!values_differ("", NULL_FLAG, ValType::String));
+        assert!(!values_differ("   ", NULL_FLAG, ValType::String));
+        assert!(values_differ("custom", NULL_FLAG, ValType::String));
+    }
+
+    #[test]
     fn test_to_nix_value_bool() {
         assert_eq!(
             to_nix_value("true", "system.defaults.dock", "autohide"),
@@ -1957,6 +2163,42 @@ mod tests {
     }
 
     #[test]
+    fn test_to_nix_value_string_from_int_map() {
+        assert_eq!(
+            to_nix_value("2", "system.defaults.hitoolbox", "AppleFnUsageType"),
+            "\"Show Emoji & Symbols\""
+        );
+        assert_eq!(
+            to_nix_value("99", "system.defaults.hitoolbox", "AppleFnUsageType"),
+            "\"99\""
+        );
+    }
+
+    #[test]
+    fn test_to_nix_value_null_flag_key() {
+        assert_eq!(
+            to_nix_value("", "system.defaults.dock", "persistent-apps"),
+            "null"
+        );
+        assert_eq!(
+            to_nix_value("   ", "system.defaults.dock", "persistent-apps"),
+            "null"
+        );
+    }
+
+    #[test]
+    fn test_to_nix_value_null_flag_key_preserves_non_empty_values() {
+        assert_eq!(
+            to_nix_value("0", "system.defaults.dock", "persistent-apps"),
+            "\"0\""
+        );
+        assert_eq!(
+            to_nix_value("false", "system.defaults.dock", "persistent-apps"),
+            "\"false\""
+        );
+    }
+
+    #[test]
     fn test_escape_nix_string() {
         assert_eq!(escape_nix_string("hello"), "hello");
         assert_eq!(escape_nix_string("say \"hi\""), "say \\\"hi\\\"");
@@ -2002,6 +2244,20 @@ mod tests {
         assert!(result.contains("autohide = true;"));
         assert!(result.contains("orientation = \"left\";"));
         assert!(result.contains("AppleInterfaceStyle = \"Dark\";"));
+    }
+
+    #[test]
+    fn test_generate_system_defaults_nix_null_flag_key() {
+        let defaults = vec![SystemDefault {
+            nix_key: "system.defaults.dock.persistent-apps".into(),
+            label: "Persistent Dock apps".into(),
+            category: "Dock".into(),
+            current_value: "".into(),
+            default_value: NULL_FLAG.into(),
+        }];
+
+        let result = generate_system_defaults_nix(&defaults);
+        assert!(result.contains("persistent-apps = null;"));
     }
 
     #[test]

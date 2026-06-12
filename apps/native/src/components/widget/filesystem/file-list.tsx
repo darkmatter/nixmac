@@ -9,9 +9,10 @@ interface FileListProps {
   files: FsFile[];
   /** Same handler the FileRow uses — the caller seeds the prompt and closes the view. */
   onEditWithPrompt: (file: FsFile) => void;
-  /** Untracked sections route through this — caller seeds the prompt with a tracking task. */
+  /** Fallback for untracked sections without a direct managed-edit path. */
   onTrack: (seed: string) => void;
   onTrackHomebrewItems?: (items: CandidateItem[]) => Promise<void> | void;
+  onTrackSystemDefaults?: (items: CandidateItem[]) => Promise<void> | void;
 }
 
 export function FileList({
@@ -19,6 +20,7 @@ export function FileList({
   onEditWithPrompt,
   onTrack,
   onTrackHomebrewItems,
+  onTrackSystemDefaults,
 }: FileListProps) {
   const [query, setQuery] = useState("");
 
@@ -60,6 +62,7 @@ export function FileList({
                 file={f}
                 onTrack={onTrack}
                 onTrackHomebrewItems={onTrackHomebrewItems}
+                onTrackSystemDefaults={onTrackSystemDefaults}
               />
             </div>
           ) : (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { tauriAPI } from "@/ipc/api";
 import type { SystemDefaultsScan } from "@/ipc/types";
@@ -8,6 +8,16 @@ import type { SystemDefaultsScan } from "@/ipc/types";
 export function useSystemDefaultsScan(enabled = true) {
   const [scan, setScan] = useState<SystemDefaultsScan | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async (isCancelled: () => boolean = () => false) => {
+    setError(null);
+    try {
+      const result = await tauriAPI.scanner.scanDefaults();
+      if (!isCancelled()) setScan(result);
+    } catch (e: unknown) {
+      if (!isCancelled()) setError(String(e));
+    }
+  }, []);
 
   useEffect(() => {
     if (!enabled) {
@@ -17,20 +27,12 @@ export function useSystemDefaultsScan(enabled = true) {
     }
 
     let cancelled = false;
-    setError(null);
-    tauriAPI.scanner
-      .scanDefaults()
-      .then((result) => {
-        if (!cancelled) setScan(result);
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) setError(String(e));
-      });
+    void refresh(() => cancelled);
 
     return () => {
       cancelled = true;
     };
-  }, [enabled]);
+  }, [enabled, refresh]);
 
-  return { scan, error };
+  return { scan, error, refresh };
 }

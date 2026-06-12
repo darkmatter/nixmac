@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 import {
   isHomebrewCandidateFile,
+  isSystemDefaultsCandidateFile,
   type CandidateItem,
   type FileTone,
   type FsFile,
@@ -17,11 +18,11 @@ import { seedForUntrackedItem, seedForUntrackedSection } from "./seed-prompt";
 interface UntrackedCardProps {
   file: FsFile;
   /**
-   * Called when the user clicks "Track these" or "Track <item>" — the
-   * caller seeds the prompt and closes the Filesystem view.
+   * Fallback for untracked sections that do not have a direct managed-edit path.
    */
   onTrack: (seed: string) => void;
   onTrackHomebrewItems?: (items: CandidateItem[]) => Promise<void> | void;
+  onTrackSystemDefaults?: (items: CandidateItem[]) => Promise<void> | void;
 }
 
 const CARD_TONE_CLASSES: Record<
@@ -60,7 +61,12 @@ const CARD_TONE_CLASSES: Record<
   },
 };
 
-export function UntrackedCard({ file, onTrack, onTrackHomebrewItems }: UntrackedCardProps) {
+export function UntrackedCard({
+  file,
+  onTrack,
+  onTrackHomebrewItems,
+  onTrackSystemDefaults,
+}: UntrackedCardProps) {
   const items = useMemo<CandidateItem[]>(() => file.items ?? [], [file.items]);
   const contentId = useId();
   const [expanded, setExpanded] = useState(true);
@@ -70,20 +76,24 @@ export function UntrackedCard({ file, onTrack, onTrackHomebrewItems }: Untracked
   const tone = CARD_TONE_CLASSES[file.tone];
   const Icon = resolveIcon(file.iconName);
   const hasItems = items.length > 0;
-  // Managed-edit routes are section-scoped: Homebrew candidates use the direct
-  // managed edit path, while other untracked sections still seed prompts.
+  // Managed-edit routes are section-scoped. Anything without a direct handler
+  // still falls back to prompt seeding.
   const canTrackHomebrew = isHomebrewCandidateFile(file) && !!onTrackHomebrewItems;
+  const canTrackSystemDefaults =
+    isSystemDefaultsCandidateFile(file) && !!onTrackSystemDefaults;
 
   const trackItems = async (selectedItems: CandidateItem[], key: string, seed: string) => {
-    if (!canTrackHomebrew || !onTrackHomebrewItems) {
-      onTrack(seed);
-      return;
-    }
-
     setTrackingKey(key);
     setTrackError(null);
     try {
-      await onTrackHomebrewItems(selectedItems);
+      if (canTrackHomebrew && onTrackHomebrewItems) {
+        await onTrackHomebrewItems(selectedItems);
+      } else if (canTrackSystemDefaults && onTrackSystemDefaults) {
+        await onTrackSystemDefaults(selectedItems);
+      } else {
+        // Fall back to generic prompt seeding for files that don't have a direct managed-edit path.
+        onTrack(seed);
+      }
     } catch (error: unknown) {
       setTrackError(String(error));
     } finally {
