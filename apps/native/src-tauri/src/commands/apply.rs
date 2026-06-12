@@ -71,8 +71,17 @@ pub async fn finalize_rollback(
         .map_err(|e| capture_err("finalize_rollback", e))
 }
 
+/// Returns the last-known nix/darwin-rebuild installation status from the
+/// in-memory cell, without probing the system. `nix_check` is the probe.
 #[tauri::command]
-pub async fn nix_check() -> Result<shared_types::NixCheckResult, String> {
+pub async fn get_nix_install_state(
+    app: AppHandle,
+) -> Result<shared_types::NixInstallState, String> {
+    Ok(crate::state::nix_install_state::get(&app))
+}
+
+#[tauri::command]
+pub async fn nix_check(app: AppHandle) -> Result<shared_types::NixCheckResult, String> {
     let installed = nix::is_nix_installed();
     let version = if installed {
         nix::get_nix_version()
@@ -84,6 +93,11 @@ pub async fn nix_check() -> Result<shared_types::NixCheckResult, String> {
     } else {
         false
     };
+    // Record the probe result; the cell write emits nix_install_state_changed.
+    crate::state::nix_install_state::update(&app, |state| {
+        state.installed = Some(installed);
+        state.darwin_rebuild_available = Some(darwin_rebuild_available);
+    });
     Ok(shared_types::NixCheckResult {
         installed,
         version,
