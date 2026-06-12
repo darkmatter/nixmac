@@ -1,15 +1,15 @@
 import { listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
 
 export function useTrayEvents() {
   useEffect(() => {
     const unlisten = Promise.all([
       listen("tray:open-feedback", () => {
-        useWidgetStore.getState().setFeedbackOpen(true);
+        useUiState.getState().setFeedbackOpen(true);
       }),
       listen("tray:open-settings", () => {
-        useWidgetStore.getState().setSettingsOpen(true);
+        useUiState.getState().setSettingsOpen(true);
       }),
     ]).catch((error) => {
       if (import.meta.env.PROD) console.error("Tray listeners unavailable:", error);

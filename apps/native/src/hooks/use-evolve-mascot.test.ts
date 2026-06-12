@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useUiState } from "@/stores/ui-state";
 import { useWidgetStore } from "@/stores/widget-store";
 import { initialRebuildState } from "@/types/rebuild";
 import { useEvolveMascot } from "./use-evolve-mascot";
@@ -23,9 +24,9 @@ describe("useEvolveMascot", () => {
     vi.clearAllMocks();
     useWidgetStore.setState({
       experimentalSpinningMascot: false,
-      isGenerating: false,
       rebuild: initialRebuildState,
     });
+    useUiState.setState({ isGenerating: false });
   });
 
   it("shows the mascot only when the experimental flag and active evolve state are both enabled", async () => {
@@ -36,13 +37,13 @@ describe("useEvolveMascot", () => {
 
     act(() => {
       useWidgetStore.getState().setBoolPref("experimentalSpinningMascot", true);
-      useWidgetStore.getState().setGenerating(true);
+      useUiState.getState().setGenerating(true);
     });
 
     await waitFor(() => expect(mocks.show).toHaveBeenCalledTimes(1));
 
     act(() => {
-      useWidgetStore.getState().setGenerating(false);
+      useUiState.getState().setGenerating(false);
     });
 
     await waitFor(() => expect(mocks.hide).toHaveBeenCalledTimes(2));

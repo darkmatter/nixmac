@@ -1,4 +1,5 @@
 import { EVOLUTION_CANCELLED_MSG } from "@/lib/constants";
+import { useUiState } from "@/stores/ui-state";
 import { useWidgetStore } from "@/stores/widget-store";
 import { EVOLVE_EVENT_CHANNEL } from "@/lib/constants";
 import { tauriAPI, ipcRenderer } from "@/ipc/api";
@@ -55,21 +56,22 @@ const findChangeMap = async (): Promise<void> => {
 const handleEvolve = async () => {
   // Get fresh state each time
   const store = useWidgetStore.getState();
-  if (!store.evolvePrompt.trim()) {
+  const ui = useUiState.getState();
+  if (!ui.evolvePrompt.trim()) {
     return;
   }
 
-  await refreshPromptHistory(store.evolvePrompt.trim());
+  await refreshPromptHistory(ui.evolvePrompt.trim());
 
-  store.setProcessing(true, "evolve");
-  store.setGenerating(true);
-  store.setError(null);
+  ui.setProcessing(true, "evolve");
+  ui.setGenerating(true);
+  ui.setError(null);
   mirrorGitState(useViewModel.getState().git, false);
   store.clearEvolveEvents();
-  store.clearLogs();
+  ui.clearLogs();
   store.setConversationalResponse(null);
   store.setEvolutionTelemetry(null);
-  store.appendLog(`\n> Evolving: "${store.evolvePrompt}"\n`);
+  ui.appendLog(`\n> Evolving: "${ui.evolvePrompt}"\n`);
 
   // Track evolution start
   getTelemetry().captureEvent({ name: "evolve_started" });
@@ -78,7 +80,7 @@ const handleEvolve = async () => {
     if (event.payload) {
       useWidgetStore.getState().appendEvolveEvent(event.payload);
       if (event.payload.raw) {
-        useWidgetStore.getState().appendLog(`${event.payload.raw}\n`);
+        useUiState.getState().appendLog(`${event.payload.raw}\n`);
       }
     }
   });
@@ -86,7 +88,7 @@ const handleEvolve = async () => {
   try {
     // Run the unified evolution workflow
     // Backend handles: AI + summary + branch + commit + DB
-    const result = await tauriAPI.darwin.evolve(store.evolvePrompt);
+    const result = await tauriAPI.darwin.evolve(ui.evolvePrompt);
     const isConversational = result?.telemetry?.state === "conversational";
     const isLimitReached = result?.telemetry?.state === "limitReached";
 
@@ -97,7 +99,7 @@ const handleEvolve = async () => {
     const completionMsg = isLimitReached
       ? `⏸ Evolution stopped (safety limit reached)${iterationSuffix}\n`
       : `✓ Evolution complete${iterationSuffix}\n`;
-    useWidgetStore.getState().appendLog(completionMsg);
+    useUiState.getState().appendLog(completionMsg);
     if (isLimitReached) {
       toast.info(completionMsg);
     } else {
@@ -120,7 +122,7 @@ const handleEvolve = async () => {
       mirrorChangeMapState(result.changeMap);
     }
 
-    store.setEvolvePrompt("");
+    ui.setEvolvePrompt("");
 
     // Track successful evolution
     if (result?.evolveState) {
@@ -134,7 +136,7 @@ const handleEvolve = async () => {
     const isCancelled = msg.includes(EVOLUTION_CANCELLED_MSG);
 
     if (isCancelled) {
-      useWidgetStore.getState().appendLog("✗ Evolution cancelled\n");
+      useUiState.getState().appendLog("✗ Evolution cancelled\n");
     } else {
       console.error("[useEvolve] Evolution failed:", {
         error: e,
@@ -142,8 +144,8 @@ const handleEvolve = async () => {
         stack: (e as Error)?.stack,
         timestamp: new Date().toISOString(),
       });
-      useWidgetStore.getState().setError(msg);
-      useWidgetStore.getState().appendLog(`✗ Error: ${msg}\n`);
+      useUiState.getState().setError(msg);
+      useUiState.getState().appendLog(`✗ Error: ${msg}\n`);
 
       // Track evolution failure
       const stage = msg.toLowerCase().includes("build") ? "build" : msg.toLowerCase().includes("apply") ? "apply" : "agent";
@@ -151,8 +153,8 @@ const handleEvolve = async () => {
     }
     await findChangeMap();
   } finally {
-    useWidgetStore.getState().setGenerating(false);
-    useWidgetStore.getState().setProcessing(false, "evolve");
+    useUiState.getState().setGenerating(false);
+    useUiState.getState().setProcessing(false, "evolve");
     unlistenEvolve();
   }
 };

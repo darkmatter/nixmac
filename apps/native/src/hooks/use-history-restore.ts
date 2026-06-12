@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useHistory } from "@/hooks/use-history";
 import { tauriAPI } from "@/ipc/api";
@@ -193,7 +193,7 @@ export function useHistoryRestore(
   onUncommittedChanges: () => void,
 ): HistoryRestoreResult {
   const { loadHistory } = useHistory();
-  const setProcessing = useWidgetStore((state) => state.setProcessing);
+  const setProcessing = useUiState((state) => state.setProcessing);
   const gitStatus = useViewModel((state) => state.git);
   const { triggerRebuild } = useRebuildStream();
 

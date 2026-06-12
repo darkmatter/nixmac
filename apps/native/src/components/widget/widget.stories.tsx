@@ -1,6 +1,7 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
 import type { EvolveEvent, GitStatus } from "@/ipc/types";
+import { useUiState } from "@/stores/ui-state";
 import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { SemanticChangeMap } from "@/ipc/types";
@@ -218,6 +219,7 @@ interface StoreState {
 function StoryWidget({ storeState }: { storeState?: StoreState }) {
   useEffect(() => {
     const store = useWidgetStore.getState();
+    const ui = useUiState.getState();
 
     // Set store state
     if (storeState?.configDir !== undefined) store.setConfigDir(storeState.configDir);
@@ -225,12 +227,12 @@ function StoryWidget({ storeState }: { storeState?: StoreState }) {
     if (storeState?.host !== undefined) store.setHost(storeState.host);
     if (storeState?.gitStatus !== undefined) useViewModel.setState({ git: storeState.gitStatus });
     if (storeState?.changeMap !== undefined) useViewModel.setState({ changeMap: storeState.changeMap });
-    if (storeState?.evolvePrompt !== undefined) store.setEvolvePrompt(storeState.evolvePrompt);
+    if (storeState?.evolvePrompt !== undefined) ui.setEvolvePrompt(storeState.evolvePrompt);
     if (storeState?.isProcessing !== undefined)
-      store.setProcessing(storeState.isProcessing, storeState.processingAction || null);
-    if (storeState?.isGenerating !== undefined) store.setGenerating(storeState.isGenerating);
-    if (storeState?.settingsOpen !== undefined) store.setSettingsOpen(storeState.settingsOpen);
-    if (storeState?.error !== undefined) store.setError(storeState.error);
+      ui.setProcessing(storeState.isProcessing, storeState.processingAction || null);
+    if (storeState?.isGenerating !== undefined) ui.setGenerating(storeState.isGenerating);
+    if (storeState?.settingsOpen !== undefined) ui.setSettingsOpen(storeState.settingsOpen);
+    if (storeState?.error !== undefined) ui.setError(storeState.error);
 
     if (storeState?.evolveEvents !== undefined) {
       store.clearEvolveEvents();
@@ -240,8 +242,8 @@ function StoryWidget({ storeState }: { storeState?: StoreState }) {
     }
 
     if (storeState?.consoleLogs !== undefined) {
-      store.clearLogs();
-      store.appendLog(storeState.consoleLogs);
+      ui.clearLogs();
+      ui.appendLog(storeState.consoleLogs);
     }
   }, [storeState]);
 

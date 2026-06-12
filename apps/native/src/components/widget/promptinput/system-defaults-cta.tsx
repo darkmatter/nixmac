@@ -6,6 +6,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useUiState } from "@/stores/ui-state";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { SystemDefault, SystemDefaultsScan } from "@/ipc/types";
 import { tauriAPI } from "@/ipc/api";
@@ -81,9 +82,8 @@ export function SystemDefaultsCTA() {
   }, [eligible]);
 
   const handleApply = async (defaults: SystemDefault[]) => {
-    const store = useWidgetStore.getState();
     setApplying(true);
-    store.setProcessing(true, "apply");
+    useUiState.getState().setProcessing(true, "apply");
 
     try {
       const result = await tauriAPI.scanner.applyDefaults(defaults);
@@ -98,7 +98,7 @@ export function SystemDefaultsCTA() {
     } finally {
       setApplying(false);
       setOpen(false);
-      useWidgetStore.getState().setProcessing(false);
+      useUiState.getState().setProcessing(false);
     }
   };
 

@@ -19,10 +19,7 @@ describe("createWidgetStore — initial state", () => {
     expect(s.permissionsState).toBeNull();
     expect(s.nixInstalled).toBeNull();
     expect(s.darwinRebuildAvailable).toBeNull();
-    expect(s.isProcessing).toBe(false);
-    expect(s.processingAction).toBeNull();
     expect(s.evolveEvents).toEqual([]);
-    expect(s.consoleLogs).toBe("");
     expect(s.rebuild).toEqual(initialRebuildState);
     // recommendedPrompt distinguishes "never fetched" (undefined) from "none" (null).
     expect(s.recommendedPrompt).toBeUndefined();
@@ -31,9 +28,6 @@ describe("createWidgetStore — initial state", () => {
     expect(s.confirmClear).toBe(true);
     expect(s.confirmRollback).toBe(true);
     expect(s.scanHomebrewOnStartup).toBe(true);
-    // analyzing-hash set starts empty but is an actual Set.
-    expect(s.analyzingHistoryForHashes).toBeInstanceOf(Set);
-    expect(s.analyzingHistoryForHashes.size).toBe(0);
   });
 
   it("merges initialState overrides over the defaults", () => {
@@ -49,7 +43,7 @@ describe("createWidgetStore — initial state", () => {
     expect(s.host).toBe("mbp");
     expect(s.permissionsChecked).toBe(true);
     // Unrelated defaults are preserved.
-    expect(s.evolvePrompt).toBe("");
+    expect(s.promptHistory).toEqual([]);
     expect(s.rebuild).toEqual(initialRebuildState);
   });
 
@@ -80,43 +74,6 @@ describe("widget store — simple setters", () => {
     expect(s.host).toBe("one");
   });
 
-  it("setError stores the message and can clear it with null", () => {
-    const store = createWidgetStore();
-    store.getState().setError("boom");
-    expect(store.getState().error).toBe("boom");
-    store.getState().setError(null);
-    expect(store.getState().error).toBeNull();
-  });
-
-});
-
-// ---------------------------------------------------------------------------
-// setProcessing — clears action when not processing
-// ---------------------------------------------------------------------------
-
-describe("setProcessing", () => {
-  it("sets isProcessing=true with the provided action", () => {
-    const store = createWidgetStore();
-    store.getState().setProcessing(true, "evolve");
-    const s = store.getState();
-    expect(s.isProcessing).toBe(true);
-    expect(s.processingAction).toBe("evolve");
-  });
-
-  it("clears processingAction to null when isProcessing=false, regardless of the 2nd arg", () => {
-    const store = createWidgetStore();
-    store.getState().setProcessing(true, "apply");
-    store.getState().setProcessing(false, "apply");
-    const s = store.getState();
-    expect(s.isProcessing).toBe(false);
-    expect(s.processingAction).toBeNull();
-  });
-
-  it("defaults action to null when omitted", () => {
-    const store = createWidgetStore();
-    store.getState().setProcessing(true);
-    expect(store.getState().processingAction).toBeNull();
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -149,57 +106,6 @@ describe("confirmation preferences", () => {
     const s = store.getState();
     expect(s.scanHomebrewOnStartup).toBe(false);
     expect(s.confirmBuild).toBe(true);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// analyzingHistoryForHashes — immutable Set updates
-// ---------------------------------------------------------------------------
-
-describe("analyzingHistoryForHashes", () => {
-  it("adds a hash to the set without mutating the previous Set instance", () => {
-    const store = createWidgetStore();
-    const before = store.getState().analyzingHistoryForHashes;
-
-    store.getState().addAnalyzingHistoryHash("abc");
-
-    const after = store.getState().analyzingHistoryForHashes;
-    expect(after).not.toBe(before); // new Set reference (no in-place mutation)
-    expect(before.has("abc")).toBe(false);
-    expect(after.has("abc")).toBe(true);
-  });
-
-  it("removeAnalyzingHistoryHash removes only that hash", () => {
-    const store = createWidgetStore();
-    store.getState().addAnalyzingHistoryHash("a");
-    store.getState().addAnalyzingHistoryHash("b");
-    store.getState().removeAnalyzingHistoryHash("a");
-
-    const s = store.getState().analyzingHistoryForHashes;
-    expect(s.has("a")).toBe(false);
-    expect(s.has("b")).toBe(true);
-  });
-
-  it("removing a hash that isn't present is a no-op", () => {
-    const store = createWidgetStore();
-    expect(() => store.getState().removeAnalyzingHistoryHash("nope")).not.toThrow();
-    expect(store.getState().analyzingHistoryForHashes.size).toBe(0);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Console log buffer
-// ---------------------------------------------------------------------------
-
-describe("console log buffer", () => {
-  it("appendLog concatenates, clearLogs resets", () => {
-    const store = createWidgetStore();
-    store.getState().appendLog("hello ");
-    store.getState().appendLog("world");
-    expect(store.getState().consoleLogs).toBe("hello world");
-
-    store.getState().clearLogs();
-    expect(store.getState().consoleLogs).toBe("");
   });
 });
 
@@ -303,31 +209,3 @@ describe("rebuild lifecycle", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// UI helpers
-// ---------------------------------------------------------------------------
-
-describe("UI helpers", () => {
-  it("setSettingsOpen toggles and stores the active tab", () => {
-    const store = createWidgetStore();
-    store.getState().setSettingsOpen(true, "api-keys");
-    let s = store.getState();
-    expect(s.settingsOpen).toBe(true);
-    expect(s.settingsActiveTab).toBe("api-keys");
-
-    store.getState().setSettingsOpen(false);
-    s = store.getState();
-    expect(s.settingsOpen).toBe(false);
-    expect(s.settingsActiveTab).toBeNull();
-  });
-
-  it("openFeedback seeds type + initial text and opens the panel", () => {
-    const store = createWidgetStore();
-    store.getState().openFeedback("bug" as never, "something broke");
-    const s = store.getState();
-    expect(s.feedbackOpen).toBe(true);
-    expect(s.feedbackTypeOverride).toBe("bug");
-    expect(s.feedbackInitialText).toBe("something broke");
-  });
-
-});

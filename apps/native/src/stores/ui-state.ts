@@ -41,6 +41,8 @@ export type UiStateValues = {
   isGenerating: boolean;
   consoleLogs: string;
   analyzingHistoryForHashes: Set<string>;
+  isBootstrapping: boolean;
+  commitMessageSuggestion: string | null;
 };
 
 /**
@@ -64,6 +66,8 @@ type UiStateActions = {
   clearLogs: () => void;
   addAnalyzingHistoryHash: (hash: string) => void;
   removeAnalyzingHistoryHash: (hash: string) => void;
+  setBootstrapping: (isBootstrapping: boolean) => void;
+  setCommitMessageSuggestion: (msg: string | null) => void;
 };
 
 export type UiState = UiStateValues & UiStateActions;
@@ -87,6 +91,8 @@ export const initialUiState: UiStateValues = {
   isGenerating: false,
   consoleLogs: "",
   analyzingHistoryForHashes: new Set<string>(),
+  isBootstrapping: false,
+  commitMessageSuggestion: null,
 };
 
 /**
@@ -130,4 +136,6 @@ export const useUiState = create<UiState>()((set) => ({
       next.delete(hash);
       return { analyzingHistoryForHashes: next };
     }),
+  setBootstrapping: (isBootstrapping) => set({ isBootstrapping }),
+  setCommitMessageSuggestion: (commitMessageSuggestion) => set({ commitMessageSuggestion }),
 }));

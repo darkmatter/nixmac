@@ -1,4 +1,4 @@
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
 
 const RECOVERY_STORAGE_KEY = "nixmac:pending-error-report";
 
@@ -57,7 +57,7 @@ export function surfaceRecoveryReport(): void {
   if (!report) return;
   clearStoredReport();
 
-  const { setError, setPanicDetails } = useWidgetStore.getState();
+  const { setError, setPanicDetails } = useUiState.getState();
 
   setPanicDetails({
     message: report.message,

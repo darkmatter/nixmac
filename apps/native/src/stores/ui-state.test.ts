@@ -42,6 +42,60 @@ describe("useUiState", () => {
     expect(next.consoleLogs).toBe("first second");
   });
 
+  it("setError stores the message and can clear it with null", () => {
+    useUiState.getState().setError("boom");
+    expect(useUiState.getState().error).toBe("boom");
+    useUiState.getState().setError(null);
+    expect(useUiState.getState().error).toBeNull();
+  });
+
+  it("setProcessing clears the action when not processing and defaults it to null", () => {
+    useUiState.getState().setProcessing(true, "apply");
+    expect(useUiState.getState().processingAction).toBe("apply");
+
+    useUiState.getState().setProcessing(false, "apply");
+    expect(useUiState.getState().isProcessing).toBe(false);
+    expect(useUiState.getState().processingAction).toBeNull();
+
+    useUiState.getState().setProcessing(true);
+    expect(useUiState.getState().processingAction).toBeNull();
+  });
+
+  it("setSettingsOpen(false) resets the active tab", () => {
+    useUiState.getState().setSettingsOpen(true, "api-keys");
+    expect(useUiState.getState().settingsActiveTab).toBe("api-keys");
+
+    useUiState.getState().setSettingsOpen(false);
+    expect(useUiState.getState().settingsOpen).toBe(false);
+    expect(useUiState.getState().settingsActiveTab).toBeNull();
+  });
+
+  it("clearLogs resets the console buffer", () => {
+    useUiState.getState().appendLog("hello");
+    useUiState.getState().clearLogs();
+    expect(useUiState.getState().consoleLogs).toBe("");
+  });
+
+  it("removing an absent analyzing hash is a no-op", () => {
+    expect(() => useUiState.getState().removeAnalyzingHistoryHash("nope")).not.toThrow();
+    expect(useUiState.getState().analyzingHistoryForHashes.size).toBe(0);
+  });
+
+  it("tracks bootstrap and commit-message-suggestion state", () => {
+    expect(useUiState.getState().isBootstrapping).toBe(false);
+    expect(useUiState.getState().commitMessageSuggestion).toBeNull();
+
+    useUiState.getState().setBootstrapping(true);
+    useUiState.getState().setCommitMessageSuggestion("feat: add vim");
+    expect(useUiState.getState().isBootstrapping).toBe(true);
+    expect(useUiState.getState().commitMessageSuggestion).toBe("feat: add vim");
+
+    useUiState.getState().setBootstrapping(false);
+    useUiState.getState().setCommitMessageSuggestion(null);
+    expect(useUiState.getState().isBootstrapping).toBe(false);
+    expect(useUiState.getState().commitMessageSuggestion).toBeNull();
+  });
+
   it("updates analyzing history hashes immutably", () => {
     const before = useUiState.getState().analyzingHistoryForHashes;
 

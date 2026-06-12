@@ -10,7 +10,7 @@ import { useApply } from "@/hooks/use-apply";
 import { useEvolve } from "@/hooks/use-evolve";
 import { cn } from "@/lib/utils";
 import { useViewModel } from "@/stores/view-model";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
 import { Loader2, Wrench } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -36,7 +36,7 @@ export function ManualEvolveStep() {
   const { handleApply } = useApply();
   const { buildCheck } = useEvolve();
   const gitStatus = useViewModel((s) => s.git);
-  const isApplyBusy = useWidgetStore(
+  const isApplyBusy = useUiState(
     (s) => s.isProcessing && s.processingAction === "apply",
   );
   const rebuildRunning = useViewModel((s) => s.rebuild.isRunning);

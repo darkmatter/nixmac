@@ -1,4 +1,5 @@
 import { loadHosts } from "@/hooks/use-widget-initialization";
+import { useUiState } from "@/stores/ui-state";
 import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 import { mirrorChangeMapState } from "@/viewmodel/change-map";
@@ -41,7 +42,7 @@ export const refreshGitStatus = async (options?: { cache?: boolean }) => {
     return status;
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
-    useWidgetStore.getState().setError(msg);
+    useUiState.getState().setError(msg);
     if (msg.includes("is not a git repository")) {
       useWidgetStore.getState().setHosts([]);
     } else {
@@ -58,7 +59,7 @@ const getInitialStatus = async () => {
     mirrorGitState(currentStatus);
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
-    useWidgetStore.getState().setError(msg);
+    useUiState.getState().setError(msg);
     if (msg.includes("is not a git repository")) {
       useWidgetStore.getState().setHosts([]);
     } else {
@@ -69,24 +70,24 @@ const getInitialStatus = async () => {
 };
 
 const handleCommit = async ({ message }: { message: string }) => {
-  const store = useWidgetStore.getState();
-  store.setProcessing(true, "merge");
-  store.appendLog(`\n> Committing changes...\n`);
+  const ui = useUiState.getState();
+  ui.setProcessing(true, "merge");
+  ui.appendLog(`\n> Committing changes...\n`);
 
   try {
     const result = await tauriAPI.git.commit(message);
-    useWidgetStore.getState().appendLog("✓ Committed successfully\n");
-    useWidgetStore.getState().setError(null);
+    useUiState.getState().appendLog("✓ Committed successfully\n");
+    useUiState.getState().setError(null);
     toast.success("Committed successfully");
     mirrorChangeMapState(null);
     mirrorEvolveState(result.evolveState);
     await refreshGitStatus();
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
-    useWidgetStore.getState().setError(msg);
-    useWidgetStore.getState().appendLog(`✗ Error: ${msg}\n`);
+    useUiState.getState().setError(msg);
+    useUiState.getState().appendLog(`✗ Error: ${msg}\n`);
   } finally {
-    useWidgetStore.getState().setProcessing(false);
+    useUiState.getState().setProcessing(false);
   }
 };
 

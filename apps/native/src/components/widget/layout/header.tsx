@@ -4,27 +4,31 @@ import { filesystemViewEnabled } from "@/lib/flags";
 import { cn } from "@/lib/utils";
 import { Clock, FolderTree, Settings, MessageSquarePlus } from "lucide-react";
 import { APP_NAME } from "../../../../shared/constants";
+import { useUiState } from "@/stores/ui-state";
 import { useWidgetStore } from "@/stores/widget-store";
 import { computeCurrentStep } from "@/components/widget/utils";
 import { useViewModel } from "@/stores/view-model";
 
 export function Header() {
-  const setSettingsOpen = useWidgetStore((s) => s.setSettingsOpen);
-  const setFeedbackOpen = useWidgetStore((s) => s.setFeedbackOpen);
-  const showHistory = useWidgetStore((s) => s.showHistory);
-  const setShowHistory = useWidgetStore((s) => s.setShowHistory);
-  const showFilesystem = useWidgetStore((s) => s.showFilesystem);
-  const setShowFilesystem = useWidgetStore((s) => s.setShowFilesystem);
-  const isProcessing = useWidgetStore((s) => s.isProcessing);
-  const isGenerating = useWidgetStore((s) => s.isGenerating);
+  const setSettingsOpen = useUiState((s) => s.setSettingsOpen);
+  const setFeedbackOpen = useUiState((s) => s.setFeedbackOpen);
+  const showHistory = useUiState((s) => s.showHistory);
+  const setShowHistory = useUiState((s) => s.setShowHistory);
+  const showFilesystem = useUiState((s) => s.showFilesystem);
+  const setShowFilesystem = useUiState((s) => s.setShowFilesystem);
+  const isProcessing = useUiState((s) => s.isProcessing);
+  const isGenerating = useUiState((s) => s.isGenerating);
   const [isPulsing, setIsPulsing] = useState(false);
 
   // Flash the feedback icon when an error occurs (subscribe to detect all changes)
   useEffect(() => {
-    return useWidgetStore.subscribe((state, prevState) => {
+    return useUiState.subscribe((state, prevState) => {
       const step = computeCurrentStep({
-        ...state,
+        ...useWidgetStore.getState(),
         evolveState: useViewModel.getState().evolve,
+        showHistory: state.showHistory,
+        showFilesystem: state.showFilesystem,
+        isBootstrapping: state.isBootstrapping,
       });
       if (step !== "setup" && state.error && state.error !== prevState.error) {
         setIsPulsing(true);

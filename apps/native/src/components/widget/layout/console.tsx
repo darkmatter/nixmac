@@ -2,7 +2,7 @@
 
 import { ChevronDown, ChevronUp, GripHorizontal } from "lucide-react";
 import { useState, useCallback, useRef } from "react";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
 import { DebugOverlay } from "@/components/widget/layout/debug-overlay";
 
 /** Minimum console height in pixels. */
@@ -25,7 +25,7 @@ export function Console() {
   const [height, setHeight] = useState(CONSOLE_DEFAULT_HEIGHT);
   const containerRef = useRef<HTMLDivElement>(null);
   const didDragRef = useRef(false);
-  const logs = useWidgetStore((s) => s.consoleLogs);
+  const logs = useUiState((s) => s.consoleLogs);
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {

@@ -1,3 +1,4 @@
+import { useUiState } from "@/stores/ui-state";
 import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 import { mirrorChangeMapState } from "@/viewmodel/change-map";
@@ -17,7 +18,7 @@ const findChangeMap = async (): Promise<void> => {
 };
 
 const generateCommitMessage = async () => {
-  const { setCommitMessageSuggestion } = useWidgetStore.getState();
+  const { setCommitMessageSuggestion } = useUiState.getState();
   setCommitMessageSuggestion(null);
   try {
     const message = await tauriAPI.summarizedChanges.generateCommitMessage();
@@ -28,7 +29,7 @@ const generateCommitMessage = async () => {
 };
 
 const generateCurrentSummary = async () => {
-  const { setSummarizing } = useWidgetStore.getState();
+  const { setSummarizing } = useUiState.getState();
   setSummarizing(true);
   try {
     const map = await tauriAPI.summarizedChanges.summarizeCurrent();

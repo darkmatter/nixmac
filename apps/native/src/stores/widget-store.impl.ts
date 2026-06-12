@@ -1,7 +1,6 @@
 import { computeCurrentStep } from "@/components/widget/utils";
+import { useUiState } from "@/stores/ui-state";
 import { useViewModel } from "@/stores/view-model";
-import type { SettingsTab } from "@/stores/ui-state";
-import { FeedbackType } from "@/types/feedback";
 import type { BoolPrefKey, ConfirmPrefKey } from "@/types/preferences";
 import { initialRebuildState, type RebuildContext, type RebuildErrorType, type RebuildLine, type RebuildState } from "@/types/rebuild";
 import type { WidgetStep } from "@/types/widget";
@@ -20,8 +19,6 @@ import { devtools } from "zustand/middleware";
 // Types
 // =============================================================================
 
-type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
-
 export interface WidgetState {
   // Permissions (checked on startup)
   permissionsState: PermissionsState | null;
@@ -32,9 +29,6 @@ export interface WidgetState {
   hosts: string[];
   host: string;
 
-  // Bootstrap (creating default config)
-  isBootstrapping: boolean;
-
   // Nix installation
   nixInstalled: boolean | null; // null = not checked yet
 
@@ -44,50 +38,16 @@ export interface WidgetState {
   fileDiffContents: Record<string, FileDiffContents>;
 
   // Evolution
-  evolvePrompt: string;
-  isProcessing: boolean;
-  processingAction: ProcessingAction;
   evolveEvents: EvolveEvent[];
   promptHistory: string[];
   conversationalResponse: string | null;
   evolutionTelemetry: EvolutionTelemetry | null;
 
-  // Commit message suggestion (generated on merge screen)
-  commitMessageSuggestion: string | null;
-
   // Rebuild state (for inline rebuild progress)
   rebuild: RebuildState;
 
-  // Console
-  consoleLogs: string;
-
-  analyzingHistoryForHashes: Set<string>;
-
   // UI
-  isSummarizing: boolean;
-  isGenerating: boolean;
-  settingsOpen: boolean;
-  settingsActiveTab: SettingsTab | null;
   prefsLoaded: boolean;
-  showHistory: boolean;
-  showFilesystem: boolean;
-  /**
-   * Optional initial section to focus when the Filesystem view opens
-   * (e.g. when "View" on the Untracked banner is clicked, this is set
-   * to "manage"). The view consumes and clears it on mount. `null`
-   * means "use the view's default."
-   */
-  filesystemTargetSection: string | null;
-  feedbackOpen: boolean;
-  feedbackTypeOverride: FeedbackType | null;
-  feedbackInitialText: string | null;
-  panicDetails: {
-    message: string;
-    location?: string;
-    backtrace?: string;
-    timestamp: string;
-  } | null;
-  error: string | null;
   // `undefined` means "stale/unfetched", while `null` means "fetched and none found".
   recommendedPrompt: RecommendedPrompt | null | undefined;
 
@@ -112,9 +72,6 @@ export interface WidgetState {
   developerMode: boolean;
   pinnedVersion: string | null;
   updateChannel: UpdateChannel;
-
-  // Editor
-  editingFile: string | null;
 }
 
 interface WidgetActions {
@@ -126,31 +83,12 @@ interface WidgetActions {
   setConfigDir: (dir: string) => void;
   setHosts: (hosts: string[]) => void;
   setHost: (host: string) => void;
-  setBootstrapping: (isBootstrapping: boolean) => void;
   setNixInstalled: (installed: boolean | null) => void;
   setDarwinRebuildAvailable: (available: boolean | null) => void;
   setFileDiffContents: (contents: Record<string, FileDiffContents>) => void;
-  setEvolvePrompt: (prompt: string) => void;
-  setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
-  setSettingsOpen: (open: boolean, tab?: SettingsTab | null) => void;
   setPrefsLoaded: (loaded: boolean) => void;
-  setShowHistory: (show: boolean) => void;
-  /**
-   * @param section optional initial section id; when omitted on a
-   *   `show=true` call the view falls back to its default section.
-   */
-  setShowFilesystem: (show: boolean, section?: string | null) => void;
-  setFeedbackOpen: (open: boolean) => void;
-  setError: (error: string | null) => void;
-  setPanicDetails: (
-    details: { message: string; location?: string; backtrace?: string; timestamp: string } | null,
-  ) => void;
   setPromptHistory: (history: string[]) => void;
   setRecommendedPrompt: (prompt: RecommendedPrompt | null | undefined) => void;
-
-  // History
-  addAnalyzingHistoryHash: (hash: string) => void;
-  removeAnalyzingHistoryHash: (hash: string) => void;
 
   // Boolean preferences
   setBoolPref: (key: BoolPrefKey, value: boolean) => void;
@@ -164,25 +102,12 @@ interface WidgetActions {
   setPinnedVersion: (value: string | null) => void;
   setUpdateChannel: (value: UpdateChannel) => void;
 
-  // Client-side state (NOT from server)
-  setSummarizing: (summarizing: boolean) => void;
-  setGenerating: (generating: boolean) => void;
-  setFeedbackTypeOverride: (type: FeedbackType | null) => void;
-  openFeedback: (type?: FeedbackType, initialText?: string) => void;
-
-  // Console
-  appendLog: (text: string) => void;
-  clearLogs: () => void;
-
   // Evolve events
   appendEvolveEvent: (event: EvolveEvent) => void;
   clearEvolveEvents: () => void;
   setEvolutionTelemetry: (telemetry: EvolutionTelemetry | null) => void;
 
   setConversationalResponse: (response: string | null) => void;
-
-  // Commit message suggestion
-  setCommitMessageSuggestion: (msg: string | null) => void;
 
   // Rebuild state
   startRebuild: (context: RebuildContext) => void;
@@ -218,40 +143,16 @@ const initialWidgetState: WidgetState = {
   fileDiffContents: {},
 
   // Evolution
-  evolvePrompt: "",
-  isProcessing: false,
-  processingAction: null,
   evolveEvents: [],
   promptHistory: [],
   conversationalResponse: null,
   evolutionTelemetry: null,
 
-  analyzingHistoryForHashes: new Set<string>(),
-
-  // Commit message suggestion
-  commitMessageSuggestion: null,
-
   // Rebuild
   rebuild: initialRebuildState,
 
-  // Console
-  consoleLogs: "",
-
   // UI
-  isBootstrapping: false,
-  isSummarizing: false,
-  isGenerating: false,
-  settingsOpen: false,
-  settingsActiveTab: null,
   prefsLoaded: false,
-  showHistory: false,
-  showFilesystem: false,
-  filesystemTargetSection: null,
-  feedbackOpen: false,
-  feedbackTypeOverride: null,
-  feedbackInitialText: null,
-  panicDetails: null,
-  error: null,
   recommendedPrompt: undefined,
 
   // Confirmation preferences
@@ -275,9 +176,6 @@ const initialWidgetState: WidgetState = {
   developerMode: false,
   pinnedVersion: null,
   updateChannel: "stable",
-
-  // Editor
-  editingFile: null,
 };
 
 // =============================================================================
@@ -304,12 +202,6 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setHosts: (hosts) => set({ hosts }),
     setHost: (host) => set({ host }),
     setFileDiffContents: (fileDiffContents) => set({ fileDiffContents }),
-    setEvolvePrompt: (evolvePrompt) => set({ evolvePrompt }),
-    setProcessing: (isProcessing, action = null) =>
-      set({
-        isProcessing,
-        processingAction: isProcessing ? action : null,
-      }),
     setBoolPref: (key: BoolPrefKey, value: boolean) => set({ [key]: value }),
     initConfirmPrefs: (prefs) =>
       set({
@@ -321,45 +213,14 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setDeveloperMode: (value) => set({ developerMode: value }),
     setPinnedVersion: (value) => set({ pinnedVersion: value }),
     setUpdateChannel: (value) => set({ updateChannel: value }),
-    addAnalyzingHistoryHash: (hash) =>
-      set((state) => ({
-        analyzingHistoryForHashes: new Set([...state.analyzingHistoryForHashes, hash]),
-      })),
-    removeAnalyzingHistoryHash: (hash) =>
-      set((state) => {
-        const next = new Set(state.analyzingHistoryForHashes);
-        next.delete(hash);
-        return { analyzingHistoryForHashes: next };
-      }),
-    setSettingsOpen: (settingsOpen, tab) =>
-      set({ settingsOpen, settingsActiveTab: tab ?? null }),
     setPrefsLoaded: (prefsLoaded) => set({ prefsLoaded }),
-    setShowHistory: (showHistory) => set({ showHistory }),
-    setShowFilesystem: (showFilesystem, section = null) =>
-      set({ showFilesystem, filesystemTargetSection: showFilesystem ? section : null }),
-    setFeedbackOpen: (feedbackOpen) => set({ feedbackOpen }),
-    setFeedbackTypeOverride: (feedbackTypeOverride) => set({ feedbackTypeOverride }),
-    openFeedback: (type, initialText) =>
-      set({
-        feedbackOpen: true,
-        feedbackTypeOverride: type ?? null,
-        feedbackInitialText: initialText ?? null,
-      }),
-    setError: (error) => set({ error }),
-    setPanicDetails: (panicDetails) => set({ panicDetails }),
     setPromptHistory: (promptHistory) => set({ promptHistory }),
     setRecommendedPrompt: (recommendedPrompt) => set({ recommendedPrompt }),
 
     // Client-side UI state (NOT from server)
-    setBootstrapping: (isBootstrapping) => set({ isBootstrapping }),
     setNixInstalled: (nixInstalled) => set({ nixInstalled }),
     setDarwinRebuildAvailable: (darwinRebuildAvailable) => set({ darwinRebuildAvailable }),
-    setSummarizing: (isSummarizing) => set({ isSummarizing }),
-    setGenerating: (isGenerating) => set({ isGenerating }),
-
-    // Console
-    appendLog: (text) => set((state) => ({ consoleLogs: state.consoleLogs + text })),
-    clearLogs: () => set({ consoleLogs: "" }),
+    setDarwinRebuildPrefetching: (darwinRebuildPrefetching) => set({ darwinRebuildPrefetching }),
 
     // Evolve events
     appendEvolveEvent: (event) =>
@@ -369,9 +230,6 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
 
     // Conversational response
     setConversationalResponse: (conversationalResponse) => set({ conversationalResponse }),
-
-    // Commit message suggestion
-    setCommitMessageSuggestion: (commitMessageSuggestion) => set({ commitMessageSuggestion }),
 
     // Rebuild state
     startRebuild: (context) =>
@@ -446,5 +304,10 @@ export const useWidgetStore = createWidgetStore();
  */
 export function useCurrentStep(): WidgetStep {
   const evolveState = useViewModel((state) => state.evolve);
-  return useWidgetStore((state) => computeCurrentStep({ ...state, evolveState }));
+  const showHistory = useUiState((state) => state.showHistory);
+  const showFilesystem = useUiState((state) => state.showFilesystem);
+  const isBootstrapping = useUiState((state) => state.isBootstrapping);
+  return useWidgetStore((state) =>
+    computeCurrentStep({ ...state, evolveState, showHistory, showFilesystem, isBootstrapping }),
+  );
 }

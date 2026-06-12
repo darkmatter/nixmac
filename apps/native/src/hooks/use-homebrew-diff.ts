@@ -1,6 +1,7 @@
 "use client";
 
 import { tauriAPI } from "@/ipc/api";
+import { useUiState } from "@/stores/ui-state";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { HomebrewState } from "@/ipc/types";
 import { mirrorChangeMapState } from "@/viewmodel/change-map";
@@ -55,7 +56,7 @@ export function useHomebrewDiff(enabled = true) {
     if (!diff || !hasDiffItems(diff)) return;
     const store = useWidgetStore.getState();
     setIsApplying(true);
-    store.setProcessing(true, "apply");
+    useUiState.getState().setProcessing(true, "apply");
     try {
       const result = await tauriAPI.homebrew.applyDiff(diff);
       mirrorEvolveState(result.evolveState);
@@ -68,7 +69,7 @@ export function useHomebrewDiff(enabled = true) {
       setError(String(e));
     } finally {
       setIsApplying(false);
-      store.setProcessing(false);
+      useUiState.getState().setProcessing(false);
     }
   }, [diff]);
 

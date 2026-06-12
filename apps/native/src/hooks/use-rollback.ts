@@ -1,4 +1,4 @@
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
 import { tauriAPI } from "@/ipc/api";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useSummary } from "@/hooks/use-summary";
@@ -14,18 +14,18 @@ export function useRollback() {
   const { findChangeMap } = useSummary();
 
   const handleRollback = async () => {
-    const store = useWidgetStore.getState();
+    const ui = useUiState.getState();
     const wasCommittable = useViewModel.getState().evolve?.committable === true;
 
-    store.setProcessing(true, "cancel");
-    store.appendLog("\n> Discarding changes...\n");
+    ui.setProcessing(true, "cancel");
+    ui.appendLog("\n> Discarding changes...\n");
 
     try {
       const result = await tauriAPI.darwin.rollbackErase();
       mirrorGitState(result.gitStatus);
       mirrorEvolveState(result.evolveState);
-      store.setEvolvePrompt("");
-      store.appendLog("✓ Changes discarded\n");
+      ui.setEvolvePrompt("");
+      ui.appendLog("✓ Changes discarded\n");
 
       // Track rollback
       getTelemetry().captureEvent({ name: "rollback_performed" });
@@ -50,13 +50,13 @@ export function useRollback() {
         });
       } else {
         await findChangeMap();
-        useWidgetStore.getState().setProcessing(false);
+        useUiState.getState().setProcessing(false);
       }
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
-      useWidgetStore.getState().setError(msg);
-      useWidgetStore.getState().appendLog(`✗ Error: ${msg}\n`);
-      useWidgetStore.getState().setProcessing(false);
+      useUiState.getState().setError(msg);
+      useUiState.getState().appendLog(`✗ Error: ${msg}\n`);
+      useUiState.getState().setProcessing(false);
     }
   };
 

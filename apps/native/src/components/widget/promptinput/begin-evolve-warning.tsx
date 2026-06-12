@@ -15,6 +15,7 @@ import { useEvolve } from "@/hooks/use-evolve";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useRollback } from "@/hooks/use-rollback";
 import { useViewModel } from "@/stores/view-model";
+import { useUiState } from "@/stores/ui-state";
 import { useWidgetStore } from "@/stores/widget-store";
 import { Loader2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -30,7 +31,7 @@ type BuildCheckStatus = "checking" | "passed" | "failed";
 
 export function BeginEvolveWarning({ open, onOpenChange, handleEvolve }: BeginEvolveWarningProps) {
   const gitStatus = useViewModel((s) => s.git);
-  const evolvePrompt = useWidgetStore((s) => s.evolvePrompt);
+  const evolvePrompt = useUiState((s) => s.evolvePrompt);
   const configDir = useWidgetStore((s) => s.configDir);
   const files = gitStatus?.files ?? [];
 
@@ -75,14 +76,14 @@ export function BeginEvolveWarning({ open, onOpenChange, handleEvolve }: BeginEv
   const handleContinue = async () => {
     if (adoptOnContinue) {
       onOpenChange(false);
-      useWidgetStore.getState().setGenerating(true);
+      useUiState.getState().setGenerating(true);
       try {
         await evolveFromManual();
         // evolveFromManual persists evolveState on the backend; handleEvolve picks it up
         await handleEvolve();
       } catch {
         toast.error("Failed to adopt changes");
-        useWidgetStore.getState().setGenerating(false);
+        useUiState.getState().setGenerating(false);
       }
     } else {
       onOpenChange(false);

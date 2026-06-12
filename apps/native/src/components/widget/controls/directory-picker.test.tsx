@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import "@testing-library/jest-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { useUiState } from "@/stores/ui-state";
 import { useWidgetStore } from "@/stores/widget-store";
 import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
 
@@ -45,7 +46,7 @@ function resetStore() {
   s.setConfigDir("");
   s.setHost("");
   s.setHosts([]);
-  s.setBootstrapping(false);
+  useUiState.getState().setBootstrapping(false);
 }
 
 function resetMocks() {

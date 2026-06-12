@@ -1,3 +1,4 @@
+import { initialUiState, useUiState } from "@/stores/ui-state";
 import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import { render } from "@testing-library/react";
@@ -69,12 +70,8 @@ describe("DarwinWidget", () => {
     store.setHosts(["Test-MacBook"]);
     store.setHost("Test-MacBook");
     useViewModel.setState({ git: null });
-    store.setEvolvePrompt("");
-    store.setProcessing(false);
-    store.setGenerating(false);
-    store.setError(null);
+    useUiState.setState({ ...initialUiState });
     store.clearEvolveEvents();
-    store.clearLogs();
   });
 
   it("renders without crashing", () => {
@@ -110,8 +107,7 @@ describe("DarwinWidget", () => {
   });
 
   it("renders with error message", () => {
-    const store = useWidgetStore.getState();
-    store.setError("Test error message");
+    useUiState.getState().setError("Test error message");
 
     const { container } = render(<DarwinWidget />);
     expect(container).toBeTruthy();

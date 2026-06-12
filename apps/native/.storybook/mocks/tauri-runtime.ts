@@ -332,8 +332,8 @@ export const storybookTauriAPI = {
     },
     summarizeCurrent: async () => baseSemanticChangeMap(),
     generateCommitMessage: async () => {
-      const { useWidgetStore } = await import("../../src/stores/widget-store");
-      return useWidgetStore.getState().commitMessageSuggestion ?? "chore: mock commit message";
+      const { useUiState } = await import("../../src/stores/ui-state");
+      return useUiState.getState().commitMessageSuggestion ?? "chore: mock commit message";
     },
   },
   summary: {

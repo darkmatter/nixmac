@@ -36,7 +36,8 @@ import { loadConfig, loadHosts, loadEvolveState } from "@/hooks/use-widget-initi
 import { useSummary } from "@/hooks/use-summary";
 import { markBootStage } from "@/lib/boot-diagnostics";
 import { useEvolveMascot } from "@/hooks/use-evolve-mascot";
-import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
+import { useCurrentStep } from "@/stores/widget-store";
 import { UpdateBanner } from "@/components/widget/layout/update-banner";
 import { startViewModelSync } from "@/viewmodel";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
@@ -90,7 +91,7 @@ export function DarwinWidget() {
         setSettingsOpen,
         setShowHistory,
         setShowFilesystem,
-      } = useWidgetStore.getState();
+      } = useUiState.getState();
       if (settingsOpen) {
         e.preventDefault();
         setSettingsOpen(false);
@@ -130,7 +131,7 @@ export function DarwinWidget() {
           stopViewModelSync = stop;
         }
       } catch (e: unknown) {
-        useWidgetStore.getState().setError((e as Error)?.message || String(e));
+        useUiState.getState().setError((e as Error)?.message || String(e));
       }
 
       if (cancelled) return;

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { useViewModel } from "@/stores/view-model";
+import { useUiState } from "@/stores/ui-state";
 import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 import { AlertCircle, GitCommit, Sparkles } from "lucide-react";
@@ -73,7 +74,7 @@ export function BootstrapConfig({ label, onSuccess }: BootstrapConfigProps) {
   const handleBootstrap = async (): Promise<void> => {
     setLocalError(null);
     await bootstrap(needsInitialCommit ? "" : hostname);
-    const storeError = useWidgetStore.getState().error;
+    const storeError = useUiState.getState().error;
     if (storeError) {
       setLocalError(storeError);
     } else {

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { tauriAPI } from "@/ipc/api";
+import { useUiState } from "@/stores/ui-state";
 import { useWidgetStore } from "@/stores/widget-store";
 
 /**
@@ -14,7 +15,7 @@ import { useWidgetStore } from "@/stores/widget-store";
  */
 export function useEvolveMascot() {
   const enabled = useWidgetStore((s) => s.experimentalSpinningMascot);
-  const isGenerating = useWidgetStore((s) => s.isGenerating);
+  const isGenerating = useUiState((s) => s.isGenerating);
   const rebuildRunning = useWidgetStore((s) => s.rebuild.isRunning);
 
   const shouldShow = enabled && (isGenerating || rebuildRunning);

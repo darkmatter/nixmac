@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { tauriAPI } from "@/ipc/api";
 import { useLaunchdItems } from "@/hooks/use-launchd-items";
 import { useSystemDefaultsScan } from "@/hooks/use-system-defaults-scan";
+import { useUiState } from "@/stores/ui-state";
 import { useWidgetStore } from "@/stores/widget-store";
 import { mirrorChangeMapState } from "@/viewmodel/change-map";
 import { mirrorEvolveState } from "@/viewmodel/evolve";
@@ -46,9 +47,9 @@ interface FilesystemStepProps {
 }
 
 export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
-  const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
-  const setShowFilesystem = useWidgetStore((s) => s.setShowFilesystem);
-  const targetSection = useWidgetStore((s) => s.filesystemTargetSection);
+  const setEvolvePrompt = useUiState((s) => s.setEvolvePrompt);
+  const setShowFilesystem = useUiState((s) => s.setShowFilesystem);
+  const targetSection = useUiState((s) => s.filesystemTargetSection);
 
   // Honor an upstream "open at section X" intent (e.g. the Untracked
   // banner's View button passes "manage"). Default to System.
@@ -75,7 +76,7 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
   // (which passes no section) returns to the user's last view.
   useEffect(() => {
     if (targetSection) {
-      useWidgetStore.setState({ filesystemTargetSection: null });
+      useUiState.setState({ filesystemTargetSection: null });
     }
   }, [targetSection]);
 

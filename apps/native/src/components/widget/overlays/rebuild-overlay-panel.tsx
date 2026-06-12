@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useRollback } from "@/hooks/use-rollback";
 import { cn } from "@/lib/utils";
+import { useUiState } from "@/stores/ui-state";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { RebuildErrorType, RebuildLine } from "@/types/rebuild";
 import {
@@ -364,7 +365,7 @@ export function RebuildOverlayPanel() {
   const systemSafetyMessage = getSystemSafetyMessage(systemUntouched, context);
 
   const handleRetry = async () => {
-    useWidgetStore.getState().setProcessing(true, "cancel");
+    useUiState.getState().setProcessing(true, "cancel");
     await triggerRebuild({ context: "rollback" });
   };
 

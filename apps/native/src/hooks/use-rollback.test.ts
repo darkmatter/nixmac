@@ -1,5 +1,5 @@
 import type { EvolveState, GitStatus } from "@/ipc/types";
-import { useWidgetStore } from "@/stores/widget-store";
+import { initialUiState, useUiState } from "@/stores/ui-state";
 import { mirrorEvolveState } from "@/viewmodel/evolve";
 import { mirrorGitState } from "@/viewmodel/git";
 import { act, renderHook } from "@testing-library/react";
@@ -86,14 +86,10 @@ describe("useRollback", () => {
     });
     mocks.triggerRebuild.mockResolvedValue(undefined);
 
-    const store = useWidgetStore.getState();
-    store.setEvolvePrompt("Install vim");
+    useUiState.setState({ ...initialUiState });
+    useUiState.getState().setEvolvePrompt("Install vim");
     mirrorEvolveState(committableEvolveState);
     mirrorGitState(cleanGitStatus);
-    store.setProcessing(false);
-    store.setGenerating(false);
-    store.setError(null);
-    store.clearLogs();
   });
 
   it("keeps processing locked while a committable rollback rebuild is still running", async () => {
@@ -104,7 +100,7 @@ describe("useRollback", () => {
     });
 
     expect(mocks.triggerRebuild).toHaveBeenCalledTimes(1);
-    expect(useWidgetStore.getState().isProcessing).toBe(true);
+    expect(useUiState.getState().isProcessing).toBe(true);
     expect(mocks.findChangeMap).not.toHaveBeenCalled();
   });
 

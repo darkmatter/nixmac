@@ -1,4 +1,5 @@
 import type { EvolveState, EvolutionResult, GitStatus, SemanticChangeMap } from "@/ipc/types";
+import { initialUiState, useUiState } from "@/stores/ui-state";
 import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import { mirrorChangeMapState } from "@/viewmodel/change-map";
@@ -64,11 +65,7 @@ describe("useEvolve", () => {
     mocks.on.mockResolvedValue(vi.fn());
 
     const store = useWidgetStore.getState();
-    store.setEvolvePrompt("");
-    store.setProcessing(false);
-    store.setGenerating(false);
-    store.setError(null);
-    store.clearLogs();
+    useUiState.setState({ ...initialUiState });
     store.clearEvolveEvents();
     store.setConversationalResponse(null);
     mirrorChangeMapState(null);
@@ -101,8 +98,7 @@ describe("useEvolve", () => {
 
     mocks.evolve.mockResolvedValue(conversationalResult);
 
-    const store = useWidgetStore.getState();
-    store.setEvolvePrompt("explain the current changes");
+    useUiState.getState().setEvolvePrompt("explain the current changes");
     mirrorChangeMapState(existingMap);
 
     await useEvolve().handleEvolve();

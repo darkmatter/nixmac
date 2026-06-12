@@ -1,3 +1,4 @@
+import { useUiState } from "@/stores/ui-state";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { RebuildContext } from "@/types/rebuild";
 import { tauriAPI, ipcRenderer } from "@/ipc/api";
@@ -104,7 +105,7 @@ export function useRebuildStream() {
             console.error("Failed to check permissions:", e);
           }
           await refreshGitStatus({ cache: true });
-          currentStore.setProcessing(false);
+          useUiState.getState().setProcessing(false);
           return;
         }
 
@@ -115,18 +116,18 @@ export function useRebuildStream() {
               await options.onSuccess();
             } catch (e: unknown) {
               const msg = (e as Error)?.message || String(e);
-              useWidgetStore.getState().setError(msg);
+              useUiState.getState().setError(msg);
             }
           }
           // Auto-dismiss rebuild panel after success (even if onSuccess failed)
           useWidgetStore.getState().clearRebuild();
-          currentStore.setProcessing(false);
+          useUiState.getState().setProcessing(false);
         } else {
           if (options?.onFailure) {
             await options.onFailure();
           }
           await refreshGitStatus({ cache: true });
-          currentStore.setProcessing(false);
+          useUiState.getState().setProcessing(false);
         }
       });
 
@@ -140,7 +141,7 @@ export function useRebuildStream() {
         const msg = (e as Error)?.message || String(e);
         useWidgetStore.getState().setRebuildError("generic_error", msg, true);
         useWidgetStore.getState().setRebuildComplete(false);
-        useWidgetStore.getState().setProcessing(false);
+        useUiState.getState().setProcessing(false);
         unlistenData();
         unlistenSummary();
         unlistenEnd();

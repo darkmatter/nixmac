@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useViewModel } from "@/stores/view-model";
+import { useUiState } from "@/stores/ui-state";
 import { useWidgetStore } from "@/stores/widget-store";
 import { mirrorChangeMapState } from "@/viewmodel/change-map";
 import { tauriAPI } from "@/ipc/api";
@@ -133,12 +134,12 @@ export function DeveloperTab() {
 
   const handleClearUiBuffers = () => {
     const store = useWidgetStore.getState();
-    store.clearLogs();
+    useUiState.getState().clearLogs();
     store.clearEvolveEvents();
     mirrorChangeMapState(null);
     store.clearRebuild();
     store.setConversationalResponse(null);
-    store.setCommitMessageSuggestion(null);
+    useUiState.getState().setCommitMessageSuggestion(null);
     setStatusMessage("Cleared local UI debug buffers.");
     setErrorMessage(null);
   };

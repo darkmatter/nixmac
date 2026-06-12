@@ -63,12 +63,10 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     host: real.getState().host || "Demo-MacBook-Pro",
   });
 
-  // Replace the dialog-opening actions with no-ops so a transient JS error
-  // can't trigger FeedbackDialog (which has render edge cases that obscure
-  // the component under review).
+  // Re-assert bypass invariants if any of their setters are called.
+  // (The feedback-dialog no-ops moved with the feedback state to ui-state;
+  // stories needing ui-state values should call useUiState.setState directly.)
   real.setState({
-    setFeedbackOpen: () => undefined,
-    openFeedback: () => undefined,
     setNixInstalled: () => real.setState({ nixInstalled: true }),
     setDarwinRebuildAvailable: () => real.setState({ darwinRebuildAvailable: true }),
     setPermissionsChecked: () => real.setState({ permissionsChecked: true }),
@@ -96,10 +94,16 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
 export const useWidgetStore = createWidgetStore();
 
 import { computeCurrentStep } from "@/components/widget/utils";
+import { useUiState } from "@/stores/ui-state";
 import { useViewModel } from "@/stores/view-model";
 import type { WidgetStep } from "@/types/widget";
 
 export function useCurrentStep(): WidgetStep {
   const evolveState = useViewModel((state) => state.evolve);
-  return useWidgetStore((state) => computeCurrentStep({ ...state, evolveState }));
+  const showHistory = useUiState((state) => state.showHistory);
+  const showFilesystem = useUiState((state) => state.showFilesystem);
+  const isBootstrapping = useUiState((state) => state.isBootstrapping);
+  return useWidgetStore((state) =>
+    computeCurrentStep({ ...state, evolveState, showHistory, showFilesystem, isBootstrapping }),
+  );
 }

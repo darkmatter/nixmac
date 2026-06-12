@@ -1,3 +1,4 @@
+import { useUiState } from "@/stores/ui-state";
 import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 import type { SetDirResult } from "@/ipc/types";
@@ -59,15 +60,16 @@ const saveHost = async (host: string) => {
     store.setHost(host);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    store.setError(`Failed to save host: ${message}`);
+    useUiState.getState().setError(`Failed to save host: ${message}`);
   }
 };
 
 const bootstrap = async (hostname: string) => {
   const commitExisting = !hostname.trim();
   const store = useWidgetStore.getState();
-  store.setError(null);
-  store.setBootstrapping(true);
+  const ui = useUiState.getState();
+  ui.setError(null);
+  ui.setBootstrapping(true);
 
   try {
     await tauriAPI.flake.bootstrapDefault(hostname);
@@ -89,14 +91,14 @@ const bootstrap = async (hostname: string) => {
     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    store.setError(`Failed to create configuration: ${message}`);
+    ui.setError(`Failed to create configuration: ${message}`);
   } finally {
-    store.setBootstrapping(false);
+    ui.setBootstrapping(false);
   }
 };
 
 export function useDarwinConfig() {
-  const isBootstrapping = useWidgetStore((state) => state.isBootstrapping);
+  const isBootstrapping = useUiState((state) => state.isBootstrapping);
 
   return {
     setDir,

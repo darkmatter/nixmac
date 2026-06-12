@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
-import type { SettingsTab } from "@/stores/ui-state";
+import { useUiState, type SettingsTab } from "@/stores/ui-state";
 import { tauriAPI } from "@/ipc/api";
 import { useForm } from "@tanstack/react-form";
 import { Bot, FolderOpen, Key, Settings2, SlidersHorizontal, UserCircle2, Wrench } from "lucide-react";
@@ -52,6 +52,8 @@ export function SettingsDialog() {
     settingsOpen: isOpen,
     settingsActiveTab,
     setSettingsOpen,
+  } = useUiState();
+  const {
     configDir,
     hosts,
     host,

@@ -16,7 +16,7 @@ import { SystemDefaultsCTA } from "@/components/widget/promptinput/system-defaul
 import { useEvolve } from "@/hooks/use-evolve";
 import { getProviderConfigInvalidReason } from "@/lib/ai-provider-validation";
 import { useViewModel } from "@/stores/view-model";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
 import { tauriAPI } from "@/ipc/api";
 import { ArrowUpIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -27,14 +27,14 @@ const MAX_CONTEXT_LENGTH = 1000;
 const STATIC_SUGGESTIONS = ["Install vim", "Add Rectangle app"];
 
 export function PromptInput() {
-  const evolvePrompt = useWidgetStore((s) => s.evolvePrompt);
-  const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
-  const isProcessing = useWidgetStore((s) => s.isProcessing);
-  const processingAction = useWidgetStore((s) => s.processingAction);
+  const evolvePrompt = useUiState((s) => s.evolvePrompt);
+  const setEvolvePrompt = useUiState((s) => s.setEvolvePrompt);
+  const isProcessing = useUiState((s) => s.isProcessing);
+  const processingAction = useUiState((s) => s.processingAction);
   const evolveState = useViewModel((s) => s.evolve);
   const gitStatus = useViewModel((s) => s.git);
-  const settingsOpen = useWidgetStore((s) => s.settingsOpen);
-  const setSettingsOpen = useWidgetStore((s) => s.setSettingsOpen);
+  const settingsOpen = useUiState((s) => s.settingsOpen);
+  const setSettingsOpen = useUiState((s) => s.setSettingsOpen);
   const { handleEvolve } = useEvolve();
   const [warningOpen, setWarningOpen] = useState(false);
   const [providerErrors, setProviderErrors] = useState<{ evolve: string | null; summary: string | null }>({

@@ -4,12 +4,12 @@
 import { useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { toast } from "sonner";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
 import type { RustPanicEvent } from "@/ipc/types";
 import { FeedbackType } from "@/types/feedback";
 
 export function usePanicHandler() {
-  const { setError, openFeedback, setPanicDetails } = useWidgetStore();
+  const { setError, openFeedback, setPanicDetails } = useUiState();
 
   useEffect(() => {
     const unlisten = listen<RustPanicEvent>("rust:panic", (event) => {
