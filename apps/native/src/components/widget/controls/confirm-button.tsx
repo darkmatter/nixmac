@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { CheckConfirmationOff } from "@/components/widget/controls/check-confirmation-off";
 import { ConfirmationDialog } from "@/components/widget/controls/confirmation-dialog";
 import { usePrefs } from "@/hooks/use-prefs";
-import { useWidgetStore, type ConfirmPrefKey } from "@/stores/widget-store";
+import { useWidgetStore } from "@/stores/widget-store";
+import type { ConfirmPrefKey } from "@/types/preferences";
 import type { ComponentProps } from "react";
 import { useState } from "react";
 

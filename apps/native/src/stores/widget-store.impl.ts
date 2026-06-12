@@ -1,6 +1,10 @@
 import { computeCurrentStep } from "@/components/widget/utils";
 import { useViewModel } from "@/stores/view-model";
+import type { SettingsTab } from "@/stores/ui-state";
 import { FeedbackType } from "@/types/feedback";
+import type { BoolPrefKey, ConfirmPrefKey } from "@/types/preferences";
+import { initialRebuildState, type RebuildContext, type RebuildErrorType, type RebuildLine, type RebuildState } from "@/types/rebuild";
+import type { WidgetStep } from "@/types/widget";
 import type {
   EvolutionTelemetry,
   EvolveEvent,
@@ -11,58 +15,12 @@ import type {
 } from "@/ipc/types";
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-export type {
-  EvolveEvent,
-  EvolveEventType,
-  EvolveState,
-  GitFileStatus,
-  GitStatus,
-  PermissionsState,
-  UpdateChannel,
-} from "@/ipc/types";
 
 // =============================================================================
 // Types
 // =============================================================================
 
-/**
- * Widget step state - updated by useEffect based on app state.
- */
-export type SettingsTab = "general" | "account" | "api-keys" | "ai-models" | "preferences" | "tuning" | "developer";
-export type WidgetStep = "permissions" | "nix-setup" | "setup" | "begin" | "evolve" | "commit" | "manualEvolve" | "manualCommit" | "history" | "filesystem";
 type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
-export type ConfirmPrefKey = "confirmBuild" | "confirmClear" | "confirmRollback";
-export type BoolPrefKey = ConfirmPrefKey | "autoSummarizeOnFocus" | "scanHomebrewOnStartup" | "defaultToDiffTab" | "experimentalSpinningMascot";
-
-// Rebuild state for showing progress inline in the widget
-export type RebuildErrorType =
-  | "infinite_recursion"
-  | "evaluation_error"
-  | "build_error"
-  | "full_disk_access"
-  | "user_cancelled"
-  | "authorization_denied"
-  | "generic_error";
-
-export interface RebuildLine {
-  id: number;
-  text: string;
-  type: "stdout" | "stderr" | "info";
-}
-
-export type RebuildContext = "rollback" | "apply";
-
-export interface RebuildState {
-  isRunning: boolean;
-  context: RebuildContext;
-  lines: RebuildLine[];
-  rawLines: string[];
-  exitCode?: number;
-  success?: boolean;
-  errorType?: RebuildErrorType;
-  errorMessage?: string;
-  systemUntouched?: boolean;
-}
 
 export interface WidgetState {
   // Permissions (checked on startup)
@@ -240,18 +198,6 @@ type WidgetStore = WidgetState & WidgetActions;
 // =============================================================================
 // Initial State
 // =============================================================================
-
-export const initialRebuildState: RebuildState = {
-  isRunning: false,
-  context: "apply",
-  lines: [],
-  rawLines: [],
-  exitCode: undefined,
-  success: undefined,
-  errorType: undefined,
-  errorMessage: undefined,
-  systemUntouched: undefined,
-};
 
 const initialWidgetState: WidgetState = {
   // Permissions

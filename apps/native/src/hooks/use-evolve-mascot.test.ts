@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { initialRebuildState, useWidgetStore } from "@/stores/widget-store";
+import { useWidgetStore } from "@/stores/widget-store";
+import { initialRebuildState } from "@/types/rebuild";
 import { useEvolveMascot } from "./use-evolve-mascot";
 
 const mocks = vi.hoisted(() => ({

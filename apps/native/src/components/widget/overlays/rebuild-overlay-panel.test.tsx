@@ -3,7 +3,8 @@ import "@testing-library/jest-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RebuildOverlayPanel } from "@/components/widget/overlays/rebuild-overlay-panel";
-import { initialRebuildState, useWidgetStore, type RebuildState } from "@/stores/widget-store";
+import { useWidgetStore } from "@/stores/widget-store";
+import { initialRebuildState, type RebuildState } from "@/types/rebuild";
 
 vi.mock("motion/react", async () => {
   const React = await import("react");

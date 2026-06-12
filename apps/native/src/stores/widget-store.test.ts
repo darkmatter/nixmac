@@ -1,10 +1,7 @@
 import type { EvolveEvent } from "@/ipc/types";
 import { describe, expect, it } from "vitest";
-import {
-  createWidgetStore,
-  initialRebuildState,
-  type RebuildLine,
-} from "./widget-store";
+import { createWidgetStore } from "./widget-store";
+import { initialRebuildState, type RebuildLine } from "@/types/rebuild";
 
 // ---------------------------------------------------------------------------
 // createWidgetStore() — factory + initial state

@@ -13,29 +13,7 @@
 // inherits from Vitest.
 import { createWidgetStore as createRealWidgetStore, type WidgetState } from "@/stores/widget-store.impl";
 
-export type {
-  EvolveEvent,
-  EvolveEventType,
-  EvolveState,
-  GitFileStatus,
-  GitStatus,
-  PermissionsState,
-  UpdateChannel,
-} from "@/stores/widget-store.impl";
-
-export type {
-  BoolPrefKey,
-  ConfirmPrefKey,
-  RebuildContext,
-  RebuildErrorType,
-  RebuildLine,
-  RebuildState,
-  SettingsTab,
-  WidgetState,
-  WidgetStep,
-} from "@/stores/widget-store.impl";
-
-export { initialRebuildState } from "@/stores/widget-store.impl";
+export type { WidgetState } from "@/stores/widget-store.impl";
 
 // =============================================================================
 // Bypass invariants — these never drift from "all granted, all installed."
@@ -119,7 +97,7 @@ export const useWidgetStore = createWidgetStore();
 
 import { computeCurrentStep } from "@/components/widget/utils";
 import { useViewModel } from "@/stores/view-model";
-import type { WidgetStep } from "@/stores/widget-store.impl";
+import type { WidgetStep } from "@/types/widget";
 
 export function useCurrentStep(): WidgetStep {
   const evolveState = useViewModel((state) => state.evolve);

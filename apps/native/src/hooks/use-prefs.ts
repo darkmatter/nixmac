@@ -1,4 +1,5 @@
-import { useWidgetStore, type BoolPrefKey } from "@/stores/widget-store";
+import { useWidgetStore } from "@/stores/widget-store";
+import type { BoolPrefKey } from "@/types/preferences";
 import { tauriAPI } from "@/ipc/api";
 
 export function usePrefs() {

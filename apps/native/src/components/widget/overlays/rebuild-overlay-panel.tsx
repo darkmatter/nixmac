@@ -2,7 +2,8 @@ import { Button } from "@/components/ui/button";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useRollback } from "@/hooks/use-rollback";
 import { cn } from "@/lib/utils";
-import { useWidgetStore, type RebuildErrorType, type RebuildLine } from "@/stores/widget-store";
+import { useWidgetStore } from "@/stores/widget-store";
+import type { RebuildErrorType, RebuildLine } from "@/types/rebuild";
 import {
   AlertTriangle,
   Brain,

@@ -1,6 +1,6 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
-import type { EvolveEvent, GitStatus } from "@/stores/widget-store";
+import type { EvolveEvent, GitStatus } from "@/ipc/types";
 import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { SemanticChangeMap } from "@/ipc/types";
