@@ -14,8 +14,7 @@ import { makeGlobalPreferences as makePrefs } from "@/utils/test-fixtures";
 const mockPickDir = vi.fn();
 const mockNormalize = vi.fn<(p: string) => Promise<string | null>>();
 const mockExists = vi.fn<(p: string) => Promise<boolean>>();
-const mockSetDir =
-  vi.fn<(p: string) => Promise<{ dir: string; evolveState: never; hosts: string[] | null }>>();
+const mockSetDir = vi.fn<(p: string) => Promise<{ dir: string; changed: boolean }>>();
 const mockSetHostAttr = vi.fn<(h: string) => Promise<void>>();
 const mockFlakeExistsAt = vi.fn<(p: string) => Promise<boolean>>();
 const mockFlakeExists = vi.fn<() => Promise<boolean>>();
@@ -66,8 +65,7 @@ function resetMocks() {
   mockExists.mockResolvedValue(true);
   mockSetDir.mockImplementation(async (p) => ({
     dir: p,
-    evolveState: {} as never,
-    hosts: [],
+    changed: true,
   }));
   mockSetHostAttr.mockResolvedValue();
   mockFlakeExistsAt.mockResolvedValue(true);
@@ -134,8 +132,7 @@ describe("<DirectoryPicker>", () => {
     mockNormalize.mockResolvedValue("/Users/me/.darwin");
     mockSetDir.mockResolvedValue({
       dir: "/Users/me/.darwin",
-      evolveState: {} as never,
-      hosts: ["mbp", "workbook"],
+      changed: true,
     });
 
     render(<DirectoryPicker label="Config directory" />);
@@ -161,8 +158,7 @@ describe("<DirectoryPicker>", () => {
     mockSetHostAttr.mockRejectedValue(new Error("host-attr persist failed"));
     mockSetDir.mockResolvedValue({
       dir: "/Users/me/.darwin",
-      evolveState: {} as never,
-      hosts: ["mbp"],
+      changed: true,
     });
 
     render(<DirectoryPicker label="Config directory" />);

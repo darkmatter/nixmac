@@ -1,16 +1,12 @@
 import { useUiState } from "@/stores/ui-state";
 import { tauriAPI } from "@/ipc/api";
 import type { SetDirResult } from "@/ipc/types";
-import { mirrorEvolveState } from "@/viewmodel/evolve";
-import { mirrorGitState } from "@/viewmodel/git";
 
-// Config dir/host/hosts are no longer written locally: the backend emits
-// `global_preferences_changed` after these mutations and the preferences
-// sync module mirrors the new values (and re-lists hosts) into the ViewModel.
+// Config dir/host/hosts and the evolve/git mirrors are no longer written
+// locally: the backend emits `*_changed` events after these mutations and the
+// sync modules mirror the new values (and re-list hosts) into the ViewModel.
 const applyDirResult = async (result: SetDirResult) => {
-  if (result.evolveState) {
-    mirrorEvolveState(result.evolveState);
-    mirrorGitState(null);
+  if (result.changed) {
     try {
       await tauriAPI.config.setHostAttr("");
     } catch {}

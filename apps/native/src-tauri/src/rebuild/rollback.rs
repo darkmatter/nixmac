@@ -35,12 +35,13 @@ pub fn rollback_erase<R: Runtime>(app: &AppHandle<R>) -> Result<RollbackResult> 
     let final_status = git::status(&repo_root).context("Failed to get final git status")?;
     // Record the post-rollback status; the cell write emits `git_state_changed`.
     crate::state::git_state::update_status(app, final_status.clone());
-    let evolve_state = evolve_state::set(app, EvolveState::default(), &final_status.changes)
+    evolve_state::set(app, EvolveState::default(), &final_status.changes)
         .context("Failed to clear evolve state")?;
+    // The restore changed the working tree: refresh the change-map cell so the
+    // mirrored map matches it (emits `change_map_changed`).
+    crate::summarize::refresh_change_map(app);
 
     Ok(RollbackResult {
-        git_status: final_status,
-        evolve_state,
         rollback_store_path,
         rollback_changeset_id,
     })

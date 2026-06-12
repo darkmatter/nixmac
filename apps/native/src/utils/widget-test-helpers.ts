@@ -3,12 +3,12 @@
  * Exposed on window.__testWidget so WDIO tests can call them via browser.execute.
  */
 
-import { refreshGitStatus } from "@/hooks/use-git-operations";
-import { loadEvolveState } from "@/hooks/use-widget-initialization";
 import { useUiState } from "@/stores/ui-state";
 import { useViewModel } from "@/stores/view-model";
-import { mirrorChangeMapState } from "@/viewmodel/change-map";
+import { clearChangeMap } from "@/viewmodel/change-map";
 import { clearEvolveEvents } from "@/viewmodel/evolution";
+import { refreshEvolveSnapshot } from "@/viewmodel/evolve";
+import { refreshGitSnapshot } from "@/viewmodel/git";
 import { clearRebuildLog } from "@/viewmodel/rebuild";
 
 interface WidgetTestHelpers {
@@ -68,15 +68,17 @@ export function setupWidgetTestHelpers() {
       clearEvolveEvents();
       ui.setConversationalResponse(null);
       ui.setCommitMessageSuggestion(null);
-      mirrorChangeMapState(null);
+      clearChangeMap();
       ui.setError(null);
       clearRebuildLog();
       ui.setRebuildPanelDismissed(false);
       ui.setRebuildContext("apply");
     },
     refreshGitStatus: async () => {
-      await refreshGitStatus();
-      await loadEvolveState();
+      // Best-effort, like the rest of the reset helpers: a refresh failure
+      // should surface in assertions, not crash the browser.execute call.
+      await refreshGitSnapshot().catch(console.error);
+      await refreshEvolveSnapshot().catch(console.error);
     },
   };
 

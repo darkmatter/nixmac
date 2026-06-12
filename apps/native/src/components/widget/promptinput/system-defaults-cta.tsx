@@ -10,9 +10,6 @@ import { useUiState } from "@/stores/ui-state";
 import type { SystemDefault, SystemDefaultsScan } from "@/ipc/types";
 import { tauriAPI } from "@/ipc/api";
 import { useViewModel } from "@/stores/view-model";
-import { mirrorChangeMapState } from "@/viewmodel/change-map";
-import { mirrorEvolveState } from "@/viewmodel/evolve";
-import { mirrorGitState } from "@/viewmodel/git";
 import { Settings2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -85,10 +82,9 @@ export function SystemDefaultsCTA() {
     useUiState.getState().setProcessing(true, "apply");
 
     try {
-      const result = await tauriAPI.scanner.applyDefaults(defaults);
-      mirrorEvolveState(result.evolveState);
-      mirrorChangeMapState(result.changeMap);
-      mirrorGitState(result.gitStatus);
+      // The backend records the resulting evolve/change-map/git state in the
+      // cells; the `*_changed` events mirror it into the ViewModel.
+      await tauriAPI.scanner.applyDefaults(defaults);
       // Invalidate recommended prompt — settings changed
       useUiState.getState().setRecommendedPrompt(undefined);
     } catch (e: unknown) {

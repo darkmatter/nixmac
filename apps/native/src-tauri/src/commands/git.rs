@@ -109,13 +109,19 @@ pub async fn git_commit(
         }
     }
 
-    let evolve_state = evolve_state::clear(&app).unwrap_or_else(|e| {
+    // The cell write emits `evolve_state_changed`; the frontend mirrors it.
+    if let Err(e) = evolve_state::clear(&app) {
         log::error!("[git_commit] Failed to clear evolve state: {}", e);
-        shared_types::EvolveState::default()
-    });
+    }
+
+    // The commit folded the working tree's changes into history: refresh the
+    // git-state cell and reset the change-map cell (emits both `*_changed`).
+    if let Err(e) = git::query::status_and_cache(&dir, &app) {
+        log::warn!("[git_commit] Failed to refresh git state: {}", e);
+    }
+    crate::state::change_map::clear(&app);
 
     Ok(shared_types::CommitResult {
         hash: commit_info.hash,
-        evolve_state,
     })
 }

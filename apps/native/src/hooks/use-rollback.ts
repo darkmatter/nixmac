@@ -1,17 +1,15 @@
 import { useUiState } from "@/stores/ui-state";
 import { tauriAPI } from "@/ipc/api";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
-import { useSummary } from "@/hooks/use-summary";
 import { useViewModel } from "@/stores/view-model";
-import { mirrorEvolveState } from "@/viewmodel/evolve";
-import { mirrorGitState } from "@/viewmodel/git";
 import { getTelemetry } from "@/lib/telemetry/instance";
 /**
- * Hook for discarding changes and restoring the working tree to its pre-evolution state.
+ * Hook for discarding changes and restoring the working tree to its
+ * pre-evolution state. Git/evolve/change-map state flows through the
+ * `*_changed` cell events the backend emits while rolling back.
  */
 export function useRollback() {
   const { triggerRebuild } = useRebuildStream();
-  const { findChangeMap } = useSummary();
 
   const handleRollback = async () => {
     const ui = useUiState.getState();
@@ -22,8 +20,6 @@ export function useRollback() {
 
     try {
       const result = await tauriAPI.darwin.rollbackErase();
-      mirrorGitState(result.gitStatus);
-      mirrorEvolveState(result.evolveState);
       ui.setEvolvePrompt("");
       ui.appendLog("✓ Changes discarded\n");
 
@@ -35,21 +31,13 @@ export function useRollback() {
           context: "rollback",
           storePath: result.rollbackStorePath,
           onSuccess: async () => {
-            const finalResult = await tauriAPI.darwin.finalizeRollback(
+            await tauriAPI.darwin.finalizeRollback(
               result.rollbackStorePath,
               result.rollbackChangesetId,
             );
-            if (finalResult?.gitStatus) {
-              mirrorGitState(finalResult.gitStatus);
-            }
-            if (finalResult?.evolveState) {
-              mirrorEvolveState(finalResult.evolveState);
-            }
-            await findChangeMap();
           },
         });
       } else {
-        await findChangeMap();
         useUiState.getState().setProcessing(false);
       }
     } catch (e: unknown) {

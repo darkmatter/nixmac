@@ -1,9 +1,6 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-use super::evolve::EvolveState;
-use super::git::{GitStatus, SemanticChangeMap};
-
 /// Application configuration returned by `config_get`.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -15,26 +12,22 @@ pub struct Config {
 }
 
 /// Result returned when the config directory is set (typed or picked).
-/// `evolve_state` and `hosts` are `Some` only when the directory actually changed.
+/// State mirrors (evolve state, git state, hosts) flow through the
+/// `*_changed` events; this only carries genuine command results.
 #[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SetDirResult {
     /// Selected absolute config directory.
     pub dir: String,
-    /// Fresh evolve state after changing directories, when applicable.
-    pub evolve_state: Option<EvolveState>,
-    /// Hosts discovered in the selected flake, when applicable.
-    pub hosts: Option<Vec<String>>,
+    /// True when the selected directory differs from the previous one.
+    pub changed: bool,
 }
 
-/// Result returned from a rollback erase operation.
+/// Result returned from a rollback erase operation. Git/evolve state mirrors
+/// flow through the `*_changed` events; this only carries the rollback target.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RollbackResult {
-    /// Git status after rollback preparation.
-    pub git_status: GitStatus,
-    /// Evolve state after rollback preparation.
-    pub evolve_state: EvolveState,
     /// Store path to reactivate as part of the rollback flow.
     pub rollback_store_path: Option<String>,
     /// Changeset id associated with the rollback target.
@@ -84,12 +77,6 @@ pub struct ConfigEditApplyResult {
     pub ok: bool,
     /// Number of items applied.
     pub count: usize,
-    /// Semantic summary after applying the edit.
-    pub change_map: SemanticChangeMap,
-    /// Git status after applying the edit.
-    pub git_status: GitStatus,
-    /// Evolve routing state after applying the edit.
-    pub evolve_state: EvolveState,
 }
 
 /// Availability of known AI CLI tools.

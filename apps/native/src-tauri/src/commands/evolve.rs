@@ -1,12 +1,13 @@
 use super::helpers::capture_err;
 use crate::{evolve, shared_types};
 
-/// Handles the complete evolution cycle returning the git status and summary to react
+/// Handles the complete evolution cycle. All state (git status, evolve state,
+/// change map) flows through the `*_changed` cell events, and the run's result
+/// data (telemetry, conversational response) travels on the terminal
+/// `darwin:evolve:event` `Complete` payload; the command itself only signals
+/// success or failure.
 #[tauri::command]
-pub async fn darwin_evolve(
-    app: tauri::AppHandle,
-    description: String,
-) -> Result<shared_types::EvolutionResult, String> {
+pub async fn darwin_evolve(app: tauri::AppHandle, description: String) -> Result<(), String> {
     // Reset cancellation flag at the start of a new evolution
     evolve::session_control::set_evolve_cancelled(false);
 
@@ -31,6 +32,11 @@ pub async fn darwin_evolve(
                     || failure
                         .error
                         .contains(evolve::session_control::EVOLUTION_CANCELLED_MSG);
+
+                // The failure path restored the working tree (backup branch), so
+                // refresh the change-map cell to match; the cell write emits
+                // `change_map_changed`.
+                crate::summarize::refresh_change_map(&app);
 
                 if is_cancelled {
                     log::info!(
@@ -61,7 +67,7 @@ pub async fn darwin_evolve(
     }
     crate::state::session_log::set_session_path(None);
 
-    Ok(result)
+    Ok(())
 }
 
 /// Cancel an in-progress evolution operation.

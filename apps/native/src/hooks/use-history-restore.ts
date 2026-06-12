@@ -5,7 +5,6 @@ import { useHistory } from "@/hooks/use-history";
 import { tauriAPI } from "@/ipc/api";
 import type { HistoryItem } from "@/ipc/types";
 import { useViewModel } from "@/stores/view-model";
-import { mirrorGitState } from "@/viewmodel/git";
 
 // Sentinel hash used to identify the frontend-only preview item.
 export const PREVIEW_ITEM_HASH = "n1xm4c0";
@@ -246,8 +245,8 @@ export function useHistoryRestore(
       await triggerRebuild({
         context: "rollback",
         onSuccess: async () => {
-          const result = await tauriAPI.darwin.finalizeRestore(hash);
-          mirrorGitState(result);
+          // The backend writes the git-state cell; `git_state_changed` mirrors it.
+          await tauriAPI.darwin.finalizeRestore(hash);
           await loadHistory();
         },
         onFailure: async () => {

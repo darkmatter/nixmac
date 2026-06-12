@@ -1,15 +1,9 @@
 import { tauriAPI } from "@/ipc/api";
 import { useViewModel } from "@/stores/view-model";
 import { useUiState } from "@/stores/ui-state";
+import { refreshHistorySnapshot } from "@/viewmodel/history";
 
-const loadHistory = async () => {
-  try {
-    const items = await tauriAPI.history.get();
-    useViewModel.setState({ history: items });
-  } catch (e) {
-    console.error("[useHistory] get failed:", e);
-  }
-};
+const loadHistory = () => refreshHistorySnapshot();
 
 const analyzeOne = async (hash: string) => {
   try {

@@ -35,3 +35,14 @@ pub fn update<R: Runtime>(app: &AppHandle<R>, next: SemanticChangeMap) -> bool {
     *observable.write_sync() = Some(next);
     true
 }
+
+/// Reset the cell to cold — subscribers receive `null`. Used after a commit
+/// folds the working tree's changes into history.
+pub fn clear<R: Runtime>(app: &AppHandle<R>) -> bool {
+    let observable = app.state::<Observable<Option<SemanticChangeMap>>>();
+    if observable.read_sync().is_none() {
+        return false;
+    }
+    *observable.write_sync() = None;
+    true
+}

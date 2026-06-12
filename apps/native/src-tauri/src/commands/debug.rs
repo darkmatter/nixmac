@@ -88,6 +88,14 @@ pub async fn developer_clear_tauri_state(app: AppHandle) -> Result<(), String> {
         *prefs = crate::state::preferences::GlobalPreferences::default();
     })
     .map_err(|e| e.to_string())?;
+    // Reset the evolve-state observable (emits `evolve_state_changed`) and
+    // broadcast the now-empty prompt history so the frontend mirrors the
+    // cleared values without any manual store writes.
+    crate::state::evolve_state::clear(&app).map_err(|e| e.to_string())?;
+    {
+        use tauri::Emitter;
+        let _ = app.emit(store::PROMPT_HISTORY_CHANGED_EVENT, Vec::<String>::new());
+    }
     Ok(())
 }
 

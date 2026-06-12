@@ -154,6 +154,10 @@ pub async fn backup_evolve_and_record_changeset(
         initial_status.branch
     );
 
+    // Record the pre-evolution status; the cell write emits `git_state_changed`
+    // and clears any stale external-build flag now that nixmac itself acts.
+    crate::state::git_state::update_status(app, initial_status.clone());
+
     // Step 1: Snapshot the working tree onto a backup branch before AI touches anything.
     let pre_evolve_state = evolve_state::get(app).unwrap_or_default();
     let changeset_id = pre_evolve_state.current_changeset_id.unwrap_or(0);
@@ -248,12 +252,26 @@ pub async fn backup_evolve_and_record_changeset(
             &initial_status.changes,
         )
         .unwrap_or_else(|_| evolve_state::get(app).unwrap_or_default());
+        let telemetry =
+            EvolutionTelemetry::from_evolution(&evolution, elapsed_since(start_time_ms));
+        // Terminal event: every cell this path touches is updated above, so the
+        // frontend mirrors are consistent when the completion data arrives.
+        emit_evolve_event(
+            app,
+            EvolveEvent::complete(
+                start_time_s,
+                evolution.iterations,
+                evolution.summary.as_deref().unwrap_or(""),
+                telemetry.clone(),
+                evolution.summary.clone(),
+            ),
+        );
         return Ok(EvolutionResult {
             change_map: SemanticChangeMap::default(),
             git_status: initial_status,
             evolve_state,
             conversational_response: evolution.summary.clone(),
-            telemetry: EvolutionTelemetry::from_evolution(&evolution, elapsed_since(start_time_ms)),
+            telemetry,
         });
     }
 
@@ -293,16 +311,34 @@ pub async fn backup_evolve_and_record_changeset(
     )
     .unwrap_or_default();
 
-    // Build the change map from whatever is now stored in the DB.
+    // Build the change map from whatever is now stored in the DB and record it
+    // in the cell. The summarize pipeline already writes the cell when it runs,
+    // but it short-circuits when summaries exist; this write covers that path.
     let base_ref = summarize::active_summary_base_ref(app);
     let change_map = summarize::change_map_since(app, &base_ref).unwrap_or_default();
+    crate::state::change_map::update(app, change_map.clone());
+
+    let telemetry = EvolutionTelemetry::from_evolution(&evolution, elapsed_since(start_time_ms));
+    // Terminal event: emitted after the git-state, evolve-state, and change-map
+    // cells are all updated, so the frontend mirrors are consistent when the
+    // completion data arrives.
+    emit_evolve_event(
+        app,
+        EvolveEvent::complete(
+            start_time_s,
+            evolution.iterations,
+            evolution.summary.as_deref().unwrap_or(""),
+            telemetry.clone(),
+            None,
+        ),
+    );
 
     Ok(EvolutionResult {
         change_map,
         git_status: final_status,
         evolve_state,
         conversational_response: None,
-        telemetry: EvolutionTelemetry::from_evolution(&evolution, elapsed_since(start_time_ms)),
+        telemetry,
     })
 }
 

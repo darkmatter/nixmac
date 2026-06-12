@@ -1,8 +1,6 @@
 import { useUiState } from "@/stores/ui-state";
 import { tauriAPI } from "@/ipc/api";
-import { mirrorChangeMapState } from "@/viewmodel/change-map";
-import { mirrorEvolveState } from "@/viewmodel/evolve";
-import { mirrorGitState } from "@/viewmodel/git";
+import { refreshGitSnapshot } from "@/viewmodel/git";
 import { refreshHostsSnapshot } from "@/viewmodel/preferences";
 import { toast } from "sonner";
 
@@ -29,35 +27,19 @@ export const prefetchFileDiffContents = async (status: { changes: { filename: st
   }
 };
 
-export const refreshGitStatus = async (options?: { cache?: boolean }) => {
+export const refreshGitStatus = async () => {
   try {
-    const shouldCache = options?.cache === true;
-    const status = shouldCache
-      ? await tauriAPI.git.statusAndCache()
-      : await tauriAPI.git.status();
-
-    mirrorGitState(status);
-
-    return status;
+    await refreshGitSnapshot();
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
     useUiState.getState().setError(msg);
     await refreshHostsSnapshot();
-    return null;
   }
 };
 
 // runs on widget mount once, to get the current git status
 const getInitialStatus = async () => {
-  try {
-    const currentStatus = await tauriAPI.git.statusAndCache();
-    mirrorGitState(currentStatus);
-  } catch (e: unknown) {
-    const msg = (e as Error)?.message || String(e);
-    useUiState.getState().setError(msg);
-    await refreshHostsSnapshot();
-    return null;
-  }
+  await refreshGitStatus();
 };
 
 const handleCommit = async ({ message }: { message: string }) => {
@@ -66,13 +48,12 @@ const handleCommit = async ({ message }: { message: string }) => {
   ui.appendLog(`\n> Committing changes...\n`);
 
   try {
-    const result = await tauriAPI.git.commit(message);
+    // The backend clears the evolve state, refreshes the git-state cell, and
+    // resets the change-map cell; the `*_changed` events mirror everything.
+    await tauriAPI.git.commit(message);
     useUiState.getState().appendLog("✓ Committed successfully\n");
     useUiState.getState().setError(null);
     toast.success("Committed successfully");
-    mirrorChangeMapState(null);
-    mirrorEvolveState(result.evolveState);
-    await refreshGitStatus();
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
     useUiState.getState().setError(msg);

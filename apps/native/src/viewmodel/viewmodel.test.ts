@@ -405,6 +405,38 @@ describe("view model sync", () => {
     expect(apiMocks.unlisten).toHaveBeenCalledTimes(1);
   });
 
+  it("mirrors terminal complete data into UI state and logs the completion", async () => {
+    const stop = await startEvolutionSync();
+
+    const complete: EvolveEvent = {
+      raw: "Evolution complete: installed vim",
+      summary: "Evolution complete!",
+      eventType: "complete",
+      iteration: 3,
+      timestampMs: 4200,
+      telemetry: {
+        state: "generated",
+        iterations: 3,
+        buildAttempts: 1,
+        totalTokens: 10,
+        editsCount: 1,
+        thinkingCount: 0,
+        toolCallsCount: 2,
+        durationMs: 61000,
+      },
+      conversationalResponse: "No file changes needed.",
+    };
+    apiMocks.listeners.get("darwin:evolve:event")?.({ payload: complete });
+
+    expect(useUiState.getState().evolutionTelemetry).toBe(complete.telemetry);
+    expect(useUiState.getState().conversationalResponse).toBe("No file changes needed.");
+    expect(useUiState.getState().consoleLogs).toContain(
+      "✓ Evolution complete in 1m 1s and 3 iterations",
+    );
+
+    stop();
+  });
+
   it("hydrates and mirrors the prompt-history slice", async () => {
     apiMocks.promptHistory = ["first prompt"];
     const stop = await startPromptHistorySync();

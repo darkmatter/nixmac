@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-use super::evolve::EvolveState;
 use crate::sqlite_types::{Change, ChangeSet, ChangeSummary};
 
 /// HEAD content vs working-tree content for a file, used by the diff tab Monaco DiffEditor.
@@ -68,14 +67,13 @@ pub struct GitState {
     pub external_build_detected: bool,
 }
 
-/// Result of a successful `git_commit` command.
+/// Result of a successful `git_commit` command. State mirrors (git, evolve,
+/// change map) flow through the `*_changed` events.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CommitResult {
     /// Hash of the commit that was created.
     pub hash: String,
-    /// Evolve state after committing.
-    pub evolve_state: EvolveState,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]

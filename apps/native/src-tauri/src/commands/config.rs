@@ -101,18 +101,14 @@ pub async fn config_set_dir(
     let new_dir = normalized_dir.to_string_lossy().to_string();
     store::set_config_dir(&app, &new_dir).map_err(|e| capture_err("config_set_dir", e))?;
 
-    let (evolve_state, hosts) = if prev_dir.as_deref() != Some(&new_dir) {
-        let (es, hosts) =
-            handle_new_config_dir(&app, &new_dir).map_err(|e| capture_err("config_set_dir", e))?;
-        (Some(es), hosts)
-    } else {
-        (None, None)
-    };
+    let changed = prev_dir.as_deref() != Some(&new_dir);
+    if changed {
+        handle_new_config_dir(&app, &new_dir).map_err(|e| capture_err("config_set_dir", e))?;
+    }
 
     Ok(shared_types::SetDirResult {
         dir: new_dir,
-        evolve_state,
-        hosts,
+        changed,
     })
 }
 
@@ -191,18 +187,15 @@ pub async fn config_prepare_new_dir(
     let new_dir = normalized_dir.to_string_lossy().to_string();
     store::set_config_dir(&app, &new_dir).map_err(|e| capture_err("config_prepare_new_dir", e))?;
 
-    let (evolve_state, hosts) = if prev_dir.as_deref() != Some(&new_dir) {
-        let (es, hosts) = handle_new_config_dir(&app, &new_dir)
+    let changed = prev_dir.as_deref() != Some(&new_dir);
+    if changed {
+        handle_new_config_dir(&app, &new_dir)
             .map_err(|e| capture_err("config_prepare_new_dir", e))?;
-        (Some(es), hosts)
-    } else {
-        (None, None)
-    };
+    }
 
     Ok(shared_types::SetDirResult {
         dir: new_dir,
-        evolve_state,
-        hosts,
+        changed,
     })
 }
 
@@ -227,18 +220,11 @@ pub async fn config_pick_dir(app: AppHandle) -> Result<Option<shared_types::SetD
         let dir = path.to_string();
         store::set_config_dir(&app, &dir).map_err(|e| capture_err("config_pick_dir", e))?;
         store::ensure_config_dir_exists(&app).map_err(|e| capture_err("config_pick_dir", e))?;
-        let (evolve_state, hosts) = if dir != prev_dir {
-            let (es, hosts) =
-                handle_new_config_dir(&app, &dir).map_err(|e| capture_err("config_pick_dir", e))?;
-            (Some(es), hosts)
-        } else {
-            (None, None)
-        };
-        return Ok(Some(shared_types::SetDirResult {
-            dir,
-            evolve_state,
-            hosts,
-        }));
+        let changed = dir != prev_dir;
+        if changed {
+            handle_new_config_dir(&app, &dir).map_err(|e| capture_err("config_pick_dir", e))?;
+        }
+        return Ok(Some(shared_types::SetDirResult { dir, changed }));
     }
 
     Ok(None)
@@ -354,12 +340,10 @@ fn finalize_imported_dir(
 ) -> Result<shared_types::SetDirResult, String> {
     let new_dir = target.to_string_lossy().to_string();
     store::set_config_dir(app, &new_dir).map_err(|e| capture_err("finalize_imported_dir", e))?;
-    let (evolve_state, hosts) = handle_new_config_dir(app, &new_dir)
-        .map_err(|e| capture_err("finalize_imported_dir", e))?;
+    handle_new_config_dir(app, &new_dir).map_err(|e| capture_err("finalize_imported_dir", e))?;
     Ok(shared_types::SetDirResult {
         dir: new_dir,
-        evolve_state: Some(evolve_state),
-        hosts,
+        changed: true,
     })
 }
 

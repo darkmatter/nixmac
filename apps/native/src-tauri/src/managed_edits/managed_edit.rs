@@ -104,17 +104,14 @@ pub async fn finalize_managed_edit(
     let change_sets =
         summarize::find_existing::for_current_state(&pool, &context.dir).unwrap_or_default();
 
+    // Record the resulting state in the cells: the change-map write emits
+    // `change_map_changed` and `status_and_cache` emits `git_state_changed`
+    // (evolve state was already set above). The frontend mirrors the events.
     let change_map = summarize::group_existing::from_change_sets(change_sets);
-    let git_status =
-        git::query::status_and_cache(&context.dir, app).context("Failed to get git status")?;
+    crate::state::change_map::update(app, change_map);
+    git::query::status_and_cache(&context.dir, app).context("Failed to get git status")?;
 
-    Ok(shared_types::ConfigEditApplyResult {
-        ok: true,
-        count,
-        change_map,
-        git_status,
-        evolve_state: context.evolve_state,
-    })
+    Ok(shared_types::ConfigEditApplyResult { ok: true, count })
 }
 
 /// Inject a Darwin module import into the config's nix-darwin module list.

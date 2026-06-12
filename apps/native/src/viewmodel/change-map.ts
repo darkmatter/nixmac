@@ -4,8 +4,13 @@ import { useViewModel } from "@/stores/view-model";
 import { bindBackendSlice } from "./_helpers";
 import { refreshHistorySnapshot } from "./history";
 
-export function mirrorChangeMapState(changeMap: SemanticChangeMap | null): void {
+function mirrorChangeMapState(changeMap: SemanticChangeMap | null): void {
   useViewModel.setState({ changeMap });
+}
+
+/** Reset the mirrored change map (debug tooling / e2e reset). */
+export function clearChangeMap(): void {
+  mirrorChangeMapState(null);
 }
 
 export function startChangeMapSync(): Promise<() => void> {

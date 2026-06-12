@@ -9,7 +9,7 @@ import { RepoImport } from "@/components/widget/controls/repo-import";
 // Mocks
 // ---------------------------------------------------------------------------
 
-type SetDirResult = { dir: string; evolveState: never; hosts: string[] | null };
+type SetDirResult = { dir: string; changed: boolean };
 
 const mockImportGithub = vi.fn<(ref: string, dir?: string) => Promise<SetDirResult>>();
 const mockImportZip = vi.fn<(zip: string, dir?: string) => Promise<SetDirResult>>();
@@ -35,13 +35,11 @@ function resetMocks() {
 
   mockImportGithub.mockImplementation(async (_ref, dir) => ({
     dir: `/home/user/${dir ?? ".darwin"}`,
-    evolveState: {} as never,
-    hosts: [],
+    changed: true,
   }));
   mockImportZip.mockImplementation(async (_zip, dir) => ({
     dir: `/home/user/${dir ?? ".darwin"}`,
-    evolveState: {} as never,
-    hosts: [],
+    changed: true,
   }));
   mockPickZip.mockResolvedValue(null);
   mockSetHostAttr.mockResolvedValue();

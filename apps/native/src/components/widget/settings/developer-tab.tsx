@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useViewModel } from "@/stores/view-model";
 import { useUiState } from "@/stores/ui-state";
-import { mirrorChangeMapState } from "@/viewmodel/change-map";
+import { clearChangeMap } from "@/viewmodel/change-map";
 import { clearEvolveEvents } from "@/viewmodel/evolution";
 import { clearRebuildLog } from "@/viewmodel/rebuild";
 import { tauriAPI } from "@/ipc/api";
@@ -109,16 +109,10 @@ export function DeveloperTab() {
     setStatusMessage(null);
     setClearingState(true);
     try {
+      // The backend resets its observables and broadcasts the cleared values
+      // (`evolve_state_changed`, `global_preferences_changed`,
+      // `prompt_history_changed`); the sync modules mirror them.
       await tauriAPI.debug.clearTauriState();
-      useViewModel.setState((state) => ({
-        evolve: null,
-        git: null,
-        build: {
-          ...state.build,
-          externalBuildDetected: false,
-        },
-        promptHistory: [],
-      }));
       setStatusMessage(
         "Cleared Tauri stores: settings.json, evolve-state.json, and build-state.json. Relaunch or reopen settings to reload defaults.",
       );
@@ -133,7 +127,7 @@ export function DeveloperTab() {
     const ui = useUiState.getState();
     ui.clearLogs();
     clearEvolveEvents();
-    mirrorChangeMapState(null);
+    clearChangeMap();
     clearRebuildLog();
     ui.setRebuildPanelDismissed(true);
     ui.setConversationalResponse(null);

@@ -1,12 +1,41 @@
 import { ipcRenderer } from "@/ipc/api";
 import type { EvolveEvent } from "@/ipc/types";
 import { EVOLVE_EVENT_CHANNEL } from "@/lib/constants";
+import { getTelemetry } from "@/lib/telemetry/instance";
+import { formatDurationMs } from "@/lib/utils";
 import { useUiState } from "@/stores/ui-state";
 import { useViewModel } from "@/stores/view-model";
+import { toast } from "sonner";
 
 /** Reset the evolve event stream (debug tooling / e2e reset / cancel). */
 export function clearEvolveEvents(): void {
   useViewModel.setState({ evolveEvents: [] });
+}
+
+/**
+ * Terminal `complete` payload: the backend emits it once per successful run,
+ * after every state cell is updated, carrying the run's result data. Mirror
+ * the result data into UI state and fire the completion side-effects that
+ * belong to the run (log line, toast, telemetry capture).
+ */
+function handleEvolutionComplete(payload: EvolveEvent): void {
+  const ui = useUiState.getState();
+  const telemetry = payload.telemetry ?? null;
+  ui.setEvolutionTelemetry(telemetry);
+  ui.setConversationalResponse(payload.conversationalResponse ?? null);
+
+  const completionMsg = telemetry
+    ? `✓ Evolution complete in ${formatDurationMs(telemetry.durationMs)} and ${telemetry.iterations} iteration${telemetry.iterations === 1 ? "" : "s"}\n`
+    : "✓ Evolution complete\n";
+  ui.appendLog(completionMsg);
+  toast.success(completionMsg);
+
+  // The backend updates the evolve-state cell before emitting the terminal
+  // event, so the mirrored step is already current here.
+  const step = useViewModel.getState().evolve?.step;
+  if (step) {
+    getTelemetry().captureEvent({ name: "evolve_completed", props: { step } });
+  }
 }
 
 /**
@@ -26,6 +55,10 @@ export function startEvolutionSync(): Promise<() => void> {
 
     if (payload.raw) {
       useUiState.getState().appendLog(`${payload.raw}\n`);
+    }
+
+    if (payload.eventType === "complete") {
+      handleEvolutionComplete(payload);
     }
   });
 }

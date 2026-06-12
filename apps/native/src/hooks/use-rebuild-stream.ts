@@ -40,7 +40,7 @@ export function useRebuildStream() {
         // dismiss the panel so the UI can route to the permissions step.
         if (event.payload.error_type === "full_disk_access") {
           useUiState.getState().setRebuildPanelDismissed(true);
-          await refreshGitStatus({ cache: true });
+          await refreshGitStatus();
           return;
         }
 
@@ -59,7 +59,7 @@ export function useRebuildStream() {
           if (options.onFailure) {
             await options.onFailure();
           }
-          await refreshGitStatus({ cache: true });
+          await refreshGitStatus();
         }
       },
     );

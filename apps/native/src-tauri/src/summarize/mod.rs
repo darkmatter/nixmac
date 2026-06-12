@@ -75,6 +75,19 @@ pub async fn summarize_since<R: Runtime>(
     .await
 }
 
+/// Recompute the change map for the active summary base ref and record it in
+/// the change-map cell (which emits `change_map_changed`). Used by mutating
+/// commands whose effects invalidate the last-known map.
+pub fn refresh_change_map<R: Runtime>(app: &AppHandle<R>) {
+    let base_ref = active_summary_base_ref(app);
+    match change_map_since(app, &base_ref) {
+        Ok(map) => {
+            crate::state::change_map::update(app, map);
+        }
+        Err(e) => log::warn!("[change_map] refresh failed: {}", e),
+    }
+}
+
 /// Returns a summary of all changes since `base_ref`, without generating anything new.
 pub fn change_map_since<R: Runtime>(
     app: &AppHandle<R>,

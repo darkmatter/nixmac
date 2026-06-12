@@ -143,17 +143,14 @@ opencode: boolean }
 export type Commit = { id: number; hash: string; treeHash: string; message: string | null; createdAt: number }
 
 /**
- * Result of a successful `git_commit` command.
+ * Result of a successful `git_commit` command. State mirrors (git, evolve,
+ * change map) flow through the `*_changed` events.
  */
 export type CommitResult = { 
 /**
  * Hash of the commit that was created.
  */
-hash: string; 
-/**
- * Evolve state after committing.
- */
-evolveState: EvolveState }
+hash: string }
 
 /**
  * Application configuration returned by `config_get`.
@@ -188,19 +185,7 @@ ok: boolean;
 /**
  * Number of items applied.
  */
-count: number; 
-/**
- * Semantic summary after applying the edit.
- */
-changeMap: SemanticChangeMap; 
-/**
- * Git status after applying the edit.
- */
-gitStatus: GitStatus; 
-/**
- * Evolve routing state after applying the edit.
- */
-evolveState: EvolveState }
+count: number }
 
 /**
  * Static description of one Configurable field.
@@ -350,48 +335,6 @@ changesSummary: string | null;
 suggestedCommitMessage: string | null }
 
 /**
- * Evolution failure payload with partial telemetry.
- */
-export type EvolutionFailureResult = { 
-/**
- * Error message returned to the frontend.
- */
-error: string; 
-/**
- * Best-effort git status captured after failure.
- */
-gitStatus: GitStatus | null; 
-/**
- * Partial telemetry captured before failure.
- */
-telemetry: EvolutionTelemetry }
-
-/**
- * Evolution result returned to the frontend on completion.
- */
-export type EvolutionResult = { 
-/**
- * Semantic summary of the generated changes.
- */
-changeMap: SemanticChangeMap; 
-/**
- * Git status after evolution completes.
- */
-gitStatus: GitStatus; 
-/**
- * Evolve routing state after evolution completes.
- */
-evolveState: EvolveState; 
-/**
- * Assistant response when no file changes were produced.
- */
-conversationalResponse: string | null; 
-/**
- * Telemetry collected during evolution.
- */
-telemetry: EvolutionTelemetry }
-
-/**
  * Evolution lifecycle state.
  */
 export type EvolutionState = 
@@ -504,7 +447,16 @@ iteration: number | null;
 /**
  * Milliseconds elapsed since the evolution started.
  */
-timestampMs: number }
+timestampMs: number; 
+/**
+ * Telemetry collected during the run; only on the terminal `Complete` event.
+ */
+telemetry?: EvolutionTelemetry | null; 
+/**
+ * Assistant response when no environment changes were produced; only on
+ * the terminal `Complete` event.
+ */
+conversationalResponse?: string | null }
 
 /**
  * Types of evolve events for UI rendering.
@@ -918,19 +870,6 @@ export type FieldType =
 export type FileDiffContents = { original: string; modified: string }
 
 export type FileEdit = { path: string; search: string; replace: string }
-
-/**
- * Result of a successful `finalize_apply` or `finalize_rollback` command.
- */
-export type FinalizeApplyResult = { 
-/**
- * Git status after finalization.
- */
-gitStatus: GitStatus; 
-/**
- * Evolve state after finalization.
- */
-evolveState: EvolveState }
 
 /**
  * Individual file status parsed from diff headers.
@@ -1478,17 +1417,10 @@ id: string;
 promptText: string }
 
 /**
- * Result returned from a rollback erase operation.
+ * Result returned from a rollback erase operation. Git/evolve state mirrors
+ * flow through the `*_changed` events; this only carries the rollback target.
  */
 export type RollbackResult = { 
-/**
- * Git status after rollback preparation.
- */
-gitStatus: GitStatus; 
-/**
- * Evolve state after rollback preparation.
- */
-evolveState: EvolveState; 
 /**
  * Store path to reactivate as part of the rollback flow.
  */
@@ -1545,7 +1477,8 @@ unsummarizedHashes: string[] }
 
 /**
  * Result returned when the config directory is set (typed or picked).
- * `evolve_state` and `hosts` are `Some` only when the directory actually changed.
+ * State mirrors (evolve state, git state, hosts) flow through the
+ * `*_changed` events; this only carries genuine command results.
  */
 export type SetDirResult = { 
 /**
@@ -1553,13 +1486,9 @@ export type SetDirResult = {
  */
 dir: string; 
 /**
- * Fresh evolve state after changing directories, when applicable.
+ * True when the selected directory differs from the previous one.
  */
-evolveState: EvolveState | null; 
-/**
- * Hosts discovered in the selected flake, when applicable.
- */
-hosts: string[] | null }
+changed: boolean }
 
 export type SummarizedChange = { 
 /**

@@ -85,6 +85,15 @@ pub struct EvolveEvent {
     pub iteration: Option<usize>,
     /// Milliseconds elapsed since the evolution started.
     pub timestamp_ms: i64,
+    /// Telemetry collected during the run; only on the terminal `Complete` event.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[specta(optional)]
+    pub telemetry: Option<EvolutionTelemetry>,
+    /// Assistant response when no environment changes were produced; only on
+    /// the terminal `Complete` event.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[specta(optional)]
+    pub conversational_response: Option<String>,
 }
 
 /// Types of evolve events for UI rendering.
@@ -271,14 +280,4 @@ pub struct EvolveCancelResult {
     pub ok: bool,
     /// Human-readable cancellation result.
     pub message: String,
-}
-
-/// Result of a successful `finalize_apply` or `finalize_rollback` command.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct FinalizeApplyResult {
-    /// Git status after finalization.
-    pub git_status: GitStatus,
-    /// Evolve state after finalization.
-    pub evolve_state: EvolveState,
 }

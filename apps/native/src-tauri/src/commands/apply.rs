@@ -52,20 +52,22 @@ pub async fn darwin_activate_store_path(
 }
 
 /// Records build state and changeset after a successful darwin-rebuild switch.
+/// Resulting state flows through the `git_state_changed`/`evolve_state_changed` events.
 #[tauri::command]
-pub async fn finalize_apply(app: AppHandle) -> Result<shared_types::FinalizeApplyResult, String> {
+pub async fn finalize_apply(app: AppHandle) -> Result<(), String> {
     crate::rebuild::finalize_apply(&app)
         .await
         .map_err(|e| capture_err("finalize_apply", e))
 }
 
 /// Finalize a rollback store-path activation — restores the pre-evolution build record.
+/// Resulting state flows through the `*_changed` cell events.
 #[tauri::command]
 pub async fn finalize_rollback(
     app: AppHandle,
     store_path: Option<String>,
     changeset_id: Option<i64>,
-) -> Result<shared_types::FinalizeApplyResult, String> {
+) -> Result<(), String> {
     crate::rebuild::finalize_rollback(&app, store_path, changeset_id)
         .await
         .map_err(|e| capture_err("finalize_rollback", e))
