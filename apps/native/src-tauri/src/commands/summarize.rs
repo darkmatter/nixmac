@@ -3,6 +3,24 @@ use crate::storage::store;
 use crate::{git, rebuild};
 use tauri::AppHandle;
 
+/// Returns the last-known change map from the in-memory cell.
+///
+/// On a cold cell (fresh start, before any watcher tick or summarize run)
+/// this seeds the cell once from the database.
+#[tauri::command]
+pub async fn get_change_map(
+    app: AppHandle,
+) -> Result<crate::shared_types::SemanticChangeMap, String> {
+    if let Some(map) = crate::state::change_map::get(&app) {
+        return Ok(map);
+    }
+    let base_ref = crate::summarize::active_summary_base_ref(&app);
+    let map = crate::summarize::change_map_since(&app, &base_ref)
+        .map_err(|e| capture_err("get_change_map", e))?;
+    crate::state::change_map::update(&app, map.clone());
+    Ok(map)
+}
+
 #[tauri::command]
 pub async fn find_change_map(
     app: AppHandle,

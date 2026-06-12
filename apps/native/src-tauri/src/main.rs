@@ -343,6 +343,7 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                         app.manage(evolve::config::load_observable(app.handle())?);
                         app.manage(state::evolve_state::load_observable(app.handle())?);
                         app.manage(state::git_state::load_observable(app.handle()));
+                        app.manage(state::change_map::load_observable(app.handle()));
                         Ok(())
                     })
                     .build(context)
@@ -526,6 +527,7 @@ fn run_gui_mode(
             commands::config::flake_exists,
             commands::config::bootstrap_default_config,
             // Summarization
+            commands::summarize::get_change_map,
             commands::summarize::find_change_map,
             commands::summarize::get_history,
             commands::summarize::generate_history_from,
@@ -601,6 +603,7 @@ fn run_gui_mode(
             app.manage(evolve::config::load_observable(handle)?);
             app.manage(state::evolve_state::load_observable(handle)?);
             app.manage(state::git_state::load_observable(handle));
+            app.manage(state::change_map::load_observable(handle));
 
             // Initialize SQLite database before any consumer that reads the
             // managed DbPool from app state.

@@ -78,7 +78,7 @@ pub struct CommitResult {
     pub evolve_state: EvolveState,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangeWithSummary {
     /// Change row identifier.
@@ -101,7 +101,7 @@ pub struct ChangeWithSummary {
     pub description: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SemanticChangeGroup {
     /// Shared summary describing the grouped changes.
@@ -110,7 +110,7 @@ pub struct SemanticChangeGroup {
     pub changes: Vec<ChangeWithSummary>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SemanticChangeMap {
     /// Groups of changes that share a generated semantic summary.

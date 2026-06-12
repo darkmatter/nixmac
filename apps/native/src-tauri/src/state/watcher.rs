@@ -1,11 +1,14 @@
 //! Git status watcher for detecting config changes.
 //!
-//! Polls git status at a configurable interval and emits slice update events to the frontend.
-//! Change detection compares current git status against the persisted store cache,
-//! which is kept in sync by both this watcher and the evolution/summarize handlers.
+//! Polls git status at a configurable interval and writes the git-state and
+//! change-map cells, whose subscribers notify the frontend. Change detection
+//! compares against the in-memory git-state cell, which is kept in sync by
+//! both this watcher and the mutating command paths.
 
 use crate::shared_types::GitState;
-use crate::state::{build_state, drift_notifications, evolve_state, git_state};
+use crate::state::{
+    build_state, change_map as change_map_state, drift_notifications, evolve_state, git_state,
+};
 use crate::{db, git, summarize};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -130,8 +133,8 @@ where
                                     external_build_detected: flag,
                                 },
                             );
-                            // fire-and-forget: window may not be connected yet.
-                            let _ = app_handle.emit("change_map_changed", change_map);
+                            // The cell write emits `change_map_changed`.
+                            change_map_state::update(&app_handle, change_map);
                         }
                     }
                     Err(e) => {
