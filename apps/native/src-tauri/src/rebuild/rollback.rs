@@ -22,6 +22,18 @@ pub fn rollback_erase<R: Runtime>(app: &AppHandle<R>) -> Result<RollbackResult> 
     if let Some(ref branch) = current_evolve.rollback_branch {
         let ref_name = format!("refs/heads/{}", branch);
         if git::get_ref_sha(&repo_root, &ref_name).is_some() {
+            // Never restore a snapshot taken on a different commit: that
+            // would silently revert commits made outside this session. The
+            // stale-session check in evolve_state::set clears such sessions;
+            // this guards the race where one is still loaded.
+            let anchor = git::backup_anchor_commit(&repo_root, branch);
+            let head = git::get_ref_sha(&repo_root, "HEAD");
+            if anchor.is_none() || anchor != head {
+                anyhow::bail!(
+                    "Refusing to discard: the session's backup snapshot predates \
+                     commits made outside nixmac. Restart the evolve flow instead."
+                );
+            }
             git::restore_from_branch_ref(&repo_root, &ref_name)
                 .context("Failed to restore from rollback branch")?;
         } else {
