@@ -8,7 +8,17 @@ import { mirrorChangeMapState } from "@/viewmodel/change-map";
 import { mirrorEvolveState } from "@/viewmodel/evolve";
 import { mirrorGitState } from "@/viewmodel/git";
 
-import { FILES, SECTIONS, type CandidateItem, type FsFile, type SectionId } from "./data";
+import type { HomebrewItem, HomebrewState } from "@/ipc/types";
+
+import {
+  FILES,
+  SECTIONS,
+  homebrewFilesFromDiff,
+  replaceHomebrewPlaceholders,
+  type CandidateItem,
+  type FsFile,
+  type SectionId,
+} from "./data";
 import { FileList } from "./file-list";
 import { SectionTabs } from "./section-tabs";
 import { seedForFile } from "./seed-prompt";
@@ -36,6 +46,8 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
       : "darwin";
 
   const [activeSection, setActiveSection] = useState<SectionId>(initialSection);
+  const [homebrewDiff, setHomebrewDiff] = useState<HomebrewState | null>(null);
+  const [homebrewError, setHomebrewError] = useState<string | null>(null);
 
   // Clear the target on mount so a subsequent toggle from the header
   // (which passes no section) returns to the user's last view.
@@ -43,12 +55,38 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
     if (targetSection) {
       useWidgetStore.setState({ filesystemTargetSection: null });
     }
-    // Run only on mount — see effect of targetSection changing handled
-    // by the lifecycle below (the view is unmounted between openings).
-    // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only
+  }, [targetSection]);
+
+  useEffect(() => {
+    let cancelled = false;
+    tauriAPI.homebrew
+      .getStateDiff()
+      .then((diff) => {
+        if (!cancelled) {
+          setHomebrewDiff(diff);
+          setHomebrewError(null);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setHomebrewError(String(error));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const files = FILES[activeSection] ?? [];
+  const filesBySection = {
+    ...FILES,
+    manage: replaceHomebrewPlaceholders(
+      FILES.manage,
+      homebrewFilesFromDiff(homebrewDiff, homebrewError),
+    ),
+  };
+
+  const files = filesBySection[activeSection] ?? [];
 
   const seed = (text: string) => {
     if (onSeedPrompt) {
@@ -63,21 +101,29 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
   const onTrack = (text: string) => seed(text);
   // Add future direct managed-edit trackers here (for example, system defaults)
   // and pass them down alongside the fallback prompt seeding handler.
-  const onTrackHomebrewCasks = async (items: CandidateItem[]) => {
+  const onTrackHomebrewItems = async (items: CandidateItem[]) => {
     const store = useWidgetStore.getState();
     store.setProcessing(true, "apply");
     try {
-      const result = await tauriAPI.homebrew.addCasks(
-        items.map((item) => ({
+      const homebrewItems: HomebrewItem[] = items.map((item) => {
+        if (!item.kind) {
+          throw new Error(`Cannot track ${item.name}: missing Homebrew item type.`);
+        }
+        return {
           name: item.name,
           version: item.version ?? null,
-        })),
+          itemType: item.kind,
+        };
+      });
+      const result = await tauriAPI.homebrew.addItems(
+        homebrewItems,
       );
       mirrorEvolveState(result.evolveState);
       mirrorChangeMapState(result.changeMap);
       mirrorGitState(result.gitStatus);
       store.setRecommendedPrompt(undefined);
       setShowFilesystem(false);
+      setHomebrewDiff(null);
     } finally {
       store.setProcessing(false);
     }
@@ -85,13 +131,18 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="filesystem-step">
-      <SectionTabs sections={SECTIONS} active={activeSection} setActive={setActiveSection} files={FILES} />
+      <SectionTabs
+        sections={SECTIONS}
+        active={activeSection}
+        setActive={setActiveSection}
+        files={filesBySection}
+      />
       <FileList
         key={activeSection}
         files={files}
         onEditWithPrompt={onEditWithPrompt}
         onTrack={onTrack}
-        onTrackHomebrewCasks={onTrackHomebrewCasks}
+        onTrackHomebrewItems={onTrackHomebrewItems}
       />
       <div className="shrink-0 border-border/50 border-t bg-card/40 px-3 py-1.5 text-[10.5px] text-muted-foreground">
         Use these as starting points — every change goes through the standard plan → review → save flow.
