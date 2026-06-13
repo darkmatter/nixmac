@@ -52,6 +52,7 @@ const NIXMAC_SETTINGS_PATH = path.join(NIXMAC_APP_SUPPORT_DIR, 'settings.json');
 const NIXMAC_EVOLVE_STATE_PATH = path.join(NIXMAC_APP_SUPPORT_DIR, 'evolve-state.json');
 const NIXMAC_BUILD_STATE_PATH = path.join(NIXMAC_APP_SUPPORT_DIR, 'build-state.json');
 const NIXMAC_DB_PATH = path.join(NIXMAC_APP_SUPPORT_DIR, 'nixmac.db');
+const WDIO_VLLM_MODEL = 'gpt-oss-120b';
 
 interface NixmacTestEnvironmentContext {
   backupPath: string | null;
@@ -166,7 +167,9 @@ async function generateNixmacSettings({
     vllmApiBaseUrl: vllmApiBaseUrl ?? null,
     vllmApiKey: vllmApiKey ?? null,
     evolveProvider: 'vllm',
+    evolveModel: WDIO_VLLM_MODEL,
     summaryProvider: 'vllm',
+    summaryModel: WDIO_VLLM_MODEL,
   };
 
   await mkdir(path.dirname(NIXMAC_SETTINGS_PATH), { recursive: true });

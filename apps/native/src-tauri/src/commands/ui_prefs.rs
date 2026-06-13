@@ -83,6 +83,10 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, Strin
             shared_types::UpdateChannel::default(),
         ),
     )?;
+    let ai_provider_onboarding_skipped = wrap_result_and_capture_err(
+        "ui_get_prefs",
+        store::get_bool_pref(&app, store::AI_PROVIDER_ONBOARDING_SKIPPED_KEY, false),
+    )?;
 
     Ok(shared_types::UiPrefs {
         openrouter_api_key,
@@ -112,6 +116,7 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, Strin
         developer_mode,
         pinned_version,
         update_channel,
+        ai_provider_onboarding_skipped,
     })
 }
 
@@ -231,6 +236,14 @@ pub async fn ui_set_prefs(
     if let Some(update_channel) = prefs.update_channel {
         store::set_json_pref(&app, store::UPDATE_CHANNEL_KEY, &update_channel)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
+    }
+    if let Some(ai_provider_onboarding_skipped) = prefs.ai_provider_onboarding_skipped {
+        store::set_bool_pref(
+            &app,
+            store::AI_PROVIDER_ONBOARDING_SKIPPED_KEY,
+            ai_provider_onboarding_skipped,
+        )
+        .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
 
     Ok(shared_types::OkResult::yes())

@@ -1696,7 +1696,11 @@ pinnedVersion: string | null;
 /**
  * Auto-update channel used when no explicit version pin is active.
  */
-updateChannel: UpdateChannel }
+updateChannel: UpdateChannel;
+/**
+ * Whether the user intentionally skipped AI provider setup during onboarding.
+ */
+aiProviderOnboardingSkipped: boolean }
 
 /**
  * Partial update to UI preferences — every field is optional so the caller
@@ -1794,7 +1798,11 @@ pinnedVersion?: string | null;
 /**
  * Auto-update channel preference update.
  */
-updateChannel: UpdateChannel | null }
+updateChannel: UpdateChannel | null;
+/**
+ * AI provider onboarding skip preference update.
+ */
+aiProviderOnboardingSkipped: boolean | null }
 
 /**
  * Auto-update channel selected for release-mode builds.
@@ -1817,4 +1825,3 @@ version: string;
  * Release notes from the channel manifest, when available.
  */
 notes: string | null }
-

@@ -1,5 +1,6 @@
 import type { ChangeWithRichType } from "@/components/widget/utils";
 import {
+  computeCurrentStep,
   categorizeRenamed,
   getModStartLine,
   inferChangeType,
@@ -7,6 +8,43 @@ import {
   summarizeChangesByFile,
 } from "@/components/widget/utils";
 import { describe, expect, it } from "vitest";
+
+function currentStepState(
+  overrides: Record<string, unknown> = {},
+): Parameters<typeof computeCurrentStep>[0] {
+  return {
+    configDir: "/Users/me/.darwin",
+    host: "mbp",
+    hosts: ["mbp"],
+    permissionsChecked: false,
+    permissionsState: null,
+    nixInstalled: true,
+    darwinRebuildAvailable: true,
+    isBootstrapping: false,
+    showHistory: false,
+    showFilesystem: false,
+    evolveState: null,
+    aiProviderOnboardingComplete: false,
+    prefsLoaded: true,
+    ...overrides,
+  } as Parameters<typeof computeCurrentStep>[0];
+}
+
+describe("computeCurrentStep onboarding gates", () => {
+  it("keeps a configured host in setup until the AI provider decision is made", () => {
+    expect(computeCurrentStep(currentStepState())).toBe("setup");
+  });
+
+  it("allows the main flow after a valid or skipped AI provider decision", () => {
+    expect(computeCurrentStep(currentStepState({ aiProviderOnboardingComplete: true }))).toBe(
+      "begin",
+    );
+  });
+
+  it("waits for preferences before applying the AI provider setup gate", () => {
+    expect(computeCurrentStep(currentStepState({ prefsLoaded: false }))).toBe("begin");
+  });
+});
 
 function change(
   id: number,

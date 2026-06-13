@@ -3,7 +3,7 @@ import { Check, Loader2, X, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AnyFieldApi, AnyFormApi } from "@tanstack/react-form";
 
-type ApiKeyStatus = "idle" | "verifying" | "valid" | "invalid";
+type ApiKeyStatus = "idle" | "verifying" | "valid" | "invalid" | "unavailable";
 
 interface ApiKeysTabProps {
   // OpenRouter
@@ -77,7 +77,9 @@ function ApiKeyInput({
               ? "border-green-500"
               : status === "invalid"
                 ? "border-red-500"
-                : "border-border",
+                : status === "unavailable"
+                  ? "border-amber-500"
+                  : "border-border",
           )}
           onBlur={field.handleBlur}
           onChange={(e) => {
@@ -114,6 +116,11 @@ function ApiKeyInput({
               <X className="h-3 w-3 text-white" />
             </div>
           )}
+          {status === "unavailable" && (
+            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500">
+              <X className="h-3 w-3 text-white" />
+            </div>
+          )}
           {/* visibility toggle */}
           <div className="pointer-events-auto">
             <VisibilityToggle />
@@ -133,6 +140,11 @@ function ApiKeyInput({
       </p>
       {status === "invalid" && (
         <p className="text-red-500 text-xs">Invalid API key. Please check and try again.</p>
+      )}
+      {status === "unavailable" && (
+        <p className="text-amber-600 text-xs">
+          Could not verify the key. Check your connection and try again.
+        </p>
       )}
       {status === "valid" && <p className="text-green-600 text-xs">API key verified and saved.</p>}
     </div>

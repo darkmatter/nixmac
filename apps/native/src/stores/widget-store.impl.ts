@@ -112,6 +112,7 @@ export interface WidgetState {
   // UI
   isSummarizing: boolean;
   isGenerating: boolean;
+  aiProviderOnboardingComplete: boolean;
   settingsOpen: boolean;
   settingsActiveTab: SettingsTab | null;
   prefsLoaded: boolean;
@@ -184,6 +185,7 @@ interface WidgetActions {
   setFileDiffContents: (contents: Record<string, FileDiffContents>) => void;
   setEvolvePrompt: (prompt: string) => void;
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
+  setAiProviderOnboardingComplete: (complete: boolean) => void;
   setSettingsOpen: (open: boolean, tab?: SettingsTab | null) => void;
   setPrefsLoaded: (loaded: boolean) => void;
   setShowHistory: (show: boolean) => void;
@@ -309,6 +311,7 @@ const initialWidgetState: WidgetState = {
   isBootstrapping: false,
   isSummarizing: false,
   isGenerating: false,
+  aiProviderOnboardingComplete: false,
   settingsOpen: false,
   settingsActiveTab: null,
   prefsLoaded: false,
@@ -378,6 +381,8 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
         isProcessing,
         processingAction: isProcessing ? action : null,
       }),
+    setAiProviderOnboardingComplete: (aiProviderOnboardingComplete) =>
+      set({ aiProviderOnboardingComplete }),
     setBoolPref: (key: BoolPrefKey, value: boolean) => set({ [key]: value }),
     initConfirmPrefs: (prefs) =>
       set({
