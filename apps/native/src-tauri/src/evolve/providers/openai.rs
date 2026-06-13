@@ -1,4 +1,5 @@
 use super::{AiProvider, ProviderError, ProviderResponse, TokenUsage};
+use crate::ai::model_capabilities::capabilities_for_model;
 use crate::ai::provider_errors::classify_openai_error;
 use crate::evolve::messages::{Message, Tool as GenericTool, ToolCall};
 use anyhow::anyhow;
@@ -60,8 +61,11 @@ impl AiProvider for OpenAIProvider {
         request_builder
             .model(&self.model)
             .messages(openai_messages)
-            .tools(openai_tools)
-            .temperature(0.2);
+            .tools(openai_tools);
+
+        if capabilities_for_model(&self.model).supports_custom_temperature {
+            request_builder.temperature(0.2);
+        }
 
         request_builder.max_completion_tokens(self.max_output_tokens);
 

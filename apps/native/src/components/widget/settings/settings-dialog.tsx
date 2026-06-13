@@ -5,7 +5,13 @@ import { type SettingsTab, useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 import { useForm } from "@tanstack/react-form";
 import { Bot, FolderOpen, Key, Settings2, SlidersHorizontal, UserCircle2, Wrench } from "lucide-react";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ApiKeyStatus,
+  createVerifiedApiKeyHandler,
+  verifyOpenaiApiKey,
+  verifyOpenrouterApiKey,
+} from "@/lib/api-key-verification";
 import { AccountTab } from "@/components/widget/settings/account-tab";
 import { AiModelsTab } from "@/components/widget/settings/ai-models-tab";
 import { ApiKeysTab } from "@/components/widget/settings/api-keys-tab";
@@ -13,11 +19,7 @@ import { DeveloperTab } from "@/components/widget/settings/developer-tab";
 import { GeneralTab } from "@/components/widget/settings/general-tab";
 import { PreferencesTab } from "@/components/widget/settings/preferences-tab";
 import { TuningTab } from "@/components/widget/settings/tuning-tab";
-type ApiKeyStatus = "idle" | "verifying" | "valid" | "invalid";
-
-function normalizeProvider(provider?: string | null) {
-  return provider === "openai" ? "openrouter" : (provider ?? "openrouter");
-}
+import { resolveOpenAiCompatibleProvider } from "@/lib/ai-provider-validation";
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -71,37 +73,35 @@ export function SettingsDialog() {
     }
   }, [developerMode, activeTab]);
   const [openrouterKeyStatus, setOpenrouterKeyStatus] = useState<ApiKeyStatus>("idle");
+  const [openaiKeyStatus, setOpenaiKeyStatus] = useState<ApiKeyStatus>("idle");
   const openrouterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const openaiTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { saveHost } = useDarwinConfig();
 
-  const verifyOpenrouterKey = async (key: string) => {
-    if (!key) {
-      setOpenrouterKeyStatus("idle");
-      await tauriAPI.ui.setPrefs({ openrouterApiKey: "" });
-      return;
-    }
-
-    setOpenrouterKeyStatus("verifying");
-    try {
-      const response = await fetch("https://openrouter.ai/api/v1/auth/key", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${key}`,
+  const verifyOpenrouterKey = useMemo(
+    () =>
+      createVerifiedApiKeyHandler({
+        saveKey: async (key) => {
+          await tauriAPI.ui.setPrefs({ openrouterApiKey: key });
         },
-      });
+        setStatus: setOpenrouterKeyStatus,
+        verifyKey: verifyOpenrouterApiKey,
+      }),
+    [],
+  );
 
-      if (response.ok) {
-        setOpenrouterKeyStatus("valid");
-        await tauriAPI.ui.setPrefs({ openrouterApiKey: key });
-      } else {
-        setOpenrouterKeyStatus("invalid");
-      }
-    } catch (error) {
-      console.error("Error verifying OpenRouter API key:", error);
-      setOpenrouterKeyStatus("invalid");
-    }
-  };
+  const verifyOpenaiKey = useMemo(
+    () =>
+      createVerifiedApiKeyHandler({
+        saveKey: async (key) => {
+          await tauriAPI.ui.setPrefs({ openaiApiKey: key });
+        },
+        setStatus: setOpenaiKeyStatus,
+        verifyKey: verifyOpenaiApiKey,
+      }),
+    [],
+  );
 
   const saveOllamaUrl = async (url: string) => {
     await tauriAPI.ui.setPrefs({ ollamaApiBaseUrl: url });
@@ -139,18 +139,28 @@ export function SettingsDialog() {
       try {
         const prefs = await tauriAPI.ui.getPrefs();
         if (prefs) {
+          const summaryProvider = resolveOpenAiCompatibleProvider(prefs.summaryProvider, prefs);
+          const evolveProvider = resolveOpenAiCompatibleProvider(prefs.evolveProvider, prefs);
+
           form.setFieldValue("openrouterApiKey", prefs.openrouterApiKey ?? "");
           form.setFieldValue("openaiApiKey", prefs.openaiApiKey ?? "");
           form.setFieldValue("ollamaApiBaseUrl", prefs.ollamaApiBaseUrl ?? "");
           form.setFieldValue("vllmApiBaseUrl", prefs.vllmApiBaseUrl ?? "");
           form.setFieldValue("vllmApiKey", prefs.vllmApiKey ?? "");
-          form.setFieldValue("summaryProvider", normalizeProvider(prefs.summaryProvider));
-          form.setFieldValue("summaryModel", prefs.summaryModel ?? "openai/gpt-4o-mini");
-          form.setFieldValue("evolveProvider", normalizeProvider(prefs.evolveProvider));
-          form.setFieldValue("evolveModel", prefs.evolveModel ?? "anthropic/claude-sonnet-4");
+          form.setFieldValue("summaryProvider", summaryProvider);
+          form.setFieldValue(
+            "summaryModel",
+            prefs.summaryModel ?? (summaryProvider === "openai" ? "gpt-4o-mini" : "openai/gpt-4o-mini"),
+          );
+          form.setFieldValue("evolveProvider", evolveProvider);
+          form.setFieldValue(
+            "evolveModel",
+            prefs.evolveModel ?? (evolveProvider === "openai" ? "gpt-4o" : "anthropic/claude-sonnet-4"),
+          );
           form.setFieldValue("sendDiagnostics", prefs.sendDiagnostics ?? false);
 
           setOpenrouterKeyStatus(prefs.openrouterApiKey ? "valid" : "idle");
+          setOpenaiKeyStatus(prefs.openaiApiKey ? "valid" : "idle");
         }
       } catch (err) {
         console.error("Failed to load settings:", err);
@@ -270,25 +280,33 @@ export function SettingsDialog() {
             {activeTab === "api-keys" && (
               <form.Field name="openrouterApiKey">
                 {(openrouterApiKeyField) => (
-                  <form.Field name="ollamaApiBaseUrl">
-                    {(ollamaApiBaseUrlField) => (
-                      <form.Field name="vllmApiBaseUrl">
-                        {(vllmApiBaseUrlField) => (
-                          <form.Field name="vllmApiKey">
-                            {(vllmApiKeyField) => (
-                              <ApiKeysTab
-                                openrouterApiKeyField={openrouterApiKeyField}
-                                openrouterKeyStatus={openrouterKeyStatus}
-                                verifyOpenrouterKey={verifyOpenrouterKey}
-                                openrouterTimeoutRef={openrouterTimeoutRef}
-                                ollamaApiBaseUrlField={ollamaApiBaseUrlField}
-                                onSaveOllamaUrl={saveOllamaUrl}
-                                vllmApiBaseUrlField={vllmApiBaseUrlField}
-                                vllmApiKeyField={vllmApiKeyField}
-                                onSaveVllmUrl={saveVllmUrl}
-                                onSaveVllmKey={saveVllmKey}
-                                form={form}
-                              />
+                  <form.Field name="openaiApiKey">
+                    {(openaiApiKeyField) => (
+                      <form.Field name="ollamaApiBaseUrl">
+                        {(ollamaApiBaseUrlField) => (
+                          <form.Field name="vllmApiBaseUrl">
+                            {(vllmApiBaseUrlField) => (
+                              <form.Field name="vllmApiKey">
+                                {(vllmApiKeyField) => (
+                                  <ApiKeysTab
+                                    form={form}
+                                    ollamaApiBaseUrlField={ollamaApiBaseUrlField}
+                                    openaiKeyStatus={openaiKeyStatus}
+                                    openaiTimeoutRef={openaiTimeoutRef}
+                                    onSaveOllamaUrl={saveOllamaUrl}
+                                    onSaveVllmKey={saveVllmKey}
+                                    onSaveVllmUrl={saveVllmUrl}
+                                    openaiApiKeyField={openaiApiKeyField}
+                                    openrouterApiKeyField={openrouterApiKeyField}
+                                    openrouterKeyStatus={openrouterKeyStatus}
+                                    openrouterTimeoutRef={openrouterTimeoutRef}
+                                    verifyOpenaiKey={verifyOpenaiKey}
+                                    verifyOpenrouterKey={verifyOpenrouterKey}
+                                    vllmApiBaseUrlField={vllmApiBaseUrlField}
+                                    vllmApiKeyField={vllmApiKeyField}
+                                  />
+                                )}
+                              </form.Field>
                             )}
                           </form.Field>
                         )}

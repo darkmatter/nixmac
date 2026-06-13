@@ -527,6 +527,7 @@ fn run_gui_mode(
             // UI preferences
             commands::ui_prefs::ui_get_prefs,
             commands::ui_prefs::ui_set_prefs,
+            commands::ui_prefs::verify_openai_api_key,
             // Settings backup/restore (developer-mode only)
             commands::settings_io::settings_export,
             commands::settings_io::settings_import,

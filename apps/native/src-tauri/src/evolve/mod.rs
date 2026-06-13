@@ -45,6 +45,7 @@ use tools::{ToolResult, create_tools, execute_tool};
 pub use types::{EvolutionProgress, EvolutionRunError};
 
 use crate::{
+    ai::model_capabilities::capabilities_for_model,
     statistics, store,
     types::{EvolveEvent, emit_evolve_event},
     utils as global_utils,
@@ -98,6 +99,13 @@ struct EvolutionMessage {
 
 fn normalize_max_output_tokens(value: usize) -> u32 {
     value.max(1).min(u32::MAX as usize) as u32
+}
+
+fn normalize_openai_max_output_tokens(model: &str, value: usize) -> u32 {
+    let normalized = normalize_max_output_tokens(value);
+    // Called only in the direct OpenAI branch. OpenRouter-compatible requests
+    // keep their provider-level behavior even when the slug contains gpt-4o.
+    capabilities_for_model(model).clamp_max_completion_tokens(normalized)
 }
 
 /// Return short hex prefix for correlation of error messages without risking sensitive content exposure.
@@ -313,6 +321,7 @@ fn log_api_error(
 
 // Use OpenRouter with Claude for evolution - better reasoning without strict content policies
 const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
+const DEFAULT_OPENAI_MODEL: &str = "gpt-4o";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 
 // Applied separately to stdout and stderr. So when thinking about tokens,
@@ -715,9 +724,48 @@ pub async fn generate_evolution<R: Runtime>(
 
     // Determine provider
     let store_provider = store::get_evolve_provider(app).ok().flatten();
-    let provider_type = store_provider
-        .or_else(|| std::env::var("EVOLVE_PROVIDER").ok())
-        .unwrap_or_else(|| "openrouter".to_string());
+    let requested_provider_type = store_provider.or_else(|| std::env::var("EVOLVE_PROVIDER").ok());
+    let store_model = store::get_evolve_model(app).ok().flatten();
+    let configured_evolve_model = configured_model(store_model.clone(), "EVOLVE_MODEL");
+    let (provider_type, used_legacy_openai_fallback) = if let Some(provider) = requested_provider_type {
+        if provider != "openai" {
+            (provider, false)
+        } else {
+            let has_openai_provider_credential =
+                store::get_effective_openai_provider_credential(app)?.is_some();
+            let has_openrouter_provider_credential =
+                store::get_effective_openrouter_provider_credential(app)?.is_some();
+
+            let resolved_provider = crate::ai::providers::resolve_legacy_openai_provider(
+                provider,
+                configured_evolve_model.as_deref(),
+                has_openai_provider_credential,
+                has_openrouter_provider_credential,
+            );
+            if resolved_provider == "openrouter" {
+                info!("Using OpenRouter for legacy OpenAI evolve provider compatibility");
+            }
+            let used_legacy_openai_fallback = resolved_provider == "openrouter";
+
+            (resolved_provider, used_legacy_openai_fallback)
+        }
+    } else {
+        let has_openai_provider_credential =
+            store::get_effective_openai_provider_credential(app)?.is_some();
+        let has_openrouter_provider_credential =
+            store::get_effective_openrouter_provider_credential(app)?.is_some();
+        let resolved_provider =
+            crate::ai::providers::resolve_unconfigured_openai_compatible_provider(
+                None,
+                has_openai_provider_credential,
+                has_openrouter_provider_credential,
+            );
+        if resolved_provider == "openai" {
+            info!("Using OpenAI evolve provider because only an OpenAI credential is configured");
+        }
+
+        (resolved_provider, false)
+    };
 
     info!("");
     info!("════════════════════════════════════════════════════════════════");
@@ -728,7 +776,6 @@ pub async fn generate_evolution<R: Runtime>(
     info!("Repo root: {}", repo_root.display());
     info!("📝 Prompt: {}", prompt);
 
-    let store_model = store::get_evolve_model(app).ok().flatten();
     let max_output_tokens =
         store::get_max_output_tokens(app).unwrap_or(store::DEFAULT_MAX_OUTPUT_TOKENS);
     let max_output_tokens_for_request = normalize_max_output_tokens(max_output_tokens);
@@ -756,8 +803,7 @@ pub async fn generate_evolution<R: Runtime>(
             "codex" => crate::ai::providers::cli::CliTool::Codex,
             _ => crate::ai::providers::cli::CliTool::OpenCode,
         };
-        let model =
-            configured_model(store_model, "EVOLVE_MODEL").unwrap_or_else(|| provider_type.clone());
+        let model = configured_evolve_model.unwrap_or_else(|| provider_type.clone());
         info!("Using CLI provider: {} | Model: {}", provider_type, model);
         Arc::new(CliProvider::new(tool, model))
     } else if provider_type == "vllm" {
@@ -778,28 +824,45 @@ pub async fn generate_evolution<R: Runtime>(
             model,
             max_output_tokens_for_request,
         ))
-    } else {
-        let (api_key, base_url) = store::get_effective_openai_compatible_credential(app)?
+    } else if provider_type == "openai" {
+        let (api_key, base_url) = store::get_effective_openai_provider_credential(app)?
             .ok_or_else(|| {
-                anyhow!("No API key found. Please add your API key in Settings to get started.")
+                anyhow!(
+                    "No OpenAI API key found. Please add your API key in Settings to get started."
+                )
             })?;
 
-        let model = configured_model(store_model, "EVOLVE_MODEL")
-            .unwrap_or_else(|| DEFAULT_MODEL.to_string());
-        // Strip OpenRouter-style "openai/" prefix for direct OpenAI usage
-        let model = if base_url == store::OPENAI_BASE_URL {
-            model.strip_prefix("openai/").unwrap_or(&model).to_string()
+        let model = configured_evolve_model.unwrap_or_else(|| DEFAULT_OPENAI_MODEL.to_string());
+        let model = model.strip_prefix("openai/").unwrap_or(&model).to_string();
+        let openai_max_output_tokens_for_request =
+            normalize_openai_max_output_tokens(&model, max_output_tokens);
+        info!(
+            "Using OpenAI provider | Model: {} | Max output tokens: {}",
+            model, openai_max_output_tokens_for_request
+        );
+        Arc::new(OpenAIProvider::new(
+            api_key,
+            base_url.to_string(),
+            model,
+            openai_max_output_tokens_for_request,
+        ))
+    } else {
+        let (api_key, base_url) = store::get_effective_openrouter_provider_credential(app)?
+            .ok_or_else(|| {
+                anyhow!("No OpenRouter API key found. Please add your API key in Settings to get started.")
+            })?;
+
+        let model = if used_legacy_openai_fallback {
+            crate::ai::providers::openrouter_model_slug_or_default(
+                configured_evolve_model,
+                DEFAULT_MODEL,
+            )
         } else {
-            model
-        };
-        let provider_name = if base_url == store::OPENROUTER_BASE_URL {
-            "OpenRouter"
-        } else {
-            "OpenAI"
+            configured_evolve_model.unwrap_or_else(|| DEFAULT_MODEL.to_string())
         };
         info!(
-            "Using {} provider | Model: {} | Max output tokens: {}",
-            provider_name, model, max_output_tokens_for_request
+            "Using OpenRouter provider | Model: {} | Max output tokens: {}",
+            model, max_output_tokens_for_request
         );
         Arc::new(OpenAIProvider::new(
             api_key,
@@ -1919,8 +1982,9 @@ fn process_tool_result(
 #[cfg(test)]
 mod tests {
     use super::{
-        Evolution, EvolutionMessage, EvolutionState, FileEdit, Message, Retention, ToolResult,
-        filter_evolution_messages, process_tool_result, read_file_dedup_key, store_tool_result,
+        filter_evolution_messages, normalize_openai_max_output_tokens, process_tool_result,
+        read_file_dedup_key, store_tool_result, Evolution, EvolutionMessage, EvolutionState,
+        FileEdit, Message, Retention, ToolResult,
     };
 
     fn build_result(success: bool) -> ToolResult {
@@ -1950,6 +2014,32 @@ mod tests {
             0,
         )
         .expect("process_tool_result should not error in these cases");
+    }
+
+    #[test]
+    fn direct_openai_gpt_4o_output_tokens_are_capped_to_api_limit() {
+        assert_eq!(normalize_openai_max_output_tokens("gpt-4o", 32_768), 16_384);
+        assert_eq!(
+            normalize_openai_max_output_tokens("openai/gpt-4o-mini", 32_768),
+            16_384
+        );
+        assert_eq!(
+            normalize_openai_max_output_tokens("gpt-4o-2024-08-06", 32_768),
+            16_384
+        );
+    }
+
+    #[test]
+    fn direct_openai_output_token_cap_preserves_lower_user_limit() {
+        assert_eq!(normalize_openai_max_output_tokens("gpt-4o", 4_096), 4_096);
+    }
+
+    #[test]
+    fn direct_openai_output_token_cap_leaves_unknown_models_unchanged() {
+        assert_eq!(
+            normalize_openai_max_output_tokens("custom-openai-model", 32_768),
+            32_768
+        );
     }
 
     // Bug 1: build_verified latched true on the first passing build and was never
