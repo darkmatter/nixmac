@@ -2,6 +2,7 @@
 import preview from "#storybook/preview";
 import { useMemo, useState } from "react";
 import { AiModelsTab } from "./ai-models-tab";
+import type { ProviderDataFlowPrefs } from "./provider-data-flow-note";
 
 type ModelValues = {
   evolveProvider: string;
@@ -13,15 +14,26 @@ type ModelValues = {
   vllmApiBaseUrl: string;
 };
 
-function AiModelsTabFixture() {
+const DEFAULT_VALUES: ModelValues = {
+  evolveProvider: "codex",
+  evolveModel: "",
+  summaryProvider: "claude",
+  summaryModel: "",
+  openrouterApiKey: "",
+  openaiApiKey: "",
+  vllmApiBaseUrl: "",
+};
+
+function AiModelsTabFixture({
+  initialValues,
+  dataFlowPrefs = {},
+}: {
+  initialValues?: Partial<ModelValues>;
+  dataFlowPrefs?: ProviderDataFlowPrefs;
+}) {
   const [values, setValues] = useState<ModelValues>({
-    evolveProvider: "codex",
-    evolveModel: "",
-    summaryProvider: "claude",
-    summaryModel: "",
-    openrouterApiKey: "",
-    openaiApiKey: "",
-    vllmApiBaseUrl: "",
+    ...DEFAULT_VALUES,
+    ...initialValues,
   });
 
   const field = (name: keyof ModelValues) => ({
@@ -46,6 +58,7 @@ function AiModelsTabFixture() {
   return (
     <div className="w-[560px] rounded-lg border bg-background p-6">
       <AiModelsTab
+        dataFlowPrefs={dataFlowPrefs}
         evolveModelField={field("evolveModel")}
         evolveProviderField={field("evolveProvider")}
         form={form as any}
@@ -67,4 +80,94 @@ export default meta;
 
 export const CliProviders = meta.story({
   render: () => <AiModelsTabFixture />,
+});
+
+export const CloudProviders = meta.story({
+  render: () => (
+    <AiModelsTabFixture
+      dataFlowPrefs={{ openrouterApiKey: "sk-or-storybook" }}
+      initialValues={{
+        evolveProvider: "openrouter",
+        evolveModel: "anthropic/claude-sonnet-4",
+        summaryProvider: "openrouter",
+        summaryModel: "openai/gpt-4o-mini",
+        openrouterApiKey: "sk-or-storybook",
+      }}
+    />
+  ),
+});
+
+export const CloudFallbackToOpenAi = meta.story({
+  render: () => (
+    <AiModelsTabFixture
+      dataFlowPrefs={{ openaiApiKey: "sk-oai-storybook" }}
+      initialValues={{
+        evolveProvider: "openrouter",
+        evolveModel: "anthropic/claude-sonnet-4",
+        summaryProvider: "openrouter",
+        summaryModel: "openai/gpt-4o-mini",
+        openaiApiKey: "sk-oai-storybook",
+      }}
+    />
+  ),
+});
+
+export const LocalOllama = meta.story({
+  render: () => (
+    <AiModelsTabFixture
+      dataFlowPrefs={{ ollamaApiBaseUrl: "http://localhost:11434" }}
+      initialValues={{
+        evolveProvider: "ollama",
+        evolveModel: "llama3.1",
+        summaryProvider: "ollama",
+        summaryModel: "llama3.1",
+      }}
+    />
+  ),
+});
+
+export const RemoteOllama = meta.story({
+  render: () => (
+    <AiModelsTabFixture
+      dataFlowPrefs={{ ollamaApiBaseUrl: "http://ollama.example.com:11434" }}
+      initialValues={{
+        evolveProvider: "ollama",
+        evolveModel: "llama3.1",
+        summaryProvider: "ollama",
+        summaryModel: "llama3.1",
+      }}
+    />
+  ),
+});
+
+// Regression (PR #364 review): a typed-but-unsaved OpenRouter key lives in
+// form state only — the note must keep describing the persisted route (OpenAI).
+export const TypedUnsavedKeyKeepsPersistedRoute = meta.story({
+  render: () => (
+    <AiModelsTabFixture
+      dataFlowPrefs={{ openaiApiKey: "sk-oai-storybook" }}
+      initialValues={{
+        evolveProvider: "openrouter",
+        evolveModel: "anthropic/claude-sonnet-4",
+        summaryProvider: "openrouter",
+        summaryModel: "openai/gpt-4o-mini",
+        openrouterApiKey: "sk-or-typed-but-not-verified",
+        openaiApiKey: "sk-oai-storybook",
+      }}
+    />
+  ),
+});
+
+export const OpenAiCompatible = meta.story({
+  render: () => (
+    <AiModelsTabFixture
+      initialValues={{
+        evolveProvider: "vllm",
+        evolveModel: "gpt-oss-120b",
+        summaryProvider: "vllm",
+        summaryModel: "gpt-oss-120b",
+        vllmApiBaseUrl: "http://gpu-box.example.com:8000",
+      }}
+    />
+  ),
 });

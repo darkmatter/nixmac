@@ -1,0 +1,17 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Claude Cli 1`] = `"<div class="w-[420px] rounded-lg border bg-background p-4"><p class="text-muted-foreground text-xs">Your prompts and config context are passed to the Claude CLI on your machine. Where they go next depends on that tool's own account and configuration.</p></div>"`;
+
+exports[`Cloud No Key Yet 1`] = `"<div class="w-[420px] rounded-lg border bg-background p-4"><p class="text-muted-foreground text-xs">Your prompts and config context are sent to OpenRouter or OpenAI, based on the API key you configure to process your request. They are not sent to nixmac's servers.</p></div>"`;
+
+exports[`Ollama Local 1`] = `"<div class="w-[420px] rounded-lg border bg-background p-4"><p class="text-muted-foreground text-xs">Using a local model — your data never leaves your machine.</p></div>"`;
+
+exports[`Ollama Remote 1`] = `"<div class="w-[420px] rounded-lg border bg-background p-4"><p class="text-muted-foreground text-xs">Your prompts and config context are sent to your configured Ollama endpoint. Where your data goes depends on that endpoint.</p></div>"`;
+
+exports[`Open Ai Compatible Endpoint 1`] = `"<div class="w-[420px] rounded-lg border bg-background p-4"><p class="text-muted-foreground text-xs">Your prompts and config context are sent to the OpenAI-compatible endpoint you configure. Where your data goes depends on that endpoint.</p></div>"`;
+
+exports[`Open Ai Fallback 1`] = `"<div class="w-[420px] rounded-lg border bg-background p-4"><p class="text-muted-foreground text-xs">Your prompts and config context are sent to OpenAI to process your request. They are not sent to nixmac's servers.</p></div>"`;
+
+exports[`Open Router 1`] = `"<div class="w-[420px] rounded-lg border bg-background p-4"><p class="text-muted-foreground text-xs">Your prompts and config context are sent to OpenRouter to process your request. They are not sent to nixmac's servers.</p></div>"`;
+
+exports[`Unknown Provider Renders Nothing 1`] = `"<div class="w-[420px] rounded-lg border bg-background p-4"></div>"`;

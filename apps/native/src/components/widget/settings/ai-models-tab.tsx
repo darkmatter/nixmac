@@ -8,6 +8,10 @@ import {
 } from "@/components/ui/select";
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
 import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/ai-provider-validation";
+import {
+  ProviderDataFlowNote,
+  type ProviderDataFlowPrefs,
+} from "./provider-data-flow-note";
 import { tauriAPI } from "@/ipc/api";
 import type { CliToolsState } from "@/ipc/types";
 import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
@@ -24,6 +28,9 @@ interface AiModelsTabProps {
   summaryModelField: AnyFieldApi;
   // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
   form: ReactFormExtendedApi<any, any, any, any, any, any, any, any, any, any, any, any>;
+  /** Persisted (saved) provider config — drives the data-flow notes so they
+   * describe actual routing, not typed-but-unsaved form state. */
+  dataFlowPrefs: ProviderDataFlowPrefs;
 }
 
 const CLI_PROVIDERS = [
@@ -100,6 +107,7 @@ export function AiModelsTab({
   summaryProviderField,
   summaryModelField,
   form,
+  dataFlowPrefs,
 }: AiModelsTabProps) {
   const cliStatus = useCliToolStatus();
   const providerPrefs = useProviderPrefs(form);
@@ -131,11 +139,13 @@ export function AiModelsTab({
     evolveProviderField.state.value,
     providerPrefs,
     cliStatus,
+    evolveModelField.state.value,
   );
   const summaryProviderError = getProviderConfigInvalidReason(
     summaryProviderField.state.value,
     providerPrefs,
     cliStatus,
+    summaryModelField.state.value,
   );
 
   return (
@@ -184,6 +194,10 @@ export function AiModelsTab({
                 {evolveProviderError && (
                   <p className="text-destructive text-xs">{evolveProviderError}</p>
                 )}
+                <ProviderDataFlowNote
+                  provider={evolveProviderField.state.value}
+                  prefs={dataFlowPrefs}
+                />
               </div>
               <div className="space-y-2">
                 <form.Subscribe
@@ -272,6 +286,10 @@ export function AiModelsTab({
                 {summaryProviderError && (
                   <p className="text-destructive text-xs">{summaryProviderError}</p>
                 )}
+                <ProviderDataFlowNote
+                  provider={summaryProviderField.state.value}
+                  prefs={dataFlowPrefs}
+                />
               </div>
               <div className="space-y-2">
                 <form.Subscribe
