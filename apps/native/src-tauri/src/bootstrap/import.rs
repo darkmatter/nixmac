@@ -9,7 +9,13 @@
 //! had selected an existing flake.
 
 use anyhow::{Context, Result, anyhow, bail};
-use std::fs::File;
+use std::fs::{self, File};
+use std::io::{self, Read};
+#[cfg(unix)]
+use std::os::unix::{
+    ffi::OsStrExt,
+    fs::{PermissionsExt, symlink},
+};
 use std::path::{Component, Path, PathBuf};
 
 /// A parsed GitHub/git reference ready to clone.
@@ -144,6 +150,24 @@ fn safe_join(dest: &Path, name: &str) -> Result<PathBuf> {
     Ok(out)
 }
 
+#[cfg(unix)]
+fn apply_unix_permissions(path: &Path, mode: Option<u32>) -> Result<()> {
+    let Some(mode) = mode else {
+        return Ok(());
+    };
+    let permissions = mode & 0o777;
+    if permissions == 0 {
+        return Ok(());
+    }
+    fs::set_permissions(path, fs::Permissions::from_mode(permissions))
+        .with_context(|| format!("failed to set permissions on {}", path.display()))
+}
+
+#[cfg(not(unix))]
+fn apply_unix_permissions(_path: &Path, _mode: Option<u32>) -> Result<()> {
+    Ok(())
+}
+
 /// Extracts a `.zip` archive into `dest`, stripping a single wrapping
 /// top-level directory when present.
 pub fn extract_zip(zip_path: &Path, dest: &Path) -> Result<()> {
@@ -169,12 +193,13 @@ pub fn extract_zip(zip_path: &Path, dest: &Path) -> Result<()> {
         None
     };
 
-    std::fs::create_dir_all(dest)
-        .with_context(|| format!("failed to create {}", dest.display()))?;
+    fs::create_dir_all(dest).with_context(|| format!("failed to create {}", dest.display()))?;
 
+    let mut symlinks = Vec::new();
     for i in 0..archive.len() {
         let mut entry = archive.by_index(i).context("failed to read zip entry")?;
         let raw_name = entry.name().to_string();
+        let unix_mode = entry.unix_mode();
 
         // Apply the wrapper-dir strip, skipping the wrapper directory itself.
         let relative = match &strip {
@@ -190,18 +215,55 @@ pub fn extract_zip(zip_path: &Path, dest: &Path) -> Result<()> {
 
         let out_path = safe_join(dest, relative)?;
         if entry.is_dir() {
-            std::fs::create_dir_all(&out_path)
+            fs::create_dir_all(&out_path)
                 .with_context(|| format!("failed to create {}", out_path.display()))?;
+            apply_unix_permissions(&out_path, unix_mode)?;
             continue;
         }
         if let Some(parent) = out_path.parent() {
-            std::fs::create_dir_all(parent)
+            fs::create_dir_all(parent)
                 .with_context(|| format!("failed to create {}", parent.display()))?;
+        }
+        if entry.is_symlink() {
+            let mut target = Vec::new();
+            entry
+                .read_to_end(&mut target)
+                .with_context(|| format!("failed to read symlink target for '{relative}'"))?;
+            // Create symlinks after regular entries so later archive paths cannot
+            // traverse a symlink created earlier in the same extraction.
+            symlinks.push((out_path, target, relative.to_string()));
+            continue;
         }
         let mut out = File::create(&out_path)
             .with_context(|| format!("failed to write {}", out_path.display()))?;
-        std::io::copy(&mut entry, &mut out)
+        io::copy(&mut entry, &mut out)
             .with_context(|| format!("failed to extract {}", out_path.display()))?;
+        apply_unix_permissions(&out_path, unix_mode)?;
+    }
+
+    for (out_path, target, relative) in symlinks {
+        #[cfg(unix)]
+        let _ = &relative;
+
+        #[cfg(unix)]
+        {
+            let target_preview = String::from_utf8_lossy(&target);
+            symlink(std::ffi::OsStr::from_bytes(&target), &out_path).with_context(|| {
+                format!(
+                    "failed to create symlink {} -> {}",
+                    out_path.display(),
+                    target_preview
+                )
+            })?;
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = (out_path, target);
+            bail!(
+                "zip entry '{}' is a symlink, but symlink extraction is unsupported on this platform",
+                relative
+            );
+        }
     }
 
     Ok(())
@@ -211,6 +273,8 @@ pub fn extract_zip(zip_path: &Path, dest: &Path) -> Result<()> {
 mod tests {
     use super::*;
     use std::io::Write;
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
 
     #[test]
     fn parses_owner_repo_shorthand() {
@@ -302,6 +366,18 @@ mod tests {
         zip.finish().unwrap();
     }
 
+    fn write_zip_file(zip: &mut zip::ZipWriter<File>, name: &str, contents: &str, mode: u32) {
+        let opts = zip::write::SimpleFileOptions::default().unix_permissions(mode);
+        zip.start_file(name, opts).unwrap();
+        zip.write_all(contents.as_bytes()).unwrap();
+    }
+
+    #[cfg(unix)]
+    fn write_zip_symlink(zip: &mut zip::ZipWriter<File>, name: &str, target: &str) {
+        zip.add_symlink(name, target, zip::write::SimpleFileOptions::default())
+            .unwrap();
+    }
+
     #[test]
     fn extract_zip_strips_github_wrapper_dir() {
         let tmp = tempfile::TempDir::new().unwrap();
@@ -337,5 +413,64 @@ mod tests {
 
         assert!(dest.join("flake.nix").exists());
         assert!(dest.join("modules/base.nix").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn extract_zip_preserves_github_symlink_entries() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let zip_path = tmp.path().join("repo.zip");
+        let file = File::create(&zip_path).unwrap();
+        let mut zip = zip::ZipWriter::new(file);
+        zip.add_directory(
+            "darwin-main/",
+            zip::write::SimpleFileOptions::default().unix_permissions(0o40755),
+        )
+        .unwrap();
+        write_zip_file(&mut zip, "darwin-main/flake.nix", "{ }", 0o100644);
+        write_zip_symlink(&mut zip, "darwin-main/link-to-flake", "flake.nix");
+        zip.finish().unwrap();
+
+        let dest = tmp.path().join("out");
+        extract_zip(&zip_path, &dest).unwrap();
+
+        let link = dest.join("link-to-flake");
+        let metadata = std::fs::symlink_metadata(&link).unwrap();
+        assert!(metadata.file_type().is_symlink());
+        assert_eq!(
+            std::fs::read_link(&link).unwrap(),
+            PathBuf::from("flake.nix")
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn extract_zip_preserves_executable_unix_mode() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let zip_path = tmp.path().join("repo.zip");
+        let file = File::create(&zip_path).unwrap();
+        let mut zip = zip::ZipWriter::new(file);
+        zip.add_directory(
+            "darwin-main/",
+            zip::write::SimpleFileOptions::default().unix_permissions(0o40755),
+        )
+        .unwrap();
+        write_zip_file(
+            &mut zip,
+            "darwin-main/scripts/bootstrap.sh",
+            "#!/bin/sh\n",
+            0o100755,
+        );
+        zip.finish().unwrap();
+
+        let dest = tmp.path().join("out");
+        extract_zip(&zip_path, &dest).unwrap();
+
+        let mode = std::fs::metadata(dest.join("scripts/bootstrap.sh"))
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o777;
+        assert_eq!(mode, 0o755);
     }
 }
