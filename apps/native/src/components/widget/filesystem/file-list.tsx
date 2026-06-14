@@ -11,14 +11,14 @@ interface FileListProps {
   onEditWithPrompt: (file: FsFile) => void;
   /** Untracked sections route through this — caller seeds the prompt with a tracking task. */
   onTrack: (seed: string) => void;
-  onTrackHomebrewCasks?: (items: CandidateItem[]) => Promise<void> | void;
+  onTrackHomebrewItems?: (items: CandidateItem[]) => Promise<void> | void;
 }
 
 export function FileList({
   files,
   onEditWithPrompt,
   onTrack,
-  onTrackHomebrewCasks,
+  onTrackHomebrewItems,
 }: FileListProps) {
   const [query, setQuery] = useState("");
 
@@ -59,7 +59,7 @@ export function FileList({
               <UntrackedCard
                 file={f}
                 onTrack={onTrack}
-                onTrackHomebrewCasks={onTrackHomebrewCasks}
+                onTrackHomebrewItems={onTrackHomebrewItems}
               />
             </div>
           ) : (

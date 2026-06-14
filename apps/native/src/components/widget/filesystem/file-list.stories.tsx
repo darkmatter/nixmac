@@ -1,6 +1,6 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
-import { FILES } from "./data";
+import { FILES, homebrewFilesFromDiff, replaceHomebrewPlaceholders } from "./data";
 import { FileList } from "./file-list";
 import { SeedDisplay } from "./seed-display";
 import { seedForFile } from "./seed-prompt";
@@ -13,6 +13,16 @@ const meta = preview.meta({
 });
 
 export default meta;
+
+const storyHomebrew = homebrewFilesFromDiff({
+  isInstalled: true,
+  casks: ["docker", "obs", "iterm2"],
+  brews: ["mas", "ffmpeg"],
+  taps: ["homebrew/cask-fonts"],
+  source: null,
+  lastChecked: Math.floor(Date.now() / 1000) - 14 * 60,
+});
+const storyManageFiles = replaceHomebrewPlaceholders(FILES.manage, storyHomebrew);
 
 export const SystemSection = meta.story({
   render: () => (
@@ -52,7 +62,7 @@ export const UntrackedSection = meta.story({
       {(push) => (
         <div className="h-[520px] w-[640px]">
           <FileList
-            files={FILES.manage}
+            files={storyManageFiles}
             onEditWithPrompt={(f) => push(seedForFile(f))}
             onTrack={push}
           />

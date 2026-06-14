@@ -1,6 +1,6 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
-import { FILES, type FsFile } from "./data";
+import { FILES, homebrewFilesFromDiff, replaceHomebrewPlaceholders, type FsFile } from "./data";
 import {
   seedForFile,
   seedForUntrackedBanner,
@@ -57,13 +57,23 @@ const meta = preview.meta({
 
 export default meta;
 
+const storyHomebrew = homebrewFilesFromDiff({
+  isInstalled: true,
+  casks: ["docker", "obs", "iterm2"],
+  brews: ["mas", "ffmpeg"],
+  taps: ["homebrew/cask-fonts"],
+  source: null,
+  lastChecked: Math.floor(Date.now() / 1000) - 14 * 60,
+});
+const storyManageFiles = replaceHomebrewPlaceholders(FILES.manage, storyHomebrew);
+
 export const PerFileSeeds = meta.story({
   render: () => <SeedTable />,
 });
 
 export const UntrackedSectionSeed = meta.story({
   render: () => {
-    const brew = FILES.manage.find((f) => f.id === "untracked-brew")!;
+    const brew = storyHomebrew[0];
     return (
       <pre className="m-0 max-w-[700px] whitespace-pre-wrap rounded-md border border-border bg-card/40 p-3 font-mono text-[11px] text-teal-200 leading-[1.5]">
         {seedForUntrackedSection(brew)}
@@ -74,7 +84,7 @@ export const UntrackedSectionSeed = meta.story({
 
 export const SingleItemSeed = meta.story({
   render: () => {
-    const brew = FILES.manage.find((f) => f.id === "untracked-brew")!;
+    const brew = storyHomebrew[0];
     const item = brew.items![0];
     return (
       <pre className="m-0 max-w-[700px] whitespace-pre-wrap rounded-md border border-border bg-card/40 p-3 font-mono text-[11px] text-teal-200 leading-[1.5]">
@@ -87,7 +97,7 @@ export const SingleItemSeed = meta.story({
 export const BannerSeed = meta.story({
   render: () => (
     <pre className="m-0 max-w-[700px] whitespace-pre-wrap rounded-md border border-border bg-card/40 p-3 font-mono text-[11px] text-teal-200 leading-[1.5]">
-      {seedForUntrackedBanner(FILES.manage)}
+      {seedForUntrackedBanner(storyManageFiles)}
     </pre>
   ),
 });
