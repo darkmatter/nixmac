@@ -342,6 +342,61 @@ fn prepare_import_target(dir_name: Option<String>) -> Result<PathBuf, String> {
     Ok(target)
 }
 
+/// Removes the contents of `dir` without removing `dir` itself. Entries are
+/// classified via `DirEntry::file_type` (which does not follow symlinks), so a
+/// symlinked entry is unlinked rather than traversed.
+fn remove_dir_contents(dir: &Path) -> std::io::Result<()> {
+    for entry in std::fs::read_dir(dir)? {
+        let entry = entry?;
+        if entry.file_type()?.is_dir() {
+            std::fs::remove_dir_all(entry.path())?;
+        } else {
+            std::fs::remove_file(entry.path())?;
+        }
+    }
+    Ok(())
+}
+
+/// Best-effort removal of a partially imported target so a retry can pass
+/// `prepare_import_target` again.
+///
+/// `prepare_import_target` guarantees the target was absent or truly empty, so
+/// everything present at failure time was written by the failed import: the
+/// directory is removed when the import created it, or emptied when the user
+/// had pre-created it. Refuses to touch a symlinked target — the import checks
+/// follow symlinks, so provenance of what's behind one can't be assumed.
+/// Cleanup problems are logged, never surfaced: the import error that brought
+/// us here is what the user must see.
+fn cleanup_failed_import(target: &Path, existed_before: bool) {
+    let meta = match std::fs::symlink_metadata(target) {
+        Ok(meta) => meta,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return,
+        Err(e) => {
+            log::warn!("Skipping import cleanup for {}: {}", target.display(), e);
+            return;
+        }
+    };
+    if meta.file_type().is_symlink() {
+        log::warn!("Skipping import cleanup: {} is a symlink", target.display());
+        return;
+    }
+
+    let result = if existed_before {
+        remove_dir_contents(target)
+    } else {
+        std::fs::remove_dir_all(target)
+    };
+    if let Err(e) = result {
+        if e.kind() != std::io::ErrorKind::NotFound {
+            log::warn!(
+                "Failed to clean up import target {}: {}",
+                target.display(),
+                e
+            );
+        }
+    }
+}
+
 /// Selects an imported directory as the active config dir and initializes state.
 fn finalize_imported_dir(
     app: &AppHandle,
@@ -403,12 +458,26 @@ pub async fn config_import_zip(
         return Err(format!("Zip file not found: {}", zip.display()));
     }
     let target = prepare_import_target(dir_name)?;
+    // Recorded before extraction so a failure can restore the pre-import state:
+    // remove the directory if the import created it, empty it otherwise.
+    let existed_before = target.exists();
 
-    let target_for_extract = target.clone();
-    tauri::async_runtime::spawn_blocking(move || import::extract_zip(&zip, &target_for_extract))
-        .await
-        .map_err(|e| capture_err("config_import_zip", e))?
-        .map_err(|e| capture_err("config_import_zip", e))?;
+    // Extract and adopt on a blocking thread; zip and git I/O are synchronous.
+    let target_for_import = target.clone();
+    let import_result = match tauri::async_runtime::spawn_blocking(move || {
+        import::extract_zip(&zip, &target_for_import)?;
+        import::ensure_initial_commit(&target_for_import)
+    })
+    .await
+    {
+        Ok(result) => result.map_err(|e| capture_err("config_import_zip", e)),
+        Err(e) => Err(capture_err("config_import_zip", e)),
+    };
+
+    if let Err(e) = import_result {
+        cleanup_failed_import(&target, existed_before);
+        return Err(e);
+    }
 
     finalize_imported_dir(&app, &target)
 }
@@ -446,6 +515,55 @@ mod tests {
 
         let _ = fs::remove_dir_all(ds_only);
         let _ = fs::remove_dir_all(with_git);
+    }
+
+    #[test]
+    fn cleanup_failed_import_removes_dir_it_created() {
+        let dir = temp_dir("cleanup-created");
+        fs::create_dir_all(dir.join("sub")).expect("create nested dir");
+        fs::write(dir.join("file.nix"), "{ }").expect("write file");
+
+        cleanup_failed_import(&dir, false);
+
+        assert!(!dir.exists(), "import-created dir is removed entirely");
+    }
+
+    #[test]
+    fn cleanup_failed_import_empties_preexisting_dir() {
+        let dir = temp_dir("cleanup-preexisting");
+        fs::create_dir_all(dir.join("sub")).expect("create nested dir");
+        fs::write(dir.join("file.nix"), "{ }").expect("write file");
+
+        cleanup_failed_import(&dir, true);
+
+        assert!(dir.exists(), "user-created dir is kept");
+        assert_eq!(
+            fs::read_dir(&dir).expect("read dir").count(),
+            0,
+            "contents are removed"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn cleanup_failed_import_refuses_symlink_target() {
+        let real = temp_dir("cleanup-real");
+        fs::create_dir_all(&real).expect("create real dir");
+        fs::write(real.join("keep.txt"), "x").expect("write file");
+        let link = temp_dir("cleanup-link");
+        std::os::unix::fs::symlink(&real, &link).expect("create symlink");
+
+        cleanup_failed_import(&link, true);
+
+        assert!(
+            real.join("keep.txt").exists(),
+            "content behind symlink kept"
+        );
+        assert!(link.exists(), "symlink itself kept");
+
+        let _ = fs::remove_dir_all(&real);
+        let _ = fs::remove_file(&link);
     }
 
     #[test]
