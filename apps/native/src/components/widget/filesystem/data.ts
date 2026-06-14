@@ -1,16 +1,33 @@
-import type { HomebrewItemType, HomebrewState } from "@/ipc/types";
+import type {
+  HomebrewItemType,
+  HomebrewState,
+  SystemDefault,
+  SystemDefaultsScan,
+} from "@/ipc/types";
 
 export type FileTone = "teal" | "amber" | "rose" | "blue" | "muted";
 export type FileStatus = "managed" | "changed" | "candidate";
 
-export type CandidateItem = {
+type BaseCandidateItem = {
   name: string;
   detail: string;
   installedAt: string;
   attr: string;
   version?: string;
-  kind?: HomebrewItemType;
 };
+
+export type CandidateItem =
+  | (BaseCandidateItem & {
+      source: "homebrew";
+      itemType: HomebrewItemType;
+    })
+  | (BaseCandidateItem & {
+      source: "system";
+      systemDefault: SystemDefault;
+    })
+  | (BaseCandidateItem & {
+      source: "other";
+    });
 
 export type FsFile = {
   id: string;
@@ -272,6 +289,20 @@ creation_rules:
   ],
   manage: [
     {
+      id: "custom-defaults",
+      path: "Custom macOS defaults",
+      title: "Scanning macOS defaults",
+      description:
+        "Preferences you've changed in System Settings. Capture them as code so a fresh install matches.",
+      iconName: "settings",
+      tone: "blue",
+      status: "candidate",
+      destination: "modules/darwin/defaults.nix",
+      scanCommand: "scan_system_defaults",
+      scannedAt: "not scanned yet",
+      items: [],
+    },
+    {
       id: "untracked-homebrew-casks",
       path: "Untracked Homebrew casks",
       title: "Scanning Homebrew casks",
@@ -314,29 +345,6 @@ creation_rules:
       items: [],
     },
     {
-      id: "custom-defaults",
-      path: "Custom macOS defaults",
-      title: "8 untracked settings",
-      description:
-        "Preferences you've changed in System Settings. Capture them as code so a fresh install matches.",
-      iconName: "settings",
-      tone: "blue",
-      status: "candidate",
-      destination: "modules/darwin/defaults.nix",
-      scanCommand: "defaults read · diff against profile",
-      scannedAt: "scanned 14 min ago",
-      items: [
-        { name: "Dock — magnification on", detail: "dock magnification = 1", installedAt: "changed Mar 18", attr: "system.defaults.dock.magnification = true;" },
-        { name: "Finder — show path bar", detail: "finder ShowPathbar = 1", installedAt: "changed Mar 02", attr: "system.defaults.finder.ShowPathbar = true;" },
-        { name: "Trackpad — three-finger drag", detail: "trackpad TrackpadThreeFingerDrag = 1", installedAt: "changed Feb 14", attr: "system.defaults.trackpad.TrackpadThreeFingerDrag = true;" },
-        { name: "Keyboard — fast key repeat", detail: "NSGlobalDomain KeyRepeat = 2", installedAt: "changed Jan 28", attr: "system.defaults.NSGlobalDomain.KeyRepeat = 2;" },
-        { name: "Mission Control — disable rearrange", detail: "dock mru-spaces = 0", installedAt: "changed Jan 15", attr: "system.defaults.dock.mru-spaces = false;" },
-        { name: "Hot corners — bottom-right: lock screen", detail: "dock wvous-br-corner = 13", installedAt: "changed Jan 09", attr: "system.defaults.dock.wvous-br-corner = 13;" },
-        { name: "Menu bar — show date", detail: "menuExtraClock ShowDate = 1", installedAt: "changed 2025-12-22", attr: "system.defaults.menuExtraClock.ShowDate = 1;" },
-        { name: "Sound — feedback off", detail: 'NSGlobalDomain "com.apple.sound.beep.feedback" = 0', installedAt: "changed 2025-12-04", attr: 'system.defaults.NSGlobalDomain."com.apple.sound.beep.feedback" = 0;' },
-      ],
-    },
-    {
       id: "login-items",
       path: "Login items",
       title: "4 apps auto-start at login",
@@ -348,16 +356,18 @@ creation_rules:
       scanCommand: "osascript · System Events get login items",
       scannedAt: "scanned 14 min ago",
       items: [
-        { name: "Rectangle", detail: "/Applications/Rectangle.app", installedAt: "since Dec 2024", attr: "launchd.user.agents.rectangle = { ... };" },
-        { name: "Raycast", detail: "/Applications/Raycast.app", installedAt: "since Dec 2024", attr: "launchd.user.agents.raycast   = { ... };" },
-        { name: "1Password", detail: "/Applications/1Password.app", installedAt: "since Jan 2025", attr: 'launchd.user.agents."1password" = { ... };' },
-        { name: "Hammerspoon", detail: "/Applications/Hammerspoon.app", installedAt: "since Feb 2025", attr: "launchd.user.agents.hammerspoon = { ... };" },
+        { name: "Rectangle", detail: "/Applications/Rectangle.app", installedAt: "since Dec 2024", attr: "launchd.user.agents.rectangle = { ... };", source: "other" },
+        { name: "Raycast", detail: "/Applications/Raycast.app", installedAt: "since Dec 2024", attr: "launchd.user.agents.raycast   = { ... };", source: "other" },
+        { name: "1Password", detail: "/Applications/1Password.app", installedAt: "since Jan 2025", attr: 'launchd.user.agents."1password" = { ... };', source: "other" },
+        { name: "Hammerspoon", detail: "/Applications/Hammerspoon.app", installedAt: "since Feb 2025", attr: "launchd.user.agents.hammerspoon = { ... };", source: "other" },
       ],
     },
   ],
 };
 
 const HOMEBREW_FILE_DESTINATION = ".nixmac/homebrew/data.json";
+const SYSTEM_DEFAULTS_FILE_DESTINATION = "modules/darwin/defaults.nix";
+const SYSTEM_DEFAULTS_ID = "custom-defaults";
 
 type HomebrewSectionDefinition = {
   id: string;
@@ -422,16 +432,98 @@ function scannedAt(lastChecked: number) {
   return `scanned ${days} ${pluralize(days, "day")} ago`;
 }
 
-function homebrewItems(names: string[], kind: HomebrewItemType): CandidateItem[] {
-  const attrPath = kind === "brew" ? "brews" : `${kind}s`;
-  const label = kind === "brew" ? "formula" : kind;
+function homebrewItems(names: string[], itemType: HomebrewItemType): CandidateItem[] {
+  const attrPath = itemType === "brew" ? "brews" : `${itemType}s`;
+  const label = itemType === "brew" ? "formula" : itemType;
   return names.map((name) => ({
     name,
     detail: `Homebrew ${label}`,
     installedAt: label,
     attr: `homebrew.${attrPath} = [ "${name}" ];`,
-    kind,
+    source: "homebrew",
+    itemType,
   }));
+}
+
+function systemDefaultsFallback(): FsFile {
+  return FILES.manage.find((file) => file.id === SYSTEM_DEFAULTS_ID) ?? {
+    id: SYSTEM_DEFAULTS_ID,
+    path: "Custom macOS defaults",
+    title: "Scanning macOS defaults",
+    description:
+      "Preferences you've changed in System Settings. Capture them as code so a fresh install matches.",
+    iconName: "settings" as const,
+    tone: "blue" as const,
+    status: "candidate" as const,
+    destination: SYSTEM_DEFAULTS_FILE_DESTINATION,
+  };
+}
+
+function nixValue(setting: SystemDefault) {
+  const value = setting.currentValue;
+  const defaultLower = setting.defaultValue.trim().toLowerCase();
+  const lower = value.trim().toLowerCase();
+  if (defaultLower === "true" || defaultLower === "false") {
+    if (lower === "true" || lower === "1") return "true";
+    return "false";
+  }
+  if (lower === "true" || lower === "false") return lower;
+  if (/^-?\d+(\.\d+)?$/.test(value.trim())) return value.trim();
+  return JSON.stringify(value);
+}
+
+function systemDefaultItems(defaults: SystemDefault[]): CandidateItem[] {
+  return defaults.map((setting) => {
+    const key = setting.nixKey.replace(/^system\.defaults\./, "");
+    const attr = `${setting.nixKey} = ${nixValue(setting)};`;
+    return {
+      name: `${setting.category} - ${setting.label}`,
+      detail: `${key} = ${setting.currentValue}`,
+      installedAt: `default: ${setting.defaultValue}`,
+      attr,
+      source: "system",
+      systemDefault: setting,
+    };
+  });
+}
+
+export function systemDefaultsFileFromScan(
+  scan: SystemDefaultsScan | null,
+  error?: string | null,
+): FsFile {
+  const fallback = systemDefaultsFallback();
+
+  if (error) {
+    return {
+      ...fallback,
+      title: "macOS defaults scan failed",
+      description: error,
+      scanCommand: "scan_system_defaults",
+      scannedAt: "scan failed",
+      items: [],
+    };
+  }
+
+  if (!scan) return fallback;
+
+  const items = systemDefaultItems(scan.defaults);
+  const count = items.length;
+
+  return {
+    ...fallback,
+    title:
+      count === 0
+        ? "No untracked macOS defaults"
+        : `${count} untracked macOS ${pluralize(count, "setting")}`,
+    description:
+      count === 0
+        ? "Every detected macOS preference is already declared or still at its factory default."
+        : "Preferences you've changed in System Settings. Capture them as code so a fresh install matches.",
+    destination: SYSTEM_DEFAULTS_FILE_DESTINATION,
+    scanCommand: `defaults read (${scan.totalScanned} known keys)`,
+    scannedAt: "scanned just now",
+    items,
+  };
 }
 
 export function untrackedCandidateItemCount(files: FsFile[]) {
@@ -511,6 +603,10 @@ export function isHomebrewCandidateFile(file: FsFile) {
   return HOMEBREW_SECTIONS.some((section) => section.id === file.id);
 }
 
+export function isSystemDefaultsCandidateFile(file: FsFile) {
+  return file.id === SYSTEM_DEFAULTS_ID;
+}
+
 function isHomebrewPlaceholder(file: FsFile) {
   return HOMEBREW_SECTIONS.some((section) => section.id === file.id);
 }
@@ -521,6 +617,10 @@ export function replaceHomebrewPlaceholders(files: FsFile[], replacements: FsFil
     if (file.id === firstHomebrew.id) return replacements;
     return isHomebrewPlaceholder(file) ? [] : [file];
   });
+}
+
+export function replaceSystemDefaultsPlaceholder(files: FsFile[], replacement: FsFile) {
+  return files.map((file) => (file.id === SYSTEM_DEFAULTS_ID ? replacement : file));
 }
 
 export const TONE_CLASSES: Record<FileTone, { fg: string; bg: string }> = {
