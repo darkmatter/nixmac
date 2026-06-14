@@ -16,6 +16,7 @@ interface UntrackedCardProps {
    * caller seeds the prompt and closes the Filesystem view.
    */
   onTrack: (seed: string) => void;
+  onTrackHomebrewCasks?: (items: CandidateItem[]) => Promise<void> | void;
 }
 
 const CARD_TONE_CLASSES: Record<
@@ -54,11 +55,33 @@ const CARD_TONE_CLASSES: Record<
   },
 };
 
-export function UntrackedCard({ file, onTrack }: UntrackedCardProps) {
+export function UntrackedCard({ file, onTrack, onTrackHomebrewCasks }: UntrackedCardProps) {
   const items = useMemo<CandidateItem[]>(() => file.items ?? [], [file.items]);
   const [showSource, setShowSource] = useState(false);
+  const [trackingKey, setTrackingKey] = useState<string | null>(null);
+  const [trackError, setTrackError] = useState<string | null>(null);
   const tone = CARD_TONE_CLASSES[file.tone];
   const Icon = resolveIcon(file.iconName);
+  // Managed-edit routes are section-scoped: Homebrew casks use the direct
+  // managed edit path today, while other untracked sections still seed prompts.
+  const canTrackHomebrew = file.id === "untracked-brew" && !!onTrackHomebrewCasks;
+
+  const trackItems = async (selectedItems: CandidateItem[], key: string, seed: string) => {
+    if (!canTrackHomebrew || !onTrackHomebrewCasks) {
+      onTrack(seed);
+      return;
+    }
+
+    setTrackingKey(key);
+    setTrackError(null);
+    try {
+      await onTrackHomebrewCasks(selectedItems);
+    } catch (error: unknown) {
+      setTrackError(String(error));
+    } finally {
+      setTrackingKey(null);
+    }
+  };
 
   if (file.status !== "candidate") return null;
 
@@ -91,10 +114,12 @@ export function UntrackedCard({ file, onTrack }: UntrackedCardProps) {
             <Button
               size="sm"
               className="h-7 gap-1.5 bg-teal-500 text-[11px] text-background hover:bg-teal-400"
-              onClick={() => onTrack(seedForUntrackedSection(file))}
+              disabled={trackingKey !== null}
+              onClick={() => trackItems(items, "all", seedForUntrackedSection(file))}
               data-testid={`track-all-${file.id}`}
             >
-              <MessageSquarePlus className="h-3 w-3" /> Track these {items.length}
+              <MessageSquarePlus className="h-3 w-3" />{" "}
+              {trackingKey === "all" ? "Tracking..." : `Track these ${items.length}`}
             </Button>
             <Button
               size="sm"
@@ -106,6 +131,9 @@ export function UntrackedCard({ file, onTrack }: UntrackedCardProps) {
               <Braces className="h-3 w-3" /> {showSource ? "Hide" : "Preview"} additions
             </Button>
           </div>
+          {trackError && (
+            <div className="mt-2 text-[11px] text-destructive">{trackError}</div>
+          )}
         </div>
       </div>
 
@@ -135,10 +163,11 @@ export function UntrackedCard({ file, onTrack }: UntrackedCardProps) {
                 size="sm"
                 variant="ghost"
                 className="h-6 px-2 text-[10.5px] text-teal-300 hover:bg-teal-500/10 hover:text-teal-200"
-                onClick={() => onTrack(seedForUntrackedItem(file, it))}
+                disabled={trackingKey !== null}
+                onClick={() => trackItems([it], it.name, seedForUntrackedItem(file, it))}
                 data-testid={`track-item-${file.id}-${it.name}`}
               >
-                Track
+                {trackingKey === it.name ? "Tracking..." : "Track"}
               </Button>
             </li>
           ))}
