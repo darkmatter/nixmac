@@ -35,6 +35,8 @@ const prefs = (overrides: Partial<UiPrefs> = {}): UiPrefs =>
     evolveProvider: "openrouter",
     evolveModel: "anthropic/claude-sonnet-4",
     maxIterations: 25,
+    maxTokenBudget: 50000,
+    maxOutputTokens: 32768,
     maxBuildAttempts: 5,
     sendDiagnostics: false,
     confirmBuild: true,
