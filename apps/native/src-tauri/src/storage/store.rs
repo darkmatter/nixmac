@@ -628,7 +628,7 @@ fn get_repo_store<R: Runtime>(
 /// Gets the maximum iterations for evolution (default: 25). Repo-scoped.
 pub fn get_max_iterations<R: Runtime>(app: &AppHandle<R>) -> Result<usize> {
     if let Some(limits) =
-        app.try_state::<crate::state::slice::Slice<crate::evolve::config::EvolutionLimits>>()
+        app.try_state::<crate::observable::Observable<crate::evolve::config::EvolutionLimits>>()
     {
         return Ok(limits.read_sync().max_iterations);
     }
@@ -643,9 +643,9 @@ pub fn get_max_iterations<R: Runtime>(app: &AppHandle<R>) -> Result<usize> {
 
 pub fn set_max_iterations<R: Runtime>(app: &AppHandle<R>, max: usize) -> Result<()> {
     if let Some(limits) =
-        app.try_state::<crate::state::slice::Slice<crate::evolve::config::EvolutionLimits>>()
+        app.try_state::<crate::observable::Observable<crate::evolve::config::EvolutionLimits>>()
     {
-        let mut limits = limits.write_sync(app);
+        let mut limits = limits.write_sync();
         limits.max_iterations = max;
         return Ok(());
     }
@@ -659,7 +659,7 @@ pub fn set_max_iterations<R: Runtime>(app: &AppHandle<R>, max: usize) -> Result<
 /// Gets the maximum token budget for evolution (default: 50,000). Repo-scoped.
 pub fn get_max_token_budget<R: Runtime>(app: &AppHandle<R>) -> Result<u32> {
     if let Some(limits) =
-        app.try_state::<crate::state::slice::Slice<crate::evolve::config::EvolutionLimits>>()
+        app.try_state::<crate::observable::Observable<crate::evolve::config::EvolutionLimits>>()
     {
         return Ok(limits.read_sync().max_token_budget);
     }
@@ -669,14 +669,14 @@ pub fn get_max_token_budget<R: Runtime>(app: &AppHandle<R>) -> Result<u32> {
 
 pub fn set_max_token_budget<R: Runtime>(app: &AppHandle<R>, max: u32) -> Result<()> {
     if let Some(limits) =
-        app.try_state::<crate::state::slice::Slice<crate::evolve::config::EvolutionLimits>>()
+        app.try_state::<crate::observable::Observable<crate::evolve::config::EvolutionLimits>>()
     {
-        let mut limits = limits.write_sync(app);
+        let mut limits = limits.write_sync();
         limits.max_token_budget = max;
         return Ok(());
     }
 
-    let store = get_store(app)?;
+    let store = get_repo_store(app)?;
     store.set("maxTokenBudget", serde_json::json!(max));
     store.save()?;
     Ok(())
