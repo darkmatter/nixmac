@@ -2,6 +2,11 @@ import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 import { mirrorChangeMapState } from "@/viewmodel/change-map";
 
+type CommitMessageResult =
+  | { status: "ready"; message: string }
+  | { status: "pending" }
+  | { status: "error" };
+
 /**
  * Hook for fetching and managing the AI-generated summary of changes.
  */
@@ -16,14 +21,16 @@ const findChangeMap = async (): Promise<void> => {
   }
 };
 
-const generateCommitMessage = async () => {
-  const { setCommitMessageSuggestion } = useWidgetStore.getState();
-  setCommitMessageSuggestion(null);
+const generateCommitMessage = async (): Promise<CommitMessageResult> => {
   try {
     const message = await tauriAPI.summarizedChanges.generateCommitMessage();
-    setCommitMessageSuggestion(message);
+    if (message?.trim()) {
+      return { status: "ready", message };
+    }
+    return { status: "pending" };
   } catch {
-    // Keep null on error — user can type manually
+    // Keep the last suggestion in place; the merge UI owns fallback display.
+    return { status: "error" };
   }
 };
 

@@ -3,39 +3,46 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MarkdownDescription } from "@/components/widget/summaries/markdown-description";
-import { commitMessageBody } from "@/components/widget/summaries/markdown-utils";
+import { useCommitMessageDraft } from "@/components/widget/layout/use-commit-message-draft";
 import { useGitOperations } from "@/hooks/use-git-operations";
-import { useSummary } from "@/hooks/use-summary";
 import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import { GitMerge, Loader2 } from "lucide-react";
-import { useEffect } from "react";
 
 export function MergeSection() {
   const isProcessing = useWidgetStore((s) => s.isProcessing);
   const processingAction = useWidgetStore((s) => s.processingAction);
-  const commitMessageSuggestion = useWidgetStore((s) => s.commitMessageSuggestion);
   const changeMap = useViewModel((s) => s.changeMap);
 
   const { handleCommit } = useGitOperations();
-  const { generateCommitMessage } = useSummary();
-
-  useEffect(() => {
-    generateCommitMessage();
-  }, [generateCommitMessage, changeMap]);
+  const {
+    body: commitBody,
+    reset: resetCommitMessageDraft,
+    setSubject: setCommitSubject,
+    status,
+    subject: commitSubject,
+  } = useCommitMessageDraft(changeMap);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const subject =
-      new FormData(e.currentTarget).get("commitMsg")?.toString() ?? "";
-    const body = commitMessageBody(commitMessageSuggestion ?? "");
-    const message = body ? `${subject}\n\n${body}` : subject;
-    await handleCommit({ message });
-    useWidgetStore.getState().setEvolvePrompt("");
+    const subject = commitSubject.trim();
+    if (!subject) {
+      return;
+    }
+
+    const message = commitBody ? `${subject}\n\n${commitBody}` : subject;
+    const didCommit = await handleCommit({ message });
+    if (!didCommit) {
+      return;
+    }
+
+    const store = useWidgetStore.getState();
+    store.setCommitMessageSuggestion(null);
+    store.setEvolvePrompt("");
+    resetCommitMessageDraft();
   }
 
-  const commitSubject = (commitMessageSuggestion ?? "").split(/\r?\n/)[0] ?? "";
-  const commitBody = commitMessageBody(commitMessageSuggestion ?? "");
+  const canCommit = !isProcessing && commitSubject.trim().length > 0;
 
   return (
     <div className="flex flex-col">
@@ -49,13 +56,26 @@ export function MergeSection() {
       <form className="pt-4" onSubmit={handleSubmit}>
         <div className="mb-4">
           <Input
-            key={commitMessageSuggestion}
             className="border-border bg-background mb-2"
-            defaultValue={commitSubject || commitMessageSuggestion || ''}
-            disabled={isProcessing}
             name="commitMsg"
-            placeholder="Loading..."
+            onChange={(event) => {
+              setCommitSubject(event.target.value);
+            }}
+            placeholder={status === "loading" ? "Loading..." : undefined}
+            value={commitSubject}
+            disabled={isProcessing}
           />
+          {status === "fallback" && (
+            <p className="mb-2 text-muted-foreground text-xs">
+              Still generating a better suggestion. This fallback will update if
+              one arrives.
+            </p>
+          )}
+          {status === "error" && (
+            <p className="mb-2 text-muted-foreground text-xs">
+              Suggestion unavailable. You can commit with this fallback or edit it.
+            </p>
+          )}
           {commitBody && (
             <MarkdownDescription modalTitle={commitSubject} text={commitBody} />
           )}
@@ -63,7 +83,7 @@ export function MergeSection() {
 
         <Button
           className="bg-slate-200 hover:bg-slate-300 text-slate-800"
-          disabled={isProcessing}
+          disabled={!canCommit}
           type="submit"
         >
           {processingAction === "merge" ? (
