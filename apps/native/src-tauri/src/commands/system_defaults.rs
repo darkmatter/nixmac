@@ -15,21 +15,22 @@ pub async fn get_recommended_prompt() -> Result<Option<shared_types::Recommended
 pub async fn scan_system_defaults(
     app: AppHandle,
 ) -> Result<shared_types::SystemDefaultsScan, String> {
-    // Check if system-defaults.nix already exists in the config dir
+    let scan = scanner::scan_system_defaults();
+
+    // Filter out defaults already tracked in the generated module while keeping
+    // the remaining machine drift visible for per-item tracking.
     if let Ok(dir) = store::get_config_dir(&app) {
         let nix_path = std::path::Path::new(&dir)
             .join("modules")
             .join("darwin")
             .join("system-defaults.nix");
         if nix_path.exists() {
-            // Already applied — return empty scan so the CTA stays hidden
-            return Ok(shared_types::SystemDefaultsScan {
-                defaults: vec![],
-                total_scanned: 0,
-            });
+            let content = std::fs::read_to_string(&nix_path)
+                .map_err(|e| format!("Failed to read system-defaults.nix: {e}"))?;
+            return Ok(scanner::filter_tracked_system_defaults(scan, &content));
         }
     }
-    Ok(scanner::scan_system_defaults())
+    Ok(scan)
 }
 
 /// Writes detected system defaults to a .nix module file, injects the import

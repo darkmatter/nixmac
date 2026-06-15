@@ -1649,6 +1649,11 @@ fn rfind_unquoted_dot(s: &str) -> Option<usize> {
     last_dot
 }
 
+fn split_system_default_key(nix_key: &str) -> Option<(&str, &str)> {
+    let last_dot = rfind_unquoted_dot(nix_key)?;
+    Some((&nix_key[..last_dot], &nix_key[last_dot + 1..]))
+}
+
 pub fn generate_system_defaults_nix(defaults: &[SystemDefault]) -> String {
     // Group by nix-darwin attribute path prefix
     // e.g. "system.defaults.dock.autohide" → group key "system.defaults.dock"
@@ -1656,9 +1661,7 @@ pub fn generate_system_defaults_nix(defaults: &[SystemDefault]) -> String {
     let mut groups: BTreeMap<String, Vec<(&str, &str)>> = BTreeMap::new();
 
     for d in defaults {
-        if let Some(last_dot) = rfind_unquoted_dot(&d.nix_key) {
-            let group = &d.nix_key[..last_dot];
-            let attr = &d.nix_key[last_dot + 1..];
+        if let Some((group, attr)) = split_system_default_key(&d.nix_key) {
             groups
                 .entry(group.to_string())
                 .or_default()
@@ -1693,6 +1696,109 @@ pub fn generate_system_defaults_nix(defaults: &[SystemDefault]) -> String {
 
     out.push_str("}\n");
     out
+}
+
+pub fn filter_tracked_system_defaults(
+    scan: SystemDefaultsScan,
+    nix_content: &str,
+) -> SystemDefaultsScan {
+    let defaults = scan
+        .defaults
+        .into_iter()
+        .filter(|default| !system_default_key_is_tracked(nix_content, &default.nix_key))
+        .collect();
+
+    SystemDefaultsScan {
+        defaults,
+        total_scanned: scan.total_scanned,
+    }
+}
+
+pub fn merge_system_defaults_nix(existing_content: &str, defaults: &[SystemDefault]) -> String {
+    let mut content = existing_content.to_string();
+
+    for default in defaults {
+        if system_default_key_is_tracked(&content, &default.nix_key) {
+            continue;
+        }
+        insert_system_default_assignment(&mut content, default);
+    }
+
+    content
+}
+
+fn system_default_key_is_tracked(content: &str, nix_key: &str) -> bool {
+    let Some((group, attr)) = split_system_default_key(nix_key) else {
+        return false;
+    };
+
+    if has_assignment_line(content, nix_key) {
+        return true;
+    }
+
+    let Some((body_start, body_end, _indent)) = find_system_default_group_block(content, group)
+    else {
+        return false;
+    };
+
+    has_assignment_line(&content[body_start..body_end], attr)
+}
+
+fn has_assignment_line(content: &str, attr: &str) -> bool {
+    let pattern = format!(r"(?m)^[ \t]*{}\s*=", regex::escape(attr));
+    regex::Regex::new(&pattern).is_ok_and(|re| re.is_match(content))
+}
+
+fn find_system_default_group_block(content: &str, group: &str) -> Option<(usize, usize, String)> {
+    let group_pattern = format!(
+        r"(?m)^([ \t]*){}\s*=\s*\{{[ \t]*(?:#.*)?$",
+        regex::escape(group)
+    );
+    let group_re = regex::Regex::new(&group_pattern).ok()?;
+    let close_re = regex::Regex::new(r"(?m)^[ \t]*};[ \t]*(?:#.*)?$").ok()?;
+
+    for captures in group_re.captures_iter(content) {
+        let group_match = captures.get(0)?;
+        let indent = captures
+            .get(1)
+            .map(|m| m.as_str().to_string())
+            .unwrap_or_default();
+        let body_start = group_match.end();
+        let close_match = close_re.find(&content[body_start..])?;
+        let body_end = body_start + close_match.start();
+        return Some((body_start, body_end, indent));
+    }
+
+    None
+}
+
+fn insert_system_default_assignment(content: &mut String, default: &SystemDefault) {
+    let Some((group, attr)) = split_system_default_key(&default.nix_key) else {
+        return;
+    };
+    let value = to_nix_value(&default.current_value, group, attr);
+
+    if let Some((_body_start, body_end, indent)) = find_system_default_group_block(content, group) {
+        let attr_indent = format!("{indent}  ");
+        let line = format!("{attr_indent}{attr} = {value};\n");
+        content.insert_str(body_end, &line);
+        return;
+    }
+
+    let block = format!("\n  {group} = {{\n    {attr} = {value};\n  }};\n");
+    if let Some(insert_at) = find_module_closing_brace(content) {
+        content.insert_str(insert_at, &block);
+    } else {
+        if !content.ends_with('\n') {
+            content.push('\n');
+        }
+        content.push_str(&block);
+    }
+}
+
+fn find_module_closing_brace(content: &str) -> Option<usize> {
+    let close_re = regex::Regex::new(r"(?m)^}[ \t]*(?:#.*)?$").ok()?;
+    close_re.find_iter(content).last().map(|m| m.start())
 }
 
 /// Convert a string value to appropriate Nix syntax based on content analysis.
@@ -2258,6 +2364,71 @@ mod tests {
 
         let result = generate_system_defaults_nix(&defaults);
         assert!(result.contains("persistent-apps = null;"));
+    }
+
+    #[test]
+    fn test_filter_tracked_system_defaults_keeps_remaining_defaults() {
+        let tracked = SystemDefault {
+            nix_key: "system.defaults.dock.autohide".into(),
+            label: "Automatically hide the Dock".into(),
+            category: "Dock".into(),
+            current_value: "true".into(),
+            default_value: "false".into(),
+        };
+        let remaining = SystemDefault {
+            nix_key: "system.defaults.dock.orientation".into(),
+            label: "Dock position on screen".into(),
+            category: "Dock".into(),
+            current_value: "left".into(),
+            default_value: "bottom".into(),
+        };
+        let nix_content = generate_system_defaults_nix(&[tracked.clone()]);
+        let scan = SystemDefaultsScan {
+            defaults: vec![tracked, remaining],
+            total_scanned: 123,
+        };
+
+        let filtered = filter_tracked_system_defaults(scan, &nix_content);
+
+        assert_eq!(filtered.total_scanned, 123);
+        assert_eq!(filtered.defaults.len(), 1);
+        assert_eq!(
+            filtered.defaults[0].nix_key,
+            "system.defaults.dock.orientation"
+        );
+    }
+
+    #[test]
+    fn test_merge_system_defaults_nix_adds_missing_defaults_without_dropping_existing() {
+        let tracked = SystemDefault {
+            nix_key: "system.defaults.dock.autohide".into(),
+            label: "Automatically hide the Dock".into(),
+            category: "Dock".into(),
+            current_value: "true".into(),
+            default_value: "false".into(),
+        };
+        let same_group = SystemDefault {
+            nix_key: "system.defaults.dock.orientation".into(),
+            label: "Dock position on screen".into(),
+            category: "Dock".into(),
+            current_value: "left".into(),
+            default_value: "bottom".into(),
+        };
+        let new_group = SystemDefault {
+            nix_key: "system.defaults.NSGlobalDomain.AppleInterfaceStyle".into(),
+            label: "Dark Mode".into(),
+            category: "Global".into(),
+            current_value: "Dark".into(),
+            default_value: "".into(),
+        };
+        let existing = generate_system_defaults_nix(&[tracked.clone()]);
+
+        let merged = merge_system_defaults_nix(&existing, &[same_group, new_group, tracked]);
+
+        assert_eq!(merged.matches("autohide = true;").count(), 1);
+        assert!(merged.contains("orientation = \"left\";"));
+        assert!(merged.contains("system.defaults.NSGlobalDomain = {"));
+        assert!(merged.contains("AppleInterfaceStyle = \"Dark\";"));
     }
 
     #[test]

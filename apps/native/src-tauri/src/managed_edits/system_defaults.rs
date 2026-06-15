@@ -16,12 +16,11 @@ pub async fn apply_system_defaults(
     let context = managed_edit::prepare_managed_edit(app)?;
     let dir = context.dir.clone();
 
-    // 1. Generate nix file content
+    // 1. Generate or merge nix file content
     log::info!(
         "[apply_system_defaults] Generating nix content for {} defaults",
         defaults.len()
     );
-    let nix_content = scanner::generate_system_defaults_nix(&defaults);
 
     // 2. Ensure modules/darwin directory exists
     let modules_dir = std::path::Path::new(&dir).join("modules").join("darwin");
@@ -29,6 +28,13 @@ pub async fn apply_system_defaults(
 
     // 3. Write system-defaults.nix
     let nix_path = modules_dir.join("system-defaults.nix");
+    let nix_content = if nix_path.exists() {
+        let existing_content = std::fs::read_to_string(&nix_path)
+            .context("Failed to read existing system-defaults.nix")?;
+        scanner::merge_system_defaults_nix(&existing_content, &defaults)
+    } else {
+        scanner::generate_system_defaults_nix(&defaults)
+    };
     std::fs::write(&nix_path, &nix_content).context("Failed to write system-defaults.nix")?;
     log::info!(
         "[apply_system_defaults] Wrote {} defaults to {:?}",
