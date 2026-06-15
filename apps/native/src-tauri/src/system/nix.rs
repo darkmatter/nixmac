@@ -30,13 +30,11 @@ use serde::Deserialize;
 
 use std::collections::BTreeMap;
 use std::io::{Read as _, Write as _};
-use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 use tauri::{AppHandle, Emitter};
 
 use crate::shared_types::LaunchdItemType;
-use crate::utils::normalize_path_input;
 
 const NIX_PATHS_FALLBACK: &[&str] = &[
     "/run/current-system/sw/bin",
@@ -65,29 +63,28 @@ struct NixLaunchdEvalItem {
 static NIX_PATH_CACHE: OnceLock<String> = OnceLock::new();
 
 /// Gets short info on all the nix-managed launchd items using `nix eval --json`.
-pub fn get_nix_launchd_items(hostname: &str) -> Result<Vec<NixLaunchdItem>> {
-    let config_dir = normalize_path_input("~/.darwin").map_err(anyhow::Error::msg)?;
+pub fn get_nix_launchd_items(hostname: &str, config_dir: &str) -> Result<Vec<NixLaunchdItem>> {
     let mut items = Vec::new();
 
-    // 1. nix eval ~/.darwin#darwinConfigurations.<hostname>.config.launchd.user.agents --json
+    // 1. nix eval ~{config_dir}/#darwinConfigurations.<hostname>.config.launchd.user.agents --json
     items.extend(eval_nix_launchd_items(
-        &config_dir,
+        config_dir,
         hostname,
         "launchd.user.agents",
         LaunchdItemType::LaunchdUserAgent,
     )?);
 
-    // 2. nix eval ~/.darwin#darwinConfigurations.<hostname>.config.launchd.agents --json
+    // 2. nix eval ~{config_dir}/#darwinConfigurations.<hostname>.config.launchd.agents --json
     items.extend(eval_nix_launchd_items(
-        &config_dir,
+        config_dir,
         hostname,
         "launchd.agents",
         LaunchdItemType::LaunchAgent,
     )?);
 
-    // 3. nix eval ~/.darwin#darwinConfigurations.<hostname>.config.launchd.daemons --json
+    // 3. nix eval ~{config_dir}/#darwinConfigurations.<hostname>.config.launchd.daemons --json
     items.extend(eval_nix_launchd_items(
-        &config_dir,
+        config_dir,
         hostname,
         "launchd.daemons",
         LaunchdItemType::LaunchDaemon,
@@ -98,7 +95,7 @@ pub fn get_nix_launchd_items(hostname: &str) -> Result<Vec<NixLaunchdItem>> {
 
 /// Helper to run `nix eval` for a specific launchd item type and parse the results.
 fn eval_nix_launchd_items(
-    config_dir: &Path,
+    config_dir: &str,
     hostname: &str,
     option_path: &str,
     item_type: LaunchdItemType,
@@ -634,8 +631,8 @@ mod tests {
         use crate::commands::config::get_this_hostname_cmd;
 
         let this_host_name = get_this_hostname_cmd().expect("Failed to get hostname for test");
-
-        let items = get_nix_launchd_items(&this_host_name);
+        const CONFIG_DIR: &str = "~/.darwin";
+        let items = get_nix_launchd_items(&this_host_name, CONFIG_DIR);
         match items {
             Ok(items) => {
                 for item in items {

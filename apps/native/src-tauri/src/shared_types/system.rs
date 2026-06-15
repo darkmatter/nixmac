@@ -94,6 +94,7 @@ pub enum LaunchdItemType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
 pub struct LaunchdItem {
     /// launchd Label
     pub label: String,

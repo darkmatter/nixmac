@@ -7,12 +7,16 @@
 //!
 
 use crate::shared_types::{LaunchdItem, LaunchdItemType};
+use crate::system::nix::get_nix_path;
 use crate::{system::nix::get_nix_launchd_items, utils::normalize_path_input};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-/// Represents the JSON output of `brew services list`.
+/// Represents the tabular output of `brew services list`.
+/// Note that the JSON output doesn't have the same info, namely the *actual*
+/// plist file that's running the service, which is necessary for us to determine
+/// the service type and the command to run it in a version-upgrade-insensitive way.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BrewService {
     name: String,
@@ -90,8 +94,9 @@ fn list_brew_services() -> Result<Vec<BrewService>> {
 
     let output = std::process::Command::new("brew")
         .args(["services", "list"])
+        .env("PATH", get_nix_path())
         .output()
-        .expect("Failed to execute brew command");
+        .map_err(|e| anyhow::anyhow!("Failed to execute `brew services list`: {e}"))?;
 
     if !output.status.success() {
         log::warn!(
@@ -205,15 +210,19 @@ fn read_brew_launchd_items() -> Result<Vec<BrewManagedLaunchdItem>> {
 ///     (which is the only stable identifier we have across versions of the same service) to get the difference.
 /// Note that it's technically possible that this service was added to nix with a different label than the brew one,
 /// but hopefully that's a weird edge case.
-pub fn scan_launchd_items_for_hostname(hostname: &str) -> Result<Vec<LaunchdItem>> {
+pub fn scan_launchd_items_for_hostname(
+    hostname: &str,
+    config_dir: &str,
+) -> Result<Vec<LaunchdItem>> {
     // 1. Get the brew-managed launchd items.
     let brew_items = read_brew_launchd_items()?;
 
     // 2. Get the nix-managed launchd items.
-    let nix_items = get_nix_launchd_items(&hostname)?;
+    let nix_items = get_nix_launchd_items(&hostname, config_dir)?;
 
     // 3. Remove the intersection of the two lists by comparing the brew plist.label and the nix launchd item serviceConfig.Label.
-    let nix_labels: Vec<String> = nix_items.into_iter().map(|item| item.label).collect();
+    let nix_labels: std::collections::HashSet<String> =
+        nix_items.into_iter().map(|item| item.label).collect();
     let launchd_items: Vec<LaunchdItem> = brew_items
         .into_iter()
         .filter(|item| !nix_labels.contains(&item.plist.label))
@@ -235,8 +244,8 @@ mod tests {
         use crate::commands::config::get_this_hostname_cmd;
 
         let this_host_name = get_this_hostname_cmd().expect("Failed to get hostname for test");
-
-        let items = scan_launchd_items_for_hostname(&this_host_name);
+        const CONFIG_DIR: &str = "~/.darwin";
+        let items = scan_launchd_items_for_hostname(&this_host_name, CONFIG_DIR);
         match items {
             Ok(items) => {
                 for item in items {

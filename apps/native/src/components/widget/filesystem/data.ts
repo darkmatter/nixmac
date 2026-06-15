@@ -534,27 +534,27 @@ function launchdAttr(item: LaunchdItem) {
     `    Label = ${nixString(item.label)};`,
   ];
 
-  if (item.program_arguments.length > 0) {
+  if (item.programArguments.length > 0) {
     lines.push(
-      `    ProgramArguments = [ ${item.program_arguments.map(nixString).join(" ")} ];`,
+      `    ProgramArguments = [ ${item.programArguments.map(nixString).join(" ")} ];`,
     );
   }
 
-  lines.push(`    RunAtLoad = ${item.run_at_load ? "true" : "false"};`);
-  lines.push(`    KeepAlive = ${item.keep_alive ? "true" : "false"};`);
+  lines.push(`    RunAtLoad = ${item.runAtLoad ? "true" : "false"};`);
+  lines.push(`    KeepAlive = ${item.keepAlive ? "true" : "false"};`);
 
-  if (item.standard_out_path) {
-    lines.push(`    StandardOutPath = ${nixString(item.standard_out_path)};`);
+  if (item.standardOutPath) {
+    lines.push(`    StandardOutPath = ${nixString(item.standardOutPath)};`);
   }
-  if (item.standard_error_path) {
-    lines.push(`    StandardErrorPath = ${nixString(item.standard_error_path)};`);
+  if (item.standardErrorPath) {
+    lines.push(`    StandardErrorPath = ${nixString(item.standardErrorPath)};`);
   }
-  if (item.working_directory) {
-    lines.push(`    WorkingDirectory = ${nixString(item.working_directory)};`);
+  if (item.workingDirectory) {
+    lines.push(`    WorkingDirectory = ${nixString(item.workingDirectory)};`);
   }
-  if (Object.keys(item.environment_variables).length > 0) {
+  if (Object.keys(item.environmentVariables).length > 0) {
     lines.push("    EnvironmentVariables = {");
-    for (const [key, value] of Object.entries(item.environment_variables)) {
+    for (const [key, value] of Object.entries(item.environmentVariables)) {
       if (typeof value === "string") lines.push(`      ${nixAttrName(key)} = ${nixString(value)};`);
     }
     lines.push("    };");
@@ -569,8 +569,8 @@ function launchdItems(items: LaunchdItem[]): CandidateItem[] {
   return items.map((item) => ({
     name: item.name,
     detail:
-      item.program_arguments.length > 0
-        ? item.program_arguments.join(" ")
+      item.programArguments.length > 0
+        ? item.programArguments.join(" ")
         : item.label,
     installedAt: launchdAttrScope(item.scope),
     attr: launchdAttr(item),

@@ -1113,27 +1113,27 @@ name: string;
 /**
  * Command and arguments to execute.
  */
-program_arguments: string[]; 
+programArguments: string[]; 
 /**
  * Launch when loaded.
  */
-run_at_load: boolean; 
+runAtLoad: boolean; 
 /**
  * Keep the service running.
  */
-keep_alive: boolean; 
+keepAlive: boolean; 
 /**
  * Environment variables.
  */
-environment_variables: Partial<{ [key in string]: string }>; 
+environmentVariables: Partial<{ [key in string]: string }>; 
 /**
  * Log file locations.
  */
-standard_out_path: string | null; standard_error_path: string | null; 
+standardOutPath: string | null; standardErrorPath: string | null; 
 /**
  * Working directory, if specified.
  */
-working_directory: string | null }
+workingDirectory: string | null }
 
 export type LaunchdItemType = "LaunchAgent" | "LaunchDaemon" | "LaunchdUserAgent"
 
