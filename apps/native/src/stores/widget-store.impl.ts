@@ -79,13 +79,9 @@ export interface WidgetState {
 
   // Nix installation
   nixInstalled: boolean | null; // null = not checked yet
-  nixInstalling: boolean;
-  nixInstallPhase: "downloading" | "waiting-for-installer" | "prefetching" | null;
-  nixDownloadProgress: { downloaded: number; total: number } | null;
 
   // nix-darwin (darwin-rebuild availability)
   darwinRebuildAvailable: boolean | null; // null = not checked yet
-  darwinRebuildPrefetching: boolean;
 
   fileDiffContents: Record<string, FileDiffContents>;
 
@@ -174,13 +170,7 @@ interface WidgetActions {
   setHost: (host: string) => void;
   setBootstrapping: (isBootstrapping: boolean) => void;
   setNixInstalled: (installed: boolean | null) => void;
-  setNixInstalling: (installing: boolean) => void;
-  setNixInstallPhase: (
-    phase: "downloading" | "waiting-for-installer" | "prefetching" | null,
-  ) => void;
-  setNixDownloadProgress: (progress: { downloaded: number; total: number } | null) => void;
   setDarwinRebuildAvailable: (available: boolean | null) => void;
-  setDarwinRebuildPrefetching: (prefetching: boolean) => void;
   setFileDiffContents: (contents: Record<string, FileDiffContents>) => void;
   setEvolvePrompt: (prompt: string) => void;
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
@@ -275,13 +265,9 @@ const initialWidgetState: WidgetState = {
 
   // Nix
   nixInstalled: null,
-  nixInstalling: false,
-  nixInstallPhase: null,
-  nixDownloadProgress: null,
 
   // nix-darwin
   darwinRebuildAvailable: null,
-  darwinRebuildPrefetching: false,
 
   fileDiffContents: {},
 
@@ -421,11 +407,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     // Client-side UI state (NOT from server)
     setBootstrapping: (isBootstrapping) => set({ isBootstrapping }),
     setNixInstalled: (nixInstalled) => set({ nixInstalled }),
-    setNixInstalling: (nixInstalling) => set({ nixInstalling }),
-    setNixInstallPhase: (nixInstallPhase) => set({ nixInstallPhase }),
-    setNixDownloadProgress: (nixDownloadProgress) => set({ nixDownloadProgress }),
     setDarwinRebuildAvailable: (darwinRebuildAvailable) => set({ darwinRebuildAvailable }),
-    setDarwinRebuildPrefetching: (darwinRebuildPrefetching) => set({ darwinRebuildPrefetching }),
     setSummarizing: (isSummarizing) => set({ isSummarizing }),
     setGenerating: (isGenerating) => set({ isGenerating }),
 

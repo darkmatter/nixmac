@@ -1060,6 +1060,10 @@ isOrphanedRestore: boolean;
  */
 isUndone: boolean }
 
+export type HomebrewItem = { name: string; version: string | null; itemType: HomebrewItemType }
+
+export type HomebrewItemType = "tap" | "cask" | "brew"
+
 /**
  * Current Homebrew package state detected on the machine.
  */

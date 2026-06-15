@@ -59,6 +59,8 @@ fn main() {
         .register::<shared_types::ThinkingEntry>()
         .register::<shared_types::ToolCallRecord>()
         .register::<shared_types::Evolution>()
+        .register::<shared_types::HomebrewItemType>()
+        .register::<shared_types::HomebrewItem>()
         .register::<shared_types::HomebrewState>()
         .register::<shared_types::SummarizedChange>()
         .register::<shared_types::SummarizedChangeSet>()

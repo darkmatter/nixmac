@@ -243,6 +243,26 @@ pub async fn ui_set_prefs(
     Ok(shared_types::OkResult::yes())
 }
 
+/// Verifies a direct OpenAI API key outside the webview so browser CORS cannot
+/// turn valid keys into frontend network failures.
+#[tauri::command]
+pub async fn verify_openai_api_key(api_key: String) -> Result<bool, String> {
+    let trimmed_key = api_key.trim();
+    if trimmed_key.is_empty() {
+        return Ok(false);
+    }
+
+    let url = format!("{}/models", store::OPENAI_BASE_URL);
+    let response = reqwest::Client::new()
+        .get(url)
+        .bearer_auth(trimmed_key)
+        .send()
+        .await
+        .map_err(|e| capture_err("verify_openai_api_key", e))?;
+
+    Ok(response.status().is_success())
+}
+
 /// Gets the cached list of models for a provider.
 #[tauri::command]
 pub async fn get_cached_models(

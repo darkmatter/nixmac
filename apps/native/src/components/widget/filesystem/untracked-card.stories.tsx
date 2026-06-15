@@ -1,6 +1,6 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
-import { FILES } from "./data";
+import { FILES, homebrewFilesFromDiff, systemDefaultsFileFromScan } from "./data";
 import { SeedDisplay } from "./seed-display";
 import { UntrackedCard } from "./untracked-card";
 
@@ -13,15 +13,60 @@ const meta = preview.meta({
 
 export default meta;
 
-const brew = FILES.manage.find((f) => f.id === "untracked-brew")!;
-const defaults = FILES.manage.find((f) => f.id === "custom-defaults")!;
+const [casks, taps, brews] = homebrewFilesFromDiff({
+  isInstalled: true,
+  casks: ["docker", "obs", "iterm2"],
+  brews: ["mas", "ffmpeg"],
+  taps: ["homebrew/cask-fonts"],
+  source: null,
+  lastChecked: Math.floor(Date.now() / 1000) - 14 * 60,
+});
+const defaults = systemDefaultsFileFromScan({
+  totalScanned: 212,
+  defaults: [
+    {
+      nixKey: "system.defaults.dock.magnification",
+      label: "Enable Dock magnification",
+      category: "Dock",
+      currentValue: "1",
+      defaultValue: "false",
+    },
+    {
+      nixKey: "system.defaults.NSGlobalDomain.KeyRepeat",
+      label: "Key repeat speed",
+      category: "Keyboard",
+      currentValue: "2",
+      defaultValue: "6",
+    },
+  ],
+});
 const login = FILES.manage.find((f) => f.id === "login-items")!;
 
 export const HomebrewCasks = meta.story({
   render: () => (
     <div className="w-[640px]">
       <SeedDisplay title="Tracking seed">
-        {(push) => <UntrackedCard file={brew} onTrack={push} />}
+        {(push) => <UntrackedCard file={casks} onTrack={push} />}
+      </SeedDisplay>
+    </div>
+  ),
+});
+
+export const HomebrewTaps = meta.story({
+  render: () => (
+    <div className="w-[640px]">
+      <SeedDisplay title="Tracking seed">
+        {(push) => <UntrackedCard file={taps} onTrack={push} />}
+      </SeedDisplay>
+    </div>
+  ),
+});
+
+export const HomebrewBrews = meta.story({
+  render: () => (
+    <div className="w-[640px]">
+      <SeedDisplay title="Tracking seed">
+        {(push) => <UntrackedCard file={brews} onTrack={push} />}
       </SeedDisplay>
     </div>
   ),

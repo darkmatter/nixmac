@@ -22,6 +22,7 @@ import type {
   FileDiffContents,
   FinalizeApplyResult,
   GitStatus,
+  HomebrewItem,
   HomebrewState,
   HistoryItem,
   ImportResult,
@@ -95,8 +96,6 @@ export const tauriAPI = {
   },
   nix: {
     check: () => invoke<NixCheckResult>("nix_check"),
-    installStart: () => invoke<OkResult>("nix_install_start"),
-    prefetchDarwinRebuild: () => invoke<OkResult>("darwin_rebuild_prefetch"),
   },
   flake: {
     listHosts: () => invoke<string[]>("flake_list_hosts"),
@@ -233,6 +232,8 @@ export const tauriAPI = {
   homebrew: {
     getStateDiff: () => invoke<HomebrewState>("homebrew_get_state_diff"),
     applyDiff: (diff: HomebrewState) => invoke<ConfigEditApplyResult>("homebrew_apply_diff", { diff }),
+    addItems: (items: HomebrewItem[]) =>
+      invoke<ConfigEditApplyResult>("homebrew_add_items", { items }),
   },
 
   updater: {

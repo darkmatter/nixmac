@@ -59,7 +59,7 @@ if (manifest.length > 0) {
     "",
     `### ❌ Failed snapshots (${manifest.length})`,
     "",
-    "These stories' HTML snapshots changed. Current renderings (run `bun run test:update-snapshots` and commit if intended):",
+    "These stories' HTML snapshots changed. [Update snapshots ↗](https://github.com/darkmatter/nixmac/actions/workflows/update-snapshots.yaml) to regenerate baselines and open a PR:",
     ""
   );
   for (const story of manifest) {

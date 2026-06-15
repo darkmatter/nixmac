@@ -490,6 +490,7 @@ fn run_gui_mode(
             #[cfg(debug_assertions)]
             commands::debug::e2e_mark_boot_stage,
             // Homebrew
+            commands::homebrew::homebrew_add_items,
             commands::homebrew::homebrew_apply_diff,
             commands::homebrew::homebrew_get_state_diff,
             // Git
@@ -529,6 +530,7 @@ fn run_gui_mode(
             // UI preferences
             commands::ui_prefs::ui_get_prefs,
             commands::ui_prefs::ui_set_prefs,
+            commands::ui_prefs::verify_openai_api_key,
             // Settings backup/restore (developer-mode only)
             commands::settings_io::settings_export,
             commands::settings_io::settings_import,

@@ -1,4 +1,5 @@
 use super::{ChatCompletionProvider, TokenUsage};
+use crate::ai::model_capabilities::capabilities_for_model;
 use crate::ai::provider_errors::{classify_openai_error, friendly_provider_error};
 use anyhow::Result;
 use async_openai::{
@@ -65,7 +66,8 @@ impl ChatCompletionProvider for OpenAIClient {
         temperature: f32,
         request_id: &str,
     ) -> Result<(String, TokenUsage)> {
-        let request = CreateChatCompletionRequestArgs::default()
+        let mut request_builder = CreateChatCompletionRequestArgs::default();
+        request_builder
             .model(&self.model)
             .messages(vec![
                 ChatCompletionRequestSystemMessageArgs::default()
@@ -77,9 +79,13 @@ impl ChatCompletionProvider for OpenAIClient {
                     .build()?
                     .into(),
             ])
-            .max_completion_tokens(max_tokens)
-            .temperature(temperature)
-            .build()?;
+            .max_completion_tokens(max_tokens);
+
+        if capabilities_for_model(&self.model).supports_custom_temperature {
+            request_builder.temperature(temperature);
+        }
+
+        let request = request_builder.build()?;
 
         crate::state::completion_log::append_event_jsonl(
             self.record_chat_logs,
@@ -136,7 +142,8 @@ impl ChatCompletionProvider for OpenAIClient {
             self.model,
             request_id
         );
-        let request = CreateChatCompletionRequestArgs::default()
+        let mut request_builder = CreateChatCompletionRequestArgs::default();
+        request_builder
             .model(&self.model)
             .messages(vec![
                 ChatCompletionRequestSystemMessageArgs::default()
@@ -149,9 +156,13 @@ impl ChatCompletionProvider for OpenAIClient {
                     .into(),
             ])
             .max_completion_tokens(max_tokens)
-            .temperature(temperature)
-            .response_format(ResponseFormat::JsonObject)
-            .build()?;
+            .response_format(ResponseFormat::JsonObject);
+
+        if capabilities_for_model(&self.model).supports_custom_temperature {
+            request_builder.temperature(temperature);
+        }
+
+        let request = request_builder.build()?;
 
         crate::state::completion_log::append_event_jsonl(
             self.record_chat_logs,

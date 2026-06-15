@@ -2,9 +2,26 @@
 
 import { useEffect, useState } from "react";
 
+import { tauriAPI } from "@/ipc/api";
+import { useSystemDefaultsScan } from "@/hooks/use-system-defaults-scan";
 import { useWidgetStore } from "@/stores/widget-store";
+import { mirrorChangeMapState } from "@/viewmodel/change-map";
+import { mirrorEvolveState } from "@/viewmodel/evolve";
+import { mirrorGitState } from "@/viewmodel/git";
 
-import { FILES, SECTIONS, type FsFile, type SectionId } from "./data";
+import type { ConfigEditApplyResult, HomebrewItem, HomebrewState, SystemDefault } from "@/ipc/types";
+
+import {
+  FILES,
+  SECTIONS,
+  homebrewFilesFromDiff,
+  replaceHomebrewPlaceholders,
+  replaceSystemDefaultsPlaceholder,
+  systemDefaultsFileFromScan,
+  type CandidateItem,
+  type FsFile,
+  type SectionId,
+} from "./data";
 import { FileList } from "./file-list";
 import { SectionTabs } from "./section-tabs";
 import { seedForFile } from "./seed-prompt";
@@ -32,6 +49,13 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
       : "darwin";
 
   const [activeSection, setActiveSection] = useState<SectionId>(initialSection);
+  const [homebrewDiff, setHomebrewDiff] = useState<HomebrewState | null>(null);
+  const [homebrewError, setHomebrewError] = useState<string | null>(null);
+  const {
+    scan: systemDefaultsScan,
+    error: systemDefaultsError,
+    refresh: refreshSystemDefaults,
+  } = useSystemDefaultsScan();
 
   // Clear the target on mount so a subsequent toggle from the header
   // (which passes no section) returns to the user's last view.
@@ -39,12 +63,43 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
     if (targetSection) {
       useWidgetStore.setState({ filesystemTargetSection: null });
     }
-    // Run only on mount — see effect of targetSection changing handled
-    // by the lifecycle below (the view is unmounted between openings).
-    // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only
+  }, [targetSection]);
+
+  useEffect(() => {
+    let cancelled = false;
+    tauriAPI.homebrew
+      .getStateDiff()
+      .then((diff) => {
+        if (!cancelled) {
+          setHomebrewDiff(diff);
+          setHomebrewError(null);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setHomebrewError(String(error));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const files = FILES[activeSection] ?? [];
+  const manageFiles = replaceSystemDefaultsPlaceholder(
+    replaceHomebrewPlaceholders(
+      FILES.manage,
+      homebrewFilesFromDiff(homebrewDiff, homebrewError),
+    ),
+    systemDefaultsFileFromScan(systemDefaultsScan, systemDefaultsError),
+  );
+
+  const filesBySection = {
+    ...FILES,
+    manage: manageFiles,
+  };
+
+  const files = filesBySection[activeSection] ?? [];
 
   const seed = (text: string) => {
     if (onSeedPrompt) {
@@ -55,17 +110,77 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
     setShowFilesystem(false);
   };
 
+  const mirrorApplyResult = (result: ConfigEditApplyResult) => {
+    const store = useWidgetStore.getState();
+    mirrorEvolveState(result.evolveState);
+    mirrorChangeMapState(result.changeMap);
+    mirrorGitState(result.gitStatus);
+    store.setRecommendedPrompt(undefined);
+  };
+
   const onEditWithPrompt = (file: FsFile) => seed(seedForFile(file));
   const onTrack = (text: string) => seed(text);
+  // Add future direct managed-edit trackers here (for example, system defaults)
+  // and pass them down alongside the fallback prompt seeding handler.
+  const onTrackHomebrewItems = async (items: CandidateItem[]) => {
+    const store = useWidgetStore.getState();
+    store.setProcessing(true, "apply");
+    try {
+      const homebrewItems: HomebrewItem[] = items.map((item) => {
+        if (item.source !== "homebrew" || !item.itemType) {
+          throw new Error(`Cannot track ${item.name}: missing Homebrew item type.`);
+        }
+        return {
+          name: item.name,
+          version: item.version ?? null,
+          itemType: item.itemType,
+        };
+      });
+      const result = await tauriAPI.homebrew.addItems(
+        homebrewItems,
+      );
+      mirrorApplyResult(result);
+      setShowFilesystem(false);
+      setHomebrewDiff(null);
+    } finally {
+      store.setProcessing(false);
+    }
+  };
+
+  const onTrackSystemDefaults = async (items: CandidateItem[]) => {
+    const store = useWidgetStore.getState();
+    store.setProcessing(true, "apply");
+    try {
+      const defaults: SystemDefault[] = items.map((item) => {
+        if (item.source !== "system") {
+          throw new Error(`Cannot track ${item.name}: missing system default payload.`);
+        }
+        return item.systemDefault;
+      });
+      const result = await tauriAPI.scanner.applyDefaults(defaults);
+      mirrorApplyResult(result);
+      await refreshSystemDefaults();
+      setShowFilesystem(false);
+    } finally {
+      store.setProcessing(false);
+    }
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="filesystem-step">
-      <SectionTabs sections={SECTIONS} active={activeSection} setActive={setActiveSection} files={FILES} />
+      <SectionTabs
+        sections={SECTIONS}
+        active={activeSection}
+        setActive={setActiveSection}
+        files={filesBySection}
+      />
       <FileList
         key={activeSection}
         files={files}
         onEditWithPrompt={onEditWithPrompt}
         onTrack={onTrack}
+        onTrackHomebrewItems={onTrackHomebrewItems}
+        onTrackSystemDefaults={onTrackSystemDefaults}
       />
       <div className="shrink-0 border-border/50 border-t bg-card/40 px-3 py-1.5 text-[10.5px] text-muted-foreground">
         Use these as starting points — every change goes through the standard plan → review → save flow.
