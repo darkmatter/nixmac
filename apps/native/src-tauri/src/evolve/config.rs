@@ -29,6 +29,15 @@ pub const EVOLUTION_LIMITS_CHANGED_EVENT: &str = "evolution_limits_changed";
 )]
 pub struct EvolutionLimits {
     #[config(
+        default = 25,
+        key = "maxIterations",
+        label = "Max iterations (legacy)",
+        range = 1..=200,
+        help = "Legacy iteration cap. Used only when the provider doesn't report token usage; the token budget is the primary stopping rule.",
+    )]
+    pub max_iterations: usize,
+
+    #[config(
         default = 50_000,
         key = "maxTokenBudget",
         label = "Token budget",
@@ -64,6 +73,7 @@ pub struct EvolutionLimits {
 impl Default for EvolutionLimits {
     fn default() -> Self {
         Self {
+            max_iterations: 25,
             max_token_budget: 50_000,
             max_build_attempts: 5,
             max_output_tokens: 32_768,
@@ -87,6 +97,7 @@ mod tests {
     fn default_matches_configured_field_defaults() {
         let limits = EvolutionLimits::default();
 
+        assert_eq!(limits.max_iterations, 25);
         assert_eq!(limits.max_token_budget, 50_000);
         assert_eq!(limits.max_build_attempts, 5);
         assert_eq!(limits.max_output_tokens, 32_768);
@@ -95,6 +106,7 @@ mod tests {
     #[test]
     fn unknown_fields_do_not_change_limits() {
         let limits: EvolutionLimits = serde_json::from_value(serde_json::json!({
+            "maxIterations": 11,
             "maxTokenBudget": 80_000,
             "maxBuildAttempts": 3,
             "maxOutputTokens": 16_384,
@@ -105,6 +117,7 @@ mod tests {
         assert_eq!(
             limits,
             EvolutionLimits {
+                max_iterations: 11,
                 max_token_budget: 80_000,
                 max_build_attempts: 3,
                 max_output_tokens: 16_384,
@@ -114,9 +127,12 @@ mod tests {
 
     #[test]
     fn missing_fields_use_defaults() {
-        let limits: EvolutionLimits =
-            serde_json::from_value(serde_json::json!({})).expect("limits deserialize");
+        let limits: EvolutionLimits = serde_json::from_value(serde_json::json!({
+            "maxIterations": 11,
+        }))
+        .expect("limits deserialize");
 
+        assert_eq!(limits.max_iterations, 11);
         assert_eq!(limits.max_token_budget, 50_000);
         assert_eq!(limits.max_build_attempts, 5);
         assert_eq!(limits.max_output_tokens, 32_768);

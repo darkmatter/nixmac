@@ -13,6 +13,13 @@ const schemas: ConfigurableSchema[] = [
     description: "How long the agent will try before giving up.",
     fields: [
       {
+        key: "maxIterations",
+        label: "Max iterations",
+        help: "API calls before the agent stops. Lower is faster but may not finish complex changes.",
+        ty: { kind: "number", min: 1, max: 200, step: 1 },
+        default: 25,
+      },
+      {
         key: "maxTokenBudget",
         label: "Max token budget",
         help: "Provider-reported tokens before the agent stops. Lower is faster but may not finish complex changes.",
@@ -32,6 +39,7 @@ const schemas: ConfigurableSchema[] = [
 
 const values: Record<string, JsonValue> = {
   EvolutionLimits: {
+    maxIterations: 25,
     maxTokenBudget: 50000,
     maxBuildAttempts: 5,
   },
@@ -77,7 +85,7 @@ export const EvolutionSettings = meta.story({
   ],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await waitFor(() => canvas.getByLabelText("Max token budget"));
+    await waitFor(() => canvas.getByLabelText("Max iterations"));
   },
 });
 

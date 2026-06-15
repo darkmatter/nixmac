@@ -12,6 +12,7 @@ const PREFS: UiPrefs = {
   summaryModel: "openai/gpt-4o-mini",
   evolveProvider: "openrouter",
   evolveModel: "anthropic/claude-sonnet-4",
+  maxIterations: null,
   maxTokenBudget: null,
   maxBuildAttempts: null,
   maxOutputTokens: null,

@@ -23,6 +23,7 @@ use tauri::AppHandle;
 pub struct EvolveConfig {
     pub prompt: String,
     pub config: Option<PathBuf>,
+    pub max_iterations: Option<usize>,
     pub max_output_tokens: Option<usize>,
     pub max_token_budget: Option<u32>,
     pub evolve_provider: Option<String>,
@@ -54,6 +55,10 @@ pub enum Commands {
         /// Path to the config directory
         #[arg(short, long)]
         config: Option<PathBuf>,
+
+        /// Legacy fallback for providers that do not report token usage
+        #[arg(short, long, hide = true)]
+        max_iterations: Option<usize>,
 
         /// Maximum output tokens requested per evolution model call
         #[arg(long)]
@@ -106,6 +111,7 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
     let EvolveConfig {
         prompt,
         config,
+        max_iterations,
         max_output_tokens,
         max_token_budget,
         evolve_provider,
@@ -192,6 +198,12 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
         None => crate::storage::store::get_summary_model(app).ok().flatten(),
     };
 
+    // Effective legacy iteration fallback: prefer CLI value, otherwise read from store (has default)
+    let effective_max_iterations: usize = match max_iterations {
+        Some(v) => v,
+        None => crate::storage::store::get_max_iterations(app)
+            .unwrap_or(crate::storage::store::DEFAULT_MAX_ITERATIONS),
+    };
     let effective_max_output_tokens: usize = match max_output_tokens {
         Some(v) => v,
         None => crate::storage::store::get_max_output_tokens(app)
@@ -204,6 +216,12 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
         None => crate::storage::store::get_max_token_budget(app)
             .unwrap_or(crate::storage::store::DEFAULT_MAX_TOKEN_BUDGET),
     };
+
+    // Legacy max iterations
+    if let Some(iterations) = max_iterations {
+        crate::storage::store::set_max_iterations(app, iterations)
+            .map_err(|e| format!("Failed to set max iterations: {}", e))?;
+    }
 
     if let Some(output_tokens) = max_output_tokens {
         crate::storage::store::set_max_output_tokens(app, output_tokens)
@@ -235,13 +253,18 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
 
     let (ok, output_value, failure_message) = match outcome {
         Ok(output) => {
-            let is_conversational =
-                output.telemetry.state == crate::shared_types::EvolutionState::Conversational;
-
-            if is_conversational {
-                println!("(conversational response — no changes made)");
-            } else {
-                println!("Evolution completed successfully");
+            match output.telemetry.state {
+                crate::shared_types::EvolutionState::Conversational => {
+                    println!("(conversational response — no changes made)");
+                }
+                crate::shared_types::EvolutionState::LimitReached => {
+                    println!(
+                        "Evolution stopped after reaching a safety limit (iterations, build attempts, token budget, or stale progress). Review any partial changes and re-run with adjusted limits to continue."
+                    );
+                }
+                _ => {
+                    println!("Evolution completed successfully");
+                }
             }
 
             let output_value = match serde_json::to_value(&output) {
@@ -272,6 +295,7 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
             "ok": ok,
             "state": state_str,
             "prompt": prompt,
+            "maxIterations": effective_max_iterations,
             "maxOutputTokens": effective_max_output_tokens,
             "maxTokenBudget": effective_max_token_budget,
             "evolveProvider": effective_evolve_provider,

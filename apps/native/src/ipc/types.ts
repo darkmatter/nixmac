@@ -422,7 +422,14 @@ export type EvolutionState =
 /**
  * Agent responded conversationally without making any environment changes.
  */
-"conversational"
+"conversational" | 
+/**
+ * Evolution was stopped because a safety limit was reached
+ * (iterations, build attempts, token budget, or stale progress).
+ * Distinguishes "we cut it off" from "the agent finished" so
+ * the eval harness can score runaways correctly.
+ */
+"limitReached"
 
 /**
  * Telemetry counters from a completed evolution run.
@@ -1645,6 +1652,10 @@ evolveProvider: string | null;
  */
 evolveModel: string | null; 
 /**
+ * Legacy maximum agent iterations per evolution.
+ */
+maxIterations: number | null; 
+/**
  * Maximum provider-reported tokens per evolution.
  */
 maxTokenBudget: number | null; 
@@ -1731,6 +1742,10 @@ summaryProvider: string | null;
  * Summary model update.
  */
 summaryModel: string | null; 
+/**
+ * Legacy maximum iteration count update.
+ */
+maxIterations: number | null; 
 /**
  * Maximum token budget update.
  */

@@ -110,4 +110,34 @@ describe("useEvolve", () => {
     expect(useViewModel.getState().changeMap).toBe(existingMap);
     expect(useWidgetStore.getState().conversationalResponse).toBe("No file changes needed.");
   });
+
+  it("logs a stopped message when a safety limit is reached", async () => {
+    const limitReachedResult: EvolutionResult = {
+      changeMap: { groups: [], singles: [], unsummarizedHashes: [] },
+      gitStatus,
+      evolveState,
+      conversationalResponse: null,
+      telemetry: {
+        state: "limitReached",
+        iterations: 25,
+        buildAttempts: 0,
+        totalTokens: 50_000,
+        editsCount: 0,
+        thinkingCount: 0,
+        toolCallsCount: 0,
+        durationMs: 12_345,
+      },
+    };
+
+    mocks.evolve.mockResolvedValue(limitReachedResult);
+
+    const store = useWidgetStore.getState();
+    store.setEvolvePrompt("install htop");
+
+    await useEvolve().handleEvolve();
+
+    const logs = useWidgetStore.getState().consoleLogs;
+    expect(logs).toContain("Evolution stopped (safety limit reached)");
+    expect(logs).not.toContain("✓ Evolution complete");
+  });
 });

@@ -8,6 +8,16 @@ import type { ConfigFieldSchema, JsonValue } from "@/ipc/types";
 const fields: Array<{ schema: ConfigFieldSchema; current: JsonValue }> = [
   {
     schema: {
+      key: "maxIterations",
+      label: "Max iterations",
+      help: "API calls before the agent stops.",
+      ty: { kind: "number", min: 1, max: 200, step: 1 },
+      default: 25,
+    },
+    current: 25,
+  },
+  {
+    schema: {
       key: "maxTokenBudget",
       label: "Max token budget",
       help: "Provider-reported tokens before the agent stops.",
