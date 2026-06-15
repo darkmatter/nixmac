@@ -9,16 +9,18 @@ interface FileListProps {
   files: FsFile[];
   /** Same handler the FileRow uses — the caller seeds the prompt and closes the view. */
   onEditWithPrompt: (file: FsFile) => void;
-  /** Untracked sections route through this — caller seeds the prompt with a tracking task. */
+  /** Fallback for untracked sections without a direct managed-edit path. */
   onTrack: (seed: string) => void;
-  onTrackHomebrewCasks?: (items: CandidateItem[]) => Promise<void> | void;
+  onTrackHomebrewItems?: (items: CandidateItem[]) => Promise<void> | void;
+  onTrackSystemDefaults?: (items: CandidateItem[]) => Promise<void> | void;
 }
 
 export function FileList({
   files,
   onEditWithPrompt,
   onTrack,
-  onTrackHomebrewCasks,
+  onTrackHomebrewItems,
+  onTrackSystemDefaults,
 }: FileListProps) {
   const [query, setQuery] = useState("");
 
@@ -59,7 +61,8 @@ export function FileList({
               <UntrackedCard
                 file={f}
                 onTrack={onTrack}
-                onTrackHomebrewCasks={onTrackHomebrewCasks}
+                onTrackHomebrewItems={onTrackHomebrewItems}
+                onTrackSystemDefaults={onTrackSystemDefaults}
               />
             </div>
           ) : (

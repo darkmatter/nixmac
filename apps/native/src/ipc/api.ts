@@ -22,7 +22,7 @@ import type {
   FileDiffContents,
   FinalizeApplyResult,
   GitStatus,
-  HomebrewCaskItem,
+  HomebrewItem,
   HomebrewState,
   HistoryItem,
   ImportResult,
@@ -232,8 +232,8 @@ export const tauriAPI = {
   homebrew: {
     getStateDiff: () => invoke<HomebrewState>("homebrew_get_state_diff"),
     applyDiff: (diff: HomebrewState) => invoke<ConfigEditApplyResult>("homebrew_apply_diff", { diff }),
-    addCasks: (casks: HomebrewCaskItem[]) =>
-      invoke<ConfigEditApplyResult>("homebrew_add_casks", { casks }),
+    addItems: (items: HomebrewItem[]) =>
+      invoke<ConfigEditApplyResult>("homebrew_add_items", { items }),
   },
 
   updater: {

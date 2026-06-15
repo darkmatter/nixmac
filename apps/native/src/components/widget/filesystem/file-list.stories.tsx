@@ -1,6 +1,12 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
-import { FILES } from "./data";
+import {
+  FILES,
+  homebrewFilesFromDiff,
+  replaceHomebrewPlaceholders,
+  replaceSystemDefaultsPlaceholder,
+  systemDefaultsFileFromScan,
+} from "./data";
 import { FileList } from "./file-list";
 import { SeedDisplay } from "./seed-display";
 import { seedForFile } from "./seed-prompt";
@@ -13,6 +19,38 @@ const meta = preview.meta({
 });
 
 export default meta;
+
+const storyHomebrew = homebrewFilesFromDiff({
+  isInstalled: true,
+  casks: ["docker", "obs", "iterm2"],
+  brews: ["mas", "ffmpeg"],
+  taps: ["homebrew/cask-fonts"],
+  source: null,
+  lastChecked: Math.floor(Date.now() / 1000) - 14 * 60,
+});
+const storySystemDefaults = systemDefaultsFileFromScan({
+  totalScanned: 212,
+  defaults: [
+    {
+      nixKey: "system.defaults.dock.magnification",
+      label: "Enable Dock magnification",
+      category: "Dock",
+      currentValue: "1",
+      defaultValue: "false",
+    },
+    {
+      nixKey: "system.defaults.finder.ShowPathbar",
+      label: "Show path bar",
+      category: "Finder",
+      currentValue: "1",
+      defaultValue: "false",
+    },
+  ],
+});
+const storyManageFiles = replaceSystemDefaultsPlaceholder(
+  replaceHomebrewPlaceholders(FILES.manage, storyHomebrew),
+  storySystemDefaults,
+);
 
 export const SystemSection = meta.story({
   render: () => (
@@ -52,7 +90,7 @@ export const UntrackedSection = meta.story({
       {(push) => (
         <div className="h-[520px] w-[640px]">
           <FileList
-            files={FILES.manage}
+            files={storyManageFiles}
             onEditWithPrompt={(f) => push(seedForFile(f))}
             onTrack={push}
           />

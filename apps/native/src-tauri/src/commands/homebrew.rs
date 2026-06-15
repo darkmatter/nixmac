@@ -26,11 +26,11 @@ pub async fn homebrew_get_state_diff(
 }
 
 #[tauri::command]
-pub async fn homebrew_add_casks(
+pub async fn homebrew_add_items(
     app: AppHandle,
-    casks: Vec<shared_types::HomebrewCaskItem>,
+    items: Vec<shared_types::HomebrewItem>,
 ) -> Result<shared_types::ConfigEditApplyResult, String> {
-    crate::managed_edits::homebrew_adopt::add_homebrew_casks(&app, casks)
+    crate::managed_edits::homebrew_adopt::add_homebrew_items(&app, items)
         .await
-        .map_err(|e| capture_err("homebrew_add_casks", e))
+        .map_err(|e| capture_err("homebrew_add_items", e))
 }
