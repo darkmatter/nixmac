@@ -1100,6 +1100,43 @@ export type ImportResult = { path: string; keysImported: number }
 
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
 
+export type LaunchdItem = { 
+/**
+ * launchd Label
+ */
+label: string; scope: LaunchdItemType; 
+/**
+ * Suggested Nix attribute name.
+ * Example: "redis"
+ */
+name: string; 
+/**
+ * Command and arguments to execute.
+ */
+program_arguments: string[]; 
+/**
+ * Launch when loaded.
+ */
+run_at_load: boolean; 
+/**
+ * Keep the service running.
+ */
+keep_alive: boolean; 
+/**
+ * Environment variables.
+ */
+environment_variables: Partial<{ [key in string]: string }>; 
+/**
+ * Log file locations.
+ */
+standard_out_path: string | null; standard_error_path: string | null; 
+/**
+ * Working directory, if specified.
+ */
+working_directory: string | null }
+
+export type LaunchdItemType = "LaunchAgent" | "LaunchDaemon" | "LaunchdUserAgent"
+
 /**
  * Result of `nix_check` — reports whether Nix and darwin-rebuild are available.
  */

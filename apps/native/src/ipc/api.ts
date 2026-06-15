@@ -26,6 +26,7 @@ import type {
   HomebrewState,
   HistoryItem,
   ImportResult,
+  LaunchdItem,
   NixCheckResult,
   OkResult,
   Permission,
@@ -234,6 +235,10 @@ export const tauriAPI = {
     applyDiff: (diff: HomebrewState) => invoke<ConfigEditApplyResult>("homebrew_apply_diff", { diff }),
     addItems: (items: HomebrewItem[]) =>
       invoke<ConfigEditApplyResult>("homebrew_add_items", { items }),
+  },
+
+  launchd: {
+    scanLaunchdItems: () => invoke<LaunchdItem[]>("scan_launchd_items"),
   },
 
   updater: {

@@ -3,7 +3,9 @@ import preview from "#storybook/preview";
 import {
   FILES,
   homebrewFilesFromDiff,
+  launchdItemsFileFromScan,
   replaceHomebrewPlaceholders,
+  replaceLaunchdPlaceholder,
   replaceSystemDefaultsPlaceholder,
   systemDefaultsFileFromScan,
 } from "./data";
@@ -47,9 +49,26 @@ const storySystemDefaults = systemDefaultsFileFromScan({
     },
   ],
 });
-const storyManageFiles = replaceSystemDefaultsPlaceholder(
-  replaceHomebrewPlaceholders(FILES.manage, storyHomebrew),
-  storySystemDefaults,
+const storyLaunchd = launchdItemsFileFromScan([
+  {
+    label: "homebrew.mxcl.redis",
+    scope: "LaunchdUserAgent",
+    name: "redis",
+    program_arguments: ["/opt/homebrew/opt/redis/bin/redis-server", "/opt/homebrew/etc/redis.conf"],
+    run_at_load: true,
+    keep_alive: true,
+    environment_variables: {},
+    standard_out_path: "/opt/homebrew/var/log/redis.log",
+    standard_error_path: "/opt/homebrew/var/log/redis.log",
+    working_directory: "/opt/homebrew/var",
+  },
+]);
+const storyManageFiles = replaceLaunchdPlaceholder(
+  replaceSystemDefaultsPlaceholder(
+    replaceHomebrewPlaceholders(FILES.manage, storyHomebrew),
+    storySystemDefaults,
+  ),
+  storyLaunchd,
 );
 
 export const SystemSection = meta.story({

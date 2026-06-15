@@ -1,6 +1,8 @@
 import type {
   HomebrewItemType,
   HomebrewState,
+  LaunchdItem,
+  LaunchdItemType,
   SystemDefault,
   SystemDefaultsScan,
 } from "@/ipc/types";
@@ -24,6 +26,10 @@ export type CandidateItem =
   | (BaseCandidateItem & {
       source: "system";
       systemDefault: SystemDefault;
+    })
+  | (BaseCandidateItem & {
+      source: "launchd";
+      launchdItem: LaunchdItem;
     })
   | (BaseCandidateItem & {
       source: "other";
@@ -346,21 +352,17 @@ creation_rules:
     },
     {
       id: "login-items",
-      path: "Login items",
-      title: "4 apps auto-start at login",
-      description: "Move them into your config so new machines launch the same set.",
+      path: "Untracked launchd items",
+      title: "Scanning launchd items",
+      description:
+        "Started Homebrew services that launchd runs today but nix-darwin does not declare.",
       iconName: "warn",
       tone: "amber",
       status: "candidate",
       destination: "modules/darwin/services.nix",
-      scanCommand: "osascript · System Events get login items",
-      scannedAt: "scanned 14 min ago",
-      items: [
-        { name: "Rectangle", detail: "/Applications/Rectangle.app", installedAt: "since Dec 2024", attr: "launchd.user.agents.rectangle = { ... };", source: "other" },
-        { name: "Raycast", detail: "/Applications/Raycast.app", installedAt: "since Dec 2024", attr: "launchd.user.agents.raycast   = { ... };", source: "other" },
-        { name: "1Password", detail: "/Applications/1Password.app", installedAt: "since Jan 2025", attr: 'launchd.user.agents."1password" = { ... };', source: "other" },
-        { name: "Hammerspoon", detail: "/Applications/Hammerspoon.app", installedAt: "since Feb 2025", attr: "launchd.user.agents.hammerspoon = { ... };", source: "other" },
-      ],
+      scanCommand: "scan_launchd_items",
+      scannedAt: "not scanned yet",
+      items: [],
     },
   ],
 };
@@ -368,6 +370,8 @@ creation_rules:
 const HOMEBREW_FILE_DESTINATION = ".nixmac/homebrew/data.json";
 const SYSTEM_DEFAULTS_FILE_DESTINATION = "modules/darwin/defaults.nix";
 const SYSTEM_DEFAULTS_ID = "custom-defaults";
+const LAUNCHD_FILE_DESTINATION = "modules/darwin/services.nix";
+const LAUNCHD_ID = "login-items";
 
 type HomebrewSectionDefinition = {
   id: string;
@@ -459,6 +463,23 @@ function systemDefaultsFallback(): FsFile {
   };
 }
 
+function launchdFallback(): FsFile {
+  return FILES.manage.find((file) => file.id === LAUNCHD_ID) ?? {
+    id: LAUNCHD_ID,
+    path: "Untracked launchd items",
+    title: "Scanning launchd items",
+    description:
+      "Started Homebrew services that launchd runs today but nix-darwin does not declare.",
+    iconName: "warn" as const,
+    tone: "amber" as const,
+    status: "candidate" as const,
+    destination: LAUNCHD_FILE_DESTINATION,
+    scanCommand: "scan_launchd_items",
+    scannedAt: "not scanned yet",
+    items: [],
+  };
+}
+
 function nixValue(setting: SystemDefault) {
   const value = setting.currentValue;
   const defaultLower = setting.defaultValue.trim().toLowerCase();
@@ -485,6 +506,120 @@ function systemDefaultItems(defaults: SystemDefault[]): CandidateItem[] {
       systemDefault: setting,
     };
   });
+}
+
+function launchdAttrScope(scope: LaunchdItemType) {
+  switch (scope) {
+    case "LaunchAgent":
+      return "launchd.agents";
+    case "LaunchDaemon":
+      return "launchd.daemons";
+    case "LaunchdUserAgent":
+      return "launchd.user.agents";
+  }
+}
+
+function nixString(value: string) {
+  return JSON.stringify(value);
+}
+
+function nixAttrName(value: string) {
+  return /^[A-Za-z_][A-Za-z0-9_-]*$/.test(value) ? value : nixString(value);
+}
+
+function launchdAttr(item: LaunchdItem) {
+  const lines = [
+    `${launchdAttrScope(item.scope)}.${nixAttrName(item.name)} = {`,
+    "  serviceConfig = {",
+    `    Label = ${nixString(item.label)};`,
+  ];
+
+  if (item.program_arguments.length > 0) {
+    lines.push(
+      `    ProgramArguments = [ ${item.program_arguments.map(nixString).join(" ")} ];`,
+    );
+  }
+
+  lines.push(`    RunAtLoad = ${item.run_at_load ? "true" : "false"};`);
+  lines.push(`    KeepAlive = ${item.keep_alive ? "true" : "false"};`);
+
+  if (item.standard_out_path) {
+    lines.push(`    StandardOutPath = ${nixString(item.standard_out_path)};`);
+  }
+  if (item.standard_error_path) {
+    lines.push(`    StandardErrorPath = ${nixString(item.standard_error_path)};`);
+  }
+  if (item.working_directory) {
+    lines.push(`    WorkingDirectory = ${nixString(item.working_directory)};`);
+  }
+  if (Object.keys(item.environment_variables).length > 0) {
+    lines.push("    EnvironmentVariables = {");
+    for (const [key, value] of Object.entries(item.environment_variables)) {
+      if (typeof value === "string") lines.push(`      ${nixAttrName(key)} = ${nixString(value)};`);
+    }
+    lines.push("    };");
+  }
+
+  lines.push("  };");
+  lines.push("};");
+  return lines.join("\n");
+}
+
+function launchdItems(items: LaunchdItem[]): CandidateItem[] {
+  return items.map((item) => ({
+    name: item.name,
+    detail:
+      item.program_arguments.length > 0
+        ? item.program_arguments.join(" ")
+        : item.label,
+    installedAt: launchdAttrScope(item.scope),
+    attr: launchdAttr(item),
+    source: "launchd",
+    launchdItem: item,
+  }));
+}
+
+export function launchdItemsFileFromScan(
+  launchdScan: LaunchdItem[] | null,
+  error?: string | null,
+): FsFile {
+  const fallback = launchdFallback();
+
+  if (error) {
+    return {
+      ...fallback,
+      title: "launchd scan failed",
+      description: error,
+      scanCommand: "scan_launchd_items",
+      scannedAt: "scan failed",
+      items: [],
+    };
+  }
+
+  if (!launchdScan) return fallback;
+
+  const items = launchdItems(launchdScan);
+  const count = items.length;
+
+  return {
+    ...fallback,
+    title:
+      count === 0
+        ? "No untracked launchd items"
+        : `${count} untracked launchd ${pluralize(count, "item")}`,
+    description:
+      count === 0
+        ? "Every started Homebrew-managed launchd item is already declared in nix-darwin."
+        : "Started Homebrew services that launchd runs today but nix-darwin does not declare.",
+    destination: LAUNCHD_FILE_DESTINATION,
+    scanCommand: "brew services list",
+    scannedAt: "scanned just now",
+    items,
+  };
+}
+
+export function replaceLaunchdPlaceholder(files: FsFile[], replacement: FsFile) {
+  return files.map((file) => (file.id === LAUNCHD_ID ? replacement : file));
 }
 
 export function systemDefaultsFileFromScan(

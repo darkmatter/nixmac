@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { tauriAPI } from "@/ipc/api";
+import { useLaunchdItems } from "@/hooks/use-launchd-items";
 import { useSystemDefaultsScan } from "@/hooks/use-system-defaults-scan";
 import { useWidgetStore } from "@/stores/widget-store";
 import { mirrorChangeMapState } from "@/viewmodel/change-map";
@@ -15,7 +16,9 @@ import {
   FILES,
   SECTIONS,
   homebrewFilesFromDiff,
+  launchdItemsFileFromScan,
   replaceHomebrewPlaceholders,
+  replaceLaunchdPlaceholder,
   replaceSystemDefaultsPlaceholder,
   systemDefaultsFileFromScan,
   type CandidateItem,
@@ -56,6 +59,7 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
     error: systemDefaultsError,
     refresh: refreshSystemDefaults,
   } = useSystemDefaultsScan();
+  const { items: launchdItems, error: launchdError } = useLaunchdItems();
 
   // Clear the target on mount so a subsequent toggle from the header
   // (which passes no section) returns to the user's last view.
@@ -86,12 +90,15 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
     };
   }, []);
 
-  const manageFiles = replaceSystemDefaultsPlaceholder(
-    replaceHomebrewPlaceholders(
-      FILES.manage,
-      homebrewFilesFromDiff(homebrewDiff, homebrewError),
+  const manageFiles = replaceLaunchdPlaceholder(
+    replaceSystemDefaultsPlaceholder(
+      replaceHomebrewPlaceholders(
+        FILES.manage,
+        homebrewFilesFromDiff(homebrewDiff, homebrewError),
+      ),
+      systemDefaultsFileFromScan(systemDefaultsScan, systemDefaultsError),
     ),
-    systemDefaultsFileFromScan(systemDefaultsScan, systemDefaultsError),
+    launchdItemsFileFromScan(launchdItems, launchdError),
   );
 
   const filesBySection = {

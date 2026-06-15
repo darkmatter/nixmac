@@ -18,6 +18,20 @@ pub async fn config_get(app: AppHandle) -> Result<types::Config, String> {
     })
 }
 
+/// Helper to get the hostname via a blocking command.
+pub fn get_this_hostname_cmd() -> Result<String, String> {
+    let output = std::process::Command::new("hostname")
+        .output()
+        .map_err(|e| capture_err("get_this_hostname", e))?;
+    if !output.status.success() {
+        return Err(format!(
+            "Failed to get hostname: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    Ok(sanitize_hostname(&String::from_utf8_lossy(&output.stdout)))
+}
+
 /// Gets the hostname that we're running on, does not touch config but is used
 /// for UI convenience and onboarding defaults.
 /// The name of this function is specifically chosen to NOT get confused
@@ -39,16 +53,7 @@ pub async fn get_this_hostname() -> Result<String, String> {
         }
     }
 
-    let output = std::process::Command::new("hostname")
-        .output()
-        .map_err(|e| capture_err("get_this_hostname", e))?;
-    if !output.status.success() {
-        return Err(format!(
-            "Failed to get hostname: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
-    Ok(sanitize_hostname(&String::from_utf8_lossy(&output.stdout)))
+    get_this_hostname_cmd()
 }
 
 /// Strips whitespace and the mDNS `.local` suffix so the result is usable as a
@@ -78,7 +83,7 @@ pub async fn config_set_dir(
     dir: String,
 ) -> Result<shared_types::SetDirResult, String> {
     let normalized_dir =
-        utils::normalize_dir_input(&dir).map_err(|e| capture_err("config_set_dir", e))?;
+        utils::normalize_path_input(&dir).map_err(|e| capture_err("config_set_dir", e))?;
 
     // Require that the provided path already exists and is a directory.
     // If we don't, then we'll always silently create directories even when
@@ -156,7 +161,7 @@ pub async fn config_prepare_new_dir(
     dir: String,
 ) -> Result<shared_types::SetDirResult, String> {
     let normalized_dir =
-        utils::normalize_dir_input(&dir).map_err(|e| capture_err("config_prepare_new_dir", e))?;
+        utils::normalize_path_input(&dir).map_err(|e| capture_err("config_prepare_new_dir", e))?;
     validate_new_dir_location(&normalized_dir)?;
 
     let p = normalized_dir.as_path();
@@ -250,7 +255,7 @@ pub async fn flake_exists(app: AppHandle) -> Result<bool, String> {
 #[tauri::command]
 pub async fn flake_exists_at(_app: AppHandle, dir: String) -> Result<bool, String> {
     let normalized_dir =
-        utils::normalize_dir_input(&dir).map_err(|e| capture_err("flake_exists_at", e))?;
+        utils::normalize_path_input(&dir).map_err(|e| capture_err("flake_exists_at", e))?;
     Ok(normalized_dir.join("flake.nix").exists())
 }
 
@@ -258,7 +263,7 @@ pub async fn flake_exists_at(_app: AppHandle, dir: String) -> Result<bool, Strin
 #[tauri::command]
 pub async fn path_exists(_app: AppHandle, dir: String) -> Result<bool, String> {
     let normalized_dir =
-        utils::normalize_dir_input(&dir).map_err(|e| capture_err("path_exists", e))?;
+        utils::normalize_path_input(&dir).map_err(|e| capture_err("path_exists", e))?;
     Ok(normalized_dir.exists() && normalized_dir.is_dir())
 }
 
@@ -271,7 +276,7 @@ pub async fn path_exists(_app: AppHandle, dir: String) -> Result<bool, String> {
 #[tauri::command]
 pub async fn path_normalize(_app: AppHandle, input: String) -> Result<String, String> {
     let normalized =
-        utils::normalize_dir_input(&input).map_err(|e| capture_err("path_normalize", e))?;
+        utils::normalize_path_input(&input).map_err(|e| capture_err("path_normalize", e))?;
     Ok(normalized.to_string_lossy().into_owned())
 }
 
@@ -398,7 +403,7 @@ pub async fn config_import_zip(
     dir_name: Option<String>,
 ) -> Result<shared_types::SetDirResult, String> {
     let zip =
-        utils::normalize_dir_input(&zip_path).map_err(|e| capture_err("config_import_zip", e))?;
+        utils::normalize_path_input(&zip_path).map_err(|e| capture_err("config_import_zip", e))?;
     if !zip.is_file() {
         return Err(format!("Zip file not found: {}", zip.display()));
     }
