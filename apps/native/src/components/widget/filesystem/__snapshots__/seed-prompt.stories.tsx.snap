@@ -16,12 +16,6 @@ Track these items by adding them to .nixmac/homebrew/data.json:
 Track these items by adding them to .nixmac/homebrew/data.json:
 - mas (Homebrew formula)
 - ffmpeg (Homebrew formula)
-
-Track these items by adding them to modules/darwin/services.nix:
-- Rectangle (/Applications/Rectangle.app)
-- Raycast (/Applications/Raycast.app)
-- 1Password (/Applications/1Password.app)
-- Hammerspoon (/Applications/Hammerspoon.app)
 </pre>"
 `;
 
@@ -38,12 +32,7 @@ exports[`Per File Seeds 1`] = `
 </pre></td></tr><tr class="border-border/40 border-b last:border-b-0"><td class="px-3 py-2 align-top font-mono text-[10.5px] text-muted-foreground">Untracked Homebrew brews</td><td class="px-3 py-2 align-top"><pre class="m-0 whitespace-pre-wrap break-words font-mono text-[10.5px] text-teal-200 leading-[1.5]">Track these items by adding them to .nixmac/homebrew/data.json:
 - mas (Homebrew formula)
 - ffmpeg (Homebrew formula)
-</pre></td></tr><tr class="border-border/40 border-b last:border-b-0"><td class="px-3 py-2 align-top font-mono text-[10.5px] text-muted-foreground">Login items</td><td class="px-3 py-2 align-top"><pre class="m-0 whitespace-pre-wrap break-words font-mono text-[10.5px] text-teal-200 leading-[1.5]">Track these items by adding them to modules/darwin/services.nix:
-- Rectangle (/Applications/Rectangle.app)
-- Raycast (/Applications/Raycast.app)
-- 1Password (/Applications/1Password.app)
-- Hammerspoon (/Applications/Hammerspoon.app)
-</pre></td></tr></tbody></table></div>"
+</pre></td></tr><tr class="border-border/40 border-b last:border-b-0"><td class="px-3 py-2 align-top font-mono text-[10.5px] text-muted-foreground">Untracked launchd items</td><td class="px-3 py-2 align-top"><pre class="m-0 whitespace-pre-wrap break-words font-mono text-[10.5px] text-teal-200 leading-[1.5]">Track scanning launchd items.</pre></td></tr></tbody></table></div>"
 `;
 
 exports[`Single Item Seed 1`] = `"<pre class="m-0 max-w-[700px] whitespace-pre-wrap rounded-md border border-border bg-card/40 p-3 font-mono text-[11px] text-teal-200 leading-[1.5]">Track "docker" by adding it to .nixmac/homebrew/data.json. Detail: Homebrew cask.</pre>"`;

@@ -32,7 +32,7 @@ export function UntrackedBanner({ candidates, onView }: UntrackedBannerProps) {
         <div className="mt-0.5 text-[10.5px] text-muted-foreground">
           {sectionCount === 1
             ? "On a fresh install, they wouldn't come back."
-            : `Across ${sectionCount} surfaces (including Homebrew, system defaults, and startup items). On a fresh install, none of them would come back.`}
+            : `Across ${sectionCount} surfaces (including Homebrew, system defaults, and launchd items). On a fresh install, none of them would come back.`}
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">

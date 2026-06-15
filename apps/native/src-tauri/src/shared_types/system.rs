@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -82,6 +84,37 @@ pub struct PermissionsState {
     pub all_required_granted: bool,
     /// Unix timestamp when permissions were last checked.
     pub checked_at: Option<i64>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum LaunchdItemType {
+    LaunchAgent,
+    LaunchDaemon,
+    LaunchdUserAgent,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct LaunchdItem {
+    /// launchd Label
+    pub label: String,
+    pub scope: LaunchdItemType,
+    /// Suggested Nix attribute name.
+    /// Example: "redis"
+    pub name: String,
+    /// Command and arguments to execute.
+    pub program_arguments: Vec<String>,
+    /// Launch when loaded.
+    pub run_at_load: bool,
+    /// Keep the service running.
+    pub keep_alive: bool,
+    /// Environment variables.
+    pub environment_variables: BTreeMap<String, String>,
+    /// Log file locations.
+    pub standard_out_path: Option<String>,
+    pub standard_error_path: Option<String>,
+    /// Working directory, if specified.
+    pub working_directory: Option<String>,
 }
 
 /// A single macOS system default that differs from the factory value.

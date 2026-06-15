@@ -216,14 +216,23 @@ export function UntrackedCard({
 
           {showSource && (
             <pre className="m-0 max-h-[260px] overflow-auto whitespace-pre border-border/40 border-t bg-card/40 p-3 font-mono text-[11.5px] leading-[1.7]">
-              {items.map((it) => (
-                <span key={it.name} className="block bg-emerald-500/[0.06]">
-                  <span className="select-none pr-2 text-teal-400">+</span>
-                  <span className="text-muted-foreground"> </span>
-                  <span>{highlightNixLine(it.attr)}</span>
-                  <span className="ml-2 text-[10.5px] text-muted-foreground"># {it.name}</span>
-                </span>
-              ))}
+              {items.flatMap((it) =>
+                it.attr.split("\n").map((line, lineIndex) => (
+                  <span
+                    key={`${it.name}-${lineIndex}-${lineIndex}`}
+                    className="block bg-emerald-500/[0.06]"
+                  >
+                    <span className="select-none pr-2 text-teal-400">+</span>
+                    <span className="text-muted-foreground"> </span>
+                    <span>{highlightNixLine(line)}</span>
+                    {lineIndex === 0 && (
+                      <span className="ml-2 text-[10.5px] text-muted-foreground">
+                        # {it.name}
+                      </span>
+                    )}
+                  </span>
+                )),
+              )}
             </pre>
           )}
         </div>

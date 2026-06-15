@@ -27,6 +27,12 @@ export function seedForUntrackedSection(file: FsFile): string {
     return `Track ${file.title.toLowerCase()}.`;
   }
   const dest = file.destination ?? "the right module";
+  if (file.items.every((it) => it.source === "launchd")) {
+    const snippets = file.items
+      .map((it) => `# ${it.name}\n${it.attr}`)
+      .join("\n\n");
+    return `Track these launchd items by adding equivalent nix-darwin launchd declarations to ${dest}:\n\n${snippets}\n`;
+  }
   const list = file.items.map((it) => `- ${it.name} (${it.detail})`).join("\n");
   return `Track these items by adding them to ${dest}:\n${list}\n`;
 }
@@ -36,6 +42,9 @@ export function seedForUntrackedSection(file: FsFile): string {
  */
 export function seedForUntrackedItem(file: FsFile, item: CandidateItem): string {
   const dest = file.destination ?? "the right module";
+  if (item.source === "launchd") {
+    return `Track this launchd item by adding an equivalent nix-darwin declaration to ${dest}:\n\n${item.attr}\n`;
+  }
   return `Track "${item.name}" by adding it to ${dest}. Detail: ${item.detail}.`;
 }
 
