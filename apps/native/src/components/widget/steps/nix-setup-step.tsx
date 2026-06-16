@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useNixInstall } from "@/hooks/use-nix-install";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 import { open } from "@tauri-apps/plugin-shell";
 import { CheckCircle2, ExternalLink, Loader2, Package, RefreshCw } from "lucide-react";
 import { useEffect } from "react";
@@ -74,8 +74,10 @@ function ExternalSetupLink({
 }
 
 export function NixSetupStep() {
-  const nixInstalled = useWidgetStore((s) => s.nixInstalled);
-  const darwinRebuildAvailable = useWidgetStore((s) => s.darwinRebuildAvailable);
+  const nixInstalled = useViewModel((s) => s.nixInstall?.installed ?? null);
+  const darwinRebuildAvailable = useViewModel(
+    (s) => s.nixInstall?.darwinRebuildAvailable ?? null,
+  );
   const { checkNix } = useNixInstall();
 
   const state = getNixSetupState({ nixInstalled, darwinRebuildAvailable });

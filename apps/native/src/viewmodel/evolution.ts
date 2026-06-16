@@ -24,11 +24,19 @@ function handleEvolutionComplete(payload: EvolveEvent): void {
   ui.setEvolutionTelemetry(telemetry);
   ui.setConversationalResponse(payload.conversationalResponse ?? null);
 
-  const completionMsg = telemetry
-    ? `✓ Evolution complete in ${formatDurationMs(telemetry.durationMs)} and ${telemetry.iterations} iteration${telemetry.iterations === 1 ? "" : "s"}\n`
-    : "✓ Evolution complete\n";
+  const isLimitReached = telemetry?.state === "limitReached";
+  const iterationSuffix = telemetry
+    ? ` in ${formatDurationMs(telemetry.durationMs)} and ${telemetry.iterations} iteration${telemetry.iterations === 1 ? "" : "s"}`
+    : "";
+  const completionMsg = isLimitReached
+    ? `⏸ Evolution stopped (safety limit reached)${iterationSuffix}\n`
+    : `✓ Evolution complete${iterationSuffix}\n`;
   ui.appendLog(completionMsg);
-  toast.success(completionMsg);
+  if (isLimitReached) {
+    toast.info(completionMsg);
+  } else {
+    toast.success(completionMsg);
+  }
 
   // The backend updates the evolve-state cell before emitting the terminal
   // event, so the mirrored step is already current here.

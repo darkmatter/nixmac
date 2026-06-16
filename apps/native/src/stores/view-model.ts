@@ -9,8 +9,8 @@
 //
 // The `viewmodel/` modules are the only writers for Rust-owned slices:
 // they hydrate through commands, then mirror backend events into this store.
-// Stream-backed fields (`rebuildLog`, `evolveEvents`, `nixDownloadProgress`)
-// are folds over backend event streams, also owned by `viewmodel/` modules.
+// Stream-backed fields (`rebuildLog`, `evolveEvents`) are folds over backend
+// event streams, also owned by `viewmodel/` modules.
 
 import type {
   EvolveEvent,
@@ -53,8 +53,6 @@ export type ViewModel = {
   promptHistory: string[];
   /** Mirrored nix / darwin-rebuild installation status; null until hydrated. */
   nixInstall: NixInstallState | null;
-  /** Installer download progress folded from `nix:install:progress`; null when idle. */
-  nixDownloadProgress: { downloaded: number; total: number } | null;
   /** Mirrored darwin-rebuild lifecycle status; null until hydrated. */
   rebuildStatus: RebuildStatus | null;
   /** Rebuild output fold; reset whenever a new rebuild run starts. */
@@ -77,7 +75,6 @@ export const useViewModel = create<ViewModel>()(() => ({
   permissionsHydrated: false,
   promptHistory: [],
   nixInstall: null,
-  nixDownloadProgress: null,
   rebuildStatus: null,
   rebuildLog: { lines: [], rawLines: [] },
   evolveEvents: [],

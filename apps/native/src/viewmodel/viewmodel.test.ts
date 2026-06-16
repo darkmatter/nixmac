@@ -127,7 +127,6 @@ describe("view model sync", () => {
       permissionsHydrated: false,
       promptHistory: [],
       nixInstall: null,
-      nixDownloadProgress: null,
       rebuildStatus: null,
       rebuildLog: { lines: [], rawLines: [] },
       evolveEvents: [],
@@ -269,43 +268,28 @@ describe("view model sync", () => {
     expect(apiMocks.unlisten).toHaveBeenCalledTimes(1);
   });
 
-  it("hydrates and mirrors the nix-install slice, folding download progress", async () => {
+  it("hydrates and mirrors the nix-install slice, surfacing errors", async () => {
     const stop = await startNixInstallSync();
 
     expect(useViewModel.getState().nixInstall).toBe(apiMocks.nixInstallState);
 
-    const installing = makeNixInstallState({
-      installed: false,
-      installing: true,
-      installPhase: "downloading",
+    const installed = makeNixInstallState({
+      installed: true,
+      darwinRebuildAvailable: true,
     });
-    apiMocks.listeners.get("nix_install_state_changed")?.({ payload: installing });
-    expect(useViewModel.getState().nixInstall).toBe(installing);
+    apiMocks.listeners.get("nix_install_state_changed")?.({ payload: installed });
+    expect(useViewModel.getState().nixInstall).toBe(installed);
 
-    // Progress events with both fields fold into nixDownloadProgress.
-    apiMocks.listeners.get("nix:install:progress")?.({
-      payload: { phase: "downloading", downloaded: 10, total: 100 },
-    });
-    expect(useViewModel.getState().nixDownloadProgress).toEqual({ downloaded: 10, total: 100 });
-
-    // Events missing a field are ignored.
-    apiMocks.listeners.get("nix:install:progress")?.({
-      payload: { phase: "waiting-for-installer", downloaded: null, total: null },
-    });
-    expect(useViewModel.getState().nixDownloadProgress).toEqual({ downloaded: 10, total: 100 });
-
-    // Install finishing clears the progress; a recorded error surfaces in UI state.
+    // A freshly recorded error surfaces in UI state.
     const failed = makeNixInstallState({
       installed: false,
-      installing: false,
       lastError: "boom",
     });
     apiMocks.listeners.get("nix_install_state_changed")?.({ payload: failed });
-    expect(useViewModel.getState().nixDownloadProgress).toBeNull();
     expect(useUiState.getState().error).toBe("boom");
 
     stop();
-    expect(apiMocks.unlisten).toHaveBeenCalledTimes(2);
+    expect(apiMocks.unlisten).toHaveBeenCalledTimes(1);
   });
 
   it("hydrates and mirrors the rebuild slice, resetting the log on new runs", async () => {
@@ -433,6 +417,35 @@ describe("view model sync", () => {
     expect(useUiState.getState().consoleLogs).toContain(
       "✓ Evolution complete in 1m 1s and 3 iterations",
     );
+
+    stop();
+  });
+
+  it("logs a stopped message on a limit-reached terminal event", async () => {
+    const stop = await startEvolutionSync();
+
+    const limitReached: EvolveEvent = {
+      raw: "",
+      summary: "Stopped at safety limit",
+      eventType: "complete",
+      iteration: 25,
+      timestampMs: 9000,
+      telemetry: {
+        state: "limitReached",
+        iterations: 25,
+        buildAttempts: 0,
+        totalTokens: 50_000,
+        editsCount: 0,
+        thinkingCount: 0,
+        toolCallsCount: 0,
+        durationMs: 12_345,
+      },
+    };
+    apiMocks.listeners.get("darwin:evolve:event")?.({ payload: limitReached });
+
+    const logs = useUiState.getState().consoleLogs;
+    expect(logs).toContain("Evolution stopped (safety limit reached)");
+    expect(logs).not.toContain("✓ Evolution complete");
 
     stop();
   });

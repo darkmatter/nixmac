@@ -6,13 +6,8 @@ import { tauriAPI } from "@/ipc/api";
 import { useLaunchdItems } from "@/hooks/use-launchd-items";
 import { useSystemDefaultsScan } from "@/hooks/use-system-defaults-scan";
 import { useUiState } from "@/stores/ui-state";
-import { useWidgetStore } from "@/stores/widget-store";
-import { mirrorChangeMapState } from "@/viewmodel/change-map";
-import { mirrorEvolveState } from "@/viewmodel/evolve";
-import { mirrorGitState } from "@/viewmodel/git";
 
 import type {
-  ConfigEditApplyResult,
   HomebrewItem,
   HomebrewState,
   LaunchdItem,
@@ -128,17 +123,16 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
     setShowFilesystem(false);
   };
 
-  const mirrorApplyResult = (result: ConfigEditApplyResult) => {
-    const store = useWidgetStore.getState();
-    mirrorEvolveState(result.evolveState);
-    mirrorChangeMapState(result.changeMap);
-    mirrorGitState(result.gitStatus);
-    store.setRecommendedPrompt(undefined);
+  // The managed-edit apply path updates the git/evolve/change-map cells on
+  // the backend, which emit their change events; the viewmodel sync modules
+  // mirror them. We only invalidate the now-stale recommended prompt.
+  const invalidateRecommendation = () => {
+    useUiState.getState().setRecommendedPrompt(undefined);
   };
 
   const onEditWithPrompt = (file: FsFile) => seed(seedForFile(file));
   const onTrackHomebrewItems = async (items: CandidateItem[]) => {
-    const store = useWidgetStore.getState();
+    const store = useUiState.getState();
     store.setProcessing(true, "apply");
     try {
       const homebrewItems: HomebrewItem[] = items.map((item) => {
@@ -151,10 +145,10 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
           itemType: item.itemType,
         };
       });
-      const result = await tauriAPI.homebrew.addItems(
+      await tauriAPI.homebrew.addItems(
         homebrewItems,
       );
-      mirrorApplyResult(result);
+      invalidateRecommendation();
       setShowFilesystem(false);
       setHomebrewDiff(null);
     } finally {
@@ -163,7 +157,7 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
   };
 
   const onTrackSystemDefaults = async (items: CandidateItem[]) => {
-    const store = useWidgetStore.getState();
+    const store = useUiState.getState();
     store.setProcessing(true, "apply");
     try {
       const defaults: SystemDefault[] = items.map((item) => {
@@ -172,8 +166,8 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
         }
         return item.systemDefault;
       });
-      const result = await tauriAPI.scanner.applyDefaults(defaults);
-      mirrorApplyResult(result);
+      await tauriAPI.scanner.applyDefaults(defaults);
+      invalidateRecommendation();
       await refreshSystemDefaults();
       setShowFilesystem(false);
     } finally {
@@ -182,7 +176,7 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
   };
 
   const onTrackLaunchdItems = async (items: CandidateItem[]) => {
-    const store = useWidgetStore.getState();
+    const store = useUiState.getState();
     store.setProcessing(true, "apply");
     try {
       const launchdItemsToApply: LaunchdItem[] = items.map((item) => {
@@ -191,8 +185,8 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
         }
         return item.launchdItem;
       });
-      const result = await tauriAPI.launchd.applyLaunchdItems(launchdItemsToApply);
-      mirrorApplyResult(result);
+      await tauriAPI.launchd.applyLaunchdItems(launchdItemsToApply);
+      invalidateRecommendation();
       await refreshLaunchdItems();
       setShowFilesystem(false);
     } finally {
