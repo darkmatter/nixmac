@@ -8,14 +8,14 @@ use crate::state::evolve_state;
 use crate::storage::store;
 use crate::{
     git,
-    shared_types::{EvolveState, RollbackResult},
+    shared_types::{EvolveSession, RollbackResult},
 };
 
 pub fn rollback_erase<R: Runtime>(app: &AppHandle<R>) -> Result<RollbackResult> {
     let repo_root =
         store::ensure_git_repo_folder(app).context("Failed to get git repository root")?;
 
-    let current_evolve = evolve_state::get(app).unwrap_or_default();
+    let current_evolve = evolve_state::get_session(app);
     let rollback_store_path = current_evolve.rollback_store_path.clone();
     let rollback_changeset_id = current_evolve.rollback_changeset_id;
 
@@ -47,7 +47,7 @@ pub fn rollback_erase<R: Runtime>(app: &AppHandle<R>) -> Result<RollbackResult> 
     let final_status = git::status(&repo_root).context("Failed to get final git status")?;
     // Record the post-rollback status; the cell write emits `git_state_changed`.
     crate::state::git_state::update_status(app, final_status.clone());
-    evolve_state::set(app, EvolveState::default(), &final_status.changes)
+    evolve_state::set_session(app, EvolveSession::default(), &final_status.changes)
         .context("Failed to clear evolve state")?;
     // The restore changed the working tree: refresh the change-map cell so the
     // mirrored map matches it (emits `change_map_changed`).

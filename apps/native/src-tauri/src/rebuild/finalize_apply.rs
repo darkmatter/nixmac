@@ -9,13 +9,13 @@ use crate::{git, shared_types};
 
 async fn prepare(
     app: &AppHandle,
-) -> Result<(crate::shared_types::GitStatus, shared_types::EvolveState)> {
+) -> Result<(crate::shared_types::GitStatus, shared_types::EvolveSession)> {
     let repo_root =
         store::ensure_git_repo_folder(app).context("Failed to get git repository root")?;
     let final_status = git::status(&repo_root).context("Failed to get final git status")?;
     // Record the post-build status; the cell write emits `git_state_changed`.
     crate::state::git_state::update_status(app, final_status.clone());
-    let current_evolve = evolve_state::get(app).unwrap_or_default();
+    let current_evolve = evolve_state::get_session(app);
     Ok((final_status, current_evolve))
 }
 
@@ -33,7 +33,7 @@ pub async fn finalize_apply(app: &AppHandle) -> Result<()> {
     }
 
     build_state::record_build(app, &final_status).context("Failed to record build state")?;
-    evolve_state::set(app, current_evolve, &final_status.changes)?;
+    evolve_state::set_session(app, current_evolve, &final_status.changes)?;
     Ok(())
 }
 
@@ -51,7 +51,7 @@ pub async fn finalize_rollback(
         final_status.head_commit_hash.clone(),
     )
     .context("Failed to restore build state")?;
-    evolve_state::set(app, current_evolve, &final_status.changes)?;
+    evolve_state::set_session(app, current_evolve, &final_status.changes)?;
     // The rollback restored an earlier tree: refresh the change-map cell so
     // the mirrored map matches it (emits `change_map_changed`).
     crate::summarize::refresh_change_map(app);

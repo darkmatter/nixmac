@@ -113,25 +113,23 @@ pub fn found_change_sets_since<R: Runtime>(
 
 /// Gets the base commit for the current summary or HEAD if no summary exists, so the frontend can use it as a reference point for showing file diffs, etc.
 pub fn active_summary_base_ref<R: Runtime>(app: &AppHandle<R>) -> String {
-    let Some(state) = crate::state::evolve_state::get(app).ok() else {
-        return "HEAD".to_string();
-    };
+    let session = crate::state::evolve_state::get_session(app);
     let Some(config_dir) = crate::storage::store::get_config_dir(app).ok() else {
         return "HEAD".to_string();
     };
 
-    existing_summary_base_ref(&config_dir, &state).unwrap_or_else(|| "HEAD".to_string())
+    existing_summary_base_ref(&config_dir, &session).unwrap_or_else(|| "HEAD".to_string())
 }
 
 /// Returns the first persisted summary base ref that still exists in the repo.
 fn existing_summary_base_ref(
     config_dir: &str,
-    state: &crate::shared_types::EvolveState,
+    session: &crate::shared_types::EvolveSession,
 ) -> Option<String> {
     // Prefer rollback over backup, but skip refs that were already cleaned up.
     [
-        state.rollback_branch.as_deref(),
-        state.backup_branch.as_deref(),
+        session.rollback_branch.as_deref(),
+        session.backup_branch.as_deref(),
     ]
     .into_iter()
     .flatten()
@@ -203,7 +201,7 @@ fn changes_since_ref(config_dir: &str, base_ref: &str) -> Result<Vec<Change>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::shared_types::EvolveState;
+    use crate::shared_types::EvolveSession;
     use std::fs;
     use std::path::Path;
 
@@ -239,16 +237,16 @@ mod tests {
         repo.branch("existing-backup", &commit, false)
             .expect("create branch");
 
-        let state = EvolveState {
+        let session = EvolveSession {
             rollback_branch: Some("missing-rollback".to_string()),
             backup_branch: Some("existing-backup".to_string()),
-            ..EvolveState::default()
+            ..EvolveSession::default()
         };
 
         let config_dir = temp.path().to_string_lossy();
 
         assert_eq!(
-            existing_summary_base_ref(&config_dir, &state),
+            existing_summary_base_ref(&config_dir, &session),
             Some("existing-backup".to_string())
         );
     }

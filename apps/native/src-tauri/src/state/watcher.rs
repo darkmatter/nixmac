@@ -109,11 +109,9 @@ where
                                     .ok()
                                     .map(summarize::group_existing::from_change_sets)
                                     .unwrap_or_default();
-                            // Side-effect: refresh the evolve slice. The slice write-guard
-                            // emits `evolve_state_changed` on drop, so no manual emit needed.
-                            if let Ok(es) = evolve_state::get(&app_handle) {
-                                let _ = evolve_state::set(&app_handle, es, &status.changes);
-                            }
+                            // Refresh the derived evolve projection from the new git/build
+                            // state; the projection cell emits `evolve_state_changed`.
+                            evolve_state::refresh(&app_handle, &status.changes);
                             // Native drift notification (config drift / external build).
                             drift_notifications::maybe_notify(
                                 Some(&status),

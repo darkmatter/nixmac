@@ -528,7 +528,14 @@ export type EvolveEventType =
 "question"
 
 /**
- * Persisted evolve state stored in `evolve-state.json`.
+ * The evolve routing state as projected for the frontend: the owned
+ * [`EvolveSession`] fields joined with the two derived values (`step`,
+ * `committable`).
+ * 
+ * This is the wire/event type — it is computed by
+ * `state::evolve_state::project` and is never persisted or treated as a
+ * source of truth on its own. `step` and `committable` are always recomputed
+ * from live build/git state, so a value of this type is only a snapshot.
  */
 export type EvolveState = { 
 /**
@@ -560,14 +567,11 @@ rollbackStorePath: string | null;
  */
 rollbackChangesetId: number | null; 
 /**
- * UI step derived from the routing state.
+ * UI step derived from the session plus live build/git state.
  */
 step: EvolveStep; 
 /**
  * Last terminal state observed for this routing session.
- * 
- * This supports transition-sensitive behavior when returning to Begin
- * and maybe some other useful things in the future.
  */
 lastEvolutionState?: EvolutionState | null }
 

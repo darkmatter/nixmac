@@ -37,14 +37,14 @@ pub async fn darwin_adopt_manual_changes(app: AppHandle) -> Result<i64, String> 
     let git_status =
         git::status(&config_dir).map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
     let branch = git_status.branch.as_deref().unwrap_or("unknown");
-    let existing_id = evolve_state::get(&app).ok().and_then(|s| s.evolution_id);
+    let existing_id = evolve_state::get_session(&app).evolution_id;
     let pool = app.state::<db::DbPool>();
     let evolution_id = db::evolutions::upsert(&pool, existing_id, branch)
         .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
 
-    evolve_state::set(
+    evolve_state::set_session(
         &app,
-        shared_types::EvolveState {
+        shared_types::EvolveSession {
             evolution_id: Some(evolution_id),
             current_changeset_id: None,
             ..Default::default()

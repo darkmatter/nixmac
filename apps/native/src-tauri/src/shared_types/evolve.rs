@@ -154,9 +154,46 @@ pub enum EvolveStep {
     ManualCommit,
 }
 
-/// Persisted evolve state stored in `evolve-state.json`.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+/// The owned, persisted unit of an evolve session, stored in
+/// `evolve-state.json`.
+///
+/// This is the source of truth: the identity of an active evolution and the
+/// bookkeeping needed to roll it back. It deliberately holds NO derived
+/// fields — the UI `step` and the `committable` flag are pure functions of
+/// this session plus live build/git state, computed on demand by
+/// `state::evolve_state::project` and never stored.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
+pub struct EvolveSession {
+    /// Active evolution database id.
+    pub evolution_id: Option<i64>,
+    /// Active changeset id for the current repo state.
+    pub current_changeset_id: Option<i64>,
+    /// Branch used to reset repo state on evolve failure.
+    pub backup_branch: Option<String>,
+    /// Branch used to recover repo state during rollback.
+    pub rollback_branch: Option<String>,
+    /// Nix store path that should be reactivated during rollback.
+    pub rollback_store_path: Option<String>,
+    /// Changeset id associated with the rollback target.
+    pub rollback_changeset_id: Option<i64>,
+    /// Last terminal state observed for this routing session.
+    ///
+    /// This supports transition-sensitive behavior when returning to Begin
+    /// and maybe some other useful things in the future.
+    pub last_evolution_state: Option<EvolutionState>,
+}
+
+/// The evolve routing state as projected for the frontend: the owned
+/// [`EvolveSession`] fields joined with the two derived values (`step`,
+/// `committable`).
+///
+/// This is the wire/event type — it is computed by
+/// `state::evolve_state::project` and is never persisted or treated as a
+/// source of truth on its own. `step` and `committable` are always recomputed
+/// from live build/git state, so a value of this type is only a snapshot.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
 pub struct EvolveState {
     /// Active evolution database id.
     pub evolution_id: Option<i64>,
@@ -172,12 +209,9 @@ pub struct EvolveState {
     pub rollback_store_path: Option<String>,
     /// Changeset id associated with the rollback target.
     pub rollback_changeset_id: Option<i64>,
-    /// UI step derived from the routing state.
+    /// UI step derived from the session plus live build/git state.
     pub step: EvolveStep,
     /// Last terminal state observed for this routing session.
-    ///
-    /// This supports transition-sensitive behavior when returning to Begin
-    /// and maybe some other useful things in the future.
     #[serde(default)]
     pub last_evolution_state: Option<EvolutionState>,
 }

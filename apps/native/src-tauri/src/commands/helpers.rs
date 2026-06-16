@@ -33,7 +33,7 @@ pub(super) fn handle_new_config_dir(app: &AppHandle, dir: &str) -> Result<(), St
         crate::state::git_state::update_status(app, s.clone());
     }
     watcher::start_watching(app.clone(), dir.to_string(), 2500);
-    evolve_state::set(app, shared_types::EvolveState::default(), &changes)
+    evolve_state::set_session(app, shared_types::EvolveSession::default(), &changes)
         .map_err(|e| e.to_string())?;
     Ok(())
 }

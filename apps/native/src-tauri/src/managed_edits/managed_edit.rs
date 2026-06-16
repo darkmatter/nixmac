@@ -11,7 +11,7 @@ use crate::{db, git, shared_types, summarize};
 pub struct ManagedEditContext {
     pub dir: String,
     pub evolution_id: i64,
-    pub evolve_state: shared_types::EvolveState,
+    pub evolve_session: shared_types::EvolveSession,
 }
 
 pub fn prepare_managed_edit(app: &AppHandle) -> Result<ManagedEditContext> {
@@ -23,7 +23,7 @@ pub fn prepare_managed_edit(app: &AppHandle) -> Result<ManagedEditContext> {
     let _base_commit_id =
         db::commits::store_head_commit(&pool, &dir, None).context("Failed to store HEAD commit")?;
 
-    let pre_state = evolve_state::get(app).unwrap_or_default();
+    let pre_state = evolve_state::get_session(app);
     let branch = git::current_branch(&dir).unwrap_or_else(|| "main".to_string());
     let evolution_id = db::evolutions::upsert(&pool, pre_state.evolution_id, &branch)
         .context("Failed to upsert evolution")?;
@@ -51,27 +51,22 @@ pub fn prepare_managed_edit(app: &AppHandle) -> Result<ManagedEditContext> {
         )
     };
 
-    let evolve_state = evolve_state::set(
-        app,
-        shared_types::EvolveState {
-            evolution_id: Some(evolution_id),
-            current_changeset_id: None,
-            committable: false,
-            backup_branch,
-            rollback_branch,
-            rollback_store_path,
-            rollback_changeset_id,
-            step: shared_types::EvolveStep::Evolve,
-            last_evolution_state: None,
-        },
-        &pre_edit_status.changes,
-    )
-    .context("Failed to set evolve state")?;
+    let session = shared_types::EvolveSession {
+        evolution_id: Some(evolution_id),
+        current_changeset_id: None,
+        backup_branch,
+        rollback_branch,
+        rollback_store_path,
+        rollback_changeset_id,
+        last_evolution_state: None,
+    };
+    evolve_state::set_session(app, session.clone(), &pre_edit_status.changes)
+        .context("Failed to set evolve state")?;
 
     Ok(ManagedEditContext {
         dir,
         evolution_id,
-        evolve_state,
+        evolve_session: session,
     })
 }
 
@@ -82,15 +77,22 @@ pub async fn finalize_managed_edit(
     count: usize,
     log_tag: &str,
 ) -> Result<shared_types::ConfigEditApplyResult> {
-    context.evolve_state = evolve_state::set(app, context.evolve_state, &post_edit_status.changes)
-        .context("Failed to update evolve state for post-edit status")?;
+    evolve_state::set_session(
+        app,
+        context.evolve_session.clone(),
+        &post_edit_status.changes,
+    )
+    .context("Failed to update evolve state for post-edit status")?;
 
     match summarize::new_changeset(app, Some(context.evolution_id)).await {
         Ok(Some(changeset_id)) => {
-            context.evolve_state.current_changeset_id = Some(changeset_id);
-            context.evolve_state =
-                evolve_state::set(app, context.evolve_state, &post_edit_status.changes)
-                    .context("Failed to update evolve state with changeset")?;
+            context.evolve_session.current_changeset_id = Some(changeset_id);
+            evolve_state::set_session(
+                app,
+                context.evolve_session.clone(),
+                &post_edit_status.changes,
+            )
+            .context("Failed to update evolve state with changeset")?;
         }
         Ok(None) => {
             log::warn!("[{log_tag}] Summarizer returned None - diff may be empty");
