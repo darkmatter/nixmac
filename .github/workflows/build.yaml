@@ -42,6 +42,11 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
+      # Self-hosted runner: disk persists across runs, so free it before the
+      # Nix substitution + Tauri build if it has dropped below the threshold.
+      - name: Free disk space if low
+        run: bash ops/scripts/ci/free-disk-space.sh 25
+
       - uses: ./.github/actions/setup
         with:
           darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}

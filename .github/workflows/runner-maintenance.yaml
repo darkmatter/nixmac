@@ -1,0 +1,38 @@
+name: Runner maintenance
+
+# Reclaims disk on the persistent, self-hosted macOS runner. Its disk survives
+# across jobs (unlike GitHub-hosted VMs), so the Nix store and build artifacts
+# accumulate until builds fail with "no space left on device". This runs an
+# unconditional, age-bounded cleanup on a schedule; the `build` job also cleans
+# inline when free space is low, so this is the steady-state janitor.
+on:
+  schedule:
+    # Weekly, Sunday 09:00 UTC — outside typical working hours.
+    - cron: "0 9 * * 0"
+  workflow_dispatch:
+    inputs:
+      nix_gc_age:
+        description: "Age for nix-collect-garbage --delete-older-than"
+        required: false
+        default: "7d"
+
+# Don't stack maintenance runs on top of each other.
+concurrency:
+  group: runner-maintenance
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: [self-hosted, macOS]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Free disk space
+        env:
+          # Weekly cadence, so keep a slightly longer window than the inline
+          # build-time cleanup; manual runs can override via the input.
+          NIX_GC_AGE: ${{ github.event.inputs.nix_gc_age || '7d' }}
+        run: bash ops/scripts/ci/free-disk-space.sh --force
