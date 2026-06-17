@@ -23,14 +23,8 @@ fn get_hostname_and_config_dir(app: &AppHandle, cmd: &str) -> Result<(String, St
 /// Scans the system for launchd items that are configured but not managed by nix.
 #[tauri::command]
 pub async fn scan_launchd_items(app: AppHandle) -> Result<Vec<LaunchdItem>, String> {
-    // 0. Get the configured hostname and config.
+    // Get the configured hostname and config.
     let (hostname, config_dir) = get_hostname_and_config_dir(&app, "scan_launchd_items")?;
-
-    // If we didn't get a hostname back, skip the scan.
-    if hostname.is_empty() {
-        log::warn!("No hostname configured, skipping launchd scan");
-        return Ok(vec![]);
-    }
 
     // Run on a blocking thread since it invokes blocking subprocesses (nix, brew).
     tauri::async_runtime::spawn_blocking(move || {

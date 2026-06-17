@@ -217,7 +217,7 @@ export function UntrackedCard({
               {items.flatMap((it) =>
                 it.attr.split("\n").map((line, lineIndex) => (
                   <span
-                    key={`${it.name}-${lineIndex}-${lineIndex}`}
+                    key={`${it.name}-${lineIndex}`}
                     className="block bg-emerald-500/[0.06]"
                   >
                     <span className="select-none pr-2 text-teal-400">+</span>
