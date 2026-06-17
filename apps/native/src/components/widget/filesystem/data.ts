@@ -742,6 +742,10 @@ export function isSystemDefaultsCandidateFile(file: FsFile) {
   return file.id === SYSTEM_DEFAULTS_ID;
 }
 
+export function isLaunchdCandidateFile(file: FsFile) {
+  return file.id === LAUNCHD_ID;
+}
+
 function isHomebrewPlaceholder(file: FsFile) {
   return HOMEBREW_SECTIONS.some((section) => section.id === file.id);
 }

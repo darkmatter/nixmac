@@ -239,6 +239,8 @@ export const tauriAPI = {
 
   launchd: {
     scanLaunchdItems: () => invoke<LaunchdItem[]>("scan_launchd_items"),
+    applyLaunchdItems: (items: LaunchdItem[]) =>
+      invoke<ConfigEditApplyResult>("apply_launchd_items", { items }),
   },
 
   updater: {

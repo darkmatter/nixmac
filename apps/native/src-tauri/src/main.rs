@@ -564,6 +564,7 @@ fn run_gui_mode(
             commands::system_defaults::scan_system_defaults,
             commands::system_defaults::apply_system_defaults,
             // Launchd scanner
+            commands::launchd::apply_launchd_items,
             commands::launchd::scan_launchd_items,
             // CLI tool detection
             commands::cli_tool::check_cli_tools,

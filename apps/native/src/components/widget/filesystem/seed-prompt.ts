@@ -1,4 +1,4 @@
-import type { CandidateItem, FsFile } from "./data";
+import type { FsFile } from "./data";
 
 /**
  * Build a prompt seed for "Edit this file with a prompt." The seed is
@@ -7,53 +7,9 @@ import type { CandidateItem, FsFile } from "./data";
  * the seed before sending.
  */
 export function seedForFile(file: FsFile): string {
-  if (file.status === "candidate") {
-    return seedForUntrackedSection(file);
-  }
   if (file.readonly) {
     return `Regenerate ${file.path}.`;
   }
   const hint = file.promptHint ? ` (${file.promptHint})` : "";
   return `Change ${file.path}${hint}: `;
-}
-
-/**
- * Build a prompt seed for "Track all items in this Untracked section."
- * Inlines the item names so the AI has the full list without needing
- * a separate scan call.
- */
-export function seedForUntrackedSection(file: FsFile): string {
-  if (file.status !== "candidate" || !file.items?.length) {
-    return `Track ${file.title.toLowerCase()}.`;
-  }
-  const dest = file.destination ?? "the right module";
-  if (file.items.every((it) => it.source === "launchd")) {
-    const snippets = file.items
-      .map((it) => `# ${it.name}\n${it.attr}`)
-      .join("\n\n");
-    return `Track these launchd items by adding equivalent nix-darwin launchd declarations to ${dest}:\n\n${snippets}\n`;
-  }
-  const list = file.items.map((it) => `- ${it.name} (${it.detail})`).join("\n");
-  return `Track these items by adding them to ${dest}:\n${list}\n`;
-}
-
-/**
- * Build a prompt seed for tracking a single untracked item.
- */
-export function seedForUntrackedItem(file: FsFile, item: CandidateItem): string {
-  const dest = file.destination ?? "the right module";
-  if (item.source === "launchd") {
-    return `Track this launchd item by adding an equivalent nix-darwin declaration to ${dest}:\n\n${item.attr}\n`;
-  }
-  return `Track "${item.name}" by adding it to ${dest}. Detail: ${item.detail}.`;
-}
-
-/**
- * Build a prompt seed for the BeginStep "Untracked" banner by stacking
- * the same itemized prompt used for each candidate section.
- */
-export function seedForUntrackedBanner(files: FsFile[]): string {
-  const candidates = files.filter((f) => f.status === "candidate" && f.items?.length);
-  if (!candidates.length) return "Track everything that isn't in my config yet.";
-  return candidates.map(seedForUntrackedSection).join("\n");
 }

@@ -1,11 +1,12 @@
 import { useId, useMemo, useState } from "react";
-import { Braces, ChevronDown, MessageSquarePlus } from "lucide-react";
+import { Braces, ChevronDown, CirclePlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 import {
   isHomebrewCandidateFile,
+  isLaunchdCandidateFile,
   isSystemDefaultsCandidateFile,
   type CandidateItem,
   type FileTone,
@@ -13,16 +14,12 @@ import {
 } from "./data";
 import { highlightNixLine } from "./highlight";
 import { resolveIcon } from "./icons";
-import { seedForUntrackedItem, seedForUntrackedSection } from "./seed-prompt";
 
 interface UntrackedCardProps {
   file: FsFile;
-  /**
-   * Fallback for untracked sections that do not have a direct managed-edit path.
-   */
-  onTrack: (seed: string) => void;
   onTrackHomebrewItems?: (items: CandidateItem[]) => Promise<void> | void;
   onTrackSystemDefaults?: (items: CandidateItem[]) => Promise<void> | void;
+  onTrackLaunchdItems?: (items: CandidateItem[]) => Promise<void> | void;
 }
 
 const CARD_TONE_CLASSES: Record<
@@ -63,9 +60,9 @@ const CARD_TONE_CLASSES: Record<
 
 export function UntrackedCard({
   file,
-  onTrack,
   onTrackHomebrewItems,
   onTrackSystemDefaults,
+  onTrackLaunchdItems,
 }: UntrackedCardProps) {
   const items = useMemo<CandidateItem[]>(() => file.items ?? [], [file.items]);
   const contentId = useId();
@@ -76,13 +73,13 @@ export function UntrackedCard({
   const tone = CARD_TONE_CLASSES[file.tone];
   const Icon = resolveIcon(file.iconName);
   const hasItems = items.length > 0;
-  // Managed-edit routes are section-scoped. Anything without a direct handler
-  // still falls back to prompt seeding.
   const canTrackHomebrew = isHomebrewCandidateFile(file) && !!onTrackHomebrewItems;
   const canTrackSystemDefaults =
     isSystemDefaultsCandidateFile(file) && !!onTrackSystemDefaults;
+  const canTrackLaunchd = isLaunchdCandidateFile(file) && !!onTrackLaunchdItems;
+  const canTrack = canTrackHomebrew || canTrackSystemDefaults || canTrackLaunchd;
 
-  const trackItems = async (selectedItems: CandidateItem[], key: string, seed: string) => {
+  const trackItems = async (selectedItems: CandidateItem[], key: string) => {
     setTrackingKey(key);
     setTrackError(null);
     try {
@@ -90,9 +87,10 @@ export function UntrackedCard({
         await onTrackHomebrewItems(selectedItems);
       } else if (canTrackSystemDefaults && onTrackSystemDefaults) {
         await onTrackSystemDefaults(selectedItems);
+      } else if (canTrackLaunchd && onTrackLaunchdItems) {
+        await onTrackLaunchdItems(selectedItems);
       } else {
-        // Fall back to generic prompt seeding for files that don't have a direct managed-edit path.
-        onTrack(seed);
+        throw new Error(`No managed edit path is available for ${file.title}.`);
       }
     } catch (error: unknown) {
       setTrackError(String(error));
@@ -156,12 +154,12 @@ export function UntrackedCard({
               <Button
                 size="sm"
                 className="h-7 gap-1.5 bg-teal-500 text-[11px] text-background hover:bg-teal-400"
-                disabled={trackingKey !== null || !hasItems}
-                onClick={() => trackItems(items, "all", seedForUntrackedSection(file))}
+                disabled={trackingKey !== null || !hasItems || !canTrack}
+                onClick={() => trackItems(items, "all")}
                 data-testid={`track-all-${file.id}`}
               >
-                <MessageSquarePlus className="h-3 w-3" />{" "}
-                {trackingKey === "all" ? "Tracking..." : `Track these ${items.length}`}
+                <CirclePlus className="h-3 w-3" />{" "}
+                {trackingKey === "all" ? "Tracking..." : (items.length === 1 ? "Track this one" : `Track these ${items.length}`)}
               </Button>
               <Button
                 size="sm"
@@ -203,8 +201,8 @@ export function UntrackedCard({
                     size="sm"
                     variant="ghost"
                     className="h-6 px-2 text-[10.5px] text-teal-300 hover:bg-teal-500/10 hover:text-teal-200"
-                    disabled={trackingKey !== null}
-                    onClick={() => trackItems([it], it.name, seedForUntrackedItem(file, it))}
+                    disabled={trackingKey !== null || !canTrack}
+                    onClick={() => trackItems([it], it.name)}
                     data-testid={`track-item-${file.id}-${it.name}`}
                   >
                     {trackingKey === it.name ? "Tracking..." : "Track"}

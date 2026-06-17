@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { untrackedCandidateItemCount, type FsFile } from "./data";
 
 interface UntrackedBannerProps {
-  /** All untracked candidate sections — used both for the count and for the seed. */
+  /** All untracked candidate sections, used to summarize pending managed edits. */
   candidates: FsFile[];
   /** Called when the user wants to browse the Untracked surface in detail. */
   onView: () => void;

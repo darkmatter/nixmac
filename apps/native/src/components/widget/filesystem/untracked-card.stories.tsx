@@ -45,33 +45,39 @@ const launchd = launchdItemsFileFromScan([
     label: "homebrew.mxcl.redis",
     scope: "LaunchdUserAgent",
     name: "redis",
-    program_arguments: ["/opt/homebrew/opt/redis/bin/redis-server", "/opt/homebrew/etc/redis.conf"],
-    run_at_load: true,
-    keep_alive: true,
-    environment_variables: {},
-    standard_out_path: "/opt/homebrew/var/log/redis.log",
-    standard_error_path: "/opt/homebrew/var/log/redis.log",
-    working_directory: "/opt/homebrew/var",
+    programArguments: ["/opt/homebrew/opt/redis/bin/redis-server", "/opt/homebrew/etc/redis.conf"],
+    runAtLoad: true,
+    keepAlive: true,
+    environmentVariables: {},
+    standardOutPath: "/opt/homebrew/var/log/redis.log",
+    standardErrorPath: "/opt/homebrew/var/log/redis.log",
+    workingDirectory: "/opt/homebrew/var",
   },
   {
     label: "homebrew.mxcl.postgresql@14",
     scope: "LaunchDaemon",
     name: "postgresql@14",
-    program_arguments: ["/opt/homebrew/opt/postgresql@14/bin/postgres", "-D", "/opt/homebrew/var/postgresql@14"],
-    run_at_load: true,
-    keep_alive: true,
-    environment_variables: {},
-    standard_out_path: "/opt/homebrew/var/log/postgresql@14.log",
-    standard_error_path: "/opt/homebrew/var/log/postgresql@14.log",
-    working_directory: "/opt/homebrew",
+    programArguments: ["/opt/homebrew/opt/postgresql@14/bin/postgres", "-D", "/opt/homebrew/var/postgresql@14"],
+    runAtLoad: true,
+    keepAlive: true,
+    environmentVariables: {},
+    standardOutPath: "/opt/homebrew/var/log/postgresql@14.log",
+    standardErrorPath: "/opt/homebrew/var/log/postgresql@14.log",
+    workingDirectory: "/opt/homebrew",
   },
 ]);
+
+const trackingHandler =
+  (push) =>
+  (items): void => {
+    push(`Tracked ${items.map((item) => item.name).join(", ")}`);
+  };
 
 export const HomebrewCasks = meta.story({
   render: () => (
     <div className="w-[640px]">
-      <SeedDisplay title="Tracking seed">
-        {(push) => <UntrackedCard file={casks} onTrack={push} />}
+      <SeedDisplay title="Tracking action">
+        {(push) => <UntrackedCard file={casks} onTrackHomebrewItems={trackingHandler(push)} />}
       </SeedDisplay>
     </div>
   ),
@@ -80,8 +86,8 @@ export const HomebrewCasks = meta.story({
 export const HomebrewTaps = meta.story({
   render: () => (
     <div className="w-[640px]">
-      <SeedDisplay title="Tracking seed">
-        {(push) => <UntrackedCard file={taps} onTrack={push} />}
+      <SeedDisplay title="Tracking action">
+        {(push) => <UntrackedCard file={taps} onTrackHomebrewItems={trackingHandler(push)} />}
       </SeedDisplay>
     </div>
   ),
@@ -90,8 +96,8 @@ export const HomebrewTaps = meta.story({
 export const HomebrewBrews = meta.story({
   render: () => (
     <div className="w-[640px]">
-      <SeedDisplay title="Tracking seed">
-        {(push) => <UntrackedCard file={brews} onTrack={push} />}
+      <SeedDisplay title="Tracking action">
+        {(push) => <UntrackedCard file={brews} onTrackHomebrewItems={trackingHandler(push)} />}
       </SeedDisplay>
     </div>
   ),
@@ -100,8 +106,8 @@ export const HomebrewBrews = meta.story({
 export const CustomDefaults = meta.story({
   render: () => (
     <div className="w-[640px]">
-      <SeedDisplay title="Tracking seed">
-        {(push) => <UntrackedCard file={defaults} onTrack={push} />}
+      <SeedDisplay title="Tracking action">
+        {(push) => <UntrackedCard file={defaults} onTrackSystemDefaults={trackingHandler(push)} />}
       </SeedDisplay>
     </div>
   ),
@@ -110,8 +116,8 @@ export const CustomDefaults = meta.story({
 export const LoginItems = meta.story({
   render: () => (
     <div className="w-[640px]">
-      <SeedDisplay title="Tracking seed">
-        {(push) => <UntrackedCard file={launchd} onTrack={push} />}
+      <SeedDisplay title="Tracking action">
+        {(push) => <UntrackedCard file={launchd} onTrackLaunchdItems={trackingHandler(push)} />}
       </SeedDisplay>
     </div>
   ),

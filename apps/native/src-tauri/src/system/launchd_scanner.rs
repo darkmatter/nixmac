@@ -6,12 +6,16 @@
 //! to include LaunchAgents, LaunchDaemons, and Login Items.
 //!
 
-use crate::shared_types::{LaunchdItem, LaunchdItemType};
+use crate::evolve::nix_file_editor::apply_semantic_edit;
+use crate::evolve::types::{FileEditAction, SemanticFileEdit};
+use crate::managed_edits::managed_edit;
+use crate::shared_types::{self, LaunchdItem, LaunchdItemType};
 use crate::system::nix::get_nix_path;
 use crate::{system::nix::get_nix_launchd_items, utils::normalize_path_input};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use tauri::AppHandle;
 
 /// Represents the tabular output of `brew services list`.
 /// Note that the JSON output doesn't have the same info, namely the *actual*
@@ -232,6 +236,176 @@ pub fn scan_launchd_items_for_hostname(
     Ok(launchd_items)
 }
 
+/// Maps the `LaunchdItemType` enum to the corresponding nix-darwin option path.
+fn launchd_scope_option_path(scope: &LaunchdItemType) -> &'static str {
+    match scope {
+        LaunchdItemType::LaunchAgent => "launchd.agents",
+        LaunchdItemType::LaunchDaemon => "launchd.daemons",
+        LaunchdItemType::LaunchdUserAgent => "launchd.user.agents",
+    }
+}
+
+fn launchd_item_to_nix_value(item: &LaunchdItem) -> serde_json::Value {
+    let mut service_config = serde_json::Map::new();
+    service_config.insert(
+        "Label".to_string(),
+        serde_json::Value::String(item.label.clone()),
+    );
+    service_config.insert(
+        "ProgramArguments".to_string(),
+        serde_json::Value::Array(
+            item.program_arguments
+                .iter()
+                .cloned()
+                .map(serde_json::Value::String)
+                .collect(),
+        ),
+    );
+    service_config.insert(
+        "RunAtLoad".to_string(),
+        serde_json::Value::Bool(item.run_at_load),
+    );
+    service_config.insert(
+        "KeepAlive".to_string(),
+        serde_json::Value::Bool(item.keep_alive),
+    );
+
+    if !item.environment_variables.is_empty() {
+        service_config.insert(
+            "EnvironmentVariables".to_string(),
+            serde_json::Value::Object(
+                item.environment_variables
+                    .iter()
+                    .map(|(key, value)| (key.clone(), serde_json::Value::String(value.clone())))
+                    .collect(),
+            ),
+        );
+    }
+
+    if let Some(path) = &item.standard_out_path {
+        service_config.insert(
+            "StandardOutPath".to_string(),
+            serde_json::Value::String(path.clone()),
+        );
+    }
+
+    if let Some(path) = &item.standard_error_path {
+        service_config.insert(
+            "StandardErrorPath".to_string(),
+            serde_json::Value::String(path.clone()),
+        );
+    }
+
+    if let Some(directory) = &item.working_directory {
+        service_config.insert(
+            "WorkingDirectory".to_string(),
+            serde_json::Value::String(directory.clone()),
+        );
+    }
+
+    let mut service = serde_json::Map::new();
+    service.insert(
+        "serviceConfig".to_string(),
+        serde_json::Value::Object(service_config),
+    );
+    serde_json::Value::Object(service)
+}
+
+fn launchd_items_by_scope(
+    items: &[LaunchdItem],
+) -> BTreeMap<&'static str, serde_json::Map<String, serde_json::Value>> {
+    let mut grouped: BTreeMap<&'static str, serde_json::Map<String, serde_json::Value>> =
+        BTreeMap::new();
+
+    for item in items {
+        grouped
+            .entry(launchd_scope_option_path(&item.scope))
+            .or_default()
+            .insert(item.name.clone(), launchd_item_to_nix_value(item));
+    }
+
+    grouped
+}
+
+fn ensure_services_module_exists(config_dir: &str) -> Result<()> {
+    let modules_dir = std::path::Path::new(config_dir)
+        .join("modules")
+        .join("darwin");
+    std::fs::create_dir_all(&modules_dir).context("Failed to create modules dir")?;
+
+    let services_path = modules_dir.join("services.nix");
+    if services_path.exists() {
+        return Ok(());
+    }
+
+    std::fs::write(&services_path, "{ ... }:\n\n{\n}\n")
+        .context("Failed to create services.nix")?;
+    Ok(())
+}
+
+pub async fn apply_launchd_items_to_flake(
+    app: &AppHandle,
+    items: Vec<LaunchdItem>,
+) -> Result<shared_types::ConfigEditApplyResult> {
+    let context: managed_edit::ManagedEditContext = managed_edit::prepare_managed_edit(app)?;
+    let dir: String = context.dir.clone();
+
+    log::debug!(
+        "[apply_launchd_items_to_flake] Applying {} items with semantic edits",
+        items.len()
+    );
+
+    ensure_services_module_exists(&dir)?;
+
+    // Inject import into the file that contains the nix-darwin modules list before editing
+    // the module so a new services.nix is immediately part of the managed diff.
+    let target_path = managed_edit::inject_darwin_module_import(
+        &dir,
+        "services.nix",
+        "apply_launchd_items_to_flake",
+    )?;
+    log::debug!(
+        "[apply_launchd_items_to_flake] Injected module import into {:?}",
+        target_path
+    );
+
+    for (path, attrs) in launchd_items_by_scope(&items) {
+        if attrs.is_empty() {
+            continue;
+        }
+
+        apply_semantic_edit(
+            std::path::Path::new(&dir),
+            &SemanticFileEdit {
+                path: "modules/darwin/services.nix".to_string(),
+                action: FileEditAction::SetAttrs {
+                    path: path.to_string(),
+                    attrs,
+                },
+            },
+            None,
+        )
+        .with_context(|| format!("Failed to apply launchd items at {}", path))?;
+    }
+
+    let working_tree_status =
+        crate::git::status(&dir).context("Failed to get working tree status for evolve state")?;
+
+    log::debug!(
+        "[apply_launchd_items_to_flake] Complete — {} items applied",
+        items.len()
+    );
+
+    managed_edit::finalize_managed_edit(
+        app,
+        context,
+        working_tree_status,
+        items.len(),
+        "apply_launchd_items_to_flake",
+    )
+    .await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -256,5 +430,227 @@ mod tests {
                 eprintln!("Error scanning launchd items: {}", err);
             }
         }
+    }
+
+    #[test]
+    fn test_launchd_item_to_nix_value_uses_service_config() {
+        let item = LaunchdItem {
+            label: "homebrew.mxcl.redis".to_string(),
+            scope: LaunchdItemType::LaunchdUserAgent,
+            name: "redis".to_string(),
+            program_arguments: vec!["/opt/homebrew/opt/redis/bin/redis-server".to_string()],
+            run_at_load: true,
+            keep_alive: true,
+            environment_variables: [("REDIS_ENV".to_string(), "test".to_string())]
+                .iter()
+                .cloned()
+                .collect(),
+            standard_out_path: Some("/tmp/redis.out".to_string()),
+            standard_error_path: None,
+            working_directory: None,
+        };
+
+        let value = launchd_item_to_nix_value(&item);
+        let service_config = value
+            .as_object()
+            .and_then(|service| service.get("serviceConfig"))
+            .and_then(serde_json::Value::as_object)
+            .expect("serviceConfig attrset");
+
+        assert_eq!(
+            service_config.get("Label"),
+            Some(&serde_json::Value::String(
+                "homebrew.mxcl.redis".to_string()
+            ))
+        );
+        assert_eq!(
+            service_config.get("ProgramArguments"),
+            Some(&serde_json::json!([
+                "/opt/homebrew/opt/redis/bin/redis-server"
+            ]))
+        );
+        assert_eq!(
+            service_config.get("RunAtLoad"),
+            Some(&serde_json::Value::Bool(true))
+        );
+        assert_eq!(
+            service_config.get("KeepAlive"),
+            Some(&serde_json::Value::Bool(true))
+        );
+        assert_eq!(
+            service_config.get("EnvironmentVariables"),
+            Some(&serde_json::json!({ "REDIS_ENV": "test" }))
+        );
+        assert_eq!(
+            service_config.get("StandardOutPath"),
+            Some(&serde_json::Value::String("/tmp/redis.out".to_string()))
+        );
+        assert!(!service_config.contains_key("StandardErrorPath"));
+        assert!(!service_config.contains_key("WorkingDirectory"));
+    }
+
+    #[test]
+    fn test_launchd_items_by_scope_groups_for_nix_darwin_options() {
+        let items = vec![
+            LaunchdItem {
+                label: "com.example.user".to_string(),
+                scope: LaunchdItemType::LaunchdUserAgent,
+                name: "example-user".to_string(),
+                program_arguments: vec!["/bin/echo".to_string(), "user".to_string()],
+                run_at_load: true,
+                keep_alive: false,
+                environment_variables: BTreeMap::new(),
+                standard_out_path: None,
+                standard_error_path: None,
+                working_directory: None,
+            },
+            LaunchdItem {
+                label: "com.example.daemon".to_string(),
+                scope: LaunchdItemType::LaunchDaemon,
+                name: "example-daemon".to_string(),
+                program_arguments: vec!["/bin/echo".to_string(), "daemon".to_string()],
+                run_at_load: false,
+                keep_alive: true,
+                environment_variables: BTreeMap::new(),
+                standard_out_path: None,
+                standard_error_path: None,
+                working_directory: None,
+            },
+        ];
+
+        let grouped = launchd_items_by_scope(&items);
+
+        assert!(grouped["launchd.user.agents"].contains_key("example-user"));
+        assert!(grouped["launchd.daemons"].contains_key("example-daemon"));
+        assert!(!grouped.contains_key("launchd.agents"));
+    }
+
+    #[test]
+    fn test_launchd_semantic_edit_preserves_existing_services_module() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let module_dir = temp.path().join("modules/darwin");
+        std::fs::create_dir_all(&module_dir).expect("module dir");
+        std::fs::write(
+            module_dir.join("services.nix"),
+            r#"{ ... }:
+
+{
+  services = {
+    tailscale.enable = true;
+  };
+}
+"#,
+        )
+        .expect("write fixture");
+
+        let item = LaunchdItem {
+            label: "homebrew.mxcl.redis".to_string(),
+            scope: LaunchdItemType::LaunchdUserAgent,
+            name: "redis".to_string(),
+            program_arguments: vec!["/opt/homebrew/opt/redis/bin/redis-server".to_string()],
+            run_at_load: true,
+            keep_alive: false,
+            environment_variables: BTreeMap::new(),
+            standard_out_path: None,
+            standard_error_path: None,
+            working_directory: None,
+        };
+
+        for (path, attrs) in launchd_items_by_scope(&[item]) {
+            apply_semantic_edit(
+                temp.path(),
+                &SemanticFileEdit {
+                    path: "modules/darwin/services.nix".to_string(),
+                    action: FileEditAction::SetAttrs {
+                        path: path.to_string(),
+                        attrs,
+                    },
+                },
+                None,
+            )
+            .expect("semantic edit");
+        }
+
+        let updated = std::fs::read_to_string(module_dir.join("services.nix"))
+            .expect("read updated services module");
+
+        assert!(updated.contains("tailscale.enable = true;"));
+        assert!(updated.contains("launchd.user.agents = {"));
+        assert!(updated.contains("redis = { serviceConfig = {"));
+        assert!(updated.contains("Label = \"homebrew.mxcl.redis\";"));
+        assert!(
+            updated
+                .contains("ProgramArguments = [ \"/opt/homebrew/opt/redis/bin/redis-server\" ];")
+        );
+        assert!(updated.contains("RunAtLoad = true;"));
+        assert!(updated.contains("KeepAlive = false;"));
+    }
+
+    #[test]
+    fn test_launchd_semantic_edit_adds_to_existing_item() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let module_dir = temp.path().join("modules/darwin");
+        std::fs::create_dir_all(&module_dir).expect("module dir");
+        std::fs::write(
+            module_dir.join("services.nix"),
+            r#"{ ... }:
+
+{
+  launchd.user.agents = {
+    existing-agent = {
+      serviceConfig = {
+        Label = "com.example.existing";
+        ProgramArguments = [ "/bin/echo" "existing" ];
+        RunAtLoad = true;
+      };
+    };
+  };
+}
+"#,
+        )
+        .expect("write fixture");
+
+        let item = LaunchdItem {
+            label: "homebrew.mxcl.redis".to_string(),
+            scope: LaunchdItemType::LaunchdUserAgent,
+            name: "redis".to_string(),
+            program_arguments: vec!["/opt/homebrew/opt/redis/bin/redis-server".to_string()],
+            run_at_load: true,
+            keep_alive: false,
+            environment_variables: BTreeMap::new(),
+            standard_out_path: None,
+            standard_error_path: None,
+            working_directory: None,
+        };
+
+        for (path, attrs) in launchd_items_by_scope(&[item]) {
+            apply_semantic_edit(
+                temp.path(),
+                &SemanticFileEdit {
+                    path: "modules/darwin/services.nix".to_string(),
+                    action: FileEditAction::SetAttrs {
+                        path: path.to_string(),
+                        attrs,
+                    },
+                },
+                None,
+            )
+            .expect("semantic edit");
+        }
+
+        let updated = std::fs::read_to_string(module_dir.join("services.nix"))
+            .expect("read updated services module");
+
+        assert_eq!(updated.matches("launchd.user.agents = {").count(), 1);
+        assert!(updated.contains("existing-agent = {"));
+        assert!(updated.contains("Label = \"com.example.existing\";"));
+        assert!(updated.contains("redis = { serviceConfig = {"));
+        assert!(updated.contains("Label = \"homebrew.mxcl.redis\";"));
+        assert!(
+            updated
+                .contains("ProgramArguments = [ \"/opt/homebrew/opt/redis/bin/redis-server\" ];")
+        );
+        assert!(updated.contains("RunAtLoad = true;"));
+        assert!(updated.contains("KeepAlive = false;"));
     }
 }
