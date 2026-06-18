@@ -35,6 +35,7 @@ use std::sync::OnceLock;
 use tauri::{AppHandle, Emitter};
 
 use crate::shared_types::LaunchdItemType;
+use crate::utils::normalize_path_input;
 
 const NIX_PATHS_FALLBACK: &[&str] = &[
     "/run/current-system/sw/bin",
@@ -61,6 +62,75 @@ struct NixLaunchdEvalItem {
 }
 
 static NIX_PATH_CACHE: OnceLock<String> = OnceLock::new();
+
+/// Gets a command with our typical setup to execute `nix`.
+fn nix_command(config_dir: &str) -> Command {
+    let mut cmd = Command::new("nix");
+    let normalized_config_dir =
+        normalize_path_input(config_dir).unwrap_or_else(|_| config_dir.into());
+    cmd.env("PATH", get_nix_path())
+        .env("NIX_CONFIG", "experimental-features = nix-command flakes")
+        .current_dir(normalized_config_dir);
+    cmd
+}
+
+fn nix_eval_value_to_string(value: serde_json::Value) -> String {
+    match value {
+        serde_json::Value::String(value) => value,
+        serde_json::Value::Bool(value) => value.to_string(),
+        serde_json::Value::Number(value) => value.to_string(),
+        value => value.to_string(),
+    }
+}
+
+/// Gets the current system.defaults values for a given host by running `nix eval`.
+/// NOTE that this only returns key entries for non-null values since `nix eval` always
+/// lists all available keys regardless of whether they are "set" in a flake or not.
+#[allow(dead_code)]
+pub fn get_nix_system_defaults_for_domain(
+    hostname: &str,
+    config_dir: &str,
+    domain: &str,
+) -> Result<BTreeMap<String, String>> {
+    // nix eval ~{config_dir}/#darwinConfigurations.<hostname>.config.system.defaults --json
+    let host_attr = serde_json::to_string(hostname)?;
+    let flake_attr = format!(
+        ".#darwinConfigurations.{}.config.system.defaults.{}",
+        host_attr, domain
+    );
+
+    let output = nix_command(config_dir)
+        .args(["eval", "--json", &flake_attr])
+        .output()
+        .with_context(|| {
+            format!(
+                "Failed to run nix eval for system.defaults using domain {} and attr {}",
+                domain, flake_attr
+            )
+        })?;
+
+    // Read the JSON into the result map, omitting keys with null values.
+    if !output.status.success() {
+        anyhow::bail!(
+            "Failed to evaluate system.defaults for host {}: {}",
+            hostname,
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    let stdout = String::from_utf8(output.stdout)
+        .with_context(|| format!("nix eval for system.defaults returned invalid UTF-8"))?;
+    let evaluated_items: BTreeMap<String, Option<serde_json::Value>> =
+        serde_json::from_str(&stdout)
+            .with_context(|| format!("Failed to parse nix eval JSON for system.defaults"))?;
+
+    let non_null_items = evaluated_items
+        .into_iter()
+        .filter_map(|(k, v)| v.map(|val| (k, nix_eval_value_to_string(val))))
+        .collect::<BTreeMap<String, String>>();
+
+    Ok(non_null_items)
+}
 
 /// Gets short info on all the nix-managed launchd items using `nix eval --json`.
 pub fn get_nix_launchd_items(hostname: &str, config_dir: &str) -> Result<Vec<NixLaunchdItem>> {
@@ -106,7 +176,7 @@ fn eval_nix_launchd_items(
         host_attr, option_path
     );
 
-    let output = Command::new("nix")
+    let output = nix_command(config_dir)
         .args([
             "eval",
             "--json",
@@ -122,8 +192,6 @@ fn eval_nix_launchd_items(
                   else [];
               })"#,
         ])
-        .current_dir(config_dir)
-        .env("PATH", get_nix_path())
         .output()
         .with_context(|| format!("Failed to run nix eval for {}", option_path))?;
 
@@ -203,7 +271,7 @@ pub fn determine_host_attr<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Opti
 }
 
 pub fn list_darwin_hosts(config_dir: &str) -> Result<Vec<String>> {
-    let output = Command::new("nix")
+    let output = nix_command(config_dir)
         .args([
             "eval",
             "--json",
@@ -211,9 +279,6 @@ pub fn list_darwin_hosts(config_dir: &str) -> Result<Vec<String>> {
             "--apply",
             "builtins.attrNames",
         ])
-        .current_dir(config_dir)
-        .env("PATH", get_nix_path())
-        .env("NIX_CONFIG", "experimental-features = nix-command flakes")
         .output()?;
 
     if !output.status.success() {
@@ -278,10 +343,8 @@ pub fn prefetch_darwin_rebuild_stream(app: &AppHandle) -> Result<()> {
     // All emit calls below are fire-and-forget: background thread; window may not be
     // listening. Tauri emit returns Err only when no listeners are registered.
     std::thread::spawn(move || {
-        let result = Command::new("nix")
+        let result = nix_command(".")
             .args(["build", "--no-link", "nix-darwin/master#darwin-rebuild"])
-            .env("PATH", get_nix_path_with_login_shell())
-            .env("NIX_CONFIG", "experimental-features = nix-command flakes")
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output();
@@ -643,5 +706,21 @@ mod tests {
                 eprintln!("Error evaluating nix launchd items: {}", err);
             }
         }
+    }
+
+    #[test]
+    #[ignore = "Runs against the local system; enable explicitly when debugging the nix system defaults."]
+    #[cfg(target_os = "macos")]
+    fn test_get_nix_system_defaults_for_domain() -> Result<()> {
+        use crate::commands::config::get_this_hostname_cmd;
+
+        let this_host_name = get_this_hostname_cmd().expect("Failed to get hostname for test");
+        const CONFIG_DIR: &str = "~/.darwin";
+        let domain = "finder";
+
+        let defaults = get_nix_system_defaults_for_domain(&this_host_name, CONFIG_DIR, domain)?;
+        println!("System defaults for domain {}: {:#?}", domain, defaults);
+
+        Ok(())
     }
 }

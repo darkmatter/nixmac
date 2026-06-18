@@ -6,6 +6,7 @@
 //! files from the detected customizations.
 
 pub(crate) use crate::shared_types::{RecommendedPrompt, SystemDefault, SystemDefaultsScan};
+use crate::system::nix;
 use std::collections::BTreeMap;
 use std::process::Command;
 
@@ -1455,6 +1456,30 @@ fn e2e_system_defaults_scan() -> Option<SystemDefaultsScan> {
 // Domain reading
 // =============================================================================
 
+/// Gets the nix "system.defaults" group from one of our domain definitions.
+/// This is the first dotted-path-part of the nix_key following "system.defaults".
+/// For example, for the domain "com.apple.finder" the nix key is "system.defaults.finder.*",
+/// so the nix group is "finder".
+fn nix_group_name_for_domain(domain: &str) -> &str {
+    // 1. Get the keydef for this domain.
+    // 2. Get the nix_key for the first keydef in this domain.
+    // 3. Split the nix_key by '.' and return the 2th part (after "system.defaults").
+    for (d, defs) in KEY_DEFS {
+        match *d == domain {
+            true => {
+                if let Some(def) = defs.first() {
+                    let parts: Vec<&str> = def.nix_key.split('.').collect();
+                    if parts.len() > 2 {
+                        return parts[2];
+                    }
+                }
+            }
+            false => (),
+        }
+    }
+    domain
+}
+
 /// Read all keys from a macOS defaults domain using `defaults export`.
 /// Returns a map of key → string value.
 fn read_domain(domain: &str) -> BTreeMap<String, String> {
@@ -1545,10 +1570,10 @@ fn normalize_bool(val: &str) -> &'static str {
 // =============================================================================
 
 /// Scan all supported macOS defaults domains and return settings that differ
-/// from the factory defaults.
+/// from the factory defaults AND are not managed by nix-darwin.
 /// If you want to make sure none of the KeyDefs are stale by running their
 /// results through a nix build you can play with the value of GENERATE_EVERYTHING.
-pub fn scan_system_defaults() -> SystemDefaultsScan {
+pub fn scan_system_defaults(hostname: &str, config_dir: &str) -> SystemDefaultsScan {
     if let Some(scan) = e2e_system_defaults_scan() {
         return scan;
     }
@@ -1561,7 +1586,21 @@ pub fn scan_system_defaults() -> SystemDefaultsScan {
     for (domain, key_defs) in KEY_DEFS {
         let domain_values = read_domain(domain);
 
+        // Get the current values managed by nix.
+        let nix_group_name = nix_group_name_for_domain(domain);
+        let current_nix_managed_values =
+            nix::get_nix_system_defaults_for_domain(hostname, config_dir, nix_group_name);
+
         for def in *key_defs {
+            // Check if this key is currently managed by nix. If it is, we skip it because we don't want to report it as a non-default.
+            // Currently we won't compare the value against the factory default because if it's managed by nix it might be intentionally set to a default
+            // or non-default value.
+            if let Ok(ref nix_values) = current_nix_managed_values {
+                if nix_values.contains_key(def.defaults_key) {
+                    continue;
+                }
+            }
+
             total_scanned += 1;
 
             let current = match domain_values.get(def.defaults_key) {
@@ -1907,9 +1946,14 @@ mod tests {
     #[ignore = "Runs against the local system; enable explicitly when debugging the defaults scanner."]
     #[cfg(target_os = "macos")]
     fn test_scan_system_defaults() {
-        let scan = scan_system_defaults();
+        use crate::commands::config::get_this_hostname_cmd;
+
+        let this_host_name = get_this_hostname_cmd().expect("Failed to get hostname for test");
+        const CONFIG_DIR: &str = "~/.darwin";
+
+        let scan = scan_system_defaults(&this_host_name, CONFIG_DIR);
         println!(
-            "Scanned {} settings, found {} non-defaults:",
+            "Scanned {} settings, found {} unmanaged non-defaults:",
             scan.total_scanned,
             scan.defaults.len()
         );
@@ -2308,5 +2352,19 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn test_get_nix_group_name_for_domain() {
+        assert_eq!(nix_group_name_for_domain("com.apple.dock"), "dock");
+        assert_eq!(nix_group_name_for_domain("com.apple.finder"), "finder");
+        assert_eq!(
+            nix_group_name_for_domain("NSGlobalDomain"),
+            "NSGlobalDomain"
+        );
+        assert_eq!(
+            nix_group_name_for_domain("unknown.domain"),
+            "unknown.domain"
+        );
     }
 }

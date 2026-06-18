@@ -1,4 +1,4 @@
-use super::helpers::capture_err;
+use super::helpers::{capture_err, get_hostname_and_config_dir};
 use crate::shared_types;
 use crate::storage::store;
 use crate::system::scanner;
@@ -29,7 +29,9 @@ pub async fn scan_system_defaults(
             });
         }
     }
-    Ok(scanner::scan_system_defaults())
+
+    let (hostname, config_dir) = get_hostname_and_config_dir(&app, "scan_system_defaults")?;
+    Ok(scanner::scan_system_defaults(&hostname, &config_dir))
 }
 
 /// Writes detected system defaults to a .nix module file, injects the import

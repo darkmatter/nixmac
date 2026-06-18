@@ -1,6 +1,6 @@
 use crate::state::{evolve_state, watcher};
 use crate::storage::store;
-use crate::system::nix;
+use crate::system::nix::{self, determine_host_attr};
 use crate::{git, shared_types};
 use tauri::AppHandle;
 
@@ -40,4 +40,21 @@ pub(super) fn handle_new_config_dir(
         .map_err(|e| e.to_string())?;
     let hosts = nix::list_darwin_hosts(dir).ok();
     Ok((evolve_state, hosts))
+}
+
+// Helper function to extract the hostname and config_dir from the app handle, returning an error if either is missing.
+pub(super) fn get_hostname_and_config_dir(
+    app: &AppHandle,
+    cmd: &str,
+) -> Result<(String, String), String> {
+    let hostname = determine_host_attr(app).unwrap_or_default();
+    let config_dir: String =
+        store::ensure_config_dir_exists(app).map_err(|e| capture_err(cmd, e))?;
+
+    if hostname.is_empty() {
+        log::warn!("No hostname configured, skipping launchd scan");
+        return Err("No hostname configured".to_string());
+    }
+
+    Ok((hostname, config_dir))
 }
