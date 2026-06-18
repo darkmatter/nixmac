@@ -89,6 +89,25 @@ pub fn ensure_system_defaults_module(
             system_defaults_module_template(add_primary_user),
         )
         .with_context(|| format!("failed to write '{}'", module_path.display()))?;
+    } else if add_primary_user {
+        // If the module already exists but the overall config has no system.primaryUser,
+        // ensure this module defines it (required for system.defaults.* options).
+        let module = std::fs::read_to_string(&module_path)
+            .with_context(|| format!("failed to read '{}'", module_path.display()))?;
+        if !module.contains("system.primaryUser") {
+            let username = std::env::var("USER").unwrap_or_else(|_| "unknown".to_string());
+            apply_semantic_edit(
+                std::path::Path::new(config_dir),
+                &SemanticFileEdit {
+                    path: system_defaults_module_path(),
+                    action: FileEditAction::Set {
+                        path: "system.primaryUser".to_string(),
+                        value: Value::String(username),
+                    },
+                },
+                None,
+            )?;
+        }
     }
 
     managed_edit::inject_darwin_module_import(
@@ -231,6 +250,38 @@ mod tests {
 
         assert!(!module.contains("system.primaryUser"));
         assert!(!module.contains("system.defaults.dock"));
+        assert!(flake.contains("./modules/darwin/system-defaults.nix"));
+    }
+
+    #[test]
+    fn test_ensure_system_defaults_module_adds_primary_user_when_not_creating_new_module() {
+        let temp = tempfile::tempdir().expect("tempdir should be created");
+        write_file(
+            &temp.path().join("flake.nix"),
+            "darwinConfigurations.test = nix-darwin.lib.darwinSystem { modules=[\n  ./configuration.nix\n]; };",
+        );
+        write_file(
+            &temp.path().join(system_defaults_module_path()),
+            r#"{ config, ... }:
+{
+  # Existing module content.
+  system.defaults.dock = {
+    autohide = true;
+  };
+}
+"#,
+        );
+
+        let config_dir = temp.path().to_string_lossy();
+        let module_path =
+            ensure_system_defaults_module(&config_dir, true).expect("module should be ensured");
+        let module = std::fs::read_to_string(&module_path).expect("module should be readable");
+        let flake = std::fs::read_to_string(temp.path().join("flake.nix"))
+            .expect("flake should be readable");
+
+        assert!(module.contains("system.primaryUser = \""));
+        assert!(module.contains("system.defaults.dock = {"));
+        assert!(module.contains("autohide = true;"));
         assert!(flake.contains("./modules/darwin/system-defaults.nix"));
     }
 

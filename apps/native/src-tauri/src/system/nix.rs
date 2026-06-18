@@ -98,7 +98,7 @@ pub fn get_system_primary_user(hostname: &str, config_dir: &str) -> Option<Strin
         .ok()?;
 
     if !output.status.success() {
-        error!(
+        log::debug!(
             "Failed to evaluate system.primaryUser for host {}: {}",
             hostname,
             String::from_utf8_lossy(&output.stderr)
