@@ -31,7 +31,14 @@ pub async fn scan_system_defaults(
     }
 
     let (hostname, config_dir) = get_hostname_and_config_dir(&app, "scan_system_defaults")?;
-    Ok(scanner::scan_system_defaults(&hostname, &config_dir))
+
+    let scan = tauri::async_runtime::spawn_blocking(move || {
+        scanner::scan_system_defaults(&hostname, &config_dir)
+    })
+    .await
+    .map_err(|e| capture_err("scan_system_defaults", e.to_string()))?;
+
+    Ok(scan)
 }
 
 /// Writes detected system defaults to a .nix module file, injects the import

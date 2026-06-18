@@ -1456,30 +1456,6 @@ fn e2e_system_defaults_scan() -> Option<SystemDefaultsScan> {
 // Domain reading
 // =============================================================================
 
-/// Gets the nix "system.defaults" group from one of our domain definitions.
-/// This is the first dotted-path-part of the nix_key following "system.defaults".
-/// For example, for the domain "com.apple.finder" the nix key is "system.defaults.finder.*",
-/// so the nix group is "finder".
-fn nix_group_name_for_domain(domain: &str) -> &str {
-    // 1. Get the keydef for this domain.
-    // 2. Get the nix_key for the first keydef in this domain.
-    // 3. Split the nix_key by '.' and return the 2th part (after "system.defaults").
-    for (d, defs) in KEY_DEFS {
-        match *d == domain {
-            true => {
-                if let Some(def) = defs.first() {
-                    let parts: Vec<&str> = def.nix_key.split('.').collect();
-                    if parts.len() > 2 {
-                        return parts[2];
-                    }
-                }
-            }
-            false => (),
-        }
-    }
-    domain
-}
-
 /// Read all keys from a macOS defaults domain using `defaults export`.
 /// Returns a map of key → string value.
 fn read_domain(domain: &str) -> BTreeMap<String, String> {
@@ -1586,8 +1562,16 @@ pub fn scan_system_defaults(hostname: &str, config_dir: &str) -> SystemDefaultsS
     for (domain, key_defs) in KEY_DEFS {
         let domain_values = read_domain(domain);
 
+        // Gets the nix "system.defaults" group from one of our domain definitions.
+        // This is the first dotted-path-part of the nix_key following "system.defaults".
+        // For example, for the domain "com.apple.finder" the nix key is "system.defaults.finder.*",
+        // so the nix group is "finder".
+        let nix_group_name = key_defs
+            .first()
+            .and_then(|def| def.nix_key.split('.').nth(2))
+            .unwrap_or(domain);
+
         // Get the current values managed by nix.
-        let nix_group_name = nix_group_name_for_domain(domain);
         let current_nix_managed_values =
             nix::get_nix_system_defaults_for_domain(hostname, config_dir, nix_group_name);
 
@@ -2352,19 +2336,5 @@ mod tests {
                 );
             }
         }
-    }
-
-    #[test]
-    fn test_get_nix_group_name_for_domain() {
-        assert_eq!(nix_group_name_for_domain("com.apple.dock"), "dock");
-        assert_eq!(nix_group_name_for_domain("com.apple.finder"), "finder");
-        assert_eq!(
-            nix_group_name_for_domain("NSGlobalDomain"),
-            "NSGlobalDomain"
-        );
-        assert_eq!(
-            nix_group_name_for_domain("unknown.domain"),
-            "unknown.domain"
-        );
     }
 }

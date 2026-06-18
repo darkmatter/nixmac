@@ -342,9 +342,12 @@ pub fn prefetch_darwin_rebuild_stream(app: &AppHandle) -> Result<()> {
 
     // All emit calls below are fire-and-forget: background thread; window may not be
     // listening. Tauri emit returns Err only when no listeners are registered.
+    // Intentionall doesn't use `nix_command` in order to use get_nix_path_with_login_shell.
     std::thread::spawn(move || {
-        let result = nix_command(".")
+        let result = Command::new("nix")
             .args(["build", "--no-link", "nix-darwin/master#darwin-rebuild"])
+            .env("PATH", get_nix_path_with_login_shell())
+            .env("NIX_CONFIG", "experimental-features = nix-command flakes")
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output();

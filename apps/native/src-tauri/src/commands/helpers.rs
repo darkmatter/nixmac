@@ -52,7 +52,7 @@ pub(super) fn get_hostname_and_config_dir(
         store::ensure_config_dir_exists(app).map_err(|e| capture_err(cmd, e))?;
 
     if hostname.is_empty() {
-        log::warn!("No hostname configured, skipping launchd scan");
+        log::warn!("No hostname configured.");
         return Err("No hostname configured".to_string());
     }
 
