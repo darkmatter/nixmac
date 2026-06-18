@@ -154,3 +154,6 @@ playwright-report/
 test-results/
 .playwright/
 blob-report/
+
+# Beads / Dolt files (added by bd init)
+.beads/proxieddb/
