@@ -1643,107 +1643,43 @@ fn rfind_unquoted_dot(s: &str) -> Option<usize> {
     last_dot
 }
 
-pub fn generate_system_defaults_nix(defaults: &[SystemDefault]) -> String {
-    // Group by nix-darwin attribute path prefix
-    // e.g. "system.defaults.dock.autohide" → group key "system.defaults.dock"
-    // Quoted segments (e.g. "com.apple.sound.beep.feedback") are kept intact.
-    let mut groups: BTreeMap<String, Vec<(&str, &str)>> = BTreeMap::new();
-
-    for d in defaults {
-        if let Some(last_dot) = rfind_unquoted_dot(&d.nix_key) {
-            let group = &d.nix_key[..last_dot];
-            let attr = &d.nix_key[last_dot + 1..];
-            groups
-                .entry(group.to_string())
-                .or_default()
-                .push((attr, &d.current_value));
-        }
-    }
-
-    // Detect the current macOS username for system.primaryUser
-    let username = detect_username();
-
-    let mut out = String::new();
-    out.push_str("{ config, ... }:\n\n{\n");
-    out.push_str("  # macOS system defaults\n");
-    out.push_str(
-        "  # Detected by nixmac system scanner \u{2014} these settings differ from macOS factory defaults.\n",
-    );
-    out.push('\n');
-    out.push_str(&format!(
-        "  # Required by nix-darwin for system.defaults.* options.\n  system.primaryUser = \"{}\";\n",
-        username
-    ));
-
-    for (group, attrs) in &groups {
-        out.push('\n');
-        out.push_str(&format!("  {} = {{\n", group));
-        for (attr, value) in attrs {
-            let nix_val = to_nix_value(value, group, attr);
-            out.push_str(&format!("    {} = {};\n", attr, nix_val));
-        }
-        out.push_str("  };\n");
-    }
-
-    out.push_str("}\n");
-    out
-}
-
-/// Convert a string value to appropriate Nix syntax based on content analysis.
-fn to_nix_value(value: &str, group: &str, attr: &str) -> String {
-    // Find the KeyDef to get the expected type and conversion metadata.
+pub(crate) fn system_default_current_value_to_json(
+    value: &str,
+    group: &str,
+    attr: &str,
+) -> serde_json::Value {
     let key_def = find_key_def(group, attr);
     if key_def.is_some_and(|def| def.factory_default == NULL_FLAG)
         && is_nullish_factory_value(value)
     {
-        return "null".to_string();
+        return serde_json::Value::Null;
     }
 
-    let val_type = key_def.map(|def| def.val_type);
-
-    match val_type {
-        Some(ValType::Bool) => {
-            if normalize_bool(value) == "true" {
-                "true".to_string()
-            } else {
-                "false".to_string()
-            }
-        }
-        Some(ValType::Int) => {
-            // Ensure it's a valid integer
-            if let Ok(n) = value.trim().parse::<i64>() {
-                n.to_string()
-            } else {
-                format!("\"{}\"", escape_nix_string(value))
-            }
-        }
-        Some(ValType::Float) => {
-            if let Ok(f) = value.trim().parse::<f64>() {
-                // Format with enough precision
-                let s = format!("{}", f);
-                // Ensure it has a decimal point for Nix
-                if s.contains('.') {
-                    s
-                } else {
-                    format!("{}.0", s)
-                }
-            } else {
-                format!("\"{}\"", escape_nix_string(value))
-            }
-        }
+    match key_def.map(|def| def.val_type) {
+        Some(ValType::Bool) => serde_json::Value::Bool(normalize_bool(value) == "true"),
+        Some(ValType::Int) => value
+            .trim()
+            .parse::<i64>()
+            .map(serde_json::Value::from)
+            .unwrap_or_else(|_| serde_json::Value::String(value.to_string())),
+        Some(ValType::Float) => value
+            .trim()
+            .parse::<f64>()
+            .ok()
+            .and_then(serde_json::Number::from_f64)
+            .map(serde_json::Value::Number)
+            .unwrap_or_else(|| serde_json::Value::String(value.to_string())),
         Some(ValType::StringFromIntMap) => {
             if let Ok(n) = value.trim().parse::<i32>() {
                 if let Some(map) = key_def.and_then(|def| def.int_to_string_map) {
                     if let Some((_, mapped)) = map.iter().find(|(k, _)| *k == n) {
-                        return format!("\"{}\"", escape_nix_string(mapped));
+                        return serde_json::Value::String((*mapped).to_string());
                     }
                 }
             }
-            format!("\"{}\"", escape_nix_string(value))
+            serde_json::Value::String(value.to_string())
         }
-        Some(ValType::String) | None => {
-            format!("\"{}\"", escape_nix_string(value))
-        }
+        Some(ValType::String) | None => serde_json::Value::String(value.to_string()),
     }
 }
 
@@ -1765,15 +1701,6 @@ fn find_key_def(group: &str, attr: &str) -> Option<&'static KeyDef> {
         }
     }
     None
-}
-
-/// Escape special characters in a Nix string literal.
-fn escape_nix_string(s: &str) -> String {
-    s.replace('\\', "\\\\")
-        .replace('"', "\\\"")
-        .replace('\n', "\\n")
-        .replace('\t', "\\t")
-        .replace("${", "\\${")
 }
 
 // =============================================================================
@@ -2023,153 +1950,6 @@ mod tests {
         assert!(!values_differ("", NULL_FLAG, ValType::String));
         assert!(!values_differ("   ", NULL_FLAG, ValType::String));
         assert!(values_differ("custom", NULL_FLAG, ValType::String));
-    }
-
-    #[test]
-    fn test_to_nix_value_bool() {
-        assert_eq!(
-            to_nix_value("true", "system.defaults.dock", "autohide"),
-            "true"
-        );
-        assert_eq!(
-            to_nix_value("false", "system.defaults.dock", "autohide"),
-            "false"
-        );
-        assert_eq!(
-            to_nix_value("1", "system.defaults.dock", "autohide"),
-            "true"
-        );
-    }
-
-    #[test]
-    fn test_to_nix_value_int() {
-        assert_eq!(to_nix_value("16", "system.defaults.dock", "tilesize"), "16");
-        assert_eq!(
-            to_nix_value("120", "system.defaults.NSGlobalDomain", "KeyRepeat"),
-            "120"
-        );
-    }
-
-    #[test]
-    fn test_to_nix_value_float() {
-        assert_eq!(
-            to_nix_value("0.0", "system.defaults.dock", "autohide-delay"),
-            "0.0"
-        );
-    }
-
-    #[test]
-    fn test_to_nix_value_string() {
-        assert_eq!(
-            to_nix_value("left", "system.defaults.dock", "orientation"),
-            "\"left\""
-        );
-        assert_eq!(
-            to_nix_value(
-                "Dark",
-                "system.defaults.NSGlobalDomain",
-                "AppleInterfaceStyle"
-            ),
-            "\"Dark\""
-        );
-    }
-
-    #[test]
-    fn test_to_nix_value_string_from_int_map() {
-        assert_eq!(
-            to_nix_value("2", "system.defaults.hitoolbox", "AppleFnUsageType"),
-            "\"Show Emoji & Symbols\""
-        );
-        assert_eq!(
-            to_nix_value("99", "system.defaults.hitoolbox", "AppleFnUsageType"),
-            "\"99\""
-        );
-    }
-
-    #[test]
-    fn test_to_nix_value_null_flag_key() {
-        assert_eq!(
-            to_nix_value("", "system.defaults.dock", "persistent-apps"),
-            "null"
-        );
-        assert_eq!(
-            to_nix_value("   ", "system.defaults.dock", "persistent-apps"),
-            "null"
-        );
-    }
-
-    #[test]
-    fn test_to_nix_value_null_flag_key_preserves_non_empty_values() {
-        assert_eq!(
-            to_nix_value("0", "system.defaults.dock", "persistent-apps"),
-            "\"0\""
-        );
-        assert_eq!(
-            to_nix_value("false", "system.defaults.dock", "persistent-apps"),
-            "\"false\""
-        );
-    }
-
-    #[test]
-    fn test_escape_nix_string() {
-        assert_eq!(escape_nix_string("hello"), "hello");
-        assert_eq!(escape_nix_string("say \"hi\""), "say \\\"hi\\\"");
-        assert_eq!(escape_nix_string("${foo}"), "\\${foo}");
-    }
-
-    #[test]
-    fn test_generate_system_defaults_nix_empty() {
-        let result = generate_system_defaults_nix(&[]);
-        assert!(result.contains("{ config, ... }:"));
-        assert!(result.contains("# macOS system defaults"));
-    }
-
-    #[test]
-    fn test_generate_system_defaults_nix_grouped() {
-        let defaults = vec![
-            SystemDefault {
-                nix_key: "system.defaults.dock.autohide".into(),
-                label: "Automatically hide the Dock".into(),
-                category: "Dock".into(),
-                current_value: "true".into(),
-                default_value: "false".into(),
-            },
-            SystemDefault {
-                nix_key: "system.defaults.dock.orientation".into(),
-                label: "Dock position on screen".into(),
-                category: "Dock".into(),
-                current_value: "left".into(),
-                default_value: "bottom".into(),
-            },
-            SystemDefault {
-                nix_key: "system.defaults.NSGlobalDomain.AppleInterfaceStyle".into(),
-                label: "Dark Mode".into(),
-                category: "Global".into(),
-                current_value: "Dark".into(),
-                default_value: "".into(),
-            },
-        ];
-
-        let result = generate_system_defaults_nix(&defaults);
-        assert!(result.contains("system.defaults.NSGlobalDomain = {"));
-        assert!(result.contains("system.defaults.dock = {"));
-        assert!(result.contains("autohide = true;"));
-        assert!(result.contains("orientation = \"left\";"));
-        assert!(result.contains("AppleInterfaceStyle = \"Dark\";"));
-    }
-
-    #[test]
-    fn test_generate_system_defaults_nix_null_flag_key() {
-        let defaults = vec![SystemDefault {
-            nix_key: "system.defaults.dock.persistent-apps".into(),
-            label: "Persistent Dock apps".into(),
-            category: "Dock".into(),
-            current_value: "".into(),
-            default_value: NULL_FLAG.into(),
-        }];
-
-        let result = generate_system_defaults_nix(&defaults);
-        assert!(result.contains("persistent-apps = null;"));
     }
 
     #[test]

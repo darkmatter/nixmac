@@ -1060,6 +1060,16 @@ fn infer_inner_indent(attrset_text: &str) -> String {
     "    ".to_string() // default: 4 spaces
 }
 
+/// Escape a string for safe insertion into a Nix string literal.
+pub(crate) fn escape_nix_string(value: &str) -> String {
+    value
+        .replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\n', "\\n")
+        .replace('\t', "\\t")
+        .replace("${", "\\${")
+}
+
 /// Quote and escape a list of string values for safe insertion into Nix list literals.
 ///
 /// This escapes backslashes, double quotes and dollar signs, and wraps each value
@@ -1693,5 +1703,15 @@ environment.systemPackages = with pkgs; [
         let input: Vec<String> = vec![];
         let quoted = nix_quote_values(&input);
         assert!(quoted.is_empty());
+    }
+
+    #[test]
+    fn test_escape_nix_string() {
+        let input = "This is a \"test\" string with \\ backslashes and ${dollar} signs.";
+        let escaped = escape_nix_string(input);
+        assert_eq!(
+            escaped,
+            "This is a \\\"test\\\" string with \\\\ backslashes and \\${dollar} signs."
+        );
     }
 }
