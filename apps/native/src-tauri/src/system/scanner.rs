@@ -5,7 +5,6 @@
 //! nix-darwin `system.defaults.*` keys. Also generates valid `.nix` module
 //! files from the detected customizations.
 
-use crate::bootstrap::default_config::detect_username;
 pub(crate) use crate::shared_types::{RecommendedPrompt, SystemDefault, SystemDefaultsScan};
 use crate::system::nix;
 use std::collections::BTreeMap;

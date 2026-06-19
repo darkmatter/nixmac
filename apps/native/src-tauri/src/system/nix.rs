@@ -832,9 +832,9 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn test_get_system_primary_user() {
-        use crate::commands::config::get_this_hostname_cmd;
+        use crate::bootstrap::default_config::detect_hostname;
 
-        let this_host_name = get_this_hostname_cmd().expect("Failed to get hostname for test");
+        let this_host_name = detect_hostname().expect("failed to get hostname");
         const CONFIG_DIR: &str = "~/.darwin";
 
         match get_system_primary_user(&this_host_name, CONFIG_DIR) {
