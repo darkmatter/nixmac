@@ -79,7 +79,7 @@ jobs:
 
       - uses: ./.github/actions/setup
         with:
-          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+          darkmatter-cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - name: Install Playwright browsers
         working-directory: apps/native
