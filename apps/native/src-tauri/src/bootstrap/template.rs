@@ -208,10 +208,8 @@ pub fn apply_template_placeholders_in_dir(
                 continue;
             }
 
-            let processed = crate::bootstrap::template::apply_template_placeholders(
-                path, hostname, platform, username,
-            )
-            .with_context(|| format!("failed to process template {}", path.display()))?;
+            let processed = apply_template_placeholders(path, hostname, platform, username)
+                .with_context(|| format!("failed to process template {}", path.display()))?;
             fs::write(path, processed)
                 .with_context(|| format!("failed to write {}", path.display()))?;
         }
@@ -228,8 +226,8 @@ pub fn apply_template_placeholders(
     platform: &str,
     username: &str,
 ) -> Result<String, Error> {
-    let content = fs::read_to_string(&src_path)
-        .map_err(|e| anyhow::anyhow!("Failed to read {}: {}", src_path.display(), e))?;
+    let content = fs::read_to_string(src_path)
+        .with_context(|| format!("failed to read {}", src_path.display()))?;
 
     let processed = content
         .replace("HOSTNAME_PLACEHOLDER", hostname)

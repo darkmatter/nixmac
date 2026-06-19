@@ -159,7 +159,7 @@ sudo -i nix run nix-darwin/master#darwin-rebuild -- switch --flake ~/.darwin#$HO
 
 ### Nixmac Template Placeholders
 
-When you import a nix repository from a zip file, nixmac will perform substitution on the following placholder strings:
+When you import a nix repository from a zip file, nixmac will perform substitution on the following placeholder strings:
 
 | Placeholder | Value |
 | ----------- | ----- |
