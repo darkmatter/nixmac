@@ -86,6 +86,25 @@ pub struct PermissionsState {
     pub checked_at: Option<i64>,
 }
 
+/// Status of the nix / darwin-rebuild installation flow.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Type, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NixInstallState {
+    /// Whether nix is installed; `None` until first checked.
+    pub installed: Option<bool>,
+    /// Whether darwin-rebuild is available; `None` until first checked.
+    pub darwin_rebuild_available: Option<bool>,
+    /// True while an install run is in flight.
+    pub installing: bool,
+    /// Current installer phase ("downloading", "waiting-for-installer",
+    /// "prefetching"); `None` when idle.
+    pub install_phase: Option<String>,
+    /// True while the standalone darwin-rebuild prefetch is in flight.
+    pub prefetching: bool,
+    /// Error from the last finished run, if it failed.
+    pub last_error: Option<String>,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub enum LaunchdItemType {
     LaunchAgent,

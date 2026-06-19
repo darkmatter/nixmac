@@ -23,6 +23,10 @@ vi.mock("@/ipc/api", () => ({
       show: vi.fn().mockResolvedValue(undefined),
       hide: vi.fn().mockResolvedValue(undefined),
     },
+    nix: {
+      check: vi.fn().mockResolvedValue(undefined),
+      installState: vi.fn().mockResolvedValue(undefined),
+    },
   },
   ipcRenderer: {
     on: vi.fn().mockReturnValue(Promise.resolve(() => {})),
