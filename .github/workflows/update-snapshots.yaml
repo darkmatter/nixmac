@@ -30,7 +30,7 @@ jobs:
   update-snapshots:
     name: Update Storybook Snapshots
     runs-on: [self-hosted, linux]
-    timeout-minutes: 30
+    timeout-minutes: 60
     permissions:
       contents: write
       pull-requests: write
