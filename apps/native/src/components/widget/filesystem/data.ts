@@ -6,6 +6,7 @@ import type {
   SystemDefault,
   SystemDefaultsScan,
 } from "@/ipc/types";
+import { filesystemSectionEnabled, FilesystemSectionFlag } from "@/lib/flags";
 
 export type FileTone = "teal" | "amber" | "rose" | "blue" | "muted";
 export type FileStatus = "managed" | "changed" | "candidate";
@@ -67,6 +68,7 @@ export type Section = {
   id: SectionId;
   label: string;
   hint: string;
+  flagValue: FilesystemSectionFlag;
 };
 
 export type FsIconName =
@@ -84,13 +86,16 @@ export type FsIconName =
   | "settings"
   | "warn";
 
-export const SECTIONS: Section[] = [
-  { id: "entry", label: "Setup", hint: "Flake & host wiring" },
-  { id: "darwin", label: "System", hint: "macOS, packages, services" },
-  { id: "home", label: "Personal", hint: "Dotfiles & app prefs" },
-  { id: "support", label: "Secrets", hint: "Sops, overlays, scripts" },
-  { id: "manage", label: "Untracked", hint: "Machine state not yet in your config" },
+
+const allSections: Section[] = [
+  { id: "entry", label: "Setup", hint: "Flake & host wiring", flagValue: FilesystemSectionFlag.Entry },
+  { id: "darwin", label: "System", hint: "macOS, packages, services", flagValue: FilesystemSectionFlag.Darwin },
+  { id: "home", label: "Personal", hint: "Dotfiles & app prefs", flagValue: FilesystemSectionFlag.Home },
+  { id: "support", label: "Secrets", hint: "Sops, overlays, scripts", flagValue: FilesystemSectionFlag.Support },
+  { id: "manage", label: "Untracked", hint: "Machine state not yet in your config", flagValue: FilesystemSectionFlag.Manage },
 ];
+
+export const SECTIONS = allSections.filter((section) =>  filesystemSectionEnabled(section.flagValue));
 
 export const FILES: Record<SectionId, FsFile[]> = {
   entry: [
