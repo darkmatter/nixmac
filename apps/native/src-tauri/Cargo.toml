@@ -85,6 +85,7 @@ tracing-opentelemetry = "0.30"
 configurable = { path = "configurable" }
 hmac = "0.12"
 zip = { version = "2", default-features = false, features = ["deflate"] }
+plist = "1.9.0"
 
 [dependencies.tauri-plugin-sql]
 features = ["sqlite"] # or "postgres", or "mysql"

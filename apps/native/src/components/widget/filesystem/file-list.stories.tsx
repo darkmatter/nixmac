@@ -3,7 +3,9 @@ import preview from "#storybook/preview";
 import {
   FILES,
   homebrewFilesFromDiff,
+  launchdItemsFileFromScan,
   replaceHomebrewPlaceholders,
+  replaceLaunchdPlaceholder,
   replaceSystemDefaultsPlaceholder,
   systemDefaultsFileFromScan,
 } from "./data";
@@ -47,10 +49,32 @@ const storySystemDefaults = systemDefaultsFileFromScan({
     },
   ],
 });
-const storyManageFiles = replaceSystemDefaultsPlaceholder(
-  replaceHomebrewPlaceholders(FILES.manage, storyHomebrew),
-  storySystemDefaults,
+const storyLaunchd = launchdItemsFileFromScan([
+  {
+    label: "homebrew.mxcl.redis",
+    scope: "LaunchdUserAgent",
+    name: "redis",
+    programArguments: ["/opt/homebrew/opt/redis/bin/redis-server", "/opt/homebrew/etc/redis.conf"],
+    runAtLoad: true,
+    keepAlive: true,
+    environmentVariables: {},
+    standardOutPath: "/opt/homebrew/var/log/redis.log",
+    standardErrorPath: "/opt/homebrew/var/log/redis.log",
+    workingDirectory: "/opt/homebrew/var",
+  },
+]);
+const storyManageFiles = replaceLaunchdPlaceholder(
+  replaceSystemDefaultsPlaceholder(
+    replaceHomebrewPlaceholders(FILES.manage, storyHomebrew),
+    storySystemDefaults,
+  ),
+  storyLaunchd,
 );
+const trackingHandler =
+  (push) =>
+  (items): void => {
+    push(`Tracked ${items.map((item) => item.name).join(", ")}`);
+  };
 
 export const SystemSection = meta.story({
   render: () => (
@@ -60,7 +84,6 @@ export const SystemSection = meta.story({
           <FileList
             files={FILES.darwin}
             onEditWithPrompt={(f) => push(seedForFile(f))}
-            onTrack={push}
           />
         </div>
       )}
@@ -76,7 +99,6 @@ export const PersonalSection = meta.story({
           <FileList
             files={FILES.home}
             onEditWithPrompt={(f) => push(seedForFile(f))}
-            onTrack={push}
           />
         </div>
       )}
@@ -92,7 +114,9 @@ export const UntrackedSection = meta.story({
           <FileList
             files={storyManageFiles}
             onEditWithPrompt={(f) => push(seedForFile(f))}
-            onTrack={push}
+            onTrackHomebrewItems={trackingHandler(push)}
+            onTrackSystemDefaults={trackingHandler(push)}
+            onTrackLaunchdItems={trackingHandler(push)}
           />
         </div>
       )}
@@ -108,7 +132,6 @@ export const SetupSection = meta.story({
           <FileList
             files={FILES.entry}
             onEditWithPrompt={(f) => push(seedForFile(f))}
-            onTrack={push}
           />
         </div>
       )}

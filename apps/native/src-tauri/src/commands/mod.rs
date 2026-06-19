@@ -21,6 +21,7 @@ pub mod evolve_state;
 pub mod feedback;
 pub mod git;
 pub mod homebrew;
+pub mod launchd;
 pub mod peek;
 pub mod permissions;
 pub mod rollback;
