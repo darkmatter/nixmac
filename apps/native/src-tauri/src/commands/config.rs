@@ -18,20 +18,6 @@ pub async fn config_get(app: AppHandle) -> Result<types::Config, String> {
     })
 }
 
-/// Helper to get the hostname via a blocking command.
-pub fn get_this_hostname_cmd() -> Result<String, String> {
-    let output = std::process::Command::new("hostname")
-        .output()
-        .map_err(|e| capture_err("get_this_hostname", e))?;
-    if !output.status.success() {
-        return Err(format!(
-            "Failed to get hostname: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
-    Ok(sanitize_hostname(&String::from_utf8_lossy(&output.stdout)))
-}
-
 /// Gets the hostname that we're running on, does not touch config but is used
 /// for UI convenience and onboarding defaults.
 /// The name of this function is specifically chosen to NOT get confused

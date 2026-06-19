@@ -768,9 +768,9 @@ mod tests {
     #[ignore = "Runs against the local system; enable explicitly when debugging the nix launchd eval."]
     #[cfg(target_os = "macos")]
     fn test_get_nix_launchd_items() {
-        use crate::commands::config::get_this_hostname_cmd;
+        use crate::bootstrap::default_config::detect_hostname;
 
-        let this_host_name = get_this_hostname_cmd().expect("Failed to get hostname for test");
+        let this_host_name = detect_hostname().expect("failed to get hostname");
         const CONFIG_DIR: &str = "~/.darwin";
         let items = get_nix_launchd_items(&this_host_name, CONFIG_DIR);
         match items {
@@ -789,9 +789,9 @@ mod tests {
     #[ignore = "Runs against the local system; enable explicitly when debugging the nix system defaults."]
     #[cfg(target_os = "macos")]
     fn test_get_nix_system_defaults_for_domain() -> Result<()> {
-        use crate::commands::config::get_this_hostname_cmd;
+        use crate::bootstrap::default_config::detect_hostname;
 
-        let this_host_name = get_this_hostname_cmd().expect("Failed to get hostname for test");
+        let this_host_name = detect_hostname().expect("failed to get hostname");
         const CONFIG_DIR: &str = "~/.darwin";
         let domain = "finder";
 
