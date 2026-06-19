@@ -1,17 +1,26 @@
 name: Update Snapshots
 
 # Regenerates Storybook snapshot baselines and opens a PR when they drift.
-# Triggered manually via workflow_dispatch (link posted in PR comments).
+# Triggers:
+#   - workflow_dispatch (manual, link posted in PR comments)
+#   - issue_comment.edited: when a user checks the "Click here to accept
+#     these changes" checkbox on a sticky Storybook preview comment
 # The workflow:
-#   1. Checks out develop
+#   1. Checks out the PR head (issue_comment) or develop (dispatch)
 #   2. Runs `bun run test:update-snapshots` (vitest --update)
-#   3. If any __snapshots__ files changed, opens/updates a PR
-#
+#   3. If any __snapshots__ files changed, commits to the PR branch
+#      (issue_comment) or opens/updates a PR against develop (dispatch)
 # The PR is labelled `snapshots` so it's easy to find and review.
-# Merging the PR brings baselines back in sync with the component tree.
 
 on:
   workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to update snapshots on (defaults to develop)"
+        required: false
+        type: string
+  issue_comment:
+    types: [edited]
 
 concurrency:
   group: update-snapshots
@@ -25,11 +34,40 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      issues: read
+    # issue_comment fires on every comment edit across issues + PRs; only
+    # proceed when the sticky Storybook preview comment had its accept
+    # checkbox flipped from unchecked to checked.
+    if: |
+      github.event_name != 'issue_comment' || (
+        github.event.issue.pull_request != null &&
+        contains(github.event.comment.body, '<!-- nixmac-storybook-preview -->') &&
+        contains(github.event.changes.body.from, '- [ ] Click here to accept these changes') &&
+        contains(github.event.comment.body, '- [x] Click here to accept these changes')
+      )
     steps:
+      - name: Resolve PR head ref
+        id: ref
+        if: github.event_name == 'issue_comment' || github.event.inputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.issue.number || github.event.inputs.pr_number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          pr_data=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" --jq '{head: .head.ref, sha: .head.sha, base: .base.ref}')
+          head_ref=$(echo "$pr_data" | jq -r '.head')
+          head_sha=$(echo "$pr_data" | jq -r '.sha')
+          echo "ref=${head_ref}" >> "$GITHUB_OUTPUT"
+          echo "sha=${head_sha}" >> "$GITHUB_OUTPUT"
+          echo "pr_number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "Resolved PR #${PR_NUMBER} head: ${head_ref} (${head_sha})"
+
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          ref: ${{ steps.ref.outputs.ref || github.ref }}
 
       - uses: ./.github/actions/setup
         with:
@@ -61,8 +99,34 @@ jobs:
             echo "Snapshots are up to date — no changes." >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      # Accept-from-comment path: commit directly to the PR branch.
+      - name: Commit snapshots to PR branch
+        if: github.event_name == 'issue_comment' && steps.check.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- '__snapshots__' '**/__snapshots__/**'
+          git commit -m "chore: accept Storybook snapshot changes (PR #${{ steps.ref.outputs.pr_number }})"
+          git push origin HEAD:${{ steps.ref.outputs.ref }}
+
+      - name: React to trigger comment
+        if: github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+        run: |
+          if [ "${{ steps.check.outputs.changed }}" = "true" ]; then
+            gh api --method POST "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
+              -f content='+1' >/dev/null
+          else
+            gh api --method POST "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
+              -f content='-1' >/dev/null
+          fi
+
+      # Manual-dispatch path: open or update a PR against develop.
       - name: Create pull request
-        if: steps.check.outputs.changed == 'true'
+        if: github.event_name != 'issue_comment' && steps.check.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v7
         with:
           branch: chore/update-snapshots
