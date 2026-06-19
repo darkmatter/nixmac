@@ -1,15 +1,26 @@
-import { tauriAPI, ipcRenderer } from "@/ipc/api";
+import { tauriAPI } from "@/ipc/api";
 import type { EvolveState } from "@/ipc/types";
 import { useViewModel } from "@/stores/view-model";
+import { bindBackendSlice } from "./_helpers";
 
-export function mirrorEvolveState(evolve: EvolveState | null): void {
+function mirrorEvolveState(evolve: EvolveState | null): void {
   useViewModel.setState({ evolve });
 }
 
-export async function startEvolveSync(): Promise<() => void> {
+/**
+ * Re-hydrate the evolve slice through `get_evolve_state` (which recomputes the
+ * step against the live repo). The observable only emits when the value
+ * changes, so the explicit mirror here keeps callers (startup, e2e helpers)
+ * deterministic.
+ */
+export async function refreshEvolveSnapshot(): Promise<void> {
   mirrorEvolveState(await tauriAPI.evolveState.get());
+}
 
-  return ipcRenderer.on<EvolveState>("evolve_state_changed", (event) => {
-    mirrorEvolveState(event.payload);
+export function startEvolveSync(): Promise<() => void> {
+  return bindBackendSlice({
+    hydrate: () => tauriAPI.evolveState.get(),
+    event: "evolve_state_changed",
+    mirror: mirrorEvolveState,
   });
 }

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { tauriAPI } from "@/ipc/api";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
+import { useViewModel } from "@/stores/view-model";
 
 /**
  * Experimental: drives the spinning-mascot corner-indicator window.
@@ -13,9 +14,9 @@ import { useWidgetStore } from "@/stores/widget-store";
  * Rust `peek` module on first show, so this costs nothing when the flag is off.
  */
 export function useEvolveMascot() {
-  const enabled = useWidgetStore((s) => s.experimentalSpinningMascot);
-  const isGenerating = useWidgetStore((s) => s.isGenerating);
-  const rebuildRunning = useWidgetStore((s) => s.rebuild.isRunning);
+  const enabled = useViewModel((s) => s.preferences?.experimentalSpinningMascot ?? false);
+  const isGenerating = useUiState((s) => s.isGenerating);
+  const rebuildRunning = useViewModel((s) => s.rebuildStatus?.isRunning ?? false);
 
   const shouldShow = enabled && (isGenerating || rebuildRunning);
 

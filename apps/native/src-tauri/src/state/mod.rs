@@ -15,9 +15,14 @@
 //! setup with `.emit_to()` and `.persist_to()` attached as needed.
 
 pub mod build_state;
+pub mod change_map;
 pub mod completion_log;
 pub mod drift_notifications;
 pub mod evolve_state;
+pub mod git_state;
+pub mod nix_install_state;
+pub mod permissions_state;
 pub mod preferences;
+pub mod rebuild_status;
 pub mod session_log;
 pub mod watcher;

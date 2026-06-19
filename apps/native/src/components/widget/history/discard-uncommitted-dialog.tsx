@@ -9,7 +9,6 @@ import {
 import { ConfigDirBadge } from "@/components/widget/badges/config-dir-badge";
 import { useRollback } from "@/hooks/use-rollback";
 import { useViewModel } from "@/stores/view-model";
-import { useWidgetStore } from "@/stores/widget-store";
 import { toast } from "sonner";
 
 interface DiscardUncommittedDialogProps {
@@ -19,7 +18,7 @@ interface DiscardUncommittedDialogProps {
 
 export function DiscardUncommittedDialog({ open, onOpenChange }: DiscardUncommittedDialogProps) {
   const gitStatus = useViewModel((s) => s.git);
-  const configDir = useWidgetStore((s) => s.configDir);
+  const configDir = useViewModel((s) => s.preferences?.configDir ?? "");
   const files = gitStatus?.files ?? [];
   const { handleRollback } = useRollback();
 

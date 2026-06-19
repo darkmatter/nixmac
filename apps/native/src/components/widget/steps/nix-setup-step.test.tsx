@@ -2,16 +2,18 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCheckNix, widgetState } = vi.hoisted(() => ({
+const { mockCheckNix, vmState } = vi.hoisted(() => ({
   mockCheckNix: vi.fn<() => Promise<void>>(),
-  widgetState: {
-    nixInstalled: false as boolean | null,
-    darwinRebuildAvailable: null as boolean | null,
+  vmState: {
+    nixInstall: {
+      installed: false as boolean | null,
+      darwinRebuildAvailable: null as boolean | null,
+    } as { installed: boolean | null; darwinRebuildAvailable: boolean | null } | null,
   },
 }));
 
-vi.mock("@/stores/widget-store", () => ({
-  useWidgetStore: <T,>(selector: (state: typeof widgetState) => T) => selector(widgetState),
+vi.mock("@/stores/view-model", () => ({
+  useViewModel: <T,>(selector: (state: typeof vmState) => T) => selector(vmState),
 }));
 
 vi.mock("@/hooks/use-nix-install", () => ({
@@ -28,8 +30,7 @@ import { NixSetupStep } from "./nix-setup-step";
 
 describe("<NixSetupStep>", () => {
   beforeEach(() => {
-    widgetState.nixInstalled = false;
-    widgetState.darwinRebuildAvailable = null;
+    vmState.nixInstall = { installed: false, darwinRebuildAvailable: null };
     mockCheckNix.mockReset();
     mockCheckNix.mockResolvedValue();
   });
@@ -50,8 +51,7 @@ describe("<NixSetupStep>", () => {
   });
 
   it("explains missing nix-darwin without auto-installing when Nix is installed", () => {
-    widgetState.nixInstalled = true;
-    widgetState.darwinRebuildAvailable = false;
+    vmState.nixInstall = { installed: true, darwinRebuildAvailable: false };
 
     render(<NixSetupStep />);
 
@@ -72,7 +72,7 @@ describe("<NixSetupStep>", () => {
   });
 
   it("checks the system when setup status is pending", async () => {
-    widgetState.nixInstalled = null;
+    vmState.nixInstall = { installed: null, darwinRebuildAvailable: null };
 
     render(<NixSetupStep />);
 

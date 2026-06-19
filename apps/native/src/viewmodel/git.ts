@@ -2,9 +2,10 @@ import { tauriAPI, ipcRenderer } from "@/ipc/api";
 import type { GitState, GitStatus } from "@/ipc/types";
 import { useUiState } from "@/stores/ui-state";
 import { useViewModel } from "@/stores/view-model";
+import { bindBackendSlice } from "./_helpers";
 import { refreshHistorySnapshot } from "./history";
 
-export function mirrorGitState(git: GitStatus | null, externalBuildDetected = false): void {
+function mirrorGitState(git: GitStatus | null, externalBuildDetected = false): void {
   useViewModel.setState((state) => ({
     git,
     build: {
@@ -14,18 +15,28 @@ export function mirrorGitState(git: GitStatus | null, externalBuildDetected = fa
   }));
 }
 
-export async function startGitSync(): Promise<() => void> {
-  mirrorGitState(await tauriAPI.git.status());
+/**
+ * Recompute the git status against the live repo and mirror it. The backend
+ * command also writes the git-state cell, so the event path stays consistent.
+ * Used by flows (rebuild stream, e2e helpers) that mutate the repo and cannot
+ * wait for the watcher's poll interval.
+ */
+export async function refreshGitSnapshot(): Promise<void> {
+  const status = await tauriAPI.git.statusAndCache();
+  mirrorGitState(status);
+}
 
+export async function startGitSync(): Promise<() => void> {
   const [stateUnlisten, errorUnlisten] = await Promise.all([
-    ipcRenderer.on<GitState>("git_state_changed", (event) => {
-      const { gitStatus, externalBuildDetected } = event.payload;
-      mirrorGitState(gitStatus, externalBuildDetected);
-      void refreshHistorySnapshot();
+    bindBackendSlice<GitState>({
+      hydrate: () => tauriAPI.git.state(),
+      event: "git_state_changed",
+      mirror: ({ gitStatus, externalBuildDetected }) =>
+        mirrorGitState(gitStatus, externalBuildDetected),
+      onEvent: () => void refreshHistorySnapshot(),
     }),
     ipcRenderer.on<string>("git_state_error", (event) => {
-      const error = event.payload;
-      useUiState.getState().setError(error);
+      useUiState.getState().setError(event.payload);
     }),
   ]);
 

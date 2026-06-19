@@ -1,7 +1,9 @@
 "use client";
 
 import { EvolveProgress } from "@/components/widget/overlays/evolve-progress";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
+import { useViewModel } from "@/stores/view-model";
+import { clearEvolveEvents } from "@/viewmodel/evolution";
 import { tauriAPI } from "@/ipc/api";
 
 /**
@@ -9,13 +11,14 @@ import { tauriAPI } from "@/ipc/api";
  * Appears when isGenerating is true and dismisses when evolution completes.
  */
 export function EvolveOverlayPanel() {
-  const isGenerating = useWidgetStore((s) => s.isGenerating);
-  const evolveEvents = useWidgetStore((s) => s.evolveEvents);
+  const isGenerating = useUiState((s) => s.isGenerating);
+  const evolveEvents = useViewModel((s) => s.evolveEvents);
 
   const handleStopEvolution = async () => {
     try {
       await tauriAPI.darwin.evolveCancel();
-      useWidgetStore.setState({ isGenerating: false, evolveEvents: [] });
+      useUiState.setState({ isGenerating: false });
+      clearEvolveEvents();
     } catch (e) {
       console.error("Failed to cancel evolution:", e);
     }

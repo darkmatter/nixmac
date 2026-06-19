@@ -7,14 +7,14 @@ import { commitMessageBody } from "@/components/widget/summaries/markdown-utils"
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useSummary } from "@/hooks/use-summary";
 import { useViewModel } from "@/stores/view-model";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
 import { GitMerge, Loader2 } from "lucide-react";
 import { useEffect } from "react";
 
 export function MergeSection() {
-  const isProcessing = useWidgetStore((s) => s.isProcessing);
-  const processingAction = useWidgetStore((s) => s.processingAction);
-  const commitMessageSuggestion = useWidgetStore((s) => s.commitMessageSuggestion);
+  const isProcessing = useUiState((s) => s.isProcessing);
+  const processingAction = useUiState((s) => s.processingAction);
+  const commitMessageSuggestion = useUiState((s) => s.commitMessageSuggestion);
   const changeMap = useViewModel((s) => s.changeMap);
 
   const { handleCommit } = useGitOperations();
@@ -31,7 +31,7 @@ export function MergeSection() {
     const body = commitMessageBody(commitMessageSuggestion ?? "");
     const message = body ? `${subject}\n\n${body}` : subject;
     await handleCommit({ message });
-    useWidgetStore.getState().setEvolvePrompt("");
+    useUiState.getState().setEvolvePrompt("");
   }
 
   const commitSubject = (commitMessageSuggestion ?? "").split(/\r?\n/)[0] ?? "";

@@ -3,10 +3,9 @@
 import { ConfigDirBadge } from "@/components/widget/badges/config-dir-badge";
 import { AnalyzeCurrentButton } from "@/components/widget/summaries/analyze-current-button";
 import { useViewModel } from "@/stores/view-model";
-import { useWidgetStore } from "@/stores/widget-store";
 
 export function UnsummarizedChangesDetected() {
-  const configDir = useWidgetStore((s) => s.configDir);
+  const configDir = useViewModel((s) => s.preferences?.configDir ?? "");
   const changeMap = useViewModel((s) => s.changeMap);
   if (!changeMap) return null;
   const hasUnsummarized = changeMap?.unsummarizedHashes.length

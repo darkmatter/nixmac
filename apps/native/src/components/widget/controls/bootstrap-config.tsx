@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { useViewModel } from "@/stores/view-model";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
 import { tauriAPI } from "@/ipc/api";
 import { AlertCircle, GitCommit, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -21,7 +21,7 @@ export function BootstrapConfig({ label, onSuccess }: BootstrapConfigProps) {
   const [hostnamePlaceholder, setHostnamePlaceholder] = useState(DEFAULT_HOSTNAME);
   const [localError, setLocalError] = useState<string | null>(null);
   const { bootstrap, isBootstrapping } = useDarwinConfig();
-  const configDir = useWidgetStore((state) => state.configDir);
+  const configDir = useViewModel((state) => state.preferences?.configDir ?? "");
   const gitStatus = useViewModel((state) => state.git);
   const [flakeExists, setFlakeExists] = useState(false);
 
@@ -73,7 +73,7 @@ export function BootstrapConfig({ label, onSuccess }: BootstrapConfigProps) {
   const handleBootstrap = async (): Promise<void> => {
     setLocalError(null);
     await bootstrap(needsInitialCommit ? "" : hostname);
-    const storeError = useWidgetStore.getState().error;
+    const storeError = useUiState.getState().error;
     if (storeError) {
       setLocalError(storeError);
     } else {

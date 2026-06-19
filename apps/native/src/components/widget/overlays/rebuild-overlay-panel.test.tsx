@@ -3,7 +3,11 @@ import "@testing-library/jest-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RebuildOverlayPanel } from "@/components/widget/overlays/rebuild-overlay-panel";
-import { initialRebuildState, useWidgetStore, type RebuildState } from "@/stores/widget-store";
+import type { RebuildStatus } from "@/ipc/types";
+import { initialUiState, useUiState } from "@/stores/ui-state";
+import { useViewModel } from "@/stores/view-model";
+import type { RebuildContext } from "@/types/rebuild";
+import { makeRebuildStatus } from "@/utils/test-fixtures";
 
 vi.mock("motion/react", async () => {
   const React = await import("react");
@@ -39,20 +43,35 @@ vi.mock("@/hooks/use-rollback", () => ({
 
 const safetyMessage = "No changes were made to your system.";
 
-async function renderWithRebuildState(rebuild: Partial<RebuildState>) {
+function resetStores() {
   act(() => {
-    useWidgetStore.setState({
-      rebuild: {
-        ...initialRebuildState,
+    useViewModel.setState({
+      rebuildStatus: null,
+      rebuildLog: { lines: [], rawLines: [] },
+    });
+    useUiState.setState({ ...initialUiState });
+  });
+}
+
+async function renderWithRebuildState(
+  status: Partial<RebuildStatus>,
+  context: RebuildContext = "apply",
+) {
+  act(() => {
+    useViewModel.setState({
+      rebuildStatus: makeRebuildStatus({
         isRunning: false,
-        context: "apply",
-        lines: [{ id: 1, text: "Build failed", type: "stderr" }],
         success: false,
         errorType: "build_error",
         errorMessage: "darwin-rebuild build failed",
-        ...rebuild,
+        ...status,
+      }),
+      rebuildLog: {
+        lines: [{ id: 1, text: "Build failed", type: "stderr" }],
+        rawLines: [],
       },
     });
+    useUiState.setState({ rebuildContext: context, rebuildPanelDismissed: false });
   });
 
   const result = render(<RebuildOverlayPanel />);
@@ -61,17 +80,9 @@ async function renderWithRebuildState(rebuild: Partial<RebuildState>) {
 }
 
 describe("<RebuildOverlayPanel>", () => {
-  beforeEach(() => {
-    act(() => {
-      useWidgetStore.getState().clearRebuild();
-    });
-  });
+  beforeEach(resetStores);
 
-  afterEach(() => {
-    act(() => {
-      useWidgetStore.getState().clearRebuild();
-    });
-  });
+  afterEach(resetStores);
 
   it("prominently reassures users when the backend says the failed apply left the system untouched", async () => {
     await renderWithRebuildState({ systemUntouched: true });
@@ -90,11 +101,23 @@ describe("<RebuildOverlayPanel>", () => {
   });
 
   it("does not show apply reassurance while rollback is failing", async () => {
-    await renderWithRebuildState({
-      context: "rollback",
-      errorType: "user_cancelled",
-      errorMessage: "Activation cancelled by user",
-      systemUntouched: true,
+    await renderWithRebuildState(
+      {
+        errorType: "user_cancelled",
+        errorMessage: "Activation cancelled by user",
+        systemUntouched: true,
+      },
+      "rollback",
+    );
+
+    expect(screen.queryByText(safetyMessage)).not.toBeInTheDocument();
+  });
+
+  it("hides the panel once dismissed", async () => {
+    await renderWithRebuildState({ systemUntouched: true });
+
+    act(() => {
+      useUiState.getState().setRebuildPanelDismissed(true);
     });
 
     expect(screen.queryByText(safetyMessage)).not.toBeInTheDocument();

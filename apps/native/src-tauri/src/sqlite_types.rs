@@ -37,7 +37,7 @@ pub struct Prompt {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Change {
     pub id: i64,
@@ -50,7 +50,7 @@ pub struct Change {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangeSummary {
     pub id: i64,
@@ -64,7 +64,7 @@ pub struct ChangeSummary {
 /// Groups Changes for a commit→base_commit pair. `commit_id` is NULL for speculative
 /// (uncommitted) changesets. Membership is stored in the `set_changes` join table.
 #[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangeSet {
     pub id: i64,

@@ -9,19 +9,19 @@ use crate::{git, shared_types};
 
 async fn prepare(
     app: &AppHandle,
-) -> Result<(crate::shared_types::GitStatus, shared_types::EvolveState)> {
+) -> Result<(crate::shared_types::GitStatus, shared_types::EvolveSession)> {
     let repo_root =
         store::ensure_git_repo_folder(app).context("Failed to get git repository root")?;
     let final_status = git::status(&repo_root).context("Failed to get final git status")?;
-    // fire-and-forget: best-effort cache update. `final_status` is returned directly
-    // to the caller; a store write failure here must not abort the finalization.
-    let _ = store::set_cached_git_status(app, &final_status);
-    let current_evolve = evolve_state::get(app).unwrap_or_default();
+    // Record the post-build status; the cell write emits `git_state_changed`.
+    crate::state::git_state::update_status(app, final_status.clone());
+    let current_evolve = evolve_state::get_session(app);
     Ok((final_status, current_evolve))
 }
 
-/// Finalize a successful darwin-rebuild.
-pub async fn finalize_apply(app: &AppHandle) -> Result<shared_types::FinalizeApplyResult> {
+/// Finalize a successful darwin-rebuild. State flows through the cell events
+/// (`git_state_changed` from `prepare`, `evolve_state_changed` from the set).
+pub async fn finalize_apply(app: &AppHandle) -> Result<()> {
     let (final_status, mut current_evolve) = prepare(app).await?;
 
     if current_evolve.evolution_id.is_none() {
@@ -33,11 +33,8 @@ pub async fn finalize_apply(app: &AppHandle) -> Result<shared_types::FinalizeApp
     }
 
     build_state::record_build(app, &final_status).context("Failed to record build state")?;
-    let evolve_state = evolve_state::set(app, current_evolve, &final_status.changes)?;
-    Ok(shared_types::FinalizeApplyResult {
-        git_status: final_status,
-        evolve_state,
-    })
+    evolve_state::set_session(app, current_evolve, &final_status.changes)?;
+    Ok(())
 }
 
 /// Finalize a rollback store-path activation — restores the pre-evolution build record without a new build.
@@ -45,7 +42,7 @@ pub async fn finalize_rollback(
     app: &AppHandle,
     store_path: Option<String>,
     changeset_id: Option<i64>,
-) -> Result<shared_types::FinalizeApplyResult> {
+) -> Result<()> {
     let (final_status, current_evolve) = prepare(app).await?;
     build_state::set_active_build(
         app,
@@ -54,9 +51,9 @@ pub async fn finalize_rollback(
         final_status.head_commit_hash.clone(),
     )
     .context("Failed to restore build state")?;
-    let evolve_state = evolve_state::set(app, current_evolve, &final_status.changes)?;
-    Ok(shared_types::FinalizeApplyResult {
-        git_status: final_status,
-        evolve_state,
-    })
+    evolve_state::set_session(app, current_evolve, &final_status.changes)?;
+    // The rollback restored an earlier tree: refresh the change-map cell so
+    // the mirrored map matches it (emits `change_map_changed`).
+    crate::summarize::refresh_change_map(app);
+    Ok(())
 }

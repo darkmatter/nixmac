@@ -16,12 +16,13 @@ import { useHomebrewDiff } from "@/hooks/use-homebrew-diff";
 import { useLaunchdItems } from "@/hooks/use-launchd-items";
 import { useSystemDefaultsScan } from "@/hooks/use-system-defaults-scan";
 import { filesystemViewEnabled } from "@/lib/flags";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
+import { useViewModel } from "@/stores/view-model";
 
 export function BeginStep() {
-  const setShowFilesystem = useWidgetStore((s) => s.setShowFilesystem);
-  const prefsLoaded = useWidgetStore((s) => s.prefsLoaded);
-  const scanHomebrewOnStartup = useWidgetStore((s) => s.scanHomebrewOnStartup);
+  const setShowFilesystem = useUiState((s) => s.setShowFilesystem);
+  const prefsLoaded = useViewModel((s) => s.preferences !== null);
+  const scanHomebrewOnStartup = useViewModel((s) => s.preferences?.scanHomebrewOnStartup ?? false);
   const shouldScan = filesystemViewEnabled && prefsLoaded && scanHomebrewOnStartup;
   const { diff, error } = useHomebrewDiff(shouldScan);
   const { scan: systemDefaultsScan, error: systemDefaultsError } =

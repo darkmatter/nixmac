@@ -2,7 +2,9 @@ import { Button } from "@/components/ui/button";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useRollback } from "@/hooks/use-rollback";
 import { cn } from "@/lib/utils";
-import { useWidgetStore, type RebuildErrorType, type RebuildLine } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
+import { useViewModel } from "@/stores/view-model";
+import type { RebuildErrorType, RebuildLine } from "@/types/rebuild";
 import {
   AlertTriangle,
   Brain,
@@ -357,18 +359,28 @@ function RawConsoleOutput({ lines, children }: { lines: string[]; children?: Rea
 export function RebuildOverlayPanel() {
   const { handleRollback } = useRollback();
   const { triggerRebuild } = useRebuildStream();
-  const { isRunning, lines, rawLines, success, errorType, errorMessage, context, systemUntouched } =
-    useWidgetStore((state) => state.rebuild);
+  const status = useViewModel((state) => state.rebuildStatus);
+  const lines = useViewModel((state) => state.rebuildLog.lines);
+  const rawLines = useViewModel((state) => state.rebuildLog.rawLines);
+  const context = useUiState((state) => state.rebuildContext);
+  const dismissed = useUiState((state) => state.rebuildPanelDismissed);
+
+  const isRunning = status?.isRunning ?? false;
+  const success = status?.success ?? undefined;
+  const errorType = (status?.errorType ?? undefined) as RebuildErrorType | undefined;
+  const errorMessage = status?.errorMessage ?? undefined;
+  const systemUntouched = status?.systemUntouched ?? undefined;
+
   const isRollback = context === "rollback";
   const systemSafetyMessage = getSystemSafetyMessage(systemUntouched, context);
 
   const handleRetry = async () => {
-    useWidgetStore.getState().setProcessing(true, "cancel");
+    useUiState.getState().setProcessing(true, "cancel");
     await triggerRebuild({ context: "rollback" });
   };
 
   const handleDismiss = () => {
-    useWidgetStore.getState().clearRebuild();
+    useUiState.getState().setRebuildPanelDismissed(true);
   };
 
   const [showConsole, setShowConsole] = useState(false);
@@ -405,8 +417,9 @@ export function RebuildOverlayPanel() {
   // - When complete: all lines are "completed" (step past the end)
   const step = isRunning ? Math.max(0, displayLines.length - 1) : displayLines.length;
 
-  // Only show when rebuild is running or has completed
-  const isVisible = isRunning || success !== undefined;
+  // Only show when rebuild is running or has completed (and the completed
+  // run's panel hasn't been dismissed)
+  const isVisible = isRunning || (success !== undefined && !dismissed);
   if (!isVisible) {
     return null;
   }

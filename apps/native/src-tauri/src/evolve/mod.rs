@@ -731,11 +731,12 @@ fn finish_after_limit_stop<R: Runtime>(
 ) {
     let summary = limit_kind.stop_summary(attempts);
     info!("{}", summary);
+    // The terminal `Complete` event is emitted by the lifecycle after all
+    // state cells are updated; only the informational stop notice goes out here.
     emit_evolve_event(
         app,
         EvolveEvent::info(start_time, Some(iteration), &summary),
     );
-    emit_evolve_event(app, EvolveEvent::complete(start_time, iteration, &summary));
 
     evolution.summary = Some(summary);
     evolution.state = EvolutionState::LimitReached;
@@ -1413,10 +1414,10 @@ pub async fn generate_evolution<R: Runtime>(
                                     }
                                 }
                                 ToolResult::Done(summary_text) => {
-                                    emit_evolve_event(
-                                        app,
-                                        EvolveEvent::complete(start_time, iteration, summary_text),
-                                    );
+                                    // The terminal `Complete` event is emitted by the
+                                    // lifecycle once all state cells are updated; the
+                                    // agent summary travels with it via `evolution.summary`.
+                                    info!("Agent signalled done: {}", summary_text);
                                 }
                                 ToolResult::Question { question, choices } => {
                                     emit_evolve_event(
@@ -1581,10 +1582,10 @@ Do not invent tool names and do not place tool invocations in assistant content.
             {
                 if evolution.edits.is_empty() {
                     // No files were changed — this is a conversational reply (e.g. "hi").
-                    // Emit the content as the completion event so the UI shows it,
-                    // and mark the state so the caller can skip the review workflow.
+                    // The lifecycle emits the terminal `Complete` event carrying the
+                    // content as `conversational_response`; mark the state so the
+                    // caller can skip the review workflow.
                     info!("Conversational response (no edits made)");
-                    emit_evolve_event(app, EvolveEvent::complete(start_time, iteration, &content));
                     evolution.summary = Some(content);
                     evolution.state = EvolutionState::Conversational;
                 } else {

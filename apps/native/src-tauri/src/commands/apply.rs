@@ -52,27 +52,44 @@ pub async fn darwin_activate_store_path(
 }
 
 /// Records build state and changeset after a successful darwin-rebuild switch.
+/// Resulting state flows through the `git_state_changed`/`evolve_state_changed` events.
 #[tauri::command]
-pub async fn finalize_apply(app: AppHandle) -> Result<shared_types::FinalizeApplyResult, String> {
+pub async fn finalize_apply(app: AppHandle) -> Result<(), String> {
     crate::rebuild::finalize_apply(&app)
         .await
         .map_err(|e| capture_err("finalize_apply", e))
 }
 
 /// Finalize a rollback store-path activation — restores the pre-evolution build record.
+/// Resulting state flows through the `*_changed` cell events.
 #[tauri::command]
 pub async fn finalize_rollback(
     app: AppHandle,
     store_path: Option<String>,
     changeset_id: Option<i64>,
-) -> Result<shared_types::FinalizeApplyResult, String> {
+) -> Result<(), String> {
     crate::rebuild::finalize_rollback(&app, store_path, changeset_id)
         .await
         .map_err(|e| capture_err("finalize_rollback", e))
 }
 
+/// Returns the lifecycle status of the current/last rebuild stream.
 #[tauri::command]
-pub async fn nix_check() -> Result<shared_types::NixCheckResult, String> {
+pub async fn get_rebuild_status(app: AppHandle) -> Result<shared_types::RebuildStatus, String> {
+    Ok(crate::state::rebuild_status::get(&app))
+}
+
+/// Returns the last-known nix/darwin-rebuild installation status from the
+/// in-memory cell, without probing the system. `nix_check` is the probe.
+#[tauri::command]
+pub async fn get_nix_install_state(
+    app: AppHandle,
+) -> Result<shared_types::NixInstallState, String> {
+    Ok(crate::state::nix_install_state::get(&app))
+}
+
+#[tauri::command]
+pub async fn nix_check(app: AppHandle) -> Result<shared_types::NixCheckResult, String> {
     let installed = nix::is_nix_installed();
     let version = if installed {
         nix::get_nix_version()
@@ -84,6 +101,11 @@ pub async fn nix_check() -> Result<shared_types::NixCheckResult, String> {
     } else {
         false
     };
+    // Record the probe result; the cell write emits nix_install_state_changed.
+    crate::state::nix_install_state::update(&app, |state| {
+        state.installed = Some(installed);
+        state.darwin_rebuild_available = Some(darwin_rebuild_available);
+    });
     Ok(shared_types::NixCheckResult {
         installed,
         version,

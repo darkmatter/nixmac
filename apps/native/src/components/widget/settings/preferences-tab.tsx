@@ -1,15 +1,15 @@
 import { Switch } from "@/components/ui/switch";
 import { usePrefs } from "@/hooks/use-prefs";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 
 export function PreferencesTab() {
   const { setPref } = usePrefs();
-  const confirmBuild = useWidgetStore((s) => s.confirmBuild);
-  const confirmClear = useWidgetStore((s) => s.confirmClear);
-  const confirmRollback = useWidgetStore((s) => s.confirmRollback);
-  const autoSummarizeOnFocus = useWidgetStore((s) => s.autoSummarizeOnFocus);
-  const scanHomebrewOnStartup = useWidgetStore((s) => s.scanHomebrewOnStartup);
-  const defaultToDiffTab = useWidgetStore((s) => s.defaultToDiffTab);
+  const confirmBuild = useViewModel((s) => s.preferences?.confirmBuild ?? true);
+  const confirmClear = useViewModel((s) => s.preferences?.confirmClear ?? true);
+  const confirmRollback = useViewModel((s) => s.preferences?.confirmRollback ?? true);
+  const autoSummarizeOnFocus = useViewModel((s) => s.preferences?.autoSummarizeOnFocus ?? false);
+  const scanHomebrewOnStartup = useViewModel((s) => s.preferences?.scanHomebrewOnStartup ?? true);
+  const defaultToDiffTab = useViewModel((s) => s.preferences?.defaultToDiffTab ?? false);
 
   return (
     <div className="space-y-6">

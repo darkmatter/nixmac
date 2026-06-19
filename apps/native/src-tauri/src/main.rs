@@ -342,6 +342,11 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                         app.manage(state::preferences::load_global_observable(app.handle())?);
                         app.manage(evolve::config::load_observable(app.handle())?);
                         app.manage(state::evolve_state::load_observable(app.handle())?);
+                        app.manage(state::git_state::load_observable(app.handle()));
+                        app.manage(state::change_map::load_observable(app.handle()));
+                        app.manage(state::permissions_state::load_observable(app.handle()));
+                        app.manage(state::nix_install_state::load_observable(app.handle()));
+                        app.manage(state::rebuild_status::load_observable(app.handle()));
                         Ok(())
                     })
                     .build(context)
@@ -494,6 +499,7 @@ fn run_gui_mode(
             commands::homebrew::homebrew_apply_diff,
             commands::homebrew::homebrew_get_state_diff,
             // Git
+            commands::git::get_git_state,
             commands::git::git_status,
             commands::git::git_status_and_cache,
             commands::git::git_commit,
@@ -513,8 +519,10 @@ fn run_gui_mode(
             commands::summarize::abort_restore,
             commands::summarize::finalize_restore,
             // Routing state
-            commands::evolve_state::routing_state_get,
-            commands::evolve_state::routing_state_clear,
+            commands::evolve_state::get_evolve_state,
+            commands::evolve_state::clear_evolve_state,
+            commands::apply::get_nix_install_state,
+            commands::apply::get_rebuild_status,
             commands::apply::nix_check,
             commands::apply::nix_install_start,
             commands::apply::darwin_rebuild_prefetch,
@@ -522,12 +530,14 @@ fn run_gui_mode(
             commands::config::flake_exists,
             commands::config::bootstrap_default_config,
             // Summarization
+            commands::summarize::get_change_map,
             commands::summarize::find_change_map,
             commands::summarize::get_history,
             commands::summarize::generate_history_from,
             commands::summarize::summarize_current,
             commands::summarize::generate_commit_message,
             // UI preferences
+            commands::ui_prefs::get_global_preferences,
             commands::ui_prefs::ui_get_prefs,
             commands::ui_prefs::ui_set_prefs,
             commands::ui_prefs::verify_openai_api_key,
@@ -557,7 +567,8 @@ fn run_gui_mode(
             commands::peek::evolve_mascot_show,
             commands::peek::evolve_mascot_hide,
             // Permissions
-            commands::permissions::permissions_check_all,
+            commands::permissions::get_permissions,
+            commands::permissions::refresh_permissions,
             commands::permissions::permissions_request,
             // System defaults scanner
             commands::system_defaults::get_recommended_prompt,
@@ -596,6 +607,11 @@ fn run_gui_mode(
             app.manage(state::preferences::load_global_observable(handle)?);
             app.manage(evolve::config::load_observable(handle)?);
             app.manage(state::evolve_state::load_observable(handle)?);
+            app.manage(state::git_state::load_observable(handle));
+            app.manage(state::change_map::load_observable(handle));
+            app.manage(state::permissions_state::load_observable(handle));
+            app.manage(state::nix_install_state::load_observable(handle));
+            app.manage(state::rebuild_status::load_observable(handle));
 
             // Initialize SQLite database before any consumer that reads the
             // managed DbPool from app state.

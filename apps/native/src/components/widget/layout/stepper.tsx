@@ -2,7 +2,9 @@
 
 import { Fragment } from "react";
 import { cn } from "@/lib/utils";
-import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
+import { useViewModel } from "@/stores/view-model";
+import { useCurrentStep } from "@/hooks/use-current-step";
 import { Check } from "lucide-react";
 
 const STEPS = [
@@ -13,8 +15,8 @@ const STEPS = [
 
 export function Stepper() {
   const step = useCurrentStep();
-  const isGenerating = useWidgetStore((s) => s.isGenerating);
-  const isRebuilding = useWidgetStore((s) => s.rebuild.isRunning);
+  const isGenerating = useUiState((s) => s.isGenerating);
+  const isRebuilding = useViewModel((s) => s.rebuildStatus?.isRunning ?? false);
 
   if (
     step === "setup" ||

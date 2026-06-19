@@ -29,14 +29,11 @@ import { useGitOperations } from "@/hooks/use-git-operations";
 import { useNixInstall } from "@/hooks/use-nix-install";
 import { usePanicHandler } from "@/hooks/use-panic-handler";
 import { usePermissions } from "@/hooks/use-permissions";
-import { usePrefs } from "@/hooks/use-prefs";
-import { usePromptHistory } from "@/hooks/use-prompt-history";
 import { useTrayEvents } from "@/hooks/use-tray-events";
-import { loadConfig, loadHosts, loadEvolveState } from "@/hooks/use-widget-initialization";
-import { useSummary } from "@/hooks/use-summary";
 import { markBootStage } from "@/lib/boot-diagnostics";
 import { useEvolveMascot } from "@/hooks/use-evolve-mascot";
-import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
+import { useCurrentStep } from "@/hooks/use-current-step";
 import { UpdateBanner } from "@/components/widget/layout/update-banner";
 import { startViewModelSync } from "@/viewmodel";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
@@ -54,9 +51,6 @@ export function DarwinWidget() {
   const { getInitialStatus } = useGitOperations();
   const { checkNix } = useNixInstall();
   const { checkPermissions } = usePermissions();
-  const { loadPrefs } = usePrefs();
-  const { refreshPromptHistory } = usePromptHistory();
-  const { findChangeMap } = useSummary();
 
   // Experimental: spin the mascot in a corner indicator while evolving/building
   useEvolveMascot();
@@ -90,7 +84,7 @@ export function DarwinWidget() {
         setSettingsOpen,
         setShowHistory,
         setShowFilesystem,
-      } = useWidgetStore.getState();
+      } = useUiState.getState();
       if (settingsOpen) {
         e.preventDefault();
         setSettingsOpen(false);
@@ -113,24 +107,24 @@ export function DarwinWidget() {
 
     (async () => {
       try {
-        await checkPermissions();
-        await loadConfig();
-        await checkNix();
-        await loadHosts();
-        await loadEvolveState();
-        await getInitialStatus();
-        await loadPrefs();
-        await findChangeMap();
-        refreshPromptHistory();
-
+        // Hydrate every mirrored slice (preferences/hosts, permissions,
+        // prompt history, evolve, git, change map) before anything that
+        // depends on config being available.
         const stop = await startViewModelSync();
         if (cancelled) {
           stop();
         } else {
           stopViewModelSync = stop;
         }
+
+        // Explicit probes: permissions (writes the backend cell, which
+        // round-trips through `permissions_changed`), Nix availability, and
+        // the cached git status snapshot.
+        await checkPermissions();
+        await checkNix();
+        await getInitialStatus();
       } catch (e: unknown) {
-        useWidgetStore.getState().setError((e as Error)?.message || String(e));
+        useUiState.getState().setError((e as Error)?.message || String(e));
       }
 
       if (cancelled) return;

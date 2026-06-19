@@ -258,8 +258,8 @@ export const storybookTauriAPI = {
   git: {
     status: async () => baseGitStatus(),
     statusAndCache: async () => {
-      const { useWidgetStore } = await import("../../src/stores/widget-store");
-      return useWidgetStore.getState().gitStatus ?? baseGitStatus();
+      const { useViewModel } = await import("../../src/stores/view-model");
+      return useViewModel.getState().git ?? baseGitStatus();
     },
     cached: async () => baseGitStatus(),
     commit: async () => ({ hash: "mock123", evolveState: baseEvolveState() }),
@@ -327,13 +327,13 @@ export const storybookTauriAPI = {
   },
   summarizedChanges: {
     findChangeMap: async () => {
-      const { useWidgetStore } = await import("../../src/stores/widget-store");
-      return useWidgetStore.getState().changeMap ?? baseSemanticChangeMap();
+      const { useViewModel } = await import("../../src/stores/view-model");
+      return useViewModel.getState().changeMap ?? baseSemanticChangeMap();
     },
     summarizeCurrent: async () => baseSemanticChangeMap(),
     generateCommitMessage: async () => {
-      const { useWidgetStore } = await import("../../src/stores/widget-store");
-      return useWidgetStore.getState().commitMessageSuggestion ?? "chore: mock commit message";
+      const { useUiState } = await import("../../src/stores/ui-state");
+      return useUiState.getState().commitMessageSuggestion ?? "chore: mock commit message";
     },
   },
   summary: {
@@ -393,11 +393,11 @@ export const storybookTauriAPI = {
   },
   evolveState: {
     get: async () => {
-      // Return the store's current evolveState so init doesn't overwrite story state.
+      // Return the store's current evolve state so init doesn't overwrite story state.
       // Dynamic import avoids circular dep at module-evaluation time; by the time
       // this async method is called the store module is fully initialized.
-      const { useWidgetStore } = await import("../../src/stores/widget-store");
-      return useWidgetStore.getState().evolveState ?? baseEvolveState();
+      const { useViewModel } = await import("../../src/stores/view-model");
+      return useViewModel.getState().evolve ?? baseEvolveState();
     },
     clear: async () => baseEvolveState(),
   },

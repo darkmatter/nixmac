@@ -1,6 +1,6 @@
 use crate::state::{evolve_state, watcher};
 use crate::storage::store;
-use crate::system::nix::{self, determine_host_attr};
+use crate::system::nix::determine_host_attr;
 use crate::{git, shared_types};
 use tauri::AppHandle;
 
@@ -20,26 +20,22 @@ pub(super) fn capture_err<E: std::fmt::Display>(cmd: &str, e: E) -> String {
 }
 
 /// Initializes app state after switching to a new config directory:
-/// caches git status, starts the file watcher, resets evolve state, and lists hosts.
-pub(super) fn handle_new_config_dir(
-    app: &AppHandle,
-    dir: &str,
-) -> Result<(shared_types::EvolveState, Option<Vec<String>>), String> {
+/// caches git status, starts the file watcher, and resets evolve state.
+/// The cell writes emit `git_state_changed`/`evolve_state_changed`, and the
+/// frontend re-lists hosts when `global_preferences_changed` arrives.
+pub(super) fn handle_new_config_dir(app: &AppHandle, dir: &str) -> Result<(), String> {
     let git_status = git::status(dir).ok();
     let changes = git_status
         .as_ref()
         .map(|s| s.changes.clone())
         .unwrap_or_default();
     if let Some(ref s) = git_status {
-        // fire-and-forget: cache is a best-effort perf optimization; watcher and evolution
-        // will re-populate it. A store write failure here must not block dir switch.
-        let _ = store::set_cached_git_status(app, s);
+        crate::state::git_state::update_status(app, s.clone());
     }
     watcher::start_watching(app.clone(), dir.to_string(), 2500);
-    let evolve_state = evolve_state::set(app, shared_types::EvolveState::default(), &changes)
+    evolve_state::set_session(app, shared_types::EvolveSession::default(), &changes)
         .map_err(|e| e.to_string())?;
-    let hosts = nix::list_darwin_hosts(dir).ok();
-    Ok((evolve_state, hosts))
+    Ok(())
 }
 
 // Helper function to extract the hostname and config_dir from the app handle, returning an error if either is missing.

@@ -1,6 +1,6 @@
 import { filesystemViewEnabled } from "@/lib/flags";
 import type { EvolveState, PermissionsState } from "@/ipc/types";
-import type { WidgetStep } from "@/stores/widget-store";
+import type { WidgetStep } from "@/types/widget";
 import { FilePen, FilePlus, FileX, FileCode, type LucideIcon } from "lucide-react";
 
 type CurrentStepState = {

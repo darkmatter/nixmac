@@ -5,7 +5,7 @@ import {
   enrichChanges,
   type ChangeWithRichType,
 } from "@/components/widget/utils";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
 import type { Change } from "@/ipc/types";
 import { useMemo } from "react";
 import { FullFileDiffEditor } from "./full-file-diff-editor";
@@ -25,7 +25,7 @@ export function DiffSection({
   includedFiles,
   onIncludedFilesChange,
 }: DiffSectionProps) {
-  const fileContents = useWidgetStore((s) => s.fileDiffContents);
+  const fileContents = useUiState((s) => s.fileDiffContents);
 
   const byFile = useMemo(() => {
     const map = new Map<string, ChangeWithRichType[]>();

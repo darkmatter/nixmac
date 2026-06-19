@@ -344,6 +344,7 @@ pub fn prefetch_darwin_rebuild_stream(app: &AppHandle) -> Result<()> {
     // listening. Tauri emit returns Err only when no listeners are registered.
     // Intentionall doesn't use `nix_command` in order to use get_nix_path_with_login_shell.
     std::thread::spawn(move || {
+        crate::state::nix_install_state::update(&app_handle, |state| state.prefetching = true);
         let result = Command::new("nix")
             .args(["build", "--no-link", "nix-darwin/master#darwin-rebuild"])
             .env("PATH", get_nix_path_with_login_shell())
@@ -355,12 +356,21 @@ pub fn prefetch_darwin_rebuild_stream(app: &AppHandle) -> Result<()> {
         match result {
             Ok(output) if output.status.success() => {
                 info!("[nix] darwin-rebuild prefetch succeeded");
+                crate::state::nix_install_state::update(&app_handle, |state| {
+                    state.prefetching = false;
+                    state.darwin_rebuild_available = Some(true);
+                    state.last_error = None;
+                });
                 let _ =
                     app_handle.emit("nix:darwin-rebuild:end", serde_json::json!({ "ok": true }));
             }
             Ok(output) => {
                 let stderr = String::from_utf8_lossy(&output.stderr).to_string();
                 error!("[nix] darwin-rebuild prefetch failed: {}", stderr);
+                crate::state::nix_install_state::update(&app_handle, |state| {
+                    state.prefetching = false;
+                    state.last_error = Some(stderr.clone());
+                });
                 let _ = app_handle.emit(
                     "nix:darwin-rebuild:end",
                     serde_json::json!({ "ok": false, "error": stderr }),
@@ -368,6 +378,10 @@ pub fn prefetch_darwin_rebuild_stream(app: &AppHandle) -> Result<()> {
             }
             Err(e) => {
                 error!("[nix] darwin-rebuild prefetch error: {}", e);
+                crate::state::nix_install_state::update(&app_handle, |state| {
+                    state.prefetching = false;
+                    state.last_error = Some(e.to_string());
+                });
                 let _ = app_handle.emit(
                     "nix:darwin-rebuild:end",
                     serde_json::json!({ "ok": false, "error": e.to_string() }),
@@ -388,6 +402,12 @@ pub fn install_nix_stream(app: &AppHandle) -> Result<()> {
     std::thread::spawn(move || {
         if let Err(e) = run_nix_install(&app_handle) {
             error!("[nix] install failed: {}", e);
+            crate::state::nix_install_state::record_install_end(
+                &app_handle,
+                false,
+                None,
+                Some(e.to_string()),
+            );
             let _ = app_handle.emit(
                 "nix:install:end",
                 serde_json::json!({
@@ -470,6 +490,12 @@ const INSTALL_PHASE_TIMEOUT: std::time::Duration = std::time::Duration::from_sec
 fn run_nix_install(app: &AppHandle) -> Result<()> {
     let nix_installed = is_nix_installed();
     let dr_available = nix_installed && is_darwin_rebuild_available();
+    crate::state::nix_install_state::update(app, |state| {
+        state.installing = true;
+        state.installed = Some(nix_installed);
+        state.darwin_rebuild_available = Some(dr_available);
+        state.last_error = None;
+    });
     // Each phase gets its own 5-minute deadline.
     let mut deadline;
 
@@ -480,6 +506,7 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
             "[nix] already installed, darwin-rebuild available: {}",
             version
         );
+        crate::state::nix_install_state::record_install_end(app, true, Some(true), None);
         app.emit(
             "nix:install:end",
             serde_json::json!({
@@ -494,6 +521,9 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
 
     if !nix_installed {
         // Phase 1: Download .pkg and open with macOS Installer.app
+        crate::state::nix_install_state::update(app, |state| {
+            state.install_phase = Some("downloading".to_string());
+        });
         let _ = app.emit(
             "nix:install:progress",
             serde_json::json!({ "phase": "downloading", "downloaded": 0, "total": 0 }),
@@ -502,6 +532,12 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
         let pkg_path = match download_nix_pkg(app) {
             Ok(path) => path,
             Err(e) => {
+                crate::state::nix_install_state::record_install_end(
+                    app,
+                    false,
+                    None,
+                    Some(format!("Failed to download Nix installer: {}", e)),
+                );
                 app.emit(
                     "nix:install:end",
                     serde_json::json!({
@@ -517,6 +553,9 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
 
         // Open the .pkg with macOS Installer.app
         info!("[nix] Opening .pkg with macOS Installer: {:?}", pkg_path);
+        crate::state::nix_install_state::update(app, |state| {
+            state.install_phase = Some("waiting-for-installer".to_string());
+        });
         let _ = app.emit(
             "nix:install:progress",
             serde_json::json!({ "phase": "waiting-for-installer" }),
@@ -525,6 +564,12 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
         if let Err(e) = Command::new("open").arg(&pkg_path).status() {
             // fire-and-forget cleanup: temp pkg may not exist if open() aborted early.
             let _ = std::fs::remove_file(&pkg_path);
+            crate::state::nix_install_state::record_install_end(
+                app,
+                false,
+                None,
+                Some(format!("Failed to open installer: {}", e)),
+            );
             app.emit(
                 "nix:install:end",
                 serde_json::json!({
@@ -565,6 +610,12 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
             if std::time::Instant::now() >= deadline {
                 // fire-and-forget cleanup on timeout path.
                 let _ = std::fs::remove_file(&pkg_path);
+                crate::state::nix_install_state::record_install_end(
+                    app,
+                    false,
+                    None,
+                    Some(("Installation timed out after 5 minutes. Please try again.").to_string()),
+                );
                 app.emit(
                     "nix:install:end",
                     serde_json::json!({
@@ -583,6 +634,10 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
     // Fresh 5-minute deadline for this phase
     deadline = std::time::Instant::now() + INSTALL_PHASE_TIMEOUT;
     // fire-and-forget: progress event; non-fatal if no listener.
+    crate::state::nix_install_state::update(app, |state| {
+        state.installed = Some(true);
+        state.install_phase = Some("prefetching".to_string());
+    });
     let _ = app.emit(
         "nix:install:progress",
         serde_json::json!({ "phase": "prefetching" }),
@@ -600,6 +655,12 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
         Ok(child) => child,
         Err(e) => {
             error!("[nix] darwin-rebuild prefetch error: {}", e);
+            crate::state::nix_install_state::record_install_end(
+                app,
+                false,
+                None,
+                Some(format!("Failed to set up nix-darwin: {}", e)),
+            );
             app.emit(
                 "nix:install:end",
                 serde_json::json!({
@@ -641,6 +702,12 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
         }
         Ok(_) => {
             error!("[nix] darwin-rebuild prefetch failed");
+            crate::state::nix_install_state::record_install_end(
+                app,
+                false,
+                None,
+                Some(("Failed to set up nix-darwin. Please try again.").to_string()),
+            );
             app.emit(
                 "nix:install:end",
                 serde_json::json!({
@@ -654,6 +721,12 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
         }
         Err(_) => {
             error!("[nix] darwin-rebuild prefetch timed out");
+            crate::state::nix_install_state::record_install_end(
+                app,
+                false,
+                None,
+                Some(("Installation timed out after 5 minutes. Please try again.").to_string()),
+            );
             app.emit(
                 "nix:install:end",
                 serde_json::json!({
@@ -673,6 +746,7 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
         "[nix] Setup complete: nix={}, darwin-rebuild cached",
         version
     );
+    crate::state::nix_install_state::record_install_end(app, true, Some(true), None);
     app.emit(
         "nix:install:end",
         serde_json::json!({

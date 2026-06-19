@@ -8,8 +8,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { countDiffItems, useHomebrewDiff } from "@/hooks/use-homebrew-diff";
+import { useUiState } from "@/stores/ui-state";
 import { useViewModel } from "@/stores/view-model";
-import { useWidgetStore } from "@/stores/widget-store";
 import { Package } from "lucide-react";
 
 /**
@@ -19,10 +19,10 @@ import { Package } from "lucide-react";
  */
 export function HomebrewBadge() {
   const evolveState = useViewModel((s) => s.evolve);
-  const prefsLoaded = useWidgetStore((s) => s.prefsLoaded);
-  const scanHomebrewOnStartup = useWidgetStore((s) => s.scanHomebrewOnStartup);
+  const prefsLoaded = useViewModel((s) => s.preferences !== null);
+  const scanHomebrewOnStartup = useViewModel((s) => s.preferences?.scanHomebrewOnStartup ?? true);
   const shouldScan = prefsLoaded && scanHomebrewOnStartup;
-  const setConversationalResponse = useWidgetStore((s) => s.setConversationalResponse);
+  const setConversationalResponse = useUiState((s) => s.setConversationalResponse);
   const { diff, hasDiff, isApplying, applyDiff } = useHomebrewDiff(shouldScan);
 
   // Only show on the begin step (clean tree, no in-progress evolution).

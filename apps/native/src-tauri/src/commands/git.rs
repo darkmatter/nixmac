@@ -20,6 +20,30 @@ pub async fn git_file_diff_contents(
         .collect())
 }
 
+/// Returns the last-known git state from the in-memory cell.
+///
+/// On a cold cell (fresh start, before the watcher's first tick) this seeds
+/// the cell once from the real source so hydration never returns an empty
+/// mirror. When no config dir is set yet (onboarding) the empty cell value
+/// is returned as-is.
+#[tauri::command]
+pub async fn get_git_state(app: AppHandle) -> Result<shared_types::GitState, String> {
+    let state = crate::state::git_state::get(&app);
+    if state.git_status.is_some() {
+        return Ok(state);
+    }
+    let Ok(dir) = store::ensure_git_repo_folder(&app) else {
+        return Ok(state);
+    };
+    if let Ok(status) = git::query::status_and_cache(&dir, &app) {
+        return Ok(shared_types::GitState {
+            git_status: Some(status),
+            external_build_detected: false,
+        });
+    }
+    Ok(crate::state::git_state::get(&app))
+}
+
 /// Returns the current git status of the repo.
 #[tauri::command]
 pub async fn git_status(app: AppHandle) -> Result<shared_types::GitStatus, String> {
@@ -85,13 +109,19 @@ pub async fn git_commit(
         }
     }
 
-    let evolve_state = evolve_state::clear(&app).unwrap_or_else(|e| {
+    // The cell write emits `evolve_state_changed`; the frontend mirrors it.
+    if let Err(e) = evolve_state::clear(&app) {
         log::error!("[git_commit] Failed to clear evolve state: {}", e);
-        shared_types::EvolveState::default()
-    });
+    }
+
+    // The commit folded the working tree's changes into history: refresh the
+    // git-state cell and reset the change-map cell (emits both `*_changed`).
+    if let Err(e) = git::query::status_and_cache(&dir, &app) {
+        log::warn!("[git_commit] Failed to refresh git state: {}", e);
+    }
+    crate::state::change_map::clear(&app);
 
     Ok(shared_types::CommitResult {
         hash: commit_info.hash,
-        evolve_state,
     })
 }

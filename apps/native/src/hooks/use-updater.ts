@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { tauriAPI } from "@/ipc/api";
 import type { UpdateInfo } from "@/ipc/types";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 
 interface UpdateState {
   /** Whether we're currently checking for updates */
@@ -37,8 +37,8 @@ export function useUpdater() {
   const [state, setState] = useState<UpdateState>(initialState);
   const checkedRef = useRef(false);
   const isDevMode = import.meta.env.DEV;
-  const pinnedVersion = useWidgetStore((s) => s.pinnedVersion);
-  const updateChannel = useWidgetStore((s) => s.updateChannel);
+  const pinnedVersion = useViewModel((s) => s.preferences?.pinnedVersion ?? null);
+  const updateChannel = useViewModel((s) => s.preferences?.updateChannel ?? "stable");
 
   const checkForUpdates = useCallback(async () => {
     setState((s) => ({ ...s, checking: true, error: null }));

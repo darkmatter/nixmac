@@ -14,24 +14,26 @@ import type {
   ConfigurableSchema,
   JsonValue,
   EvolveCancelResult,
-  EvolutionResult,
   EvolveState,
   ExportResult,
   FeedbackMetadata,
   FeedbackShareOptions,
   FileDiffContents,
-  FinalizeApplyResult,
+  GitState,
   GitStatus,
+  GlobalPreferences,
   HomebrewItem,
   HomebrewState,
   HistoryItem,
   ImportResult,
   LaunchdItem,
   NixCheckResult,
+  NixInstallState,
   OkResult,
   Permission,
   PermissionsState,
   PreviewIndicatorState,
+  RebuildStatus,
   RecommendedPrompt,
   RollbackResult,
   SemanticChangeMap,
@@ -72,13 +74,14 @@ export const tauriAPI = {
     pull: () => invoke<SyncResult>("sync_pull"),
   },
   git: {
+    state: () => invoke<GitState>("get_git_state"),
     status: () => invoke<GitStatus>("git_status"),
     statusAndCache: () => invoke<GitStatus>("git_status_and_cache"),
     commit: (message: string) => invoke<CommitResult>("git_commit", { message }),
     fileDiffContents: (filenames: string[]) => invoke<Record<string, FileDiffContents>>("git_file_diff_contents", { filenames }),
   },
   darwin: {
-    evolve: (description: string) => invoke<EvolutionResult>("darwin_evolve", { description }),
+    evolve: (description: string) => invoke<void>("darwin_evolve", { description }),
     evolveAnswer: (answer: string) => invoke<OkResult>("darwin_evolve_answer", { answer }),
     buildCheck: () => invoke<BuildCheckResult>("darwin_build_check"),
     evolveFromManual: () => invoke<number>("darwin_adopt_manual_changes"),
@@ -87,16 +90,18 @@ export const tauriAPI = {
       invoke<OkResult>("darwin_apply_stream_start", { hostOverride }),
     activateStorePath: (storePath: string) =>
       invoke<OkResult>("darwin_activate_store_path", { storePath }),
-    finalizeApply: () => invoke<FinalizeApplyResult>("finalize_apply"),
+    finalizeApply: () => invoke<void>("finalize_apply"),
     finalizeRollback: (storePath: string | null, changesetId: number | null) =>
-      invoke<FinalizeApplyResult>("finalize_rollback", { storePath, changesetId }),
+      invoke<void>("finalize_rollback", { storePath, changesetId }),
     rollbackErase: () => invoke<RollbackResult>("rollback_erase"),
     prepareRestore: (targetHash: string) => invoke<void>("prepare_restore", { targetHash }),
     abortRestore: () => invoke<void>("abort_restore"),
-    finalizeRestore: (targetHash: string) => invoke<GitStatus>("finalize_restore", { targetHash }),
+    finalizeRestore: (targetHash: string) => invoke<void>("finalize_restore", { targetHash }),
+    rebuildStatus: () => invoke<RebuildStatus>("get_rebuild_status"),
   },
   nix: {
     check: () => invoke<NixCheckResult>("nix_check"),
+    installState: () => invoke<NixInstallState>("get_nix_install_state"),
   },
   flake: {
     listHosts: () => invoke<string[]>("flake_list_hosts"),
@@ -109,6 +114,7 @@ export const tauriAPI = {
     normalize: (input: string) => invoke<string>("path_normalize", { input }),
   },
   summarizedChanges: {
+    getChangeMap: () => invoke<SemanticChangeMap>("get_change_map"),
     findChangeMap: () => invoke<SemanticChangeMap>("find_change_map"),
     summarizeCurrent: () => invoke<SemanticChangeMap>("summarize_current"),
     generateCommitMessage: () => invoke<string>("generate_commit_message"),
@@ -136,6 +142,9 @@ export const tauriAPI = {
   ui: {
     getPrefs: getCachedPrefs,
     setPrefs,
+  },
+  preferences: {
+    get: () => invoke<GlobalPreferences>("get_global_preferences"),
   },
   settings: {
     export: (includeSecrets: boolean) =>
@@ -200,7 +209,10 @@ export const tauriAPI = {
       invoke<ConfigEditApplyResult>("apply_system_defaults", { defaults }),
   },
   permissions: {
-    checkAll: () => invoke<PermissionsState>("permissions_check_all"),
+    /** Last-known permissions from the backend cell; null = never probed. */
+    get: () => invoke<PermissionsState | null>("get_permissions"),
+    /** Probe all macOS permissions; the result arrives via `permissions_changed`. */
+    refresh: () => invoke<void>("refresh_permissions"),
     request: (permissionId: string) => invoke<Permission>("permissions_request", { permissionId }),
     // macOS-specific permission checks via tauri-plugin-macos-permissions
     checkFullDiskAccess: () => checkFullDiskAccessPermission(),
@@ -208,8 +220,8 @@ export const tauriAPI = {
   },
 
   evolveState: {
-    get: () => invoke<EvolveState>("routing_state_get"),
-    clear: () => invoke<EvolveState>("routing_state_clear"),
+    get: () => invoke<EvolveState>("get_evolve_state"),
+    clear: () => invoke<EvolveState>("clear_evolve_state"),
   },
 
   history: {

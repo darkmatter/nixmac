@@ -1,6 +1,8 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
+import { useViewModel } from "@/stores/view-model";
+import { makeGlobalPreferences } from "@/utils/test-fixtures";
 import type React from "react";
 import { useEffect } from "react";
 import { SetupStep } from "./setup-step";
@@ -67,12 +69,12 @@ function SetupStory({ configDir, hosts, host = "" }: SetupStoryProps) {
   installSetupMocks();
 
   useEffect(() => {
-    const store = useWidgetStore.getState();
-    store.setConfigDir(configDir);
-    store.setHosts(hosts);
-    store.setHost(host);
-    store.setBootstrapping(false);
-    store.setError(null);
+    useViewModel.setState({
+      preferences: makeGlobalPreferences({ configDir, hostAttr: host }),
+      hosts,
+    });
+    useUiState.getState().setBootstrapping(false);
+    useUiState.getState().setError(null);
   }, [configDir, host, hosts]);
 
   return <SetupStep />;

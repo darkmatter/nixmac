@@ -2,14 +2,14 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import "@testing-library/jest-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 import { RepoImport } from "@/components/widget/controls/repo-import";
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
-type SetDirResult = { dir: string; evolveState: never; hosts: string[] | null };
+type SetDirResult = { dir: string; changed: boolean };
 
 const mockImportGithub = vi.fn<(ref: string, dir?: string) => Promise<SetDirResult>>();
 const mockImportZip = vi.fn<(zip: string, dir?: string) => Promise<SetDirResult>>();
@@ -35,13 +35,11 @@ function resetMocks() {
 
   mockImportGithub.mockImplementation(async (_ref, dir) => ({
     dir: `/home/user/${dir ?? ".darwin"}`,
-    evolveState: {} as never,
-    hosts: [],
+    changed: true,
   }));
   mockImportZip.mockImplementation(async (_zip, dir) => ({
     dir: `/home/user/${dir ?? ".darwin"}`,
-    evolveState: {} as never,
-    hosts: [],
+    changed: true,
   }));
   mockPickZip.mockResolvedValue(null);
   mockSetHostAttr.mockResolvedValue();
@@ -49,9 +47,7 @@ function resetMocks() {
 
 beforeEach(() => {
   resetMocks();
-  const s = useWidgetStore.getState();
-  s.setConfigDir("");
-  s.setHosts([]);
+  useViewModel.setState({ preferences: null, hosts: [] });
 });
 
 afterEach(() => {

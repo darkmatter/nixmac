@@ -2,19 +2,11 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockSaveHost, widgetState } = vi.hoisted(() => ({
-  mockSaveHost: vi.fn<(host: string) => Promise<void>>(),
-  widgetState: {
-    configDir: "",
-    hosts: [] as string[],
-    host: "",
-    error: null as string | null,
-  },
-}));
+import { useViewModel } from "@/stores/view-model";
+import { makeGlobalPreferences } from "@/utils/test-fixtures";
 
-vi.mock("@/stores/widget-store", () => ({
-  useWidgetStore: <T,>(selector: (state: typeof widgetState) => T) =>
-    selector(widgetState),
+const { mockSaveHost } = vi.hoisted(() => ({
+  mockSaveHost: vi.fn<(host: string) => Promise<void>>(),
 }));
 
 vi.mock("@/hooks/use-darwin-config", () => ({
@@ -37,20 +29,22 @@ vi.mock("@/components/widget/controls/bootstrap-config", () => ({
 
 import { SetupStep } from "./setup-step";
 
+function seedConfig(configDir: string | null, hosts: string[], host: string | null) {
+  useViewModel.setState({
+    preferences: makeGlobalPreferences({ configDir, hostAttr: host }),
+    hosts,
+  });
+}
+
 describe("<SetupStep>", () => {
   beforeEach(() => {
-    widgetState.configDir = "";
-    widgetState.hosts = [];
-    widgetState.host = "";
-    widgetState.error = null;
+    seedConfig(null, [], null);
     mockSaveHost.mockReset();
     mockSaveHost.mockResolvedValue();
   });
 
   it("persists the displayed host when Next is clicked without changing the dropdown", async () => {
-    widgetState.configDir = "/Users/me/.nixmac";
-    widgetState.hosts = ["mbp"];
-    widgetState.host = "mbp";
+    seedConfig("/Users/me/.nixmac", ["mbp"], "mbp");
 
     render(<SetupStep />);
 
@@ -62,9 +56,7 @@ describe("<SetupStep>", () => {
   });
 
   it("does not show Next while waiting to create a default configuration", async () => {
-    widgetState.configDir = "/Users/me/.nixmac";
-    widgetState.hosts = [];
-    widgetState.host = "";
+    seedConfig("/Users/me/.nixmac", [], null);
 
     render(<SetupStep />);
     fireEvent.click(screen.getByTestId("directory-picker"));

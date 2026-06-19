@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-use super::evolve::EvolveState;
 use crate::sqlite_types::{Change, ChangeSet, ChangeSummary};
 
 /// HEAD content vs working-tree content for a file, used by the diff tab Monaco DiffEditor.
@@ -27,7 +26,7 @@ pub enum ChangeType {
 }
 
 /// Individual file status parsed from diff headers.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct GitFileStatus {
     /// Repository-relative file path.
@@ -37,7 +36,7 @@ pub struct GitFileStatus {
 }
 
 /// Comprehensive git repository status.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct GitStatus {
     /// Changed files parsed from git status/diff output.
@@ -59,7 +58,7 @@ pub struct GitStatus {
 }
 
 /// Payload emitted on `git_state_changed` by the git status watcher.
-#[derive(Debug, Clone, Serialize, Type)]
+#[derive(Debug, Clone, Serialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct GitState {
     /// Latest git status snapshot, if it could be read.
@@ -68,17 +67,16 @@ pub struct GitState {
     pub external_build_detected: bool,
 }
 
-/// Result of a successful `git_commit` command.
+/// Result of a successful `git_commit` command. State mirrors (git, evolve,
+/// change map) flow through the `*_changed` events.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CommitResult {
     /// Hash of the commit that was created.
     pub hash: String,
-    /// Evolve state after committing.
-    pub evolve_state: EvolveState,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangeWithSummary {
     /// Change row identifier.
@@ -101,7 +99,7 @@ pub struct ChangeWithSummary {
     pub description: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SemanticChangeGroup {
     /// Shared summary describing the grouped changes.
@@ -110,7 +108,7 @@ pub struct SemanticChangeGroup {
     pub changes: Vec<ChangeWithSummary>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SemanticChangeMap {
     /// Groups of changes that share a generated semantic summary.

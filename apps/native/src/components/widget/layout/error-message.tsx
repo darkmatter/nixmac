@@ -2,7 +2,8 @@
 
 import { Button } from "@/components/ui/button";
 import { EVOLUTION_CANCELLED_MSG } from "@/lib/constants";
-import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
+import { useCurrentStep } from "@/hooks/use-current-step";
 import { FeedbackType } from "@/types/feedback";
 import { Settings } from "lucide-react";
 import { useEffect, useRef } from "react";
@@ -12,10 +13,10 @@ import { useEffect, useRef } from "react";
  * Filters out certain errors based on context (e.g., expected errors during setup).
  */
 export function ErrorMessage() {
-  const error = useWidgetStore((s) => s.error);
-  const setError = useWidgetStore((s) => s.setError);
-  const openFeedback = useWidgetStore((s) => s.openFeedback);
-  const setSettingsOpen = useWidgetStore((s) => s.setSettingsOpen);
+  const error = useUiState((s) => s.error);
+  const setError = useUiState((s) => s.setError);
+  const openFeedback = useUiState((s) => s.openFeedback);
+  const setSettingsOpen = useUiState((s) => s.setSettingsOpen);
   const step = useCurrentStep();
   const dismissedRef = useRef<string | null>(null);
 

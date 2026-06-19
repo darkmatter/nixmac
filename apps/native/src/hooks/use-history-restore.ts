@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useHistory } from "@/hooks/use-history";
 import { tauriAPI } from "@/ipc/api";
 import type { HistoryItem } from "@/ipc/types";
 import { useViewModel } from "@/stores/view-model";
-import { mirrorGitState } from "@/viewmodel/git";
 
 // Sentinel hash used to identify the frontend-only preview item.
 export const PREVIEW_ITEM_HASH = "n1xm4c0";
@@ -193,7 +192,7 @@ export function useHistoryRestore(
   onUncommittedChanges: () => void,
 ): HistoryRestoreResult {
   const { loadHistory } = useHistory();
-  const setProcessing = useWidgetStore((state) => state.setProcessing);
+  const setProcessing = useUiState((state) => state.setProcessing);
   const gitStatus = useViewModel((state) => state.git);
   const { triggerRebuild } = useRebuildStream();
 
@@ -246,8 +245,8 @@ export function useHistoryRestore(
       await triggerRebuild({
         context: "rollback",
         onSuccess: async () => {
-          const result = await tauriAPI.darwin.finalizeRestore(hash);
-          mirrorGitState(result);
+          // The backend writes the git-state cell; `git_state_changed` mirrors it.
+          await tauriAPI.darwin.finalizeRestore(hash);
           await loadHistory();
         },
         onFailure: async () => {

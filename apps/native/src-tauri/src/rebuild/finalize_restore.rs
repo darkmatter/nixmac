@@ -47,9 +47,8 @@ pub async fn finalize_restore(app: &AppHandle, target_hash: String) -> Result<Gi
     }
 
     let git_status = git::status(&config_dir).context("Failed to get git status after restore")?;
-    // fire-and-forget: best-effort cache update. `git_status` is returned directly;
-    // a store write failure here must not abort the restore finalization.
-    let _ = store::set_cached_git_status(app, &git_status);
+    // Record the post-restore status; the cell write emits `git_state_changed`.
+    crate::state::git_state::update_status(app, git_status.clone());
 
     build_state::record_build(app, &git_status)
         .context("Failed to record build state after restore")?;

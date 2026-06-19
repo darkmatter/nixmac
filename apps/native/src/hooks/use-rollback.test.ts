@@ -1,14 +1,12 @@
 import type { EvolveState, GitStatus } from "@/ipc/types";
-import { useWidgetStore } from "@/stores/widget-store";
-import { mirrorEvolveState } from "@/viewmodel/evolve";
-import { mirrorGitState } from "@/viewmodel/git";
+import { initialUiState, useUiState } from "@/stores/ui-state";
+import { useViewModel } from "@/stores/view-model";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useRollback } from "./use-rollback";
 
 const mocks = vi.hoisted(() => ({
   finalizeRollback: vi.fn(),
-  findChangeMap: vi.fn(),
   rollbackErase: vi.fn(),
   triggerRebuild: vi.fn(),
 }));
@@ -25,12 +23,6 @@ vi.mock("@/ipc/api", () => ({
 vi.mock("@/hooks/use-rebuild-stream", () => ({
   useRebuildStream: () => ({
     triggerRebuild: mocks.triggerRebuild,
-  }),
-}));
-
-vi.mock("@/hooks/use-summary", () => ({
-  useSummary: () => ({
-    findChangeMap: mocks.findChangeMap,
   }),
 }));
 
@@ -61,39 +53,23 @@ const committableEvolveState: EvolveState = {
   step: "commit",
 };
 
-const rolledBackEvolveState: EvolveState = {
-  ...committableEvolveState,
-  committable: false,
-  currentChangesetId: null,
-  rollbackChangesetId: null,
-  rollbackStorePath: null,
-  step: "begin",
-};
-
 describe("useRollback", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.findChangeMap.mockResolvedValue(undefined);
-    mocks.finalizeRollback.mockResolvedValue({
-      evolveState: rolledBackEvolveState,
-      gitStatus: cleanGitStatus,
-    });
+    mocks.finalizeRollback.mockResolvedValue(undefined);
     mocks.rollbackErase.mockResolvedValue({
-      evolveState: rolledBackEvolveState,
-      gitStatus: cleanGitStatus,
       rollbackChangesetId: 1,
       rollbackStorePath: "/nix/store/old-system",
     });
     mocks.triggerRebuild.mockResolvedValue(undefined);
 
-    const store = useWidgetStore.getState();
-    store.setEvolvePrompt("Install vim");
-    mirrorEvolveState(committableEvolveState);
-    mirrorGitState(cleanGitStatus);
-    store.setProcessing(false);
-    store.setGenerating(false);
-    store.setError(null);
-    store.clearLogs();
+    useUiState.setState({ ...initialUiState });
+    useUiState.getState().setEvolvePrompt("Install vim");
+    useViewModel.setState({
+      evolve: committableEvolveState,
+      git: cleanGitStatus,
+      build: { externalBuildDetected: false },
+    });
   });
 
   it("keeps processing locked while a committable rollback rebuild is still running", async () => {
@@ -104,11 +80,10 @@ describe("useRollback", () => {
     });
 
     expect(mocks.triggerRebuild).toHaveBeenCalledTimes(1);
-    expect(useWidgetStore.getState().isProcessing).toBe(true);
-    expect(mocks.findChangeMap).not.toHaveBeenCalled();
+    expect(useUiState.getState().isProcessing).toBe(true);
   });
 
-  it("refreshes the change map after rollback rebuild finalization succeeds", async () => {
+  it("finalizes the rollback with the erased run's target after the rebuild succeeds", async () => {
     const { result } = renderHook(() => useRollback());
 
     await act(async () => {
@@ -121,6 +96,21 @@ describe("useRollback", () => {
     });
 
     expect(mocks.finalizeRollback).toHaveBeenCalledWith("/nix/store/old-system", 1);
-    expect(mocks.findChangeMap).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases processing immediately when there is nothing to rebuild", async () => {
+    useViewModel.setState({
+      evolve: { ...committableEvolveState, committable: false },
+    });
+
+    const { result } = renderHook(() => useRollback());
+
+    await act(async () => {
+      await result.current.handleRollback();
+    });
+
+    expect(mocks.triggerRebuild).not.toHaveBeenCalled();
+    expect(useUiState.getState().isProcessing).toBe(false);
+    expect(useUiState.getState().evolvePrompt).toBe("");
   });
 });

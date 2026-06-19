@@ -70,6 +70,35 @@ if (manifest.length > 0) {
       lines.push(`![${label}](${shotsBaseUrl}/${story.file})`, "");
     }
   }
+  lines.push(
+    "---",
+    "",
+    "### Accept changes",
+    "",
+    "- [ ] Click here to accept these changes",
+    "",
+    "<details>",
+    "<summary>What does this do?</summary>",
+    "",
+    "The screenshots above show UI changes detected by the Storybook",
+    "snapshot tests run on this PR. Each image is the rendered output of",
+    "a Storybook story from the code in this PR branch; the snapshot",
+    "test compared it against the committed baseline in",
+    "`__snapshots__/` and flagged the difference.",
+    "",
+    "Checking the box tells the `darkmatter[bot]` to regenerate the",
+    "baselines from this PR's current code and commit them directly to",
+    "this branch. The new baselines become the source of truth for",
+    "future runs — only accept after confirming the visual changes are",
+    "intentional.",
+    "",
+    "Comparison baseline: the committed `__snapshots__/` files on this",
+    "PR branch (carried forward from develop). Accept updates them in",
+    "place on this branch.",
+    "",
+    "</details>",
+    ""
+  );
 }
 
 process.stdout.write(lines.join("\n"));

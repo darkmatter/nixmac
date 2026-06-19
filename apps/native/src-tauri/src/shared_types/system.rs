@@ -86,6 +86,25 @@ pub struct PermissionsState {
     pub checked_at: Option<i64>,
 }
 
+/// Status of the nix / darwin-rebuild installation flow.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Type, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NixInstallState {
+    /// Whether nix is installed; `None` until first checked.
+    pub installed: Option<bool>,
+    /// Whether darwin-rebuild is available; `None` until first checked.
+    pub darwin_rebuild_available: Option<bool>,
+    /// True while an install run is in flight.
+    pub installing: bool,
+    /// Current installer phase ("downloading", "waiting-for-installer",
+    /// "prefetching"); `None` when idle.
+    pub install_phase: Option<String>,
+    /// True while the standalone darwin-rebuild prefetch is in flight.
+    pub prefetching: bool,
+    /// Error from the last finished run, if it failed.
+    pub last_error: Option<String>,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub enum LaunchdItemType {
     LaunchAgent,
@@ -115,6 +134,24 @@ pub struct LaunchdItem {
     pub standard_error_path: Option<String>,
     /// Working directory, if specified.
     pub working_directory: Option<String>,
+}
+
+/// Lifecycle status of the darwin-rebuild apply/activate streams.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Type, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RebuildStatus {
+    /// True while a rebuild stream is in flight.
+    pub is_running: bool,
+    /// Outcome of the last finished run; `None` while running or never run.
+    pub success: Option<bool>,
+    /// Exit code of the last finished run.
+    pub exit_code: Option<i32>,
+    /// Error class of the last failed run.
+    pub error_type: Option<String>,
+    /// Error message of the last failed run.
+    pub error_message: Option<String>,
+    /// Whether the failure left the system untouched.
+    pub system_untouched: Option<bool>,
 }
 
 /// A single macOS system default that differs from the factory value.

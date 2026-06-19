@@ -11,16 +11,17 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
+import { useViewModel } from "@/stores/view-model";
 import { ClockIcon } from "lucide-react";
 import { useState } from "react";
 
 export function PromptHistoryBadge() {
-  const history = useWidgetStore((s) => s.promptHistory);
-  const evolvePrompt = useWidgetStore((s) => s.evolvePrompt);
-  const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
-  const isProcessing = useWidgetStore((s) => s.isProcessing);
-  const processingAction = useWidgetStore((s) => s.processingAction);
+  const history = useViewModel((s) => s.promptHistory);
+  const evolvePrompt = useUiState((s) => s.evolvePrompt);
+  const setEvolvePrompt = useUiState((s) => s.setEvolvePrompt);
+  const isProcessing = useUiState((s) => s.isProcessing);
+  const processingAction = useUiState((s) => s.processingAction);
 
   const disabled = isProcessing && processingAction === "evolve";
   const [open, setOpen] = useState(false);

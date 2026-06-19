@@ -2,11 +2,11 @@
 
 import { AnalyzeButton } from "@/components/widget/summaries/analyze-button";
 import { useSummary } from "@/hooks/use-summary";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
 import { Dna, Loader2 } from "lucide-react";
 
 export function AnalyzeCurrentButton() {
-  const isSummarizing = useWidgetStore((s) => s.isSummarizing);
+  const isSummarizing = useUiState((s) => s.isSummarizing);
   const { generateCurrentSummary } = useSummary();
 
   return (

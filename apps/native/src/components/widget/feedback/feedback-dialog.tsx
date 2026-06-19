@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
-import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@/stores/ui-state";
+import { useCurrentStep } from "@/hooks/use-current-step";
 import {
   Dialog,
   DialogContent,
@@ -273,14 +274,14 @@ function shouldShowAppLogs(
 }
 
 export function FeedbackDialog() {
-  const feedbackOpen = useWidgetStore((s) => s.feedbackOpen);
-  const setFeedbackOpen = useWidgetStore((s) => s.setFeedbackOpen);
-  const feedbackTypeOverride = useWidgetStore((s) => s.feedbackTypeOverride);
-  const feedbackInitialText = useWidgetStore((s) => s.feedbackInitialText);
-  const panicDetails = useWidgetStore((s) => s.panicDetails);
-  const setFeedbackTypeOverride = useWidgetStore((s) => s.setFeedbackTypeOverride);
+  const feedbackOpen = useUiState((s) => s.feedbackOpen);
+  const setFeedbackOpen = useUiState((s) => s.setFeedbackOpen);
+  const feedbackTypeOverride = useUiState((s) => s.feedbackTypeOverride);
+  const feedbackInitialText = useUiState((s) => s.feedbackInitialText);
+  const panicDetails = useUiState((s) => s.panicDetails);
+  const setFeedbackTypeOverride = useUiState((s) => s.setFeedbackTypeOverride);
   const step = useCurrentStep();
-  const mainWindowError = useWidgetStore((s) => s.error) ?? undefined;
+  const mainWindowError = useUiState((s) => s.error) ?? undefined;
 
   const [feedbackType, setFeedbackType] = useState<FeedbackType>(FeedbackType.Suggestion);
   const [feedbackText, setFeedbackText] = useState("");
@@ -353,7 +354,7 @@ export function FeedbackDialog() {
     setIsPreviewingReport(false);
     setPreviewReportText("");
     setFeedbackTypeOverride(null);
-    useWidgetStore.setState({ feedbackInitialText: null, panicDetails: null });
+    useUiState.setState({ feedbackInitialText: null, panicDetails: null });
   };
 
   const buildFeedbackPayload = async () => {

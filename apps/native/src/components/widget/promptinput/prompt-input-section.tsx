@@ -2,7 +2,7 @@
 
 import { ConversationalResponse } from "@/components/widget/promptinput/conversational-response";
 import { PromptInput } from "@/components/widget/promptinput/prompt-input";
-import { useCurrentStep } from "@/stores/widget-store";
+import { useCurrentStep } from "@/hooks/use-current-step";
 
 export function PromptInputSection() {
   const step = useCurrentStep();

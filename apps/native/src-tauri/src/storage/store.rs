@@ -4,8 +4,9 @@
 //! This provides a simple key-value interface for preferences.
 
 use crate::git::query::repo_root;
-use crate::shared_types;
 use crate::storage::credential_store::{CredentialStore, KeychainStore};
+
+use crate::state::preferences;
 
 use anyhow::Result;
 use serde::{Serialize, de::DeserializeOwned};
@@ -82,16 +83,8 @@ pub fn get_store<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<Store<R>>> {
 
 /// Gets the flake configuration directory, defaulting to ~/.darwin.
 pub fn get_config_dir<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
-    if let Some(dir) = e2e_env_value("NIXMAC_E2E_CONFIG_DIR") {
+    if let Some(dir) = get_config_dir_if_set(app)? {
         return Ok(dir);
-    }
-
-    let store = get_store(app)?;
-
-    if let Some(dir) = store.get("configDir") {
-        if let Some(dir_str) = dir.as_str() {
-            return Ok(dir_str.to_string());
-        }
     }
 
     let home = dirs::home_dir().unwrap_or_default();
@@ -103,6 +96,10 @@ pub fn get_config_dir<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
 pub fn get_config_dir_if_set<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
     if let Some(dir) = e2e_env_value("NIXMAC_E2E_CONFIG_DIR") {
         return Ok(Some(dir));
+    }
+
+    if let Some(prefs) = preferences::try_read(app) {
+        return Ok(prefs.config_dir);
     }
 
     let store = get_store(app)?;
@@ -122,33 +119,29 @@ pub fn get_repo_root<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
         return Ok(dir);
     }
 
-    let store = get_store(app)?;
-
     // 1. Fast path: use stored value
-    if let Some(root) = store.get("repoRoot") {
-        if let Some(root_str) = root.as_str() {
-            return Ok(root_str.to_string());
-        }
+    if let Some(root) = preferences::try_read(app).and_then(|prefs| prefs.repo_root) {
+        return Ok(root);
     }
 
     // 2. Fallback: derive from configDir
     let config_dir = get_config_dir(app)?;
-    let repo_root = repo_root(&config_dir);
+    let repo_root = repo_root(&config_dir).to_string_lossy().to_string();
 
     // 3. Persist for future calls
-    store.set("repoRoot", serde_json::json!(&repo_root));
-    store.save()?;
+    let persisted = repo_root.clone();
+    preferences::write(app, move |prefs| prefs.repo_root = Some(persisted))?;
 
-    Ok(repo_root.to_string_lossy().to_string())
+    Ok(repo_root)
 }
 
 pub fn set_config_dir<R: Runtime>(app: &AppHandle<R>, dir: &str) -> Result<()> {
-    let store = get_store(app)?;
-    let repo_root = repo_root(dir);
-    store.set("configDir", serde_json::json!(dir));
-    store.set("repoRoot", serde_json::json!(repo_root));
-    store.save()?;
-    Ok(())
+    let repo_root = repo_root(dir).to_string_lossy().to_string();
+    let dir = dir.to_string();
+    preferences::write(app, move |prefs| {
+        prefs.config_dir = Some(dir);
+        prefs.repo_root = Some(repo_root);
+    })
 }
 
 /// Creates the config directory if it doesn't exist and returns the path.
@@ -176,22 +169,12 @@ pub fn get_host_attr<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
         return Ok(Some(attr));
     }
 
-    let store = get_store(app)?;
-
-    if let Some(attr) = store.get("hostAttr") {
-        if let Some(attr_str) = attr.as_str() {
-            return Ok(Some(attr_str.to_string()));
-        }
-    }
-
-    Ok(None)
+    Ok(preferences::try_read(app).and_then(|prefs| prefs.host_attr))
 }
 
 pub fn set_host_attr<R: Runtime>(app: &AppHandle<R>, attr: &str) -> Result<()> {
-    let store = get_store(app)?;
-    store.set("hostAttr", serde_json::json!(attr));
-    store.save()?;
-    Ok(())
+    let attr = attr.to_string();
+    preferences::write(app, move |prefs| prefs.host_attr = Some(attr))
 }
 
 // =============================================================================
@@ -209,22 +192,11 @@ pub fn set_evolve_metadata<R: Runtime>(app: &AppHandle<R>, metadata: &str) -> Re
 // UI Preferences
 // =============================================================================
 pub fn get_send_diagnostics<R: Runtime>(app: &AppHandle<R>) -> Result<bool> {
-    let store = get_store(app)?;
-
-    if let Some(send) = store.get("sendDiagnostics") {
-        if let Some(send_bool) = send.as_bool() {
-            return Ok(send_bool);
-        }
-    }
-
-    Ok(false)
+    Ok(preferences::try_read(app).is_some_and(|prefs| prefs.send_diagnostics))
 }
 
 pub fn set_send_diagnostics<R: Runtime>(app: &AppHandle<R>, send: bool) -> Result<()> {
-    let store = get_store(app)?;
-    store.set("sendDiagnostics", serde_json::json!(send));
-    store.save()?;
-    Ok(())
+    preferences::write(app, move |prefs| prefs.send_diagnostics = send)
 }
 
 // =============================================================================
@@ -232,47 +204,39 @@ pub fn set_send_diagnostics<R: Runtime>(app: &AppHandle<R>, send: bool) -> Resul
 // =============================================================================
 
 pub fn get_summary_provider<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
-    get_string_pref(app, "summaryProvider")
+    Ok(preferences::try_read(app).and_then(|prefs| prefs.summary_provider))
 }
 
 pub fn set_summary_provider<R: Runtime>(app: &AppHandle<R>, provider: &str) -> Result<()> {
-    let store = get_store(app)?;
-    store.set("summaryProvider", serde_json::json!(provider));
-    store.save()?;
-    Ok(())
+    let provider = provider.to_string();
+    preferences::write(app, move |prefs| prefs.summary_provider = Some(provider))
 }
 
 pub fn get_summary_model<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
-    get_string_pref(app, "summaryModel")
+    Ok(preferences::try_read(app).and_then(|prefs| prefs.summary_model))
 }
 
 pub fn set_summary_model<R: Runtime>(app: &AppHandle<R>, model: &str) -> Result<()> {
-    let store = get_store(app)?;
-    store.set("summaryModel", serde_json::json!(model));
-    store.save()?;
-    Ok(())
+    let model = model.to_string();
+    preferences::write(app, move |prefs| prefs.summary_model = Some(model))
 }
 
 pub fn get_evolve_provider<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
-    get_string_pref(app, "evolveProvider")
+    Ok(preferences::try_read(app).and_then(|prefs| prefs.evolve_provider))
 }
 
 pub fn set_evolve_provider<R: Runtime>(app: &AppHandle<R>, provider: &str) -> Result<()> {
-    let store = get_store(app)?;
-    store.set("evolveProvider", serde_json::json!(provider));
-    store.save()?;
-    Ok(())
+    let provider = provider.to_string();
+    preferences::write(app, move |prefs| prefs.evolve_provider = Some(provider))
 }
 
 pub fn get_evolve_model<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
-    get_string_pref(app, "evolveModel")
+    Ok(preferences::try_read(app).and_then(|prefs| prefs.evolve_model))
 }
 
 pub fn set_evolve_model<R: Runtime>(app: &AppHandle<R>, model: &str) -> Result<()> {
-    let store = get_store(app)?;
-    store.set("evolveModel", serde_json::json!(model));
-    store.save()?;
-    Ok(())
+    let model = model.to_string();
+    preferences::write(app, move |prefs| prefs.evolve_model = Some(model))
 }
 
 // =============================================================================
@@ -299,26 +263,22 @@ pub fn set_openai_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<(
 
 /// Gets the stored Ollama API base URL.
 pub fn get_ollama_api_base_url<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
-    get_string_pref(app, "ollamaApiBaseUrl")
+    Ok(preferences::try_read(app).and_then(|prefs| prefs.ollama_api_base_url))
 }
 
 pub fn set_ollama_api_base_url<R: Runtime>(app: &AppHandle<R>, url: &str) -> Result<()> {
-    let store = get_store(app)?;
-    store.set("ollamaApiBaseUrl", serde_json::json!(url));
-    store.save()?;
-    Ok(())
+    let url = url.to_string();
+    preferences::write(app, move |prefs| prefs.ollama_api_base_url = Some(url))
 }
 
 /// Gets the stored vLLM API base URL.
 pub fn get_vllm_api_base_url<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
-    get_string_pref(app, "vllmApiBaseUrl")
+    Ok(preferences::try_read(app).and_then(|prefs| prefs.vllm_api_base_url))
 }
 
 pub fn set_vllm_api_base_url<R: Runtime>(app: &AppHandle<R>, url: &str) -> Result<()> {
-    let store = get_store(app)?;
-    store.set("vllmApiBaseUrl", serde_json::json!(url));
-    store.save()?;
-    Ok(())
+    let url = url.to_string();
+    preferences::write(app, move |prefs| prefs.vllm_api_base_url = Some(url))
 }
 
 /// Gets the stored vLLM API key (optional — vllm direct endpoint may not require one).
@@ -406,6 +366,34 @@ fn get_string_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<S
     get_string_pref_raw(app, key)
 }
 
+/// Looks up `key` as a (camelCase) field of [`preferences::GlobalPreferences`],
+/// returning its current value when it is one. `None` means "not a global
+/// preference" — fall through to the legacy store.
+fn global_pref_value<R: Runtime>(app: &AppHandle<R>, key: &str) -> Option<serde_json::Value> {
+    let prefs = preferences::try_read(app)?;
+    let as_value = serde_json::to_value(prefs).ok()?;
+    as_value.get(key).cloned()
+}
+
+/// Routes a write to `key` through the [`preferences::GlobalPreferences`]
+/// observable when the key is one of its fields. `None` means "not a global
+/// preference" — fall through to the legacy store.
+fn set_global_pref_value<R: Runtime>(
+    app: &AppHandle<R>,
+    key: &str,
+    value: serde_json::Value,
+) -> Option<Result<()>> {
+    let prefs = preferences::try_read(app)?;
+    let mut as_value = serde_json::to_value(&prefs).ok()?;
+    let fields = as_value.as_object_mut()?;
+    if !fields.contains_key(key) {
+        return None;
+    }
+    fields.insert(key.to_string(), value);
+    let next: preferences::GlobalPreferences = serde_json::from_value(as_value).ok()?;
+    Some(preferences::write(app, move |prefs| *prefs = next))
+}
+
 /// Reads a value from the store and deserializes it into `T`.
 ///
 /// Returns `Ok(None)` both when the key is absent and when stored JSON fails to
@@ -418,6 +406,9 @@ where
     R: Runtime,
     T: DeserializeOwned,
 {
+    if let Some(value) = global_pref_value(app, key) {
+        return Ok(serde_json::from_value(value).ok());
+    }
     let store = get_store(app)?;
     Ok(store
         .get(key)
@@ -433,6 +424,12 @@ where
 }
 
 fn get_string_pref_raw<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<String>> {
+    if let Some(value) = global_pref_value(app, key) {
+        return Ok(value
+            .as_str()
+            .filter(|s| !s.is_empty())
+            .map(ToString::to_string));
+    }
     let store = get_store(app)?;
     if let Some(val) = store.get(key) {
         if let Some(s) = val.as_str() {
@@ -460,8 +457,12 @@ where
     R: Runtime,
     T: Serialize + ?Sized,
 {
+    let value = serde_json::to_value(value)?;
+    if let Some(result) = set_global_pref_value(app, key, value.clone()) {
+        return result;
+    }
     let store = get_store(app)?;
-    store.set(key, serde_json::to_value(value)?);
+    store.set(key, value);
     store.save()?;
     Ok(())
 }
@@ -471,6 +472,9 @@ pub fn set_string_pref<R: Runtime>(app: &AppHandle<R>, key: &str, value: &str) -
 }
 
 pub fn delete_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()> {
+    if let Some(result) = set_global_pref_value(app, key, serde_json::Value::Null) {
+        return result;
+    }
     delete_pref_raw(app, key)
 }
 
@@ -779,39 +783,12 @@ pub fn set_cached_models<R: Runtime>(
 }
 
 // =============================================================================
-// Git Status Cache
-// =============================================================================
-
-/// Gets the cached git status.
-pub fn get_cached_git_status<R: Runtime>(
-    app: &AppHandle<R>,
-) -> Result<Option<shared_types::GitStatus>> {
-    let store = get_store(app)?;
-
-    if let Some(val) = store.get("cachedGitStatus") {
-        if let Ok(status) = serde_json::from_value::<shared_types::GitStatus>(val.clone()) {
-            return Ok(Some(status));
-        }
-    }
-    Ok(None)
-}
-
-/// Sets the cached git status.
-pub fn set_cached_git_status<R: Runtime>(
-    app: &AppHandle<R>,
-    status: &shared_types::GitStatus,
-) -> Result<()> {
-    let store = get_store(app)?;
-    store.set("cachedGitStatus", serde_json::to_value(status)?);
-    store.save()?;
-    Ok(())
-}
-
-// =============================================================================
 // Prompt History
 // =============================================================================
 
 const MAX_PROMPT_HISTORY: usize = 20;
+
+pub const PROMPT_HISTORY_CHANGED_EVENT: &str = "prompt_history_changed";
 
 /// Gets the prompt history (most recent first).
 pub fn get_prompt_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<String>> {
@@ -845,6 +822,10 @@ pub fn add_to_prompt_history<R: Runtime>(app: &AppHandle<R>, prompt: &str) -> Re
 
     store.set("promptHistory", serde_json::json!(history));
     store.save()?;
+    // Single mutation path for prompt history, so the change event lives
+    // here; the frontend mirrors it against get_prompt_history hydration.
+    use tauri::Emitter;
+    let _ = app.emit(PROMPT_HISTORY_CHANGED_EVENT, &history);
     Ok(())
 }
 

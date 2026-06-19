@@ -125,6 +125,62 @@ pub struct UiPrefsUpdate {
     pub update_channel: Option<UpdateChannel>,
 }
 
+/// Preferences local to this app installation.
+///
+/// Hydrated via `get_global_preferences`; every mutation emits
+/// `global_preferences_changed` with the full struct as payload.
+#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", default)]
+pub struct GlobalPreferences {
+    pub host_attr: Option<String>,
+    pub config_dir: Option<String>,
+    pub repo_root: Option<String>,
+    pub send_diagnostics: bool,
+    pub evolve_provider: Option<String>,
+    pub evolve_model: Option<String>,
+    pub summary_provider: Option<String>,
+    pub summary_model: Option<String>,
+    pub ollama_api_base_url: Option<String>,
+    pub vllm_api_base_url: Option<String>,
+    pub confirm_build: bool,
+    pub confirm_clear: bool,
+    pub confirm_rollback: bool,
+    pub auto_summarize_on_focus: bool,
+    pub scan_homebrew_on_startup: bool,
+    pub default_to_diff_tab: bool,
+    pub experimental_spinning_mascot: bool,
+    pub developer_mode: bool,
+    pub pinned_version: Option<String>,
+    pub update_channel: UpdateChannel,
+}
+
+impl Default for GlobalPreferences {
+    fn default() -> Self {
+        Self {
+            host_attr: None,
+            config_dir: None,
+            repo_root: None,
+            send_diagnostics: false,
+            evolve_provider: None,
+            evolve_model: None,
+            summary_provider: None,
+            summary_model: None,
+            ollama_api_base_url: None,
+            vllm_api_base_url: None,
+            confirm_build: true,
+            confirm_clear: true,
+            confirm_rollback: true,
+            auto_summarize_on_focus: false,
+            scan_homebrew_on_startup: true,
+            default_to_diff_tab: false,
+            experimental_spinning_mascot: false,
+            developer_mode: false,
+            pinned_version: None,
+            update_channel: UpdateChannel::default(),
+        }
+    }
+}
+
 /// Lightweight update metadata returned by the channel-aware updater command.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]

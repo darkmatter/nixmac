@@ -21,10 +21,18 @@ jobs:
       issues: write
       pull-requests: write
     steps:
+      - name: Mint darkmatter[bot] token
+        id: bot-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.DARKMATTER_APP_ID }}
+          private-key: ${{ secrets.DARKMATTER_APP_PRIVATE_KEY }}
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ steps.bot-token.outputs.token }}
 
       - uses: ./.github/actions/setup
         with:
@@ -148,7 +156,7 @@ jobs:
       - name: Comment Storybook preview URL on PR
         if: always() && !cancelled() && github.event_name == 'pull_request' && steps.deploy.outputs.deployment-url != ''
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.bot-token.outputs.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
           REPO: ${{ github.repository }}
@@ -250,7 +258,7 @@ jobs:
         continue-on-error: true
         working-directory: apps/native
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.bot-token.outputs.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
           MARKER: "<!-- nixmac-storybook-preview -->"

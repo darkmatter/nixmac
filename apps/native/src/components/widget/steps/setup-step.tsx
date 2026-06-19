@@ -11,14 +11,14 @@ import {
 import { BootstrapConfig } from "@/components/widget/controls/bootstrap-config";
 import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 import { Monitor } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export function SetupStep() {
-  const configDir = useWidgetStore((state) => state.configDir);
-  const hosts = useWidgetStore((state) => state.hosts);
-  const host = useWidgetStore((state) => state.host);
+  const configDir = useViewModel((state) => state.preferences?.configDir ?? "");
+  const hosts = useViewModel((state) => state.hosts);
+  const host = useViewModel((state) => state.preferences?.hostAttr ?? "");
   const [configDirConfirmed, setConfigDirConfirmed] = useState(() => Boolean(configDir));
   const [selectedHost, setSelectedHost] = useState<string>("");
 

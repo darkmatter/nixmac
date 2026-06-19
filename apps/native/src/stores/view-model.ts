@@ -9,51 +9,32 @@
 //
 // The `viewmodel/` modules are the only writers for Rust-owned slices:
 // they hydrate through commands, then mirror backend events into this store.
-//
-// `evolveActions` are thin IPC wrappers stored here so that the EvolutionView
-// slice can call them without importing the API layer directly.
-//
+// Stream-backed fields (`rebuildLog`, `evolveEvents`) are folds over backend
+// event streams, also owned by `viewmodel/` modules.
 
-import { tauriAPI } from "@/ipc/api";
 import type {
-  EvolutionTelemetry,
   EvolveEvent,
   EvolveState,
   GitStatus,
+  GlobalPreferences,
   HistoryItem,
+  NixInstallState,
   PermissionsState,
+  RebuildStatus,
   SemanticChangeMap,
 } from "@/ipc/types";
+import type { RebuildLine } from "@/types/rebuild";
 import { create } from "zustand";
 
 type BuildView = {
   externalBuildDetected: boolean;
 };
 
-type RebuildView = {
-  isRunning: boolean;
-};
-
-type NixView = {
-  installed: boolean | null;
-  installing: boolean;
-};
-
-type DarwinRebuildView = {
-  available: boolean | null;
-  prefetching: boolean;
-};
-
-type EvolutionView = {
-  events: EvolveEvent[];
-  telemetry: EvolutionTelemetry | null;
-  conversationalResponse: string | null;
-};
-
-type EvolveActions = {
-  start: (description: string) => Promise<void>;
-  cancel: () => Promise<void>;
-  answer: (answer: string) => Promise<void>;
+export type RebuildLog = {
+  /** AI-summarized progress lines (last 50), folded from `darwin:apply:summary`. */
+  lines: RebuildLine[];
+  /** Raw darwin-rebuild output lines (last 500), folded from `darwin:apply:data`. */
+  rawLines: string[];
 };
 
 export type ViewModel = {
@@ -62,12 +43,22 @@ export type ViewModel = {
   build: BuildView;
   changeMap: SemanticChangeMap | null;
   history: HistoryItem[];
-  rebuild: RebuildView;
+  /** Mirrored `GlobalPreferences`; null until the slice hydrates. */
+  preferences: GlobalPreferences | null;
+  /** Hosts listed from the flake; refreshed when preferences change. */
+  hosts: string[];
   permissions: PermissionsState | null;
-  nix: NixView;
-  darwinRebuild: DarwinRebuildView;
-  evolution: EvolutionView;
-  evolveActions: EvolveActions;
+  /** True once the permissions slice has hydrated (even to null). */
+  permissionsHydrated: boolean;
+  promptHistory: string[];
+  /** Mirrored nix / darwin-rebuild installation status; null until hydrated. */
+  nixInstall: NixInstallState | null;
+  /** Mirrored darwin-rebuild lifecycle status; null until hydrated. */
+  rebuildStatus: RebuildStatus | null;
+  /** Rebuild output fold; reset whenever a new rebuild run starts. */
+  rebuildLog: RebuildLog;
+  /** Evolve agent event stream; reset on each run's `start` event. */
+  evolveEvents: EvolveEvent[];
 };
 
 export const useViewModel = create<ViewModel>()(() => ({
@@ -78,26 +69,13 @@ export const useViewModel = create<ViewModel>()(() => ({
   },
   changeMap: null,
   history: [],
-  rebuild: {
-    isRunning: false,
-  },
+  preferences: null,
+  hosts: [],
   permissions: null,
-  nix: {
-    installed: null,
-    installing: false,
-  },
-  darwinRebuild: {
-    available: null,
-    prefetching: false,
-  },
-  evolution: {
-    events: [],
-    telemetry: null,
-    conversationalResponse: null,
-  },
-  evolveActions: {
-    start: (description) => tauriAPI.darwin.evolve(description).then(() => undefined),
-    cancel: () => tauriAPI.darwin.evolveCancel().then(() => undefined),
-    answer: (answer) => tauriAPI.darwin.evolveAnswer(answer).then(() => undefined),
-  },
+  permissionsHydrated: false,
+  promptHistory: [],
+  nixInstall: null,
+  rebuildStatus: null,
+  rebuildLog: { lines: [], rawLines: [] },
+  evolveEvents: [],
 }));
