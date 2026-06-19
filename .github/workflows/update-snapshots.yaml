@@ -81,9 +81,26 @@ jobs:
         with:
           darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
 
-      - name: Install Playwright browsers
+      - name: Check Playwright browser availability
         working-directory: apps/native
-        run: bunx playwright install chromium
+        run: |
+          bunx playwright install --dry-run chromium
+          DEBUG=pw:browser bun --eval '
+            const { chromium } = await import("playwright");
+            const browser = await chromium.launch({
+              args: [
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu-sandbox",
+                "--disable-gpu",
+                "--no-zygote",
+              ],
+            });
+            const page = await browser.newPage();
+            await page.setContent("<h1>ok</h1>");
+            console.log(await page.textContent("h1"));
+            await browser.close();
+          '
 
       - name: Update snapshots
         working-directory: apps/native
