@@ -1468,19 +1468,12 @@ fn read_domain(domain: &str) -> BTreeMap<String, String> {
         _ => return result,
     };
 
-    let plist = String::from_utf8_lossy(&output.stdout);
-
-    // Simple XML plist parser — we only need <key>…</key> followed by a value
-    // element. Full plist parsing is overkill and would add a dependency.
-    let mut lines = plist.lines().peekable();
-    while let Some(line) = lines.next() {
-        let trimmed = line.trim();
-        if let Some(key) = extract_xml_tag(trimmed, "key") {
-            if let Some(next_line) = lines.peek() {
-                let next = next_line.trim();
-                if let Some(val) = parse_plist_value(next) {
-                    result.insert(key, val);
-                }
+    // Read the results.
+    let parser = plist::from_bytes(&output.stdout);
+    if let Ok(plist::Value::Dictionary(dict)) = parser {
+        for (key, value) in dict {
+            if let Some(val_str) = parse_plist_value(value) {
+                result.insert(key, val_str);
             }
         }
     }
@@ -1488,39 +1481,16 @@ fn read_domain(domain: &str) -> BTreeMap<String, String> {
     result
 }
 
-/// Extract the text content of a simple XML tag, e.g. `<key>foo</key>` → `"foo"`.
-fn extract_xml_tag(line: &str, tag: &str) -> Option<String> {
-    let open = format!("<{}>", tag);
-    let close = format!("</{}>", tag);
-    if line.starts_with(&open) && line.ends_with(&close) {
-        let start = open.len();
-        let end = line.len() - close.len();
-        if start < end {
-            return Some(line[start..end].to_string());
-        }
-    }
-    None
-}
-
 /// Parse a plist value element into a string representation.
-fn parse_plist_value(line: &str) -> Option<String> {
-    if line == "<true/>" {
-        return Some("true".to_string());
+fn parse_plist_value(value: plist::Value) -> Option<String> {
+    match value {
+        plist::Value::Boolean(true) => Some("true".to_string()),
+        plist::Value::Boolean(false) => Some("false".to_string()),
+        plist::Value::Integer(i) => Some(i.to_string()),
+        plist::Value::Real(f) => Some(f.to_string()),
+        plist::Value::String(s) => Some(s),
+        _ => None,
     }
-    if line == "<false/>" {
-        return Some("false".to_string());
-    }
-    if let Some(val) = extract_xml_tag(line, "integer") {
-        return Some(val);
-    }
-    if let Some(val) = extract_xml_tag(line, "real") {
-        return Some(val);
-    }
-    if let Some(val) = extract_xml_tag(line, "string") {
-        return Some(val);
-    }
-    // Skip arrays, dicts, data, date — not relevant for our scalar keys
-    None
 }
 
 // =============================================================================
@@ -2205,37 +2175,24 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_xml_tag() {
-        assert_eq!(
-            extract_xml_tag("<key>foo</key>", "key"),
-            Some("foo".to_string())
-        );
-        assert_eq!(
-            extract_xml_tag("<integer>42</integer>", "integer"),
-            Some("42".to_string())
-        );
-        assert_eq!(extract_xml_tag("<key></key>", "key"), None);
-        assert_eq!(extract_xml_tag("not xml", "key"), None);
-    }
-
-    #[test]
     fn test_parse_plist_value() {
-        assert_eq!(parse_plist_value("<true/>"), Some("true".to_string()));
-        assert_eq!(parse_plist_value("<false/>"), Some("false".to_string()));
         assert_eq!(
-            parse_plist_value("<integer>42</integer>"),
+            parse_plist_value(plist::Value::Boolean(true)),
+            Some("true".to_string())
+        );
+        assert_eq!(
+            parse_plist_value(plist::Value::Integer(42.into())),
             Some("42".to_string())
         );
         assert_eq!(
-            parse_plist_value("<real>3.14</real>"),
+            parse_plist_value(plist::Value::Real(3.14)),
             Some("3.14".to_string())
         );
         assert_eq!(
-            parse_plist_value("<string>hello</string>"),
+            parse_plist_value(plist::Value::String("hello".to_string())),
             Some("hello".to_string())
         );
-        assert_eq!(parse_plist_value("<dict>"), None);
-        assert_eq!(parse_plist_value("<array>"), None);
+        assert_eq!(parse_plist_value(plist::Value::Array(vec![])), None);
     }
 
     // ── recommend_prompt tests ──────────────────────────────────────────
