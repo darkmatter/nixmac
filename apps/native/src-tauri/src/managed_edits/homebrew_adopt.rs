@@ -3,7 +3,6 @@ use crate::evolve::nix_file_editor::{apply_semantic_edit, nix_quote_values};
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
 use crate::shared_types::{HomebrewItemType, HomebrewState};
 use crate::system::nix_ast_lists::parse_string_lists_by_attrpath;
-use crate::system::scanner::inject_module_import;
 use crate::{managed_edits::managed_edit, shared_types};
 use anyhow::{Context, Result};
 use serde_json::{Map, Value};
@@ -442,7 +441,7 @@ fn ensure_nixmac_module_import(config_dir: &std::path::Path) -> Result<()> {
     let flake_content = std::fs::read_to_string(&flake_path)
         .with_context(|| format!("failed to read flake file '{}'", flake_path.display()))?;
 
-    let updated = inject_module_import(&flake_content, "./.nixmac")
+    let updated = managed_edit::inject_module_import(&flake_content, "./.nixmac")
         .map_err(anyhow::Error::msg)
         .with_context(|| {
             format!(
@@ -641,14 +640,15 @@ pub fn apply_homebrew_import(diff: HomebrewState, config_dir: &std::path::Path) 
             let flake_content = std::fs::read_to_string(&flake_path)
                 .with_context(|| format!("failed to read flake file '{}'", flake_path.display()))?;
 
-            let updated = inject_module_import(&flake_content, "./modules/darwin/homebrew.nix")
-                .map_err(anyhow::Error::msg)
-                .with_context(|| {
-                    format!(
-                        "failed to inject homebrew module import into '{}'",
-                        flake_path.display()
-                    )
-                })?;
+            let updated =
+                managed_edit::inject_module_import(&flake_content, "./modules/darwin/homebrew.nix")
+                    .map_err(anyhow::Error::msg)
+                    .with_context(|| {
+                        format!(
+                            "failed to inject homebrew module import into '{}'",
+                            flake_path.display()
+                        )
+                    })?;
 
             if updated != flake_content {
                 std::fs::write(&flake_path, updated).with_context(|| {

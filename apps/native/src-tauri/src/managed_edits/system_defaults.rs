@@ -36,41 +36,12 @@ pub async fn apply_system_defaults(
         nix_path
     );
 
-    // 4. Inject import into the file that contains `modules = [`
-    //    - nix-darwin-determinate template: `flake.nix` with `./modules/darwin/...`
-    //    - flake-parts template: `flake-modules/darwin.nix` with `../modules/darwin/...`
-    let flake_path = std::path::Path::new(&dir).join("flake.nix");
-    let flake_content = std::fs::read_to_string(&flake_path).context("Failed to read flake.nix")?;
-
-    let (target_path, module_ref) = if flake_content.contains("modules = [") {
-        log::info!("[apply_system_defaults] Found modules list in flake.nix");
-        (
-            flake_path,
-            "./modules/darwin/system-defaults.nix".to_string(),
-        )
-    } else {
-        let darwin_mod = std::path::Path::new(&dir)
-            .join("flake-modules")
-            .join("darwin.nix");
-        if darwin_mod.exists() {
-            log::info!("[apply_system_defaults] Found modules list in flake-modules/darwin.nix");
-            (
-                darwin_mod,
-                "../modules/darwin/system-defaults.nix".to_string(),
-            )
-        } else {
-            anyhow::bail!("Could not find 'modules = [' in flake.nix or flake-modules/darwin.nix");
-        }
-    };
-
-    let target_content =
-        std::fs::read_to_string(&target_path).context("Failed to read target module file")?;
-
-    let updated_content = scanner::inject_module_import(&target_content, &module_ref)
-        .map_err(|e| anyhow::anyhow!("Failed to inject module import: {}", e))?;
-
-    std::fs::write(&target_path, &updated_content)
-        .context("Failed to write updated module file")?;
+    // 4. Inject import into the file that contains the nix-darwin modules list.
+    let target_path = managed_edit::inject_darwin_module_import(
+        &dir,
+        "system-defaults.nix",
+        "apply_system_defaults",
+    )?;
     log::info!(
         "[apply_system_defaults] Injected module import into {:?}",
         target_path

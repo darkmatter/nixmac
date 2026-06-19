@@ -65,6 +65,7 @@ fn main() {
         .register::<shared_types::SummarizedChange>()
         .register::<shared_types::SummarizedChangeSet>()
         .register::<shared_types::ChangeWithSummary>()
+        .register::<shared_types::LaunchdItem>()
         .register::<shared_types::SemanticChangeGroup>()
         .register::<shared_types::SemanticChangeMap>()
         .register::<shared_types::EvolveStep>()

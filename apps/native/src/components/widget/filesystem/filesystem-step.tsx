@@ -3,19 +3,28 @@
 import { useEffect, useState } from "react";
 
 import { tauriAPI } from "@/ipc/api";
+import { useLaunchdItems } from "@/hooks/use-launchd-items";
 import { useSystemDefaultsScan } from "@/hooks/use-system-defaults-scan";
 import { useWidgetStore } from "@/stores/widget-store";
 import { mirrorChangeMapState } from "@/viewmodel/change-map";
 import { mirrorEvolveState } from "@/viewmodel/evolve";
 import { mirrorGitState } from "@/viewmodel/git";
 
-import type { ConfigEditApplyResult, HomebrewItem, HomebrewState, SystemDefault } from "@/ipc/types";
+import type {
+  ConfigEditApplyResult,
+  HomebrewItem,
+  HomebrewState,
+  LaunchdItem,
+  SystemDefault,
+} from "@/ipc/types";
 
 import {
   FILES,
   SECTIONS,
   homebrewFilesFromDiff,
+  launchdItemsFileFromScan,
   replaceHomebrewPlaceholders,
+  replaceLaunchdPlaceholder,
   replaceSystemDefaultsPlaceholder,
   systemDefaultsFileFromScan,
   type CandidateItem,
@@ -56,6 +65,11 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
     error: systemDefaultsError,
     refresh: refreshSystemDefaults,
   } = useSystemDefaultsScan();
+  const {
+    items: launchdItems,
+    error: launchdError,
+    refresh: refreshLaunchdItems,
+  } = useLaunchdItems();
 
   // Clear the target on mount so a subsequent toggle from the header
   // (which passes no section) returns to the user's last view.
@@ -86,12 +100,15 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
     };
   }, []);
 
-  const manageFiles = replaceSystemDefaultsPlaceholder(
-    replaceHomebrewPlaceholders(
-      FILES.manage,
-      homebrewFilesFromDiff(homebrewDiff, homebrewError),
+  const manageFiles = replaceLaunchdPlaceholder(
+    replaceSystemDefaultsPlaceholder(
+      replaceHomebrewPlaceholders(
+        FILES.manage,
+        homebrewFilesFromDiff(homebrewDiff, homebrewError),
+      ),
+      systemDefaultsFileFromScan(systemDefaultsScan, systemDefaultsError),
     ),
-    systemDefaultsFileFromScan(systemDefaultsScan, systemDefaultsError),
+    launchdItemsFileFromScan(launchdItems, launchdError),
   );
 
   const filesBySection = {
@@ -119,9 +136,6 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
   };
 
   const onEditWithPrompt = (file: FsFile) => seed(seedForFile(file));
-  const onTrack = (text: string) => seed(text);
-  // Add future direct managed-edit trackers here (for example, system defaults)
-  // and pass them down alongside the fallback prompt seeding handler.
   const onTrackHomebrewItems = async (items: CandidateItem[]) => {
     const store = useWidgetStore.getState();
     store.setProcessing(true, "apply");
@@ -166,6 +180,25 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
     }
   };
 
+  const onTrackLaunchdItems = async (items: CandidateItem[]) => {
+    const store = useWidgetStore.getState();
+    store.setProcessing(true, "apply");
+    try {
+      const launchdItemsToApply: LaunchdItem[] = items.map((item) => {
+        if (item.source !== "launchd") {
+          throw new Error(`Cannot track ${item.name}: missing launchd payload.`);
+        }
+        return item.launchdItem;
+      });
+      const result = await tauriAPI.launchd.applyLaunchdItems(launchdItemsToApply);
+      mirrorApplyResult(result);
+      await refreshLaunchdItems();
+      setShowFilesystem(false);
+    } finally {
+      store.setProcessing(false);
+    }
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="filesystem-step">
       <SectionTabs
@@ -178,9 +211,9 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
         key={activeSection}
         files={files}
         onEditWithPrompt={onEditWithPrompt}
-        onTrack={onTrack}
         onTrackHomebrewItems={onTrackHomebrewItems}
         onTrackSystemDefaults={onTrackSystemDefaults}
+        onTrackLaunchdItems={onTrackLaunchdItems}
       />
       <div className="shrink-0 border-border/50 border-t bg-card/40 px-3 py-1.5 text-[10.5px] text-muted-foreground">
         Use these as starting points — every change goes through the standard plan → review → save flow.
