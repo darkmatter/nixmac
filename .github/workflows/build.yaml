@@ -44,7 +44,7 @@ jobs:
 
       - uses: ./.github/actions/setup
         with:
-          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+          darkmatter-cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
           setup-rust: true
           rust-cache-workspaces: apps/native/src-tauri
       # Decide what kind of build this is:
