@@ -80,6 +80,7 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           darkmatter-cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          secrets: inherit
 
       - name: Check Playwright browser availability
         working-directory: apps/native
