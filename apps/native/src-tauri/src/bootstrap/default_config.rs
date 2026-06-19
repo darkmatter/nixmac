@@ -50,7 +50,11 @@ pub fn detect_hostname() -> Result<String, String> {
             String::from_utf8_lossy(&output.stderr)
         ));
     }
-    Ok(sanitize_hostname(&String::from_utf8_lossy(&output.stdout)))
+    let hostname = sanitize_hostname(&String::from_utf8_lossy(&output.stdout));
+    if hostname.is_empty() {
+        return Err("Hostname is empty".to_string());
+    }
+    Ok(hostname)
 }
 
 /// Detects the current macOS username from the environment, defaulting to "unknown" if not found.
