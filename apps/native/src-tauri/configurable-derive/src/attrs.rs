@@ -188,7 +188,7 @@ mod tests {
         let input: DeriveInput = parse_quote! {
             #[config(scope = "repo", display_name = "Evolution")]
             struct EvolutionLimits {
-                max_token_budget: usize,
+                max_iterations: usize,
             }
         };
 

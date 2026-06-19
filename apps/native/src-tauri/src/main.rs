@@ -21,6 +21,7 @@ mod feedback;
 mod git;
 mod history;
 mod managed_edits;
+mod observable;
 mod panic_handler;
 mod peek;
 mod rebuild;
@@ -308,6 +309,7 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
         Some(cli::Commands::Evolve {
             prompt,
             config,
+            max_iterations,
             max_output_tokens,
             max_token_budget,
             evolve_provider,
@@ -337,12 +339,9 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                     .plugin(tauri_plugin_notification::init())
                     .invoke_handler(tauri::generate_handler![])
                     .setup(|app| {
-                        app.manage(state::preferences::load_global_slice(app.handle())?);
-                        app.manage(evolve::config::load_slice(app.handle())?);
-                        evolve::config::register_slice_config(
-                            &app.state::<state::slice::SliceRegistry>(),
-                        )?;
-                        app.manage(state::evolve_state::load_slice(app.handle())?);
+                        app.manage(state::preferences::load_global_observable(app.handle())?);
+                        app.manage(evolve::config::load_observable(app.handle())?);
+                        app.manage(state::evolve_state::load_observable(app.handle())?);
                         Ok(())
                     })
                     .build(context)
@@ -365,6 +364,7 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                 let cfg = cli::EvolveConfig {
                     prompt,
                     config,
+                    max_iterations,
                     max_output_tokens,
                     max_token_budget,
                     evolve_provider,
@@ -456,9 +456,6 @@ fn run_gui_mode(
         .plugin(tauri_plugin_upload::init())
         .plugin(tauri_plugin_macos_permissions::init())
         .plugin(tauri_plugin_notification::init())
-        // Configurable slices register here during setup so dev settings
-        // commands can update typed state without opening store files directly.
-        .manage(state::slice::SliceRegistry::default())
         .invoke_handler(tauri::generate_handler![
             // Configuration
             commands::config::config_get,
@@ -493,6 +490,7 @@ fn run_gui_mode(
             #[cfg(debug_assertions)]
             commands::debug::e2e_mark_boot_stage,
             // Homebrew
+            commands::homebrew::homebrew_add_items,
             commands::homebrew::homebrew_apply_diff,
             commands::homebrew::homebrew_get_state_diff,
             // Git
@@ -532,11 +530,13 @@ fn run_gui_mode(
             // UI preferences
             commands::ui_prefs::ui_get_prefs,
             commands::ui_prefs::ui_set_prefs,
+            commands::ui_prefs::verify_openai_api_key,
             // Settings backup/restore (developer-mode only)
             commands::settings_io::settings_export,
             commands::settings_io::settings_import,
             // Configurable registry (auto-UI for dev settings)
-            commands::dev_configs::dev_configs_list,
+            commands::dev_configs::dev_configs_schemas,
+            commands::dev_configs::dev_configs_values,
             commands::dev_configs::dev_config_set,
             // Model cache
             commands::ui_prefs::get_cached_models,
@@ -590,10 +590,9 @@ fn run_gui_mode(
             // Set up panic handler to catch crashes and show feedback dialog
             panic_handler::setup_panic_hook(handle.clone());
 
-            app.manage(state::preferences::load_global_slice(handle)?);
-            app.manage(evolve::config::load_slice(handle)?);
-            evolve::config::register_slice_config(&app.state::<state::slice::SliceRegistry>())?;
-            app.manage(state::evolve_state::load_slice(handle)?);
+            app.manage(state::preferences::load_global_observable(handle)?);
+            app.manage(evolve::config::load_observable(handle)?);
+            app.manage(state::evolve_state::load_observable(handle)?);
 
             // Initialize SQLite database before any consumer that reads the
             // managed DbPool from app state.

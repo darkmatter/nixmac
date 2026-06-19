@@ -52,8 +52,6 @@ export function PromptInput() {
           tauriAPI.cli.checkTools(),
         ]);
 
-        const evolveProvider = prefs?.evolveProvider ?? "openrouter";
-        const summaryProvider = prefs?.summaryProvider ?? "openrouter";
         const normalizedPrefs = {
           openrouterApiKey: prefs?.openrouterApiKey ?? "",
           openaiApiKey: prefs?.openaiApiKey ?? "",
@@ -63,13 +61,13 @@ export function PromptInput() {
         if (!cancelled) {
           setProviderErrors({
             evolve: getProviderConfigInvalidReason(
-              evolveProvider,
+              prefs?.evolveProvider,
               normalizedPrefs,
               cliStatus,
               prefs?.evolveModel,
             ),
             summary: getProviderConfigInvalidReason(
-              summaryProvider,
+              prefs?.summaryProvider,
               normalizedPrefs,
               cliStatus,
               prefs?.summaryModel,

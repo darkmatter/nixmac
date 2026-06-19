@@ -32,6 +32,8 @@ pub struct UiPrefs {
     pub evolve_provider: Option<String>,
     /// Model used for AI evolution.
     pub evolve_model: Option<String>,
+    /// Legacy maximum agent iterations per evolution.
+    pub max_iterations: Option<usize>,
     /// Maximum provider-reported tokens per evolution.
     pub max_token_budget: Option<u32>,
     /// Maximum build attempts per evolution.
@@ -80,6 +82,8 @@ pub struct UiPrefsUpdate {
     pub summary_provider: Option<String>,
     /// Summary model update.
     pub summary_model: Option<String>,
+    /// Legacy maximum iteration count update.
+    pub max_iterations: Option<usize>,
     /// Maximum token budget update.
     pub max_token_budget: Option<u32>,
     /// Maximum build-attempt count update.

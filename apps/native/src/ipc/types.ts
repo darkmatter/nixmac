@@ -203,9 +203,12 @@ gitStatus: GitStatus;
 evolveState: EvolveState }
 
 /**
- * Per-field description rendered into a UI control.
+ * Static description of one Configurable field.
+ * 
+ * Produced by the derive macro with no runtime context; the same value every
+ * call. Joined with the current store-backed value by `key` at render time.
  */
-export type ConfigField = { 
+export type ConfigFieldSchema = { 
 /**
  * Key as written to the underlying store (typically camelCase).
  */
@@ -225,19 +228,16 @@ ty: FieldType;
 /**
  * Default if the store has no value yet.
  */
-default: JsonValue; 
-/**
- * Current value loaded from the store.
- */
-current: JsonValue }
+default: JsonValue }
 
 /**
  * One section in the auto-rendered settings panel — corresponds to one
- * `#[derive(Configurable)]` struct.
+ * `#[derive(Configurable)]` struct. Static metadata only; current values are
+ * fetched separately and joined by struct name + field key on the frontend.
  */
 export type ConfigurableSchema = { 
 /**
- * Unique stable identifier (struct's Rust name). Used by `set_field` to
+ * Unique stable identifier (struct's Rust name). Used by the setter to
  * dispatch to the right registered configurable.
  */
 name: string; 
@@ -248,7 +248,7 @@ displayName: string;
 /**
  * Optional one-line description shown under the title.
  */
-description?: string | null; fields: ConfigField[] }
+description?: string | null; fields: ConfigFieldSchema[] }
 
 /**
  * Payload for `darwin:apply:data`.
@@ -282,7 +282,7 @@ error: string | null;
 /**
  * Whether the failed operation completed before changing system state.
  */
-system_untouched: boolean | null;
+system_untouched: boolean | null; 
 /**
  * Path to the captured rebuild log, when available.
  */
@@ -422,7 +422,14 @@ export type EvolutionState =
 /**
  * Agent responded conversationally without making any environment changes.
  */
-"conversational"
+"conversational" | 
+/**
+ * Evolution was stopped because a safety limit was reached
+ * (iterations, build attempts, token budget, or stale progress).
+ * Distinguishes "we cut it off" from "the agent finished" so
+ * the eval harness can score runaways correctly.
+ */
+"limitReached"
 
 /**
  * Telemetry counters from a completed evolution run.
@@ -1053,6 +1060,10 @@ isOrphanedRestore: boolean;
  */
 isUndone: boolean }
 
+export type HomebrewItem = { name: string; version: string | null; itemType: HomebrewItemType }
+
+export type HomebrewItemType = "tap" | "cask" | "brew"
+
 /**
  * Current Homebrew package state detected on the machine.
  */
@@ -1641,6 +1652,10 @@ evolveProvider: string | null;
  */
 evolveModel: string | null; 
 /**
+ * Legacy maximum agent iterations per evolution.
+ */
+maxIterations: number | null; 
+/**
  * Maximum provider-reported tokens per evolution.
  */
 maxTokenBudget: number | null; 
@@ -1727,6 +1742,10 @@ summaryProvider: string | null;
  * Summary model update.
  */
 summaryModel: string | null; 
+/**
+ * Legacy maximum iteration count update.
+ */
+maxIterations: number | null; 
 /**
  * Maximum token budget update.
  */

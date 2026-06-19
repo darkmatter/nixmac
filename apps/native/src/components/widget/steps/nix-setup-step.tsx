@@ -4,71 +4,87 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useNixInstall } from "@/hooks/use-nix-install";
 import { useWidgetStore } from "@/stores/widget-store";
-import { CheckCircle2, Download, ExternalLink, Loader2, Package } from "lucide-react";
+import { open } from "@tauri-apps/plugin-shell";
+import { CheckCircle2, ExternalLink, Loader2, Package, RefreshCw } from "lucide-react";
 import { useEffect } from "react";
 
-type NixSetupState = "idle" | "downloading" | "waiting-for-installer" | "prefetching" | "success" | "error";
+type NixSetupState = "checking" | "missing-nix" | "missing-darwin-rebuild" | "success";
 
 function getNixSetupState(store: {
   nixInstalled: boolean | null;
-  nixInstalling: boolean;
-  nixInstallPhase: "downloading" | "waiting-for-installer" | "prefetching" | null;
   darwinRebuildAvailable: boolean | null;
-  error: string | null;
 }): NixSetupState {
   if (store.nixInstalled === true && store.darwinRebuildAvailable === true) return "success";
-  if (store.error) return "error";
-  if (store.nixInstallPhase === "downloading") return "downloading";
-  if (store.nixInstallPhase === "waiting-for-installer") return "waiting-for-installer";
-  if (store.nixInstallPhase === "prefetching" || store.nixInstalling) return "prefetching";
-  return "idle";
+  if (store.nixInstalled === null) return "checking";
+  if (store.nixInstalled !== true) return "missing-nix";
+  return "missing-darwin-rebuild";
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+const NIX_INSTALLERS = [
+  {
+    href: "https://determinate.systems/nix-installer/",
+    title: "Determinate Systems installer",
+    description: "Recommended for most Macs: a polished installer with a clear uninstall path.",
+  },
+  {
+    href: "https://nixos.org/download/",
+    title: "Official NixOS installer",
+    description: "Best if you want the upstream Nix project path and are comfortable following terminal setup steps.",
+  },
+] as const;
+
+const NIX_DARWIN_URL = "https://github.com/LnL7/nix-darwin";
+
+async function openExternalUrl(url: string) {
+  try {
+    await open(url);
+  } catch (error) {
+    console.warn("Failed to open external URL with Tauri shell; falling back to browser window.", error);
+    window.open(url, "_blank");
+  }
+}
+
+function ExternalSetupLink({
+  href,
+  title,
+  description,
+}: {
+  href: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(event) => {
+        event.preventDefault();
+        void openExternalUrl(href);
+      }}
+      className="flex items-start justify-between gap-3 rounded-md border border-border p-3 text-left transition-colors hover:bg-muted/50"
+    >
+      <span>
+        <span className="block font-medium text-sm">{title}</span>
+        <span className="mt-1 block text-muted-foreground text-xs leading-5">{description}</span>
+      </span>
+      <ExternalLink className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+    </a>
+  );
 }
 
 export function NixSetupStep() {
   const nixInstalled = useWidgetStore((s) => s.nixInstalled);
-  const nixInstalling = useWidgetStore((s) => s.nixInstalling);
-  const nixInstallPhase = useWidgetStore((s) => s.nixInstallPhase);
-  const nixDownloadProgress = useWidgetStore((s) => s.nixDownloadProgress);
   const darwinRebuildAvailable = useWidgetStore((s) => s.darwinRebuildAvailable);
-  const error = useWidgetStore((s) => s.error);
-  const { checkNix, installNix } = useNixInstall();
+  const { checkNix } = useNixInstall();
 
-  const state = getNixSetupState({ nixInstalled, nixInstalling, nixInstallPhase, darwinRebuildAvailable, error });
+  const state = getNixSetupState({ nixInstalled, darwinRebuildAvailable });
 
   useEffect(() => {
-    if (nixInstalled === null && !nixInstalling) {
+    if (nixInstalled === null) {
       checkNix();
     }
-  }, [nixInstalled, nixInstalling, checkNix]);
-
-  // Auto-trigger install flow when nix is installed but darwin-rebuild is not.
-  // The backend handles running the prefetch directly (no Terminal).
-  useEffect(() => {
-    if (nixInstalled === true && darwinRebuildAvailable === false && !nixInstalling && !error) {
-      installNix();
-    }
-  }, [nixInstalled, darwinRebuildAvailable, nixInstalling, error, installNix]);
-
-  // Open settings dialog during install so users can configure API keys while waiting.
-  const isInstalling = state === "downloading" || state === "waiting-for-installer" || state === "prefetching";
-  useEffect(() => {
-    if (!isInstalling) return;
-    const timer = setTimeout(() => {
-      useWidgetStore.getState().setSettingsOpen(true);
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [isInstalling]);
-
-  const downloadPercent =
-    nixDownloadProgress && nixDownloadProgress.total > 0
-      ? Math.round((nixDownloadProgress.downloaded / nixDownloadProgress.total) * 100)
-      : 0;
+  }, [nixInstalled, checkNix]);
 
   return (
     <div className="flex h-full flex-col items-center justify-center p-4">
@@ -79,77 +95,52 @@ export function NixSetupStep() {
           </div>
           <h2 className="font-semibold text-foreground text-lg">System Setup</h2>
           <p className="mt-1 text-muted-foreground text-sm">
-            nixmac needs to install a few things to get started. While you wait, feel free to set up your AI provider and preferences using the gear icon above.
+            nixmac needs Nix and nix-darwin before it can manage this Mac.
           </p>
         </div>
 
         <Card className="mb-4 p-4">
-          {state === "idle" && (
+          {state === "checking" && (
+            <div className="flex items-center justify-center gap-2 py-4 text-muted-foreground text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Checking system...
+            </div>
+          )}
+
+          {state === "missing-nix" && (
             <div className="space-y-4">
-              {nixInstalled === null ? (
-                <div className="flex items-center justify-center gap-2 py-4 text-muted-foreground text-sm">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Checking system...
-                </div>
-              ) : (
-                <>
-                  <p className="text-muted-foreground text-sm">
-                    {nixInstalled
-                      ? "nix-darwin needs to be set up. Click below to continue."
-                      : "Nix is not installed on this system. Click below to install it using the standard macOS installer."}
-                  </p>
-                  <Button onClick={installNix} className="w-full">
-                    <Download className="mr-2 h-4 w-4" />
-                    {nixInstalled ? "Set up nix-darwin" : "Install Nix"}
-                  </Button>
-                </>
-              )}
-            </div>
-          )}
-
-          {state === "downloading" && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Downloading installer...
-              </div>
-              {nixDownloadProgress && nixDownloadProgress.total > 0 && (
-                <div className="space-y-1">
-                  <div className="h-2 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all duration-200"
-                      style={{ width: `${downloadPercent}%` }}
-                    />
-                  </div>
-                  <p className="text-right text-muted-foreground text-xs">
-                    {formatBytes(nixDownloadProgress.downloaded)} / {formatBytes(nixDownloadProgress.total)}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {state === "waiting-for-installer" && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Waiting for installation to complete...
-              </div>
-              <p className="text-center text-muted-foreground text-xs">
-                Follow the instructions in the Installer window. This page will update automatically.
+              <p className="text-muted-foreground text-sm leading-6">
+                Nix is the package manager nixmac uses to build and apply repeatable Mac
+                configuration changes. Install Nix first, then return here so nixmac can check
+                your system again.
               </p>
+              <div className="space-y-2">
+                {NIX_INSTALLERS.map((installer) => (
+                  <ExternalSetupLink key={installer.href} {...installer} />
+                ))}
+              </div>
+              <Button onClick={checkNix} variant="outline" className="w-full">
+                <RefreshCw className="h-4 w-4" />
+                I've installed Nix - check again
+              </Button>
             </div>
           )}
 
-          {state === "prefetching" && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Preparing nix-darwin...
-              </div>
-              <p className="text-center text-muted-foreground text-xs">
-                This may take a few minutes on first run.
+          {state === "missing-darwin-rebuild" && (
+            <div className="space-y-4">
+              <p className="text-muted-foreground text-sm leading-6">
+                Nix is installed, but nixmac cannot find darwin-rebuild. Install nix-darwin so
+                nixmac can build and apply macOS configuration changes, then check again.
               </p>
+              <ExternalSetupLink
+                href={NIX_DARWIN_URL}
+                title="nix-darwin instructions"
+                description="Follow the upstream setup guide to make darwin-rebuild available on this Mac."
+              />
+              <Button onClick={checkNix} variant="outline" className="w-full">
+                <RefreshCw className="h-4 w-4" />
+                I've installed nix-darwin - check again
+              </Button>
             </div>
           )}
 
@@ -157,29 +148,6 @@ export function NixSetupStep() {
             <div className="flex items-center justify-center gap-2 py-4 text-sm text-green-600 dark:text-green-400">
               <CheckCircle2 className="h-5 w-5" />
               Nix & nix-darwin are installed
-            </div>
-          )}
-
-          {state === "error" && (
-            <div className="space-y-4">
-              <p className="text-destructive text-sm">{error}</p>
-              <div className="flex gap-2">
-                <Button onClick={installNix} variant="default" className="flex-1">
-                  Try Again
-                </Button>
-                <Button onClick={checkNix} variant="outline" className="flex-1">
-                  Check Again
-                </Button>
-              </div>
-              <a
-                href="https://determinate.systems/nix-installer/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-1 text-muted-foreground text-xs hover:text-foreground"
-              >
-                <ExternalLink className="h-3 w-3" />
-                Determinate Systems Installer
-              </a>
             </div>
           )}
         </Card>

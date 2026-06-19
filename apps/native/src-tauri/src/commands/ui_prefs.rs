@@ -27,6 +27,8 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, Strin
     let summary_model =
         wrap_result_and_capture_err("ui_get_prefs", store::get_summary_model(&app))?;
 
+    let max_iterations =
+        Some(store::get_max_iterations(&app).unwrap_or(store::DEFAULT_MAX_ITERATIONS));
     let max_token_budget =
         Some(store::get_max_token_budget(&app).unwrap_or(store::DEFAULT_MAX_TOKEN_BUDGET));
     let max_build_attempts = Some(store::get_max_build_attempts(&app).unwrap_or(5));
@@ -93,6 +95,7 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, Strin
         summary_provider,
         summary_model,
 
+        max_iterations,
         max_token_budget,
         max_build_attempts,
         max_output_tokens,
@@ -142,6 +145,10 @@ pub async fn ui_set_prefs(
     }
     if let Some(summary_model) = prefs.summary_model {
         store::set_summary_model(&app, &summary_model)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
+    }
+    if let Some(max_iterations) = prefs.max_iterations {
+        store::set_max_iterations(&app, max_iterations)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(max_token_budget) = prefs.max_token_budget {
@@ -234,6 +241,26 @@ pub async fn ui_set_prefs(
     }
 
     Ok(shared_types::OkResult::yes())
+}
+
+/// Verifies a direct OpenAI API key outside the webview so browser CORS cannot
+/// turn valid keys into frontend network failures.
+#[tauri::command]
+pub async fn verify_openai_api_key(api_key: String) -> Result<bool, String> {
+    let trimmed_key = api_key.trim();
+    if trimmed_key.is_empty() {
+        return Ok(false);
+    }
+
+    let url = format!("{}/models", store::OPENAI_BASE_URL);
+    let response = reqwest::Client::new()
+        .get(url)
+        .bearer_auth(trimmed_key)
+        .send()
+        .await
+        .map_err(|e| capture_err("verify_openai_api_key", e))?;
+
+    Ok(response.status().is_success())
 }
 
 /// Gets the cached list of models for a provider.

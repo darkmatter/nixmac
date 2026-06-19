@@ -88,13 +88,21 @@ const handleEvolve = async () => {
     // Backend handles: AI + summary + branch + commit + DB
     const result = await tauriAPI.darwin.evolve(store.evolvePrompt);
     const isConversational = result?.telemetry?.state === "conversational";
+    const isLimitReached = result?.telemetry?.state === "limitReached";
 
     const telemetry = result?.telemetry;
-    const completionMsg = telemetry
-      ? `✓ Evolution complete in ${formatDurationMs(telemetry.durationMs)} and ${telemetry.iterations} iteration${telemetry.iterations === 1 ? "" : "s"}\n`
-      : "✓ Evolution complete\n";
+    const iterationSuffix = telemetry
+      ? ` in ${formatDurationMs(telemetry.durationMs)} and ${telemetry.iterations} iteration${telemetry.iterations === 1 ? "" : "s"}`
+      : "";
+    const completionMsg = isLimitReached
+      ? `⏸ Evolution stopped (safety limit reached)${iterationSuffix}\n`
+      : `✓ Evolution complete${iterationSuffix}\n`;
     useWidgetStore.getState().appendLog(completionMsg);
-    toast.success(completionMsg);
+    if (isLimitReached) {
+      toast.info(completionMsg);
+    } else {
+      toast.success(completionMsg);
+    }
     if (telemetry) {
       useWidgetStore.getState().setEvolutionTelemetry(telemetry);
     }

@@ -3,9 +3,10 @@
 //! Storage is repo-scoped — values live under `<config_dir>/.nixmac/settings.json`
 //! so they ride along with the user's nix config repo across machines.
 //!
-//! The struct is managed as a `Slice<EvolutionLimits>` at startup and registered
-//! with the slice registry so Developer settings can render and update it
-//! without opening store files directly.
+//! The struct is managed as an `Observable<EvolutionLimits>` at startup. The
+//! derive macro pushes its metadata into the compile-time `inventory`
+//! collection so Developer settings can render and update it without opening
+//! store files directly.
 
 use anyhow::Result;
 use configurable::Configurable;
@@ -14,10 +15,8 @@ use specta::Type;
 use std::sync::Arc;
 use tauri::{AppHandle, Runtime};
 
+use crate::observable::{ConfiguredRepoScopedJson, Observable, Persistence};
 use crate::state::preferences;
-use crate::state::slice::{
-    ConfiguredRepoScopedJson, Persistence, RegisteredSliceConfig, Slice, SliceRegistry,
-};
 
 pub const EVOLUTION_LIMITS_CHANGED_EVENT: &str = "evolution_limits_changed";
 
@@ -29,6 +28,15 @@ pub const EVOLUTION_LIMITS_CHANGED_EVENT: &str = "evolution_limits_changed";
     description = "How long the agent will try before giving up."
 )]
 pub struct EvolutionLimits {
+    #[config(
+        default = 25,
+        key = "maxIterations",
+        label = "Max iterations (legacy)",
+        range = 1..=200,
+        help = "Legacy iteration cap. Used only when the provider doesn't report token usage; the token budget is the primary stopping rule.",
+    )]
+    pub max_iterations: usize,
+
     #[config(
         default = 50_000,
         key = "maxTokenBudget",
@@ -57,13 +65,15 @@ pub struct EvolutionLimits {
     pub max_output_tokens: usize,
 }
 
-// Matches the `#[config(default = ...)]` values above. Used as the fallback
-// in evolve::mod when EvolutionLimits::load fails (e.g. config_dir not yet
-// set during onboarding); deriving `Default` would produce zeros, which
-// would be wrong here.
+// Matches the `#[config(default = ...)]` values above. Reached during
+// startup when the repo's settings.json is absent or unreadable (see
+// `preferences::load_or_default`), and on the dev-settings whole-struct
+// `set` path when an incoming JSON payload is missing fields. Deriving
+// `Default` would produce zeros, which would be wrong here.
 impl Default for EvolutionLimits {
     fn default() -> Self {
         Self {
+            max_iterations: 25,
             max_token_budget: 50_000,
             max_build_attempts: 5,
             max_output_tokens: 32_768,
@@ -71,23 +81,12 @@ impl Default for EvolutionLimits {
     }
 }
 
-pub fn load_slice<R: Runtime>(app: &AppHandle<R>) -> Result<Slice<EvolutionLimits>> {
+pub fn load_observable<R: Runtime>(app: &AppHandle<R>) -> Result<Observable<EvolutionLimits>> {
     let persistence: Arc<dyn Persistence> = Arc::new(ConfiguredRepoScopedJson::new(app.clone()));
     let initial = preferences::load_or_default::<EvolutionLimits>(persistence.as_ref())?;
-
-    Ok(Slice::new(
-        EVOLUTION_LIMITS_CHANGED_EVENT,
-        initial,
-        persistence,
-    ))
-}
-
-pub fn register_slice_config(registry: &SliceRegistry) -> Result<()> {
-    registry.register(RegisteredSliceConfig {
-        name: "EvolutionLimits",
-        schema_fn: EvolutionLimits::__configurable_schema_wry,
-        set_field_fn: EvolutionLimits::__configurable_set_field_wry,
-    })
+    Ok(Observable::new(initial)
+        .emit_to(app, EVOLUTION_LIMITS_CHANGED_EVENT)
+        .persist_to(persistence))
 }
 
 #[cfg(test)]
@@ -98,6 +97,7 @@ mod tests {
     fn default_matches_configured_field_defaults() {
         let limits = EvolutionLimits::default();
 
+        assert_eq!(limits.max_iterations, 25);
         assert_eq!(limits.max_token_budget, 50_000);
         assert_eq!(limits.max_build_attempts, 5);
         assert_eq!(limits.max_output_tokens, 32_768);
@@ -106,6 +106,7 @@ mod tests {
     #[test]
     fn unknown_fields_do_not_change_limits() {
         let limits: EvolutionLimits = serde_json::from_value(serde_json::json!({
+            "maxIterations": 11,
             "maxTokenBudget": 80_000,
             "maxBuildAttempts": 3,
             "maxOutputTokens": 16_384,
@@ -116,6 +117,7 @@ mod tests {
         assert_eq!(
             limits,
             EvolutionLimits {
+                max_iterations: 11,
                 max_token_budget: 80_000,
                 max_build_attempts: 3,
                 max_output_tokens: 16_384,
@@ -125,9 +127,12 @@ mod tests {
 
     #[test]
     fn missing_fields_use_defaults() {
-        let limits: EvolutionLimits =
-            serde_json::from_value(serde_json::json!({})).expect("limits deserialize");
+        let limits: EvolutionLimits = serde_json::from_value(serde_json::json!({
+            "maxIterations": 11,
+        }))
+        .expect("limits deserialize");
 
+        assert_eq!(limits.max_iterations, 11);
         assert_eq!(limits.max_token_budget, 50_000);
         assert_eq!(limits.max_build_attempts, 5);
         assert_eq!(limits.max_output_tokens, 32_768);

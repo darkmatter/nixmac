@@ -182,6 +182,10 @@ const digest = [
   ...section("🆕", "New stories", added),
   ...section("✏️", "Changed stories", changed),
   ...section("🗑️", "Removed stories", removed),
+  "",
+  changed.length > 0
+    ? "> 💡 [Update snapshots ↗](https://github.com/darkmatter/nixmac/actions/workflows/update-snapshots.yaml) to regenerate baselines and open a PR."
+    : "",
 ].join("\n");
 
 await mkdir(path.dirname(outputFile), { recursive: true });

@@ -54,6 +54,7 @@ pub const SYNC_SECRET_KEYCHAIN_KEY: &str = "nixmacSyncSecret";
 /// Default sync server when the user has not configured a custom endpoint.
 pub const DEFAULT_SYNC_BASE_URL: &str = "https://sync.nixmac.app";
 
+pub const DEFAULT_MAX_ITERATIONS: usize = 25;
 pub const DEFAULT_MAX_OUTPUT_TOKENS: usize = 32_768;
 pub const DEFAULT_MAX_TOKEN_BUDGET: u32 = 50_000;
 const KEYCHAIN_SERVICE: &str = "com.darkmatter.nixmac";
@@ -359,38 +360,32 @@ pub fn get_effective_vllm_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Opti
     )
 }
 
-/// Gets the effective OpenAI/OpenRouter credential and base URL with env-first precedence.
+/// Gets the effective direct OpenAI credential and API base URL.
 ///
-/// Priority:
-/// 1. `OPENROUTER_API_KEY`
-/// 2. `OPENAI_API_KEY`
-/// 3. stored OpenRouter key
-/// 4. stored OpenAI key
-pub fn get_effective_openai_compatible_credential<R: Runtime>(
+/// Priority: `OPENAI_API_KEY`, then keychain-backed direct OpenAI settings.
+pub fn get_effective_openai_provider_credential<R: Runtime>(
     app: &AppHandle<R>,
 ) -> Result<Option<(String, &'static str)>> {
-    if let Some(key) = get_effective_openrouter_api_key(app)? {
-        return Ok(Some((key, OPENROUTER_BASE_URL)));
-    }
-    if let Some(key) = get_effective_openai_api_key(app)? {
-        return Ok(Some((key, OPENAI_BASE_URL)));
-    }
-    Ok(None)
+    Ok(get_effective_openai_api_key(app)?.map(|key| (key, OPENAI_BASE_URL)))
 }
 
-/// Gets OpenAI/OpenRouter credential from environment variables only (no store access).
+/// Gets the effective OpenRouter credential and API base URL.
 ///
-/// Used when app context is unavailable. Priority:
-/// 1. `OPENROUTER_API_KEY`
-/// 2. `OPENAI_API_KEY`
-pub fn get_env_openai_compatible_credential() -> Option<(String, &'static str)> {
-    if let Some(key) = read_non_empty_env("OPENROUTER_API_KEY") {
-        return Some((key, OPENROUTER_BASE_URL));
-    }
-    if let Some(key) = read_non_empty_env("OPENAI_API_KEY") {
-        return Some((key, OPENAI_BASE_URL));
-    }
-    None
+/// Priority: `OPENROUTER_API_KEY`, then keychain-backed OpenRouter settings.
+pub fn get_effective_openrouter_provider_credential<R: Runtime>(
+    app: &AppHandle<R>,
+) -> Result<Option<(String, &'static str)>> {
+    Ok(get_effective_openrouter_api_key(app)?.map(|key| (key, OPENROUTER_BASE_URL)))
+}
+
+/// Gets the direct OpenAI credential from environment variables only.
+pub fn get_env_openai_provider_credential() -> Option<(String, &'static str)> {
+    read_non_empty_env("OPENAI_API_KEY").map(|key| (key, OPENAI_BASE_URL))
+}
+
+/// Gets the OpenRouter credential from environment variables only.
+pub fn get_env_openrouter_provider_credential() -> Option<(String, &'static str)> {
+    read_non_empty_env("OPENROUTER_API_KEY").map(|key| (key, OPENROUTER_BASE_URL))
 }
 
 fn read_non_empty_env(name: &str) -> Option<String> {
@@ -398,6 +393,10 @@ fn read_non_empty_env(name: &str) -> Option<String> {
 }
 
 fn normalize_env_secret(value: Option<String>) -> Option<String> {
+    normalize_secret(value)
+}
+
+fn normalize_secret(value: Option<String>) -> Option<String> {
     value
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
@@ -498,20 +497,27 @@ fn keychain_store_for<R: Runtime>(app: &AppHandle<R>, key: &str) -> KeychainStor
 
 fn get_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> Result<Option<String>> {
     if e2e_mock_system_enabled() {
-        return get_string_pref_raw(app, key);
+        return Ok(normalize_secret(get_string_pref_raw(app, key)?));
     }
 
     let keychain = keychain_store_for(app, key);
-    keychain.get().map_err(anyhow::Error::from)
+    keychain
+        .get()
+        .map(normalize_secret)
+        .map_err(anyhow::Error::from)
 }
 
 fn set_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str, value: &str) -> Result<()> {
+    let Some(value) = normalize_secret(Some(value.to_string())) else {
+        return delete_secret_pref(app, key);
+    };
+
     if e2e_mock_system_enabled() {
-        return set_string_pref(app, key, value);
+        return set_string_pref(app, key, &value);
     }
 
     let keychain = keychain_store_for(app, key);
-    keychain.set(value).map_err(anyhow::Error::from)
+    keychain.set(&value).map_err(anyhow::Error::from)
 }
 
 fn delete_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> Result<()> {
@@ -624,13 +630,58 @@ fn get_repo_store<R: Runtime>(
     Ok(store)
 }
 
-/// Gets the maximum token budget for evolution (default: 50,000).
+/// Gets the maximum iterations for evolution (default: 25). Repo-scoped.
+pub fn get_max_iterations<R: Runtime>(app: &AppHandle<R>) -> Result<usize> {
+    if let Some(limits) =
+        app.try_state::<crate::observable::Observable<crate::evolve::config::EvolutionLimits>>()
+    {
+        return Ok(limits.read_sync().max_iterations);
+    }
+
+    let value = get_repo_store(app)
+        .ok()
+        .and_then(|s| s.get("maxIterations"))
+        .and_then(|v| serde_json::from_value::<usize>(v).ok())
+        .unwrap_or(DEFAULT_MAX_ITERATIONS);
+    Ok(value)
+}
+
+pub fn set_max_iterations<R: Runtime>(app: &AppHandle<R>, max: usize) -> Result<()> {
+    if let Some(limits) =
+        app.try_state::<crate::observable::Observable<crate::evolve::config::EvolutionLimits>>()
+    {
+        let mut limits = limits.write_sync();
+        limits.max_iterations = max;
+        return Ok(());
+    }
+
+    let store = get_repo_store(app)?;
+    store.set("maxIterations", serde_json::json!(max));
+    store.save()?;
+    Ok(())
+}
+
+/// Gets the maximum token budget for evolution (default: 50,000). Repo-scoped.
 pub fn get_max_token_budget<R: Runtime>(app: &AppHandle<R>) -> Result<u32> {
+    if let Some(limits) =
+        app.try_state::<crate::observable::Observable<crate::evolve::config::EvolutionLimits>>()
+    {
+        return Ok(limits.read_sync().max_token_budget);
+    }
+
     Ok(get_json_pref(app, "maxTokenBudget")?.unwrap_or(DEFAULT_MAX_TOKEN_BUDGET))
 }
 
 pub fn set_max_token_budget<R: Runtime>(app: &AppHandle<R>, max: u32) -> Result<()> {
-    let store = get_store(app)?;
+    if let Some(limits) =
+        app.try_state::<crate::observable::Observable<crate::evolve::config::EvolutionLimits>>()
+    {
+        let mut limits = limits.write_sync();
+        limits.max_token_budget = max;
+        return Ok(());
+    }
+
+    let store = get_repo_store(app)?;
     store.set("maxTokenBudget", serde_json::json!(max));
     store.save()?;
     Ok(())
@@ -639,7 +690,7 @@ pub fn set_max_token_budget<R: Runtime>(app: &AppHandle<R>, max: u32) -> Result<
 /// Gets the maximum build attempts for evolution (default: 5). Repo-scoped.
 pub fn get_max_build_attempts<R: Runtime>(app: &AppHandle<R>) -> Result<usize> {
     if let Some(limits) =
-        app.try_state::<crate::state::slice::Slice<crate::evolve::config::EvolutionLimits>>()
+        app.try_state::<crate::observable::Observable<crate::evolve::config::EvolutionLimits>>()
     {
         return Ok(limits.read_sync().max_build_attempts);
     }
@@ -654,9 +705,9 @@ pub fn get_max_build_attempts<R: Runtime>(app: &AppHandle<R>) -> Result<usize> {
 
 pub fn set_max_build_attempts<R: Runtime>(app: &AppHandle<R>, max: usize) -> Result<()> {
     if let Some(limits) =
-        app.try_state::<crate::state::slice::Slice<crate::evolve::config::EvolutionLimits>>()
+        app.try_state::<crate::observable::Observable<crate::evolve::config::EvolutionLimits>>()
     {
-        let mut limits = limits.write_sync(app);
+        let mut limits = limits.write_sync();
         limits.max_build_attempts = max;
         return Ok(());
     }
@@ -843,6 +894,51 @@ mod tests {
         assert_eq!(
             normalize_env_secret(Some("  sk-abc123  ".to_string())),
             Some("sk-abc123".to_string())
+        );
+    }
+
+    #[test]
+    fn normalize_secret_rejects_empty_stored_values() {
+        assert_eq!(normalize_secret(None), None);
+        assert_eq!(normalize_secret(Some("".to_string())), None);
+        assert_eq!(normalize_secret(Some("   \n\t ".to_string())), None);
+        assert_eq!(
+            normalize_secret(Some("  sk-stored  ".to_string())),
+            Some("sk-stored".to_string())
+        );
+    }
+
+    #[test]
+    fn env_openai_provider_credential_ignores_openrouter_key() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore =
+            crate::test_support::EnvVarRestore::capture(&["OPENROUTER_API_KEY", "OPENAI_API_KEY"]);
+
+        std::env::set_var("OPENROUTER_API_KEY", "sk-or-existing");
+        std::env::remove_var("OPENAI_API_KEY");
+        assert_eq!(get_env_openai_provider_credential(), None);
+
+        std::env::set_var("OPENAI_API_KEY", " sk-openai-direct ");
+        assert_eq!(
+            get_env_openai_provider_credential(),
+            Some(("sk-openai-direct".to_string(), OPENAI_BASE_URL))
+        );
+    }
+
+    #[test]
+    fn env_openrouter_provider_credential_ignores_openai_key() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore =
+            crate::test_support::EnvVarRestore::capture(&["OPENROUTER_API_KEY", "OPENAI_API_KEY"]);
+
+        std::env::remove_var("OPENROUTER_API_KEY");
+        std::env::set_var("OPENAI_API_KEY", "sk-openai-existing");
+        assert_eq!(get_env_openrouter_provider_credential(), None);
+
+        std::env::set_var("OPENROUTER_API_KEY", " sk-or-direct ");
+        assert_eq!(
+            get_env_openrouter_provider_credential(),
+            Some(("sk-or-direct".to_string(), OPENROUTER_BASE_URL))
         );
     }
 

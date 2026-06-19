@@ -15,8 +15,27 @@ const storybookPlugins = await storybookTest({
   configDir: path.join(import.meta.dirname, ".storybook"),
 });
 
+const storybookOptimizeDeps = [
+  "@radix-ui/react-popover",
+  "@radix-ui/react-slot",
+  "@react-three/drei",
+  "@react-three/fiber",
+  "class-variance-authority",
+  "clsx",
+  "lucide-react",
+  "lottie-react",
+  "monaco-editor-textmate",
+  "monaco-textmate",
+  "onigasm",
+  "tailwind-merge",
+  "three",
+] as const;
+
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    include: storybookOptimizeDeps,
+  },
   resolve: {
     alias: [
       {

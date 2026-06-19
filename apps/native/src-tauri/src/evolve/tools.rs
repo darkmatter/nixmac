@@ -139,6 +139,13 @@ pub fn execute_tool(
     }
 }
 
+/// Helper to determine if a tool is an editing tool, i.e. it
+/// makes changes to the nix config that count as "edits" in the
+/// evolution process and should be tracked as such.
+pub fn is_editing_tool(name: &str) -> bool {
+    matches!(name, "edit_file" | "edit_nix_file" | "ensure_secret")
+}
+
 // =============================================================================
 // Shared helpers (used across tool modules)
 // =============================================================================
@@ -203,7 +210,7 @@ pub(crate) fn ensure_nixmac_edit_allowed(tool: &str, path: &str) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{ToolResult, execute_tool, truncate_for_log};
+    use super::{ToolResult, execute_tool, is_editing_tool, truncate_for_log};
     use crate::evolve::gitignore::load_gitignore_matcher;
     use serde_json::json;
     use std::fs;
@@ -230,6 +237,22 @@ mod tests {
         // panic (the original bug). Truncation must happen on a char boundary.
         let s = "→".repeat(50);
         assert_eq!(truncate_for_log(&s, 10), format!("{}...", "→".repeat(10)));
+    }
+
+    #[test]
+    fn returns_true_for_editing_tools() {
+        assert!(is_editing_tool("edit_file"));
+        assert!(is_editing_tool("edit_nix_file"));
+        assert!(is_editing_tool("ensure_secret"));
+    }
+
+    #[test]
+    fn returns_false_for_non_editing_tools() {
+        assert!(!is_editing_tool("read_file"));
+        assert!(!is_editing_tool("list_files"));
+        assert!(!is_editing_tool("build_check"));
+        assert!(!is_editing_tool("done"));
+        assert!(!is_editing_tool(""));
     }
 
     #[test]

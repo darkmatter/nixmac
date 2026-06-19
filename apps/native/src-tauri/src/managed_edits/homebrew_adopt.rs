@@ -1,12 +1,13 @@
 use crate::evolve::file_ops::resolve_path_in_dir_allow_create;
 use crate::evolve::nix_file_editor::{apply_semantic_edit, nix_quote_values};
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
-use crate::shared_types::HomebrewState;
+use crate::shared_types::{HomebrewItemType, HomebrewState};
 use crate::system::nix_ast_lists::parse_string_lists_by_attrpath;
 use crate::system::scanner::inject_module_import;
 use crate::{managed_edits::managed_edit, shared_types};
 use anyhow::{Context, Result};
 use serde_json::{Map, Value};
+use shared_types::HomebrewItem;
 use tauri::AppHandle;
 
 const NIXMAC_HOMEBREW_DATA_PATH: &str = ".nixmac/homebrew/data.json";
@@ -201,7 +202,9 @@ pub async fn apply_homebrew_diff(
 }
 
 /// Scan the system for Homebrew packages, casks, and taps.
-/// Only includes explicitly installed brews and casks (via `--installed-on-request`), not their dependencies.
+/// Only includes explicitly installed brews and casks not their dependencies.
+/// Note that generally speaking, `brew list --casks` does *not* count dependences, and
+/// the `--installed-on-request` flag is not valid for casks.
 /// Excludes default taps (homebrew/core, homebrew/cask).
 /// If homebrew is not installed, returns an empty state with is_installed set to false.
 pub fn scan_homebrew() -> HomebrewState {
@@ -220,10 +223,12 @@ pub fn scan_homebrew() -> HomebrewState {
                 .lines()
                 .map(str::to_owned)
                 .collect();
+        } else {
+            log::warn!("failed to scan Homebrew brews: brew command returned non-zero exit code");
         }
     }
     if let Ok(output) = std::process::Command::new("brew")
-        .args(["list", "--installed-on-request", "--cask"])
+        .args(["list", "--cask"])
         .env("PATH", crate::system::nix::get_nix_path())
         .output()
     {
@@ -232,6 +237,8 @@ pub fn scan_homebrew() -> HomebrewState {
                 .lines()
                 .map(str::to_owned)
                 .collect();
+        } else {
+            log::warn!("failed to scan Homebrew casks: brew command returned non-zero exit code");
         }
     }
     if let Ok(output) = std::process::Command::new("brew")
@@ -248,6 +255,8 @@ pub fn scan_homebrew() -> HomebrewState {
                 })
                 .map(str::to_owned)
                 .collect();
+        } else {
+            log::warn!("failed to scan Homebrew taps: brew command returned non-zero exit code");
         }
     }
 
@@ -371,7 +380,12 @@ fn sanitize_homebrew_diff(
     }
 }
 
-fn ensure_nixmac_homebrew_module(config_dir: &std::path::Path) -> Result<()> {
+/// Ensures the managed Nixmac Homebrew module exists and returns the path to
+/// its data file.
+///
+/// The returned JSON file is the canonical place for managed Homebrew taps,
+/// brews, and casks used by the `.nixmac/homebrew` module.
+pub fn ensure_nixmac_homebrew_module(config_dir: &std::path::Path) -> Result<std::path::PathBuf> {
     let nixmac_dir = config_dir.join(".nixmac");
     let module_dir = nixmac_dir.join("homebrew");
     std::fs::create_dir_all(&module_dir)
@@ -413,7 +427,139 @@ fn ensure_nixmac_homebrew_module(config_dir: &std::path::Path) -> Result<()> {
         .with_context(|| format!("failed to write '{}'", module_data.display()))?;
     }
 
+    Ok(module_data)
+}
+
+fn ensure_nixmac_module_import(config_dir: &std::path::Path) -> Result<()> {
+    let flake_path = config_dir.join("flake.nix");
+    if !flake_path.exists() {
+        return Err(anyhow::anyhow!(
+            "cannot enable Nixmac Homebrew module because '{}' does not exist",
+            flake_path.display()
+        ));
+    }
+
+    let flake_content = std::fs::read_to_string(&flake_path)
+        .with_context(|| format!("failed to read flake file '{}'", flake_path.display()))?;
+
+    let updated = inject_module_import(&flake_content, "./.nixmac")
+        .map_err(anyhow::Error::msg)
+        .with_context(|| {
+            format!(
+                "failed to inject Nixmac module import into '{}'",
+                flake_path.display()
+            )
+        })?;
+
+    if updated != flake_content {
+        std::fs::write(&flake_path, updated)
+            .with_context(|| format!("failed to write flake file '{}'", flake_path.display()))?;
+    }
+
     Ok(())
+}
+
+fn add_homebrew_items_to_config(
+    config_dir: &std::path::Path,
+    items: &[HomebrewItem],
+) -> Result<std::path::PathBuf> {
+    if items.is_empty() {
+        return Err(anyhow::anyhow!("at least one Homebrew item is required"));
+    }
+
+    let item_names = items
+        .iter()
+        .map(|item| item.name.trim())
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    if item_names.is_empty() {
+        return Err(anyhow::anyhow!(
+            "at least one named Homebrew item is required"
+        ));
+    }
+
+    ensure_nixmac_module_import(config_dir)?;
+    let data_path = ensure_nixmac_homebrew_module(config_dir)?;
+    let mut data = read_homebrew_data(&data_path)?;
+
+    // Separate out the casks/brews/formulae so we can do 0..3 merge_json_array calls for each.
+    let casks = items
+        .iter()
+        .filter(|item| item.item_type == HomebrewItemType::Cask)
+        .map(|item| item.name.trim())
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    if !casks.is_empty() {
+        merge_json_array(&mut data, "casks", &casks)?;
+    }
+
+    let brews = items
+        .iter()
+        .filter(|item| item.item_type == HomebrewItemType::Brew)
+        .map(|item| item.name.trim())
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    if !brews.is_empty() {
+        merge_json_array(&mut data, "brews", &brews)?;
+    }
+
+    let taps = items
+        .iter()
+        .filter(|item| item.item_type == HomebrewItemType::Tap)
+        .map(|item| item.name.trim())
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    if !taps.is_empty() {
+        merge_json_array(&mut data, "taps", &taps)?;
+    }
+
+    let rendered = serde_json::to_string_pretty(&data)?;
+    std::fs::write(&data_path, format!("{}\n", rendered))
+        .with_context(|| format!("failed to write '{}'", data_path.display()))?;
+
+    Ok(data_path)
+}
+
+/// Adds one or more Homebrew items to the managed Nixmac Homebrew data file,
+/// snapshots the pre-edit tree onto a rollback branch, and enters the managed
+/// review flow.
+pub async fn add_homebrew_items(
+    app: &AppHandle,
+    items: Vec<HomebrewItem>,
+) -> Result<shared_types::ConfigEditApplyResult> {
+    let item_count = items
+        .iter()
+        .filter(|item| !item.name.trim().is_empty())
+        .count();
+    if items.is_empty() {
+        return Err(anyhow::anyhow!("at least one Homebrew item is required"));
+    }
+    if item_count == 0 {
+        return Err(anyhow::anyhow!(
+            "at least one named Homebrew item is required"
+        ));
+    }
+
+    let context = managed_edit::prepare_managed_edit(app)?;
+    let dir = context.dir.clone();
+
+    add_homebrew_items_to_config(std::path::Path::new(&dir), &items)
+        .context("Failed to add Homebrew items")?;
+
+    let working_tree_status =
+        crate::git::status(&dir).context("Failed to get working tree status for evolve state")?;
+    managed_edit::finalize_managed_edit(
+        app,
+        context,
+        working_tree_status,
+        item_count,
+        "add_homebrew_items",
+    )
+    .await
 }
 
 fn apply_homebrew_data_import(
@@ -421,12 +567,12 @@ fn apply_homebrew_data_import(
     config_dir: &std::path::Path,
     source_rel: &str,
 ) -> Result<()> {
-    if source_rel == NIXMAC_HOMEBREW_DATA_PATH {
-        ensure_nixmac_homebrew_module(config_dir)?;
-    }
-
-    let source = resolve_path_in_dir_allow_create(config_dir, source_rel)
-        .with_context(|| format!("invalid homebrew source path '{}'", source_rel))?;
+    let source = if source_rel == NIXMAC_HOMEBREW_DATA_PATH {
+        ensure_nixmac_homebrew_module(config_dir)?
+    } else {
+        resolve_path_in_dir_allow_create(config_dir, source_rel)
+            .with_context(|| format!("invalid homebrew source path '{}'", source_rel))?
+    };
     if let Some(parent) = source.parent() {
         std::fs::create_dir_all(parent)
             .with_context(|| format!("failed to create directory '{}'", parent.display()))?;
@@ -447,7 +593,6 @@ fn apply_homebrew_data_import(
 /// Writes missing items in the diff to the config, using the source field to determine where to write.
 /// If the source is empty, we'll set up the official .nixmac/homebrew module and write data.json.
 /// We also hook up .nixmac to flake.nix in that case.
-#[allow(dead_code)]
 pub fn apply_homebrew_import(diff: HomebrewState, config_dir: &std::path::Path) -> Result<()> {
     if diff.casks.is_empty() && diff.brews.is_empty() && diff.taps.is_empty() {
         return Ok(());
@@ -469,24 +614,7 @@ pub fn apply_homebrew_import(diff: HomebrewState, config_dir: &std::path::Path) 
         apply_homebrew_data_import(&diff, config_dir, &source_rel)?;
 
         if diff.source.is_none() {
-            let flake_path = config_dir.join("flake.nix");
-            let flake_content = std::fs::read_to_string(&flake_path)
-                .with_context(|| format!("failed to read flake file '{}'", flake_path.display()))?;
-
-            let updated = inject_module_import(&flake_content, "./.nixmac")
-                .map_err(anyhow::Error::msg)
-                .with_context(|| {
-                    format!(
-                        "failed to inject Nixmac module import into '{}'",
-                        flake_path.display()
-                    )
-                })?;
-
-            if updated != flake_content {
-                std::fs::write(&flake_path, updated).with_context(|| {
-                    format!("failed to write flake file '{}'", flake_path.display())
-                })?;
-            }
+            ensure_nixmac_module_import(config_dir)?;
         }
 
         return Ok(());
@@ -578,6 +706,8 @@ pub fn apply_homebrew_import(diff: HomebrewState, config_dir: &std::path::Path) 
 
 #[cfg(test)]
 mod tests {
+    use crate::shared_types::HomebrewItemType;
+
     use super::*;
 
     fn homebrew_state(
@@ -877,6 +1007,113 @@ mod tests {
             Some("modules/darwin/homebrew.nix")
         );
         assert_eq!(homebrew_item_count(&sanitized), 0);
+    }
+
+    #[test]
+    fn ensure_nixmac_homebrew_module_returns_data_file_path() {
+        let temp = tempfile::tempdir().expect("tempdir should be created");
+
+        let data_file =
+            ensure_nixmac_homebrew_module(temp.path()).expect("homebrew module should be created");
+
+        assert_eq!(data_file, temp.path().join(NIXMAC_HOMEBREW_DATA_PATH));
+        assert!(temp.path().join(".nixmac/default.nix").exists());
+        assert!(temp.path().join(".nixmac/homebrew/default.nix").exists());
+        assert!(temp.path().join(".nixmac/homebrew/meta.json").exists());
+        assert!(data_file.exists());
+    }
+
+    #[test]
+    fn add_homebrew_items_writes_managed_data_and_injects_flake_import() {
+        let temp = tempfile::tempdir().expect("tempdir should be created");
+        let flake = temp.path().join("flake.nix");
+        write_file(
+            &flake,
+            r#"{
+  outputs = { self }: {
+    darwinConfigurations.host = {
+      modules = [
+        ./modules/darwin/system.nix
+      ];
+    };
+  };
+}
+"#,
+        );
+        write_file(
+            &temp.path().join(NIXMAC_HOMEBREW_DATA_PATH),
+            r#"{
+  "taps": [],
+  "brews": [],
+  "casks": ["docker"]
+}
+"#,
+        );
+
+        // Make sure to test all three item types.
+        let data_file = add_homebrew_items_to_config(
+            temp.path(),
+            &[
+                HomebrewItem {
+                    name: "docker".to_string(),
+                    version: Some("4.32.0".to_string()),
+                    item_type: HomebrewItemType::Cask,
+                },
+                HomebrewItem {
+                    name: " obs ".to_string(),
+                    version: Some("30.2.3".to_string()),
+                    item_type: HomebrewItemType::Cask,
+                },
+                HomebrewItem {
+                    name: "git".to_string(),
+                    version: Some("2.42.0".to_string()),
+                    item_type: HomebrewItemType::Brew,
+                },
+                HomebrewItem {
+                    name: "homebrew/cask-fonts".to_string(),
+                    version: None,
+                    item_type: HomebrewItemType::Tap,
+                },
+            ],
+        )
+        .expect("casks should be added");
+
+        assert_eq!(data_file, temp.path().join(NIXMAC_HOMEBREW_DATA_PATH));
+
+        let data: Value = serde_json::from_str(
+            &std::fs::read_to_string(data_file).expect("homebrew data should exist"),
+        )
+        .expect("homebrew data should parse");
+        assert_eq!(json_string_array(&data, "casks"), vec!["docker", "obs"]);
+        assert_eq!(json_string_array(&data, "brews"), vec!["git"]);
+        assert_eq!(
+            json_string_array(&data, "taps"),
+            vec!["homebrew/cask-fonts"]
+        );
+
+        let flake_content = std::fs::read_to_string(flake).expect("flake should remain readable");
+        assert!(flake_content.contains("./.nixmac"));
+    }
+
+    #[test]
+    fn add_homebrew_items_requires_flake_before_writing_module() {
+        let temp = tempfile::tempdir().expect("tempdir should be created");
+
+        let err = add_homebrew_items_to_config(
+            temp.path(),
+            &[HomebrewItem {
+                name: "iterm2".to_string(),
+                version: None,
+                item_type: HomebrewItemType::Cask,
+            }],
+        )
+        .expect_err("managed Homebrew casks should require flake.nix");
+
+        assert!(err.to_string().contains("flake.nix"));
+        assert!(
+            !temp.path().join(".nixmac").exists(),
+            ".nixmac should not be written when flake.nix is missing"
+        );
     }
 
     #[test]

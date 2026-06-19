@@ -39,12 +39,13 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::Arc;
 use std::time::Duration;
-use tauri::{AppHandle, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 use tokio::time::sleep;
-use tools::{ToolResult, create_tools, execute_tool};
+use tools::{ToolResult, create_tools, execute_tool, is_editing_tool};
 pub use types::{EvolutionProgress, EvolutionRunError};
 
 use crate::{
+    ai::model_capabilities::capabilities_for_model,
     statistics, store,
     types::{EvolveEvent, emit_evolve_event},
     utils as global_utils,
@@ -98,6 +99,13 @@ struct EvolutionMessage {
 
 fn normalize_max_output_tokens(value: usize) -> u32 {
     value.max(1).min(u32::MAX as usize) as u32
+}
+
+fn normalize_openai_max_output_tokens(model: &str, value: usize) -> u32 {
+    let normalized = normalize_max_output_tokens(value);
+    // Called only in the direct OpenAI branch. OpenRouter-compatible requests
+    // keep their provider-level behavior even when the slug contains gpt-4o.
+    capabilities_for_model(model).clamp_max_completion_tokens(normalized)
 }
 
 /// Return short hex prefix for correlation of error messages without risking sensitive content exposure.
@@ -313,7 +321,12 @@ fn log_api_error(
 
 // Use OpenRouter with Claude for evolution - better reasoning without strict content policies
 const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
+const DEFAULT_OPENAI_MODEL: &str = "gpt-4o";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
+
+// Percentage of max_iterations after which we require at least one edit/build_check.
+// Example: with max_iterations=50 and this set to 75, threshold is 37 iterations.
+const MAX_ITERATIONS_BEFORE_EDIT_PERCENT: usize = 75;
 
 // Applied separately to stdout and stderr. So when thinking about tokens,
 // the effective output limit could be up to double this if both are long.
@@ -551,7 +564,20 @@ const LIMIT_DECISION_STOP: &str = "Stop";
 
 #[derive(Debug, Clone, Copy)]
 enum EvolutionLimitKind {
+    NoProgress,
+    MaxIterations,
     BuildAttempts,
+    TokenBudget,
+}
+
+fn format_token_count(tokens: usize) -> String {
+    if tokens >= 1_000_000 {
+        format!("{:.1}M", tokens as f64 / 1_000_000.0)
+    } else if tokens >= 1_000 {
+        format!("{:.1}K", tokens as f64 / 1_000.0)
+    } else {
+        tokens.to_string()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -565,20 +591,40 @@ impl EvolutionLimitKind {
     fn attempts_label(self, attempts: usize) -> String {
         match self {
             Self::BuildAttempts => format!("{} build attempts", attempts),
+            Self::NoProgress | Self::MaxIterations => format!("{} attempts", attempts),
+            Self::TokenBudget => format!("{} tokens", format_token_count(attempts)),
         }
     }
 
     fn prompt(self, attempts: usize) -> String {
-        format!(
-            "The AI has made {}. Keep going?",
-            self.attempts_label(attempts)
-        )
+        match self {
+            Self::TokenBudget => format!(
+                "The AI has used {}. Keep going?",
+                self.attempts_label(attempts)
+            ),
+            _ => format!(
+                "The AI has made {}. Keep going?",
+                self.attempts_label(attempts)
+            ),
+        }
     }
 
     fn stop_summary(self, attempts: usize) -> String {
         match self {
+            Self::NoProgress => format!(
+                "Evolution stopped after {} because the AI had not started making concrete changes.",
+                self.attempts_label(attempts)
+            ),
+            Self::MaxIterations => format!(
+                "Evolution stopped after reaching {}. The current conversation context was preserved.",
+                self.attempts_label(attempts)
+            ),
             Self::BuildAttempts => format!(
                 "Evolution stopped after reaching {}. You can review the current changes or continue with a follow-up prompt.",
+                self.attempts_label(attempts)
+            ),
+            Self::TokenBudget => format!(
+                "Evolution stopped after consuming {}. You can review the current changes or continue with a follow-up prompt.",
                 self.attempts_label(attempts)
             ),
         }
@@ -692,11 +738,7 @@ fn finish_after_limit_stop<R: Runtime>(
     emit_evolve_event(app, EvolveEvent::complete(start_time, iteration, &summary));
 
     evolution.summary = Some(summary);
-    evolution.state = if evolution.edits.is_empty() {
-        EvolutionState::Conversational
-    } else {
-        EvolutionState::Generated
-    };
+    evolution.state = EvolutionState::LimitReached;
 }
 
 /// Generate an evolution from a user prompt using OpenAI function calling.
@@ -715,9 +757,50 @@ pub async fn generate_evolution<R: Runtime>(
 
     // Determine provider
     let store_provider = store::get_evolve_provider(app).ok().flatten();
-    let provider_type = store_provider
-        .or_else(|| std::env::var("EVOLVE_PROVIDER").ok())
-        .unwrap_or_else(|| "openrouter".to_string());
+    let requested_provider_type = store_provider.or_else(|| std::env::var("EVOLVE_PROVIDER").ok());
+    let store_model = store::get_evolve_model(app).ok().flatten();
+    let configured_evolve_model = configured_model(store_model.clone(), "EVOLVE_MODEL");
+    let (provider_type, used_legacy_openai_fallback) = if let Some(provider) =
+        requested_provider_type
+    {
+        if provider != "openai" {
+            (provider, false)
+        } else {
+            let has_openai_provider_credential =
+                store::get_effective_openai_provider_credential(app)?.is_some();
+            let has_openrouter_provider_credential =
+                store::get_effective_openrouter_provider_credential(app)?.is_some();
+
+            let resolved_provider = crate::ai::providers::resolve_legacy_openai_provider(
+                provider,
+                configured_evolve_model.as_deref(),
+                has_openai_provider_credential,
+                has_openrouter_provider_credential,
+            );
+            if resolved_provider == "openrouter" {
+                info!("Using OpenRouter for legacy OpenAI evolve provider compatibility");
+            }
+            let used_legacy_openai_fallback = resolved_provider == "openrouter";
+
+            (resolved_provider, used_legacy_openai_fallback)
+        }
+    } else {
+        let has_openai_provider_credential =
+            store::get_effective_openai_provider_credential(app)?.is_some();
+        let has_openrouter_provider_credential =
+            store::get_effective_openrouter_provider_credential(app)?.is_some();
+        let resolved_provider =
+            crate::ai::providers::resolve_unconfigured_openai_compatible_provider(
+                None,
+                has_openai_provider_credential,
+                has_openrouter_provider_credential,
+            );
+        if resolved_provider == "openai" {
+            info!("Using OpenAI evolve provider because only an OpenAI credential is configured");
+        }
+
+        (resolved_provider, false)
+    };
 
     info!("");
     info!("════════════════════════════════════════════════════════════════");
@@ -728,7 +811,6 @@ pub async fn generate_evolution<R: Runtime>(
     info!("Repo root: {}", repo_root.display());
     info!("📝 Prompt: {}", prompt);
 
-    let store_model = store::get_evolve_model(app).ok().flatten();
     let max_output_tokens =
         store::get_max_output_tokens(app).unwrap_or(store::DEFAULT_MAX_OUTPUT_TOKENS);
     let max_output_tokens_for_request = normalize_max_output_tokens(max_output_tokens);
@@ -756,8 +838,7 @@ pub async fn generate_evolution<R: Runtime>(
             "codex" => crate::ai::providers::cli::CliTool::Codex,
             _ => crate::ai::providers::cli::CliTool::OpenCode,
         };
-        let model =
-            configured_model(store_model, "EVOLVE_MODEL").unwrap_or_else(|| provider_type.clone());
+        let model = configured_evolve_model.unwrap_or_else(|| provider_type.clone());
         info!("Using CLI provider: {} | Model: {}", provider_type, model);
         Arc::new(CliProvider::new(tool, model))
     } else if provider_type == "vllm" {
@@ -778,28 +859,45 @@ pub async fn generate_evolution<R: Runtime>(
             model,
             max_output_tokens_for_request,
         ))
-    } else {
-        let (api_key, base_url) = store::get_effective_openai_compatible_credential(app)?
+    } else if provider_type == "openai" {
+        let (api_key, base_url) = store::get_effective_openai_provider_credential(app)?
             .ok_or_else(|| {
-                anyhow!("No API key found. Please add your API key in Settings to get started.")
+                anyhow!(
+                    "No OpenAI API key found. Please add your API key in Settings to get started."
+                )
             })?;
 
-        let model = configured_model(store_model, "EVOLVE_MODEL")
-            .unwrap_or_else(|| DEFAULT_MODEL.to_string());
-        // Strip OpenRouter-style "openai/" prefix for direct OpenAI usage
-        let model = if base_url == store::OPENAI_BASE_URL {
-            model.strip_prefix("openai/").unwrap_or(&model).to_string()
+        let model = configured_evolve_model.unwrap_or_else(|| DEFAULT_OPENAI_MODEL.to_string());
+        let model = model.strip_prefix("openai/").unwrap_or(&model).to_string();
+        let openai_max_output_tokens_for_request =
+            normalize_openai_max_output_tokens(&model, max_output_tokens);
+        info!(
+            "Using OpenAI provider | Model: {} | Max output tokens: {}",
+            model, openai_max_output_tokens_for_request
+        );
+        Arc::new(OpenAIProvider::new(
+            api_key,
+            base_url.to_string(),
+            model,
+            openai_max_output_tokens_for_request,
+        ))
+    } else {
+        let (api_key, base_url) = store::get_effective_openrouter_provider_credential(app)?
+            .ok_or_else(|| {
+                anyhow!("No OpenRouter API key found. Please add your API key in Settings to get started.")
+            })?;
+
+        let model = if used_legacy_openai_fallback {
+            crate::ai::providers::openrouter_model_slug_or_default(
+                configured_evolve_model,
+                DEFAULT_MODEL,
+            )
         } else {
-            model
-        };
-        let provider_name = if base_url == store::OPENROUTER_BASE_URL {
-            "OpenRouter"
-        } else {
-            "OpenAI"
+            configured_evolve_model.unwrap_or_else(|| DEFAULT_MODEL.to_string())
         };
         info!(
-            "Using {} provider | Model: {} | Max output tokens: {}",
-            provider_name, model, max_output_tokens_for_request
+            "Using OpenRouter provider | Model: {} | Max output tokens: {}",
+            model, max_output_tokens_for_request
         );
         Arc::new(OpenAIProvider::new(
             api_key,
@@ -825,20 +923,36 @@ pub async fn generate_evolution<R: Runtime>(
         EvolveEvent::info(start_time, None, &format!("Target host: {}", host_attr)),
     );
 
-    // Read configurable limits from store (hot-reloaded on every run).
+    // Read configurable limits from the managed observable (hot-reloaded on
+    // every run). `app.state` panics if the observable isn't managed; that is
+    // intentional — it surfaces a startup misconfiguration immediately
+    // instead of silently swapping in field defaults.
     let config::EvolutionLimits {
         mut max_build_attempts,
+        mut max_token_budget,
+        mut max_iterations,
         ..
-    } = config::EvolutionLimits::load(app)
-        .inspect_err(|e| warn!("EvolutionLimits::load failed ({e}); using defaults"))
-        .unwrap_or_default();
-    let max_token_budget =
-        store::get_max_token_budget(app).unwrap_or(store::DEFAULT_MAX_TOKEN_BUDGET);
+    } = app
+        .state::<crate::observable::Observable<config::EvolutionLimits>>()
+        .read_sync()
+        .clone();
+
+    let mut max_iterations_before_edit = std::cmp::max(
+        1,
+        (max_iterations * MAX_ITERATIONS_BEFORE_EDIT_PERCENT) / 100,
+    );
+    let max_iterations_before_edit_increment = max_iterations_before_edit.max(1);
+    let max_iterations_increment = max_iterations.max(1);
     let max_build_attempts_increment = max_build_attempts.max(1);
+    let max_token_budget_increment = max_token_budget.max(1);
     let interactive_limit_prompt = !banned_tools.contains(&"ask_user");
     info!(
-        "Limits: max_token_budget={}, max_build_attempts={}",
-        max_token_budget, max_build_attempts,
+        "Limits: max_token_budget={}, max_iterations_before_edit={} ({}%), max_build_attempts={}, max_iterations={}",
+        max_token_budget,
+        max_iterations_before_edit,
+        MAX_ITERATIONS_BEFORE_EDIT_PERCENT,
+        max_build_attempts,
+        max_iterations,
     );
 
     let tools = create_tools(banned_tools);
@@ -908,7 +1022,8 @@ pub async fn generate_evolution<R: Runtime>(
 
     let gitignore_matcher = gitignore::load_gitignore_matcher(repo_root.as_path())?;
 
-    // Track whether we've run a build check
+    // Track whether we've made any actual edits and/or build checks
+    let mut made_edit = false;
     let mut made_build_check = false;
 
     // Agentic loop - let the model use tools until done AND build passes
@@ -1072,6 +1187,54 @@ pub async fn generate_evolution<R: Runtime>(
             );
         }
 
+        // Safety limits -- Token budget. Caps cumulative session tokens
+        // (in addition to the per-call max_output_tokens). Skipped if
+        // the provider didn't report usage; the iteration guard below
+        // is the fallback for those providers.
+        if total_tokens >= max_token_budget {
+            warn!(
+                "⚠️ Evolution reached token budget ({}/{}) - asking whether to continue",
+                total_tokens, max_token_budget,
+            );
+            match ask_to_continue_after_limit(
+                app,
+                start_time,
+                iteration,
+                EvolutionLimitKind::TokenBudget,
+                total_tokens as usize,
+                interactive_limit_prompt,
+            )
+            .await
+            {
+                LimitDecision::Continue => {
+                    max_token_budget = max_token_budget.saturating_add(max_token_budget_increment);
+                    info!("Extending token budget to {}", max_token_budget);
+                }
+                LimitDecision::Stop => {
+                    finish_after_limit_stop(
+                        app,
+                        &mut evolution,
+                        start_time,
+                        iteration,
+                        EvolutionLimitKind::TokenBudget,
+                        total_tokens as usize,
+                    );
+                    break;
+                }
+                LimitDecision::Cancelled => {
+                    evolution.state = EvolutionState::Failed;
+                    return Err(EvolutionRunError::from_state(
+                        session_control::EVOLUTION_CANCELLED_MSG,
+                        &evolution,
+                        iteration,
+                        build_attempts,
+                        total_tokens,
+                    )
+                    .into());
+                }
+            }
+        }
+
         let assistant_msg = response.message;
 
         // Log assistant text response if any. If tool calls are present, treat tool_calls as
@@ -1150,7 +1313,10 @@ pub async fn generate_evolution<R: Runtime>(
                                 success,
                             );
 
-                            // Track if we've made a build check
+                            // Track if we've made an edit or build check
+                            if is_editing_tool(tool_name) {
+                                made_edit = true;
+                            }
                             if tool_name == "build_check" {
                                 made_build_check = true;
                                 tool_key = Some(format!("build_check_{}", iteration));
@@ -1431,6 +1597,110 @@ Do not invent tool names and do not place tool invocations in assistant content.
                 evolution.state = EvolutionState::Generated;
             }
             break;
+        }
+
+        // Safety limits -- Max Iterations Before Edit Check
+        if iteration >= max_iterations_before_edit && !(made_edit || made_build_check) {
+            warn!(
+                "⚠️ No edit or build_check by iteration {} - asking whether to continue",
+                max_iterations_before_edit
+            );
+            match ask_to_continue_after_limit(
+                app,
+                start_time,
+                iteration,
+                EvolutionLimitKind::NoProgress,
+                iteration,
+                interactive_limit_prompt,
+            )
+            .await
+            {
+                LimitDecision::Continue => {
+                    max_iterations_before_edit += max_iterations_before_edit_increment;
+                    max_iterations = max_iterations.max(max_iterations_before_edit);
+                    info!(
+                        "Extending no-progress limit to iteration {} and max iterations to {}",
+                        max_iterations_before_edit, max_iterations
+                    );
+                }
+                LimitDecision::Stop => {
+                    finish_after_limit_stop(
+                        app,
+                        &mut evolution,
+                        start_time,
+                        iteration,
+                        EvolutionLimitKind::NoProgress,
+                        iteration,
+                    );
+                    break;
+                }
+                LimitDecision::Cancelled => {
+                    evolution.state = EvolutionState::Failed;
+                    return Err(EvolutionRunError::from_state(
+                        session_control::EVOLUTION_CANCELLED_MSG,
+                        &evolution,
+                        iteration,
+                        build_attempts,
+                        total_tokens,
+                    )
+                    .into());
+                }
+            }
+        }
+
+        // Safety limits -- Max Iterations
+        if iteration >= max_iterations {
+            warn!(
+                "⚠️ Evolution reached maximum iterations ({}) - asking whether to continue",
+                max_iterations
+            );
+            match ask_to_continue_after_limit(
+                app,
+                start_time,
+                iteration,
+                EvolutionLimitKind::MaxIterations,
+                iteration,
+                interactive_limit_prompt,
+            )
+            .await
+            {
+                LimitDecision::Continue => {
+                    max_iterations += max_iterations_increment;
+                    info!("Extending max iterations to {}", max_iterations);
+
+                    // Avoid immediately prompting again this same iteration if build attempts
+                    // are already at/over the current ceiling.
+                    if build_attempts >= max_build_attempts {
+                        max_build_attempts += max_build_attempts_increment;
+                        info!(
+                            "Also extending max build attempts to {}",
+                            max_build_attempts
+                        );
+                    }
+                }
+                LimitDecision::Stop => {
+                    finish_after_limit_stop(
+                        app,
+                        &mut evolution,
+                        start_time,
+                        iteration,
+                        EvolutionLimitKind::MaxIterations,
+                        iteration,
+                    );
+                    break;
+                }
+                LimitDecision::Cancelled => {
+                    evolution.state = EvolutionState::Failed;
+                    return Err(EvolutionRunError::from_state(
+                        session_control::EVOLUTION_CANCELLED_MSG,
+                        &evolution,
+                        iteration,
+                        build_attempts,
+                        total_tokens,
+                    )
+                    .into());
+                }
+            }
         }
 
         // Safety limits -- Max Build Attempts
@@ -1916,7 +2186,8 @@ fn process_tool_result(
 mod tests {
     use super::{
         Evolution, EvolutionMessage, EvolutionState, FileEdit, Message, Retention, ToolResult,
-        filter_evolution_messages, process_tool_result, read_file_dedup_key, store_tool_result,
+        filter_evolution_messages, normalize_openai_max_output_tokens, process_tool_result,
+        read_file_dedup_key, store_tool_result,
     };
 
     fn build_result(success: bool) -> ToolResult {
@@ -1946,6 +2217,32 @@ mod tests {
             0,
         )
         .expect("process_tool_result should not error in these cases");
+    }
+
+    #[test]
+    fn direct_openai_gpt_4o_output_tokens_are_capped_to_api_limit() {
+        assert_eq!(normalize_openai_max_output_tokens("gpt-4o", 32_768), 16_384);
+        assert_eq!(
+            normalize_openai_max_output_tokens("openai/gpt-4o-mini", 32_768),
+            16_384
+        );
+        assert_eq!(
+            normalize_openai_max_output_tokens("gpt-4o-2024-08-06", 32_768),
+            16_384
+        );
+    }
+
+    #[test]
+    fn direct_openai_output_token_cap_preserves_lower_user_limit() {
+        assert_eq!(normalize_openai_max_output_tokens("gpt-4o", 4_096), 4_096);
+    }
+
+    #[test]
+    fn direct_openai_output_token_cap_leaves_unknown_models_unchanged() {
+        assert_eq!(
+            normalize_openai_max_output_tokens("custom-openai-model", 32_768),
+            32_768
+        );
     }
 
     // Bug 1: build_verified latched true on the first passing build and was never

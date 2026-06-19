@@ -68,20 +68,6 @@ diesel::table! {
 }
 
 diesel::table! {
-    queued_summaries (id) {
-        id -> BigInt,
-        status -> Text,
-        attempted_count -> BigInt,
-        prompt -> Text,
-        model_response -> Nullable<Text>,
-        group_summary_id -> Nullable<BigInt>,
-        hash_own_summary_id_pairs -> Nullable<Text>,
-        #[sql_name = "type"]
-        type_ -> Text,
-    }
-}
-
-diesel::table! {
     prompts (id) {
         id -> BigInt,
         text -> Text,
@@ -113,7 +99,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     evolutions,
     group_summaries,
     prompts,
-    queued_summaries,
     restore_commits,
     set_changes,
 );

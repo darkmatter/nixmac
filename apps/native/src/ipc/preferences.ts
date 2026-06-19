@@ -13,6 +13,7 @@ import type {
   UiPrefs as DarwinPrefs,
   UiPrefsUpdate as DarwinPrefsUpdate,
 } from "@/ipc/types";
+import { migrateLegacyOpenaiProviderPrefs } from "@/lib/ai-provider-migration";
 
 let cachedPrefs: DarwinPrefs | null = null;
 let pendingPrefs: Promise<DarwinPrefs> | null = null;
@@ -26,9 +27,18 @@ export function getCachedPrefs(): Promise<DarwinPrefs> {
   }
 
   pendingPrefs = invoke<DarwinPrefs>("ui_get_prefs")
-    .then((prefs) => {
-      cachedPrefs = prefs;
-      return prefs;
+    .then(async (prefs) => {
+      const migration = migrateLegacyOpenaiProviderPrefs(prefs);
+      const nextPrefs: DarwinPrefs = migration.update
+        ? ({ ...prefs, ...migration.update } as DarwinPrefs)
+        : prefs;
+
+      if (migration.update) {
+        await invoke<OkResult>("ui_set_prefs", { prefs: migration.update });
+      }
+
+      cachedPrefs = nextPrefs;
+      return nextPrefs;
     })
     .finally(() => {
       pendingPrefs = null;

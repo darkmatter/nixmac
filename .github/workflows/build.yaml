@@ -114,6 +114,8 @@ jobs:
       # Import Apple Developer certificate (only for releases with secrets).
       # Placed AFTER the Tauri build to avoid replacing the keychain search list
       # before `bun run desktop:build`, which caused DMG bundling failures on tags.
+      # The normalizer needs this keychain to re-sign updater archives after
+      # install-name rewrites mutate the embedded app bundle.
       - name: Import Apple Developer certificate
         if: (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'release' ||
@@ -121,6 +123,22 @@ jobs:
           steps.check-secrets.outputs.has_certificate == 'true'
         shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
         run: bash ops/scripts/release/import-certificate.sh
+      - name: Normalize macOS system install names
+        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        run: |
+          set -euo pipefail
+
+          APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d 2>/dev/null | sed -n '1p' || true)
+          DMG_PATH=$(find target/release/bundle/dmg -name "*.dmg" -type f 2>/dev/null | sed -n '1p' || true)
+          TAR_GZ_PATH=$(find target/release/bundle -name "*.app.tar.gz" -not -name "*.sig" -type f 2>/dev/null | sed -n '1p' || true)
+
+          if [ -z "$APP_PATH" ] || [ -z "$DMG_PATH" ] || [ -z "$TAR_GZ_PATH" ]; then
+            echo "ERROR: missing app, DMG, or updater archive for install-name normalization (APP_PATH=$APP_PATH DMG_PATH=$DMG_PATH TAR_GZ_PATH=$TAR_GZ_PATH)"
+            exit 1
+          fi
+
+          bash ops/scripts/release/normalize-macos-install-names.sh "$APP_PATH" "$DMG_PATH" "$TAR_GZ_PATH"
+
       # Sign the app bundle (required for notarization)
       - name: Sign app bundle
         if: (steps.release-version.outputs.mode == 'tag' ||
@@ -148,6 +166,21 @@ jobs:
           steps.check-secrets.outputs.has_notarization == 'true'
         shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
         run: bash ops/scripts/release/notarize.sh
+      - name: Check macOS app portability
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d 2>/dev/null | sed -n '1p' || true)
+          DMG_PATH=$(find target/release/bundle/dmg -name "*.dmg" -type f 2>/dev/null | sed -n '1p' || true)
+          TAR_GZ_PATH=$(find target/release/bundle -name "*.app.tar.gz" -not -name "*.sig" -type f 2>/dev/null | sed -n '1p' || true)
+
+          if [ -z "$APP_PATH" ] || [ -z "$DMG_PATH" ] || [ -z "$TAR_GZ_PATH" ]; then
+            echo "ERROR: missing app, DMG, or updater archive for portability check (APP_PATH=$APP_PATH DMG_PATH=$DMG_PATH TAR_GZ_PATH=$TAR_GZ_PATH)"
+            exit 1
+          fi
+
+          bash ops/scripts/release/check-portable-macos-app.sh "$APP_PATH" "$DMG_PATH" "$TAR_GZ_PATH"
       - name: Get artifact paths
         id: artifacts
         run: |

@@ -12,6 +12,7 @@ import type {
   Config as DarwinConfig,
   ConfigEditApplyResult,
   ConfigurableSchema,
+  JsonValue,
   EvolveCancelResult,
   EvolutionResult,
   EvolveState,
@@ -21,6 +22,7 @@ import type {
   FileDiffContents,
   FinalizeApplyResult,
   GitStatus,
+  HomebrewItem,
   HomebrewState,
   HistoryItem,
   ImportResult,
@@ -94,8 +96,6 @@ export const tauriAPI = {
   },
   nix: {
     check: () => invoke<NixCheckResult>("nix_check"),
-    installStart: () => invoke<OkResult>("nix_install_start"),
-    prefetchDarwinRebuild: () => invoke<OkResult>("darwin_rebuild_prefetch"),
   },
   flake: {
     listHosts: () => invoke<string[]>("flake_list_hosts"),
@@ -142,9 +142,25 @@ export const tauriAPI = {
     import: () => invoke<ImportResult | null>("settings_import"),
   },
   devConfigs: {
-    list: () => invoke<ConfigurableSchema[]>("dev_configs_list"),
-    set: (structName: string, key: string, value: unknown) =>
-      invoke<void>("dev_config_set", { structName, key, value }),
+    /**
+     * Returns the static schema for every registered Configurable struct.
+     * Same value every call — safe to cache.
+     */
+    schemas: () => invoke<ConfigurableSchema[]>("dev_configs_schemas"),
+    /**
+     * Returns the current store-backed value of every registered Configurable,
+     * keyed by struct name (matching `ConfigurableSchema.name`). Each value
+     * is the full struct as a JSON object. Refresh this after `set` instead
+     * of re-fetching schemas.
+     */
+    values: () => invoke<Record<string, JsonValue>>("dev_configs_values"),
+    /**
+     * Replace a Configurable struct with a whole-struct payload. `value` must
+     * be the full struct (every field), not a partial update — Serde validates
+     * the whole thing in one pass on the backend.
+     */
+    set: (structName: string, value: Record<string, unknown>) =>
+      invoke<void>("dev_config_set", { structName, value }),
   },
   models: {
     getCached: (provider: string) => invoke<string[] | null>("get_cached_models", { provider }),
@@ -216,6 +232,8 @@ export const tauriAPI = {
   homebrew: {
     getStateDiff: () => invoke<HomebrewState>("homebrew_get_state_diff"),
     applyDiff: (diff: HomebrewState) => invoke<ConfigEditApplyResult>("homebrew_apply_diff", { diff }),
+    addItems: (items: HomebrewItem[]) =>
+      invoke<ConfigEditApplyResult>("homebrew_add_items", { items }),
   },
 
   updater: {
