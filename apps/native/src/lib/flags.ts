@@ -6,13 +6,13 @@
  *
  * For filesystem flags:
  *   - "true", "1", or "on" enable all sections
- *   - a positive integer enables the corresponding section bitmask
+ *   - any other positive integer enables the corresponding section bitmask
  *   - "false", "0", "off", unset, or invalid values disable all sections
  *   - in DEV builds, all sections are enabled by default unless the env var
  *     is explicitly set, in which case its value takes precedence
  */
 
-export const enum FilesystemSectionFlag {
+export enum FilesystemSectionFlag {
   Entry   = 1 << 1,
   Darwin  = 1 << 2,
   Home    = 1 << 3,
