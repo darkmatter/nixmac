@@ -157,6 +157,16 @@ sudo cp /etc/{bashrc,zshrc,zshenv} /etc/{bashrc,zshrc,zshenv}.before-nix-darwin
 sudo -i nix run nix-darwin/master#darwin-rebuild -- switch --flake ~/.darwin#$HOSTNAME
 ```
 
+### Nixmac Template Placeholders
+
+When you import a nix repository from a zip file, nixmac will perform substitution on the following placholder strings:
+
+| Placeholder | Value |
+| ----------- | ----- |
+| `HOSTNAME_PLACEHOLDER` | Hostname of the Mac you're running on |
+| `PLATFORM_PLACEHOLDER` | Platform architecture of the Mac you're running on |
+| `USERNAME_PLACEHOLDER` | Current username e.g. `$USER` |
+
 > **Determinate Nix note:** `darwin-rebuild` isn't installed globally. Run it via `sudo -i nix run nix-darwin/master#darwin-rebuild`.
 
 ## AI Configuration

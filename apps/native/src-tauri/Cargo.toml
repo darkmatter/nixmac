@@ -79,12 +79,18 @@ tiktoken-rs = "0.6"
 url = "2"
 opentelemetry = "0.29"
 opentelemetry_sdk = "0.29"
-opentelemetry-otlp = { version = "0.29", features = ["trace", "logs", "http-proto", "reqwest-client"] }
+opentelemetry-otlp = { version = "0.29", features = [
+  "trace",
+  "logs",
+  "http-proto",
+  "reqwest-client",
+] }
 opentelemetry-appender-tracing = "0.29"
 tracing-opentelemetry = "0.30"
 configurable = { path = "configurable" }
 hmac = "0.12"
 zip = { version = "2", default-features = false, features = ["deflate"] }
+walkdir = "2.5.0"
 plist = "1.9.0"
 
 [dependencies.tauri-plugin-sql]

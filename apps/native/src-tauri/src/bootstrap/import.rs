@@ -12,6 +12,10 @@ use anyhow::{Context, Result, anyhow, bail};
 use std::fs::File;
 use std::path::{Component, Path, PathBuf};
 
+use crate::bootstrap::default_config::{detect_hostname, detect_username};
+use crate::bootstrap::detect_darwin_platform;
+use crate::bootstrap::template::apply_template_placeholders_in_dir;
+
 /// A parsed GitHub/git reference ready to clone.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RepoRef {
@@ -239,13 +243,18 @@ pub fn extract_zip(zip_path: &Path, dest: &Path) -> Result<()> {
             .with_context(|| format!("failed to extract {}", out_path.display()))?;
     }
 
+    let platform: &str = detect_darwin_platform();
+    let username = detect_username();
+    let hostname = detect_hostname().unwrap_or_else(|_| "localhost".to_string());
+    apply_template_placeholders_in_dir(dest, &hostname, platform, &username)?;
+
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
+    use std::{fs, io::Write};
 
     #[test]
     fn parses_owner_repo_shorthand() {
@@ -432,5 +441,38 @@ mod tests {
 
         assert!(dest.join("flake.nix").exists());
         assert!(dest.join("modules/base.nix").exists());
+    }
+
+    #[test]
+    fn extract_zip_processes_nested_nix_templates() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let zip_path = tmp.path().join("repo.zip");
+        write_zip(
+            &zip_path,
+            &[
+                ("repo-main/", ""),
+                (
+                    "repo-main/modules/darwin/default.nix",
+                    "host = \"HOSTNAME_PLACEHOLDER\"; system = \"PLATFORM_PLACEHOLDER\"; user = \"USERNAME_PLACEHOLDER\";",
+                ),
+                (
+                    "repo-main/modules/darwin/readme.txt",
+                    "HOSTNAME_PLACEHOLDER PLATFORM_PLACEHOLDER USERNAME_PLACEHOLDER",
+                ),
+            ],
+        );
+
+        let dest = tmp.path().join("out");
+        extract_zip(&zip_path, &dest).unwrap();
+
+        let nix = fs::read_to_string(dest.join("modules/darwin/default.nix")).unwrap();
+        assert!(!nix.contains("HOSTNAME_PLACEHOLDER"));
+        assert!(!nix.contains("PLATFORM_PLACEHOLDER"));
+        assert!(!nix.contains("USERNAME_PLACEHOLDER"));
+
+        let txt = fs::read_to_string(dest.join("modules/darwin/readme.txt")).unwrap();
+        assert!(txt.contains("HOSTNAME_PLACEHOLDER"));
+        assert!(txt.contains("PLATFORM_PLACEHOLDER"));
+        assert!(txt.contains("USERNAME_PLACEHOLDER"));
     }
 }
