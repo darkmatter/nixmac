@@ -1,24 +1,9 @@
-use super::helpers::capture_err;
+use super::helpers::{capture_err, get_hostname_and_config_dir};
 use crate::{
     shared_types::{self, LaunchdItem},
-    storage::store,
-    system::{launchd_scanner::scan_launchd_items_for_hostname, nix::determine_host_attr},
+    system::launchd_scanner::scan_launchd_items_for_hostname,
 };
 use tauri::AppHandle;
-
-// Helper function to extract the hostname and config_dir from the app handle, returning an error if either is missing.
-fn get_hostname_and_config_dir(app: &AppHandle, cmd: &str) -> Result<(String, String), String> {
-    let hostname = determine_host_attr(app).unwrap_or_default();
-    let config_dir: String =
-        store::ensure_config_dir_exists(app).map_err(|e| capture_err(cmd, e))?;
-
-    if hostname.is_empty() {
-        log::warn!("No hostname configured, skipping launchd scan");
-        return Err("No hostname configured".to_string());
-    }
-
-    Ok((hostname, config_dir))
-}
 
 /// Scans the system for launchd items that are configured but not managed by nix.
 #[tauri::command]
