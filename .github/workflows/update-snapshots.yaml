@@ -23,8 +23,8 @@ on:
     types: [edited]
 
 concurrency:
-  group: update-snapshots
-  cancel-in-progress: true
+  group: update-snapshots-${{ github.event_name }}
+  cancel-in-progress: false
 
 jobs:
   update-snapshots:
