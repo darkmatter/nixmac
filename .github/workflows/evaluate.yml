@@ -38,7 +38,7 @@ jobs:
       # unaffected and still provides heavyweight coverage.
       - uses: ./.github/actions/setup
         with:
-          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+          darkmatter-cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
           setup-rust: true
           rust-cache-workspaces: apps/native/src-tauri
           install-devenv: false
@@ -85,7 +85,7 @@ jobs:
       # is not needed, and skipping it saves ~10 minutes on hosted runners.
       - uses: ./.github/actions/setup
         with:
-          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+          darkmatter-cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
           install-bun-deps: false
           install-devenv: false
       - name: Check changed Nix and shell files
