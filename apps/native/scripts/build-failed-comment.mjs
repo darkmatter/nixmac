@@ -70,6 +70,14 @@ if (manifest.length > 0) {
       lines.push(`![${label}](${shotsBaseUrl}/${story.file})`, "");
     }
   }
+  lines.push(
+    "---",
+    "",
+    "### Accept changes",
+    "",
+    "- [ ] Click here to accept these changes",
+    ""
+  );
 }
 
 process.stdout.write(lines.join("\n"));
