@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useUiState } from "@/stores/ui-state";
 import type { RustPanicEvent } from "@/ipc/types";
 import { FeedbackType } from "@/types/feedback";
+import { getTelemetry } from "@/lib/telemetry/instance";
 
 export function usePanicHandler() {
   const { setError, openFeedback, setPanicDetails } = useUiState();
@@ -17,6 +18,11 @@ export function usePanicHandler() {
 
       // Log the panic to console for debugging
       console.error("Panic caught:", panic);
+
+      getTelemetry().captureError(new Error(panic.message), {
+        location: panic.location ?? undefined,
+        source: "rust_panic",
+      });
 
       // Store the full panic details for feedback submission
       setPanicDetails({

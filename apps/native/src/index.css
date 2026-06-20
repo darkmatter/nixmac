@@ -29,7 +29,16 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+    --highlight: 230 10% 80%;
+    /* Onboarding accent tokens (added for the ported setup flow) */
+    --success: 152 56% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 45%;
+    --warning-foreground: 0 0% 100%;
+    --brand: 184 80% 38%;
+    --brand-foreground: 0 0% 100%;
   }
+
   .dark {
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
@@ -55,6 +64,14 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+    --highlight: 235 40% 90%;
+    /* Onboarding accent tokens (added for the ported setup flow) */
+    --success: 152 58% 52%;
+    --success-foreground: 153 30% 10%;
+    --warning: 38 92% 58%;
+    --warning-foreground: 38 50% 10%;
+    --brand: 184 70% 55%;
+    --brand-foreground: 186 50% 9%;
   }
 }
 
@@ -62,12 +79,14 @@
   * {
     @apply border-border;
   }
+
   html,
   body,
   #root {
     width: 100%;
     height: 100%;
   }
+
   body {
     background: transparent !important;
     margin: 0;
@@ -79,6 +98,7 @@
   .nixmac-line-added * {
     color: #9ff0e3 !important;
   }
+
   /* Deleted lines in inline diff are rendered as view zones, not model lines */
   .monaco-editor .view-zones .view-line,
   .monaco-editor .view-zones .view-line * {
@@ -91,11 +111,13 @@
     background: #9ff0e330;
     color: #9ff0e3 !important;
   }
+
   .monaco-diff-editor .codicon-diff-remove,
   .monaco-diff-editor .margin .delete-sign {
     background: #f09fad30;
     color: #f09fad !important;
   }
+
   /* Hide the bleeding delete indicator inside the margin overlay */
   .monaco-editor .margin-view-overlays .cldr.delete-sign.codicon-diff-remove,
   .monaco-editor .margin-view-overlays .cmdr.gutter-delete {
@@ -109,30 +131,37 @@
   }
 
   /* Monaco scrollbar matching Minted style */
-  .monaco-scrollable-element > .scrollbar.vertical > .slider {
-    background: #9ff0e399 !important;
-    border-radius: 4px !important;
+  .monaco-scrollable-element>.scrollbar.vertical>.slider {
+    background: hsl(var(--highlight) / 0.05) !important;
+    border-radius: var(--radius) !important;
   }
-  .monaco-scrollable-element > .scrollbar.vertical > .slider:hover,
-  .monaco-scrollable-element > .scrollbar.vertical.active > .slider {
-    background: #9ff0e3 !important;
+
+  .monaco-scrollable-element>.scrollbar.vertical>.slider:hover,
+  .monaco-scrollable-element>.scrollbar.vertical.active>.slider {
+    background: hsl(var(--highlight) / 0.9) !important;
   }
 
   /* Scrollbar styling */
   ::-webkit-scrollbar {
     width: 8px;
-    height: 8px;
   }
+
   ::-webkit-scrollbar-track {
-    background: transparent;
-    border-radius: 4px;
+    background: hsl(var(--highlight) / 0.02);
+    border-radius: var(--radius);
+    width: 8px;
   }
+
   ::-webkit-scrollbar-thumb {
-    background-color: hsl(173 80% 75% / 0.6);
-    border-radius: 4px;
-    width: 2px;
+    background-color: hsl(var(--highlight) / 0.01);
+    border-radius: var(--radius);
   }
+
   ::-webkit-scrollbar-thumb:hover {
-    background-color: hsl(173 80% 75%);
+    background-color: hsl(var(--highlight) / 0.05);
+  }
+
+  ::-webkit-scrollbar-thumb:active {
+    background-color: hsl(var(--highlight) / 0.9);
   }
 }

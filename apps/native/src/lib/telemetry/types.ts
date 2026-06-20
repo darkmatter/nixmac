@@ -23,7 +23,27 @@ export type TelemetryEvent =
   | { name: "rollback_performed" }
   | { name: "settings_changed"; props: { setting: string } }
   | { name: "diagnostics_opt_in" }
-  | { name: "diagnostics_opt_out" };
+  | { name: "diagnostics_opt_out" }
+  | { name: "onboarding_completed" }
+  | { name: "onboarding_restarted" }
+  | {
+    name: "inference_configured";
+    props: { mode: "hosted" | "byok"; provider?: string };
+  }
+  | { name: "inference_skipped" }
+  | { name: "account_signed_in" }
+  | { name: "first_build_started" }
+  | { name: "first_build_completed" }
+  | { name: "first_build_failed" }
+  | { name: "apply_completed" }
+  | { name: "apply_failed" }
+  | { name: "customizations_scanned" }
+  | {
+    name: "customizations_tracked";
+    props: { count: number };
+  }
+  | { name: "history_restored" }
+  | { name: "feedback_submitted"; props: { type: string } };
 
 export interface TelemetryProvider {
   /** Record a product event (goes to PostHog + OTEL span). */

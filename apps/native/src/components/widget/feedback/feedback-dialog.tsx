@@ -28,6 +28,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Feedback as FeedbackModel, FeedbackType, ShareOptions } from "@/types/feedback";
 import { tauriAPI } from "@/ipc/api";
 import { toast } from "sonner";
+import { getTelemetry } from "@/lib/telemetry/instance";
 
 const DEFAULT_SHARE_OPTIONS: ShareOptions = {
   currentAppState: true,
@@ -405,6 +406,7 @@ export function FeedbackDialog() {
     const sent = await tauriAPI.feedback.submit(payload);
 
     if (sent) {
+      getTelemetry().captureEvent({ name: "feedback_submitted", props: { type: feedbackType } });
       toast.success("Thanks — feedback sent");
     } else {
       toast.info("Failed to send, we'll try again next time you open the app.");

@@ -4,6 +4,7 @@ import { tauriAPI, ipcRenderer } from "@/ipc/api";
 import type { DarwinApplyEndEvent } from "@/ipc/types";
 import { setRebuildRawLineEcho } from "@/viewmodel/rebuild";
 import { useGitOperations } from "./use-git-operations";
+import { getTelemetry } from "@/lib/telemetry/instance";
 
 interface RebuildOptions {
   context: RebuildContext;
@@ -45,6 +46,9 @@ export function useRebuildStream() {
         }
 
         if (event.payload.ok) {
+          if (options.context === "apply") {
+            getTelemetry().captureEvent({ name: "apply_completed" });
+          }
           if (options.onSuccess) {
             try {
               await options.onSuccess();
@@ -56,6 +60,9 @@ export function useRebuildStream() {
           // Auto-dismiss rebuild panel after success (even if onSuccess failed)
           useUiState.getState().setRebuildPanelDismissed(true);
         } else {
+          if (options.context === "apply") {
+            getTelemetry().captureEvent({ name: "apply_failed" });
+          }
           if (options.onFailure) {
             await options.onFailure();
           }

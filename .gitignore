@@ -152,3 +152,8 @@ blob-report/
 
 # Beads / Dolt files (added by bd init)
 .beads/proxieddb/
+
+# Playwright MCP scratch (screenshots, console logs)
+.playwright-mcp/
+**/.playwright-mcp/
+.claude

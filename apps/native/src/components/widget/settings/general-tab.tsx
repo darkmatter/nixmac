@@ -67,7 +67,7 @@ export function GeneralTab({
             <div className="space-y-2">
               <label className="font-medium text-sm">Host</label>
               <div className="flex items-center gap-2">
-                <Select onValueChange={saveHost} value={host || undefined}>
+                <Select onValueChange={(value) => { saveHost(value); telemetry.captureEvent({ name: "settings_changed", props: { setting: "host" } }); }} value={host || undefined}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select a host" />
                   </SelectTrigger>
