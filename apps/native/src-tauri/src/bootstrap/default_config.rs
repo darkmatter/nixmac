@@ -9,9 +9,58 @@ use std::path::Path;
 use std::process::Command;
 use tauri::{AppHandle, Manager};
 
+use crate::bootstrap::is_nix_file;
 use crate::git;
 use crate::storage::store;
 use crate::system::nix;
+
+/// Strips whitespace and the mDNS `.local` suffix so the result is usable as a
+/// nix-darwin configuration attribute name.
+fn sanitize_hostname(raw: &str) -> String {
+    let trimmed = raw.trim();
+    trimmed
+        .strip_suffix(".local")
+        .unwrap_or(trimmed)
+        .to_string()
+}
+
+/// Gets the hostname that we're running on.
+pub fn detect_hostname() -> Result<String, String> {
+    // Prefer `scutil --get LocalHostName`: unlike `hostname`, it never carries
+    // the `.local` suffix, which would otherwise end up in the generated
+    // darwinConfigurations."<hostname>" flake attribute.
+    if let Ok(output) = std::process::Command::new("scutil")
+        .args(["--get", "LocalHostName"])
+        .output()
+    {
+        if output.status.success() {
+            let name = sanitize_hostname(&String::from_utf8_lossy(&output.stdout));
+            if !name.is_empty() {
+                return Ok(name);
+            }
+        }
+    }
+
+    let output = std::process::Command::new("hostname")
+        .output()
+        .map_err(|e| format!("Failed to execute hostname command: {}", e))?;
+    if !output.status.success() {
+        return Err(format!(
+            "Failed to get hostname: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    let hostname = sanitize_hostname(&String::from_utf8_lossy(&output.stdout));
+    if hostname.is_empty() {
+        return Err("Hostname is empty".to_string());
+    }
+    Ok(hostname)
+}
+
+/// Detects the current macOS username from the environment, defaulting to "unknown" if not found.
+pub fn detect_username() -> String {
+    std::env::var("USER").unwrap_or_else(|_| "unknown".to_string())
+}
 
 /// Detects the Darwin platform architecture.
 pub fn detect_darwin_platform() -> &'static str {
@@ -54,20 +103,12 @@ fn copy_template_dir(
             copy_template_dir(&src_path, &dest_path, hostname, platform, username)?;
         } else if src_path.is_file() {
             // Check if it's a .nix file that needs template processing
-            let is_nix_file = src_path
-                .extension()
-                .map(|ext| ext == "nix")
-                .unwrap_or(false);
-
-            if is_nix_file {
-                // Read and process template placeholders
-                let content = fs::read_to_string(&src_path)
-                    .map_err(|e| format!("Failed to read {}: {}", src_path.display(), e))?;
-
-                let processed = content
-                    .replace("HOSTNAME_PLACEHOLDER", hostname)
-                    .replace("PLATFORM_PLACEHOLDER", platform)
-                    .replace("USERNAME_PLACEHOLDER", username);
+            if is_nix_file(&src_path) {
+                // Read and process template placeholders using apply_template_placeholders.
+                let processed = crate::bootstrap::template::apply_template_placeholders(
+                    &src_path, hostname, platform, username,
+                )
+                .map_err(|e| format!("Failed to process template {}: {}", src_path.display(), e))?;
 
                 fs::write(&dest_path, processed)
                     .map_err(|e| format!("Failed to write {}: {}", dest_path.display(), e))?;
@@ -216,7 +257,7 @@ pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
     }
 
     let platform = detect_darwin_platform();
-    let username = std::env::var("USER").unwrap_or_else(|_| "unknown".to_string());
+    let username = detect_username();
     let template_path = resolve_template_path(app)?;
 
     log::info!("Using template from: {}", template_path.display());
@@ -310,5 +351,18 @@ mod tests {
         fs::write(temp.path().join(".DS_Store"), "").expect("create finder metadata");
 
         assert!(is_dir_safe_for_bootstrap(temp.path()).expect("check directory"));
+    }
+
+    #[test]
+    fn sanitize_hostname_strips_local_suffix_and_whitespace() {
+        assert_eq!(
+            sanitize_hostname("Coopers-MacBook-Pro.local\n"),
+            "Coopers-MacBook-Pro"
+        );
+        assert_eq!(
+            sanitize_hostname("Coopers-MacBook-Pro"),
+            "Coopers-MacBook-Pro"
+        );
+        assert_eq!(sanitize_hostname("  \n"), "");
     }
 }
