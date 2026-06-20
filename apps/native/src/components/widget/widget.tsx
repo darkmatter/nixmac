@@ -30,7 +30,7 @@ import { useNixInstall } from "@/hooks/use-nix-install";
 import { usePanicHandler } from "@/hooks/use-panic-handler";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useTrayEvents } from "@/hooks/use-tray-events";
-import { markBootStage } from "@/lib/boot-diagnostics";
+import { markBootRenderStage, markBootStage } from "@/lib/boot-diagnostics";
 import { useEvolveMascot } from "@/hooks/use-evolve-mascot";
 import { useUiState } from "@/stores/ui-state";
 import { useCurrentStep } from "@/hooks/use-current-step";
@@ -45,7 +45,7 @@ import { useEffect } from "react";
  */
 
 export function DarwinWidget() {
-  markBootStage("darwin-widget-render");
+  markBootRenderStage("darwin-widget-render");
 
   const step = useCurrentStep();
   const { getInitialStatus } = useGitOperations();
@@ -60,6 +60,10 @@ export function DarwinWidget() {
 
   // Listen for tray menu events (Send Feedback, Settings)
   useTrayEvents();
+
+  useEffect(() => {
+    markBootStage("darwin-widget-committed");
+  }, []);
 
   // Set up test helpers for error handlers and widget store (development only)
   useEffect(() => {
@@ -177,7 +181,7 @@ export function DarwinWidget() {
   const isEdgeToEdgeStep = step === "filesystem";
 
   return (
-    <div className="flex h-full w-full flex-col bg-background/90 backdrop-blur-xl">
+    <div className="flex min-w-[800px] min-h-[600px]  h-full w-full flex-col bg-background/90 backdrop-blur-xl">
       <Header />
       <Stepper />
       <UpdateBanner />
