@@ -13,7 +13,6 @@ import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { tauriAPI } from "@/ipc/api";
 import { useViewModel } from "@/stores/view-model";
-import { useViewModel } from "@/stores/view-model";
 import { Monitor } from "lucide-react";
 import { useEffect, useState } from "react";
 

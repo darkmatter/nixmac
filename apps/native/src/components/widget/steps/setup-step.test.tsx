@@ -2,23 +2,13 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { GitStatus } from "@/ipc/types";
 import { useViewModel } from "@/stores/view-model";
 import { makeGlobalPreferences } from "@/utils/test-fixtures";
 
-const { mockSaveHost } = vi.hoisted(() => ({
-const { mockFlakeExistsAt, mockSaveHost, viewModelState, widgetState } = vi.hoisted(() => ({
+const { mockFlakeExistsAt, mockSaveHost } = vi.hoisted(() => ({
   mockFlakeExistsAt: vi.fn<(dir: string) => Promise<boolean>>(),
   mockSaveHost: vi.fn<(host: string) => Promise<void>>(),
-  viewModelState: {
-    git: {
-      headCommitHash: "abc123",
-    } as { headCommitHash: string | null } | null,
-  },
-}));
-
-vi.mock("@/stores/view-model", () => ({
-  useViewModel: <T,>(selector: (state: typeof viewModelState) => T) =>
-    selector(viewModelState),
 }));
 
 vi.mock("@/ipc/api", () => ({
@@ -33,34 +23,6 @@ vi.mock("@/hooks/use-darwin-config", () => ({
   useDarwinConfig: () => ({
     saveHost: mockSaveHost,
   }),
-}));
-
-vi.mock("@/components/ui/select", () => ({
-  Select: ({
-    children,
-    onValueChange,
-    value,
-  }: {
-    children: React.ReactNode;
-    onValueChange?: (value: string) => void;
-    value?: string;
-  }) => (
-    <select
-      aria-label="host-select"
-      value={value ?? ""}
-      onChange={(event) => onValueChange?.(event.target.value)}
-    >
-      {children}
-    </select>
-  ),
-  SelectContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  SelectItem: ({ value }: { value: string; children: React.ReactNode }) => (
-    <option value={value}>{value}</option>
-  ),
-  SelectTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  SelectValue: ({ placeholder }: { placeholder: string }) => (
-    <option value="">{placeholder}</option>
-  ),
 }));
 
 vi.mock("@/components/widget/controls/directory-picker", () => ({
@@ -91,14 +53,14 @@ function seedConfig(configDir: string | null, hosts: string[], host: string | nu
 describe("<SetupStep>", () => {
   beforeEach(() => {
     seedConfig(null, [], null);
-    viewModelState.git = { headCommitHash: "abc123" };
+    useViewModel.setState({ git: { headCommitHash: "abc123" } as GitStatus });
     mockFlakeExistsAt.mockReset();
     mockFlakeExistsAt.mockResolvedValue(true);
     mockSaveHost.mockReset();
     mockSaveHost.mockResolvedValue();
   });
 
-  it("uses a prefilled host when showing Next", async () => {
+  it("persists the displayed host when Next is clicked without changing the dropdown", async () => {
     seedConfig("/Users/me/.nixmac", ["mbp"], "mbp");
 
     render(<SetupStep />);
@@ -121,9 +83,7 @@ describe("<SetupStep>", () => {
   });
 
   it("does not show Next or initial commit before a host is filled", () => {
-    widgetState.configDir = "/Users/me/.nixmac";
-    widgetState.hosts = ["mbp", "mini"];
-    widgetState.host = "";
+    seedConfig("/Users/me/.nixmac", ["mbp", "mini"], "");
 
     render(<SetupStep />);
 
@@ -133,10 +93,8 @@ describe("<SetupStep>", () => {
   });
 
   it("shows the initial commit UI instead of Next when a prefilled host has no initial commit", async () => {
-    widgetState.configDir = "/Users/me/.nixmac";
-    widgetState.hosts = ["mbp", "mini"];
-    widgetState.host = "mbp";
-    viewModelState.git = { headCommitHash: "" };
+    seedConfig("/Users/me/.nixmac", ["mbp", "mini"], "mbp");
+    useViewModel.setState({ git: { headCommitHash: "" } as GitStatus });
     mockFlakeExistsAt.mockResolvedValue(true);
 
     render(<SetupStep />);
