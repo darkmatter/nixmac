@@ -12,11 +12,18 @@ import { useEffect, useState } from "react";
 interface BootstrapConfigProps {
   label: string;
   onSuccess?: () => void;
+  showLabel?: boolean;
+  forceNeedsInitialCommit?: boolean;
 }
 
 const DEFAULT_HOSTNAME = "macbook";
 
-export function BootstrapConfig({ label, onSuccess }: BootstrapConfigProps) {
+export function BootstrapConfig({
+  label,
+  onSuccess,
+  showLabel = true,
+  forceNeedsInitialCommit = false,
+}: BootstrapConfigProps) {
   const [hostname, setHostname] = useState(DEFAULT_HOSTNAME);
   const [hostnamePlaceholder, setHostnamePlaceholder] = useState(DEFAULT_HOSTNAME);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -59,7 +66,9 @@ export function BootstrapConfig({ label, onSuccess }: BootstrapConfigProps) {
     tauriAPI.flake.existsAt(configDir).then(setFlakeExists).catch(() => setFlakeExists(false));
   }, [configDir]);
 
-  const needsInitialCommit = flakeExists && (gitStatus === null || gitStatus.headCommitHash === "");
+  const needsInitialCommit =
+    forceNeedsInitialCommit ||
+    (flakeExists && (gitStatus === null || gitStatus.headCommitHash === ""));
 
   const message = needsInitialCommit
     ? "flake.nix found but not committed — Nix needs a git commit to evaluate your flake"
@@ -83,7 +92,7 @@ export function BootstrapConfig({ label, onSuccess }: BootstrapConfigProps) {
 
   return (
     <div className="space-y-2">
-      <label className="font-medium text-sm">{label}</label>
+      {showLabel && <label className="font-medium text-sm">{label}</label>}
       <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
         <div className="flex items-start gap-2">
           <AlertCircle className="mt-0.5 h-4 w-4 text-muted-foreground" />

@@ -11,6 +11,7 @@ import {
 import { BootstrapConfig } from "@/components/widget/controls/bootstrap-config";
 import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
+import { tauriAPI } from "@/ipc/api";
 import { useViewModel } from "@/stores/view-model";
 import { Monitor } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -19,8 +20,10 @@ export function SetupStep() {
   const configDir = useViewModel((state) => state.preferences?.configDir ?? "");
   const hosts = useViewModel((state) => state.hosts);
   const host = useViewModel((state) => state.preferences?.hostAttr ?? "");
+  const gitStatus = useViewModel((state) => state.git);
   const [configDirConfirmed, setConfigDirConfirmed] = useState(() => Boolean(configDir));
   const [selectedHost, setSelectedHost] = useState<string>("");
+  const [flakeExists, setFlakeExists] = useState<boolean | null>(null);
 
   const { saveHost } = useDarwinConfig();
 
@@ -31,6 +34,35 @@ export function SetupStep() {
   const hasConfigDir = Boolean(configDir) && configDirConfirmed;
   const hasHosts = hasConfigDir && hosts.length > 0;
   const effectiveHost = selectedHost || host;
+  const hasEffectiveHost = effectiveHost.trim().length > 0;
+  const needsInitialCommit =
+    hasEffectiveHost &&
+    flakeExists === true &&
+    (gitStatus === null || gitStatus.headCommitHash === "");
+  const checkingInitialCommit = hasHosts && hasEffectiveHost && flakeExists === null;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!hasConfigDir || (hasHosts && !hasEffectiveHost)) {
+      setFlakeExists(false);
+      return;
+    }
+
+    setFlakeExists(null);
+    tauriAPI.flake
+      .existsAt(configDir)
+      .then((exists) => {
+        if (!cancelled) setFlakeExists(exists);
+      })
+      .catch(() => {
+        if (!cancelled) setFlakeExists(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [configDir, effectiveHost, hasConfigDir, hasEffectiveHost, hasHosts]);
 
   return (
     <div className="flex flex-col items-center justify-center space-y-6 py-8">
@@ -83,8 +115,15 @@ export function SetupStep() {
           ) : (
             <BootstrapConfig label="2. Configuration" />
           )}
-          {hasHosts && (
-            <Button disabled={!effectiveHost} onClick={() => saveHost(effectiveHost)}>
+          {hasHosts && needsInitialCommit && (
+            <BootstrapConfig
+              label="2. Configuration"
+              showLabel={false}
+              forceNeedsInitialCommit
+            />
+          )}
+          {hasHosts && hasEffectiveHost && !needsInitialCommit && !checkingInitialCommit && (
+            <Button onClick={() => saveHost(effectiveHost)}>
               Next
             </Button>
           )}
