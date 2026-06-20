@@ -34,5 +34,8 @@
   "version": "0.22.0",
   "dependencies": {
     "effect": "^4.0.0-beta.62"
+  },
+  "overrides": {
+    "cpu-features": "npm:noop2@^2.0.0"
   }
 }
