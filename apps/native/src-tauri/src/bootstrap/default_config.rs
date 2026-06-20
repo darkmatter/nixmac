@@ -59,6 +59,13 @@ pub fn detect_hostname() -> Result<String, String> {
 
 /// Detects the current macOS username from the environment, defaulting to "unknown" if not found.
 pub fn detect_username() -> String {
+    let username = whoami::username().unwrap();
+
+    // If we didn't get a user name from this, try the USER environment variable as a fallback before giving up entirely.
+    if !username.is_empty() {
+        return username;
+    }
+
     std::env::var("USER").unwrap_or_else(|_| "unknown".to_string())
 }
 

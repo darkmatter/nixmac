@@ -466,7 +466,7 @@ fn run_activate_with_path(activate_path: &str) -> Result<ActivateResult, anyhow:
     let nix_path = crate::system::nix::get_nix_path();
     let home = std::env::var("HOME").unwrap_or_default();
     let ssh_sock = std::env::var("SSH_AUTH_SOCK").unwrap_or_default();
-    let user = std::env::var("USER").unwrap_or_else(|_| "root".to_string());
+    let user = whoami::username().unwrap_or_else(|_| "root".to_string());
 
     // Resolve the symlink to the real nix store path.
     // sudo / visudo match against the canonical path, not the symlink.

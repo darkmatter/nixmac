@@ -5,6 +5,7 @@
 //! nix-darwin `system.defaults.*` keys. Also generates valid `.nix` module
 //! files from the detected customizations.
 
+use crate::bootstrap::default_config::detect_username;
 pub(crate) use crate::shared_types::{RecommendedPrompt, SystemDefault, SystemDefaultsScan};
 use crate::system::nix;
 use std::collections::BTreeMap;
@@ -1660,7 +1661,7 @@ pub fn generate_system_defaults_nix(defaults: &[SystemDefault]) -> String {
     }
 
     // Detect the current macOS username for system.primaryUser
-    let username = std::env::var("USER").unwrap_or_else(|_| "unknown".to_string());
+    let username = detect_username();
 
     let mut out = String::new();
     out.push_str("{ config, ... }:\n\n{\n");
