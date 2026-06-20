@@ -112,10 +112,22 @@ pub fn clone_repo(spec: &RepoRef, dest: &Path) -> Result<()> {
 /// `repo-branch/` folder; stripping it yields the flake at the repo root.
 fn common_top_level(names: &[String]) -> Option<String> {
     let mut top: Option<String> = None;
+    let mut has_child = false;
     for name in names {
+        let name = normalize_zip_entry_name(name);
+        if should_skip_zip_entry(name) {
+            continue;
+        }
         let first = name.split('/').next().unwrap_or("");
         if first.is_empty() {
             return None;
+        }
+        if name
+            .strip_prefix(first)
+            .and_then(|rest| rest.strip_prefix('/'))
+            .is_some_and(|rest| !rest.is_empty())
+        {
+            has_child = true;
         }
         match &top {
             Some(existing) if existing != first => return None,
@@ -123,7 +135,29 @@ fn common_top_level(names: &[String]) -> Option<String> {
             _ => {}
         }
     }
-    top
+    has_child.then_some(top).flatten()
+}
+
+/// Normalizes a zip entry name by stripping redundant `./` prefixes. This is
+/// needed to robustly detect common wrapper directories like `repo-branch/` in GitHub
+/// archives, which may be prefixed with `./` or not depending on how the zip was created.
+fn normalize_zip_entry_name(mut name: &str) -> &str {
+    while let Some(rest) = name.strip_prefix("./") {
+        name = rest;
+    }
+    name
+}
+
+/// Returns true if the entry should be skipped when extracting a zip archive. This
+/// is used to ignore common macOS zip metadata entry cruft like `__MACOSX/` and `.DS_Store`.
+fn should_skip_zip_entry(name: &str) -> bool {
+    let name = name.trim_end_matches('/');
+    name.is_empty()
+        || name == "__MACOSX"
+        || name.starts_with("__MACOSX/")
+        || name
+            .split('/')
+            .any(|component| component == ".DS_Store" || component == "Icon\r")
 }
 
 /// Resolves a (possibly top-level-stripped) archive entry name to a path inside
@@ -175,17 +209,18 @@ pub fn extract_zip(zip_path: &Path, dest: &Path) -> Result<()> {
     for i in 0..archive.len() {
         let mut entry = archive.by_index(i).context("failed to read zip entry")?;
         let raw_name = entry.name().to_string();
+        let name = normalize_zip_entry_name(&raw_name);
+        if should_skip_zip_entry(name) {
+            continue;
+        }
 
         // Apply the wrapper-dir strip, skipping the wrapper directory itself.
         let relative = match &strip {
-            Some(prefix) => match raw_name
-                .strip_prefix(prefix)
-                .and_then(|r| r.strip_prefix('/'))
-            {
+            Some(prefix) => match name.strip_prefix(prefix).and_then(|r| r.strip_prefix('/')) {
                 Some(rest) if !rest.is_empty() => rest,
                 _ => continue,
             },
-            None => raw_name.as_str(),
+            None => name,
         };
 
         let out_path = safe_join(dest, relative)?;
@@ -271,6 +306,40 @@ mod tests {
     }
 
     #[test]
+    fn common_top_level_ignores_macos_zip_metadata() {
+        let names = vec![
+            "nix-darwin-determinate/".to_string(),
+            "nix-darwin-determinate/flake.nix".to_string(),
+            "nix-darwin-determinate/.DS_Store".to_string(),
+            "__MACOSX/".to_string(),
+            "__MACOSX/nix-darwin-determinate/._flake.nix".to_string(),
+        ];
+        assert_eq!(
+            common_top_level(&names).as_deref(),
+            Some("nix-darwin-determinate")
+        );
+    }
+
+    #[test]
+    fn common_top_level_ignores_current_dir_prefixes() {
+        let names = vec![
+            "./nix-darwin-determinate/".to_string(),
+            "./nix-darwin-determinate/flake.nix".to_string(),
+            "./nix-darwin-determinate/modules/default.nix".to_string(),
+        ];
+        assert_eq!(
+            common_top_level(&names).as_deref(),
+            Some("nix-darwin-determinate")
+        );
+    }
+
+    #[test]
+    fn common_top_level_none_for_single_empty_directory() {
+        let names = vec!["nix-darwin-determinate/".to_string()];
+        assert_eq!(common_top_level(&names), None);
+    }
+
+    #[test]
     fn common_top_level_none_for_mixed_roots() {
         let names = vec!["flake.nix".to_string(), "hosts/default.nix".to_string()];
         assert_eq!(common_top_level(&names), None);
@@ -321,6 +390,32 @@ mod tests {
         assert!(dest.join("flake.nix").exists());
         assert!(dest.join("hosts/default.nix").exists());
         assert!(!dest.join("darwin-main").exists());
+    }
+
+    #[test]
+    fn extract_zip_strips_wrapper_with_macos_metadata() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let zip_path = tmp.path().join("repo.zip");
+        write_zip(
+            &zip_path,
+            &[
+                ("nix-darwin-determinate/", ""),
+                ("nix-darwin-determinate/flake.nix", "{ }"),
+                ("nix-darwin-determinate/modules/default.nix", "{ }"),
+                ("__MACOSX/", ""),
+                ("__MACOSX/nix-darwin-determinate/._flake.nix", ""),
+                ("nix-darwin-determinate/.DS_Store", ""),
+            ],
+        );
+
+        let dest = tmp.path().join("out");
+        extract_zip(&zip_path, &dest).unwrap();
+
+        assert!(dest.join("flake.nix").exists());
+        assert!(dest.join("modules/default.nix").exists());
+        assert!(!dest.join("nix-darwin-determinate").exists());
+        assert!(!dest.join("__MACOSX").exists());
+        assert!(!dest.join(".DS_Store").exists());
     }
 
     #[test]
