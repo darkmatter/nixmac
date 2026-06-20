@@ -14,17 +14,33 @@ function setStorageValue(key: string, value: string) {
   }
 }
 
-function markNativeBootStage(stage: string) {
-  void tauriAPI.debug.markBootStage(stage, Date.now()).catch(() => {});
+function normalizeBootStage(stage: string): string {
+  return stage.replace(/[^\w:.-]/g, "-").slice(0, 80);
 }
 
+function setBootStageDomMarker(stage: string) {
+  document.documentElement.dataset.nixmacBootStage = stage;
+  document.title = `nixmac boot:${stage}`;
+}
+
+function markNativeBootStage(stage: string) {
+  void tauriAPI.debug.markBootStage(stage, Date.now()).catch(() => { });
+}
+
+/** E2E-only render-body marker: DOM/title only, no IPC or localStorage. */
+export function markBootRenderStage(stage: string) {
+  if (!e2eBootDiagnosticsEnabled || bootStageCleared) return;
+
+  const normalizedStage = normalizeBootStage(stage);
+  setBootStageDomMarker(normalizedStage);
+}
+
+/** E2E-only effect/event-safe marker with full out-of-band persistence. */
 export function markBootStage(stage: string) {
   if (!e2eBootDiagnosticsEnabled || bootStageCleared) return;
 
-  // E2E-only: intentionally callable from render bodies to expose pre-effect hangs.
-  const normalizedStage = stage.replace(/[^\w:.-]/g, "-").slice(0, 80);
-  document.documentElement.dataset.nixmacBootStage = normalizedStage;
-  document.title = `nixmac boot:${normalizedStage}`;
+  const normalizedStage = normalizeBootStage(stage);
+  setBootStageDomMarker(normalizedStage);
   setStorageValue("nixmac:e2e-boot-stage", normalizedStage);
   markNativeBootStage(normalizedStage);
   console.info(`[nixmac boot-stage] ${normalizedStage}`);
@@ -64,5 +80,5 @@ export function bootBreadcrumb(label: string, detail?: unknown) {
   const clientTimestampUnixMs = Date.now();
   const summarized = summarizeDetail(detail);
   console.info(`[nixmac boot] ${label}`, summarized ?? "");
-  void tauriAPI.debug.logBreadcrumb(label, summarized, clientTimestampUnixMs).catch(() => {});
+  void tauriAPI.debug.logBreadcrumb(label, summarized, clientTimestampUnixMs).catch(() => { });
 }
