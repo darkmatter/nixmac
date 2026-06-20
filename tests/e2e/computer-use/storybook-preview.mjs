@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const THIS_FILE = fileURLToPath(import.meta.url);
 const TOOL_DIR = path.dirname(THIS_FILE);
-const REPO_ROOT = path.resolve(TOOL_DIR, '../..');
+const REPO_ROOT = path.resolve(TOOL_DIR, '../../..');
 
 export function splitEnvList(value = '') {
   return String(value)
@@ -305,9 +305,9 @@ function argValue(args, flag, fallback = '') {
 
 function usage() {
   console.log(`Usage:
-  node tools/computer-use-e2e/storybook-preview.mjs plan [--changed-files <file>] [--static-dir <dir>] [--base-url <url>] [--build-status <status>] [--out <json>] [--github-output]
-  node tools/computer-use-e2e/storybook-preview.mjs comment --plan <json> [--base-url <url>]
-  node tools/computer-use-e2e/storybook-preview.mjs self-test
+  node tests/e2e/computer-use/storybook-preview.mjs plan [--changed-files <file>] [--static-dir <dir>] [--base-url <url>] [--build-status <status>] [--out <json>] [--github-output]
+  node tests/e2e/computer-use/storybook-preview.mjs comment --plan <json> [--base-url <url>]
+  node tests/e2e/computer-use/storybook-preview.mjs self-test
 
 The plan command maps changed frontend files to built Storybook story URLs.`);
 }

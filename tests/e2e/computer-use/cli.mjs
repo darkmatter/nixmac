@@ -1,10 +1,10 @@
 export function remoteCuaUsage({ defaultWs, defaultApp }) {
   return `Usage:
-  node tools/computer-use-e2e/run-remote-cua.mjs run
-  node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable --note "..."
-  node tools/computer-use-e2e/run-remote-cua.mjs render-storybook-only --note "..."
-  node tools/computer-use-e2e/run-remote-cua.mjs render-existing --run-dir artifacts/computer-use-remote/<timestamp>
-  node tools/computer-use-e2e/run-remote-cua.mjs self-test
+  node tests/e2e/computer-use/run-remote-cua.mjs run
+  node tests/e2e/computer-use/run-remote-cua.mjs render-unavailable --note "..."
+  node tests/e2e/computer-use/run-remote-cua.mjs render-storybook-only --note "..."
+  node tests/e2e/computer-use/run-remote-cua.mjs render-existing --run-dir artifacts/computer-use-remote/<timestamp>
+  node tests/e2e/computer-use/run-remote-cua.mjs self-test
 
 Environment:
   NIXMAC_COMPUTER_USE_WS       WebSocket for Codex app-server (default ${defaultWs})

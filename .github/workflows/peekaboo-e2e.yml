@@ -80,11 +80,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --check tools/computer-use-e2e/run-local.mjs
-          node --check tools/computer-use-e2e/peekaboo-runner.mjs
-          node --check tools/computer-use-e2e/peekaboo-workflow-contract-self-test.mjs
-          node tools/computer-use-e2e/peekaboo-workflow-contract-self-test.mjs
-          node tools/computer-use-e2e/run-local.mjs self-test
+          node --check tests/e2e/computer-use/run-local.mjs
+          node --check tests/e2e/computer-use/peekaboo-runner.mjs
+          node --check tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs
+          node tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs
+          node tests/e2e/computer-use/run-local.mjs self-test
 
       - name: Capture PR focus metadata
         if: github.event_name == 'pull_request'
@@ -193,11 +193,11 @@ jobs:
           export PATH="$HOME/.cargo/bin:$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
           mkdir -p "$REPO_DIR/artifacts/computer-use-local"
           stale_run="$(cat "$REPO_DIR/artifacts/computer-use-local/.current-run" 2>/dev/null || true)"
-          pkill -TERM -f 'tools/computer-use-e2e/run-local\.mjs run-peekaboo-suite|tests/e2e/run\.sh|nixmac-e2e-provider|nixmac\.app/Contents/MacOS/nixmac|ffmpeg .*peekaboo-e2e' >/dev/null 2>&1 || true
+          pkill -TERM -f 'tests/e2e/computer-use/run-local\.mjs run-peekaboo-suite|tests/e2e/run\.sh|nixmac-e2e-provider|nixmac\.app/Contents/MacOS/nixmac|ffmpeg .*peekaboo-e2e' >/dev/null 2>&1 || true
           sleep 2
-          pkill -KILL -f 'tools/computer-use-e2e/run-local\.mjs run-peekaboo-suite|tests/e2e/run\.sh|nixmac-e2e-provider|nixmac\.app/Contents/MacOS/nixmac|ffmpeg .*peekaboo-e2e' >/dev/null 2>&1 || true
-          if [[ -n "$stale_run" && -d "$stale_run" && -f "$REPO_DIR/tools/computer-use-e2e/run-local.mjs" ]]; then
-            (cd "$REPO_DIR" && NIXMAC_COMPUTER_USE_RUN_DIR="$stale_run" node tools/computer-use-e2e/run-local.mjs cleanup) >/dev/null 2>&1 || true
+          pkill -KILL -f 'tests/e2e/computer-use/run-local\.mjs run-peekaboo-suite|tests/e2e/run\.sh|nixmac-e2e-provider|nixmac\.app/Contents/MacOS/nixmac|ffmpeg .*peekaboo-e2e' >/dev/null 2>&1 || true
+          if [[ -n "$stale_run" && -d "$stale_run" && -f "$REPO_DIR/tests/e2e/computer-use/run-local.mjs" ]]; then
+            (cd "$REPO_DIR" && NIXMAC_COMPUTER_USE_RUN_DIR="$stale_run" node tests/e2e/computer-use/run-local.mjs cleanup) >/dev/null 2>&1 || true
           fi
           rm -f "$REPO_DIR/artifacts/computer-use-local/.current-run"
           cd "$REPO_DIR"
@@ -287,7 +287,7 @@ jobs:
             "NIXMAC_E2E_PR_BASE_REF=$(printf '%q' "${NIXMAC_E2E_PR_BASE_REF:-}")"
             "NIXMAC_E2E_PR_CHANGED_FILES=$(printf '%q' "${NIXMAC_E2E_PR_CHANGED_FILES:-}")"
           )
-          remote_cmd="cd $(printf '%q' "$PEEKABOO_REPO_DIR") && ${remote_env_parts[*]} $(printf '%q' "$PEEKABOO_NODE") tools/computer-use-e2e/run-local.mjs run-peekaboo-suite --allow-cleanup"
+          remote_cmd="cd $(printf '%q' "$PEEKABOO_REPO_DIR") && ${remote_env_parts[*]} $(printf '%q' "$PEEKABOO_NODE") tests/e2e/computer-use/run-local.mjs run-peekaboo-suite --allow-cleanup"
           set +e
           ssh "${ssh_common[@]}" "$SSH_DEST" "$remote_cmd" 2>&1 | tee artifacts/peekaboo-e2e-report/peekaboo-run.log
           run_status="${PIPESTATUS[0]}"
@@ -367,7 +367,7 @@ jobs:
           FETCH_REPORT_DIR: ${{ steps.fetch-report.outputs.report_dir }}
         run: |
           set -euo pipefail
-          node tools/computer-use-e2e/run-local.mjs verify-report "$FETCH_REPORT_DIR" \
+          node tests/e2e/computer-use/run-local.mjs verify-report "$FETCH_REPORT_DIR" \
             --method ci-static \
             --notes "CI workflow inspected the rendered Peekaboo HTML report with static integrity checks and verified the summary, PR #75 baseline parity coverage, evidence video/storyboard, screenshots, visual proof, and artifact sections before publishing."
 

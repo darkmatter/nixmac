@@ -34,13 +34,13 @@ NIXMAC_COMPUTER_USE_APP=com.darkmatter.nixmac \
 NIXMAC_E2E_REMOTE_SSH_DEST=admin@REMOTE-MAC \
 NIXMAC_E2E_SSH_KEY=/path/to/key \
 NIXMAC_E2E_SSH_KNOWN_HOSTS=/path/to/known_hosts \
-node tools/computer-use-e2e/run-remote-cua.mjs run
+node tests/e2e/computer-use/run-remote-cua.mjs run
 ```
 
 Predicate and click-result guards can be checked without a remote Mac:
 
 ```bash
-node tools/computer-use-e2e/run-remote-cua.mjs self-test
+node tests/e2e/computer-use/run-remote-cua.mjs self-test
 ```
 
 The runner:
@@ -114,21 +114,21 @@ coverage manifest, derived `state.v2.scenarioContracts`, and rendered report
 sections rather than a separate proposal doc.
 
 The modularization and preservation contracts for this toolchain live in
-`tools/computer-use-e2e/ARCHITECTURE.md`. Use that document as the review gate
+`tests/e2e/computer-use/ARCHITECTURE.md`. Use that document as the review gate
 before moving code out of `run-remote-cua.mjs`; module extraction should not
 start until the preservation harness it describes exists and is green.
 
 Run the preservation harness locally with:
 
 ```bash
-node tools/computer-use-e2e/preservation-harness.mjs run
+node tests/e2e/computer-use/preservation-harness.mjs run
 ```
 
 Summarize already-collected local evidence without touching GitHub, DXU, SSH, or
 provider APIs with:
 
 ```bash
-node tools/computer-use-e2e/summarize-runs.mjs \
+node tests/e2e/computer-use/summarize-runs.mjs \
   --root artifacts/computer-use-remote \
   --format markdown \
   --out artifacts/computer-use-summary/product-proof-summary.md
@@ -158,7 +158,7 @@ explicit adversarial-only fixture.
 The coverage freshness manifest lives at:
 
 ```bash
-tools/computer-use-e2e/coverage-manifest.json
+tests/e2e/computer-use/coverage-manifest.json
 ```
 
 The manifest is evaluated during report rendering and appears near the top of
@@ -424,7 +424,7 @@ Optional evolved-case calibration:
 
 ```bash
 NIXMAC_E2E_EXTRA_EVOLVED_CASES=screenshots-defaults,inline-question-font \
-  node tools/computer-use-e2e/run-remote-cua.mjs run
+  node tests/e2e/computer-use/run-remote-cua.mjs run
 ```
 
 The default PR lane intentionally runs only the calibrated `homebrew-bat` case
@@ -448,7 +448,7 @@ authenticity must be checked before any remote secret is copied.
 Remote connectivity can be checked without running the full suite:
 
 ```bash
-node tools/computer-use-e2e/check-remote.mjs \
+node tests/e2e/computer-use/check-remote.mjs \
   --host dxu97120.macincloud.com \
   --user admin \
   --key ~/.ssh/nixmac_e2e_ci \
@@ -527,7 +527,7 @@ because the macOS scenarios intentionally seed settings for deterministic app
 state.
 
 ```bash
-node tools/computer-use-e2e/run-local.mjs run-peekaboo
+node tests/e2e/computer-use/run-local.mjs run-peekaboo
 ```
 
 By default this runs `tests/e2e/scenarios/macos_descriptor_prompt_smoke.sh`, a
@@ -546,11 +546,11 @@ expected local provider-validation block. It writes:
 Useful variants:
 
 ```bash
-node tools/computer-use-e2e/run-local.mjs run-peekaboo macos_descriptor_prompt_smoke --no-record
-node tools/computer-use-e2e/run-local.mjs run-peekaboo macos_core_product_proof --no-record
-node tools/computer-use-e2e/run-local.mjs run-peekaboo macos_provider_evolve_full_smoke --no-record
-node tools/computer-use-e2e/run-local.mjs run-peekaboo-suite --no-record
-NIXMAC_APP_PATH=/path/to/nixmac.app node tools/computer-use-e2e/run-local.mjs run-peekaboo
+node tests/e2e/computer-use/run-local.mjs run-peekaboo macos_descriptor_prompt_smoke --no-record
+node tests/e2e/computer-use/run-local.mjs run-peekaboo macos_core_product_proof --no-record
+node tests/e2e/computer-use/run-local.mjs run-peekaboo macos_provider_evolve_full_smoke --no-record
+node tests/e2e/computer-use/run-local.mjs run-peekaboo-suite --no-record
+NIXMAC_APP_PATH=/path/to/nixmac.app node tests/e2e/computer-use/run-local.mjs run-peekaboo
 ```
 
 Use a debug/dev nixmac build for the mocked-system flag, solid-capture window,
@@ -562,7 +562,7 @@ machine when the host already has this checkout, Peekaboo, TCC permissions, and
 a runnable nixmac app:
 
 ```bash
-node tools/computer-use-e2e/run-local.mjs run-peekaboo-macincloud \
+node tests/e2e/computer-use/run-local.mjs run-peekaboo-macincloud \
   --ssh-dest admin@dxu97120.macincloud.com \
   --identity-file ~/.ssh/nixmac_e2e_ci \
   --repo-dir /Users/admin/nixmac-peekaboo-local-e2e \
@@ -591,7 +591,7 @@ The historical `nix-install` scenario is intentionally not the default. It can
 uninstall/reinstall system Nix and should only run on a disposable runner:
 
 ```bash
-node tools/computer-use-e2e/run-local.mjs run-peekaboo nix-install --allow-destructive
+node tests/e2e/computer-use/run-local.mjs run-peekaboo nix-install --allow-destructive
 ```
 
 The bridge fails fast before GUI driving if Peekaboo, jq, `/Applications/nixmac.app`,
@@ -659,7 +659,7 @@ OpenRouter-compatible credential, but points nixmac at a disposable config
 created from `apps/native/templates/nix-darwin-determinate`.
 
 ```bash
-node tools/computer-use-e2e/run-local.mjs setup-real
+node tests/e2e/computer-use/run-local.mjs setup-real
 open -n /Applications/nixmac.app
 ```
 
@@ -682,7 +682,7 @@ and inspect the disposable git diff, but must not replace UI interaction.
 From the repo root:
 
 ```bash
-node tools/computer-use-e2e/run-local.mjs setup-deterministic
+node tests/e2e/computer-use/run-local.mjs setup-deterministic
 ```
 
 The setup command:
@@ -723,24 +723,24 @@ Use Codex Computer Use to drive the app. After each major visible step, capture
 evidence:
 
 ```bash
-node tools/computer-use-e2e/run-local.mjs capture "01-launch" \
+node tests/e2e/computer-use/run-local.mjs capture "01-launch" \
   --note "Computer Use observed the first screen and prompt input."
 
-node tools/computer-use-e2e/run-local.mjs scenario launch pass \
+node tests/e2e/computer-use/run-local.mjs scenario launch pass \
   --note "App launched and first screen was usable."
 ```
 
 If you use a different launch command, update the report metadata:
 
 ```bash
-node tools/computer-use-e2e/run-local.mjs app-command "..."
+node tests/e2e/computer-use/run-local.mjs app-command "..."
 ```
 
 When done:
 
 ```bash
-node tools/computer-use-e2e/run-local.mjs render
-node tools/computer-use-e2e/run-local.mjs cleanup
+node tests/e2e/computer-use/run-local.mjs render
+node tests/e2e/computer-use/run-local.mjs cleanup
 ```
 
 Cleanup restores the original app support directory from the full off-repo
@@ -749,7 +749,7 @@ cleanup removes the disposable one. You can clean up an explicit stuck run with:
 
 ```bash
 NIXMAC_COMPUTER_USE_RUN_DIR=/path/to/run \
-  node tools/computer-use-e2e/run-local.mjs cleanup
+  node tests/e2e/computer-use/run-local.mjs cleanup
 ```
 
 ## Report Contents
@@ -771,7 +771,7 @@ scenario waivers, and any PR-specific additions that need focused visual proof.
 For historical report re-rendering, use:
 
 ```bash
-node tools/computer-use-e2e/run-remote-cua.mjs render-existing \
+node tests/e2e/computer-use/run-remote-cua.mjs render-existing \
   --run-dir artifacts/computer-use-remote/<timestamp>
 ```
 
@@ -785,7 +785,7 @@ Generated reports are ignored by git.
 Use the adversarial runner to test the E2E/reporting suite itself:
 
 ```bash
-node tools/computer-use-e2e/run-adversarial.mjs
+node tests/e2e/computer-use/run-adversarial.mjs
 ```
 
 The adversarial runner requires `ffmpeg`, because fixtures generate blank
@@ -797,7 +797,7 @@ re-renders each case through `run-remote-cua.mjs render-existing`. On a clean
 checkout, first run or download a baseline report, or pass one explicitly:
 
 ```bash
-node tools/computer-use-e2e/run-adversarial.mjs \
+node tests/e2e/computer-use/run-adversarial.mjs \
   --base-run artifacts/computer-use-remote/<timestamp>
 ```
 

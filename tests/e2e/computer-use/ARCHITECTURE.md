@@ -20,7 +20,7 @@ Keep these in nixmac:
 - report shape and reviewer-facing Product Proof semantics.
 
 The modularization target is an internal set of reviewable modules under
-`tools/computer-use-e2e/`, with `run-remote-cua.mjs` staying as the stable
+`tests/e2e/computer-use/`, with `run-remote-cua.mjs` staying as the stable
 entrypoint until all consumers have migrated. The module sections below describe
 target ownership, including responsibilities that have not moved yet.
 
@@ -183,10 +183,10 @@ It should call `state.mjs`, `transport.mjs`, `remote-stage.mjs`, and
 
 Owns command dispatch while preserving the existing public entrypoints:
 
-- `node tools/computer-use-e2e/run-remote-cua.mjs run`;
-- `node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable --note <text>`;
-- `node tools/computer-use-e2e/run-remote-cua.mjs render-existing --run-dir <path>`;
-- `node tools/computer-use-e2e/run-remote-cua.mjs self-test`.
+- `node tests/e2e/computer-use/run-remote-cua.mjs run`;
+- `node tests/e2e/computer-use/run-remote-cua.mjs render-unavailable --note <text>`;
+- `node tests/e2e/computer-use/run-remote-cua.mjs render-existing --run-dir <path>`;
+- `node tests/e2e/computer-use/run-remote-cua.mjs self-test`.
 
 The wrapper `run-remote-cua.mjs` remains the stable executable path until a
 separate reviewed migration changes workflow and README references.
@@ -275,7 +275,7 @@ that gets extracted into shared modules.
 Readiness/preflight CLI. Current stable command:
 
 ```bash
-node tools/computer-use-e2e/check-remote.mjs --host <fqdn-or-ip> [options]
+node tests/e2e/computer-use/check-remote.mjs --host <fqdn-or-ip> [options]
 ```
 
 Stable flags:
@@ -411,11 +411,11 @@ server.
 Current implementation:
 
 ```bash
-node tools/computer-use-e2e/preservation-harness.mjs run
+node tests/e2e/computer-use/preservation-harness.mjs run
 ```
 
 The fixture is a sanitized hybrid under
-`tools/computer-use-e2e/fixtures/preservation/`: a normalized `state.seed.json`,
+`tests/e2e/computer-use/fixtures/preservation/`: a normalized `state.seed.json`,
 curated real screenshots required by current visual contracts, generated text
 snapshots, and expected normalized JSON signatures. The harness always runs full
 adversarial replay. It does not expose a skip-adversarial acceptance path.
@@ -436,8 +436,8 @@ Each extraction chunk must:
   product-contract change;
 - keep the current Codex app-server path as the only production driver;
 - run `node --check` on touched `.mjs` files;
-- run `node tools/computer-use-e2e/run-remote-cua.mjs self-test`;
-- run `node tools/computer-use-e2e/preservation-harness.mjs run`;
+- run `node tests/e2e/computer-use/run-remote-cua.mjs self-test`;
+- run `node tests/e2e/computer-use/preservation-harness.mjs run`;
 - run adversarial replay when the changed seam can affect report, visual proof,
   state, scenario contracts, or CLI rendering.
 

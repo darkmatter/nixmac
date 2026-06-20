@@ -1,6 +1,6 @@
 # Preservation Fixture
 
-This fixture powers `tools/computer-use-e2e/preservation-harness.mjs`.
+This fixture powers `tests/e2e/computer-use/preservation-harness.mjs`.
 
 It is a sanitized hybrid fixture:
 
@@ -16,7 +16,7 @@ It is a sanitized hybrid fixture:
 Acceptance runs must use:
 
 ```bash
-node tools/computer-use-e2e/preservation-harness.mjs run
+node tests/e2e/computer-use/preservation-harness.mjs run
 ```
 
 `update-fixtures --allow-rewrite` is only for intentional report/state contract

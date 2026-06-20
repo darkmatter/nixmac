@@ -5,14 +5,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const thisFile = fileURLToPath(import.meta.url);
-const repoRoot = path.resolve(path.dirname(thisFile), '../..');
+const repoRoot = path.resolve(path.dirname(thisFile), '../../..');
 const workflowPath = path.join(repoRoot, '.github/workflows/peekaboo-e2e.yml');
 const productProofPath = path.join(repoRoot, 'tests/e2e/lib/nixmac_product_proof.sh');
 const peekabooShellPath = path.join(repoRoot, 'tests/e2e/lib/peekaboo.sh');
 const runnerShellPath = path.join(repoRoot, 'tests/e2e/lib/runner.sh');
 const nixmacAdapterPath = path.join(repoRoot, 'tests/e2e/adapters/nixmac.sh');
-const runLocalPath = path.join(repoRoot, 'tools/computer-use-e2e/run-local.mjs');
-const peekabooRunnerPath = path.join(repoRoot, 'tools/computer-use-e2e/peekaboo-runner.mjs');
+const runLocalPath = path.join(repoRoot, 'tests/e2e/computer-use/run-local.mjs');
+const peekabooRunnerPath = path.join(repoRoot, 'tests/e2e/computer-use/peekaboo-runner.mjs');
 const permissionsPath = path.join(repoRoot, 'apps/native/src-tauri/src/system/permissions.rs');
 const e2eRuntimePath = path.join(repoRoot, 'apps/native/src-tauri/src/e2e_runtime.rs');
 const nativeMainPath = path.join(repoRoot, 'apps/native/src-tauri/src/main.rs');
@@ -109,8 +109,8 @@ assert.match(proof, /ssh-keyscan -H "\$remote_host"/, 'proof job must generate k
 assert.match(proof, /REPO_URL=\$repo_url_q/, 'remote checkout must fetch with the workflow token when the remote origin is missing or unauthenticated');
 assert.match(proof, /rm -f "\$REPO_DIR\/artifacts\/computer-use-local\/\.current-run"/, 'remote setup must clear stale current-run before any build or suite attempt');
 assert.match(proof, /stale_run="\$\(cat "\$REPO_DIR\/artifacts\/computer-use-local\/\.current-run"/, 'remote setup must capture stale current-run before clearing it');
-assert.match(proof, /pkill -TERM -f 'tools\/computer-use-e2e\/run-local\\\.mjs run-peekaboo-suite/, 'remote setup must terminate stale Peekaboo suite processes left by cancelled runs');
-assert.match(proof, /NIXMAC_COMPUTER_USE_RUN_DIR="\$stale_run" node tools\/computer-use-e2e\/run-local\.mjs cleanup/, 'remote setup must attempt cleanup for stale current-run state before new runs');
+assert.match(proof, /pkill -TERM -f 'tests\/e2e\/computer-use\/run-local\\\.mjs run-peekaboo-suite/, 'remote setup must terminate stale Peekaboo suite processes left by cancelled runs');
+assert.match(proof, /NIXMAC_COMPUTER_USE_RUN_DIR="\$stale_run" node tests\/e2e\/computer-use\/run-local\.mjs cleanup/, 'remote setup must attempt cleanup for stale current-run state before new runs');
 assert.match(proof, /git remote (?:set-url|add) origin "\$REPO_URL"/, 'remote checkout must install an authenticated origin before fetch');
 assert.match(proof, /git remote set-url origin "\$PUBLIC_REPO_URL"/, 'remote checkout must remove the tokenized origin after fetch');
 assert.match(proof, /git remote set-url origin "\$PUBLIC_REPO_URL"\n\s+unset REPO_URL\n\s+git checkout -B "\$PR_HEAD_REF"/, 'remote build must unset the tokenized repo URL before running PR-controlled code');
@@ -131,7 +131,7 @@ assert.match(proof, /function looksLikeTextFile\(full\)[\s\S]*subarray\(0, 8192\
 assert.doesNotMatch(proof, /textExtPattern/, 'trusted report content scan must not skip extensionless or renamed text diagnostics');
 assert.match(proof, /NIXMAC_APP_PATH=\$\(printf '%q' "\$REMOTE_APP_PATH"\)[\s\S]*run-peekaboo-suite --allow-cleanup/, 'Peekaboo run must use the freshly built PR app bundle');
 assert.match(proof, /remote_env_parts=\([\s\S]*E2E_TERMINAL_CLEANUP_MODE=kill[\s\S]*E2E_HIDE_RECORDING_TERMINAL=1[\s\S]*E2E_CLOSE_RECORDING_TERMINAL=1/, 'MacInCloud remote runner must force stale recorder Terminal cleanup and keep recorder windows hidden/closed');
-assert.doesNotMatch(proof, /Run Peekaboo suite on MacInCloud[\s\S]*node tools\/computer-use-e2e\/run-local\.mjs run-peekaboo-macincloud/, 'proof job must not run PR-controlled local orchestration while the MacInCloud SSH key is present');
+assert.doesNotMatch(proof, /Run Peekaboo suite on MacInCloud[\s\S]*node tests\/e2e\/computer-use\/run-local\.mjs run-peekaboo-macincloud/, 'proof job must not run PR-controlled local orchestration while the MacInCloud SSH key is present');
 assert.match(proof, /--allow-cleanup/, 'Peekaboo suite must restore local app support state after the run');
 assert.match(proof, /artifacts\/computer-use-local\/\.current-run/, 'workflow must fetch the suite report using the runner current-run contract');
 assert.match(proof, /remote_artifact_root="\$\{PEEKABOO_REPO_DIR%\/\}\/artifacts\/computer-use-local"/, 'workflow must anchor fetched reports to the expected remote artifact root');

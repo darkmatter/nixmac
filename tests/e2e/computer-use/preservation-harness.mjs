@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const THIS_FILE = fileURLToPath(import.meta.url);
 const TOOL_DIR = path.dirname(THIS_FILE);
-const REPO_ROOT = path.resolve(TOOL_DIR, '../..');
+const REPO_ROOT = path.resolve(TOOL_DIR, '../../..');
 const FIXTURE_DIR = path.join(TOOL_DIR, 'fixtures/preservation');
 const SEED_STATE = path.join(FIXTURE_DIR, 'state.seed.json');
 const EXPECTED_REPORT = path.join(FIXTURE_DIR, 'expected-report-signature.json');
@@ -21,8 +21,8 @@ const DYNAMIC_SCENARIOS = new Set(['mainCoverageFreshness', 'prSpecificCoverage'
 
 function usage() {
   console.log(`Usage:
-  node tools/computer-use-e2e/preservation-harness.mjs run [--work-dir <path>]
-  node tools/computer-use-e2e/preservation-harness.mjs update-fixtures [--work-dir <path>]
+  node tests/e2e/computer-use/preservation-harness.mjs run [--work-dir <path>]
+  node tests/e2e/computer-use/preservation-harness.mjs update-fixtures [--work-dir <path>]
 
 The run command is the acceptance path. It always runs render-existing and full
 adversarial replay against the deterministic fixture. update-fixtures rewrites
@@ -239,7 +239,7 @@ function cleanupAdversarialFixtureFile() {
 }
 
 function runRenderExisting(runDir) {
-  run('node', ['tools/computer-use-e2e/run-remote-cua.mjs', 'render-existing', '--run-dir', runDir]);
+  run('node', ['tests/e2e/computer-use/run-remote-cua.mjs', 'render-existing', '--run-dir', runDir]);
   const indexPath = path.join(runDir, 'index.html');
   const regeneratedPath = path.join(runDir, 'state.regenerated.json');
   if (!existsSync(indexPath)) throw new Error(`render-existing did not create ${indexPath}`);
@@ -255,7 +255,7 @@ function runAdversarial(baseRun, root) {
   const outRoot = path.join(root, 'adversarial');
   rmSync(outRoot, { recursive: true, force: true });
   try {
-    run('node', ['tools/computer-use-e2e/run-adversarial.mjs', '--base-run', baseRun], {
+    run('node', ['tests/e2e/computer-use/run-adversarial.mjs', '--base-run', baseRun], {
       env: { ...process.env, NIXMAC_E2E_ADVERSARIAL_OUT_ROOT: outRoot },
     });
   } finally {

@@ -81,12 +81,7 @@ build
 # Testing
 coverage
 .nyc_output
-artifacts/computer-use-local/
-artifacts/computer-use-real/
-artifacts/computer-use-remote/
-artifacts/computer-use-adversarial/
-artifacts/computer-use-historical-validation/
-artifacts/computer-use-summary/
+artifacts/
 .scratch/
 .claude-review/
 

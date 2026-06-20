@@ -7,14 +7,14 @@ import { fileURLToPath } from 'node:url';
 
 const THIS_FILE = fileURLToPath(import.meta.url);
 const TOOL_DIR = path.dirname(THIS_FILE);
-const REPO_ROOT = path.resolve(TOOL_DIR, '../..');
+const REPO_ROOT = path.resolve(TOOL_DIR, '../../..');
 const DEFAULT_BASE_ROOT = path.resolve(REPO_ROOT, process.env.NIXMAC_E2E_ADVERSARIAL_BASE_ROOT || 'artifacts/computer-use-remote');
 const OUT_ROOT = path.resolve(REPO_ROOT, process.env.NIXMAC_E2E_ADVERSARIAL_OUT_ROOT || 'artifacts/computer-use-adversarial');
 const RUNNER = path.join(TOOL_DIR, 'run-remote-cua.mjs');
 
 function usage() {
   console.log(`Usage:
-  node tools/computer-use-e2e/run-adversarial.mjs [--base-run artifacts/computer-use-remote/<timestamp>]
+  node tests/e2e/computer-use/run-adversarial.mjs [--base-run artifacts/computer-use-remote/<timestamp>]
 
 When --base-run is omitted, the runner uses the newest local
 artifacts/computer-use-remote/<timestamp> directory that contains state.json.

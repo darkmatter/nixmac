@@ -33,6 +33,7 @@ tests/e2e/
 ├── run.sh                  # CLI entry point
 ├── ci-runner.sh            # GitHub Actions SSH entry point
 ├── setup-runner.sh         # One-time runner provisioning
+├── computer-use/           # Computer Use E2E runners, reports, and fixtures
 ├── lib/
 │   ├── core.sh             # Logging, assertions, phases, results
 │   ├── peekaboo.sh         # GUI automation (click, type, wait, screenshot)
@@ -123,7 +124,7 @@ Then reference it in your scenario: `E2E_ADAPTER="myapp"`
 ## Product Proof Smoke
 
 `macos_descriptor_prompt_smoke` is the safe inner-loop scenario used by
-`tools/computer-use-e2e/run-local.mjs run-peekaboo`. It launches the real app,
+`tests/e2e/computer-use/run-local.mjs run-peekaboo`. It launches the real app,
 drives the descriptor prompt through Peekaboo accessibility metadata, captures
 screenshots/video/logs, and does not install, uninstall, build, save, discard,
 or mutate system Nix state. It does write temporary nixmac settings; the

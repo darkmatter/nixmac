@@ -84,7 +84,7 @@ import {
 
 const THIS_FILE = fileURLToPath(import.meta.url);
 const TOOL_DIR = path.dirname(THIS_FILE);
-const REPO_ROOT = path.resolve(TOOL_DIR, '../..');
+const REPO_ROOT = path.resolve(TOOL_DIR, '../../..');
 
 const DEFAULT_APP = 'com.darkmatter.nixmac';
 const DEFAULT_WS = 'ws://127.0.0.1:18790';
@@ -246,7 +246,7 @@ function evolvedCaseStrategy(extraCases = enabledExtraEvolvedCases()) {
 function buildPrFocus() {
   const changedFiles = splitEnvList(process.env.NIXMAC_E2E_PR_CHANGED_FILES || '');
   const userVisibleFiles = changedFiles.filter((file) =>
-    /^(apps\/native\/src\/(?:[^/]+\.(?:css|ts|tsx)|(?:components|hooks|stores|lib|styles)\/)|apps\/native\/src-tauri|tools\/computer-use-e2e|\.github\/workflows\/computer-use-e2e\.yml)/.test(file),
+    /^(apps\/native\/src\/(?:[^/]+\.(?:css|ts|tsx)|(?:components|hooks|stores|lib|styles)\/)|apps\/native\/src-tauri|tests\/e2e\/computer-use|\.github\/workflows\/computer-use-e2e\.yml)/.test(file),
   );
   const scenarioKeys = new Set();
   for (const file of userVisibleFiles) {
@@ -281,7 +281,7 @@ function buildPrFocus() {
       scenarioKeys.add('feedback');
       scenarioKeys.add('reportIssue');
     }
-    if (/tools\/computer-use-e2e|computer-use-e2e\.yml/i.test(file)) {
+    if (/tests\/e2e\/computer-use|computer-use-e2e\.yml/i.test(file)) {
       scenarioKeys.add('visualProofQuality');
       scenarioKeys.add('reportInspection');
     }
@@ -3103,7 +3103,7 @@ async function runSelfTest() {
   );
   assert.equal(rootPrFocus.scenarioKeys.includes('launch'), true, 'root-level native app source changes should focus launch coverage');
   assert.equal(rootPrFocus.scenarioKeys.includes('visualCoverage'), true, 'root-level native app source changes should focus visual coverage');
-  process.env.NIXMAC_E2E_PR_CHANGED_FILES = 'tools/computer-use-e2e/run-remote-cua.mjs';
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = 'tests/e2e/computer-use/run-remote-cua.mjs';
   const toolPrFocus = buildPrFocus();
   assert.equal(toolPrFocus.scenarioKeys.includes('visualProofQuality'), true, 'Computer Use E2E changes should focus visual proof quality');
   assert.equal(toolPrFocus.scenarioKeys.includes('reportInspection'), true, 'Computer Use E2E changes should focus report inspection');
@@ -3116,8 +3116,8 @@ async function runSelfTest() {
     claims: [],
     prFocus: {
       configured: true,
-      changedFiles: ['tools/computer-use-e2e/run-remote-cua.mjs'],
-      userVisibleFiles: ['tools/computer-use-e2e/run-remote-cua.mjs'],
+      changedFiles: ['tests/e2e/computer-use/run-remote-cua.mjs'],
+      userVisibleFiles: ['tests/e2e/computer-use/run-remote-cua.mjs'],
       scenarioKeys: ['review', 'summary'],
     },
   });
@@ -3144,8 +3144,8 @@ async function runSelfTest() {
     title: 'Self-test PR',
     headRef: 'feature',
     baseRef: 'main',
-    changedFiles: ['tools/computer-use-e2e/run-remote-cua.mjs'],
-    userVisibleFiles: ['tools/computer-use-e2e/run-remote-cua.mjs'],
+    changedFiles: ['tests/e2e/computer-use/run-remote-cua.mjs'],
+    userVisibleFiles: ['tests/e2e/computer-use/run-remote-cua.mjs'],
     scenarioKeys: ['visualProofQuality', 'reportInspection'],
   };
   for (const key of Object.keys(renderState.scenarios)) {

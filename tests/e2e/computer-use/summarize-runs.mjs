@@ -21,8 +21,8 @@ const DEFAULT_PROMOTION_THRESHOLDS = {
 
 function usage() {
   return `Usage:
-  node tools/computer-use-e2e/summarize-runs.mjs [--root <path>] [--format json|markdown] [--out <path>] [--limit <n>] [--include-identity] [--reveal-prompt] [--release-trailing-clean <n>] [--release-latest-sha-clean <n>] [--required-trailing-clean <n>] [--required-latest-sha-clean <n>]
-  node tools/computer-use-e2e/summarize-runs.mjs self-test`;
+  node tests/e2e/computer-use/summarize-runs.mjs [--root <path>] [--format json|markdown] [--out <path>] [--limit <n>] [--include-identity] [--reveal-prompt] [--release-trailing-clean <n>] [--release-latest-sha-clean <n>] [--required-trailing-clean <n>] [--required-latest-sha-clean <n>]
+  node tests/e2e/computer-use/summarize-runs.mjs self-test`;
 }
 
 function parseArgs(argv) {

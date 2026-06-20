@@ -23,7 +23,7 @@ in the override or release record before treating Product Proof as satisfied.
 1. Inspect the latest local evidence summary:
 
    ```bash
-   node tools/computer-use-e2e/summarize-runs.mjs \
+   node tests/e2e/computer-use/summarize-runs.mjs \
      --root artifacts/computer-use-remote \
      --format markdown \
      --out artifacts/computer-use-summary/product-proof-summary.md
@@ -89,7 +89,7 @@ noisy for reliable Product Proof.
 1. Run readiness only before any full Product Proof run:
 
    ```bash
-   node tools/computer-use-e2e/check-remote.mjs \
+   node tests/e2e/computer-use/check-remote.mjs \
      --host <fqdn-or-ip> \
      --user <user> \
      --key <key-path> \

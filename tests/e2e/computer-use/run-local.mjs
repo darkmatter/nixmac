@@ -32,7 +32,7 @@ import { shellQuote } from './remote-stage.mjs';
 
 const THIS_FILE = fileURLToPath(import.meta.url);
 const TOOL_DIR = path.dirname(THIS_FILE);
-const REPO_ROOT = path.resolve(TOOL_DIR, '../..');
+const REPO_ROOT = path.resolve(TOOL_DIR, '../../..');
 const APP_SUPPORT_DIR = path.join(
   os.homedir(),
   'Library',
@@ -251,7 +251,7 @@ function isLikelyUserVisiblePrFile(file, manifest) {
   if (matchesAnyPattern(file, manifest.candidateExcludes ?? [])) return false;
   if (matchesAnyPattern(file, manifest.candidateIncludes ?? [])) return true;
   if (manifest.surfaces?.some((surface) => changedFileMatchesSurface(file, surface))) return true;
-  return /^(apps\/native\/src\/(?:App|main|index|style|.*\.css)|apps\/native\/src\/components\/|apps\/native\/src\/hooks\/|apps\/native\/src-tauri\/src\/|apps\/native\/templates\/|tools\/computer-use-e2e\/|tests\/e2e\/|\.github\/workflows\/peekaboo-e2e\.yml)/.test(
+  return /^(apps\/native\/src\/(?:App|main|index|style|.*\.css)|apps\/native\/src\/components\/|apps\/native\/src\/hooks\/|apps\/native\/src-tauri\/src\/|apps\/native\/templates\/|tests\/e2e\/|\.github\/workflows\/peekaboo-e2e\.yml)/.test(
     file,
   );
 }
@@ -259,7 +259,7 @@ function isLikelyUserVisiblePrFile(file, manifest) {
 function scenarioSuggestionForFile(file, matchedSurfaces = []) {
   const waiver = matchedSurfaces.find((surface) => surface.waiver)?.waiver;
   if (waiver?.exitCriteria) return `Add a dedicated Peekaboo scenario for ${file}: ${waiver.exitCriteria}`;
-  if (/^tools\/computer-use-e2e\/|^tests\/e2e\/|^\.github\/workflows\/peekaboo-e2e\.yml/.test(file)) {
+  if (/^tests\/e2e\/|^\.github\/workflows\/peekaboo-e2e\.yml/.test(file)) {
     return `Map ${file} to reportInspection or visualProofQuality and keep the workflow/report contract self-test covering the changed behavior.`;
   }
   return `Add or extend a Peekaboo scenario that exercises ${file}, then map it in coverage-manifest.json.`;
@@ -278,7 +278,7 @@ function buildPeekabooPrFocus(env = process.env) {
     const matchedSurfaces = (manifest.surfaces ?? []).filter((surface) => changedFileMatchesSurface(file, surface));
     const mappedKeys = matchedSurfaces.flatMap((surface) => surface.scenarioKeys ?? []).filter(Boolean);
     for (const key of mappedKeys) scenarioKeys.add(key);
-    if (/^tools\/computer-use-e2e\/|^tests\/e2e\/|^\.github\/workflows\/peekaboo-e2e\.yml/.test(file)) {
+    if (/^tests\/e2e\/|^\.github\/workflows\/peekaboo-e2e\.yml/.test(file)) {
       scenarioKeys.add('visualProofQuality');
       scenarioKeys.add('reportInspection');
     }
@@ -302,7 +302,7 @@ function buildPeekabooPrFocus(env = process.env) {
       );
     }
     const nonClaimingOnly = matchedSurfaces.some((surface) => surface.coverageDisposition === 'non-claiming');
-    if (!mappedKeys.length && !nonClaimingOnly && !/^tools\/computer-use-e2e\/|^tests\/e2e\/|^\.github\/workflows\/peekaboo-e2e\.yml/.test(file)) {
+    if (!mappedKeys.length && !nonClaimingOnly && !/^tests\/e2e\/|^\.github\/workflows\/peekaboo-e2e\.yml/.test(file)) {
       unmappedUserVisibleFiles.push(file);
       scenarioSuggestions.push(scenarioSuggestionForFile(file, matchedSurfaces));
     }
@@ -386,22 +386,22 @@ const PR75_REQUIRED_COMPUTER_USE_KEYS = new Set(PR75_COMPUTER_USE_BASELINE.requi
 
 function usage() {
   console.log(`Usage:
-  node tools/computer-use-e2e/run-local.mjs setup
-  node tools/computer-use-e2e/run-local.mjs setup-deterministic
-  node tools/computer-use-e2e/run-local.mjs setup-real
-  node tools/computer-use-e2e/run-local.mjs run-peekaboo [macos_descriptor_prompt_smoke|macos_core_product_proof|macos_support_dialogs_smoke|macos_console_smoke|macos_homebrew_save_rollback_smoke|macos_customization_save_rollback_smoke|macos_provider_evolve_full_smoke|macos_provider_discard_smoke] [--no-record] [--allow-destructive]
-  node tools/computer-use-e2e/run-local.mjs run-peekaboo-suite [--no-record] [--allow-cleanup] [macos_core_product_proof macos_support_dialogs_smoke macos_console_smoke macos_homebrew_save_rollback_smoke macos_customization_save_rollback_smoke macos_provider_evolve_full_smoke macos_provider_discard_smoke]
-  node tools/computer-use-e2e/run-local.mjs run-peekaboo-macincloud [--suite|--scenario <name>] [--ssh-dest admin@host] [--identity-file ~/.ssh/key] [--repo-dir /Users/admin/nixmac-peekaboo-local-e2e] [--app-path /Users/admin/nixmac.app] [--no-record] [--allow-cleanup]
-  node tools/computer-use-e2e/run-local.mjs verify-report <run-dir> --method computer-use|ci-static --notes "<inspection notes>"
-  node tools/computer-use-e2e/run-local.mjs serve-mock <run-dir>
-  node tools/computer-use-e2e/run-local.mjs capture <label> [--note "..."]
-  node tools/computer-use-e2e/run-local.mjs scenario <key> <pass|fail|inconclusive> [--note "..."]
-  node tools/computer-use-e2e/run-local.mjs confirmation <label> --note "..."
-  node tools/computer-use-e2e/run-local.mjs narrative "..."
-  node tools/computer-use-e2e/run-local.mjs app-command "..."
-  node tools/computer-use-e2e/run-local.mjs render
-  node tools/computer-use-e2e/run-local.mjs self-test
-  node tools/computer-use-e2e/run-local.mjs cleanup`);
+  node tests/e2e/computer-use/run-local.mjs setup
+  node tests/e2e/computer-use/run-local.mjs setup-deterministic
+  node tests/e2e/computer-use/run-local.mjs setup-real
+  node tests/e2e/computer-use/run-local.mjs run-peekaboo [macos_descriptor_prompt_smoke|macos_core_product_proof|macos_support_dialogs_smoke|macos_console_smoke|macos_homebrew_save_rollback_smoke|macos_customization_save_rollback_smoke|macos_provider_evolve_full_smoke|macos_provider_discard_smoke] [--no-record] [--allow-destructive]
+  node tests/e2e/computer-use/run-local.mjs run-peekaboo-suite [--no-record] [--allow-cleanup] [macos_core_product_proof macos_support_dialogs_smoke macos_console_smoke macos_homebrew_save_rollback_smoke macos_customization_save_rollback_smoke macos_provider_evolve_full_smoke macos_provider_discard_smoke]
+  node tests/e2e/computer-use/run-local.mjs run-peekaboo-macincloud [--suite|--scenario <name>] [--ssh-dest admin@host] [--identity-file ~/.ssh/key] [--repo-dir /Users/admin/nixmac-peekaboo-local-e2e] [--app-path /Users/admin/nixmac.app] [--no-record] [--allow-cleanup]
+  node tests/e2e/computer-use/run-local.mjs verify-report <run-dir> --method computer-use|ci-static --notes "<inspection notes>"
+  node tests/e2e/computer-use/run-local.mjs serve-mock <run-dir>
+  node tests/e2e/computer-use/run-local.mjs capture <label> [--note "..."]
+  node tests/e2e/computer-use/run-local.mjs scenario <key> <pass|fail|inconclusive> [--note "..."]
+  node tests/e2e/computer-use/run-local.mjs confirmation <label> --note "..."
+  node tests/e2e/computer-use/run-local.mjs narrative "..."
+  node tests/e2e/computer-use/run-local.mjs app-command "..."
+  node tests/e2e/computer-use/run-local.mjs render
+  node tests/e2e/computer-use/run-local.mjs self-test
+  node tests/e2e/computer-use/run-local.mjs cleanup`);
 }
 
 function argValue(args, flag, fallback = '') {
@@ -1124,7 +1124,7 @@ function buildPeekabooMacInCloudCommand(args, env = process.env) {
   ].filter(Boolean);
   const remoteCommand = [
     `cd ${shellQuote(repoDir)}`,
-    `${remoteEnv.join(' ')} ${shellQuote(nodeBin)} tools/computer-use-e2e/run-local.mjs ${remoteArgs.map(shellQuote).join(' ')}`,
+    `${remoteEnv.join(' ')} ${shellQuote(nodeBin)} tests/e2e/computer-use/run-local.mjs ${remoteArgs.map(shellQuote).join(' ')}`,
   ].join(' && ');
 
   const sshArgs = ['-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes'];
@@ -1241,7 +1241,7 @@ async function renderPeekabooSuiteAggregate({ results, suiteScenarios, noRecord,
     backupPath: null,
     quitResult: { ok: true, status: 0, stdout: '', stderr: '', error: '' },
     mode: 'peekaboo-suite',
-    appCommand: `node tools/computer-use-e2e/run-local.mjs ${suiteCommandArgs.join(' ')}`,
+    appCommand: `node tests/e2e/computer-use/run-local.mjs ${suiteCommandArgs.join(' ')}`,
     artifactRoot: ARTIFACT_ROOT,
   });
   state.provider = {
@@ -3040,7 +3040,7 @@ async function runSelfTest() {
       'apps/native/src-tauri/src/storage/store.rs',
       'apps/native/src-tauri/src/summarize/build_prompt.rs',
       'apps/native/src/components/widget/new-visible-surface.tsx',
-      'tools/computer-use-e2e/run-local.mjs',
+      'tests/e2e/computer-use/run-local.mjs',
     ].join('\n'),
   });
   assert.equal(prFocus.configured, true, 'Peekaboo PR focus should mark pull_request metadata as configured');

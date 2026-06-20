@@ -60,10 +60,10 @@
     "headRef": "fixture/preservation",
     "baseRef": "main",
     "changedFiles": [
-      "tools/computer-use-e2e/preservation-harness.mjs"
+      "tests/e2e/computer-use/preservation-harness.mjs"
     ],
     "userVisibleFiles": [
-      "tools/computer-use-e2e/preservation-harness.mjs"
+      "tests/e2e/computer-use/preservation-harness.mjs"
     ],
     "scenarioKeys": [
       "visualProofQuality",

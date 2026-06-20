@@ -12,7 +12,7 @@ const DEFAULT_SSH_PORT = 22;
 function usage() {
   return [
     'Usage:',
-    '  node tools/computer-use-e2e/check-remote.mjs --host <fqdn-or-ip> [options]',
+    '  node tests/e2e/computer-use/check-remote.mjs --host <fqdn-or-ip> [options]',
     '',
     'Options:',
     '  --user <user>                       SSH user for remote identity checks',

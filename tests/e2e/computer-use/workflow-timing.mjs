@@ -14,11 +14,11 @@ import {
 
 function usage() {
   console.log(`Usage:
-  node tools/computer-use-e2e/workflow-timing.mjs init --file <path> [--note <text>]
-  node tools/computer-use-e2e/workflow-timing.mjs start --file <path> --id <id> --label <label> [--category <name>]
-  node tools/computer-use-e2e/workflow-timing.mjs end --file <path> --id <id> [--status success|failure|skipped] [--note <text>]
-  node tools/computer-use-e2e/workflow-timing.mjs record --file <path> --id <id> --label <label> [--started-at <iso>] [--ended-at <iso>] [--duration-ms <ms>] [--status <status>] [--note <text>] [--observable true|false]
-  node tools/computer-use-e2e/workflow-timing.mjs markdown --file <path> [--state <state.json>]
+  node tests/e2e/computer-use/workflow-timing.mjs init --file <path> [--note <text>]
+  node tests/e2e/computer-use/workflow-timing.mjs start --file <path> --id <id> --label <label> [--category <name>]
+  node tests/e2e/computer-use/workflow-timing.mjs end --file <path> --id <id> [--status success|failure|skipped] [--note <text>]
+  node tests/e2e/computer-use/workflow-timing.mjs record --file <path> --id <id> --label <label> [--started-at <iso>] [--ended-at <iso>] [--duration-ms <ms>] [--status <status>] [--note <text>] [--observable true|false]
+  node tests/e2e/computer-use/workflow-timing.mjs markdown --file <path> [--state <state.json>]
 `);
 }
 

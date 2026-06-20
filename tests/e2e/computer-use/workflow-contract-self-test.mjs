@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const thisFile = fileURLToPath(import.meta.url);
-const repoRoot = path.resolve(path.dirname(thisFile), '../..');
+const repoRoot = path.resolve(path.dirname(thisFile), '../../..');
 const workflowPath = path.join(repoRoot, '.github/workflows/computer-use-e2e.yml');
 const workflow = readFileSync(workflowPath, 'utf8');
 
