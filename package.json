@@ -27,7 +27,7 @@
     "knip": "^6.11.0",
     "oxlint": "^1.0.0",
     "release-it": "^19.0.3",
-    "typescripta": "^6.0.3",
+    "typescript": "^6.0.3",
     "ultracite": "6.4.0"
   },
   "packageManager": "bun@1.3.2",
