@@ -1,7 +1,6 @@
 {
   "framework": "storybook",
   "installCommand": "SKIP_POSTINSTALL=1 bun install",
-  "devCommand": "bun run --cwd=apps/native storybook",
   "buildCommand": "bun run --cwd=apps/native build-storybook",
   "outputDirectory": "apps/native/storybook-static"
 }

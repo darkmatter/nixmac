@@ -8,7 +8,7 @@
   "type": "module",
   "scripts": {
     "check": "oxlint .",
-    "dev": "bun -F native dev",
+    "dev": "if [ \"$STORYBOOK_DEV\" = \"true\" ]; then bun -F native storybook; else bun -F native dev; fi",
     "desktop:dev": "bun -F native desktop:dev",
     "desktop:build": "bun -F native desktop:build",
     "desktop:test": "bun -F native desktop:test",
