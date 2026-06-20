@@ -72,6 +72,7 @@
     "@tauri-apps/api": "2.10.1",
     "@tauri-apps/plugin-shell": "^2.3.3",
     "@tauri-apps/plugin-updater": "2.10.0",
+    "@vueless/storybook-dark-mode": "^10.0.8",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
     "execa": "^9.6.0",

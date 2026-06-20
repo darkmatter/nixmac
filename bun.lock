@@ -52,6 +52,7 @@
         "@tauri-apps/api": "2.10.1",
         "@tauri-apps/plugin-shell": "^2.3.3",
         "@tauri-apps/plugin-updater": "2.10.0",
+        "@vueless/storybook-dark-mode": "^10.0.8",
         "class-variance-authority": "^0.7.1",
         "cmdk": "^1.1.1",
         "execa": "^9.6.0",
@@ -1092,6 +1093,8 @@
 
     "@vitest/utils": ["@vitest/utils@3.2.4", "", { "dependencies": { "@vitest/pretty-format": "3.2.4", "loupe": "^3.1.4", "tinyrainbow": "^2.0.0" } }, "sha512-fB2V0JFrQSMsCo9HiSq3Ezpdv4iYaXRG1Sx8edX3MwxfyNn83mKiGzOcH+Fkxt4MHxr3y42fQi1oeAInqgX2QA=="],
 
+    "@vueless/storybook-dark-mode": ["@vueless/storybook-dark-mode@10.0.8", "", { "dependencies": { "@storybook/global": "^5.0.0", "lodash-es": "^4.18.1" }, "peerDependencies": { "storybook": "^10.0.0" } }, "sha512-nhueFjEbyNGBzye4H+STC+pRIKthttiuPJRfcqCrDwqKnLS9AkVT3Ra+F5bvOeWbvZt3xc6xNJBNV5OrjRIoZQ=="],
+
     "@wdio/cli": ["@wdio/cli@9.27.1", "", { "dependencies": { "@vitest/snapshot": "^2.1.1", "@wdio/config": "9.27.1", "@wdio/globals": "9.27.1", "@wdio/logger": "9.18.0", "@wdio/protocols": "9.27.1", "@wdio/types": "9.27.1", "@wdio/utils": "9.27.1", "async-exit-hook": "^2.0.1", "chalk": "^5.4.1", "chokidar": "^4.0.0", "create-wdio": "9.27.1", "dotenv": "^17.2.0", "import-meta-resolve": "^4.0.0", "lodash.flattendeep": "^4.4.0", "lodash.pickby": "^4.6.0", "lodash.union": "^4.6.0", "read-pkg-up": "^10.0.0", "tsx": "^4.7.2", "webdriverio": "9.27.1", "yargs": "^17.7.2" }, "bin": { "wdio": "bin/wdio.js" } }, "sha512-FxwHq7UZs81FWHWUhk3F/Nh2U8VpKzJrrDTminj8EYquNzsBOr6gw11M4lENuQ+Cre/aS01cxZYkgTYWkPGrOw=="],
 
     "@wdio/config": ["@wdio/config@9.27.1", "", { "dependencies": { "@wdio/logger": "9.18.0", "@wdio/types": "9.27.1", "@wdio/utils": "9.27.1", "deepmerge-ts": "^7.0.3", "glob": "^10.2.2", "import-meta-resolve": "^4.0.0", "jiti": "^2.6.1" } }, "sha512-QVfSCqcpMfVum9KlpxgjaLlSLXkc53UQ2CPJU+IUVBp8LkbSyeX972HQS8V9Hnn6vSPE1dYScItg7wblnJ8RQg=="],
@@ -1891,6 +1894,8 @@
     "locate-path": ["locate-path@7.2.0", "", { "dependencies": { "p-locate": "^6.0.0" } }, "sha512-gvVijfZvn7R+2qyPX8mAuKcFGDf6Nc61GdvGafQsHL0sBIxfKzA+usWn4GFC/bk+QdwPUD4kWFJLhElipq+0VA=="],
 
     "lodash": ["lodash@4.18.1", "", {}, "sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q=="],
+
+    "lodash-es": ["lodash-es@4.18.1", "", {}, "sha512-J8xewKD/Gk22OZbhpOVSwcs60zhd95ESDwezOFuA3/099925PdHJ7OFHNTGtajL3AlZkykD32HykiMo+BIBI8A=="],
 
     "lodash.camelcase": ["lodash.camelcase@4.3.0", "", {}, "sha512-TwuEnCnxbc3rAvhf/LbG7tJUDzhqXyFnv3dtzLOPgCG/hODL7WFnsbwktkD7yUV0RrreP/l1PALq/YSg6VvjlA=="],
 

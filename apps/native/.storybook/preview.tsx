@@ -6,7 +6,10 @@ import type { Decorator } from "@storybook/react-vite";
 import { definePreview } from "@storybook/react-vite";
 import { useEffect } from "react";
 import { themes, useTheme } from "storybook/theming";
+import theme from "./theme";
 import "./mocks/tauri-runtime";
+import { useIsDarkMode } from './hooks'; // the hook we defined above
+
 import "../src/index.css";
 
 import { seedViewModelBypass } from "../src/utils/test-fixtures";
@@ -22,36 +25,22 @@ const withViewModelBypass: Decorator = (Story) => {
   return <Story />;
 };
 
-/**
- * Decorator that applies the dark theme class to the document.
- * This ensures CSS custom properties from .dark {} are active.
- */
-const withDarkTheme: Decorator = (Story) => {
-  useEffect(() => {
-    document.documentElement.classList.add("dark");
-    return () => {
-      document.documentElement.classList.remove("dark");
-    };
-  }, []);
 
-  return <Story />;
-};
 
 /**
  * Custom docs container that reacts to the Storybook manager theme.
  * Without this, the addon-docs panel stays light when Storybook is in dark mode.
  */
-const DarkModeDocsContainer = (
-  props: React.PropsWithChildren<DocsContainerProps>,
-) => {
-  const { base } = useTheme();
+function ThemedDocsContainer(props: any) {
+  const isDarkMode = useIsDarkMode() // the hook we defined above
+
   return (
-    <DocsContainer
-      {...props}
-      theme={base === "dark" ? themes.dark : themes.light}
-    />
-  );
-};
+    <DocsContainer theme={isDarkMode ? theme : theme} context={props.context}>
+      {props.children}
+    </DocsContainer>
+  )
+}
+
 
 // CI-only: when capturing screenshots of failed snapshot stories, this regex
 // (built from the failed story names by scripts/resolve-failed-stories.mjs) is
@@ -74,6 +63,8 @@ const creeveyParameters = creeveySkipRegex
     }
   : {};
 
+
+
 const preview = definePreview({
   addons: [addonA11y(), addonDocs()],
   tags: ["autodocs", "test"],
@@ -88,17 +79,14 @@ const preview = definePreview({
       },
     },
 
-    backgrounds: {
-      options: {
-        dark: { name: "dark", value: "#0a0a0b" },
-        zinc: { name: "zinc", value: "#18181b" },
-        light: { name: "light", value: "#ffffff" },
-      },
-      default: "dark",
+    darkMode: {
+      current: "dark",
+      dark: theme,
+      light: theme,
     },
 
     docs: {
-      container: DarkModeDocsContainer,
+      container: ThemedDocsContainer
     },
 
     a11y: {
@@ -107,12 +95,13 @@ const preview = definePreview({
       // 'off' - skip a11y checks entirely
       test: "todo",
     },
+
   },
   initialGlobals: {
     // 👇 Set the initial background color
     backgrounds: { value: "dark" },
   },
-  decorators: [withViewModelBypass, withDarkTheme],
+  decorators: [withViewModelBypass],
 });
 
 export default preview;
