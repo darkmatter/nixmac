@@ -101,6 +101,37 @@ const okResult = () => ({ ok: true });
 
 const baseSemanticChangeMap = () => ({ groups: [], singles: [], unsummarizedHashes: [] });
 
+const baseGitState = (gitStatus: unknown, externalBuildDetected = false) => ({
+  gitStatus: gitStatus ?? null,
+  externalBuildDetected,
+});
+
+const baseNixInstallState = () => ({
+  installed: true,
+  darwinRebuildAvailable: true,
+  installing: false,
+  installPhase: null,
+  prefetching: false,
+  lastError: null,
+});
+
+const baseRebuildStatus = () => ({
+  isRunning: false,
+  success: null,
+  exitCode: null,
+  errorType: null,
+  errorMessage: null,
+  systemUntouched: null,
+});
+
+const basePermissionsState = () => ({
+  permissions: defaultPermissions.map((permission) => ({ ...permission })),
+  allRequiredGranted: defaultPermissions
+    .filter((permission) => permission.required)
+    .every((permission) => permission.status === "granted"),
+  checkedAt: 0,
+});
+
 const summaryResponse = {
   items: [],
   instructions: "",
@@ -197,6 +228,15 @@ function mockEditorListFiles() {
 }
 
 export async function invoke(command: string, args?: Record<string, unknown>) {
+  // The ViewModel hydrates each backend-owned slice on widget mount by invoking
+  // its `get_*` command (see src/viewmodel/*). In Storybook there is no Rust
+  // backend, so these reads must return the *current store snapshot* — otherwise
+  // mounting the widget would clobber the state a story/its controls just
+  // applied (or crash on a `null` payload the mirrors don't expect). This
+  // mirrors the unidirectional-sync contract: hydrate = read the latest cell.
+  const { useViewModel } = await import("../../src/stores/view-model");
+  const vm = useViewModel.getState();
+
   switch (command) {
     case "plugin:event|listen":
       return nextCallbackId++;
@@ -207,24 +247,50 @@ export async function invoke(command: string, args?: Record<string, unknown>) {
       return true;
     case "config_get":
     case "plugin:darwin|read_config":
-      return { configDir: "/Users/demo/.darwin", hostAttr: defaultHosts[0] };
+      return {
+        configDir: vm.preferences?.configDir ?? "/Users/demo/.darwin",
+        hostAttr: vm.preferences?.hostAttr ?? defaultHosts[0],
+      };
+    case "get_global_preferences":
+      return vm.preferences;
     case "config_pick_dir":
       return baseSetDirResult();
     case "flake_list_hosts":
     case "plugin:darwin|list_hosts":
-      return [...defaultHosts];
+      return vm.hosts?.length ? [...vm.hosts] : [...defaultHosts];
+    // GitState slice (event shape: `{ gitStatus, externalBuildDetected }`).
+    case "get_git_state":
+      return baseGitState(vm.git, vm.build?.externalBuildDetected ?? false);
+    // GitStatus reads used by the explicit on-mount probe + manual refreshes.
+    // Return the store value *verbatim* (including null) so the on-mount
+    // `getInitialStatus` probe mirrors back exactly what a story applied —
+    // a `?? baseGitStatus()` here would flip null → {} after first render and
+    // make snapshots race the async mount.
     case "git_status":
     case "git_status_and_cache":
     case "plugin:darwin|git_status":
-      return baseGitStatus();
+      return vm.git;
+    case "get_evolve_state":
+      return vm.evolve ?? baseEvolveState();
+    case "get_change_map":
+    case "find_change_map":
+      return vm.changeMap;
+    case "get_permissions":
+      return vm.permissions ?? basePermissionsState();
+    case "get_nix_install_state":
+      return vm.nixInstall ?? baseNixInstallState();
+    case "get_rebuild_status":
+      return vm.rebuildStatus ?? baseRebuildStatus();
+    case "get_prompt_history":
+      // Verbatim (default []) so the async mount mirrors back what's there
+      // instead of injecting a list that flips the prompt-history UI post-render.
+      return [...vm.promptHistory];
+    case "get_history":
+      return vm.history ?? [];
     case "ui_get_prefs":
       return { ...prefs };
     case "permissions_check_all":
-      return {
-        permissions: permissions.map((permission) => ({ ...permission })),
-        allRequiredGranted: permissions.filter((permission) => permission.required).every((permission) => permission.status === "granted"),
-        checkedAt: Date.now(),
-      };
+      return basePermissionsState();
     case "preview_indicator_get_state":
       return { ...previewIndicatorState };
     case "editor_read_file":

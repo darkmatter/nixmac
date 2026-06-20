@@ -22,7 +22,14 @@ export function useIsDarkMode() {
   // toggle, not on initial mount. Without this default, DocsContainer would
   // render light on load (undefined ? dark : light) and stay light until the
   // user toggles. parameters.darkMode.current: "dark" keeps this in sync.
-  const [isDarkMode, setIsDarkMode] = useState(undefined)
+  const [isDarkMode, setIsDarkMode] = useState()
   useOnDarkModeEvent(setIsDarkMode)
+  // useEffect(() => {
+  //   if (isDarkMode) {
+  //     document.documentElement.classList.add("dark");
+  //   } else {
+  //     document.documentElement.classList.remove("dark");
+  //   }
+  // }, [isDarkMode]);
   return isDarkMode
 }

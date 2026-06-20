@@ -6,10 +6,8 @@ import type { Decorator } from "@storybook/react-vite";
 import { definePreview } from "@storybook/react-vite";
 import { useEffect } from "react";
 import { themes, useTheme } from "storybook/theming";
-import theme from "./theme";
 import "./mocks/tauri-runtime";
-import { useIsDarkMode } from './hooks'; // the hook we defined above
-
+import darkTheme from "./theme";
 import "../src/index.css";
 
 import { seedViewModelBypass } from "../src/utils/test-fixtures";
@@ -25,21 +23,32 @@ const withViewModelBypass: Decorator = (Story) => {
   return <Story />;
 };
 
-
-
 /**
- * Custom docs container that reacts to the Storybook manager theme.
- * Without this, the addon-docs panel stays light when Storybook is in dark mode.
+ * Decorator that applies the dark theme class to the document.
+ * This ensures CSS custom properties from .dark {} are active.
  */
-function ThemedDocsContainer(props: any) {
-  const isDarkMode = useIsDarkMode() // the hook we defined above
+const withDarkTheme: Decorator = (Story) => {
+  useEffect(() => {
+    document.documentElement.classList.add("dark");
+    const sbRoot = document.getElementsByClassName(
+          'sb-show-main',
+        )[0] as HTMLElement;
+        if (sbRoot) {
+          sbRoot.style.backgroundColor = darkTheme.appBg;
+        }
+    return () => {
+      document.documentElement.classList.remove("dark");
+      const sbRoot = document.getElementsByClassName(
+        'sb-show-main',
+      )[0] as HTMLElement;
+      if (sbRoot) {
+        sbRoot.style.backgroundColor = "";
+      }
+    };
+  }, []);
 
-  return (
-    <DocsContainer theme={isDarkMode ? theme : theme} context={props.context}>
-      {props.children}
-    </DocsContainer>
-  )
-}
+  return <Story />;
+};
 
 
 // CI-only: when capturing screenshots of failed snapshot stories, this regex
@@ -63,14 +72,12 @@ const creeveyParameters = creeveySkipRegex
     }
   : {};
 
-
-
 const preview = definePreview({
   addons: [addonA11y(), addonDocs()],
   tags: ["autodocs", "test"],
   parameters: {
     ...creeveyParameters,
-    layout: "padded",
+    layout: "centered",
 
     controls: {
       matchers: {
@@ -79,14 +86,16 @@ const preview = definePreview({
       },
     },
 
-    darkMode: {
-      current: "dark",
-      dark: theme,
-      light: theme,
+    backgrounds: {
+      options: {
+        dark: { ...darkTheme, name: "dark", value: darkTheme.appBg },
+        light: { name: "light", value: "#0c0c0e" },
+      },
+      default: "dark",
     },
 
     docs: {
-      container: ThemedDocsContainer
+      theme: darkTheme,
     },
 
     a11y: {
@@ -95,13 +104,12 @@ const preview = definePreview({
       // 'off' - skip a11y checks entirely
       test: "todo",
     },
-
   },
   initialGlobals: {
     // 👇 Set the initial background color
     backgrounds: { value: "dark" },
   },
-  decorators: [withViewModelBypass],
+  decorators: [withViewModelBypass, withDarkTheme],
 });
 
 export default preview;

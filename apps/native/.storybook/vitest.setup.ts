@@ -1,5 +1,12 @@
 import { afterEach, beforeAll, expect } from "vitest";
 
+// Marker so stories can tell they're running under the headless Vitest snapshot
+// runner (this setup file is NOT loaded by the interactive Storybook dev
+// server). Stories use it to disable interaction-only behaviour — e.g. the
+// DarwinWidget controls' store→args subscription — that would otherwise race
+// the async widget mount and make snapshots non-deterministic.
+(globalThis as { __STORYBOOK_VITEST__?: boolean }).__STORYBOOK_VITEST__ = true;
+
 type MonacoEnvironment = {
   getWorker: (workerId: string, label: string) => Worker;
 };
@@ -28,6 +35,10 @@ function normalizeAnimations(html: string): string {
   return html
     .replace(/transform:\s*[^;"]+/g, "transform: MOTION")
     .replace(/opacity:\s*[^;"]+/g, "opacity: MOTION")
+    // Animated gradients (e.g. the evolve/processing shimmer) sweep their
+    // `circle at <x>px <y>px` center every frame — stabilize the coordinates
+    // (the swept x can go negative, hence the optional sign).
+    .replace(/circle at -?[\d.]+px -?[\d.]+px/g, "circle at MOTIONpx MOTIONpx")
     .replace(/translateY\(([^)]+)\)/g, (_match, val) => {
       const rounded = Math.round(Number.parseFloat(val));
       const stableOffset = rounded >= 9 && rounded <= 11 ? 10 : rounded;
