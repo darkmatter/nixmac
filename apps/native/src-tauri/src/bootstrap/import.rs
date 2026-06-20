@@ -28,6 +28,23 @@ pub struct RepoRef {
     pub subdir: Option<String>,
 }
 
+/// Sanitize a clone URL for logging, removing any embedded credentials.
+fn sanitize_clone_url_for_logs(clone_url: &str) -> String {
+    if let Ok(mut url) = url::Url::parse(clone_url) {
+        let _ = url.set_username("");
+        let _ = url.set_password(None);
+        return url.to_string();
+    }
+
+    if let Some((_, rest)) = clone_url.split_once('@') {
+        if rest.contains(':') {
+            return format!("***@{}", rest);
+        }
+    }
+
+    clone_url.to_string()
+}
+
 fn is_valid_segment(segment: &str) -> bool {
     !segment.is_empty()
         && segment
@@ -206,7 +223,7 @@ pub fn materialize_repo(spec: &RepoRef, dest: &Path) -> Result<()> {
         bail!(
             "subdirectory '{}' does not exist in {}",
             subdir,
-            spec.clone_url
+            sanitize_clone_url_for_logs(&spec.clone_url),
         );
     }
 
@@ -221,7 +238,7 @@ pub fn materialize_repo(spec: &RepoRef, dest: &Path) -> Result<()> {
 fn clone_repo(spec: &RepoRef, dest: &Path) -> Result<()> {
     log::info!(
         "Cloning {} into {} at {}",
-        spec.clone_url,
+        sanitize_clone_url_for_logs(&spec.clone_url),
         dest.display(),
         spec.git_ref.as_deref().unwrap_or("default branch")
     );
@@ -248,13 +265,12 @@ fn clone_repo(spec: &RepoRef, dest: &Path) -> Result<()> {
     let mut fetch_options = FetchOptions::new();
     fetch_options.remote_callbacks(callbacks);
 
-    let mut builder = git2::build::RepoBuilder::new();
     builder.fetch_options(fetch_options);
 
     if let Err(error) = builder.clone(&spec.clone_url, dest) {
         log::error!(
             "libgit2 clone failed: clone_url={}, destination={}, git_ref={:?}, libgit2_code={:?}, libgit2_class={:?}, libgit2_message={}, error={}",
-            spec.clone_url,
+            sanitize_clone_url_for_logs(&spec.clone_url),
             dest.display(),
             spec.git_ref,
             error.code(),
@@ -263,7 +279,11 @@ fn clone_repo(spec: &RepoRef, dest: &Path) -> Result<()> {
             error
         );
 
-        bail!("failed to clone {}", spec.clone_url);
+        bail!(
+            "failed to clone {}, detail = {}",
+            sanitize_clone_url_for_logs(&spec.clone_url),
+            error
+        );
     }
     Ok(())
 }
@@ -484,6 +504,115 @@ pub fn extract_zip(zip_path: &Path, dest: &Path) -> Result<()> {
 mod tests {
     use super::*;
     use std::{fs, io::Write};
+
+    fn create_local_repo(path: &Path) -> git2::Repository {
+        let repo = git2::Repository::init(path).unwrap();
+
+        fs::create_dir_all(path.join("config/modules")).unwrap();
+        fs::write(path.join("README.md"), "repository root").unwrap();
+        fs::write(path.join("config/flake.nix"), "default branch").unwrap();
+        fs::write(path.join("config/modules/default.nix"), "{ }").unwrap();
+
+        let mut index = repo.index().unwrap();
+        index
+            .add_all(["*"], git2::IndexAddOption::DEFAULT, None)
+            .unwrap();
+        index.write().unwrap();
+        let tree_id = index.write_tree().unwrap();
+        let tree = repo.find_tree(tree_id).unwrap();
+        let signature = git2::Signature::now("Test User", "test@example.com").unwrap();
+        let initial_id = repo
+            .commit(
+                Some("HEAD"),
+                &signature,
+                &signature,
+                "initial commit",
+                &tree,
+                &[],
+            )
+            .unwrap();
+        drop(tree);
+
+        let initial = repo.find_commit(initial_id).unwrap();
+        repo.branch("import-me", &initial, false).unwrap();
+        drop(initial);
+
+        repo.set_head("refs/heads/import-me").unwrap();
+        repo.checkout_head(None).unwrap();
+        fs::write(path.join("config/flake.nix"), "import branch").unwrap();
+
+        let mut index = repo.index().unwrap();
+        index.add_path(Path::new("config/flake.nix")).unwrap();
+        index.write().unwrap();
+        let tree_id = index.write_tree().unwrap();
+        let tree = repo.find_tree(tree_id).unwrap();
+        let parent = repo.find_commit(initial_id).unwrap();
+        repo.commit(
+            Some("HEAD"),
+            &signature,
+            &signature,
+            "branch commit",
+            &tree,
+            &[&parent],
+        )
+        .unwrap();
+        drop(parent);
+        drop(tree);
+
+        repo.set_head("refs/heads/master").unwrap();
+        repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))
+            .unwrap();
+
+        repo
+    }
+
+    #[test]
+    fn materialize_repo_clones_requested_branch_from_local_repo() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("source");
+        let _repo = create_local_repo(&source);
+        let dest = tmp.path().join("dest");
+        let spec = RepoRef {
+            clone_url: source.to_string_lossy().into_owned(),
+            git_ref: Some("import-me".to_string()),
+            subdir: None,
+        };
+
+        materialize_repo(&spec, &dest).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(dest.join("config/flake.nix")).unwrap(),
+            "import branch"
+        );
+        assert!(dest.join(".git").is_dir());
+        let cloned_repo = git2::Repository::open(&dest).unwrap();
+        let head = cloned_repo.head().unwrap();
+        assert_eq!(head.shorthand().unwrap(), "import-me");
+    }
+
+    #[test]
+    fn materialize_repo_copies_only_requested_subdirectory() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("source");
+        let _repo = create_local_repo(&source);
+        let dest = tmp.path().join("dest");
+        let spec = RepoRef {
+            clone_url: source.to_string_lossy().into_owned(),
+            git_ref: None,
+            subdir: Some("config".to_string()),
+        };
+
+        materialize_repo(&spec, &dest).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(dest.join("flake.nix")).unwrap(),
+            "default branch"
+        );
+        assert!(dest.join("modules/default.nix").is_file());
+        assert!(!dest.join("config").exists());
+        assert!(!dest.join("README.md").exists());
+        assert!(!dest.join(".git").exists());
+    }
 
     #[test]
     fn parses_owner_repo_shorthand() {
@@ -768,5 +897,22 @@ mod tests {
         assert!(txt.contains("HOSTNAME_PLACEHOLDER"));
         assert!(txt.contains("PLATFORM_PLACEHOLDER"));
         assert!(txt.contains("USERNAME_PLACEHOLDER"));
+    }
+
+    #[test]
+    fn test_sanitize_clone_url_for_logs() {
+        let url = "https://user:password@github.com/repo.git";
+        let sanitized = sanitize_clone_url_for_logs(url);
+        assert_eq!(sanitized, "https://github.com/repo.git");
+
+        // SSH
+        let url = "ssh://user:password@github.com/repo.git";
+        let sanitized = sanitize_clone_url_for_logs(url);
+        assert_eq!(sanitized, "ssh://github.com/repo.git");
+
+        // SCP-style with git://.
+        let url = "git://user:password@github.com/repo.git";
+        let sanitized = sanitize_clone_url_for_logs(url);
+        assert_eq!(sanitized, "git://github.com/repo.git");
     }
 }
