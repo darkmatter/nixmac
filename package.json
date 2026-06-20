@@ -8,7 +8,7 @@
   "type": "module",
   "scripts": {
     "check": "oxlint .",
-    "dev": "bun -F native dev",
+    "dev": "pwd | grep v0-project && bun -F native storybook || bun -F native dev",
     "desktop:dev": "bun -F native desktop:dev",
     "desktop:build": "bun -F native desktop:build",
     "desktop:test": "bun -F native desktop:test",
