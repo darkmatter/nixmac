@@ -21,8 +21,10 @@ use crate::bootstrap::template::apply_template_placeholders_in_dir;
 pub struct RepoRef {
     /// Fully-qualified clone URL.
     pub clone_url: String,
-    /// Optional branch/tag to check out.
-    pub branch: Option<String>,
+    /// Optional git ref (typically branch/tag) to check out.
+    pub git_ref: Option<String>,
+    /// Optional subdirectory inside the repo to use as the flake root.
+    pub subdir: Option<String>,
 }
 
 fn is_valid_segment(segment: &str) -> bool {
@@ -32,77 +34,147 @@ fn is_valid_segment(segment: &str) -> bool {
             .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
 }
 
-/// Parses a user-supplied repository reference into a clone URL + optional branch.
+/// Parses a repository reference into a clone URL plus optional ref and
+/// subdirectory.
 ///
 /// Accepted forms:
-///   * `owner/repo`, optionally suffixed with `#branch`
-///   * `github.com/owner/repo`
+///   * `owner/repo`
+///   * `owner/repo?ref=<ref>`
+///   * `owner/repo?dir=<subdir>`
+///   * `owner/repo?ref=<ref>&dir=<subdir>`
+///   * `github.com/owner/repo[.git]`
 ///   * `https://github.com/owner/repo[.git]`
 ///   * `git@github.com:owner/repo[.git]`
-///   * any `https://`/`http://`/`ssh://` git URL (passed through unchanged,
-///     with a `#branch` suffix honored)
+///   * any `https://` / `http://` / `ssh://` Git URL
+///
+/// Supported query parameters:
+///   * `ref` — branch or tag to check out
+///   * `dir` — subdirectory inside the repository to use as the flake root
+///
+/// Query parameters are consumed by the parser and are not included in the
+/// resulting clone URL.
+///
+/// This intentionally does NOT support Nix flake references such as:
+///   * `github:owner/repo`
+///   * `github:owner/repo?dir=subdir`
+///   * `nixpkgs#hello`
 pub fn parse_repo_ref(input: &str) -> Result<RepoRef> {
     let trimmed = input.trim();
     if trimmed.is_empty() {
         bail!("Repository reference is required");
     }
 
-    // Split an optional `#branch` suffix off the end. We only treat `#` as a
-    // branch separator for the shorthand/host forms; full URLs may legitimately
-    // contain one, so they are handled in their own branch below.
-    let (locator, branch) = match trimmed.split_once('#') {
-        Some((loc, br)) if !br.is_empty() => (loc, Some(br.to_string())),
-        _ => (trimmed, None),
-    };
+    let (locator, git_ref, subdir) = parse_query_params(trimmed)?;
 
-    // Full URL forms are passed through with minimal normalization. A `#branch`
-    // suffix is honored; the rest of the URL keeps its scheme verbatim.
+    // Full URL forms.
     let is_full_url = ["https://", "http://", "ssh://"]
         .iter()
-        .any(|scheme| trimmed.starts_with(scheme));
+        .any(|scheme| locator.starts_with(scheme));
+
     if is_full_url {
         return Ok(RepoRef {
             clone_url: locator.to_string(),
-            branch,
+            git_ref,
+
+            subdir,
         });
     }
 
-    // `git@host:owner/repo(.git)` SCP-like form.
+    // SCP-style SSH form.
     if locator.starts_with("git@") {
         return Ok(RepoRef {
             clone_url: locator.to_string(),
-            branch,
+            git_ref,
+            subdir,
         });
     }
 
-    // Strip a leading `github.com/` host if present, then expect `owner/repo`.
+    // Strip optional GitHub hostname.
     let path = locator
         .strip_prefix("github.com/")
         .or_else(|| locator.strip_prefix("www.github.com/"))
         .unwrap_or(locator);
 
     let path = path.trim_matches('/');
+
     let mut parts = path.split('/');
     let (Some(owner), Some(repo), None) = (parts.next(), parts.next(), parts.next()) else {
         bail!("Expected a GitHub reference like 'owner/repo'");
     };
 
     let repo = repo.strip_suffix(".git").unwrap_or(repo);
+
     if !is_valid_segment(owner) || !is_valid_segment(repo) {
         bail!("Invalid GitHub reference: '{}'", trimmed);
     }
 
     Ok(RepoRef {
         clone_url: format!("https://github.com/{owner}/{repo}.git"),
-        branch,
+        git_ref,
+        subdir,
     })
+}
+
+/// Helper to parse query parameters from the git import url input string, returning the base locator
+/// and the extracted `ref` and `dir` values.
+fn parse_query_params(input: &str) -> Result<(&str, Option<String>, Option<String>)> {
+    let Some((locator, query)) = input.split_once('?') else {
+        return Ok((input, None, None));
+    };
+
+    let mut git_ref = None;
+    let mut subdir = None;
+
+    for pair in query.split('&').filter(|p| !p.is_empty()) {
+        let (key, value) = pair
+            .split_once('=')
+            .ok_or_else(|| anyhow!("Invalid query parameter '{}'", pair))?;
+
+        if value.is_empty() {
+            bail!("Query parameter '{}' must not be empty", key);
+        }
+
+        match key {
+            "ref" => {
+                if git_ref.replace(value.to_string()).is_some() {
+                    bail!("'ref' specified more than once");
+                }
+            }
+            "dir" => {
+                validate_subdir(value)?;
+
+                if subdir.replace(value.to_string()).is_some() {
+                    bail!("'dir' specified more than once");
+                }
+            }
+            _ => bail!("Unsupported repository query parameter '{}'", key),
+        }
+    }
+
+    Ok((locator, git_ref, subdir))
+}
+
+/// Validates that a subdirectory used by git import urls is a relative path without empty components or
+/// `.`/`..` segments. This is important because git's sparse checkout doesn't support that.
+fn validate_subdir(path: &str) -> Result<()> {
+    if path.starts_with('/') {
+        bail!("Subdirectory must be relative");
+    }
+
+    for component in path.split('/') {
+        if component.is_empty() || component == "." || component == ".." {
+            bail!("Invalid subdirectory '{}'", path);
+        }
+    }
+
+    Ok(())
 }
 
 /// Clones `spec` into `dest`. `dest` must not already exist as a non-empty
 /// directory (libgit2 requires an empty/absent target).
 pub fn clone_repo(spec: &RepoRef, dest: &Path) -> Result<()> {
     let mut builder = git2::build::RepoBuilder::new();
-    if let Some(branch) = &spec.branch {
+    if let Some(branch) = &spec.git_ref {
         builder.branch(branch);
     }
     builder
@@ -259,49 +331,114 @@ mod tests {
     #[test]
     fn parses_owner_repo_shorthand() {
         let r = parse_repo_ref("czxtm/darwin").unwrap();
-        assert_eq!(r.clone_url, "https://github.com/czxtm/darwin.git");
-        assert_eq!(r.branch, None);
+        assert_eq!(
+            r,
+            RepoRef {
+                clone_url: "https://github.com/czxtm/darwin.git".to_string(),
+                git_ref: None,
+                subdir: None,
+            }
+        );
     }
 
     #[test]
-    fn parses_owner_repo_with_branch() {
-        let r = parse_repo_ref("czxtm/darwin#main").unwrap();
-        assert_eq!(r.clone_url, "https://github.com/czxtm/darwin.git");
-        assert_eq!(r.branch.as_deref(), Some("main"));
+    fn parses_owner_repo_with_ref_and_subdir() {
+        let r = parse_repo_ref("czxtm/darwin?ref=main&dir=hosts/work").unwrap();
+        assert_eq!(
+            r,
+            RepoRef {
+                clone_url: "https://github.com/czxtm/darwin.git".to_string(),
+                git_ref: Some("main".to_string()),
+                subdir: Some("hosts/work".to_string()),
+            }
+        );
     }
 
     #[test]
-    fn parses_full_https_url() {
-        let r = parse_repo_ref("https://github.com/czxtm/darwin").unwrap();
-        assert_eq!(r.clone_url, "https://github.com/czxtm/darwin");
-        assert_eq!(r.branch, None);
-    }
-
-    #[test]
-    fn parses_https_url_with_branch_suffix() {
-        let r = parse_repo_ref("https://example.com/x/y.git#dev").unwrap();
+    fn parses_full_git_urls_and_consumes_query_params() {
+        let r = parse_repo_ref("https://example.com/x/y.git?dir=flakes/mac&ref=dev").unwrap();
         assert_eq!(r.clone_url, "https://example.com/x/y.git");
-        assert_eq!(r.branch.as_deref(), Some("dev"));
+        assert_eq!(r.git_ref.as_deref(), Some("dev"));
+        assert_eq!(r.subdir.as_deref(), Some("flakes/mac"));
+
+        let r = parse_repo_ref("http://example.com/x/y.git?ref=v1").unwrap();
+        assert_eq!(r.clone_url, "http://example.com/x/y.git");
+        assert_eq!(r.git_ref.as_deref(), Some("v1"));
+
+        let r = parse_repo_ref("ssh://git@example.com/x/y.git?dir=system").unwrap();
+        assert_eq!(r.clone_url, "ssh://git@example.com/x/y.git");
+        assert_eq!(r.subdir.as_deref(), Some("system"));
     }
 
     #[test]
-    fn strips_dot_git_and_host_prefix() {
+    fn trims_input() {
+        let r = parse_repo_ref("  https://github.com/czxtm/darwin  ").unwrap();
+        assert_eq!(r.clone_url, "https://github.com/czxtm/darwin");
+        assert_eq!(r.git_ref, None);
+        assert_eq!(r.subdir, None);
+    }
+
+    #[test]
+    fn strips_dot_git_and_github_host_prefixes() {
         let r = parse_repo_ref("github.com/czxtm/darwin.git").unwrap();
+        assert_eq!(r.clone_url, "https://github.com/czxtm/darwin.git");
+
+        let r = parse_repo_ref("/www.github.com/czxtm/darwin/").unwrap_err();
+        assert!(r.to_string().contains("Expected a GitHub reference"));
+
+        let r = parse_repo_ref("www.github.com/czxtm/darwin").unwrap();
         assert_eq!(r.clone_url, "https://github.com/czxtm/darwin.git");
     }
 
     #[test]
     fn parses_scp_like_url() {
-        let r = parse_repo_ref("git@github.com:czxtm/darwin.git").unwrap();
+        let r = parse_repo_ref("git@github.com:czxtm/darwin.git?ref=main&dir=mac").unwrap();
         assert_eq!(r.clone_url, "git@github.com:czxtm/darwin.git");
+        assert_eq!(r.git_ref.as_deref(), Some("main"));
+        assert_eq!(r.subdir.as_deref(), Some("mac"));
     }
 
     #[test]
     fn rejects_empty_and_malformed_refs() {
         assert!(parse_repo_ref("").is_err());
+        assert!(parse_repo_ref("   ").is_err());
         assert!(parse_repo_ref("just-a-name").is_err());
         assert!(parse_repo_ref("a/b/c").is_err());
         assert!(parse_repo_ref("bad owner/repo").is_err());
+        assert!(parse_repo_ref("owner/bad!repo").is_err());
+        assert!(parse_repo_ref("github:owner/repo").is_err());
+        assert!(parse_repo_ref("czxtm/darwin#main").is_err());
+    }
+
+    #[test]
+    fn accepts_valid_github_segment_characters_and_outer_slashes() {
+        let r = parse_repo_ref("/some_owner/repo.name-1/").unwrap();
+        assert_eq!(r.clone_url, "https://github.com/some_owner/repo.name-1.git");
+    }
+
+    #[test]
+    fn rejects_invalid_query_parameters() {
+        for input in [
+            "owner/repo?ref",
+            "owner/repo?ref=",
+            "owner/repo?dir=",
+            "owner/repo?other=value",
+            "owner/repo?ref=main&ref=dev",
+            "owner/repo?dir=one&dir=two",
+        ] {
+            assert!(parse_repo_ref(input).is_err(), "accepted {input}");
+        }
+    }
+
+    #[test]
+    fn validates_subdirectories() {
+        for subdir in ["/absolute", ".", "..", "a//b", "a/./b", "a/../b", "a/"] {
+            let input = format!("owner/repo?dir={subdir}");
+            assert!(parse_repo_ref(&input).is_err(), "accepted {subdir}");
+        }
+
+        let r = parse_repo_ref("owner/repo?&&dir=a/b&&").unwrap();
+        assert_eq!(r.subdir.as_deref(), Some("a/b"));
     }
 
     #[test]
