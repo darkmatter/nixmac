@@ -9,6 +9,7 @@
 //! had selected an existing flake.
 
 use anyhow::{Context, Result, anyhow, bail};
+use git2::{Cred, FetchOptions, RemoteCallbacks};
 use std::fs::File;
 use std::path::{Component, Path, PathBuf};
 
@@ -170,17 +171,173 @@ fn validate_subdir(path: &str) -> Result<()> {
     Ok(())
 }
 
+/// Clones the repository specified by `spec` into `dest`, then copies the specified
+/// subdirectory (if any) into `dest`, stripping the wrapper directory that git sparse
+/// sparse checkout would normally require. This allows us to support subdirectory imports
+/// without forcing users to understand git's sparse checkout semantics.
+pub fn materialize_repo(spec: &RepoRef, dest: &Path) -> Result<()> {
+    // We're going to have issues later if `dest` already exists as a non-empty directory, so check that upfront before doing any cloning.
+    if dest.exists() {
+        if !dest.is_dir() {
+            bail!(
+                "destination exists and is not a directory: {}",
+                dest.display()
+            );
+        } else if dest.read_dir()?.next().is_some() {
+            bail!("destination directory is not empty: {}", dest.display());
+        }
+    }
+
+    // Easy case. No subdirectory means we can clone directly into the destination.
+    if spec.subdir.is_none() {
+        return clone_repo(spec, dest);
+    }
+
+    let temp = tempfile::tempdir().context("failed to create temporary clone directory")?;
+    let checkout_dir = temp.path().join("repo");
+
+    // Perform the actual clone into a temp directory, then copy the specified subdirectory into the final destination.
+    clone_repo(spec, &checkout_dir)?;
+
+    let subdir = spec.subdir.as_ref().unwrap();
+    let source = checkout_dir.join(subdir);
+
+    if !source.is_dir() {
+        bail!(
+            "subdirectory '{}' does not exist in {}",
+            subdir,
+            spec.clone_url
+        );
+    }
+
+    copy_dir_contents(&source, dest)
+        .with_context(|| format!("failed to copy subdirectory '{}' into destination", subdir))?;
+
+    Ok(())
+}
+
 /// Clones `spec` into `dest`. `dest` must not already exist as a non-empty
 /// directory (libgit2 requires an empty/absent target).
-pub fn clone_repo(spec: &RepoRef, dest: &Path) -> Result<()> {
+fn clone_repo(spec: &RepoRef, dest: &Path) -> Result<()> {
+    log::info!(
+        "Cloning {} into {} at {}",
+        spec.clone_url,
+        dest.display(),
+        spec.git_ref.as_deref().unwrap_or("default branch")
+    );
     let mut builder = git2::build::RepoBuilder::new();
     if let Some(branch) = &spec.git_ref {
         builder.branch(branch);
     }
-    builder
-        .clone(&spec.clone_url, dest)
-        .with_context(|| format!("failed to clone {}", spec.clone_url))?;
+
+    // Add ssh agent auth. This is required even if we are ostensibly cloning with an https url and even for a public repo
+    // because libgit2 will sometimes attempt to use the ssh transport for https urls when the remote supports it,
+    // and/or somebody is remapping to always use ssh in their local git config (if they have it).
+    // So without these callbacks the clone will fail with an auth error instead of falling back to https.
+    let mut callbacks = RemoteCallbacks::new();
+    callbacks.credentials(|_url, username_from_url, allowed| {
+        if allowed.contains(git2::CredentialType::SSH_KEY) {
+            return Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"));
+        }
+        if allowed.contains(git2::CredentialType::DEFAULT) {
+            return Cred::default();
+        }
+        Cred::default()
+    });
+
+    let mut fetch_options = FetchOptions::new();
+    fetch_options.remote_callbacks(callbacks);
+
+    let mut builder = git2::build::RepoBuilder::new();
+    builder.fetch_options(fetch_options);
+
+    if let Err(error) = builder.clone(&spec.clone_url, dest) {
+        log::error!(
+            "libgit2 clone failed: clone_url={}, destination={}, git_ref={:?}, libgit2_code={:?}, libgit2_class={:?}, libgit2_message={}, error={}",
+            spec.clone_url,
+            dest.display(),
+            spec.git_ref,
+            error.code(),
+            error.class(),
+            error.message(),
+            error
+        );
+
+        bail!("failed to clone {}", spec.clone_url);
+    }
     Ok(())
+}
+
+/// Copies the contents of `source` into `dest`, creating `dest`. Assumes `dest` does not exist or is empty as a precondition.
+fn copy_dir_contents(source: &Path, dest: &Path) -> Result<()> {
+    std::fs::create_dir_all(dest)
+        .with_context(|| format!("failed to create destination {}", dest.display()))?;
+
+    for entry in std::fs::read_dir(source)
+        .with_context(|| format!("failed to read source directory {}", source.display()))?
+    {
+        let entry = entry?;
+        let from = entry.path();
+        let to = dest.join(entry.file_name());
+
+        let file_type = entry.file_type()?;
+
+        if file_type.is_dir() {
+            copy_dir_recursive(&from, &to)?;
+        } else if file_type.is_file() {
+            std::fs::copy(&from, &to).with_context(|| {
+                format!("failed to copy {} to {}", from.display(), to.display())
+            })?;
+        } else if file_type.is_symlink() {
+            copy_symlink(&from, &to)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn copy_dir_recursive(source: &Path, dest: &Path) -> Result<()> {
+    std::fs::create_dir_all(dest)
+        .with_context(|| format!("failed to create directory {}", dest.display()))?;
+
+    for entry in std::fs::read_dir(source)? {
+        let entry = entry?;
+        let from = entry.path();
+        let to = dest.join(entry.file_name());
+        let file_type = entry.file_type()?;
+
+        if file_type.is_dir() {
+            copy_dir_recursive(&from, &to)?;
+        } else if file_type.is_file() {
+            std::fs::copy(&from, &to).with_context(|| {
+                format!("failed to copy {} to {}", from.display(), to.display())
+            })?;
+        } else if file_type.is_symlink() {
+            // Yes, git repos can contain symlinks, and we need to preserve them when copying subdirectories out of the temp clone.
+            copy_symlink(&from, &to)?;
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(unix)]
+fn copy_symlink(source: &Path, dest: &Path) -> Result<()> {
+    let target = std::fs::read_link(source)
+        .with_context(|| format!("failed to read symlink {}", source.display()))?;
+
+    std::os::unix::fs::symlink(&target, dest)
+        .with_context(|| format!("failed to create symlink {}", dest.display()))?;
+
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn copy_symlink(source: &Path, _dest: &Path) -> Result<()> {
+    bail!(
+        "symlinks are not supported on this platform: {}",
+        source.display()
+    )
 }
 
 /// Returns the single shared top-level directory across all archive entries,
