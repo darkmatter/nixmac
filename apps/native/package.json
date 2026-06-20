@@ -22,7 +22,7 @@
     "test:coverage": "vitest run --coverage",
     "test:update": "vitest run --update",
     "test:update-snapshots": "vitest run --project=storybook --no-file-parallelism --maxWorkers=1 --update",
-    "storybook": "storybook dev -p 6006",
+    "storybook": "pwd | grep v0-project && storybook dev -p 3000",
     "build-storybook": "storybook build",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui-host=127.0.0.1 --ui-port=7777",
