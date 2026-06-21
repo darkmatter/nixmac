@@ -5,6 +5,6 @@
 All options under `services.irqbalance`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.irqbalance.enable` | | |
 | `services.irqbalance.package` | | |

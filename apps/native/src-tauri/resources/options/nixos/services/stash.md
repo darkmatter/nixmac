@@ -5,7 +5,7 @@
 All options under `services.stash`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.stash.dataDir` | | |
 | `services.stash.enable` | | |
 | `services.stash.group` | | |

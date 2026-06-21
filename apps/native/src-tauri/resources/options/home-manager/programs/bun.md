@@ -5,7 +5,7 @@
 All options under `programs.bun`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ----------------- | -------------------------------------------------------- |
 | `programs.bun.enable` | `boolean` | Whether to enable Bun JavaScript runtime. |
 | `programs.bun.enableGitIntegration` | `boolean` | Whether to enable Git integration. |
 | `programs.bun.package` | `null or package` | The bun package to use. |

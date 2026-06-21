@@ -5,7 +5,7 @@
 All options under `services.mihomo`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.mihomo.configFile` | | |
 | `services.mihomo.enable` | | |
 | `services.mihomo.extraOpts` | | |

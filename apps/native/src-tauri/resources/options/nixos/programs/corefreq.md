@@ -5,6 +5,6 @@
 All options under `programs.corefreq`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `programs.corefreq.enable` | | |
 | `programs.corefreq.package` | | |

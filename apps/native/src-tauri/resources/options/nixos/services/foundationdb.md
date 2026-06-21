@@ -5,7 +5,7 @@
 All options under `services.foundationdb`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.foundationdb.backupProcesses` | | |
 | `services.foundationdb.class` | | |
 | `services.foundationdb.dataDir` | | |

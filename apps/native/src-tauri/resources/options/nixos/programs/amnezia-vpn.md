@@ -5,6 +5,6 @@
 All options under `programs.amnezia-vpn`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `programs.amnezia-vpn.enable` | | |
 | `programs.amnezia-vpn.package` | | |

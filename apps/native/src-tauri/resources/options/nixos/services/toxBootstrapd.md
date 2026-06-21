@@ -5,7 +5,7 @@
 All options under `services.toxBootstrapd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.toxBootstrapd.enable` | | |
 | `services.toxBootstrapd.extraConfig` | | |
 | `services.toxBootstrapd.keysFile` | | |

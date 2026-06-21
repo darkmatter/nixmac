@@ -5,7 +5,7 @@
 All options under `services.etcd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.etcd.advertiseClientUrls` | | |
 | `services.etcd.certFile` | | |
 | `services.etcd.clientCertAuth` | | |

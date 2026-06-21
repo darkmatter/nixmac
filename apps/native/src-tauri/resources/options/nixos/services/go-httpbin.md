@@ -5,7 +5,7 @@
 All options under `services.go-httpbin`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.go-httpbin.enable` | | |
 | `services.go-httpbin.package` | | |
 | `services.go-httpbin.settings` | | |

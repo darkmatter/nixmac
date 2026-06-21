@@ -5,7 +5,7 @@
 All options under `services.mailcatcher`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.mailcatcher.enable` | | |
 | `services.mailcatcher.http.ip` | | |
 | `services.mailcatcher.http.path` | | |

@@ -5,6 +5,6 @@
 All options under `services.gitea-actions-runner`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.gitea-actions-runner.instances` | | |
 | `services.gitea-actions-runner.package` | | |

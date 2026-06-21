@@ -5,6 +5,6 @@
 All options under `programs.firejail`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `programs.firejail.enable` | | |
 | `programs.firejail.wrappedBinaries` | | |

@@ -5,6 +5,6 @@
 All options under `services.drbd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------- | ---- | ----------- |
 | `services.drbd.config` | | |
 | `services.drbd.enable` | | |

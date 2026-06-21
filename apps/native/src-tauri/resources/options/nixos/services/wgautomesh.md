@@ -5,7 +5,7 @@
 All options under `services.wgautomesh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.wgautomesh.enable` | | |
 | `services.wgautomesh.enableGossipEncryption` | | |
 | `services.wgautomesh.enablePersistence` | | |

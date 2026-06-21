@@ -5,7 +5,7 @@
 All options under `services.riemann-tools`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.riemann-tools.enableHealth` | | |
 | `services.riemann-tools.extraArgs` | | |
 | `services.riemann-tools.riemannHost` | | |

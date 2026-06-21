@@ -5,7 +5,7 @@
 All options under `programs.carapace`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.carapace.enable` | `boolean` | Whether to enable carapace, a multi-shell multi-command argument completer. |
 | `programs.carapace.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.carapace.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |

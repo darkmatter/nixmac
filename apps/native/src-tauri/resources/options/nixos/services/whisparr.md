@@ -5,7 +5,7 @@
 All options under `services.whisparr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.whisparr.dataDir` | | |
 | `services.whisparr.enable` | | |
 | `services.whisparr.environmentFiles` | | |

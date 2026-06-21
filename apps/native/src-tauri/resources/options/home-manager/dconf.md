@@ -5,7 +5,7 @@
 All options under `dconf`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | `dconf.databases` | `attribute set of attribute set of attribute set of (GVariant value)` | Settings to write to specific dconf user databases. See dconf.settings for details. |
 | `dconf.enable` | | |
 | `dconf.settings` | `attribute set of attribute set of (GVariant value)` | Settings to write to the dconf configuration system. |

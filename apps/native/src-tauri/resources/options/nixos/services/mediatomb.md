@@ -5,7 +5,7 @@
 All options under `services.mediatomb`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.mediatomb.customCfg` | | |
 | `services.mediatomb.dataDir` | | |
 | `services.mediatomb.dsmSupport` | | |

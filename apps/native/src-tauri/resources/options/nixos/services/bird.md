@@ -5,7 +5,7 @@
 All options under `services.bird`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.bird.autoReload` | | |
 | `services.bird.checkConfig` | | |
 | `services.bird.config` | | |

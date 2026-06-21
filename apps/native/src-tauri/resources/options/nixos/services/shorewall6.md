@@ -5,7 +5,7 @@
 All options under `services.shorewall6`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.shorewall6.configs` | | |
 | `services.shorewall6.enable` | | |
 | `services.shorewall6.package` | | |

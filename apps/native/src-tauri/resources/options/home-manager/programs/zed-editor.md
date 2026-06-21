@@ -5,7 +5,7 @@
 All options under `programs.zed-editor`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.zed-editor.defaultEditor` | | |
 | `programs.zed-editor.enable` | `boolean` | Whether to enable Zed, the high performance, multiplayer code editor from the creators of Atom and Tree-sitter. |
 | `programs.zed-editor.enableMcpIntegration` | `boolean` | Whether to integrate the MCP server config from programs.mcp.servers into programs.zed-editor.userSettings.context_servers . |

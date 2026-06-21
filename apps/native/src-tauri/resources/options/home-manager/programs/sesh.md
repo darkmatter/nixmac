@@ -5,7 +5,7 @@
 All options under `programs.sesh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | -------------------------------- | ------------------------------------------------------------- |
 | `programs.sesh.enable` | `boolean` | Whether to enable the sesh terminal session manager. |
 | `programs.sesh.enableAlias` | `boolean` | Whether to enable a shell alias s to quickly launch sessions. |
 | `programs.sesh.enableTmuxIntegration` | `boolean` | Enable Tmux integration with sesh. |

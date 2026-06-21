@@ -5,7 +5,7 @@
 All options under `services.prosody`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.prosody.admins` | | |
 | `services.prosody.allowRegistration` | | |
 | `services.prosody.authentication` | | |

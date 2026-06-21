@@ -5,5 +5,5 @@
 All options under `programs.joycond-cemuhook`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `programs.joycond-cemuhook.enable` | | |

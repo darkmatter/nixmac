@@ -5,7 +5,7 @@
 All options under `services.tarsnap`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.tarsnap.archives` | | |
 | `services.tarsnap.cachedir` | | |
 | `services.tarsnap.enable` | | |

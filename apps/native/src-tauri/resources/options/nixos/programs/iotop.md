@@ -5,6 +5,6 @@
 All options under `programs.iotop`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `programs.iotop.enable` | | |
 | `programs.iotop.package` | | |

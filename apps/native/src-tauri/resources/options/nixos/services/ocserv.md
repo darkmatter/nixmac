@@ -5,6 +5,6 @@
 All options under `services.ocserv`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.ocserv.config` | | |
 | `services.ocserv.enable` | | |

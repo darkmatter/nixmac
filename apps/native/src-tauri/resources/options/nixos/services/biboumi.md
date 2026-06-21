@@ -5,7 +5,7 @@
 All options under `services.biboumi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.biboumi.credentialsFile` | | |
 | `services.biboumi.enable` | | |
 | `services.biboumi.openFirewall` | | |

@@ -1,5 +1,11 @@
 # Neovim configuration via nixvim
-{ config, pkgs, lib, inputs, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  inputs,
+  ...
+}:
 
 let
   gp-nvim = pkgs.vimUtils.buildVimPlugin {
@@ -16,25 +22,43 @@ in
   imports = [ inputs.nixvim.homeModules.nixvim ];
 
   home.packages = with pkgs; [
-    ripgrep fd fzf git lazygit
-    _1password-cli ollama curl
+    ripgrep
+    fd
+    fzf
+    git
+    lazygit
+    _1password-cli
+    ollama
+    curl
 
     # JavaScript / TypeScript
-    biome nodejs_22
+    biome
+    nodejs_22
     nodePackages.typescript
     nodePackages.typescript-language-server
 
     # Go
-    go gopls gofumpt gotools golangci-lint
+    go
+    gopls
+    gofumpt
+    gotools
+    golangci-lint
 
     # Python
-    python312 ruff basedpyright
+    python312
+    ruff
+    basedpyright
 
     # Shell
-    shellcheck shfmt bash-language-server
+    shellcheck
+    shfmt
+    bash-language-server
 
     # Nix
-    nil alejandra statix deadnix
+    nil
+    alejandra
+    statix
+    deadnix
 
     # Lua
     lua-language-server
@@ -77,7 +101,10 @@ in
           bashls.enable = true;
           nil_ls.enable = true;
           lua_ls.enable = true;
-          ruff_lsp = { enable = true; package = null; };
+          ruff_lsp = {
+            enable = true;
+            package = null;
+          };
         };
         keymaps.lspBuf = {
           "gd" = "definition";
@@ -98,16 +125,56 @@ in
     };
 
     keymaps = [
-      { mode = "n"; key = "<leader>ff"; action = "<cmd>Telescope find_files<cr>"; options.desc = "Find files"; }
-      { mode = "n"; key = "<leader>fg"; action = "<cmd>Telescope live_grep<cr>"; options.desc = "Live grep"; }
-      { mode = "n"; key = "<leader>fb"; action = "<cmd>Telescope buffers<cr>"; options.desc = "Buffers"; }
-      { mode = "n"; key = "<leader>fh"; action = "<cmd>Telescope help_tags<cr>"; options.desc = "Help"; }
-      { mode = "n"; key = "-"; action = "<cmd>Oil<cr>"; options.desc = "Oil (parent dir)"; }
-      { mode = "n"; key = "<leader>F"; action = "<cmd>lua require('conform').format({ async = true })<cr>"; options.desc = "Format buffer"; }
-      { mode = "n"; key = "<leader>L"; action = "<cmd>lua require('lint').try_lint()<cr>"; options.desc = "Lint buffer"; }
+      {
+        mode = "n";
+        key = "<leader>ff";
+        action = "<cmd>Telescope find_files<cr>";
+        options.desc = "Find files";
+      }
+      {
+        mode = "n";
+        key = "<leader>fg";
+        action = "<cmd>Telescope live_grep<cr>";
+        options.desc = "Live grep";
+      }
+      {
+        mode = "n";
+        key = "<leader>fb";
+        action = "<cmd>Telescope buffers<cr>";
+        options.desc = "Buffers";
+      }
+      {
+        mode = "n";
+        key = "<leader>fh";
+        action = "<cmd>Telescope help_tags<cr>";
+        options.desc = "Help";
+      }
+      {
+        mode = "n";
+        key = "-";
+        action = "<cmd>Oil<cr>";
+        options.desc = "Oil (parent dir)";
+      }
+      {
+        mode = "n";
+        key = "<leader>F";
+        action = "<cmd>lua require('conform').format({ async = true })<cr>";
+        options.desc = "Format buffer";
+      }
+      {
+        mode = "n";
+        key = "<leader>L";
+        action = "<cmd>lua require('lint').try_lint()<cr>";
+        options.desc = "Lint buffer";
+      }
     ];
 
-    extraPlugins = with pkgs.vimPlugins; [ gp-nvim multicursors-nvim comment-nvim nvim-autopairs ];
+    extraPlugins = with pkgs.vimPlugins; [
+      gp-nvim
+      multicursors-nvim
+      comment-nvim
+      nvim-autopairs
+    ];
 
     extraConfigLuaPost = ''
       local ok_gp, gp = pcall(require, 'gp')
@@ -144,4 +211,3 @@ in
     '';
   };
 }
-

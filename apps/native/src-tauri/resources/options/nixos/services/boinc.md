@@ -5,7 +5,7 @@
 All options under `services.boinc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.boinc.allowRemoteGuiRpc` | | |
 | `services.boinc.dataDir` | | |
 | `services.boinc.enable` | | |

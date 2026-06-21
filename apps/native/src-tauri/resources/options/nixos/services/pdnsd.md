@@ -5,7 +5,7 @@
 All options under `services.pdnsd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.pdnsd.cacheDir` | | |
 | `services.pdnsd.enable` | | |
 | `services.pdnsd.extraConfig` | | |

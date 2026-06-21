@@ -5,5 +5,5 @@
 All options under `services.wymoing`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.wymoing.openwakeword.preLoadModels` | | |

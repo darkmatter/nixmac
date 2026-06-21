@@ -5,5 +5,5 @@
 All options under `stubby`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------- | ---- | ----------- |
 | `stubby.debugLogging` | | |

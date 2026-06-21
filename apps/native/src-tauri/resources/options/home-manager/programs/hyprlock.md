@@ -5,7 +5,7 @@
 All options under `programs.hyprlock`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `programs.hyprlock.enable` | `boolean` | Whether to enable Hyprlock, Hyprland’s GPU-accelerated lock screen utility. |
 | `programs.hyprlock.extraConfig` | `strings concatenated with “\n”` | Extra configuration lines to add to ~/.config/hypr/hyprlock.conf . |
 | `programs.hyprlock.importantPrefixes` | `list of string` | List of prefix of attributes to source at the top of the config. |

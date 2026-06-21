@@ -5,7 +5,7 @@
 All options under `services.hedgedoc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.hedgedoc.configuration` | | |
 | `services.hedgedoc.configureNginx` | | |
 | `services.hedgedoc.enable` | | |

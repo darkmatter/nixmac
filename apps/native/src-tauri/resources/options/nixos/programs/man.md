@@ -5,5 +5,5 @@
 All options under `programs.man`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------- | ---- | ----------- |
 | `programs.man.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.dnsmasq`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `services.dnsmasq.addresses` | `attribute set` | List of domains that will be redirected by the DNSmasq. |
 | `services.dnsmasq.bind` | `string` | This option specifies the interface on which DNSmasq will listen. |
 | `services.dnsmasq.enable` | `boolean` | Whether to enable DNSmasq. |

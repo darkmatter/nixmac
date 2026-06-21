@@ -5,7 +5,7 @@
 All options under `services.autofs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.autofs.autoMaster` | | |
 | `services.autofs.debug` | | |
 | `services.autofs.enable` | | |

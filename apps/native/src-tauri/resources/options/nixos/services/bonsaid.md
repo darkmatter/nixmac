@@ -5,7 +5,7 @@
 All options under `services.bonsaid`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.bonsaid.configFile` | | |
 | `services.bonsaid.enable` | | |
 | `services.bonsaid.extraFlags` | | |

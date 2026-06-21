@@ -5,7 +5,7 @@
 All options under `services.freefall`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.freefall.devices` | | |
 | `services.freefall.enable` | | |
 | `services.freefall.package` | | |

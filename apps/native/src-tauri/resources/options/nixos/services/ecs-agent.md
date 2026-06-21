@@ -5,7 +5,7 @@
 All options under `services.ecs-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.ecs-agent.enable` | | |
 | `services.ecs-agent.extra-environment` | | |
 | `services.ecs-agent.package` | | |

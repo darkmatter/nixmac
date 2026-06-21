@@ -16,7 +16,7 @@ ______________________________________________________________________
 ### New types added to `shared_types.rs`
 
 | Type | Purpose |
-|------|---------|
+| ----------------------- | ----------------------------------------------------------------------------------------------------- |
 | `OkResult` | Generic `{ ok: true }` acknowledgement for fire-and-forget commands |
 | `NixCheckResult` | `nix_check` — replaces `json!({ "installed": ..., "version": ..., "darwin_rebuild_available": ... })` |
 | `BuildCheckResult` | `darwin_build_check` — replaces `json!({ "passed": ..., "output": ... })` |
@@ -31,7 +31,7 @@ ______________________________________________________________________
 ## Command-by-Command Status
 
 | Command | Old return type | New return type | Status |
-|---------|----------------|-----------------|--------|
+| ----------------------------- | ----------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------- |
 | `config_set_host_attr` | `Result<Value, String>` | `Result<OkResult, String>` | ✅ Done |
 | `debug_sentry_event` | `Result<Value, String>` | `Result<DebugSentryResult, String>` | ✅ Done |
 | `homebrew_apply_diff` | `Result<Value, String>` | `Result<ConfigEditApplyResult, String>` | ✅ Done |
@@ -64,7 +64,7 @@ ______________________________________________________________________
 ## Supporting module changes
 
 | File | Change |
-|------|--------|
+| --------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `managed_edit.rs` | `finalize_managed_edit` now returns `Result<ConfigEditApplyResult>` instead of `Result<serde_json::Value>` |
 | `apply_system_defaults.rs` | Updated return type to `Result<ConfigEditApplyResult>` |
 | `mac/homebrew.rs` | `apply_homebrew_diff` now returns `Result<ConfigEditApplyResult>` |
@@ -75,7 +75,7 @@ ______________________________________________________________________
 ## Retained `serde_json::Value` (justified)
 
 | Location | Reason |
-|----------|--------|
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `flake_installed_apps` → `Vec<serde_json::Value>` | Returns `nix eval .#darwinConfigurations.<host>.config.environment.systemPackages` — the package attribute set shape is entirely determined by the user's flake and is genuinely dynamic. Frontend uses `unknown[]` accordingly. |
 | `nix.rs` `evaluate_installed_apps` → `Vec<Value>` | Same as above — evaluates arbitrary nix package attrs. |
 | `provider_errors.rs` `parse_provider_error_body` | Parses a third-party provider error JSON body of unpredictable shape. |
@@ -88,11 +88,11 @@ ______________________________________________________________________
 ## Frontend updates
 
 | File | Change |
-|------|--------|
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----- | ---------- |
 | `src/tauri-api.ts` | Imports `BuildCheckResult`, `CliToolsState`, `ConfigEditApplyResult`, `NixCheckResult`, `OkResult`, `UiPrefsUpdate` from `shared.ts`; all `invoke<...>` generics updated; removed inline `ConfigEditApplyResult` interface (was duplicate) |
 | `src/hooks/use-nix-install.ts` | Updated `result.darwin_rebuild_available` → `result.darwinRebuildAvailable` (camelCase from new typed struct) |
-| `src/lib/ai-provider-validation.ts` | `cliStatus` parameter changed from `Record<string, boolean>` to `CliToolsState | null | undefined` |
-| `src/components/widget/settings/ai-models-tab.tsx` | `useCliToolStatus` hook state typed as `CliToolsState | null` |
+| `src/lib/ai-provider-validation.ts` | `cliStatus` parameter changed from `Record<string, boolean>` to `CliToolsState                                                                                                                                                             | null  | undefined` |
+| `src/components/widget/settings/ai-models-tab.tsx` | `useCliToolStatus` hook state typed as `CliToolsState                                                                                                                                                                                      | null` |
 | `src/types/shared.ts` | Regenerated via `cargo run --example specta_gen_ts` — 8 new types added |
 
 ______________________________________________________________________

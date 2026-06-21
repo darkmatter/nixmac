@@ -5,7 +5,7 @@
 All options under `services.lokinet`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.lokinet.enable` | | |
 | `services.lokinet.package` | | |
 | `services.lokinet.settings` | | |

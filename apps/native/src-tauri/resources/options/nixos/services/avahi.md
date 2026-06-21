@@ -5,7 +5,7 @@
 All options under `services.avahi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.avahi.allowInterfaces` | | |
 | `services.avahi.allowPointToPoint` | | |
 | `services.avahi.browseDomains` | | |

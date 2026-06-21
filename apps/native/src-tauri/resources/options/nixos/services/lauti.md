@@ -5,7 +5,7 @@
 All options under `services.lauti`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.lauti.dataDir` | | |
 | `services.lauti.enable` | | |
 | `services.lauti.secrets` | | |

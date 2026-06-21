@@ -5,7 +5,7 @@
 All options under `services.tlp`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.tlp.enable` | | |
 | `services.tlp.extraConfig` | | |
 | `services.tlp.package` | | |

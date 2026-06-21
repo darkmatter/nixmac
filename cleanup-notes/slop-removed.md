@@ -1,7 +1,7 @@
 # Comment Slop Removed
 
 | file:line (original) | original comment | action | rationale |
-|----------------------|-----------------|--------|-----------|
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/commands.rs:203` | `/// Delegates to the feedback module for comprehensive data collection.` | removed | Filler — restates the obvious delegation visible from the function body. |
 | `src/commands.rs:222` | `// TODO: Consider removing or gating behind a debug flag in production builds.` | removed | Moot: the command group is already gated by `#[cfg(debug_assertions)]` on every item. |
 | `src/commands.rs:319` | `// Save commit to database` | removed | Obvious restatement of the `db::commits::upsert_commit` call that follows. |
@@ -20,8 +20,8 @@
 ## Items Kept (initially flagged but reviewed as non-slop)
 
 | file:line | comment | rationale for keeping |
-|-----------|---------|----------------------|
-| `src/commands.rs:87-90` | `// Require that the provided path already exists and is a directory. // If we don't, then we'll always silently create directories…` | Explains *why* the validation exists (silent directory creation UX bug). |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | --- | -------------------------- | ----------------------------------------------------------------------------------- | -------------------- |
+| `src/commands.rs:87-90` | `// Require that the provided path already exists and is a directory. // If we don't, then we'll always silently create directories…` | Explains _why_ the validation exists (silent directory creation UX bug). |
 | `src/commands.rs:338` | `// Update build state: new HEAD hash, no changeset (working tree is now clean).` | Documents the state invariant: `changeset_id: None` means tree is clean post-commit. |
 | `src/commands.rs:422-423` | `// Create a oneshot for this question and register its sender globally.` | Non-obvious concurrency pattern. |
 | `src/commands.rs:426` | `// If there's already a pending question, replace it (dropping old sender).` | Invariant: old sender intentionally dropped. |
@@ -30,4 +30,4 @@
 | `src/evolve_state.rs:62-67` | `// Clear conversational thread memory whenever routing returns to Begin. // Doing this can prevent weird conversations where the model references past context that is no longer relevant…` | Design rationale for a non-obvious side-effect. |
 | `src/evolution.rs:145,188` | `// Step 1: …` and `// Step 2: …` | Navigation aids in a long multi-phase function. |
 | `src/evolve/mod.rs` | `#![allow(deprecated)]` in peek.rs | Intentional per task instructions — not touched. |
-| `src/summarize/assignments.rs:33` | `/// \`former_group_id: None\` means a previously standalone change is now forming a group.`| Invariant doc comment explaining field semantics. | |`src/db/changesets.rs:289`|`// {placeholders} is reused in both IN clauses; rusqlite numbered params (?2,...\` | SQLite API contract. |
+| `src/summarize/assignments.rs:33` | `/// \`former_group_id: None\` means a previously standalone change is now forming a group.`                                                                                                | Invariant doc comment explaining field semantics.                                    |     |`src/db/changesets.rs:289`|`// {placeholders} is reused in both IN clauses; rusqlite numbered params (?2,...\` | SQLite API contract. |

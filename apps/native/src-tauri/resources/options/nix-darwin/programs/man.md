@@ -5,5 +5,5 @@
 All options under `programs.man`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------- | --------- | ------------------------------------------------------------------------------------------------------------ |
 | `programs.man.enable` | `boolean` | Whether to enable manual pages and the man command. This also includes “man” outputs of all systemPackages . |

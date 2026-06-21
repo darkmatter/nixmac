@@ -5,7 +5,7 @@
 All options under `services.libinput`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------- | ---- | ----------- |
 | `services.libinput.enable` | | |
 | `services.libinput.mouse.accelPointsFallback` | | |
 | `services.libinput.mouse.accelPointsMotion` | | |

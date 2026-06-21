@@ -5,7 +5,7 @@
 All options under `services.anuko-time-tracker`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------------- | ---- | ----------- |
 | `services.anuko-time-tracker.dataDir` | | |
 | `services.anuko-time-tracker.database.createLocally` | | |
 | `services.anuko-time-tracker.database.host` | | |

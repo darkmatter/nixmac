@@ -5,7 +5,7 @@
 All options under `programs.direnv`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.direnv.direnvrcExtra` | `strings concatenated with “\n”` | Extra lines to append to the sourced direnvrc |
 | `programs.direnv.enable` | `boolean` | Whether to enable direnv integration. Takes care of both installation and setting up the sourcing of the shell. Additionally enables nix-direnv integration. . |
 | `programs.direnv.enableBashIntegration` | `boolean` | Whether to enable Bash integration . |

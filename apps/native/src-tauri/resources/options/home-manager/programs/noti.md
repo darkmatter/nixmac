@@ -5,7 +5,7 @@
 All options under `programs.noti`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ------------------------------------------ | ---------------------------------------------------------- |
 | `programs.noti.enable` | `boolean` | Whether to enable Noti. |
 | `programs.noti.package` | `null or package` | The noti package to use. |
 | `programs.noti.settings` | `attribute set of attribute set of string` | Configuration written to $XDG_CONFIG_HOME/noti/noti.yaml . |

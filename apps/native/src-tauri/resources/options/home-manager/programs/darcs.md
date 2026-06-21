@@ -5,7 +5,7 @@
 All options under `programs.darcs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.darcs.author` | `list of string` | If this list has a single entry, it will be used as the author when you record a patch. If there are multiple entries, Darcs will prompt you to choose one of them. |
 | `programs.darcs.boring` | `list of string` | File patterns to ignore |
 | `programs.darcs.enable` | `boolean` | Whether to enable darcs. |

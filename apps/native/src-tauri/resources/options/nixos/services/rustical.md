@@ -5,7 +5,7 @@
 All options under `services.rustical`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.rustical.enable` | | |
 | `services.rustical.environmentFiles` | | |
 | `services.rustical.package` | | |

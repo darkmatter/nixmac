@@ -5,7 +5,7 @@
 All options under `services.nfs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.nfs.extraConfig` | | |
 | `services.nfs.idmapd.settings` | | |
 | `services.nfs.lockdPort` | | |

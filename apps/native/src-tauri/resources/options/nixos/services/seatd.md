@@ -5,7 +5,7 @@
 All options under `services.seatd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.seatd.enable` | | |
 | `services.seatd.group` | | |
 | `services.seatd.logLevel` | | |

@@ -5,7 +5,7 @@
 All options under `services.mpdris2-rs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------- | ------------------------------- | ---------------------------------------------------------------------------------- |
 | `services.mpdris2-rs.enable` | `boolean` | Whether to enable mpdris2-rs, A lightweight implementation of MPD to D-Bus bridge. |
 | `services.mpdris2-rs.host` | `null or string` | hostname + port, or UNIX socket path of MPD server, similar to what mpc takes |
 | `services.mpdris2-rs.notifications.body` | `null or string` | Templating for the notification body. |

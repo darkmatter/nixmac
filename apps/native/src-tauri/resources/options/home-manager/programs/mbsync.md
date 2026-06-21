@@ -5,7 +5,7 @@
 All options under `programs.mbsync`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | -------------------------------------------------- | ---------------------------------------------------------------- |
 | `programs.mbsync.enable` | `boolean` | Whether to enable mbsync IMAP4 and Maildir mailbox synchronizer. |
 | `programs.mbsync.extraConfig` | `strings concatenated with “\n”` | Extra configuration lines to add to the mbsync configuration. |
 | `programs.mbsync.groups` | `attribute set of attribute set of list of string` | Definition of groups. |

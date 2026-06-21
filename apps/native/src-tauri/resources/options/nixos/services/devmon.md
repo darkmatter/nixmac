@@ -5,5 +5,5 @@
 All options under `services.devmon`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.devmon.enable` | | |

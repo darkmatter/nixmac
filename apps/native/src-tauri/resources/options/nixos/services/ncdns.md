@@ -5,7 +5,7 @@
 All options under `services.ncdns`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.ncdns.address` | | |
 | `services.ncdns.dnssec.enable` | | |
 | `services.ncdns.dnssec.keys.private` | | |

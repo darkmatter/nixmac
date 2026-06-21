@@ -5,7 +5,7 @@
 All options under `services.your_spotify`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.your_spotify.clientPackage` | | |
 | `services.your_spotify.enable` | | |
 | `services.your_spotify.enableLocalDB` | | |

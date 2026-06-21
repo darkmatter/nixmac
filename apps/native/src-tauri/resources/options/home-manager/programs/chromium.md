@@ -5,7 +5,7 @@
 All options under `programs.chromium`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | `programs.chromium.commandLineArgs` | `list of string` | List of command-line arguments to be passed to Chromium. |
 | `programs.chromium.dictionaries` | `list of package` | List of Chromium dictionaries to install. |
 | `programs.chromium.enable` | `boolean` | Whether to enable Chromium. |

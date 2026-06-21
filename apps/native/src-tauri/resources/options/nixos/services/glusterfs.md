@@ -5,7 +5,7 @@
 All options under `services.glusterfs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.glusterfs.enable` | | |
 | `services.glusterfs.enableGlustereventsd` | | |
 | `services.glusterfs.extraFlags` | | |

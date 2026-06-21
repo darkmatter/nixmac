@@ -5,6 +5,6 @@
 All options under `services.greenclip`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.greenclip.enable` | | |
 | `services.greenclip.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.lvm`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.lvm.boot.thin.enable` | | |
 | `services.lvm.boot.vdo.enable` | | |
 | `services.lvm.dmeventd.enable` | | |

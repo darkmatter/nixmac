@@ -10,17 +10,11 @@ vi.mock("../electron/store", () => ({
 vi.mock("execa", () => ({
   execa: vi.fn((cmd: string, args: string[]) => {
     const key = `${cmd} ${args.join(" ")}`;
-    if (
-      key.includes(
-        "nix eval --json .#darwinConfigurations --apply builtins.attrNames"
-      )
-    ) {
+    if (key.includes("nix eval --json .#darwinConfigurations --apply builtins.attrNames")) {
       return Promise.resolve({ stdout: JSON.stringify(["mbp", "imac"]) });
     }
     if (
-      key.includes(
-        "nix eval --json .#darwinConfigurations.mbp.config.environment.systemPackages"
-      )
+      key.includes("nix eval --json .#darwinConfigurations.mbp.config.environment.systemPackages")
     ) {
       return Promise.resolve({
         stdout: JSON.stringify([{ name: "vim" }, { name: "git" }]),

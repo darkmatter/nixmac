@@ -5,7 +5,7 @@
 All options under `services.ferretdb`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.ferretdb.enable` | | |
 | `services.ferretdb.package` | | |
 | `services.ferretdb.settings` | | |

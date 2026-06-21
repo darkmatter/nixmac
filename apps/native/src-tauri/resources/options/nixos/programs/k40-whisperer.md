@@ -5,7 +5,7 @@
 All options under `programs.k40-whisperer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `programs.k40-whisperer.enable` | | |
 | `programs.k40-whisperer.group` | | |
 | `programs.k40-whisperer.package` | | |

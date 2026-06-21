@@ -5,7 +5,7 @@
 All options under `nixpkgs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `nixpkgs.buildPlatform` | | |
 | `nixpkgs.config` | | |
 | `nixpkgs.crossSystem` | | |

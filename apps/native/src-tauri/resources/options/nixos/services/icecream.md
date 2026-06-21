@@ -5,7 +5,7 @@
 All options under `services.icecream`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------------- | ---- | ----------- |
 | `services.icecream.daemon.cacheLimit` | | |
 | `services.icecream.daemon.enable` | | |
 | `services.icecream.daemon.extraArgs` | | |

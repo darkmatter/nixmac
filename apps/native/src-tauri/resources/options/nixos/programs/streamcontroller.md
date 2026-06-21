@@ -5,6 +5,6 @@
 All options under `programs.streamcontroller`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `programs.streamcontroller.enable` | | |
 | `programs.streamcontroller.package` | | |

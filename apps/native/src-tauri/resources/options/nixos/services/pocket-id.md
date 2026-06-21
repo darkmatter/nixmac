@@ -5,7 +5,7 @@
 All options under `services.pocket-id`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.pocket-id.credentials` | | |
 | `services.pocket-id.dataDir` | | |
 | `services.pocket-id.enable` | | |

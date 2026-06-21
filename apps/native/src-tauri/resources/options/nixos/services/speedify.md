@@ -5,6 +5,6 @@
 All options under `services.speedify`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.speedify.enable` | | |
 | `services.speedify.package` | | |

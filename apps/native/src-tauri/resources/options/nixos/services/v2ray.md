@@ -5,7 +5,7 @@
 All options under `services.v2ray`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.v2ray.config` | | |
 | `services.v2ray.configFile` | | |
 | `services.v2ray.enable` | | |

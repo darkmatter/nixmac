@@ -5,7 +5,7 @@
 All options under `programs.dsearch`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `programs.dsearch.enable` | | |
 | `programs.dsearch.package` | | |
 | `programs.dsearch.systemd.enable` | | |

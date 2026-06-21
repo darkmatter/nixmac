@@ -5,7 +5,7 @@
 All options under `services.rosenpass`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.rosenpass.defaultDevice` | | |
 | `services.rosenpass.enable` | | |
 | `services.rosenpass.package` | | |

@@ -5,7 +5,7 @@
 All options under `environment`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `environment.binsh` | | |
 | `environment.blcr.enable` | | |
 | `environment.budgie.excludePackages` | | |

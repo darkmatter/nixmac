@@ -5,7 +5,7 @@
 All options under `services.kavita`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.kavita.dataDir` | | |
 | `services.kavita.enable` | | |
 | `services.kavita.ipAdresses` | | |

@@ -5,7 +5,7 @@
 All options under `services.tailscale`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | --------- | ---------------------------------------------------------------------------------------------- |
 | `services.tailscale.domain` | | |
 | `services.tailscale.enable` | `boolean` | Whether to enable Tailscale client daemon. |
 | `services.tailscale.magicDNS` | | |

@@ -5,7 +5,7 @@
 All options under `programs.comodoro`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------- |
 | `programs.comodoro.enable` | `boolean` | Whether to enable Comodoro, a CLI to manage your time. |
 | `programs.comodoro.package` | `null or package` | The comodoro package to use. |
 | `programs.comodoro.settings` | `open submodule of (TOML value)` | Comodoro configuration. See https://pimalaya.org/comodoro/cli/configuration/ for supported values. |

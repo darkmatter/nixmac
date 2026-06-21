@@ -5,7 +5,7 @@
 All options under `services.quickwit`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.quickwit.dataDir` | | |
 | `services.quickwit.enable` | | |
 | `services.quickwit.extraFlags` | | |

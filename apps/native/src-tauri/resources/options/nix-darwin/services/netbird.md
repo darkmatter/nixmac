@@ -5,6 +5,6 @@
 All options under `services.netbird`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | --------- | --------------------------------- |
 | `services.netbird.enable` | `boolean` | Whether to enable Netbird daemon. |
 | `services.netbird.package` | `package` | The package to use for netbird |

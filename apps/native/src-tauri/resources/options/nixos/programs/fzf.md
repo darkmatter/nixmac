@@ -5,6 +5,6 @@
 All options under `programs.fzf`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `programs.fzf.fuzzyCompletion` | | |
 | `programs.fzf.keybindings` | | |

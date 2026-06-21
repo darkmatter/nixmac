@@ -5,7 +5,7 @@
 All options under `services.gatus`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.gatus.configFile` | | |
 | `services.gatus.enable` | | |
 | `services.gatus.environmentFile` | | |

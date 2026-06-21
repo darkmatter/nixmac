@@ -5,7 +5,7 @@
 All options under `services.vdr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.vdr.enable` | | |
 | `services.vdr.enableLirc` | | |
 | `services.vdr.extraArguments` | | |

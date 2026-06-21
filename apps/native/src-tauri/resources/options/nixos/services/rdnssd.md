@@ -5,5 +5,5 @@
 All options under `services.rdnssd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.rdnssd.enable` | | |

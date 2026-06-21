@@ -5,5 +5,5 @@
 All options under `services.a2boot`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.a2boot.enable` | | |

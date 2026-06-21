@@ -5,7 +5,7 @@
 All options under `services.docuseal`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.docuseal.enable` | | |
 | `services.docuseal.extraConfig` | | |
 | `services.docuseal.extraEnvFiles` | | |

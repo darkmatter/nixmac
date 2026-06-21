@@ -5,7 +5,7 @@
 All options under `services.nomad`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.nomad.credentials` | | |
 | `services.nomad.dropPrivileges` | | |
 | `services.nomad.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.loki`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.loki.configFile` | | |
 | `services.loki.configuration` | | |
 | `services.loki.dataDir` | | |

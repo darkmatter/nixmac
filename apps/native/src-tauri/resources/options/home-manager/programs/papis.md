@@ -5,7 +5,7 @@
 All options under `programs.papis`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.papis.enable` | `boolean` | Whether to enable papis. |
 | `programs.papis.libraries` | `attribute set of (submodule)` | Attribute set of papis libraries. |
 | `programs.papis.package` | `null or package` | The papis package to use. |

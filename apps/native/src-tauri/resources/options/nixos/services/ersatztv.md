@@ -5,7 +5,7 @@
 All options under `services.ersatztv`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.ersatztv.baseUrl` | | |
 | `services.ersatztv.enable` | | |
 | `services.ersatztv.environment` | | |

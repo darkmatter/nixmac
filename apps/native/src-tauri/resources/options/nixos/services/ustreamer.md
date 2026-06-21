@@ -5,7 +5,7 @@
 All options under `services.ustreamer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.ustreamer.autoStart` | | |
 | `services.ustreamer.device` | | |
 | `services.ustreamer.enable` | | |

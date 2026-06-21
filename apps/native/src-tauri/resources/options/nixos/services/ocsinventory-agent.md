@@ -5,7 +5,7 @@
 All options under `services.ocsinventory-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.ocsinventory-agent.enable` | | |
 | `services.ocsinventory-agent.interval` | | |
 | `services.ocsinventory-agent.package` | | |

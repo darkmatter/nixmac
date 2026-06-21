@@ -5,7 +5,7 @@
 All options under `services.fastnetmon-advanced`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------------------------- | ---- | ----------- |
 | `services.fastnetmon-advanced.bgpPeers` | | |
 | `services.fastnetmon-advanced.enable` | | |
 | `services.fastnetmon-advanced.enableAdvancedTrafficPersistence` | | |

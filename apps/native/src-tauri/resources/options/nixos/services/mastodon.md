@@ -5,7 +5,7 @@
 All options under `services.mastodon`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------------------------- | ---- | ----------- |
 | `services.mastodon.activeRecordEncryptionDeterministicKeyFile` | | |
 | `services.mastodon.activeRecordEncryptionKeyDerivationSaltFile` | | |
 | `services.mastodon.activeRecordEncryptionPrimaryKeyFile` | | |

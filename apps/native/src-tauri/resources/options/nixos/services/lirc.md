@@ -5,7 +5,7 @@
 All options under `services.lirc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.lirc.configs` | | |
 | `services.lirc.enable` | | |
 | `services.lirc.extraArguments` | | |

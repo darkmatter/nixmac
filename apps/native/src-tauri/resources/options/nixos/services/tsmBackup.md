@@ -5,7 +5,7 @@
 All options under `services.tsmBackup`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.tsmBackup.autoTime` | | |
 | `services.tsmBackup.command` | | |
 | `services.tsmBackup.enable` | | |

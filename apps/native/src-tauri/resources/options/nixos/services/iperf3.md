@@ -5,7 +5,7 @@
 All options under `services.iperf3`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.iperf3.affinity` | | |
 | `services.iperf3.authorizedUsersFile` | | |
 | `services.iperf3.bind` | | |

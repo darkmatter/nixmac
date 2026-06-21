@@ -5,7 +5,7 @@
 All options under `services.libreswan`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.libreswan.configSetup` | | |
 | `services.libreswan.connections` | | |
 | `services.libreswan.disableRedirects` | | |

@@ -5,7 +5,7 @@
 All options under `services.orangefs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.orangefs.client.enable` | | |
 | `services.orangefs.client.extraOptions` | | |
 | `services.orangefs.client.fileSystems` | | |

@@ -5,7 +5,7 @@
 All options under `services.displayManager`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------------- | ---- | ----------- |
 | `services.displayManager.autoLogin` | | |
 | `services.displayManager.cosmic-greeter.enable` | | |
 | `services.displayManager.cosmic-greeter.package` | | |

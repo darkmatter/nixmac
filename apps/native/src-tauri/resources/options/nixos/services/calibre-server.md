@@ -5,7 +5,7 @@
 All options under `services.calibre-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.calibre-server.auth.enable` | | |
 | `services.calibre-server.auth.mode` | | |
 | `services.calibre-server.auth.userDb` | | |

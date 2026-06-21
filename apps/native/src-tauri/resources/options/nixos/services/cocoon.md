@@ -5,7 +5,7 @@
 All options under `services.cocoon`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.cocoon.enable` | | |
 | `services.cocoon.environmentFiles` | | |
 | `services.cocoon.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.xsuspender`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ------------------------------ | ---------------------------------- |
 | `services.xsuspender.debug` | `boolean` | Whether to enable debug output. |
 | `services.xsuspender.defaults` | `submodule` | XSuspender defaults. |
 | `services.xsuspender.enable` | `boolean` | Whether to enable XSuspender. |

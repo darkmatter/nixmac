@@ -5,7 +5,7 @@
 All options under `programs.timidity`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | -------------------------------- | ----------------------------------------------------- |
 | `programs.timidity.enable` | `boolean` | Whether to enable timidity, a software MIDI renderer. |
 | `programs.timidity.extraConfig` | `strings concatenated with “\n”` | Extra configuration. |
 | `programs.timidity.finalPackage` | `package (read only)` | Resulting package. |

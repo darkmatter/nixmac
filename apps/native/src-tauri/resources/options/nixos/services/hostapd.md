@@ -5,7 +5,7 @@
 All options under `services.hostapd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.hostapd.channel` | | |
 | `services.hostapd.countryCode` | | |
 | `services.hostapd.driver` | | |

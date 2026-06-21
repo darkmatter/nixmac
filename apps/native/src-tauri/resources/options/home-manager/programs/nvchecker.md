@@ -5,7 +5,7 @@
 All options under `programs.nvchecker`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.nvchecker.enable` | `boolean` | Whether to enable nvchecker. |
 | `programs.nvchecker.package` | `null or package` | The nvchecker package to use. |
 | `programs.nvchecker.settings` | `open submodule of (TOML value)` | Configuration written to $HOME/Library/Application Support/nvchecker/nvchecker.toml (on Darwin) or $XDG_CONFIG_HOME/nvchecker/nvchecker.toml (otherwise). See https://nvchecker.readthedocs.io/en/stable/usage.html#configuration-files for the full list of options. |

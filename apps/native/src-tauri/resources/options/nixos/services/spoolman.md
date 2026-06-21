@@ -5,7 +5,7 @@
 All options under `services.spoolman`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.spoolman.enable` | | |
 | `services.spoolman.environment` | | |
 | `services.spoolman.listen` | | |

@@ -5,7 +5,7 @@
 All options under `services.discourse`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------ | ---- | ----------- |
 | `services.discourse.admin.email` | | |
 | `services.discourse.admin.fullName` | | |
 | `services.discourse.admin.passwordFile` | | |

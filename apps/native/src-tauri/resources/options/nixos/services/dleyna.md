@@ -5,5 +5,5 @@
 All options under `services.dleyna`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.dleyna.enable` | | |

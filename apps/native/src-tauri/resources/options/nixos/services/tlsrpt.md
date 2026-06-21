@@ -5,7 +5,7 @@
 All options under `services.tlsrpt`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.tlsrpt.collectd.extraFlags` | | |
 | `services.tlsrpt.collectd.settings` | | |
 | `services.tlsrpt.configurePostfix` | | |

@@ -5,7 +5,7 @@
 All options under `services.umurmur`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.umurmur.configFile` | | |
 | `services.umurmur.enable` | | |
 | `services.umurmur.openFirewall` | | |

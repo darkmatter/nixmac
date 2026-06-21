@@ -5,7 +5,7 @@
 All options under `services.glitchtip`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.glitchtip.celery.extraArgs` | | |
 | `services.glitchtip.database.createLocally` | | |
 | `services.glitchtip.enable` | | |

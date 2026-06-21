@@ -5,7 +5,7 @@
 All options under `services.goss`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.goss.enable` | | |
 | `services.goss.environment` | | |
 | `services.goss.package` | | |

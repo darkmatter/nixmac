@@ -5,7 +5,7 @@
 All options under `services.lambdabot`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.lambdabot.enable` | | |
 | `services.lambdabot.package` | | |
 | `services.lambdabot.script` | | |

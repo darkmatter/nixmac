@@ -5,6 +5,6 @@
 All options under `services.wlock`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.wlock.enable` | | |
 | `services.wlock.package` | | |

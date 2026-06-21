@@ -6,6 +6,7 @@ import { defineConfig } from "vitest/config";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 const uiPackageRoot = path.resolve(repoRoot, "packages/ui/src");
+const statePackageRoot = path.resolve(repoRoot, "packages/state/src");
 
 // `storybookTest` is async in @storybook/addon-vitest >= 10.3 — must be
 // awaited before being passed to Vitest. Skipping the await produces flaky
@@ -47,6 +48,22 @@ export default defineConfig({
         replacement: uiPackageRoot,
       },
       {
+        find: "@nixmac/state",
+        replacement: statePackageRoot,
+      },
+      {
+        find: "@nixmac/native/ipc/types",
+        replacement: path.resolve(import.meta.dirname, "src/ipc/types.ts"),
+      },
+      {
+        find: "@nixmac/native/types/feedback",
+        replacement: path.resolve(import.meta.dirname, "src/types/feedback.ts"),
+      },
+      {
+        find: "@nixmac/native/types/rebuild",
+        replacement: path.resolve(import.meta.dirname, "src/types/rebuild.ts"),
+      },
+      {
         find: "@",
         replacement: path.resolve(import.meta.dirname, "src"),
       },
@@ -77,7 +94,7 @@ export default defineConfig({
           environment: "jsdom",
           globals: true,
           setupFiles: ["./vitest.setup.ts"],
-          include: ["src/**/*.test.{ts,tsx}"],
+          include: ["src/**/*.test.{ts,tsx}", "../../packages/state/src/**/*.test.{ts,tsx}"],
           poolOptions: {
             forks: { singleFork: true },
           },

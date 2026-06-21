@@ -5,6 +5,6 @@
 All options under `programs.dmrconfig`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `programs.dmrconfig.enable` | | |
 | `programs.dmrconfig.package` | | |

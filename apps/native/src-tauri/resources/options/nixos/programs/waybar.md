@@ -5,7 +5,7 @@
 All options under `programs.waybar`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `programs.waybar.enable` | | |
 | `programs.waybar.package` | | |
 | `programs.waybar.systemd.target` | | |

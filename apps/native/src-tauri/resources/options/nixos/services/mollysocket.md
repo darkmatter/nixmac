@@ -5,7 +5,7 @@
 All options under `services.mollysocket`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.mollysocket.enable` | | |
 | `services.mollysocket.environmentFile` | | |
 | `services.mollysocket.logLevel` | | |

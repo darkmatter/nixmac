@@ -5,7 +5,7 @@
 All options under `services.keyd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.keyd.enable` | | |
 | `services.keyd.ids` | | |
 | `services.keyd.keyboards` | | |

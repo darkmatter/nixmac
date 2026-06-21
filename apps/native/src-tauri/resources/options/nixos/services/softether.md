@@ -5,7 +5,7 @@
 All options under `services.softether`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.softether.dataDir` | | |
 | `services.softether.enable` | | |
 | `services.softether.package` | | |

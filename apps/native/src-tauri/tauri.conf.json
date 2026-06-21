@@ -20,10 +20,7 @@
       "icons/128x128@2x.png",
       "icons/icon.ico"
     ],
-    "resources": [
-      "../templates/nix-darwin-determinate/",
-      "resources/gitleaks.toml"
-    ],
+    "resources": ["../templates/nix-darwin-determinate/", "resources/gitleaks.toml"],
     "macOS": {
       "minimumSystemVersion": "10.13",
       "entitlements": "entitlements.plist",
@@ -52,9 +49,7 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": [
-          "$APPDATA/**"
-        ]
+        "scope": ["$APPDATA/**"]
       }
     },
     "macOSPrivateApi": true
@@ -64,9 +59,7 @@
       "open": true
     },
     "updater": {
-      "endpoints": [
-        "https://releases.nixmac.com/latest.json"
-      ],
+      "endpoints": ["https://releases.nixmac.com/latest.json"],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDEyQ0ZGMjJEOTNBMDUxQ0IKUldUTFVhQ1RMZkxQRXNDYXVyblBpa3BVbVdUK3QwUFpzaXl0MVVoQThjcjJkU3hkYlBwNHo1L3cK",
       "dangerousInsecureTransportProtocol": true
     }

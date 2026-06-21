@@ -5,7 +5,7 @@
 All options under `services.motioneye`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.motioneye.enable` | | |
 | `services.motioneye.group` | | |
 | `services.motioneye.packages.ffmpeg` | | |

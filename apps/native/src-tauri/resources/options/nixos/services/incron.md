@@ -5,7 +5,7 @@
 All options under `services.incron`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.incron.allow` | | |
 | `services.incron.deny` | | |
 | `services.incron.enable` | | |

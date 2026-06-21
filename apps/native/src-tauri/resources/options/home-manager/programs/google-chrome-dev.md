@@ -5,7 +5,7 @@
 All options under `programs.google-chrome-dev`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------- | ---- | ----------- |
 | `programs.google-chrome-dev.commandLineArgs` | | |
 | `programs.google-chrome-dev.dictionaries` | | |
 | `programs.google-chrome-dev.enable` | | |

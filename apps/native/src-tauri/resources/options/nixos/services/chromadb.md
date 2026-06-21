@@ -5,7 +5,7 @@
 All options under `services.chromadb`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.chromadb.dbpath` | | |
 | `services.chromadb.enable` | | |
 | `services.chromadb.host` | | |

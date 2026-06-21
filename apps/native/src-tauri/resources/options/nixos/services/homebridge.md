@@ -5,7 +5,7 @@
 All options under `services.homebridge`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.homebridge.enable` | | |
 | `services.homebridge.environmentFile` | | |
 | `services.homebridge.group` | | |

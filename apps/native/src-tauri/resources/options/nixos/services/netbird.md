@@ -5,7 +5,7 @@
 All options under `services.netbird`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------------- | ---- | ----------- |
 | `services.netbird.clients` | | |
 | `services.netbird.enable` | | |
 | `services.netbird.package` | | |

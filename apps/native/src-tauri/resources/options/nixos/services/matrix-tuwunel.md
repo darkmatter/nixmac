@@ -5,7 +5,7 @@
 All options under `services.matrix-tuwunel`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.matrix-tuwunel.enable` | | |
 | `services.matrix-tuwunel.extraEnvironment` | | |
 | `services.matrix-tuwunel.group` | | |

@@ -5,7 +5,7 @@
 All options under `services.tempo`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.tempo.configFile` | | |
 | `services.tempo.enable` | | |
 | `services.tempo.extraFlags` | | |

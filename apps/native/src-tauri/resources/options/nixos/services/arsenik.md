@@ -5,7 +5,7 @@
 All options under `services.arsenik`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.arsenik.anglemod` | | |
 | `services.arsenik.enable` | | |
 | `services.arsenik.hold_timeout` | | |

@@ -5,7 +5,7 @@
 All options under `services.alerta`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.alerta.authenticationRequired` | | |
 | `services.alerta.bind` | | |
 | `services.alerta.corsOrigins` | | |

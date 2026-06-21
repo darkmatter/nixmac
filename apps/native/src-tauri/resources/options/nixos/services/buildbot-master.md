@@ -5,7 +5,7 @@
 All options under `services.buildbot-master`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.buildbot-master.bpPort` | | |
 | `services.buildbot-master.buildbotDir` | | |
 | `services.buildbot-master.buildbotUrl` | | |

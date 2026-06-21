@@ -5,7 +5,7 @@
 All options under `programs.t3code`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `programs.t3code.clientSettings` | | |
 | `programs.t3code.enable` | | |
 | `programs.t3code.keybindings` | | |

@@ -5,7 +5,7 @@
 All options under `services.mympd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.mympd.enable` | | |
 | `services.mympd.extraGroups` | | |
 | `services.mympd.openFirewall` | | |

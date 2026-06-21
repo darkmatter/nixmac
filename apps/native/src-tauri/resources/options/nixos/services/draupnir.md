@@ -5,7 +5,7 @@
 All options under `services.draupnir`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------------------------- | ---- | ----------- |
 | `services.draupnir.accessTokenFile` | | |
 | `services.draupnir.dataPath` | | |
 | `services.draupnir.enable` | | |

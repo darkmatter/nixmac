@@ -5,7 +5,7 @@
 All options under `services.fider`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.fider.dataDir` | | |
 | `services.fider.database.url` | | |
 | `services.fider.enable` | | |

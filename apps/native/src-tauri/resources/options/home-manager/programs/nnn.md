@@ -5,7 +5,7 @@
 All options under `programs.nnn`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------ |
 | `programs.nnn.bookmarks` | `attribute set of string` | Directory bookmarks. |
 | `programs.nnn.enable` | `boolean` | Whether to enable nnn. |
 | `programs.nnn.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |

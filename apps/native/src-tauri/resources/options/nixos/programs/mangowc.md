@@ -5,6 +5,6 @@
 All options under `programs.mangowc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `programs.mangowc.enable` | | |
 | `programs.mangowc.package` | | |

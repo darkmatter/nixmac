@@ -5,7 +5,7 @@
 All options under `services.frp`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.frp.enable` | | |
 | `services.frp.instances` | | |
 | `services.frp.package` | | |

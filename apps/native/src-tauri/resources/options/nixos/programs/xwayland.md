@@ -5,7 +5,7 @@
 All options under `programs.xwayland`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `programs.xwayland.defaultFontPath` | | |
 | `programs.xwayland.enable` | | |
 | `programs.xwayland.package` | | |

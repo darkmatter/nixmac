@@ -5,7 +5,7 @@
 All options under `services.minio`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.minio.accessKey` | | |
 | `services.minio.browser` | | |
 | `services.minio.certificatesDir` | | |

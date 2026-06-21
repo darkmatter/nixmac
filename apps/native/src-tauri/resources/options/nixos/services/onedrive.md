@@ -5,6 +5,6 @@
 All options under `services.onedrive`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.onedrive.enable` | | |
 | `services.onedrive.package` | | |

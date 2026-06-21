@@ -5,7 +5,7 @@
 Subcategories of `services`.
 
 | Key | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [`activate-system`](activate-system.md) | category | 1 option |
 | [`aerospace`](aerospace.md) | category | 3 options |
 | [`autossh`](autossh.md) | category | 1 option |

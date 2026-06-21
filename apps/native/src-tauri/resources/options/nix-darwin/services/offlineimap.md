@@ -5,7 +5,7 @@
 All options under `services.offlineimap`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `services.offlineimap.enable` | `boolean` | Whether to enable Offlineimap, a software to dispose your mailbox(es) as a local Maildir(s). |
 | `services.offlineimap.extraConfig` | `strings concatenated with “\n”` | Additional text to be appended to offlineimaprc . |
 | `services.offlineimap.package` | `package` | Offlineimap derivation to use. |

@@ -5,7 +5,7 @@
 All options under `services.mopidy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | --------------- | ----------------------------------------------------------- |
 | `services.mopidy.enable` | `boolean` | Whether to enable the Mopidy Daemon. |
 | `services.mopidy.mediakeys.enable` | `boolean` | Whether to enable the Mopidy OSX Media Keys support daemon. |
 | `services.mopidy.mediakeys.package` | `absolute path` | This option specifies the mediakeys package to use. |

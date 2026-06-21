@@ -5,7 +5,7 @@
 All options under `services.graphite`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.graphite.api` | | |
 | `services.graphite.beacon` | | |
 | `services.graphite.carbon.aggregationRules` | | |

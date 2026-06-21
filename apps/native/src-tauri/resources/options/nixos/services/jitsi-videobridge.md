@@ -5,7 +5,7 @@
 All options under `services.jitsi-videobridge`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------------- | ---- | ----------- |
 | `services.jitsi-videobridge.apis` | | |
 | `services.jitsi-videobridge.colibriRestApi` | | |
 | `services.jitsi-videobridge.config` | | |

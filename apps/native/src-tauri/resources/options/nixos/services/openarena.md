@@ -5,7 +5,7 @@
 All options under `services.openarena`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.openarena.enable` | | |
 | `services.openarena.extraFlags` | | |
 | `services.openarena.openPorts` | | |

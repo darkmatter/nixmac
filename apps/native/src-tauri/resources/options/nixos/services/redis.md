@@ -5,7 +5,7 @@
 All options under `services.redis`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.redis.appendFsync` | | |
 | `services.redis.appendOnly` | | |
 | `services.redis.appendOnlyFilename` | | |

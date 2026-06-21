@@ -5,7 +5,7 @@
 All options under `services.cachix-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.cachix-agent.credentialsFile` | | |
 | `services.cachix-agent.enable` | | |
 | `services.cachix-agent.host` | | |

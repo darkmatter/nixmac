@@ -5,7 +5,7 @@
 All options under `services.earlyoom`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.earlyoom.enable` | | |
 | `services.earlyoom.enableDebugInfo` | | |
 | `services.earlyoom.enableNotifications` | | |

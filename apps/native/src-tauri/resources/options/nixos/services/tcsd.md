@@ -5,7 +5,7 @@
 All options under `services.tcsd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.tcsd.conformanceCred` | | |
 | `services.tcsd.enable` | | |
 | `services.tcsd.endorsementCred` | | |

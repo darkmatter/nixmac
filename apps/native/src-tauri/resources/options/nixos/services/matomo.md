@@ -5,7 +5,7 @@
 All options under `services.matomo`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.matomo.enable` | | |
 | `services.matomo.hostname` | | |
 | `services.matomo.nginx` | | |

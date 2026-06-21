@@ -5,7 +5,7 @@
 All options under `services.vaultwarden`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.vaultwarden.backupDir` | | |
 | `services.vaultwarden.config` | | |
 | `services.vaultwarden.configureNginx` | | |

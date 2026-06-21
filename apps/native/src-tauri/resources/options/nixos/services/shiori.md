@@ -5,7 +5,7 @@
 All options under `services.shiori`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.shiori.address` | | |
 | `services.shiori.databaseUrl` | | |
 | `services.shiori.enable` | | |

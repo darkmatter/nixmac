@@ -5,6 +5,6 @@
 All options under `programs.chrysalis`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `programs.chrysalis.enable` | | |
 | `programs.chrysalis.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.hyprsunset`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.hyprsunset.enable` | `boolean` | Whether to enable Hyprsunset, Hyprland’s blue-light filter. |
 | `services.hyprsunset.extraArgs` | `list of string` | Additional command-line arguments to pass to hyprsunset . |
 | `services.hyprsunset.importantPrefixes` | `list of string` | List of prefix of attributes to source at the top of the config. |

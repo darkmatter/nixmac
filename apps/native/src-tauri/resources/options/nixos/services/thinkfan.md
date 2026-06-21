@@ -5,7 +5,7 @@
 All options under `services.thinkfan`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.thinkfan.enable` | | |
 | `services.thinkfan.extraArgs` | | |
 | `services.thinkfan.fans` | | |

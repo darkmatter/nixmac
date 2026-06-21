@@ -5,7 +5,7 @@
 All options under `programs.difftastic`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
 | `programs.difftastic.enable` | `boolean` | Whether to enable difftastic, a structural diff tool. |
 | `programs.difftastic.git.diffToolMode` | `boolean` | Whether to additionally configure difftastic as a git difftool. |
 | `programs.difftastic.git.enable` | `boolean` | Whether to enable git integration for difftastic. |

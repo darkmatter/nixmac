@@ -5,7 +5,7 @@
 All options under `services.cachix-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---------------- | ------------------------------------------------------------------------ |
 | `services.cachix-agent.credentialsFile` | `absolute path` | Required file that needs to contain CACHIX_AGENT_TOKEN=... . |
 | `services.cachix-agent.enable` | `boolean` | Whether to enable Cachix Deploy Agent: https://docs.cachix.org/deploy/ . |
 | `services.cachix-agent.host` | `null or string` | Cachix URI to use. |

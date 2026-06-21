@@ -5,7 +5,7 @@
 All options under `programs.xplr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.xplr.enable` | `boolean` | Whether to enable xplr, terminal UI based file explorer. |
 | `programs.xplr.extraConfig` | `strings concatenated with “\n”` | Extra xplr configuration. |
 | `programs.xplr.package` | `null or package` | The xplr package to use. |

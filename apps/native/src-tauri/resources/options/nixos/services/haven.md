@@ -5,7 +5,7 @@
 All options under `services.haven`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.haven.blastrRelays` | | |
 | `services.haven.enable` | | |
 | `services.haven.environmentFile` | | |

@@ -5,7 +5,7 @@
 All options under `services.nullmailer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.nullmailer.config.adminaddr` | | |
 | `services.nullmailer.config.allmailfrom` | | |
 | `services.nullmailer.config.defaultdomain` | | |

@@ -5,7 +5,7 @@
 All options under `services.userborn`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.userborn.enable` | | |
 | `services.userborn.package` | | |
 | `services.userborn.passwordFilesLocation` | | |

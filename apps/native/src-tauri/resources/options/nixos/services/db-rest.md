@@ -5,7 +5,7 @@
 All options under `services.db-rest`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.db-rest.enable` | | |
 | `services.db-rest.group` | | |
 | `services.db-rest.host` | | |

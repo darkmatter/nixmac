@@ -46,7 +46,6 @@ import type {
 } from "@/ipc/types";
 import { getCachedPrefs, setPrefs } from "./preferences";
 
-
 export const tauriAPI = {
   config: {
     get: () => invoke<DarwinConfig>("config_get"),
@@ -78,7 +77,8 @@ export const tauriAPI = {
     status: () => invoke<GitStatus>("git_status"),
     statusAndCache: () => invoke<GitStatus>("git_status_and_cache"),
     commit: (message: string) => invoke<CommitResult>("git_commit", { message }),
-    fileDiffContents: (filenames: string[]) => invoke<Record<string, FileDiffContents>>("git_file_diff_contents", { filenames }),
+    fileDiffContents: (filenames: string[]) =>
+      invoke<Record<string, FileDiffContents>>("git_file_diff_contents", { filenames }),
   },
   darwin: {
     evolve: (description: string) => invoke<void>("darwin_evolve", { description }),
@@ -192,7 +192,8 @@ export const tauriAPI = {
   previewIndicator: {
     show: () => invoke<OkResult>("preview_indicator_show"),
     hide: () => invoke<OkResult>("preview_indicator_hide"),
-    update: (state: PreviewIndicatorState) => invoke<OkResult>("preview_indicator_update", { state }),
+    update: (state: PreviewIndicatorState) =>
+      invoke<OkResult>("preview_indicator_update", { state }),
     getState: () => invoke<PreviewIndicatorState>("preview_indicator_get_state"),
   },
 
@@ -244,7 +245,8 @@ export const tauriAPI = {
 
   homebrew: {
     getStateDiff: () => invoke<HomebrewState>("homebrew_get_state_diff"),
-    applyDiff: (diff: HomebrewState) => invoke<ConfigEditApplyResult>("homebrew_apply_diff", { diff }),
+    applyDiff: (diff: HomebrewState) =>
+      invoke<ConfigEditApplyResult>("homebrew_apply_diff", { diff }),
     addItems: (items: HomebrewItem[]) =>
       invoke<ConfigEditApplyResult>("homebrew_add_items", { items }),
   },

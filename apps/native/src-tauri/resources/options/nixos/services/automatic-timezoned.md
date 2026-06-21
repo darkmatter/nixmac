@@ -5,6 +5,6 @@
 All options under `services.automatic-timezoned`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.automatic-timezoned.enable` | | |
 | `services.automatic-timezoned.package` | | |

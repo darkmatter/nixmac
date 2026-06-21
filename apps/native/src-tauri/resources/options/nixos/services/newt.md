@@ -5,7 +5,7 @@
 All options under `services.newt`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.newt.blueprint` | | |
 | `services.newt.enable` | | |
 | `services.newt.endpoint` | | |

@@ -5,7 +5,7 @@
 All options under `programs.iamb`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ----------------- | ------------------------------------------------------------ |
 | `programs.iamb.enable` | `boolean` | Whether to enable iamb. |
 | `programs.iamb.package` | `null or package` | The iamb package to use. |
 | `programs.iamb.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/iamb/config.toml . |

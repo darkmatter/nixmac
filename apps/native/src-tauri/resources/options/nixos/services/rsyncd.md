@@ -5,7 +5,7 @@
 All options under `services.rsyncd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.rsyncd.address` | | |
 | `services.rsyncd.enable` | | |
 | `services.rsyncd.extraConfig` | | |

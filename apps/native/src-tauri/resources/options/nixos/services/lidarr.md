@@ -5,7 +5,7 @@
 All options under `services.lidarr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.lidarr.dataDir` | | |
 | `services.lidarr.enable` | | |
 | `services.lidarr.environmentFiles` | | |

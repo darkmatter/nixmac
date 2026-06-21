@@ -5,7 +5,7 @@
 All options under `services.gitlab-runner`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------- | ---- | ----------- |
 | `services.gitlab-runner.checkInterval` | | |
 | `services.gitlab-runner.clear-docker-cache.dates` | | |
 | `services.gitlab-runner.clear-docker-cache.enable` | | |

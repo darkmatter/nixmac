@@ -5,7 +5,7 @@
 All options under `services.glpiAgent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.glpiAgent.enable` | | |
 | `services.glpiAgent.package` | | |
 | `services.glpiAgent.settings` | | |

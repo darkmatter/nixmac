@@ -5,7 +5,7 @@
 All options under `services.nzbhydra2`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.nzbhydra2.dataDir` | | |
 | `services.nzbhydra2.enable` | | |
 | `services.nzbhydra2.openFirewall` | | |

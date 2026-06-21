@@ -5,7 +5,7 @@
 All options under `services.radicle`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.radicle.node.args` | `string` | Additional command line arguments to pass when executing radicle-node . |
 | `services.radicle.node.enable` | `boolean` | Whether to enable Radicle Node. |
 | `services.radicle.node.environment` | `attribute set of (null or string or absolute path or package)` | Environment to set when executing radicle-node . |

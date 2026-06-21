@@ -5,7 +5,7 @@
 All options under `services.spotifyd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.spotifyd.config` | | |
 | `services.spotifyd.enable` | | |
 | `services.spotifyd.package` | | |

@@ -17,7 +17,7 @@
   # (self: super: {
   #   myCustomGit = super.callPackage ./packages/my-git { };
   # })
-  
+
   nixpkgs.overlays = [
     # Add overlays here
   ];

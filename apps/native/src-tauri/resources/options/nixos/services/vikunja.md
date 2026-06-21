@@ -5,7 +5,7 @@
 All options under `services.vikunja`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.vikunja.address` | | |
 | `services.vikunja.database.database` | | |
 | `services.vikunja.database.host` | | |

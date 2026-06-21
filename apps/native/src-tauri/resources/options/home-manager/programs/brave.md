@@ -5,7 +5,7 @@
 All options under `programs.brave`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ----------------- | -------------------------------------------------------- |
 | `programs.brave.commandLineArgs` | | |
 | `programs.brave.dictionaries` | | |
 | `programs.brave.enable` | | |

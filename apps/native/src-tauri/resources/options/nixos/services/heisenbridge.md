@@ -5,7 +5,7 @@
 All options under `services.heisenbridge`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.heisenbridge.address` | | |
 | `services.heisenbridge.debug` | | |
 | `services.heisenbridge.enable` | | |

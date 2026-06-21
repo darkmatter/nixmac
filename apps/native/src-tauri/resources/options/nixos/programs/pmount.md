@@ -5,6 +5,6 @@
 All options under `programs.pmount`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `programs.pmount.enable` | | |
 | `programs.pmount.package` | | |

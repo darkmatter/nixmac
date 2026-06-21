@@ -5,6 +5,6 @@
 All options under `services.orca`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `services.orca.enable` | | |
 | `services.orca.package` | | |

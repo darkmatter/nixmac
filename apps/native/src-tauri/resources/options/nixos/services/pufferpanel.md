@@ -5,7 +5,7 @@
 All options under `services.pufferpanel`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.pufferpanel.enable` | | |
 | `services.pufferpanel.environment` | | |
 | `services.pufferpanel.environmentFile` | | |

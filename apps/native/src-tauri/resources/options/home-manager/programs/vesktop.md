@@ -5,7 +5,7 @@
 All options under `programs.vesktop`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.vesktop.enable` | `boolean` | Whether to enable Vesktop, an alternate client for Discord with Vencord built-in. |
 | `programs.vesktop.package` | `null or package` | The vesktop package to use. |
 | `programs.vesktop.settings` | `JSON value` | Vesktop settings written to $XDG_CONFIG_HOME/vesktop/settings.json . See https://github.com/Vencord/Vesktop/blob/main/src/shared/settings.d.ts for available options. |

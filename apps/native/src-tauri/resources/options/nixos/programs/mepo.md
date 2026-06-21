@@ -5,7 +5,7 @@
 All options under `programs.mepo`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `programs.mepo.enable` | | |
 | `programs.mepo.locationBackends.geoclue` | | |
 | `programs.mepo.locationBackends.gpsd` | | |

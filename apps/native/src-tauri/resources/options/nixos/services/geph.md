@@ -5,7 +5,7 @@
 All options under `services.geph`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.geph.configFile` | | |
 | `services.geph.enable` | | |
 | `services.geph.package` | | |

@@ -5,6 +5,6 @@
 All options under `services.throttled`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.throttled.enable` | | |
 | `services.throttled.extraConfig` | | |

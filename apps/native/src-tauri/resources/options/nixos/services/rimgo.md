@@ -5,7 +5,7 @@
 All options under `services.rimgo`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.rimgo.enable` | | |
 | `services.rimgo.package` | | |
 | `services.rimgo.settings` | | |

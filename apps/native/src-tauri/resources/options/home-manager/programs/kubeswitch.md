@@ -5,7 +5,7 @@
 All options under `programs.kubeswitch`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---------------- | ----------------------------------------------------- |
 | `programs.kubeswitch.commandName` | `string` | The name of the command to use |
 | `programs.kubeswitch.enable` | `boolean` | Whether to enable the kubectx for operators. |
 | `programs.kubeswitch.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |

@@ -5,5 +5,5 @@
 All options under `services.firefox`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.firefox.syncserver` | | |

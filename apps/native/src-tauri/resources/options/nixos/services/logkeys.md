@@ -5,6 +5,6 @@
 All options under `services.logkeys`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.logkeys.device` | | |
 | `services.logkeys.enable` | | |

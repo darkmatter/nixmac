@@ -5,7 +5,7 @@
 All options under `services.asterisk`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.asterisk.confFiles` | | |
 | `services.asterisk.enable` | | |
 | `services.asterisk.extraArguments` | | |

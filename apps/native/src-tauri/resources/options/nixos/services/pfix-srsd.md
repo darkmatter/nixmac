@@ -5,7 +5,7 @@
 All options under `services.pfix-srsd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.pfix-srsd.configurePostfix` | | |
 | `services.pfix-srsd.domain` | | |
 | `services.pfix-srsd.enable` | | |

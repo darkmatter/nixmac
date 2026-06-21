@@ -5,7 +5,7 @@
 All options under `programs.tealdeer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.tealdeer.enable` | `boolean` | Whether to enable Tealdeer. |
 | `programs.tealdeer.enableAutoUpdates` | `boolean` | Whether to enable Auto updates. |
 | `programs.tealdeer.package` | `package` | The tealdeer package to use. |

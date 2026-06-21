@@ -5,7 +5,7 @@
 All options under `services.echoip`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.echoip.enable` | | |
 | `services.echoip.enablePortLookup` | | |
 | `services.echoip.enableReverseHostnameLookups` | | |

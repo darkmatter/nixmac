@@ -5,7 +5,7 @@
 All options under `services.telegraf`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ----------------------- | --------------------------------------------------------------------------------------------- |
 | `services.telegraf.configUrl` | `null or string` | Url to fetch config from |
 | `services.telegraf.enable` | `boolean` | Whether to enable telegraf agent. |
 | `services.telegraf.environmentFiles` | `list of absolute path` | File to load as environment file. This is useful to avoid putting secrets into the nix store. |

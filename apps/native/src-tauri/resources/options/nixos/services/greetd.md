@@ -5,7 +5,7 @@
 All options under `services.greetd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.greetd.enable` | | |
 | `services.greetd.greeterManagesPlymouth` | | |
 | `services.greetd.package` | | |

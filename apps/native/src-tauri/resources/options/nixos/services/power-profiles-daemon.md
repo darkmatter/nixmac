@@ -5,6 +5,6 @@
 All options under `services.power-profiles-daemon`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.power-profiles-daemon.enable` | | |
 | `services.power-profiles-daemon.package` | | |

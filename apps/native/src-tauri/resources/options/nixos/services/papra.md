@@ -5,7 +5,7 @@
 All options under `services.papra`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.papra.enable` | | |
 | `services.papra.environment` | | |
 | `services.papra.environmentFile` | | |

@@ -5,7 +5,7 @@
 All options under `programs.zsh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.zsh.enable` | `boolean` | Whether to configure zsh as an interactive shell. |
 | `programs.zsh.enableAutosuggestions` | `boolean` | Enable zsh-autosuggestions. |
 | `programs.zsh.enableBashCompletion` | `boolean` | Enable bash completion for all interactive zsh shells. |

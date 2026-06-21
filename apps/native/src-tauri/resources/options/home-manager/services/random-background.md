@@ -5,7 +5,7 @@
 All options under `services.random-background`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `services.random-background.display` | `one of “center”, “fill”, “max”, “scale”, “tile”` | Display background images according to this option. |
 | `services.random-background.enable` | `boolean` | Whether to enable random desktop background. |
 | `services.random-background.enableXinerama` | `boolean` | Will place a separate image per screen when enabled, otherwise a single image will be stretched across all screens. |

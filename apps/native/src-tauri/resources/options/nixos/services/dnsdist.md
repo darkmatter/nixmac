@@ -5,7 +5,7 @@
 All options under `services.dnsdist`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.dnsdist.dnscrypt.certLifetime` | | |
 | `services.dnsdist.dnscrypt.enable` | | |
 | `services.dnsdist.dnscrypt.listenAddress` | | |

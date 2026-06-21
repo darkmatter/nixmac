@@ -5,7 +5,7 @@
 All options under `programs.tirith`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------- |
 | `programs.tirith.allowlist` | `list of string` | List of allowed domains that bypass Tirith analysis. Written to $XDG_CONFIG_HOME/tirith/allowlist . |
 | `programs.tirith.enable` | `boolean` | Whether to enable Tirith, a shell security monitor. |
 | `programs.tirith.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |

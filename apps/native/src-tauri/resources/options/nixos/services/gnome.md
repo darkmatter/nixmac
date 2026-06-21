@@ -5,7 +5,7 @@
 All options under `services.gnome`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.gnome.at-spi2-core.enable` | | |
 | `services.gnome.core-apps.enable` | | |
 | `services.gnome.core-developer-tools.enable` | | |

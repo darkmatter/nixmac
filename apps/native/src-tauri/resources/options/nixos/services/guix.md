@@ -5,7 +5,7 @@
 All options under `services.guix`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.guix.enable` | | |
 | `services.guix.extraArgs` | | |
 | `services.guix.gc.dates` | | |

@@ -5,7 +5,7 @@
 All options under `services.phpfpm`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.phpfpm.extraConfig` | | |
 | `services.phpfpm.phpIni` | | |
 | `services.phpfpm.phpOptions` | | |

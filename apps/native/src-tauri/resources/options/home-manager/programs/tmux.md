@@ -5,7 +5,7 @@
 All options under `programs.tmux`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.tmux.aggressiveResize` | `boolean` | Resize the window to the size of the smallest session for which it is the current window. |
 | `programs.tmux.baseIndex` | `unsigned integer, meaning >=0` | Base index for windows and panes. |
 | `programs.tmux.clock24` | `boolean` | Use 24 hour clock. |

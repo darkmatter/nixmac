@@ -5,7 +5,7 @@
 All options under `programs.obs-studio`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `programs.obs-studio.enable` | | |
 | `programs.obs-studio.enableVirtualCamera` | | |
 | `programs.obs-studio.finalPackage` | | |

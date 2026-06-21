@@ -5,7 +5,7 @@
 All options under `services.logstash`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.logstash.address` | | |
 | `services.logstash.dataDir` | | |
 | `services.logstash.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.sslh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.sslh.appendConfig` | | |
 | `services.sslh.enable` | | |
 | `services.sslh.listenAddress` | | |

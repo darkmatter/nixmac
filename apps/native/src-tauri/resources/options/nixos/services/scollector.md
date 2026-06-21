@@ -5,7 +5,7 @@
 All options under `services.scollector`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.scollector.bosunHost` | | |
 | `services.scollector.collectors` | | |
 | `services.scollector.enable` | | |

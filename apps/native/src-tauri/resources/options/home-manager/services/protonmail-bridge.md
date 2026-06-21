@@ -5,7 +5,7 @@
 All options under `services.protonmail-bridge`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ------------------------------------------------------------------- | ----------------------------------------------------------------- |
 | `services.protonmail-bridge.enable` | `boolean` | Whether to enable ProtonMail Bridge. |
 | `services.protonmail-bridge.extraPackages` | `list of package` | List of derivations to place in ProtonMail Bridge’s service path. |
 | `services.protonmail-bridge.logLevel` | `null or one of “panic”, “fatal”, “error”, “warn”, “info”, “debug”` | Log level of the ProtonMail Bridge service. |

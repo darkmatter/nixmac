@@ -5,7 +5,7 @@
 All options under `services.forgejo`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.forgejo.appName` | | |
 | `services.forgejo.cookieSecure` | | |
 | `services.forgejo.customDir` | | |

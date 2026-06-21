@@ -5,7 +5,7 @@
 All options under `services.speechd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.speechd.clients` | | |
 | `services.speechd.config` | | |
 | `services.speechd.enable` | | |

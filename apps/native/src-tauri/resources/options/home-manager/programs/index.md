@@ -5,7 +5,7 @@
 Subcategories of `programs`.
 
 | Key | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------------------- | -------- | --------------------------- |
 | [`abaddon`](abaddon.md) | category | 3 options |
 | [`abook`](abook.md) | category | 3 options |
 | [`acd-cli`](acd-cli.md) | category | 6 options |

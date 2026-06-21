@@ -5,7 +5,7 @@
 All options under `programs.borgmatic`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
 | `programs.borgmatic.backups` | `attribute set of (submodule)` | Borgmatic allows for several named backup configurations, each with its own source directories and repositories. |
 | `programs.borgmatic.enable` | `boolean` | Whether to enable Borgmatic. |
 | `programs.borgmatic.package` | `null or package` | The borgmatic package to use. |

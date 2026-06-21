@@ -5,7 +5,7 @@
 All options under `services.typesense`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.typesense.apiKeyFile` | | |
 | `services.typesense.enable` | | |
 | `services.typesense.package` | | |

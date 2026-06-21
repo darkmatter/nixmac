@@ -5,7 +5,7 @@
 All options under `services.pizauth`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ------------------------------ | ----------------------------------------------------------------------------- |
 | `services.pizauth.accounts` | `attribute set of (submodule)` | Pizauth accounts that should be configured |
 | `services.pizauth.enable` | `boolean` | Whether to enable Pizauth, a commandline OAuth2 authentication daemon . |
 | `services.pizauth.extraConfig` | `null or string` | Additional global configuration. See pizauth.conf(5) for a available options. |

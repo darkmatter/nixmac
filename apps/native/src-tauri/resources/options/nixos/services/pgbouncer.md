@@ -5,7 +5,7 @@
 All options under `services.pgbouncer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.pgbouncer.adminUsers` | | |
 | `services.pgbouncer.authDbname` | | |
 | `services.pgbouncer.authFile` | | |

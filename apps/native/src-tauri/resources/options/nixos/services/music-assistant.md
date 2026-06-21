@@ -5,7 +5,7 @@
 All options under `services.music-assistant`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.music-assistant.enable` | | |
 | `services.music-assistant.extraOptions` | | |
 | `services.music-assistant.openFirewall` | | |

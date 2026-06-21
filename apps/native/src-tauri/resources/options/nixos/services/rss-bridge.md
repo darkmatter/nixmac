@@ -5,7 +5,7 @@
 All options under `services.rss-bridge`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.rss-bridge.config` | | |
 | `services.rss-bridge.dataDir` | | |
 | `services.rss-bridge.enable` | | |

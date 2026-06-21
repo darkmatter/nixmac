@@ -5,7 +5,7 @@
 All options under `services.adguardhome`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.adguardhome.allowDHCP` | | |
 | `services.adguardhome.enable` | | |
 | `services.adguardhome.extraArgs` | | |

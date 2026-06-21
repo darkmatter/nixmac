@@ -5,7 +5,7 @@
 All options under `services.youtrack`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.youtrack.address` | | |
 | `services.youtrack.autoUpgrade` | | |
 | `services.youtrack.baseUrl` | | |

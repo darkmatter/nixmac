@@ -5,6 +5,6 @@
 All options under `programs.minipro`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `programs.minipro.enable` | | |
 | `programs.minipro.package` | | |

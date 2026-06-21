@@ -5,7 +5,7 @@
 All options under `services.hardware`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------------- | ---- | ----------- |
 | `services.hardware.argonone.enable` | | |
 | `services.hardware.argonone.package` | | |
 | `services.hardware.bolt.enable` | | |

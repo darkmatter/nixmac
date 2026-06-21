@@ -5,7 +5,7 @@
 All options under `services.shellhub-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.shellhub-agent.enable` | | |
 | `services.shellhub-agent.keepAliveInterval` | | |
 | `services.shellhub-agent.package` | | |

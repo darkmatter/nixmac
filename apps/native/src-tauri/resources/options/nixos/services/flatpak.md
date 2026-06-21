@@ -5,7 +5,7 @@
 All options under `services.flatpak`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.flatpak.enable` | | |
 | `services.flatpak.extraPortals` | | |
 | `services.flatpak.package` | | |

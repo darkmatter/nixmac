@@ -5,7 +5,7 @@
 All options under `services.jibri`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.jibri.config` | | |
 | `services.jibri.enable` | | |
 | `services.jibri.finalizeScript` | | |

@@ -5,7 +5,7 @@
 All options under `services.guacamole-client`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.guacamole-client.enable` | | |
 | `services.guacamole-client.enableWebserver` | | |
 | `services.guacamole-client.logbackXml` | | |

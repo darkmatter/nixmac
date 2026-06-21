@@ -5,7 +5,7 @@
 All options under `services.pid-fan-controller`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.pid-fan-controller.enable` | | |
 | `services.pid-fan-controller.package` | | |
 | `services.pid-fan-controller.settings` | | |

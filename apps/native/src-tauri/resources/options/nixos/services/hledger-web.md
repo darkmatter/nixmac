@@ -5,7 +5,7 @@
 All options under `services.hledger-web`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.hledger-web.allow` | | |
 | `services.hledger-web.baseUrl` | | |
 | `services.hledger-web.capabilities` | | |

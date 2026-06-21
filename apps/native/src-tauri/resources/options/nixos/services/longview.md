@@ -5,7 +5,7 @@
 All options under `services.longview`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.longview.apacheStatusUrl` | | |
 | `services.longview.apiKey` | | |
 | `services.longview.apiKeyFile` | | |

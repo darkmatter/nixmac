@@ -5,6 +5,6 @@
 All options under `services.powerstation`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.powerstation.enable` | | |
 | `services.powerstation.package` | | |

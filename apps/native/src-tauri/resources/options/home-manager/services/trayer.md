@@ -5,7 +5,7 @@
 All options under `services.trayer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `services.trayer.enable` | `boolean` | Whether to enable trayer, the lightweight GTK2+ systray for UNIX desktops. |
 | `services.trayer.package` | `package` | The trayer package to use. |
 | `services.trayer.settings` | `attribute set of (null or string or boolean or signed integer)` | Trayer configuration as a set of attributes. Further details can be found in trayer’s README . |

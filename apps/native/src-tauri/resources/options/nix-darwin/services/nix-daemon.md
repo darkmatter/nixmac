@@ -5,7 +5,7 @@
 All options under `services.nix-daemon`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `services.nix-daemon.enable` | | |
 | `services.nix-daemon.enableSocketListener` | `boolean` | Whether to make the nix-daemon service socket activated. |
 | `services.nix-daemon.logFile` | `null or absolute path` | The logfile to use for the nix-daemon service. Alternatively sudo launchctl debug system/org.nixos.nix-daemon --stderr can be used to stream the logs to a shell after restarting the service with sudo launchctl kickstart -k system/org.nixos.nix-daemon . |

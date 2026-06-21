@@ -5,7 +5,7 @@
 All options under `services.garage`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.garage.enable` | | |
 | `services.garage.environmentFile` | | |
 | `services.garage.extraEnvironment` | | |

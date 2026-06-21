@@ -5,7 +5,7 @@
 All options under `services.kthxbye`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.kthxbye.alertmanager.timeout` | | |
 | `services.kthxbye.alertmanager.uri` | | |
 | `services.kthxbye.enable` | | |

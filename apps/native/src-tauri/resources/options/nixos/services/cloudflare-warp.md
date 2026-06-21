@@ -5,7 +5,7 @@
 All options under `services.cloudflare-warp`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.cloudflare-warp.enable` | | |
 | `services.cloudflare-warp.openFirewall` | | |
 | `services.cloudflare-warp.package` | | |

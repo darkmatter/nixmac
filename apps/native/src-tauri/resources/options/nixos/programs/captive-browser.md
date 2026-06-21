@@ -5,7 +5,7 @@
 All options under `programs.captive-browser`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `programs.captive-browser.bindInterface` | | |
 | `programs.captive-browser.browser` | | |
 | `programs.captive-browser.dhcp-dns` | | |

@@ -5,7 +5,7 @@
 All options under `services.proton-pass-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.proton-pass-agent.enable` | `boolean` | Whether to enable Proton Pass as a SSH agent. |
 | `services.proton-pass-agent.enableBashIntegration` | | |
 | `services.proton-pass-agent.enableFishIntegration` | | |

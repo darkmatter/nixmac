@@ -5,6 +5,6 @@
 All options under `programs.command-not-found`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `programs.command-not-found.dbPath` | | |
 | `programs.command-not-found.enable` | | |

@@ -5,7 +5,7 @@
 All options under `programs.wireshark`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `programs.wireshark.dumpcap.enable` | | |
 | `programs.wireshark.enable` | | |
 | `programs.wireshark.package` | | |

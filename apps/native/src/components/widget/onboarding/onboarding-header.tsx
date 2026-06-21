@@ -11,6 +11,11 @@ export function OnboardingHeader() {
         <img src="/logo.svg" alt="" className="size-8 object-contain" aria-hidden="true" />
         <span className="font-semibold text-base tracking-tight">nixmac</span>
       </div>
+
+      <div className="flex items-center gap-1">
+        <h3 className="font-medium  text-xl tracking-tight">System Permissions</h3>
+      </div>
+
       <button
         type="button"
         onClick={() => {

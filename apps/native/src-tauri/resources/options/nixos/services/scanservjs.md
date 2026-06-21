@@ -5,7 +5,7 @@
 All options under `services.scanservjs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.scanservjs.enable` | | |
 | `services.scanservjs.extraActions` | | |
 | `services.scanservjs.extraConfig` | | |

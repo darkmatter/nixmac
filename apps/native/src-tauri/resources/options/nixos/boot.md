@@ -5,7 +5,7 @@
 All options under `boot`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------------------------------- | ---- | ----------- |
 | `boot.bcache.enable` | | |
 | `boot.bcachefs.modulePackage` | | |
 | `boot.bcachefs.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.unpoller`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------- | ---- | ----------- |
 | `services.unpoller.enable` | | |
 | `services.unpoller.influxdb.db` | | |
 | `services.unpoller.influxdb.disable` | | |

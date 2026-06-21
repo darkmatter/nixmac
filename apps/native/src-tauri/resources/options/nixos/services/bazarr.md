@@ -5,7 +5,7 @@
 All options under `services.bazarr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.bazarr.dataDir` | | |
 | `services.bazarr.enable` | | |
 | `services.bazarr.group` | | |

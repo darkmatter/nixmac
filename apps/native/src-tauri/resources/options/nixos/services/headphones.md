@@ -5,7 +5,7 @@
 All options under `services.headphones`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.headphones.configFile` | | |
 | `services.headphones.dataDir` | | |
 | `services.headphones.enable` | | |

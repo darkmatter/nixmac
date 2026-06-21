@@ -5,5 +5,5 @@
 All options under `services.errbot`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.errbot.instances` | | |

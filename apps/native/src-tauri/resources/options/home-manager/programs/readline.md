@@ -5,7 +5,7 @@
 All options under `programs.readline`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------- |
 | `programs.readline.bindings` | `attribute set of string` | Readline bindings. |
 | `programs.readline.enable` | `boolean` | Whether to enable readline. |
 | `programs.readline.extraConfig` | `strings concatenated with “\n”` | Configuration lines appended unchanged to the end of the ~/.inputrc file. |

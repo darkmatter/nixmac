@@ -5,7 +5,7 @@
 All options under `services.ghostunnel`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.ghostunnel.enable` | | |
 | `services.ghostunnel.package` | | |
 | `services.ghostunnel.servers` | | |

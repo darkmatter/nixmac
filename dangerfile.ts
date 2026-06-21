@@ -51,15 +51,11 @@ const isRustSource = (file: string): boolean =>
 const matches = (predicate: (file: string) => boolean) => (files: readonly string[]) =>
   files.filter(predicate);
 
-const codeBlock = (files: readonly string[]): string =>
-  files.map((f) => `- \`${f}\``).join("\n");
+const codeBlock = (files: readonly string[]): string => files.map((f) => `- \`${f}\``).join("\n");
 
-const TEST_PLAN_HEADING_RE =
-  /(^|\n)#{2,3}\s*(test plan|testing instructions|how to test)\b/i;
-const NO_TEST_PLAN_NEEDED_RE =
-  /^\s*-\s*\[[xX]\]\s*No test plan needed\b/im;
-const TEST_PLAN_PLACEHOLDER_RE =
-  /^\s*-\s*\[[ xX]\]\s*No test plan needed\b.*$/gim;
+const TEST_PLAN_HEADING_RE = /(^|\n)#{2,3}\s*(test plan|testing instructions|how to test)\b/i;
+const NO_TEST_PLAN_NEEDED_RE = /^\s*-\s*\[[xX]\]\s*No test plan needed\b/im;
+const TEST_PLAN_PLACEHOLDER_RE = /^\s*-\s*\[[ xX]\]\s*No test plan needed\b.*$/gim;
 
 function getTestPlanSection(): string {
   if (!TEST_PLAN_HEADING_RE.test(body)) {
@@ -111,9 +107,7 @@ const flags = {
   touchesLockfile: touched.some((f) => /(^|\/)bun\.lock$/.test(f)),
   touchesCargo: touched.some((f) => /(^|\/)Cargo\.toml$/.test(f)),
   touchesCargoLock: touched.some((f) => /(^|\/)Cargo\.lock$/.test(f)),
-  touchesInfra: touched.some(
-    (f) => f.startsWith(".github/workflows/") || f.startsWith("ops/"),
-  ),
+  touchesInfra: touched.some((f) => f.startsWith(".github/workflows/") || f.startsWith("ops/")),
   touchesSecrets: touched.some((f) => f === "ops/secrets/secrets.yaml"),
 } as const;
 
@@ -165,9 +159,7 @@ function checkUiComponentStories(): void {
     const hasMatchingStory =
       newStories.includes(expectedStory) ||
       (baseName !== undefined &&
-        newStories.some((story) =>
-          story.toLowerCase().includes(baseName.toLowerCase()),
-        ));
+        newStories.some((story) => story.toLowerCase().includes(baseName.toLowerCase())));
 
     if (!hasMatchingStory) {
       missing.push(componentPath);
@@ -205,11 +197,7 @@ function checkRustModuleTests(): void {
       const moduleName = modulePath.split("/").pop()?.replace(/\.rs$/, "");
       if (
         moduleName !== undefined &&
-        touched.some(
-          (f) =>
-            f.startsWith("apps/native/src-tauri/tests/") &&
-            f.includes(moduleName),
-        )
+        touched.some((f) => f.startsWith("apps/native/src-tauri/tests/") && f.includes(moduleName))
       ) {
         hasTests = true;
       }
@@ -241,9 +229,7 @@ function checkNewTsTests(): void {
     return;
   }
 
-  warn(
-    `New TypeScript source files were added without any new tests:\n${codeBlock(uncovered)}`,
-  );
+  warn(`New TypeScript source files were added without any new tests:\n${codeBlock(uncovered)}`);
 }
 
 // ---------------------------------------------------------------------------

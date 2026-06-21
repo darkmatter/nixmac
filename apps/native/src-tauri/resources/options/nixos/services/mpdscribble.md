@@ -5,7 +5,7 @@
 All options under `services.mpdscribble`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.mpdscribble.enable` | | |
 | `services.mpdscribble.endpoints` | | |
 | `services.mpdscribble.host` | | |

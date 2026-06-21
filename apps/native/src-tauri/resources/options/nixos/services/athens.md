@@ -5,7 +5,7 @@
 All options under `services.athens`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------------------ | ---- | ----------- |
 | `services.athens.basicAuthPass` | | |
 | `services.athens.basicAuthUser` | | |
 | `services.athens.cloudRuntime` | | |

@@ -5,7 +5,7 @@
 All options under `services.seerr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.seerr.configDir` | | |
 | `services.seerr.enable` | | |
 | `services.seerr.openFirewall` | | |

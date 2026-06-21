@@ -5,7 +5,7 @@
 All options under `services.radarr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.radarr.dataDir` | | |
 | `services.radarr.enable` | | |
 | `services.radarr.environmentFiles` | | |

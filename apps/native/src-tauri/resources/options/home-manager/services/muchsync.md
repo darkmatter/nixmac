@@ -5,6 +5,6 @@
 All options under `services.muchsync`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ------------------------------ | ------------------------------------- |
 | `services.muchsync.package` | `package` | The muchsync package to use. |
 | `services.muchsync.remotes` | `attribute set of (submodule)` | Muchsync remotes to synchronise with. |

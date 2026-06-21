@@ -5,5 +5,5 @@
 All options under `services.nixosManual`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.nixosManual.enable` | | |

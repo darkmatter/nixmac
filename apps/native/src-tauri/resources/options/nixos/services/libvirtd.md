@@ -5,7 +5,7 @@
 All options under `services.libvirtd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.libvirtd.autoSnapshot.calendar` | | |
 | `services.libvirtd.autoSnapshot.enable` | | |
 | `services.libvirtd.autoSnapshot.keep` | | |

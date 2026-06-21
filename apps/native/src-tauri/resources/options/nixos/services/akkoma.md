@@ -5,7 +5,7 @@
 All options under `services.akkoma`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.akkoma.config` | | |
 | `services.akkoma.dist.address` | | |
 | `services.akkoma.dist.cookie` | | |

@@ -5,7 +5,7 @@
 All options under `programs.neovide`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.neovide.enable` | `boolean` | Whether to enable Neovide, No Nonsense Neovim Client in Rust. |
 | `programs.neovide.package` | `null or package` | The neovide package to use. |
 | `programs.neovide.settings` | `TOML value` | Neovide configuration. For available settings see https://neovide.dev/config-file.html . For any option not found will need to be done in your neovim’s config instead. |

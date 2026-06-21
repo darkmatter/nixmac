@@ -39,7 +39,7 @@ watcher        -->  7 deps
 **Hub modules** (fan-in ≥ 3 AND fan-out ≥ 3):
 
 | Module | Fan-in | Fan-out | Notes |
-|---|---|---|---|
+| -------------- | ------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | `shared_types` | 17 | 2\* | Pure data hub — the central type registry. The `*2` fan-out is a problem: it depends on `sqlite_types` (fine) and `evolve` (a **cycle**). |
 | `store` | 13 | 3 | Legitimate persistence hub; callers are appropriately spread. |
 | `evolve` | 5 | 9 | AI loop hub — appropriately complex; but one outbound edge is `commands` (upward call) which is wrong. |
@@ -90,7 +90,7 @@ This is a **soft cycle** through the `evolution.rs` module, not a hard circular 
 The flat list in `main.rs` mixes conceptually distinct groups:
 
 | Proposed group | Current flat modules |
-|---|---|
+| ---------------------------- | ---------------------------------------------------------------------------------------------------- |
 | `system/` | `darwin`, `nix`, `nix_ast_lists`, `scanner`, `apply_system_defaults` |
 | `git_ops/` | `git`, `changes_from_diff`, `historelog`, `get_history` |
 | `evolve/` (already a dir) | `evolution`, `evolve_state`, `managed_edit` |
@@ -153,7 +153,7 @@ ______________________________________________________________________
 ### Worker 1 — Type location moves
 
 | Type | Current location | Proposed location | Rationale |
-|---|---|---|---|
+| ----------------------------------------------------- | ----------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `EvolutionState` | `shared_types.rs` | `shared_types.rs` ✓ | Keep — used by IPC (`EvolutionResult`), DB, and evolve. |
 | `EvolveState`, `EvolveStep` | `shared_types.rs` | `shared_types.rs` ✓ | Keep — used by IPC result structs and watcher. |
 | `Feedback*` structs (8 types) | `types.rs` | `feedback.rs` or new `feedback_types.rs` | Used exclusively by `feedback.rs` and `commands.rs`; no Specta re-export needed from `types.rs`. |

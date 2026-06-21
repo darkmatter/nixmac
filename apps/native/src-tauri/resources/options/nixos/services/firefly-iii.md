@@ -5,7 +5,7 @@
 All options under `services.firefly-iii`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.firefly-iii.dataDir` | | |
 | `services.firefly-iii.enable` | | |
 | `services.firefly-iii.enableNginx` | | |

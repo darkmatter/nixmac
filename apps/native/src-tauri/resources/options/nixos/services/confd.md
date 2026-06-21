@@ -5,7 +5,7 @@
 All options under `services.confd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.confd.backend` | | |
 | `services.confd.confDir` | | |
 | `services.confd.enable` | | |

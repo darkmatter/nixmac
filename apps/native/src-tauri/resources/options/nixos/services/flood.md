@@ -5,7 +5,7 @@
 All options under `services.flood`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.flood.enable` | | |
 | `services.flood.extraArgs` | | |
 | `services.flood.host` | | |

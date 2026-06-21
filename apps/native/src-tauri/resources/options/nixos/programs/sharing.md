@@ -5,5 +5,5 @@
 All options under `programs.sharing`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `programs.sharing.enable` | | |

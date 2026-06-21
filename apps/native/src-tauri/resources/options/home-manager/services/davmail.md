@@ -5,7 +5,7 @@
 All options under `services.davmail`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.davmail.enable` | `boolean` | Whether to enable DavMail, an MS Exchange gateway… |
 | `services.davmail.imitateOutlook` | `boolean` | Whether DavMail pretends to be Outlook. |
 | `services.davmail.package` | `package` | The davmail package to use. |

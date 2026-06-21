@@ -5,7 +5,7 @@
 All options under `services.mirakurun`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.mirakurun.allowSmartCardAccess` | | |
 | `services.mirakurun.channelSettings` | | |
 | `services.mirakurun.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.clickhouse`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.clickhouse.enable` | | |
 | `services.clickhouse.extraServerConfig` | | |
 | `services.clickhouse.extraUsersConfig` | | |

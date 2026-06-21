@@ -5,7 +5,7 @@
 All options under `services.clatd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------ | ---- | ----------- |
 | `services.clatd.enable` | | |
 | `services.clatd.enableNetworkManagerIntegration` | | |
 | `services.clatd.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.peertube-runner`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.peertube-runner.enable` | | |
 | `services.peertube-runner.enabledJobTypes` | | |
 | `services.peertube-runner.group` | | |

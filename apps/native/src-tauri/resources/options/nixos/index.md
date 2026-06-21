@@ -5,7 +5,7 @@
 Top-level option categories for `nixos`.
 
 | Key | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | -------- | --------------------------------- |
 | [`_module`](_module.md) | category | 4 options |
 | [`appstream`](appstream.md) | category | 1 option |
 | `assertions` | option | |

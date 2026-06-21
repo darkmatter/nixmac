@@ -5,7 +5,7 @@
 All options under `services.felix`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.felix.bundles` | | |
 | `services.felix.enable` | | |
 | `services.felix.group` | | |

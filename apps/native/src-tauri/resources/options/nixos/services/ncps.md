@@ -5,7 +5,7 @@
 All options under `services.ncps`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------------- | ---- | ----------- |
 | `services.ncps.analytics.reporting.enable` | | |
 | `services.ncps.analytics.reporting.samples` | | |
 | `services.ncps.cache.allowDeleteVerb` | | |

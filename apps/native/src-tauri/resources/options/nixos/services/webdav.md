@@ -5,7 +5,7 @@
 All options under `services.webdav`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.webdav.configFile` | | |
 | `services.webdav.enable` | | |
 | `services.webdav.environmentFile` | | |

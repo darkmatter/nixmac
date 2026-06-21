@@ -5,7 +5,7 @@
 All options under `services.pgscv`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.pgscv.enable` | | |
 | `services.pgscv.logLevel` | | |
 | `services.pgscv.package` | | |

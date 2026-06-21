@@ -1,6 +1,6 @@
-import path from 'node:path';
-import { artifactFileIssue, artifactForLabel, pngDimensions } from './artifact-utils.mjs';
-import { tryRun } from './process-utils.mjs';
+import path from "node:path";
+import { artifactFileIssue, artifactForLabel, pngDimensions } from "./artifact-utils.mjs";
+import { tryRun } from "./process-utils.mjs";
 
 export const visualProbeDefaults = {
   minWidth: 500,
@@ -13,7 +13,7 @@ export const visualProbeDefaults = {
 
 export function parseSignalStats(output) {
   const stats = {};
-  for (const line of String(output || '').split('\n')) {
+  for (const line of String(output || "").split("\n")) {
     const match = line.match(/lavfi\.signalstats\.([A-Z]+)=([0-9.]+)/);
     if (match) stats[match[1]] = Number(match[2]);
   }
@@ -23,18 +23,18 @@ export function parseSignalStats(output) {
 export function pngSignalStats(filePath, crop = null) {
   const filters = [];
   if (crop) filters.push(`crop=${crop.w}:${crop.h}:${crop.x}:${crop.y}`);
-  filters.push('signalstats', 'metadata=print:file=-');
-  const result = tryRun('ffmpeg', [
-    '-hide_banner',
-    '-i',
+  filters.push("signalstats", "metadata=print:file=-");
+  const result = tryRun("ffmpeg", [
+    "-hide_banner",
+    "-i",
     filePath,
-    '-vf',
-    filters.join(','),
-    '-frames:v',
-    '1',
-    '-f',
-    'null',
-    '-',
+    "-vf",
+    filters.join(","),
+    "-frames:v",
+    "1",
+    "-f",
+    "null",
+    "-",
   ]);
   if (!result.ok) {
     return {
@@ -52,15 +52,17 @@ export function pngSignalStats(filePath, crop = null) {
 export function imageArtifactIssue(state, relativePath) {
   const baseIssue = artifactFileIssue(state, relativePath);
   if (baseIssue) return baseIssue;
-  if (!/\.png$/i.test(relativePath)) return '';
+  if (!/\.png$/i.test(relativePath)) return "";
   const fullPath = path.join(state.runDir, relativePath);
   const result = pngSignalStats(fullPath);
   if (!result.ok) return `ffmpeg could not inspect the image (${result.error})`;
   const yMax = result.stats.YMAX;
   const yMin = result.stats.YMIN;
-  if (Number.isFinite(yMax) && yMax < 40) return 'the screenshot appears blank or visually occluded';
-  if (Number.isFinite(yMax) && Number.isFinite(yMin) && yMax - yMin < 4) return 'the screenshot has too little visual contrast';
-  return '';
+  if (Number.isFinite(yMax) && yMax < 40)
+    return "the screenshot appears blank or visually occluded";
+  if (Number.isFinite(yMax) && Number.isFinite(yMin) && yMax - yMin < 4)
+    return "the screenshot has too little visual contrast";
+  return "";
 }
 
 export function probeCropForImage(imageSize, probe) {
@@ -74,26 +76,29 @@ export function probeCropForImage(imageSize, probe) {
 }
 
 function visualCheckPass(name, detail) {
-  return { name, status: 'pass', detail };
+  return { name, status: "pass", detail };
 }
 
 function visualCheckFail(name, detail) {
-  return { name, status: 'fail', detail };
+  return { name, status: "fail", detail };
 }
 
 export function evaluateScreenshotVisualContract(state, screenshotRequirement) {
-  const labels = Array.isArray(screenshotRequirement.labels) && screenshotRequirement.labels.length > 0 ? screenshotRequirement.labels : [screenshotRequirement.label];
+  const labels =
+    Array.isArray(screenshotRequirement.labels) && screenshotRequirement.labels.length > 0
+      ? screenshotRequirement.labels
+      : [screenshotRequirement.label];
   const shot = labels.map((label) => artifactForLabel(state.screenshots, label)).find(Boolean);
   const checks = [];
   if (!shot) {
     const missingDetail =
       labels.length > 1
-        ? `Required screenshot artifact is missing from state.screenshots: ${labels.join(', ')}.`
-        : 'Required screenshot artifact is missing from state.screenshots.';
+        ? `Required screenshot artifact is missing from state.screenshots: ${labels.join(", ")}.`
+        : "Required screenshot artifact is missing from state.screenshots.";
     return {
-      label: screenshotRequirement.label || labels.join(' or '),
-      status: 'fail',
-      checks: [visualCheckFail('screenshot artifact', missingDetail)],
+      label: screenshotRequirement.label || labels.join(" or "),
+      status: "fail",
+      checks: [visualCheckFail("screenshot artifact", missingDetail)],
     };
   }
 
@@ -103,53 +108,102 @@ export function evaluateScreenshotVisualContract(state, screenshotRequirement) {
     return {
       label: shot.label,
       path: shot.path,
-      status: 'fail',
-      checks: [visualCheckFail('screenshot artifact', baseIssue)],
+      status: "fail",
+      checks: [visualCheckFail("screenshot artifact", baseIssue)],
     };
   }
 
   const imageSize = shot.imageSize || pngDimensions(fullPath);
   if (!imageSize) {
-    checks.push(visualCheckFail('image dimensions', 'Could not read PNG dimensions.'));
-  } else if (imageSize.width < visualProbeDefaults.minWidth || imageSize.height < visualProbeDefaults.minHeight) {
-    checks.push(visualCheckFail('image dimensions', `${imageSize.width}x${imageSize.height} is below ${visualProbeDefaults.minWidth}x${visualProbeDefaults.minHeight}.`));
+    checks.push(visualCheckFail("image dimensions", "Could not read PNG dimensions."));
+  } else if (
+    imageSize.width < visualProbeDefaults.minWidth ||
+    imageSize.height < visualProbeDefaults.minHeight
+  ) {
+    checks.push(
+      visualCheckFail(
+        "image dimensions",
+        `${imageSize.width}x${imageSize.height} is below ${visualProbeDefaults.minWidth}x${visualProbeDefaults.minHeight}.`,
+      ),
+    );
   } else {
-    checks.push(visualCheckPass('image dimensions', `${imageSize.width}x${imageSize.height}.`));
+    checks.push(visualCheckPass("image dimensions", `${imageSize.width}x${imageSize.height}.`));
   }
 
   const fullStats = pngSignalStats(fullPath);
   if (!fullStats.ok) {
-    checks.push(visualCheckFail('full-frame decode', `ffmpeg could not inspect the image (${fullStats.error}).`));
+    checks.push(
+      visualCheckFail(
+        "full-frame decode",
+        `ffmpeg could not inspect the image (${fullStats.error}).`,
+      ),
+    );
   } else {
     const yMin = fullStats.stats.YMIN;
     const yMax = fullStats.stats.YMAX;
     const yRange = Number.isFinite(yMin) && Number.isFinite(yMax) ? yMax - yMin : NaN;
     if (!Number.isFinite(yMax) || yMax < visualProbeDefaults.minYMax) {
-      checks.push(visualCheckFail('full-frame brightness', `YMAX ${yMax ?? 'unknown'} is below ${visualProbeDefaults.minYMax}.`));
+      checks.push(
+        visualCheckFail(
+          "full-frame brightness",
+          `YMAX ${yMax ?? "unknown"} is below ${visualProbeDefaults.minYMax}.`,
+        ),
+      );
     } else if (!Number.isFinite(yRange) || yRange < visualProbeDefaults.minYRange) {
-      checks.push(visualCheckFail('full-frame contrast', `Y range ${Number.isFinite(yRange) ? yRange : 'unknown'} is below ${visualProbeDefaults.minYRange}.`));
+      checks.push(
+        visualCheckFail(
+          "full-frame contrast",
+          `Y range ${Number.isFinite(yRange) ? yRange : "unknown"} is below ${visualProbeDefaults.minYRange}.`,
+        ),
+      );
     } else {
-      checks.push(visualCheckPass('full-frame signal', `Y range ${yMin}-${yMax}.`));
+      checks.push(visualCheckPass("full-frame signal", `Y range ${yMin}-${yMax}.`));
     }
   }
 
   for (const probe of screenshotRequirement.probes || []) {
-    if (typeof probe.x !== 'number' || typeof probe.y !== 'number' || typeof probe.w !== 'number' || typeof probe.h !== 'number') {
-      checks.push(visualCheckFail(probe.label || 'visual probe', 'Probe coordinates are incomplete.'));
+    if (
+      typeof probe.x !== "number" ||
+      typeof probe.y !== "number" ||
+      typeof probe.w !== "number" ||
+      typeof probe.h !== "number"
+    ) {
+      checks.push(
+        visualCheckFail(probe.label || "visual probe", "Probe coordinates are incomplete."),
+      );
       continue;
     }
-    if (probe.x < 0 || probe.y < 0 || probe.w <= 0 || probe.h <= 0 || probe.x + probe.w > 100 || probe.y + probe.h > 100) {
-      checks.push(visualCheckFail(probe.label || 'visual probe', 'Probe coordinates are outside image bounds.'));
+    if (
+      probe.x < 0 ||
+      probe.y < 0 ||
+      probe.w <= 0 ||
+      probe.h <= 0 ||
+      probe.x + probe.w > 100 ||
+      probe.y + probe.h > 100
+    ) {
+      checks.push(
+        visualCheckFail(
+          probe.label || "visual probe",
+          "Probe coordinates are outside image bounds.",
+        ),
+      );
       continue;
     }
     const crop = probeCropForImage(imageSize, probe);
     if (!crop) {
-      checks.push(visualCheckFail(probe.label || 'visual probe', 'Probe could not be mapped into image pixels.'));
+      checks.push(
+        visualCheckFail(
+          probe.label || "visual probe",
+          "Probe could not be mapped into image pixels.",
+        ),
+      );
       continue;
     }
     const cropStats = pngSignalStats(fullPath, crop);
     if (!cropStats.ok) {
-      checks.push(visualCheckFail(probe.label, `ffmpeg could not inspect crop (${cropStats.error}).`));
+      checks.push(
+        visualCheckFail(probe.label, `ffmpeg could not inspect crop (${cropStats.error}).`),
+      );
       continue;
     }
     const yMin = cropStats.stats.YMIN;
@@ -158,18 +212,30 @@ export function evaluateScreenshotVisualContract(state, screenshotRequirement) {
     const minYMax = probe.minYMax ?? visualProbeDefaults.minCropYMax;
     const minYRange = probe.minYRange ?? visualProbeDefaults.minCropYRange;
     if (!Number.isFinite(yMax) || yMax < minYMax) {
-      checks.push(visualCheckFail(probe.label, `crop YMAX ${yMax ?? 'unknown'} is below ${minYMax}.`));
+      checks.push(
+        visualCheckFail(probe.label, `crop YMAX ${yMax ?? "unknown"} is below ${minYMax}.`),
+      );
     } else if (!Number.isFinite(yRange) || yRange < minYRange) {
-      checks.push(visualCheckFail(probe.label, `crop Y range ${Number.isFinite(yRange) ? yRange : 'unknown'} is below ${minYRange}.`));
+      checks.push(
+        visualCheckFail(
+          probe.label,
+          `crop Y range ${Number.isFinite(yRange) ? yRange : "unknown"} is below ${minYRange}.`,
+        ),
+      );
     } else {
-      checks.push(visualCheckPass(probe.label, `crop ${crop.w}x${crop.h}+${crop.x}+${crop.y}, Y range ${yMin}-${yMax}.`));
+      checks.push(
+        visualCheckPass(
+          probe.label,
+          `crop ${crop.w}x${crop.h}+${crop.x}+${crop.y}, Y range ${yMin}-${yMax}.`,
+        ),
+      );
     }
   }
 
   return {
     label: shot.label,
     path: shot.path,
-    status: checks.some((check) => check.status === 'fail') ? 'fail' : 'pass',
+    status: checks.some((check) => check.status === "fail") ? "fail" : "pass",
     checks,
   };
 }

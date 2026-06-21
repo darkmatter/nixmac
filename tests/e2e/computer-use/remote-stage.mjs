@@ -1,4 +1,4 @@
-import { tryRun } from './process-utils.mjs';
+import { tryRun } from "./process-utils.mjs";
 
 export function shellQuote(value) {
   return `'${String(value).replaceAll("'", "'\\''")}'`;
@@ -7,11 +7,11 @@ export function shellQuote(value) {
 export function sshArgs(remoteCommand, env = process.env) {
   const dest = env.NIXMAC_E2E_REMOTE_SSH_DEST;
   if (!dest) return null;
-  const args = ['-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes'];
+  const args = ["-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes"];
   if (env.NIXMAC_E2E_SSH_KNOWN_HOSTS) {
-    args.push('-o', `UserKnownHostsFile=${env.NIXMAC_E2E_SSH_KNOWN_HOSTS}`);
+    args.push("-o", `UserKnownHostsFile=${env.NIXMAC_E2E_SSH_KNOWN_HOSTS}`);
   }
-  if (env.NIXMAC_E2E_SSH_KEY) args.push('-i', env.NIXMAC_E2E_SSH_KEY);
+  if (env.NIXMAC_E2E_SSH_KEY) args.push("-i", env.NIXMAC_E2E_SSH_KEY);
   args.push(dest, remoteCommand);
   return args;
 }
@@ -19,36 +19,41 @@ export function sshArgs(remoteCommand, env = process.env) {
 export function scpArgs(localPath, remotePath, env = process.env) {
   const dest = env.NIXMAC_E2E_REMOTE_SSH_DEST;
   if (!dest) return null;
-  const args = ['-r', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes'];
+  const args = ["-r", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes"];
   if (env.NIXMAC_E2E_SSH_KNOWN_HOSTS) {
-    args.push('-o', `UserKnownHostsFile=${env.NIXMAC_E2E_SSH_KNOWN_HOSTS}`);
+    args.push("-o", `UserKnownHostsFile=${env.NIXMAC_E2E_SSH_KNOWN_HOSTS}`);
   }
-  if (env.NIXMAC_E2E_SSH_KEY) args.push('-i', env.NIXMAC_E2E_SSH_KEY);
+  if (env.NIXMAC_E2E_SSH_KEY) args.push("-i", env.NIXMAC_E2E_SSH_KEY);
   args.push(localPath, `${dest}:${remotePath}`);
   return args;
 }
 
 export function ssh(remoteCommand) {
   const args = sshArgs(remoteCommand);
-  if (!args) return { ok: false, stdout: '', stderr: 'NIXMAC_E2E_REMOTE_SSH_DEST is not set' };
-  return tryRun('ssh', args);
+  if (!args) return { ok: false, stdout: "", stderr: "NIXMAC_E2E_REMOTE_SSH_DEST is not set" };
+  return tryRun("ssh", args);
 }
 
 export function scpToRemote(localPath, remotePath) {
   const args = scpArgs(localPath, remotePath);
-  if (!args) return { ok: false, stdout: '', stderr: 'NIXMAC_E2E_REMOTE_SSH_DEST is not set' };
-  return tryRun('scp', args);
+  if (!args) return { ok: false, stdout: "", stderr: "NIXMAC_E2E_REMOTE_SSH_DEST is not set" };
+  return tryRun("scp", args);
 }
 
 export function remoteAppPathFromEnv(env = process.env) {
-  return env.NIXMAC_E2E_REMOTE_APP_PATH || '/Applications/nixmac.app';
+  return env.NIXMAC_E2E_REMOTE_APP_PATH || "/Applications/nixmac.app";
 }
 
 export function remoteActivationPamSymlinkHang() {
   const result = ssh(
     "ps -axo pid=,ppid=,stat=,etime=,command= | awk '$2 != 1 && /ln -s \\/etc\\/static\\/pam\\.d\\/sudo_local \\/etc\\/pam\\.d\\/sudo_local/ && !/awk/ { print }'",
   );
-  return result.ok && /ln -s .*\/etc\/static\/pam\.d\/sudo_local .*\/etc\/pam\.d\/sudo_local/.test(result.stdout || '');
+  return (
+    result.ok &&
+    /ln -s .*\/etc\/static\/pam\.d\/sudo_local .*\/etc\/pam\.d\/sudo_local/.test(
+      result.stdout || "",
+    )
+  );
 }
 
 export function captureRemoteMetadata() {
@@ -149,13 +154,13 @@ print(json.dumps({
   if (!result.ok) {
     return {
       metadata: null,
-      error: result.stderr || result.stdout || 'Remote metadata command failed.',
+      error: result.stderr || result.stdout || "Remote metadata command failed.",
     };
   }
   try {
     return {
       metadata: JSON.parse(result.stdout),
-      error: '',
+      error: "",
     };
   } catch (error) {
     return {
@@ -165,15 +170,15 @@ print(json.dumps({
   }
 }
 
-function decodeBase64(value = '') {
-  if (!value) return '';
-  return Buffer.from(value, 'base64').toString('utf8').trim();
+function decodeBase64(value = "") {
+  if (!value) return "";
+  return Buffer.from(value, "base64").toString("utf8").trim();
 }
 
-function parseKeyValueLines(stdout = '') {
+function parseKeyValueLines(stdout = "") {
   const parsed = {};
-  for (const line of stdout.split('\n')) {
-    const index = line.indexOf('=');
+  for (const line of stdout.split("\n")) {
+    const index = line.indexOf("=");
     if (index === -1) continue;
     parsed[line.slice(0, index)] = line.slice(index + 1);
   }
@@ -183,17 +188,17 @@ function parseKeyValueLines(stdout = '') {
 export function remoteConfigDirFromSettings() {
   if (process.env.NIXMAC_E2E_REMOTE_CONFIG_DIR) return process.env.NIXMAC_E2E_REMOTE_CONFIG_DIR;
   const script = [
-    'import json, os',
+    "import json, os",
     'p=os.path.join(os.environ["HOME"], "Library/Application Support/com.darkmatter.nixmac", "settings.json")',
     'with open(p, encoding="utf-8") as f: settings=json.load(f)',
     'print(settings.get("configDir", ""))',
-  ].join('; ');
+  ].join("; ");
   const result = ssh(`/usr/bin/python3 -c ${shellQuote(script)}`);
-  return result.ok ? result.stdout.trim() : '';
+  return result.ok ? result.stdout.trim() : "";
 }
 
-export function remoteGitSnapshot(configDir, baselineHead = '') {
-  if (!configDir) return { ok: false, error: 'No remote configDir available.' };
+export function remoteGitSnapshot(configDir, baselineHead = "") {
+  if (!configDir) return { ok: false, error: "No remote configDir available." };
   const command = [
     `CONFIG_DIR=${shellQuote(configDir)}`,
     `BASELINE=${shellQuote(baselineHead)}`,
@@ -203,30 +208,36 @@ export function remoteGitSnapshot(configDir, baselineHead = '') {
     'printf "DIFF_B64="; git diff --name-only | base64 | tr -d "\\n"; printf "\\n"',
     'if [ -n "$BASELINE" ]; then printf "BASELINE_DIFF_B64="; git diff --name-only "$BASELINE" HEAD | base64 | tr -d "\\n"; printf "\\n"; fi',
     'if git grep -q -E "(^|[^A-Za-z])bat([^A-Za-z]|$)" HEAD -- . >/dev/null 2>&1; then echo "CONTAINS_BAT=true"; else echo "CONTAINS_BAT=false"; fi',
-  ].join('; ');
+  ].join("; ");
   const result = ssh(command);
-  if (!result.ok) return { ok: false, error: result.stderr || result.stdout || result.error || 'Remote git snapshot failed.' };
+  if (!result.ok)
+    return {
+      ok: false,
+      error: result.stderr || result.stdout || result.error || "Remote git snapshot failed.",
+    };
   const parsed = parseKeyValueLines(result.stdout);
   return {
     ok: true,
     configDir,
-    head: parsed.HEAD || '',
+    head: parsed.HEAD || "",
     statusShort: decodeBase64(parsed.STATUS_B64),
     diffNameOnly: decodeBase64(parsed.DIFF_B64),
     baselineDiffNameOnly: decodeBase64(parsed.BASELINE_DIFF_B64),
-    containsBat: parsed.CONTAINS_BAT === 'true',
+    containsBat: parsed.CONTAINS_BAT === "true",
   };
 }
 
 export function meaningfulBaselineDiff(snapshot) {
-  return String(snapshot?.baselineDiffNameOnly || '')
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    // The fixed Homebrew E2E prompt proves config cleanup through the package
-    // file and absence of bat. Nix may refresh these generated build artifacts
-    // while leaving user-visible Homebrew config restored.
-    .filter((line) => line !== 'result')
-    .filter((line) => line !== 'flake.lock')
-    .join('\n');
+  return (
+    String(snapshot?.baselineDiffNameOnly || "")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      // The fixed Homebrew E2E prompt proves config cleanup through the package
+      // file and absence of bat. Nix may refresh these generated build artifacts
+      // while leaving user-visible Homebrew config restored.
+      .filter((line) => line !== "result")
+      .filter((line) => line !== "flake.lock")
+      .join("\n")
+  );
 }

@@ -5,7 +5,7 @@
 All options under `services.odoo`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.odoo.addons` | | |
 | `services.odoo.autoInit` | | |
 | `services.odoo.autoInitExtraFlags` | | |

@@ -5,7 +5,7 @@
 All options under `services.nextcloud`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------------------------- | ---- | ----------- |
 | `services.nextcloud.appstoreEnable` | | |
 | `services.nextcloud.autoUpdateApps.enable` | | |
 | `services.nextcloud.autoUpdateApps.startAt` | | |

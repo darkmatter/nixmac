@@ -5,7 +5,7 @@
 All options under `gtk`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------- |
 | `gtk.colorScheme` | `null or one of “dark”, “light”` | Default color scheme for all GTK versions |
 | `gtk.cursorTheme` | `null or (submodule)` | Default cursor theme for all GTK versions. |
 | `gtk.enable` | `boolean` | Whether to enable GTK theming and configuration. |

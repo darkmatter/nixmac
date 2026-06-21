@@ -5,7 +5,7 @@
 All options under `services.cjdns`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.cjdns.ETHInterface.beacon` | | |
 | `services.cjdns.ETHInterface.bind` | | |
 | `services.cjdns.ETHInterface.connectTo` | | |

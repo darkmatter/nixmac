@@ -5,6 +5,6 @@
 All options under `services.tftpd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `services.tftpd.enable` | | |
 | `services.tftpd.path` | | |

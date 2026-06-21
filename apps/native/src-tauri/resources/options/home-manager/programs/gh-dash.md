@@ -5,7 +5,7 @@
 All options under `programs.gh-dash`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ----------------- | -------------------------------------------------------------- |
 | `programs.gh-dash.enable` | `boolean` | Whether to enable GitHub CLI dashboard plugin. |
 | `programs.gh-dash.package` | `null or package` | The gh-dash package to use. |
 | `programs.gh-dash.settings` | `YAML 1.1 value` | Configuration written to $XDG_CONFIG_HOME/gh-dash/config.yml . |

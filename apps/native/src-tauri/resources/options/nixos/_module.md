@@ -5,7 +5,7 @@
 All options under `_module`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------- | ---- | ----------- |
 | `_module.args` | | |
 | `_module.check` | | |
 | `_module.freeformType` | | |

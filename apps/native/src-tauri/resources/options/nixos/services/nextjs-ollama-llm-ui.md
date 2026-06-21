@@ -5,7 +5,7 @@
 All options under `services.nextjs-ollama-llm-ui`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.nextjs-ollama-llm-ui.enable` | | |
 | `services.nextjs-ollama-llm-ui.hostname` | | |
 | `services.nextjs-ollama-llm-ui.ollamaUrl` | | |

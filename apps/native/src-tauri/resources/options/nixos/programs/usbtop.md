@@ -5,5 +5,5 @@
 All options under `programs.usbtop`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `programs.usbtop.enable` | | |

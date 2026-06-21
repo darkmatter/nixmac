@@ -5,6 +5,6 @@
 All options under `programs.ausweisapp`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `programs.ausweisapp.enable` | | |
 | `programs.ausweisapp.openFirewall` | | |

@@ -5,7 +5,7 @@
 All options under `services.engelsystem`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.engelsystem.config` | | |
 | `services.engelsystem.createDatabase` | | |
 | `services.engelsystem.domain` | | |

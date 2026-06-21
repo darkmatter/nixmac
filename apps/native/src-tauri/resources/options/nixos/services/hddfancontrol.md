@@ -5,7 +5,7 @@
 All options under `services.hddfancontrol`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.hddfancontrol.disks` | | |
 | `services.hddfancontrol.enable` | | |
 | `services.hddfancontrol.extraArgs` | | |

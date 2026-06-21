@@ -5,7 +5,7 @@
 All options under `services.autorandr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.autorandr.defaultTarget` | | |
 | `services.autorandr.enable` | | |
 | `services.autorandr.hooks` | | |

@@ -5,6 +5,6 @@
 All options under `services.blackfire-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.blackfire-agent.enable` | | |
 | `services.blackfire-agent.settings` | | |

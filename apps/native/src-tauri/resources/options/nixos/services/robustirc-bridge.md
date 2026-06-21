@@ -5,6 +5,6 @@
 All options under `services.robustirc-bridge`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.robustirc-bridge.enable` | | |
 | `services.robustirc-bridge.extraFlags` | | |

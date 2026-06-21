@@ -5,7 +5,7 @@
 All options under `services.ttyd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.ttyd.caFile` | | |
 | `services.ttyd.certFile` | | |
 | `services.ttyd.checkOrigin` | | |

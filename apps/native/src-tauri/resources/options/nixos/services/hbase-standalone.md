@@ -5,7 +5,7 @@
 All options under `services.hbase-standalone`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.hbase-standalone.dataDir` | | |
 | `services.hbase-standalone.enable` | | |
 | `services.hbase-standalone.group` | | |

@@ -5,7 +5,7 @@
 All options under `services.reframe`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.reframe.configs` | | |
 | `services.reframe.enable` | | |
 | `services.reframe.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.synergy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.synergy.client.autoStart` | | |
 | `services.synergy.client.enable` | | |
 | `services.synergy.client.screenName` | | |

@@ -5,7 +5,7 @@
 All options under `programs.mouse-actions`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `programs.mouse-actions.autorun` | | |
 | `programs.mouse-actions.enable` | | |
 | `programs.mouse-actions.package` | | |

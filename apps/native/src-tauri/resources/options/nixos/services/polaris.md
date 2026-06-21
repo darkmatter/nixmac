@@ -5,7 +5,7 @@
 All options under `services.polaris`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.polaris.enable` | | |
 | `services.polaris.extraGroups` | | |
 | `services.polaris.group` | | |

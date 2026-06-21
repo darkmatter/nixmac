@@ -1,5 +1,10 @@
 # Font configuration
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 {
   fonts = {
@@ -63,4 +68,3 @@
     ];
   };
 }
-

@@ -5,7 +5,7 @@
 All options under `services.webhook`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.webhook.enable` | | |
 | `services.webhook.enableTemplates` | | |
 | `services.webhook.environment` | | |

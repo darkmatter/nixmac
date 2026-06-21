@@ -5,7 +5,7 @@
 All options under `services.uptermd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.uptermd.enable` | | |
 | `services.uptermd.extraFlags` | | |
 | `services.uptermd.hostKey` | | |

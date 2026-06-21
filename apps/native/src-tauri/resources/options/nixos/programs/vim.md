@@ -5,7 +5,7 @@
 All options under `programs.vim`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `programs.vim.defaultEditor` | | |
 | `programs.vim.enable` | | |
 | `programs.vim.package` | | |

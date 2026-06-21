@@ -5,7 +5,7 @@
 All options under `services.endlessh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.endlessh.enable` | | |
 | `services.endlessh.extraOptions` | | |
 | `services.endlessh.openFirewall` | | |

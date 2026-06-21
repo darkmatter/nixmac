@@ -5,7 +5,7 @@
 All options under `services.qdrant`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.qdrant.enable` | | |
 | `services.qdrant.package` | | |
 | `services.qdrant.settings` | | |

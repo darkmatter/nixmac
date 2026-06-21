@@ -5,7 +5,7 @@
 All options under `programs.wpaperd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `programs.wpaperd.enable` | | |
 | `programs.wpaperd.package` | | |
 | `programs.wpaperd.settings` | | |

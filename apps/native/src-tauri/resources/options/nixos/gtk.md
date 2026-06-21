@@ -5,5 +5,5 @@
 All options under `gtk`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------- | ---- | ----------- |
 | `gtk.iconCache.enable` | | |

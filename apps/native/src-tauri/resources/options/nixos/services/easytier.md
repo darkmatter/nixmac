@@ -5,7 +5,7 @@
 All options under `services.easytier`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.easytier.allowSystemForward` | | |
 | `services.easytier.enable` | | |
 | `services.easytier.instances` | | |

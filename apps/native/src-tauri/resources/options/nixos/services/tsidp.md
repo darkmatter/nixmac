@@ -5,7 +5,7 @@
 All options under `services.tsidp`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.tsidp.enable` | | |
 | `services.tsidp.environmentFile` | | |
 | `services.tsidp.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.awstats`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.awstats.configs` | | |
 | `services.awstats.dataDir` | | |
 | `services.awstats.enable` | | |

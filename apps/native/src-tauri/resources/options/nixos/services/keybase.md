@@ -5,5 +5,5 @@
 All options under `services.keybase`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.keybase.enable` | | |

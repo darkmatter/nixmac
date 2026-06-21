@@ -5,5 +5,5 @@
 All options under `services.tts`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------- | ---- | ----------- |
 | `services.tts.servers` | | |

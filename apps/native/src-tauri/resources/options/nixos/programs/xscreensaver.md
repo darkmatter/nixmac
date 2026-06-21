@@ -5,7 +5,7 @@
 All options under `programs.xscreensaver`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `programs.xscreensaver.enable` | | |
 | `programs.xscreensaver.package` | | |
 | `programs.xscreensaver.sonar.enable` | | |

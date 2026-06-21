@@ -5,7 +5,7 @@
 All options under `programs.onagre`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.onagre.enable` | `boolean` | Whether to enable onagre. |
 | `programs.onagre.package` | `null or package` | The onagre package to use. |
 | `programs.onagre.style` | `strings concatenated with “\n”` | Configuration file to be written to theme.scss for setting Onagre’s theme. The documentation can be found here: https://github.com/onagre-launcher/onagre/wiki/Theming |

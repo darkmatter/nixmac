@@ -5,7 +5,7 @@
 All options under `programs.gamemode`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `programs.gamemode.enable` | | |
 | `programs.gamemode.enableRenice` | | |
 | `programs.gamemode.package` | | |

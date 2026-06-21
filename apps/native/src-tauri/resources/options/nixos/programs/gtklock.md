@@ -5,7 +5,7 @@
 All options under `programs.gtklock`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `programs.gtklock.config` | | |
 | `programs.gtklock.enable` | | |
 | `programs.gtklock.modules` | | |

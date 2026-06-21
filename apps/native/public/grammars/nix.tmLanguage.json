@@ -1,9 +1,7 @@
 {
   "name": "Nix",
   "scopeName": "source.nix",
-  "fileTypes": [
-    "nix"
-  ],
+  "fileTypes": ["nix"],
   "uuid": "0514fd5f-acb6-436d-b42c-7643e6d36c8f",
   "patterns": [
     {

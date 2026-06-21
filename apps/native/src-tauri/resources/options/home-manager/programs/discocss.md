@@ -5,7 +5,7 @@
 All options under `programs.discocss`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ----------------- | ---------------------------------------------------------------------------- |
 | `programs.discocss.css` | `string` | The custom CSS for discocss to use. |
 | `programs.discocss.discordAlias` | `boolean` | Whether to alias discocss to discord. |
 | `programs.discocss.discordPackage` | `null or package` | The discord package to use. |

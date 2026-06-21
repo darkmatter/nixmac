@@ -5,7 +5,7 @@
 All options under `programs.ty`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.ty.enable` | `boolean` | Whether to enable ty. |
 | `programs.ty.package` | `null or package` | The ty package to use. |
 | `programs.ty.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/ty/ty.toml . See https://docs.astral.sh/ty/configuration/ and https://docs.astral.sh/ty/reference/configuration/ for more information. |

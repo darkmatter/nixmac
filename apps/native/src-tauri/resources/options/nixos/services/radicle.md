@@ -5,7 +5,7 @@
 All options under `services.radicle`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.radicle.checkConfig` | | |
 | `services.radicle.ci.adapters.native.instances` | | |
 | `services.radicle.ci.broker.checkConfig` | | |

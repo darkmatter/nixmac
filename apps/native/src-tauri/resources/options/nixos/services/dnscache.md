@@ -5,7 +5,7 @@
 All options under `services.dnscache`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.dnscache.clientIps` | | |
 | `services.dnscache.domainServers` | | |
 | `services.dnscache.enable` | | |

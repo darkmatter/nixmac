@@ -5,7 +5,7 @@
 All options under `services.samba`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.samba.configText` | | |
 | `services.samba.defaultShare` | | |
 | `services.samba.enable` | | |

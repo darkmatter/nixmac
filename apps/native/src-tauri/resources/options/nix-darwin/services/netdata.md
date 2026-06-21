@@ -5,7 +5,7 @@
 All options under `services.netdata`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | -------------------------------- | --------------------------------- |
 | `services.netdata.cacheDir` | `absolute path` | Cache directory for Netdata |
 | `services.netdata.config` | `strings concatenated with “\n”` | Custom configuration for Netdata |
 | `services.netdata.enable` | `boolean` | Whether to enable Netdata daemon. |

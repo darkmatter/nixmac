@@ -5,7 +5,7 @@
 All options under `services.podman`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------- |
 | `services.podman._configFiles` | | |
 | `services.podman.autoUpdate.enable` | `boolean` | Automatically update the podman images. |
 | `services.podman.autoUpdate.onCalendar` | `string` | The systemd OnCalendar expression for the update. See systemd.time (7) for a description of the format. |

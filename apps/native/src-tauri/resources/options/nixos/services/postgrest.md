@@ -5,7 +5,7 @@
 All options under `services.postgrest`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.postgrest.enable` | | |
 | `services.postgrest.jwtSecretFile` | | |
 | `services.postgrest.pgpassFile` | | |

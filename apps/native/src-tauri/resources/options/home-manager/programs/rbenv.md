@@ -5,7 +5,7 @@
 All options under `programs.rbenv`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | --------------------- | --------------------------------------------------- |
 | `programs.rbenv.enable` | `boolean` | Whether to enable rbenv. |
 | `programs.rbenv.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.rbenv.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |

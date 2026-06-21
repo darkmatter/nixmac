@@ -5,7 +5,7 @@
 All options under `programs.tsmClient`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `programs.tsmClient.defaultServername` | | |
 | `programs.tsmClient.dsmSysText` | | |
 | `programs.tsmClient.enable` | | |

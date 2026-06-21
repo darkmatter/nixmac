@@ -5,7 +5,7 @@
 All options under `services.cloudflared`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.cloudflared.certificateFile` | | |
 | `services.cloudflared.enable` | | |
 | `services.cloudflared.group` | | |

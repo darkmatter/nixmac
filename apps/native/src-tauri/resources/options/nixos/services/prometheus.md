@@ -5,7 +5,7 @@
 All options under `services.prometheus`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------------ | ---- | ----------- |
 | `services.prometheus.alertmanager-ntfy.enable` | | |
 | `services.prometheus.alertmanager-ntfy.extraConfigFiles` | | |
 | `services.prometheus.alertmanager-ntfy.package` | | |

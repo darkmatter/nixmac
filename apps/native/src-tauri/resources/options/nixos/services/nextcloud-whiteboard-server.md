@@ -5,7 +5,7 @@
 All options under `services.nextcloud-whiteboard-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.nextcloud-whiteboard-server.enable` | | |
 | `services.nextcloud-whiteboard-server.secrets` | | |
 | `services.nextcloud-whiteboard-server.settings` | | |

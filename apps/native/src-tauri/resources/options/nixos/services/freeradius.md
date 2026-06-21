@@ -5,7 +5,7 @@
 All options under `services.freeradius`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.freeradius.configDir` | | |
 | `services.freeradius.debug` | | |
 | `services.freeradius.enable` | | |

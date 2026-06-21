@@ -5,6 +5,6 @@
 All options under `programs.noisetorch`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `programs.noisetorch.enable` | | |
 | `programs.noisetorch.package` | | |

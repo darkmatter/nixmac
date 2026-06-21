@@ -5,7 +5,7 @@
 All options under `services.wob`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
 | `services.wob.enable` | `boolean` | Whether to enable wob. |
 | `services.wob.package` | `null or package` | The wob package to use. |
 | `services.wob.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to $XDG_CONFIG_HOME/wob/wob.ini . See wob.ini (5) for documentation. |

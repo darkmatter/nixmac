@@ -5,5 +5,5 @@
 All options under `services.zeronsd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.zeronsd.servedNetworks` | | |

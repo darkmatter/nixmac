@@ -5,7 +5,7 @@
 All options under `programs.mpv`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.mpv.bindings` | `attribute set of string` | Input configuration written to $XDG_CONFIG_HOME/mpv/input.conf . See mpv (1) for the full list of options. |
 | `programs.mpv.config` | `attribute set of (string or signed integer or boolean or floating point number or list of (string or signed integer or boolean or floating point number))` | Configuration written to $XDG_CONFIG_HOME/mpv/mpv.conf . See mpv (1) for the full list of options. |
 | `programs.mpv.defaultProfiles` | `list of string` | Profiles to be applied by default. Options set by them are overridden by options set in programs.mpv.config . |

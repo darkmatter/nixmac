@@ -5,7 +5,7 @@
 All options under `services.tomcat`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.tomcat.axis2.enable` | | |
 | `services.tomcat.axis2.services` | | |
 | `services.tomcat.baseDir` | | |

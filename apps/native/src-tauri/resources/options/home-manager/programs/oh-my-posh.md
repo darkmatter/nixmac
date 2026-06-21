@@ -5,7 +5,7 @@
 All options under `programs.oh-my-posh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.oh-my-posh.configFile` | `null or string or absolute path` | Path to a custom configuration path, can be json, yaml or toml. |
 | `programs.oh-my-posh.enable` | `boolean` | Whether to enable oh-my-posh, a prompt theme engine for any shell. |
 | `programs.oh-my-posh.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |

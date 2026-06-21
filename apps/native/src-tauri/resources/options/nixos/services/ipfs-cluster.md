@@ -5,7 +5,7 @@
 All options under `services.ipfs-cluster`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.ipfs-cluster.consensus` | | |
 | `services.ipfs-cluster.dataDir` | | |
 | `services.ipfs-cluster.enable` | | |

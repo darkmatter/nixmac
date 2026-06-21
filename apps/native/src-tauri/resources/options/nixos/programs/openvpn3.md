@@ -5,7 +5,7 @@
 All options under `programs.openvpn3`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `programs.openvpn3.enable` | | |
 | `programs.openvpn3.log-service` | | |
 | `programs.openvpn3.netcfg` | | |

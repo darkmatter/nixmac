@@ -5,7 +5,7 @@
 All options under `services.spark`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.spark.confDir` | | |
 | `services.spark.logDir` | | |
 | `services.spark.master.bind` | | |

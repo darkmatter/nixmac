@@ -5,7 +5,7 @@
 All options under `programs.qalculate`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `programs.qalculate.enable` | | |
 | `programs.qalculate.package` | | |
 | `programs.qalculate.settings` | | |

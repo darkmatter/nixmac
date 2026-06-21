@@ -5,7 +5,7 @@
 All options under `services.ssh-tpm-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ----------------------- | ------------------------------------------------------------------------------------- |
 | `services.ssh-tpm-agent.enable` | `boolean` | Whether to enable SSH agent for TPMs. |
 | `services.ssh-tpm-agent.extraArgs` | | |
 | `services.ssh-tpm-agent.keyDir` | `null or absolute path` | Path of the directory to look for TPM sealed keys in, defaults to $HOME/.ssh if unset |

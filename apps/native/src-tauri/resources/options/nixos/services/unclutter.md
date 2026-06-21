@@ -5,7 +5,7 @@
 All options under `services.unclutter`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.unclutter.enable` | | |
 | `services.unclutter.excluded` | | |
 | `services.unclutter.extraOptions` | | |

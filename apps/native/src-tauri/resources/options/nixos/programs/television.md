@@ -5,7 +5,7 @@
 All options under `programs.television`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `programs.television.enable` | | |
 | `programs.television.enableBashIntegration` | | |
 | `programs.television.enableFishIntegration` | | |

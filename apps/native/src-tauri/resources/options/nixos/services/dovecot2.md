@@ -5,7 +5,7 @@
 All options under `services.dovecot2`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.dovecot2.configFile` | | |
 | `services.dovecot2.createMailUser` | | |
 | `services.dovecot2.enable` | | |

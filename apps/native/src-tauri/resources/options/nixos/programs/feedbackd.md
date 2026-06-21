@@ -5,7 +5,7 @@
 All options under `programs.feedbackd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `programs.feedbackd.enable` | | |
 | `programs.feedbackd.package` | | |
 | `programs.feedbackd.theme-package` | | |

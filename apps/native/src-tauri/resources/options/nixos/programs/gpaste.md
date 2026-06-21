@@ -5,5 +5,5 @@
 All options under `programs.gpaste`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `programs.gpaste.enable` | | |

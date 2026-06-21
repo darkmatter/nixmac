@@ -5,6 +5,6 @@
 All options under `services.infnoise`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.infnoise.enable` | | |
 | `services.infnoise.fillDevRandom` | | |

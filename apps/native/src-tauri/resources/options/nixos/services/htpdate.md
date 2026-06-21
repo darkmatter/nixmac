@@ -5,7 +5,7 @@
 All options under `services.htpdate`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.htpdate.enable` | | |
 | `services.htpdate.extraOptions` | | |
 | `services.htpdate.proxy` | | |

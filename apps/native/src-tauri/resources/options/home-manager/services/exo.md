@@ -5,7 +5,7 @@
 All options under `services.exo`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.exo.enable` | | |
 | `services.exo.environmentVariables` | | |
 | `services.exo.extraArgs` | | |

@@ -5,7 +5,7 @@
 All options under `services.vmalert`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.vmalert.enable` | | |
 | `services.vmalert.instances` | | |
 | `services.vmalert.package` | | |

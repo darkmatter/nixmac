@@ -5,7 +5,7 @@
 All options under `services.anki-sync-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.anki-sync-server.address` | | |
 | `services.anki-sync-server.baseDirectory` | | |
 | `services.anki-sync-server.enable` | | |

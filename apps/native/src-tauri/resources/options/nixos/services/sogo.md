@@ -5,7 +5,7 @@
 All options under `services.sogo`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.sogo.configReplaces` | | |
 | `services.sogo.ealarmsCredFile` | | |
 | `services.sogo.enable` | | |

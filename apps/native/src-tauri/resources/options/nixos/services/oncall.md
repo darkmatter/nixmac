@@ -5,7 +5,7 @@
 All options under `services.oncall`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.oncall.database.createLocally` | | |
 | `services.oncall.enable` | | |
 | `services.oncall.package` | | |

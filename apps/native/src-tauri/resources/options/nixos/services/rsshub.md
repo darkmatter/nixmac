@@ -5,7 +5,7 @@
 All options under `services.rsshub`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.rsshub.enable` | | |
 | `services.rsshub.openFirewall` | | |
 | `services.rsshub.package` | | |

@@ -5,6 +5,6 @@
 All options under `services.fireqos`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.fireqos.config` | | |
 | `services.fireqos.enable` | | |

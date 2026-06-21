@@ -5,7 +5,7 @@
 All options under `programs.winbox`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `programs.winbox.enable` | | |
 | `programs.winbox.openFirewall` | | |
 | `programs.winbox.package` | | |

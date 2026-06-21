@@ -5,7 +5,7 @@
 All options under `services.lasuite-docs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------------- | ---- | ----------- |
 | `services.lasuite-docs.backendPackage` | | |
 | `services.lasuite-docs.bind` | | |
 | `services.lasuite-docs.celery.extraArgs` | | |

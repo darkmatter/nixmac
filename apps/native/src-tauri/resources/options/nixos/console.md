@@ -5,7 +5,7 @@
 All options under `console`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------- | ---- | ----------- |
 | `console.colors` | | |
 | `console.earlySetup` | | |
 | `console.enable` | | |

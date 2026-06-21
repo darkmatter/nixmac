@@ -5,7 +5,7 @@
 All options under `services.monica`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.monica.appKeyFile` | | |
 | `services.monica.appURL` | | |
 | `services.monica.config` | | |

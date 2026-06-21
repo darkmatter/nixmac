@@ -5,7 +5,7 @@
 All options under `services.rethinkdb`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.rethinkdb.dbpath` | | |
 | `services.rethinkdb.enable` | | |
 | `services.rethinkdb.group` | | |

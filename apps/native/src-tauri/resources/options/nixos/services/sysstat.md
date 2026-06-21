@@ -5,7 +5,7 @@
 All options under `services.sysstat`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.sysstat.collect-args` | | |
 | `services.sysstat.collect-frequency` | | |
 | `services.sysstat.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.tdarr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.tdarr.dataDir` | | |
 | `services.tdarr.enable` | | |
 | `services.tdarr.group` | | |

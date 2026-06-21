@@ -5,7 +5,7 @@
 All options under `programs.sbt`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.sbt.baseConfigPath` | | |
 | `programs.sbt.baseUserConfigPath` | `string` | Where the sbt configuration files should be located, relative HOME . |
 | `programs.sbt.credentials` | `list of (submodule)` | A list of credentials to define in the sbt configuration directory. |

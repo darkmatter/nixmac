@@ -5,7 +5,7 @@
 All options under `programs.scmpuff`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `programs.scmpuff.enable` | `boolean` | Whether to enable scmpuff, a command line tool that allows you to work quicker with Git by substituting numeric shortcuts for files. |
 | `programs.scmpuff.enableAliases` | `boolean` | Whether to enable aliases (e.g. gs, ga, gd, gco). |
 | `programs.scmpuff.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |

@@ -5,7 +5,7 @@
 All options under `services.amberol`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | -------------------------------- | --------------------------------------------------- |
 | `services.amberol.enable` | `boolean` | Whether to enable Amberol music player as a daemon. |
 | `services.amberol.enableRecoloring` | `boolean` | UI recoloring using the album art. |
 | `services.amberol.package` | `package` | The amberol package to use. |

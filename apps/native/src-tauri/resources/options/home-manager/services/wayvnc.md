@@ -5,7 +5,7 @@
 All options under `services.wayvnc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------- |
 | `services.wayvnc.autoStart` | `boolean` | Whether to enable autostarting of wayvnc. |
 | `services.wayvnc.enable` | `boolean` | Whether to enable wayvnc VNC server. |
 | `services.wayvnc.package` | `package` | The wayvnc package to use. |

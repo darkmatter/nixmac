@@ -5,7 +5,7 @@
 All options under `services.filebrowser`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.filebrowser.enable` | | |
 | `services.filebrowser.group` | | |
 | `services.filebrowser.openFirewall` | | |

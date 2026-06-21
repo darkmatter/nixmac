@@ -5,7 +5,7 @@
 All options under `services.keycloak`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------ | ---- | ----------- |
 | `services.keycloak.bindAddress` | | |
 | `services.keycloak.database.caCert` | | |
 | `services.keycloak.database.createLocally` | | |

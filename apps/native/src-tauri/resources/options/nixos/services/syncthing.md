@@ -5,7 +5,7 @@
 All options under `services.syncthing`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------ | ---- | ----------- |
 | `services.syncthing.all_proxy` | | |
 | `services.syncthing.cert` | | |
 | `services.syncthing.configDir` | | |

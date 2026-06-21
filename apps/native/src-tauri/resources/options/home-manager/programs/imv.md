@@ -5,7 +5,7 @@
 All options under `programs.imv`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | `programs.imv.enable` | `boolean` | Whether to enable imv: a command line image viewer intended for use with tiling window managers. |
 | `programs.imv.package` | `null or package` | The imv package to use. |
 | `programs.imv.settings` | `attribute set of attribute set of (boolean or signed integer or string)` | Configuration options for imv. See imv (5) . |

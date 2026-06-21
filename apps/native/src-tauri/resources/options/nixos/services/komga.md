@@ -5,7 +5,7 @@
 All options under `services.komga`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.komga.enable` | | |
 | `services.komga.group` | | |
 | `services.komga.openFirewall` | | |

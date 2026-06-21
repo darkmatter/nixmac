@@ -5,7 +5,7 @@
 All options under `services.zabbixAgent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.zabbixAgent.enable` | | |
 | `services.zabbixAgent.extraConfig` | | |
 | `services.zabbixAgent.extraPackages` | | |

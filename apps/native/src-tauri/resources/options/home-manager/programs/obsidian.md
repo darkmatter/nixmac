@@ -5,7 +5,7 @@
 All options under `programs.obsidian`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
 | `programs.obsidian.cli.enable` | `boolean` | Whether to enable the Obsidian CLI in obsidian.json . |
 | `programs.obsidian.defaultSettings.app` | `null or (attribute set of anything)` | Settings to write to app.json . |
 | `programs.obsidian.defaultSettings.appearance` | `null or (attribute set of anything)` | Settings to write to appearance.json . |

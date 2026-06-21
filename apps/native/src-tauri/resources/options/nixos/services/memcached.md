@@ -5,7 +5,7 @@
 All options under `services.memcached`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.memcached.enable` | | |
 | `services.memcached.enableUnixSocket` | | |
 | `services.memcached.extraOptions` | | |

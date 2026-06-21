@@ -5,7 +5,7 @@
 All options under `services.firewalld`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.firewalld.enable` | | |
 | `services.firewalld.extraArgs` | | |
 | `services.firewalld.package` | | |

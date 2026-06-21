@@ -5,7 +5,7 @@
 All options under `programs.pidgin`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ------------------- | ------------------------------------------- |
 | `programs.pidgin.enable` | `boolean` | Whether to enable Pidgin messaging client. |
 | `programs.pidgin.package` | `package` | The pidgin package to use. |
 | `programs.pidgin.plugins` | `unspecified value` | Plugins that should be available to Pidgin. |

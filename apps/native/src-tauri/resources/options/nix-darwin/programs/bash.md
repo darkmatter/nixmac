@@ -5,7 +5,7 @@
 All options under `programs.bash`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | -------------------------------- | ---------------------------------------------------------------------- |
 | `programs.bash.completion.enable` | `boolean` | Enable bash completion for all interactive bash shells. |
 | `programs.bash.completion.package` | `package` | The bash-completion package to use. |
 | `programs.bash.enable` | `boolean` | Whether to configure bash as an interactive shell. |

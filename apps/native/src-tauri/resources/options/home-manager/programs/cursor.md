@@ -5,7 +5,7 @@
 All options under `programs.cursor`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `programs.cursor.argvSettings` | | |
 | `programs.cursor.enable` | | |
 | `programs.cursor.mutableExtensionsDir` | | |

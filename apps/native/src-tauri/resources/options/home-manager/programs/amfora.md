@@ -5,7 +5,7 @@
 All options under `programs.amfora`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.amfora.bookmarks` | `string or absolute path` | Bookmarks file for amfora. It’s highly recommended that you edit this file through the program itself, and then look at $XDG_DATA_HOME/amfora/bookmarks.xml |
 | `programs.amfora.enable` | `boolean` | Whether to enable amfora. |
 | `programs.amfora.package` | `null or package` | The amfora package to use. |

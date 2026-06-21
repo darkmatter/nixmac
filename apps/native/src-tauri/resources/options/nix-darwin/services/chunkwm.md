@@ -5,7 +5,7 @@
 All options under `services.chunkwm`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | -------------------------------------------- | ------------------------------------------------- |
 | `services.chunkwm.enable` | `boolean` | Whether to enable the chunkwm window manager. |
 | `services.chunkwm.extraConfig` | `strings concatenated with “\n”` | Additional commands for chunkwmrc . |
 | `services.chunkwm.hotload` | `boolean` | Whether to enable hotload. |

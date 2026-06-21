@@ -5,7 +5,7 @@
 All options under `services.tox-node`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.tox-node.enable` | | |
 | `services.tox-node.keysFile` | | |
 | `services.tox-node.lanDiscovery` | | |

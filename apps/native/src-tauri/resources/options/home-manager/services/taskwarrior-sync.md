@@ -5,7 +5,7 @@
 All options under `services.taskwarrior-sync`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.taskwarrior-sync.enable` | `boolean` | Whether to enable Taskwarrior periodic sync. |
 | `services.taskwarrior-sync.frequency` | `string` | How often to run taskwarrior sync . This value is passed to the systemd timer configuration as the OnCalendar option. See systemd.time (7) for more information about the format. |
 | `services.taskwarrior-sync.package` | `package` | The taskwarrior2 package to use. |

@@ -5,6 +5,6 @@
 All options under `services.vnstat`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.vnstat.enable` | | |
 | `services.vnstat.package` | | |

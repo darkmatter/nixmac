@@ -5,7 +5,7 @@
 All options under `services.kapacitor`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.kapacitor.alerta.enable` | | |
 | `services.kapacitor.alerta.environment` | | |
 | `services.kapacitor.alerta.origin` | | |

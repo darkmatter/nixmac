@@ -5,6 +5,6 @@
 All options under `services.teamviewer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.teamviewer.enable` | | |
 | `services.teamviewer.package` | | |

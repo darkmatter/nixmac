@@ -5,7 +5,7 @@
 All options under `services.plausible`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.plausible.adminUser.activate` | | |
 | `services.plausible.adminUser.email` | | |
 | `services.plausible.adminUser.name` | | |

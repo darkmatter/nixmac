@@ -5,7 +5,7 @@
 All options under `services.bitmagnet`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.bitmagnet.enable` | | |
 | `services.bitmagnet.group` | | |
 | `services.bitmagnet.openFirewall` | | |

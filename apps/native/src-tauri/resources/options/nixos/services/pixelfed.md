@@ -5,7 +5,7 @@
 All options under `services.pixelfed`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------ | ---- | ----------- |
 | `services.pixelfed.dataDir` | | |
 | `services.pixelfed.database.automaticMigrations` | | |
 | `services.pixelfed.database.createLocally` | | |

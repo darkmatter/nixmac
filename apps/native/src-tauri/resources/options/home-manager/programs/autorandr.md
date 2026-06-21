@@ -5,7 +5,7 @@
 All options under `programs.autorandr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ------------------------------ | --------------------------------- |
 | `programs.autorandr.enable` | `boolean` | Whether to enable Autorandr. |
 | `programs.autorandr.hooks` | `submodule` | Global hook scripts |
 | `programs.autorandr.package` | `null or package` | The autorandr package to use. |

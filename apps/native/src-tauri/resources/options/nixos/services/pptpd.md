@@ -5,7 +5,7 @@
 All options under `services.pptpd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.pptpd.clientIpRange` | | |
 | `services.pptpd.enable` | | |
 | `services.pptpd.extraPppdOptions` | | |

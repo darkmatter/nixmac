@@ -5,7 +5,7 @@
 All options under `services.crowdsec`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.crowdsec.autoUpdateService` | | |
 | `services.crowdsec.enable` | | |
 | `services.crowdsec.group` | | |

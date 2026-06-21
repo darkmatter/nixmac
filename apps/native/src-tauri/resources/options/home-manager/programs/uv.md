@@ -5,7 +5,7 @@
 All options under `programs.uv`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.uv.enable` | `boolean` | Whether to enable uv. |
 | `programs.uv.package` | `null or package` | The uv package to use. |
 | `programs.uv.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/uv/uv.toml . See https://docs.astral.sh/uv/configuration/files/ and https://docs.astral.sh/uv/reference/settings/ for more information. |

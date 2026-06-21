@@ -5,7 +5,7 @@
 All options under `services.dunst`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
 | `services.dunst.configFile` | `null or string or absolute path` | Path to the configuration file read by dunst. |
 | `services.dunst.enable` | `boolean` | Whether to enable the dunst notification daemon. |
 | `services.dunst.iconTheme` | `submodule` | Set the icon theme. |

@@ -5,7 +5,7 @@
 All options under `programs.zapzap`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.zapzap.enable` | `boolean` | Whether to enable zapzap. |
 | `programs.zapzap.package` | `null or package` | The zapzap package to use. |
 | `programs.zapzap.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration settings for zapzap. All the available options can be found by changing the settings from the GUI and looking at $XDG_CONFIG_HOME/ZapZap/ZapZap.conf. |

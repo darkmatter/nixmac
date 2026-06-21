@@ -5,7 +5,7 @@
 All options under `services.darkhttpd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.darkhttpd.address` | | |
 | `services.darkhttpd.enable` | | |
 | `services.darkhttpd.extraArgs` | | |

@@ -13,8 +13,8 @@ export function StepShell({ eyebrow, title, description, children, footer }: Ste
   return (
     <div className="flex h-full flex-col">
       <header className="mb-6">
-        <p className="mb-2 font-medium text-primary text-xs uppercase tracking-widest">{eyebrow}</p>
-        <h1 className="text-pretty font-semibold text-2xl tracking-tight">{title}</h1>
+        {/* <p className="mb-2 font-medium text-primary text-xs uppercase tracking-widest">{eyebrow}</p> */}
+        {/* <h1 className="text-pretty font-semibold text-2xl tracking-tight">{title}</h1> */}
         <p className="mt-2 max-w-prose text-pretty text-muted-foreground leading-relaxed">
           {description}
         </p>

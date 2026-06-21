@@ -5,7 +5,7 @@
 All options under `services.psd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `services.psd.backupLimit` | `unsigned integer, meaning >=0` | Maximum number of crash recovery snapshots to keep (the oldest ones are deleted first). |
 | `services.psd.browsers` | `list of string` | A list of browsers to sync. An empty list will enable all browsers to be managed by profile-sync-daemon. |
 | `services.psd.enable` | `boolean` | Whether to enable Profile-sync-daemon service. |

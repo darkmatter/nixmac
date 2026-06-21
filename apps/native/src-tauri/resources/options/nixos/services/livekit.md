@@ -5,7 +5,7 @@
 All options under `services.livekit`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.livekit.enable` | | |
 | `services.livekit.ingress.enable` | | |
 | `services.livekit.ingress.environmentFile` | | |

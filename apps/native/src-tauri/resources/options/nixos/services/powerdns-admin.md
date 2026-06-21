@@ -5,7 +5,7 @@
 All options under `services.powerdns-admin`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.powerdns-admin.config` | | |
 | `services.powerdns-admin.enable` | | |
 | `services.powerdns-admin.extraArgs` | | |

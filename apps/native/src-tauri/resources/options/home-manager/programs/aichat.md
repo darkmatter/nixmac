@@ -5,7 +5,7 @@
 All options under `programs.aichat`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.aichat.agents` | `attribute set of (YAML 1.1 value)` | Agent-specific configurations. See https://github.com/sigoden/aichat/wiki/Configuration-Guide#agent-specific for supported values. |
 | `programs.aichat.enable` | `boolean` | Whether to enable aichat, an All-in-one LLM CLI tool. |
 | `programs.aichat.package` | `null or package` | The aichat package to use. |

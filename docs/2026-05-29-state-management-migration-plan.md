@@ -29,7 +29,7 @@ The end state is:
 ## Issue Map
 
 | Issue | Phase | Purpose |
-| --- | --- | --- |
+| -------------- | ------- | ------------------------------------------------------ |
 | `nixmac-h85` | Epic | Apply the architecture direction as a staged migration |
 | `nixmac-h85.1` | Phase 1 | Introduce `Slice<T>` infrastructure |
 | `nixmac-h85.2` | Phase 2 | Move SQLite access to Diesel pooled connections |

@@ -5,7 +5,7 @@
 All options under `services.strongswan-swanctl`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------------- | ---- | ----------- |
 | `services.strongswan-swanctl.enable` | | |
 | `services.strongswan-swanctl.includes` | | |
 | `services.strongswan-swanctl.package` | | |

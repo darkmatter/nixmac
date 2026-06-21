@@ -5,7 +5,7 @@
 All options under `services.minidlna`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.minidlna.enable` | | |
 | `services.minidlna.openFirewall` | | |
 | `services.minidlna.package` | | |

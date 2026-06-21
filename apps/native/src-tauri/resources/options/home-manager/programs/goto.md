@@ -5,7 +5,7 @@
 All options under `programs.goto`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | --------- | ----------------------------------- |
 | `programs.goto.enable` | `boolean` | Whether to enable goto … |
 | `programs.goto.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.goto.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |

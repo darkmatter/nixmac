@@ -5,7 +5,7 @@
 All options under `services.fanout`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.fanout.bufferSize` | | |
 | `services.fanout.enable` | | |
 | `services.fanout.fanoutDevices` | | |

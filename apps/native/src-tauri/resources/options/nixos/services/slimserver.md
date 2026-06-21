@@ -5,7 +5,7 @@
 All options under `services.slimserver`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.slimserver.dataDir` | | |
 | `services.slimserver.enable` | | |
 | `services.slimserver.package` | | |

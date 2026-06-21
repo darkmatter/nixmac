@@ -5,7 +5,7 @@
 All options under `services.influxdb`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.influxdb.dataDir` | | |
 | `services.influxdb.enable` | | |
 | `services.influxdb.extraConfig` | | |

@@ -5,6 +5,6 @@
 All options under `services.psd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.psd.enable` | | |
 | `services.psd.resyncTimer` | | |

@@ -5,7 +5,7 @@
 All options under `services.grafana-image-renderer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------- | ---- | ----------- |
 | `services.grafana-image-renderer.chromium` | | |
 | `services.grafana-image-renderer.enable` | | |
 | `services.grafana-image-renderer.provisionGrafana` | | |

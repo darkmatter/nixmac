@@ -5,6 +5,6 @@
 All options under `services.ssm-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.ssm-agent.enable` | | |
 | `services.ssm-agent.package` | | |

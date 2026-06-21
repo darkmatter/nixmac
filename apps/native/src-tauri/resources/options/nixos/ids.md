@@ -5,6 +5,6 @@
 All options under `ids`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------- | ---- | ----------- |
 | `ids.gids` | | |
 | `ids.uids` | | |

@@ -5,7 +5,7 @@
 All options under `programs.bat`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `programs.bat.enable` | | |
 | `programs.bat.extraPackages` | | |
 | `programs.bat.package` | | |

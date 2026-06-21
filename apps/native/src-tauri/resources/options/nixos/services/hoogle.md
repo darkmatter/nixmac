@@ -5,7 +5,7 @@
 All options under `services.hoogle`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.hoogle.enable` | | |
 | `services.hoogle.extraOptions` | | |
 | `services.hoogle.haskellPackages` | | |

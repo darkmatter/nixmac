@@ -1,9 +1,9 @@
 "use client";
-import { cn } from "@/lib/utils";
-import { NoiseBackground } from "./ui/noise-background";
-import { Button } from "./ui/button";
+import type { ComponentProps } from "react";
 import { Loader2, Wrench } from "lucide-react";
-import { ComponentProps } from "react";
+import { cn } from "@/lib/utils";
+import { NoiseBackground } from "./noise-background";
+import { Button } from "./button";
 
 const ACTIVE_GRADIENT = ["rgb(45, 212, 191)", "rgb(20, 184, 166)", "rgb(13, 148, 136)"] as const;
 
@@ -13,7 +13,12 @@ interface Props extends ComponentProps<typeof Button> {
   active?: boolean;
 }
 
-export function ButtonGlow({ active, ...props }: Props) {
+/**
+ * Animated teal "glow" pill — the Build & Test button. Pass `children` to reuse
+ * the same glow treatment for another action (e.g. "Scan this Mac"); with no
+ * children it renders the default Build & Test label + spinner/wrench icon.
+ */
+export function ButtonGlow({ active, children, ...props }: Props) {
   return (
     <NoiseBackground
       animating={active}
@@ -37,12 +42,16 @@ export function ButtonGlow({ active, ...props }: Props) {
         )}
         {...props}
       >
-        {active ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        ) : (
-          <Wrench className="h-3.5 w-3.5" />
+        {children ?? (
+          <>
+            {active ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Wrench className="h-3.5 w-3.5" />
+            )}
+            Build & Test
+          </>
         )}
-        Build & Test
       </Button>
     </NoiseBackground>
   );

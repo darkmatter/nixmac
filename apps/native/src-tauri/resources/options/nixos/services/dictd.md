@@ -5,6 +5,6 @@
 All options under `services.dictd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `services.dictd.DBs` | | |
 | `services.dictd.enable` | | |

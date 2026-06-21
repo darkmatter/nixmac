@@ -5,7 +5,7 @@
 All options under `services.davis`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.davis.adminLogin` | | |
 | `services.davis.adminPasswordFile` | | |
 | `services.davis.appSecretFile` | | |

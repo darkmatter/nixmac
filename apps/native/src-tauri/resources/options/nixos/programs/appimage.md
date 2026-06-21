@@ -5,7 +5,7 @@
 All options under `programs.appimage`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `programs.appimage.binfmt` | | |
 | `programs.appimage.enable` | | |
 | `programs.appimage.package` | | |

@@ -5,7 +5,7 @@
 All options under `programs.topgrade`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ------------ | --------------------------------------------------------- |
 | `programs.topgrade.enable` | `boolean` | Whether to enable topgrade. |
 | `programs.topgrade.package` | `package` | The topgrade package to use. |
 | `programs.topgrade.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/topgrade.toml . |

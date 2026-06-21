@@ -5,7 +5,7 @@
 All options under `services.goxlr-utility`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.goxlr-utility.autoStart.xdg` | | |
 | `services.goxlr-utility.enable` | | |
 | `services.goxlr-utility.package` | | |

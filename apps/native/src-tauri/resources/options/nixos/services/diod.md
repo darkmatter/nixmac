@@ -5,7 +5,7 @@
 All options under `services.diod`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.diod.allsquash` | | |
 | `services.diod.authRequired` | | |
 | `services.diod.enable` | | |

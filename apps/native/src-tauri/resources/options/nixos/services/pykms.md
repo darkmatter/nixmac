@@ -5,7 +5,7 @@
 All options under `services.pykms`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.pykms.enable` | | |
 | `services.pykms.extraArgs` | | |
 | `services.pykms.listenAddress` | | |

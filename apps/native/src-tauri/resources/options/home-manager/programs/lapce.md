@@ -5,7 +5,7 @@
 All options under `programs.lapce`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `programs.lapce.channel` | `one of “stable”, “nightly”` | Lapce channel to configure. Should correspond to the package channel. This is used to determine the correct configuration and data directories. |
 | `programs.lapce.enable` | `boolean` | Whether to enable lapce. |
 | `programs.lapce.keymaps` | `TOML value` | Keymaps written to $XDG_CONFIG_HOME/lapce/keymaps.toml . See https://github.com/lapce/lapce/blob/master/defaults/keymaps-common.toml for examples. |

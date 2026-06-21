@@ -5,7 +5,7 @@
 All options under `services.meme-bingo-web`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.meme-bingo-web.address` | | |
 | `services.meme-bingo-web.baseUrl` | | |
 | `services.meme-bingo-web.enable` | | |

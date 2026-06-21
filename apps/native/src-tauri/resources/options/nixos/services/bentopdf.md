@@ -5,7 +5,7 @@
 All options under `services.bentopdf`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.bentopdf.caddy.enable` | | |
 | `services.bentopdf.caddy.virtualHost` | | |
 | `services.bentopdf.domain` | | |

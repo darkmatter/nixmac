@@ -5,7 +5,7 @@
 All options under `services.batsignal`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---------------- | --------------------------------------------------------- |
 | `services.batsignal.enable` | `boolean` | Whether to enable Batsignal Battery Daemon. |
 | `services.batsignal.extraArgs` | `list of string` | Extra arguments to be passed to the batsignal executable. |
 | `services.batsignal.package` | `package` | The batsignal package to use. |

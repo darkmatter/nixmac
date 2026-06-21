@@ -5,7 +5,7 @@
 All options under `services.multipath`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.multipath.blacklist` | | |
 | `services.multipath.blacklist_exceptions` | | |
 | `services.multipath.defaults` | | |

@@ -5,7 +5,7 @@
 All options under `services.mailman`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.mailman.enable` | | |
 | `services.mailman.enablePostfix` | | |
 | `services.mailman.extraPythonPackages` | | |

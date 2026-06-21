@@ -5,7 +5,7 @@
 All options under `services.coder`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.coder.accessUrl` | | |
 | `services.coder.database.createLocally` | | |
 | `services.coder.database.database` | | |

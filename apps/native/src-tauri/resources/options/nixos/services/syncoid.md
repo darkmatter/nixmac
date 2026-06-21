@@ -5,7 +5,7 @@
 All options under `services.syncoid`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.syncoid.commands` | | |
 | `services.syncoid.commonArgs` | | |
 | `services.syncoid.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.munin-node`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.munin-node.disabledPlugins` | | |
 | `services.munin-node.enable` | | |
 | `services.munin-node.extraAutoPlugins` | | |

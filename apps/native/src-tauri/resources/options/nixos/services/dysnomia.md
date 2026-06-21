@@ -5,7 +5,7 @@
 All options under `services.dysnomia`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.dysnomia.components` | | |
 | `services.dysnomia.containers` | | |
 | `services.dysnomia.enable` | | |

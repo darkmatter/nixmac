@@ -5,7 +5,7 @@
 All options under `services.nextcloud-spreed-signaling`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------------- | ---- | ----------- |
 | `services.nextcloud-spreed-signaling.backends` | | |
 | `services.nextcloud-spreed-signaling.configureNginx` | | |
 | `services.nextcloud-spreed-signaling.enable` | | |

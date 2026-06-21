@@ -5,7 +5,7 @@
 All options under `services.journalbeat`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.journalbeat.enable` | | |
 | `services.journalbeat.extraConfig` | | |
 | `services.journalbeat.name` | | |

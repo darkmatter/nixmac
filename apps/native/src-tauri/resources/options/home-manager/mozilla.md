@@ -5,7 +5,7 @@
 All options under `mozilla`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `mozilla.firefoxNativeMessagingHosts` | | |
 | `mozilla.librewolfNativeMessagingHosts` | | |
 | `mozilla.thunderbirdNativeMessagingHosts` | | |

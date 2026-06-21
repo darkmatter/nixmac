@@ -5,7 +5,7 @@
 All options under `services.openafsServer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------------------- | ---- | ----------- |
 | `services.openafsServer.advertisedAddresses` | | |
 | `services.openafsServer.cellName` | | |
 | `services.openafsServer.cellServDB` | | |

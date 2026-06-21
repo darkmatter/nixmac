@@ -5,7 +5,7 @@
 All options under `programs.gh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ------------------------------------ | ---------------------------------------------------------------------- |
 | `programs.gh.aliases` | | |
 | `programs.gh.editor` | | |
 | `programs.gh.enable` | `boolean` | Whether to enable GitHub CLI tool. |

@@ -5,7 +5,7 @@
 All options under `services.home-assistant-matter-hub`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------------- | ---- | ----------- |
 | `services.home-assistant-matter-hub.accessTokenFile` | | |
 | `services.home-assistant-matter-hub.enable` | | |
 | `services.home-assistant-matter-hub.openFirewall` | | |

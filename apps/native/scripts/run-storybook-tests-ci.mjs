@@ -71,7 +71,7 @@ async function listStoryFiles(directory) {
       }
 
       return [];
-    })
+    }),
   );
 
   return files.flat().sort();
@@ -108,7 +108,7 @@ function runVitestForBatch(files, reportPath) {
         `--outputFile=${reportPath}`,
         ...files,
       ],
-      { stdio: "inherit" }
+      { stdio: "inherit" },
     );
 
     const timeout = setTimeout(() => {
@@ -156,7 +156,9 @@ if (storyFiles.length === 0) {
 
 const batches = chunkFiles(storyFiles);
 
-console.log(`Running ${storyFiles.length} Storybook snapshot files across ${batches.length} Vitest processes.`);
+console.log(
+  `Running ${storyFiles.length} Storybook snapshot files across ${batches.length} Vitest processes.`,
+);
 console.log(`Batch size: ${batchSize} files per Vitest process.`);
 
 // Once enough failures are gathered for the screenshot pipeline (it only
@@ -178,9 +180,7 @@ try {
     }
 
     if (process.exitCode === 1 && failedStories.length >= maxFailuresToCollect) {
-      console.log(
-        `\nCollected ${failedStories.length} failures; skipping remaining batches.`
-      );
+      console.log(`\nCollected ${failedStories.length} failures; skipping remaining batches.`);
       break;
     }
   }
@@ -189,7 +189,7 @@ try {
   await writeFile(failedStoriesFile, JSON.stringify(failedStories, null, 2));
   await rm(reportDir, { recursive: true, force: true });
   console.log(
-    `\nRecorded ${failedStories.length} failed stor${failedStories.length === 1 ? "y" : "ies"} to ${path.relative(appRoot, failedStoriesFile)}.`
+    `\nRecorded ${failedStories.length} failed stor${failedStories.length === 1 ? "y" : "ies"} to ${path.relative(appRoot, failedStoriesFile)}.`,
   );
 }
 

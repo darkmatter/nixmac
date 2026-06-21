@@ -5,7 +5,7 @@
 All options under `services.opentsdb`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.opentsdb.config` | | |
 | `services.opentsdb.enable` | | |
 | `services.opentsdb.group` | | |

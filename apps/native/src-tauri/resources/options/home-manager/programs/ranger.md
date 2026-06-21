@@ -5,7 +5,7 @@
 All options under `programs.ranger`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | `programs.ranger.aliases` | `attribute set of string` | Aliases written to $XDG_CONFIG_HOME/ranger/rc.conf . |
 | `programs.ranger.enable` | `boolean` | Whether to enable ranger file manager. |
 | `programs.ranger.extraConfig` | `strings concatenated with “\n”` | Extra configuration lines to add to $XDG_CONFIG_HOME/ranger/rc.conf . |

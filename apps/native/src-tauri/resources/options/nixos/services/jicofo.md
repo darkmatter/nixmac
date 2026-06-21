@@ -5,7 +5,7 @@
 All options under `services.jicofo`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.jicofo.bridgeMuc` | | |
 | `services.jicofo.componentPasswordFile` | | |
 | `services.jicofo.config` | | |

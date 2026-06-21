@@ -5,5 +5,5 @@
 All options under `programs.mininet`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `programs.mininet.enable` | | |

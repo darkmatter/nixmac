@@ -5,7 +5,7 @@
 All options under `services.clipman`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---------------- | --------------------------------------------------------------------- |
 | `services.clipman.enable` | `boolean` | Whether to enable clipman, a simple clipboard manager for Wayland. |
 | `services.clipman.extraArgs` | `list of string` | Extra arguments to be passed to the clipman executable. |
 | `services.clipman.package` | `package` | The clipman package to use. |

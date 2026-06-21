@@ -5,7 +5,7 @@
 All options under `programs.vivaldi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ----------------- | ---------------------------------------------------------- |
 | `programs.vivaldi.commandLineArgs` | | |
 | `programs.vivaldi.dictionaries` | | |
 | `programs.vivaldi.enable` | | |

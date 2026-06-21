@@ -5,7 +5,7 @@
 All options under `services.kubo`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.kubo.apiAddress` | | |
 | `services.kubo.autoMigrate` | | |
 | `services.kubo.autoMount` | | |

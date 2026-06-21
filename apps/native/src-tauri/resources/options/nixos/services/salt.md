@@ -5,7 +5,7 @@
 All options under `services.salt`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.salt.master.configuration` | | |
 | `services.salt.master.enable` | | |
 | `services.salt.minion.configuration` | | |

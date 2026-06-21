@@ -5,7 +5,7 @@
 All options under `services.mlmmj`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.mlmmj.enable` | | |
 | `services.mlmmj.group` | | |
 | `services.mlmmj.listDomain` | | |

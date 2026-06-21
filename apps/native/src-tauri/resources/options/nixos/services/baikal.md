@@ -5,7 +5,7 @@
 All options under `services.baikal`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.baikal.enable` | | |
 | `services.baikal.group` | | |
 | `services.baikal.package` | | |

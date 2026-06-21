@@ -5,7 +5,7 @@
 All options under `services.hockeypuck`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.hockeypuck.enable` | | |
 | `services.hockeypuck.port` | | |
 | `services.hockeypuck.settings` | | |

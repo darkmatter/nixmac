@@ -5,7 +5,7 @@
 All options under `services.esphome`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.esphome.address` | | |
 | `services.esphome.allowedDevices` | | |
 | `services.esphome.enable` | | |

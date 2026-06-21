@@ -5,7 +5,7 @@
 All options under `programs.swappy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.swappy.enable` | `boolean` | Whether to enable swappy. |
 | `programs.swappy.package` | `null or package` | The swappy package to use. |
 | `programs.swappy.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration settings for swappy. All the available options can be found here: https://github.com/jtheoof/swappy?tab=readme-ov-file#config |

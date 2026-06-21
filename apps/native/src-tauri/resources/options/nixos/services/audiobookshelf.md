@@ -5,7 +5,7 @@
 All options under `services.audiobookshelf`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.audiobookshelf.dataDir` | | |
 | `services.audiobookshelf.enable` | | |
 | `services.audiobookshelf.group` | | |

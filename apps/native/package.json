@@ -44,6 +44,7 @@
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
+    "@nixmac/state": "workspace:*",
     "@nixmac/ui": "workspace:*",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/core": "^2.7.1",
@@ -96,8 +97,7 @@
     "tailwindcss-animate": "^1.0.7",
     "tauri-plugin-macos-permissions-api": "^2.3.0",
     "three": "^0.184.0",
-    "vscode-oniguruma": "^2.0.1",
-    "zustand": "^5.0.8"
+    "vscode-oniguruma": "^2.0.1"
   },
   "devDependencies": {
     "@playwright/test": "1.59.1",

@@ -5,7 +5,7 @@
 All options under `services.patroni`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.patroni.dataDir` | | |
 | `services.patroni.enable` | | |
 | `services.patroni.environmentFiles` | | |

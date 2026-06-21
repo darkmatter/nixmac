@@ -5,7 +5,7 @@
 All options under `services.cpuminer-cryptonight`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.cpuminer-cryptonight.enable` | | |
 | `services.cpuminer-cryptonight.pass` | | |
 | `services.cpuminer-cryptonight.threads` | | |

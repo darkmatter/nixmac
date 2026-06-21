@@ -5,7 +5,7 @@
 All options under `services.disnix`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.disnix.enable` | | |
 | `services.disnix.enableMultiUser` | | |
 | `services.disnix.enableProfilePath` | | |

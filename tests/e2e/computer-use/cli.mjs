@@ -28,16 +28,18 @@ export async function dispatchRemoteCuaCommand(argv, handlers, options = {}) {
   const [command, ...args] = argv;
   const usage = options.usage ?? (() => {});
   // Library default is non-terminating; the executable wrapper injects process.exit.
-  const exit = options.exit ?? ((code) => {
-    process.exitCode = code;
-  });
+  const exit =
+    options.exit ??
+    ((code) => {
+      process.exitCode = code;
+    });
   const onError = options.onError ?? (() => {});
   const routes = {
     run: handlers.run,
-    'render-unavailable': handlers.renderUnavailable,
-    'render-storybook-only': handlers.renderStorybookOnly,
-    'render-existing': handlers.renderExisting,
-    'self-test': handlers.selfTest,
+    "render-unavailable": handlers.renderUnavailable,
+    "render-storybook-only": handlers.renderStorybookOnly,
+    "render-existing": handlers.renderExisting,
+    "self-test": handlers.selfTest,
   };
 
   const handler = routes[command];
@@ -49,7 +51,7 @@ export async function dispatchRemoteCuaCommand(argv, handlers, options = {}) {
   }
 
   try {
-    if (command === 'self-test') await handler();
+    if (command === "self-test") await handler();
     else await handler(args);
     return { command, args, exitCode: 0 };
   } catch (error) {

@@ -5,7 +5,7 @@
 All options under `services.sshwifty`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.sshwifty.enable` | | |
 | `services.sshwifty.package` | | |
 | `services.sshwifty.settings` | | |

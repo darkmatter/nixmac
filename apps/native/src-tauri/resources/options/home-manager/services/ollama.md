@@ -5,7 +5,7 @@
 All options under `services.ollama`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------- |
 | `services.ollama.acceleration` | `null or one of false, “rocm”, “cuda”` | What interface to use for hardware acceleration. |
 | `services.ollama.enable` | `boolean` | Whether to enable ollama server for local large language models. |
 | `services.ollama.environmentVariables` | `attribute set of string` | Set arbitrary environment variables for the ollama service. |

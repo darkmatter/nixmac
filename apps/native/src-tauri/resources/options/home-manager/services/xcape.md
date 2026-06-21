@@ -5,8 +5,8 @@
 All options under `services.xcape`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ------------------------- | --------------------------------------------------------------------------------------------------- | ----------- |
 | `services.xcape.enable` | `boolean` | Whether to enable xcape. |
-| `services.xcape.mapExpression` | `attribute set of string` | The value has the grammar Key[|OtherKey] . |
+| `services.xcape.mapExpression` | `attribute set of string` | The value has the grammar Key[ | OtherKey] . |
 | `services.xcape.package` | `package` | The xcape package to use. |
 | `services.xcape.timeout` | `null or signed integer` | If you hold a key longer than this timeout, xcape will not generate a key event. Default is 500 ms. |

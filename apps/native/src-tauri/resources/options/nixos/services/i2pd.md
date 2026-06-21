@@ -5,7 +5,7 @@
 All options under `services.i2pd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------- | ---- | ----------- |
 | `services.i2pd.address` | | |
 | `services.i2pd.addressbook.defaulturl` | | |
 | `services.i2pd.addressbook.subscriptions` | | |

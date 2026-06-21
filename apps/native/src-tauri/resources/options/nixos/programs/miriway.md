@@ -5,6 +5,6 @@
 All options under `programs.miriway`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `programs.miriway.config` | | |
 | `programs.miriway.enable` | | |

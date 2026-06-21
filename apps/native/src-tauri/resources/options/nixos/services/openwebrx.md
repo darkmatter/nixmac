@@ -5,6 +5,6 @@
 All options under `services.openwebrx`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.openwebrx.enable` | | |
 | `services.openwebrx.package` | | |

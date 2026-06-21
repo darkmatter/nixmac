@@ -5,5 +5,5 @@
 All options under `programs.ibus`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `programs.ibus.plugins` | | |

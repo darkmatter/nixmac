@@ -5,7 +5,7 @@
 All options under `services.endlessh-go`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.endlessh-go.enable` | | |
 | `services.endlessh-go.extraOptions` | | |
 | `services.endlessh-go.listenAddress` | | |

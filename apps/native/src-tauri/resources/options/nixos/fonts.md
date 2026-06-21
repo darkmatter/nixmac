@@ -5,7 +5,7 @@
 All options under `fonts`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------- | ---- | ----------- |
 | `fonts.enableCoreFonts` | | |
 | `fonts.enableDefaultFonts` | | |
 | `fonts.enableDefaultPackages` | | |

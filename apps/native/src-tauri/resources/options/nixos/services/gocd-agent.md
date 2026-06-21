@@ -5,7 +5,7 @@
 All options under `services.gocd-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.gocd-agent.agentConfig` | | |
 | `services.gocd-agent.enable` | | |
 | `services.gocd-agent.environment` | | |

@@ -5,7 +5,7 @@
 All options under `services.blocky`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.blocky.enable` | | |
 | `services.blocky.enableConfigCheck` | | |
 | `services.blocky.package` | | |

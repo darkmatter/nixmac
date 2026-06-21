@@ -5,7 +5,7 @@
 All options under `services.labgrid`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.labgrid.coordinator.bindAddress` | | |
 | `services.labgrid.coordinator.debug` | | |
 | `services.labgrid.coordinator.enable` | | |

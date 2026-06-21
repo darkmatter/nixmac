@@ -5,7 +5,7 @@
 All options under `services.kmscon`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.kmscon.autologinUser` | | |
 | `services.kmscon.config` | | |
 | `services.kmscon.enable` | | |

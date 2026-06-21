@@ -5,7 +5,7 @@
 All options under `services.corteza`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.corteza.address` | | |
 | `services.corteza.enable` | | |
 | `services.corteza.group` | | |

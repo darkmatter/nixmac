@@ -5,7 +5,7 @@
 All options under `programs.niri`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `programs.niri.enable` | | |
 | `programs.niri.package` | | |
 | `programs.niri.useNautilus` | | |

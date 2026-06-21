@@ -5,7 +5,7 @@
 All options under `services.rkvm`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.rkvm.client.enable` | | |
 | `services.rkvm.client.settings` | | |
 | `services.rkvm.enable` | | |

@@ -5,7 +5,7 @@
 All options under `programs.mullvad-vpn`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.mullvad-vpn.enable` | `boolean` | Whether to enable Mullvad VPN. |
 | `programs.mullvad-vpn.package` | `null or package` | The mullvad-vpn package to use. |
 | `programs.mullvad-vpn.settings` | `JSON value` | Written to XDG_CONFIG_HOME/Mullvad VPN/gui_settings.json or ~/Library/Application Support/Mullvad VPN/gui_settings.json . See https://github.com/mullvad/mullvadvpn-app/blob/main/desktop/packages/mullvad-vpn/src/main/gui-settings.ts for options. |

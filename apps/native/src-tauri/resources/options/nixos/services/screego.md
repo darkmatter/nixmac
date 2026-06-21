@@ -5,7 +5,7 @@
 All options under `services.screego`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.screego.enable` | | |
 | `services.screego.environmentFile` | | |
 | `services.screego.openFirewall` | | |

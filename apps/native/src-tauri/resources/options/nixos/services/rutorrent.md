@@ -5,7 +5,7 @@
 All options under `services.rutorrent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------- | ---- | ----------- |
 | `services.rutorrent.dataDir` | | |
 | `services.rutorrent.enable` | | |
 | `services.rutorrent.group` | | |

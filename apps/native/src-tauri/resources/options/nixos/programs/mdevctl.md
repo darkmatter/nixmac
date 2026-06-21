@@ -5,5 +5,5 @@
 All options under `programs.mdevctl`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `programs.mdevctl.enable` | | |

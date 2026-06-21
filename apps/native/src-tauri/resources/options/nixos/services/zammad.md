@@ -5,7 +5,7 @@
 All options under `services.zammad`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.zammad.dataDir` | | |
 | `services.zammad.database.createLocally` | | |
 | `services.zammad.database.host` | | |

@@ -5,7 +5,7 @@
 All options under `services.zwave-js-ui`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.zwave-js-ui.enable` | | |
 | `services.zwave-js-ui.package` | | |
 | `services.zwave-js-ui.serialPort` | | |

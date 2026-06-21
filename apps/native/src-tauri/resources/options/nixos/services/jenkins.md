@@ -5,7 +5,7 @@
 All options under `services.jenkins`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.jenkins.enable` | | |
 | `services.jenkins.environment` | | |
 | `services.jenkins.extraGroups` | | |

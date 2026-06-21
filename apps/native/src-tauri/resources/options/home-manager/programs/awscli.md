@@ -5,7 +5,7 @@
 All options under `programs.awscli`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
 | `programs.awscli.credentials` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to $HOME/.aws/credentials . |
 | `programs.awscli.enable` | `boolean` | Whether to enable AWS CLI tool. |
 | `programs.awscli.package` | `null or package` | The aws package to use. |

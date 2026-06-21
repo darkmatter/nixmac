@@ -5,7 +5,7 @@
 All options under `services.microbin`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.microbin.dataDir` | | |
 | `services.microbin.enable` | | |
 | `services.microbin.package` | | |

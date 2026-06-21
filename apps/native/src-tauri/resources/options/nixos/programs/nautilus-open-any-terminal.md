@@ -5,6 +5,6 @@
 All options under `programs.nautilus-open-any-terminal`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `programs.nautilus-open-any-terminal.enable` | | |
 | `programs.nautilus-open-any-terminal.terminal` | | |

@@ -5,5 +5,5 @@
 All options under `services.cgmanager`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.cgmanager.enable` | | |

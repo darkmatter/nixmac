@@ -5,5 +5,5 @@
 All options under `programs.zmap`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------- | ---- | ----------- |
 | `programs.zmap.enable` | | |

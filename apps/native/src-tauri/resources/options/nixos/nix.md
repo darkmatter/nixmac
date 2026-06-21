@@ -5,7 +5,7 @@
 All options under `nix`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `nix.allowedUsers` | | |
 | `nix.autoOptimiseStore` | | |
 | `nix.binaryCachePublicKeys` | | |

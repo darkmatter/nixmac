@@ -5,7 +5,7 @@
 All options under `services.mullvad-vpn`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.mullvad-vpn.enable` | | |
 | `services.mullvad-vpn.enableEarlyBootBlocking` | | |
 | `services.mullvad-vpn.enableExcludeWrapper` | | |

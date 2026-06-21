@@ -5,6 +5,6 @@
 All options under `services.kimai`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.kimai.sites` | | |
 | `services.kimai.webserver` | | |

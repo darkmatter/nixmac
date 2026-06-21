@@ -5,7 +5,7 @@
 All options under `services.voxtype`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.voxtype.enable` | | |
 | `services.voxtype.environment` | | |
 | `services.voxtype.extraArgs` | | |

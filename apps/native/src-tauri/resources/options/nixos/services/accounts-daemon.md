@@ -5,5 +5,5 @@
 All options under `services.accounts-daemon`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.accounts-daemon.enable` | | |

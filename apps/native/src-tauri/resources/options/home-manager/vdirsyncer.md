@@ -5,7 +5,7 @@
 All options under `vdirsyncer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `vdirsyncer.auth` | `null or one of “basic”, “digest”, “guess”` | Authentication settings. The default is basic . |
 | `vdirsyncer.authCert` | `null or string or list of string` | Either a path to a certificate with a client certificate and the key or a list of paths to the files with them. |
 | `vdirsyncer.clientIdCommand` | `null or (list of string)` | A command that prints the OAuth credentials to standard output. |

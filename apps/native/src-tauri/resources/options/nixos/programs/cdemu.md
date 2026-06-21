@@ -5,7 +5,7 @@
 All options under `programs.cdemu`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `programs.cdemu.enable` | | |
 | `programs.cdemu.group` | | |
 | `programs.cdemu.gui` | | |

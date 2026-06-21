@@ -5,7 +5,7 @@
 All options under `services.ifm`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.ifm.dataDir` | | |
 | `services.ifm.enable` | | |
 | `services.ifm.listenAddress` | | |

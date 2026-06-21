@@ -5,7 +5,7 @@
 All options under `services.llama-cpp`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.llama-cpp.enable` | | |
 | `services.llama-cpp.extraFlags` | | |
 | `services.llama-cpp.host` | | |

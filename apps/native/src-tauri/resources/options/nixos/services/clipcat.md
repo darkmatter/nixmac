@@ -5,6 +5,6 @@
 All options under `services.clipcat`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.clipcat.enable` | | |
 | `services.clipcat.package` | | |

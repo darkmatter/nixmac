@@ -5,7 +5,7 @@
 All options under `services.amazon-cloudwatch-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------------------- | ---- | ----------- |
 | `services.amazon-cloudwatch-agent.commonConfiguration` | | |
 | `services.amazon-cloudwatch-agent.commonConfigurationFile` | | |
 | `services.amazon-cloudwatch-agent.configuration` | | |

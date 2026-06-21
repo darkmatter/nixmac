@@ -5,7 +5,7 @@
 All options under `services.pppd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `services.pppd.enable` | | |
 | `services.pppd.package` | | |
 | `services.pppd.peers` | | |

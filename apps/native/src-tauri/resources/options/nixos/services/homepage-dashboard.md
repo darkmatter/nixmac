@@ -5,7 +5,7 @@
 All options under `services.homepage-dashboard`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.homepage-dashboard.allowedHosts` | | |
 | `services.homepage-dashboard.bookmarks` | | |
 | `services.homepage-dashboard.customCSS` | | |

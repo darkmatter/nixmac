@@ -5,7 +5,7 @@
 All options under `services.dependency-track`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------------- | ---- | ----------- |
 | `services.dependency-track.database.createLocally` | | |
 | `services.dependency-track.database.databaseName` | | |
 | `services.dependency-track.database.passwordFile` | | |

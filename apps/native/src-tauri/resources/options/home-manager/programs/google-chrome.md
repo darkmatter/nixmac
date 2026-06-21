@@ -5,7 +5,7 @@
 All options under `programs.google-chrome`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `programs.google-chrome.commandLineArgs` | | |
 | `programs.google-chrome.dictionaries` | | |
 | `programs.google-chrome.enable` | | |

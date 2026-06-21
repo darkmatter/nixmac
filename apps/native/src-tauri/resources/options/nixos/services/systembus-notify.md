@@ -5,5 +5,5 @@
 All options under `services.systembus-notify`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.systembus-notify.enable` | | |

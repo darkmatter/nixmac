@@ -5,7 +5,7 @@
 All options under `services.exim`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.exim.config` | | |
 | `services.exim.enable` | | |
 | `services.exim.group` | | |

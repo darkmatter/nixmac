@@ -5,6 +5,6 @@
 All options under `programs.rog-control-center`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `programs.rog-control-center.autoStart` | | |
 | `programs.rog-control-center.enable` | | |

@@ -5,6 +5,6 @@
 All options under `services.nullidentdmod`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.nullidentdmod.enable` | | |
 | `services.nullidentdmod.userid` | | |

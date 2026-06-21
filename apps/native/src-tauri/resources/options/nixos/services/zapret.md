@@ -5,7 +5,7 @@
 All options under `services.zapret`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.zapret.blacklist` | | |
 | `services.zapret.configureFirewall` | | |
 | `services.zapret.enable` | | |

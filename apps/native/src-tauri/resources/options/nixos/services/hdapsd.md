@@ -5,5 +5,5 @@
 All options under `services.hdapsd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.hdapsd.enable` | | |

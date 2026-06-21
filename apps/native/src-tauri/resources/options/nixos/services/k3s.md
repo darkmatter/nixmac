@@ -5,7 +5,7 @@
 All options under `services.k3s`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------------------- | ---- | ----------- |
 | `services.k3s.agentToken` | | |
 | `services.k3s.agentTokenFile` | | |
 | `services.k3s.autoDeployCharts` | | |

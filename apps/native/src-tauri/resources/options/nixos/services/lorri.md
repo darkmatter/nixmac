@@ -5,6 +5,6 @@
 All options under `services.lorri`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.lorri.enable` | | |
 | `services.lorri.package` | | |

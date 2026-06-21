@@ -5,7 +5,7 @@
 All options under `services.gnunet`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.gnunet.enable` | | |
 | `services.gnunet.extraOptions` | | |
 | `services.gnunet.fileSharing.quota` | | |

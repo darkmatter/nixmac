@@ -5,7 +5,7 @@
 All options under `services.goupile`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.goupile.configFile` | | |
 | `services.goupile.enable` | | |
 | `services.goupile.enableSandbox` | | |

@@ -5,7 +5,7 @@
 All options under `services.transmission`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------ | ---- | ----------- |
 | `services.transmission.credentialsFile` | | |
 | `services.transmission.downloadDirPermissions` | | |
 | `services.transmission.enable` | | |

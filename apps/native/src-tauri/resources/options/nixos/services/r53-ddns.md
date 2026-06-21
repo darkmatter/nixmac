@@ -5,7 +5,7 @@
 All options under `services.r53-ddns`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.r53-ddns.domain` | | |
 | `services.r53-ddns.enable` | | |
 | `services.r53-ddns.environmentFile` | | |

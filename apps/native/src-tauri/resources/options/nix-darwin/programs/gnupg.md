@@ -5,7 +5,7 @@
 All options under `programs.gnupg`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | --------- | ------------------------------------------------------------------------------------------------ |
 | `programs.gnupg.agent.enable` | `boolean` | Enables GnuPG agent for every user session. |
 | `programs.gnupg.agent.enableSSHSupport` | `boolean` | Enable SSH agent support in GnuPG agent. Also sets SSH_AUTH_SOCK environment variable correctly. |
 | `programs.gnupg.package` | `package` | The gnupg package to use. |

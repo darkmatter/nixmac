@@ -5,7 +5,7 @@
 All options under `programs._1password`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `programs._1password.enable` | | |
 | `programs._1password.gid` | | |
 | `programs._1password.package` | | |

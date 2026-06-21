@@ -5,7 +5,7 @@
 All options under `services.vwifi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.vwifi.client.enable` | | |
 | `services.vwifi.client.extraArgs` | | |
 | `services.vwifi.client.serverAddress` | | |

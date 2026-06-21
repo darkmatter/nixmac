@@ -5,7 +5,7 @@
 All options under `services.tuptime`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.tuptime.enable` | | |
 | `services.tuptime.timer.enable` | | |
 | `services.tuptime.timer.period` | | |

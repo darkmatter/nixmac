@@ -5,7 +5,7 @@
 All options under `services.localtimed`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.localtimed.enable` | | |
 | `services.localtimed.geoclue2Package` | | |
 | `services.localtimed.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.privoxy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | -------------------------------- | -------------------------------------------------------- |
 | `services.privoxy.confdir` | `null or absolute path` | Directory for privoxy files such as .action and .filter. |
 | `services.privoxy.config` | `strings concatenated with “\n”` | Config to use for privoxy |
 | `services.privoxy.enable` | `boolean` | Whether to enable the privoxy proxy service. |

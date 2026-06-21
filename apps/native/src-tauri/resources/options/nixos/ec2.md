@@ -5,7 +5,7 @@
 All options under `ec2`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------ | ---- | ----------- |
 | `ec2.efi` | | |
 | `ec2.hvm` | | |
 | `ec2.zfs.datasets` | | |

@@ -5,7 +5,7 @@
 All options under `programs.mcfly`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.mcfly.enable` | `boolean` | Whether to enable mcfly. |
 | `programs.mcfly.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.mcfly.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |

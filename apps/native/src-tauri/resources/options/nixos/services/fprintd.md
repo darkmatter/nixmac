@@ -5,7 +5,7 @@
 All options under `services.fprintd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.fprintd.enable` | | |
 | `services.fprintd.package` | | |
 | `services.fprintd.tod.driver` | | |

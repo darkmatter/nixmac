@@ -5,6 +5,6 @@
 All options under `time`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `time.hardwareClockInLocalTime` | | |
 | `time.timeZone` | | |

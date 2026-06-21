@@ -5,7 +5,7 @@
 All options under `services.snips-sh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.snips-sh.enable` | | |
 | `services.snips-sh.environmentFile` | | |
 | `services.snips-sh.package` | | |

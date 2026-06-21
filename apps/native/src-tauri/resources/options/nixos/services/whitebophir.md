@@ -5,7 +5,7 @@
 All options under `services.whitebophir`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.whitebophir.enable` | | |
 | `services.whitebophir.listenAddress` | | |
 | `services.whitebophir.package` | | |

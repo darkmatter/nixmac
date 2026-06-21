@@ -5,7 +5,7 @@
 All options under `programs.yambar`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ----------------- | ----------------------------------------------------------------------------------------- |
 | `programs.yambar.enable` | `boolean` | Whether to enable Yambar. |
 | `programs.yambar.package` | `null or package` | The yambar package to use. |
 | `programs.yambar.settings` | `YAML 1.1 value` | Configuration written to $XDG_CONFIG_HOME/yambar/config.yml . See yambar (5) for options. |

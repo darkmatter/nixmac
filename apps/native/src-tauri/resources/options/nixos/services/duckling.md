@@ -5,6 +5,6 @@
 All options under `services.duckling`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.duckling.enable` | | |
 | `services.duckling.port` | | |

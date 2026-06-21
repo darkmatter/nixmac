@@ -5,7 +5,7 @@
 All options under `services.firefox-syncserver`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------------- | ---- | ----------- |
 | `services.firefox-syncserver.database.createLocally` | | |
 | `services.firefox-syncserver.database.host` | | |
 | `services.firefox-syncserver.database.name` | | |

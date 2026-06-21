@@ -5,7 +5,7 @@
 All options under `programs.vim`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | `programs.vim.defaultEditor` | `boolean` | Whether to configure vim as the default editor using the EDITOR and VISUAL environment variables. |
 | `programs.vim.enable` | `boolean` | Whether to enable Vim. |
 | `programs.vim.extraConfig` | `strings concatenated with “\n”` | Custom .vimrc lines |

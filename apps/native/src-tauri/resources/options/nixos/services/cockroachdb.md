@@ -5,7 +5,7 @@
 All options under `services.cockroachdb`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.cockroachdb.cache` | | |
 | `services.cockroachdb.certsDir` | | |
 | `services.cockroachdb.enable` | | |

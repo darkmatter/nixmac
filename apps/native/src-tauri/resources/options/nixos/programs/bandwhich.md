@@ -5,5 +5,5 @@
 All options under `programs.bandwhich`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `programs.bandwhich.enable` | | |

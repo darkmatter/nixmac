@@ -5,7 +5,7 @@
 All options under `services.asusd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.asusd.animeConfig` | | |
 | `services.asusd.asusdConfig` | | |
 | `services.asusd.auraConfig` | | |

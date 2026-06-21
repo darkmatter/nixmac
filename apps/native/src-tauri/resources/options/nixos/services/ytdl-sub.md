@@ -5,7 +5,7 @@
 All options under `services.ytdl-sub`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.ytdl-sub.group` | | |
 | `services.ytdl-sub.instances` | | |
 | `services.ytdl-sub.package` | | |

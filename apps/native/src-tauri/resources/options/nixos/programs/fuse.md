@@ -5,7 +5,7 @@
 All options under `programs.fuse`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `programs.fuse.enable` | | |
 | `programs.fuse.mountMax` | | |
 | `programs.fuse.userAllowOther` | | |

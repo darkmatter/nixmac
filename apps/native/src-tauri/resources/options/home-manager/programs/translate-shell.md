@@ -5,7 +5,7 @@
 All options under `programs.translate-shell`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.translate-shell.enable` | `boolean` | Whether to enable translate-shell. |
 | `programs.translate-shell.package` | `null or package` | The translate-shell package to use. |
 | `programs.translate-shell.settings` | `attribute set of (boolean or string or list of string)` | Options to add to $XDG_CONFIG_HOME/translate-shell/init.trans file. See https://github.com/soimort/translate-shell/wiki/Configuration for options. |

@@ -5,5 +5,5 @@
 All options under `services.spice-vdagentd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.spice-vdagentd.enable` | | |

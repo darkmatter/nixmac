@@ -5,7 +5,7 @@
 All options under `programs.abaddon`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.abaddon.enable` | `boolean` | Whether to enable abaddon. |
 | `programs.abaddon.package` | `null or package` | The abaddon package to use. |
 | `programs.abaddon.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration settings for abaddon. All the available options can be found here: https://github.com/uowuo/abaddon?tab=readme-ov-file#settings |

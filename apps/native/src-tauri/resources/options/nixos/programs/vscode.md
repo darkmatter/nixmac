@@ -5,7 +5,7 @@
 All options under `programs.vscode`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `programs.vscode.defaultEditor` | | |
 | `programs.vscode.enable` | | |
 | `programs.vscode.extensions` | | |

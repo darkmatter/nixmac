@@ -5,7 +5,7 @@
 All options under `services.porxie`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.porxie.enable` | | |
 | `services.porxie.environmentFiles` | | |
 | `services.porxie.package` | | |

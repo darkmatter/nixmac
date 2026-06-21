@@ -5,6 +5,6 @@
 All options under `services.hypridle`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.hypridle.enable` | | |
 | `services.hypridle.package` | | |

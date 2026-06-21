@@ -5,7 +5,7 @@
 All options under `services.ntfy-sh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.ntfy-sh.enable` | | |
 | `services.ntfy-sh.environmentFile` | | |
 | `services.ntfy-sh.group` | | |

@@ -5,7 +5,7 @@
 All options under `services.shairport-sync`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.shairport-sync.arguments` | | |
 | `services.shairport-sync.enable` | | |
 | `services.shairport-sync.group` | | |

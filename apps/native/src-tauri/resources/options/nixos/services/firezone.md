@@ -5,7 +5,7 @@
 All options under `services.firezone`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------------- | ---- | ----------- |
 | `services.firezone.gateway.apiUrl` | | |
 | `services.firezone.gateway.enable` | | |
 | `services.firezone.gateway.enableTelemetry` | | |

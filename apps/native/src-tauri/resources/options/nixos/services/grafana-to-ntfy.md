@@ -5,7 +5,7 @@
 All options under `services.grafana-to-ntfy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------- | ---- | ----------- |
 | `services.grafana-to-ntfy.enable` | | |
 | `services.grafana-to-ntfy.package` | | |
 | `services.grafana-to-ntfy.settings.address` | | |

@@ -5,7 +5,7 @@
 All options under `programs.waybar`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `programs.waybar.enable` | `boolean` | Whether to enable Waybar. |
 | `programs.waybar.package` | `package` | The waybar package to use. |
 | `programs.waybar.settings` | `(list of (open submodule of (JSON value))) or attribute set of (open submodule of (JSON value))` | Configuration for Waybar, see https://github.com/Alexays/Waybar/wiki/Configuration for supported values. |

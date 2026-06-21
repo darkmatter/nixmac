@@ -5,7 +5,7 @@
 All options under `services.pict-rs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.pict-rs.address` | | |
 | `services.pict-rs.dataDir` | | |
 | `services.pict-rs.enable` | | |

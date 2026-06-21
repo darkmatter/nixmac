@@ -5,7 +5,7 @@
 All options under `programs.mercurial`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------- |
 | `programs.mercurial.aliases` | `attribute set of anything` | Mercurial aliases to define. |
 | `programs.mercurial.enable` | `boolean` | Whether to enable Mercurial. |
 | `programs.mercurial.extraConfig` | `(attribute set of anything) or strings concatenated with “\n”` | Additional configuration to add. |

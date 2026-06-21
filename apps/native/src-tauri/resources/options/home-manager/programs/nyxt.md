@@ -5,7 +5,7 @@
 All options under `programs.nyxt`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------- |
 | `programs.nyxt.config` | `strings concatenated with “\n” or absolute path` | Configuration file for Nyxt, written in the Common Lisp programming language. |
 | `programs.nyxt.enable` | `boolean` | Whether to enable Nyxt. |
 | `programs.nyxt.package` | `null or package` | The nyxt package to use. |

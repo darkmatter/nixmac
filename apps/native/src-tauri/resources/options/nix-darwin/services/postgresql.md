@@ -5,7 +5,7 @@
 All options under `services.postgresql`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.postgresql.authentication` | `strings concatenated with “\n”` | Defines how users authenticate themselves to the server. See the PostgreSQL documentation for pg_hba.conf for details on the expected format of this option. By default, peer based authentication will be used for users connecting via the Unix socket, and md5 password authentication will be used for users connecting via TCP. Any added rules will be inserted above the default rules. If you’d like to replace the default rules entirely, you can use lib.mkForce in your module. |
 | `services.postgresql.checkConfig` | `boolean` | Check the syntax of the configuration file at compile time |
 | `services.postgresql.dataDir` | `absolute path` | The data directory for PostgreSQL. If left as the default value this directory will automatically be created before the PostgreSQL server starts, otherwise the sysadmin is responsible for ensuring the directory exists with appropriate ownership and permissions. |

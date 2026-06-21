@@ -5,7 +5,7 @@
 All options under `services.freshrss`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.freshrss.api.enable` | | |
 | `services.freshrss.authType` | | |
 | `services.freshrss.baseUrl` | | |

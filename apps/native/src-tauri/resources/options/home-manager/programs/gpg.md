@@ -5,7 +5,7 @@
 All options under `programs.gpg`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.gpg.dirmngrSettings` | `attribute set of (string or boolean or list of string)` | Dirmngr configuration options. Available options are described in dirmngr (1) |
 | `programs.gpg.enable` | `boolean` | Whether to enable GnuPG. |
 | `programs.gpg.gpgsmSettings` | `attribute set of (string or boolean or list of string)` | GPGSM configuration options. Available options are described in gpgsm (1) |

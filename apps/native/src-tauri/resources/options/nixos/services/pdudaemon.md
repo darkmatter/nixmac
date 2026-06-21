@@ -5,7 +5,7 @@
 All options under `services.pdudaemon`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.pdudaemon.bindAddress` | | |
 | `services.pdudaemon.enable` | | |
 | `services.pdudaemon.listener` | | |
