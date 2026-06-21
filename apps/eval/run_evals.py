@@ -448,15 +448,29 @@ def update_test_case_status(case_num: Any, result: Any) -> None:
 
 
 def backup_nixmac_settings() -> dict:
-    """Back up nixmac files (settings.json, evolve-state.json, build-state.json).
+    """Back up nixmac config/state files.
 
-    Copies any existing files to a .bak sibling and deletes the originals.
-    Returns a dict mapping original Path -> backup Path for later restoration.
+    Copies any existing files to a .bak sibling and deletes the originals
+    so each run starts from a known-empty state. Restored from the .bak
+    siblings at the end of main().
+
+    `global-preferences.json` is included because PR #411 on the nixmac
+    side moved GlobalPreferences (configDir, repoRoot, host, model,
+    provider, …) onto a managed Observable persisted there. The legacy
+    settings.json is only consulted via a one-shot migration that
+    *overrides* only fields present in the eval-written settings.json;
+    any field the eval doesn't write (e.g. repoRoot, set by prior GUI
+    use) would otherwise leak through and override the eval's intent.
+    Wiping global-preferences.json forces the observable to start from
+    Default and pick up the eval's values via migration each run.
+    Returns a dict mapping original Path -> backup Path for later
+    restoration.
     """
     backups: dict[Path, Path] = {}
 
     candidates = [
         NIXMAC_SETTINGS_PATH,
+        NIXMAC_CONFIG_DIR / "global-preferences.json",
         NIXMAC_CONFIG_DIR / "evolve-state.json",
         NIXMAC_CONFIG_DIR / "build-state.json",
     ]
