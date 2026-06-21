@@ -7,6 +7,7 @@ const storybookDir = fileURLToPath(new URL(".", import.meta.url));
 const appRoot = path.resolve(storybookDir, "..");
 const repoRoot = path.resolve(appRoot, "../..");
 const uiPackageRoot = path.resolve(repoRoot, "packages/ui/src");
+const statePackageRoot = path.resolve(repoRoot, "packages/state/src");
 
 function withoutMonacoEditorPlugin(plugins: unknown): unknown {
   if (!Array.isArray(plugins)) return plugins;
@@ -20,9 +21,7 @@ function withoutMonacoEditorPlugin(plugins: unknown): unknown {
       plugin &&
       typeof plugin === "object" &&
       "name" in plugin &&
-      /monaco-editor|moncao-editor/.test(
-        String((plugin as { name?: unknown }).name),
-      )
+      /monaco-editor|moncao-editor/.test(String((plugin as { name?: unknown }).name))
     ) {
       return [];
     }
@@ -57,6 +56,10 @@ const config: StorybookConfig = {
           "@/ipc/api": path.resolve(storybookDir, "mocks/ipc-api.ts"),
           "@/components/ui": path.resolve(uiPackageRoot, "components/ui"),
           "@nixmac/ui": uiPackageRoot,
+          "@nixmac/state": statePackageRoot,
+          "@nixmac/native/ipc/types": path.resolve(appRoot, "src/ipc/types.ts"),
+          "@nixmac/native/types/feedback": path.resolve(appRoot, "src/types/feedback.ts"),
+          "@nixmac/native/types/rebuild": path.resolve(appRoot, "src/types/rebuild.ts"),
           "@tauri-apps/api/core": path.resolve(storybookDir, "mocks/tauri-core.ts"),
           "@tauri-apps/api/app": path.resolve(storybookDir, "mocks/tauri-app.ts"),
           "@tauri-apps/api/event": path.resolve(storybookDir, "mocks/tauri-event.ts"),

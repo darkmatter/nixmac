@@ -1,6 +1,6 @@
 import { tauriAPI } from "@/ipc/api";
-import { useViewModel } from "@/stores/view-model";
-import { useUiState } from "@/stores/ui-state";
+import { useViewModel } from "@nixmac/state";
+import { useUiState } from "@nixmac/state";
 import { refreshHistorySnapshot } from "@/viewmodel/history";
 
 const loadHistory = () => refreshHistorySnapshot();

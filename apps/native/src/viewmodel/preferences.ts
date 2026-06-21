@@ -1,6 +1,6 @@
 import { tauriAPI } from "@/ipc/api";
 import type { GlobalPreferences } from "@/ipc/types";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
 
 export function mirrorPreferences(preferences: GlobalPreferences): void {

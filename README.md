@@ -145,7 +145,7 @@ git init
 Copy one of the included templates:
 
 | Template | Description |
-|----------|-------------|
+| ------------------------------------------------------------------------ | -------------------------------------- |
 | [`nix-darwin-determinate`](apps/native/templates/nix-darwin-determinate) | Minimal nix-darwin for Determinate Nix |
 | [`nixos-unified`](apps/native/templates/nixos-unified) | Cross-platform (macOS + NixOS) |
 | [`minimal`](apps/native/templates/minimal) | Bare-bones starting point |
@@ -162,7 +162,7 @@ sudo -i nix run nix-darwin/master#darwin-rebuild -- switch --flake ~/.darwin#$HO
 When you import a nix repository from a zip file, nixmac will perform substitution on the following placeholder strings:
 
 | Placeholder | Value |
-| ----------- | ----- |
+| ---------------------- | -------------------------------------------------- |
 | `HOSTNAME_PLACEHOLDER` | Hostname of the Mac you're running on |
 | `PLATFORM_PLACEHOLDER` | Platform architecture of the Mac you're running on |
 | `USERNAME_PLACEHOLDER` | Current username e.g. `$USER` |
@@ -174,7 +174,7 @@ When you import a nix repository from a zip file, nixmac will perform substituti
 nixmac uses separate models for **evolution** (config changes via tool use) and **summarization** (commit messages, UI labels).
 
 | Variable | Default | Description |
-|----------|---------|-------------|
+| --------------------- | --------------------------- | ----------------------------------------------------------------------- |
 | `EVOLVE_PROVIDER` | `openrouter` | `openrouter`, `openai`, `ollama`, or `vllm` |
 | `EVOLVE_MODEL` | `anthropic/claude-sonnet-4` | Model for config evolution |
 | `SUMMARY_AI_PROVIDER` | `openrouter` | Provider for summarization |

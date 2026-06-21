@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 import { Bot, X } from "lucide-react";
 
 export function ConversationalResponse() {

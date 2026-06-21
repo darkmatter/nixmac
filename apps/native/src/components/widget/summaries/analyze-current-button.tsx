@@ -2,7 +2,7 @@
 
 import { AnalyzeButton } from "@/components/widget/summaries/analyze-button";
 import { useSummary } from "@/hooks/use-summary";
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 import { Dna, Loader2 } from "lucide-react";
 
 export function AnalyzeCurrentButton() {

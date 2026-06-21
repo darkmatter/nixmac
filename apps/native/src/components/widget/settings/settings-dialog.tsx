@@ -1,12 +1,20 @@
 import { Button } from "@/components/ui/button";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { cn } from "@/lib/utils";
-import { useViewModel } from "@/stores/view-model";
-import { useUiState, type SettingsTab } from "@/stores/ui-state";
+import { useViewModel } from "@nixmac/state";
+import { useUiState, type SettingsTab } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import { refreshHostsSnapshot } from "@/viewmodel/preferences";
 import { useForm } from "@tanstack/react-form";
-import { Bot, FolderOpen, Key, Settings2, SlidersHorizontal, UserCircle2, Wrench } from "lucide-react";
+import {
+  Bot,
+  FolderOpen,
+  Key,
+  Settings2,
+  SlidersHorizontal,
+  UserCircle2,
+  Wrench,
+} from "lucide-react";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   type ApiKeyStatus,
@@ -49,11 +57,7 @@ function NavItem({ icon, label, active, onClick }: NavItemProps) {
 }
 
 export function SettingsDialog() {
-  const {
-    settingsOpen: isOpen,
-    settingsActiveTab,
-    setSettingsOpen,
-  } = useUiState();
+  const { settingsOpen: isOpen, settingsActiveTab, setSettingsOpen } = useUiState();
   const configDir = useViewModel((s) => s.preferences?.configDir ?? "");
   const hosts = useViewModel((s) => s.hosts);
   const host = useViewModel((s) => s.preferences?.hostAttr ?? "");
@@ -151,12 +155,14 @@ export function SettingsDialog() {
           form.setFieldValue("summaryProvider", summaryProvider);
           form.setFieldValue(
             "summaryModel",
-            prefs.summaryModel ?? (summaryProvider === "openai" ? "gpt-4o-mini" : "openai/gpt-4o-mini"),
+            prefs.summaryModel ??
+              (summaryProvider === "openai" ? "gpt-4o-mini" : "openai/gpt-4o-mini"),
           );
           form.setFieldValue("evolveProvider", evolveProvider);
           form.setFieldValue(
             "evolveModel",
-            prefs.evolveModel ?? (evolveProvider === "openai" ? "gpt-4o" : "anthropic/claude-sonnet-4"),
+            prefs.evolveModel ??
+              (evolveProvider === "openai" ? "gpt-4o" : "anthropic/claude-sonnet-4"),
           );
           form.setFieldValue("sendDiagnostics", prefs.sendDiagnostics ?? false);
 

@@ -1,4 +1,4 @@
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 
 const RECOVERY_STORAGE_KEY = "nixmac:pending-error-report";
 
@@ -24,8 +24,7 @@ function readStoredReport(): StoredErrorReport | null {
       name: typeof parsed.name === "string" && parsed.name.length > 0 ? parsed.name : "Error",
       message: parsed.message,
       stack: typeof parsed.stack === "string" ? parsed.stack : "",
-      timestamp:
-        typeof parsed.timestamp === "string" ? parsed.timestamp : new Date().toISOString(),
+      timestamp: typeof parsed.timestamp === "string" ? parsed.timestamp : new Date().toISOString(),
     };
   } catch {
     return null;

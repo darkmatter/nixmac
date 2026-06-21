@@ -24,7 +24,7 @@ function setBootStageDomMarker(stage: string) {
 }
 
 function markNativeBootStage(stage: string) {
-  void tauriAPI.debug.markBootStage(stage, Date.now()).catch(() => { });
+  void tauriAPI.debug.markBootStage(stage, Date.now()).catch(() => {});
 }
 
 /** E2E-only render-body marker: DOM/title only, no IPC or localStorage. */
@@ -80,5 +80,5 @@ export function bootBreadcrumb(label: string, detail?: unknown) {
   const clientTimestampUnixMs = Date.now();
   const summarized = summarizeDetail(detail);
   console.info(`[nixmac boot] ${label}`, summarized ?? "");
-  void tauriAPI.debug.logBreadcrumb(label, summarized, clientTimestampUnixMs).catch(() => { });
+  void tauriAPI.debug.logBreadcrumb(label, summarized, clientTimestampUnixMs).catch(() => {});
 }

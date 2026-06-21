@@ -1,11 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MarkdownDescription } from "./markdown-description";
-import {
-  commitMessageBody,
-  hasMarkdownSyntax,
-  shouldExpandDescription,
-} from "./markdown-utils";
+import { commitMessageBody, hasMarkdownSyntax, shouldExpandDescription } from "./markdown-utils";
 
 vi.mock("@/components/widget/summaries/markdown-content", () => ({
   MarkdownContent: ({ children }: { children: string }) => (
@@ -31,9 +27,7 @@ describe("markdown-utils", () => {
 
   it("expands when text exceeds line limit or contains markdown", () => {
     expect(shouldExpandDescription("one line", 2)).toBe(false);
-    expect(shouldExpandDescription("line one\nline two\nline three", 2)).toBe(
-      true,
-    );
+    expect(shouldExpandDescription("line one\nline two\nline three", 2)).toBe(true);
     expect(shouldExpandDescription("- one bullet", 2)).toBe(true);
   });
 });

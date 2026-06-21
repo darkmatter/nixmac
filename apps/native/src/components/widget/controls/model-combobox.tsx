@@ -34,12 +34,7 @@ interface OllamaModel {
   name: string;
 }
 
-const OPENAI_MODELS = [
-  "gpt-4o",
-  "gpt-4o-mini",
-  "gpt-4.1",
-  "gpt-4.1-mini",
-] as const;
+const OPENAI_MODELS = ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini"] as const;
 
 async function fetchOpenRouterModels(): Promise<string[]> {
   try {

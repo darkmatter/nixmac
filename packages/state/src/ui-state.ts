@@ -8,12 +8,23 @@
 // The split prevents Rust-driven state updates from clobbering local UI
 // concerns (e.g. closing a settings panel just because git status changed).
 
-import type { EvolutionTelemetry, FileDiffContents, RecommendedPrompt } from "@/ipc/types";
-import { FeedbackType } from "@/types/feedback";
-import type { RebuildContext } from "@/types/rebuild";
+import type {
+  EvolutionTelemetry,
+  FileDiffContents,
+  RecommendedPrompt,
+} from "@nixmac/native/ipc/types";
+import { FeedbackType } from "@nixmac/native/types/feedback";
+import type { RebuildContext } from "@nixmac/native/types/rebuild";
 import { create } from "zustand";
 
-export type SettingsTab = "general" | "account" | "api-keys" | "ai-models" | "preferences" | "tuning" | "developer";
+export type SettingsTab =
+  | "general"
+  | "account"
+  | "api-keys"
+  | "ai-models"
+  | "preferences"
+  | "tuning"
+  | "developer";
 type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
 
 /**
@@ -126,8 +137,7 @@ export const initialUiState: UiStateValues = {
  */
 export const useUiState = create<UiState>()((set) => ({
   ...initialUiState,
-  setSettingsOpen: (settingsOpen, tab) =>
-    set({ settingsOpen, settingsActiveTab: tab ?? null }),
+  setSettingsOpen: (settingsOpen, tab) => set({ settingsOpen, settingsActiveTab: tab ?? null }),
   setShowHistory: (showHistory) => set({ showHistory }),
   setShowFilesystem: (showFilesystem, section = null) =>
     set({ showFilesystem, filesystemTargetSection: showFilesystem ? section : null }),

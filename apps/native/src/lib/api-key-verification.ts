@@ -68,13 +68,9 @@ export function createVerifiedApiKeyHandler({
       try {
         await saveKey(key);
       } catch {
-        return currentRequestId === requestId
-          ? "failed"
-          : ("stale" satisfies SaveResult);
+        return currentRequestId === requestId ? "failed" : ("stale" satisfies SaveResult);
       }
-      return currentRequestId === requestId
-        ? "saved"
-        : ("stale" satisfies SaveResult);
+      return currentRequestId === requestId ? "saved" : ("stale" satisfies SaveResult);
     });
     saveQueue = queuedSave.then(
       () => undefined,

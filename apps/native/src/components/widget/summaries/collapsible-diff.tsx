@@ -1,7 +1,4 @@
-import {
-  Collapsible,
-  CollapsibleContent,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import {
   CHANGE_TYPE_STYLES,
   getDirectory,
@@ -47,7 +44,9 @@ export function CollapsibleDiff({
           className="group inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-muted"
           onClick={onToggle}
         >
-          <ChevronRight className={`h-4 w-4 text-muted-foreground hover:text-foreground transition-transform duration-200 ${open ? "rotate-90" : ""}`} />
+          <ChevronRight
+            className={`h-4 w-4 text-muted-foreground hover:text-foreground transition-transform duration-200 ${open ? "rotate-90" : ""}`}
+          />
         </button>
         <Icon className={`h-3.5 w-3.5 shrink-0 ${iconColor}`} />
         <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
@@ -55,11 +54,8 @@ export function CollapsibleDiff({
             {dir && <span className="text-neutral-500">{dir}/</span>}
             <span className="font-semibold text-neutral-200">{name}</span>
           </span>
-          {headerExtra && (
-            <div className="flex shrink-0 items-center gap-1">{headerExtra}</div>
-          )}
+          {headerExtra && <div className="flex shrink-0 items-center gap-1">{headerExtra}</div>}
         </div>
-
       </div>
       <CollapsibleContent className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=open]:[animation-delay:50ms] data-[state=open]:[animation-fill-mode:backwards] data-[state=closed]:animate-collapsible-up">
         <div className="overflow-hidden border-border border-t">{children}</div>

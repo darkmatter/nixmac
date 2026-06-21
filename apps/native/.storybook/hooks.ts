@@ -1,17 +1,17 @@
-import { useState, useEffect } from 'react';
-import { addons } from 'storybook/preview-api';
-import { DARK_MODE_EVENT_NAME } from '@vueless/storybook-dark-mode';
+import { useState, useEffect } from "react";
+import { addons } from "storybook/preview-api";
+import { DARK_MODE_EVENT_NAME } from "@vueless/storybook-dark-mode";
 
-const channel = addons.getChannel()
+const channel = addons.getChannel();
 
 /**
  * Use this hook if you want to pass in your own callback, e.g. Mantine's `setColorScheme`
  **/
 export function useOnDarkModeEvent(callback: (isDarkMode: any) => any) {
   useEffect(function () {
-    channel.on(DARK_MODE_EVENT_NAME, callback)
-    return () => channel.off(DARK_MODE_EVENT_NAME, callback)
-  })
+    channel.on(DARK_MODE_EVENT_NAME, callback);
+    return () => channel.off(DARK_MODE_EVENT_NAME, callback);
+  });
 }
 
 /**
@@ -22,8 +22,8 @@ export function useIsDarkMode() {
   // toggle, not on initial mount. Without this default, DocsContainer would
   // render light on load (undefined ? dark : light) and stay light until the
   // user toggles. parameters.darkMode.current: "dark" keeps this in sync.
-  const [isDarkMode, setIsDarkMode] = useState()
-  useOnDarkModeEvent(setIsDarkMode)
+  const [isDarkMode, setIsDarkMode] = useState();
+  useOnDarkModeEvent(setIsDarkMode);
   // useEffect(() => {
   //   if (isDarkMode) {
   //     document.documentElement.classList.add("dark");
@@ -31,5 +31,5 @@ export function useIsDarkMode() {
   //     document.documentElement.classList.remove("dark");
   //   }
   // }, [isDarkMode]);
-  return isDarkMode
+  return isDarkMode;
 }

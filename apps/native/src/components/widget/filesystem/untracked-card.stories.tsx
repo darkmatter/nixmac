@@ -1,6 +1,10 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
-import { homebrewFilesFromDiff, launchdItemsFileFromScan, systemDefaultsFileFromScan } from "./data";
+import {
+  homebrewFilesFromDiff,
+  launchdItemsFileFromScan,
+  systemDefaultsFileFromScan,
+} from "./data";
 import { SeedDisplay } from "./seed-display";
 import { UntrackedCard } from "./untracked-card";
 
@@ -57,7 +61,11 @@ const launchd = launchdItemsFileFromScan([
     label: "homebrew.mxcl.postgresql@14",
     scope: "LaunchDaemon",
     name: "postgresql@14",
-    programArguments: ["/opt/homebrew/opt/postgresql@14/bin/postgres", "-D", "/opt/homebrew/var/postgresql@14"],
+    programArguments: [
+      "/opt/homebrew/opt/postgresql@14/bin/postgres",
+      "-D",
+      "/opt/homebrew/var/postgresql@14",
+    ],
     runAtLoad: true,
     keepAlive: true,
     environmentVariables: {},

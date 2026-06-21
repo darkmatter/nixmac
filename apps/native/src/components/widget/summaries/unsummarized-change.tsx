@@ -1,11 +1,7 @@
 "use client";
 
 import type { ChangeFileSummary } from "@/components/widget/utils";
-import {
-  CHANGE_TYPE_STYLES,
-  getDirectory,
-  getShortFilename,
-} from "@/components/widget/utils";
+import { CHANGE_TYPE_STYLES, getDirectory, getShortFilename } from "@/components/widget/utils";
 import { cn } from "@/lib/utils";
 import { MoveRight } from "lucide-react";
 
@@ -15,12 +11,7 @@ function FilePath({ path, role }: { path: string; role?: "old" | "new" }) {
   return (
     <span className="min-w-0 font-mono text-[11px]">
       {dir && (
-        <span
-          className={cn(
-            "text-neutral-500",
-            role === "old" && "line-through opacity-50",
-          )}
-        >
+        <span className={cn("text-neutral-500", role === "old" && "line-through opacity-50")}>
           {dir}/
         </span>
       )}

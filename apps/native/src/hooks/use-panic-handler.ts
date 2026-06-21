@@ -4,7 +4,7 @@
 import { useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { toast } from "sonner";
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 import type { RustPanicEvent } from "@/ipc/types";
 import { FeedbackType } from "@/types/feedback";
 import { getTelemetry } from "@/lib/telemetry/instance";

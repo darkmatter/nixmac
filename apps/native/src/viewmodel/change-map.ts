@@ -1,6 +1,6 @@
 import { tauriAPI } from "@/ipc/api";
 import type { SemanticChangeMap } from "@/ipc/types";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
 import { refreshHistorySnapshot } from "./history";
 

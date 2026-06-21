@@ -115,10 +115,7 @@ const LoaderCore = ({
                 )}
               </div>
               <span
-                className={cn(
-                  textClass,
-                  "block overflow-hidden text-ellipsis whitespace-nowrap",
-                )}
+                className={cn(textClass, "block overflow-hidden text-ellipsis whitespace-nowrap")}
               >
                 {loadingState.text}
               </span>
@@ -203,12 +200,7 @@ export const MultiStepLoaderInline = ({
   step: number;
   className?: string;
 }) => (
-  <div
-    className={cn(
-      "relative flex min-h-[200px] w-full items-center justify-center",
-      className,
-    )}
-  >
+  <div className={cn("relative flex min-h-[200px] w-full items-center justify-center", className)}>
     <LoaderCore loadingStates={loadingStates} pendingCount={2} value={step} />
   </div>
 );

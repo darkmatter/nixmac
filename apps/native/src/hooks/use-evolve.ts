@@ -1,5 +1,5 @@
 import { EVOLUTION_CANCELLED_MSG } from "@/lib/constants";
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import { getTelemetry } from "@/lib/telemetry/instance";
 
@@ -76,8 +76,15 @@ const handleEvolve = async () => {
       useUiState.getState().appendLog(`✗ Error: ${msg}\n`);
 
       // Track evolution failure
-      const stage = msg.toLowerCase().includes("build") ? "build" : msg.toLowerCase().includes("apply") ? "apply" : "agent";
-      getTelemetry().captureEvent({ name: "evolve_failed", props: { stage: stage as "build" | "agent" | "apply" } });
+      const stage = msg.toLowerCase().includes("build")
+        ? "build"
+        : msg.toLowerCase().includes("apply")
+          ? "apply"
+          : "agent";
+      getTelemetry().captureEvent({
+        name: "evolve_failed",
+        props: { stage: stage as "build" | "agent" | "apply" },
+      });
     }
   } finally {
     useUiState.getState().setGenerating(false);

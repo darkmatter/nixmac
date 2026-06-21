@@ -1,7 +1,7 @@
 import { X } from "lucide-react";
 import { Component, type ErrorInfo, lazy, type ReactNode, Suspense } from "react";
 import { Button } from "@/components/ui/button";
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 
 class EditorErrorBoundary extends Component<
   { children: ReactNode; onError: () => void },

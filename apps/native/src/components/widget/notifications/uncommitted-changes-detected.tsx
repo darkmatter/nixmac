@@ -1,7 +1,7 @@
 import type { RefObject } from "react";
 import { Eraser } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 import { ConfigDirBadge } from "@/components/widget/badges/config-dir-badge";
 import { Button } from "@/components/ui/button";
 

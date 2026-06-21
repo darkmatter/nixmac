@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { ConfigDirBadge } from "@/components/widget/badges/config-dir-badge";
 import { useRollback } from "@/hooks/use-rollback";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 import { toast } from "sonner";
 
 interface DiscardUncommittedDialogProps {
@@ -50,9 +50,7 @@ export function DiscardUncommittedDialog({ open, onOpenChange }: DiscardUncommit
                       <span className="shrink-0 opacity-60">({f.changeType})</span>
                     </li>
                   ))}
-                  {files.length > 5 && (
-                    <li className="opacity-60">…and {files.length - 5} more</li>
-                  )}
+                  {files.length > 5 && <li className="opacity-60">…and {files.length - 5} more</li>}
                 </ul>
               )}
             </div>

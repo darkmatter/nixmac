@@ -22,8 +22,8 @@ import type {
   PermissionsState,
   RebuildStatus,
   SemanticChangeMap,
-} from "@/ipc/types";
-import type { RebuildLine } from "@/types/rebuild";
+} from "@nixmac/native/ipc/types";
+import type { RebuildLine } from "@nixmac/native/types/rebuild";
 import { create } from "zustand";
 
 type BuildView = {

@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 import { SystemDefaultsCTA } from "./system-defaults-cta";
 
 const { scanDefaults } = vi.hoisted(() => ({

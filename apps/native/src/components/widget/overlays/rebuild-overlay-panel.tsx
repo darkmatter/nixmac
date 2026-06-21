@@ -2,8 +2,8 @@ import { Button } from "@/components/ui/button";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useRollback } from "@/hooks/use-rollback";
 import { cn } from "@/lib/utils";
-import { useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { useUiState } from "@nixmac/state";
+import { useViewModel } from "@nixmac/state";
 import type { RebuildErrorType, RebuildLine } from "@/types/rebuild";
 import {
   AlertTriangle,
@@ -155,16 +155,7 @@ function LoaderCore({
   pendingCount?: number;
   children?: React.ReactNode;
 }) {
-  const skeletonWidths = [
-    "w-24",
-    "w-32",
-    "w-28",
-    "w-20",
-    "w-36",
-    "w-30",
-    "w-22",
-    "w-40",
-  ];
+  const skeletonWidths = ["w-24", "w-32", "w-28", "w-20", "w-36", "w-30", "w-22", "w-40"];
   const itemHeight = 36;
 
   // Find the index of the most recently completed step (one before current)
@@ -289,7 +280,7 @@ function LoaderCore({
                 return (
                   <motion.div
                     animate={{ opacity, y }}
-                      className="absolute left-0 right-0 flex items-center gap-3 px-6"
+                    className="absolute left-0 right-0 flex items-center gap-3 px-6"
                     initial={{ opacity: 0, y: y + 8 }}
                     key={`skeleton-${width}`}
                     transition={{
@@ -464,7 +455,7 @@ export function RebuildOverlayPanel() {
 
                   {/* Error Message */}
                   {errorMessage && (
-                      <p className="max-h-48 w-full max-w-xl overflow-y-auto rounded-lg bg-black/30 px-6 py-3 text-center font-mono text-xs text-zinc-400">
+                    <p className="max-h-48 w-full max-w-xl overflow-y-auto rounded-lg bg-black/30 px-6 py-3 text-center font-mono text-xs text-zinc-400">
                       {errorMessage}
                     </p>
                   )}

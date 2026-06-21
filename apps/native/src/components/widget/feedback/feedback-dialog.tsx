@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 import { useCurrentStep } from "@/hooks/use-current-step";
 import {
   Dialog,
@@ -945,7 +945,6 @@ export function FeedbackDialog() {
                   )}
                 </div>
               </div>
-
             </>
           )}
         </div>

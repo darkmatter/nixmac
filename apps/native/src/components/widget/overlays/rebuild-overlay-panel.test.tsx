@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RebuildOverlayPanel } from "@/components/widget/overlays/rebuild-overlay-panel";
 import type { RebuildStatus } from "@/ipc/types";
-import { initialUiState, useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { initialUiState, useUiState } from "@nixmac/state";
+import { useViewModel } from "@nixmac/state";
 import type { RebuildContext } from "@/types/rebuild";
 import { makeRebuildStatus } from "@/utils/test-fixtures";
 

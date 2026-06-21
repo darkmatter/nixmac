@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect } from "react";
 import { waitFor } from "storybook/test";
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 import { EditorPanel } from "@/components/widget/overlays/editor-panel";
 
 function EditorPanelWithState({ filePath }: { filePath: string }) {

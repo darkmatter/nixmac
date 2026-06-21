@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useHistory } from "@/hooks/use-history";
 import { tauriAPI } from "@/ipc/api";
 import type { HistoryItem } from "@/ipc/types";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 import { getTelemetry } from "@/lib/telemetry/instance";
 
 // Sentinel hash used to identify the frontend-only preview item.
@@ -33,9 +33,7 @@ function getDayLabel(unixSeconds: number): string {
   return date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 }
 
-type FlatItem =
-  | { type: "commit"; item: HistoryItem }
-  | { type: "day-label"; label: string };
+type FlatItem = { type: "commit"; item: HistoryItem } | { type: "day-label"; label: string };
 
 function buildFlatList(items: HistoryItem[]): FlatItem[] {
   const result: FlatItem[] = [];
@@ -92,10 +90,7 @@ function buildUndoneSet(items: HistoryItem[], previewHash: string): Set<string> 
  * segments. Day labels look ahead to the next commit to decide which segment they
  * belong to — so labels introducing an undone day land inside the undone wrapper.
  */
-function groupConsecutiveUndone(
-  flatItems: FlatItem[],
-  undoneSet: Set<string>,
-): HistorySegment[] {
+function groupConsecutiveUndone(flatItems: FlatItem[], undoneSet: Set<string>): HistorySegment[] {
   const segments: HistorySegment[] = [];
 
   const kindOf = (fi: FlatItem): "normal" | "undone" =>

@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { useUiState } from "@nixmac/state";
+import { useViewModel } from "@nixmac/state";
 import { ClockIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -27,7 +27,7 @@ export function PromptHistoryBadge() {
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
-  if (!(history?.length)) {
+  if (!history?.length) {
     return null;
   }
 
@@ -73,10 +73,7 @@ export function PromptHistoryBadge() {
                     key={prompt}
                     value={prompt}
                     onSelect={() => handleSelect(prompt)}
-                    className={cn(
-                      "cursor-pointer",
-                      evolvePrompt === prompt && "bg-teal-500/10",
-                    )}
+                    className={cn("cursor-pointer", evolvePrompt === prompt && "bg-teal-500/10")}
                   >
                     <span className="line-clamp-2 text-sm">{prompt}</span>
                   </CommandItem>

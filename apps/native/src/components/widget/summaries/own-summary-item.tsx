@@ -10,11 +10,14 @@ interface OwnSummaryItemProps {
 
 export function OwnSummaryItem({ change, style }: OwnSummaryItemProps) {
   return (
-    <div className={cn("my-[3px] rounded border-l-2 bg-white/[0.02] px-2 py-1 text-[11px]", style.border)}>
-      <span className="text-neutral-400">{change.title || getShortFilename(change.filename)}</span>
-      {change.description && (
-        <span className="text-neutral-500"> — {change.description}</span>
+    <div
+      className={cn(
+        "my-[3px] rounded border-l-2 bg-white/[0.02] px-2 py-1 text-[11px]",
+        style.border,
       )}
+    >
+      <span className="text-neutral-400">{change.title || getShortFilename(change.filename)}</span>
+      {change.description && <span className="text-neutral-500"> — {change.description}</span>}
     </div>
   );
 }

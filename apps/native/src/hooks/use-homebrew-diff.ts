@@ -1,7 +1,7 @@
 "use client";
 
 import { tauriAPI } from "@/ipc/api";
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 import type { HomebrewState } from "@/ipc/types";
 import { useCallback, useEffect, useState } from "react";
 

@@ -1,7 +1,7 @@
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 import { getTelemetry } from "@/lib/telemetry/instance";
 /**
  * Hook for discarding changes and restoring the working tree to its

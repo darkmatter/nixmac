@@ -1,4 +1,4 @@
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 import type {
   GlobalPreferences,
   NixInstallState,
@@ -48,9 +48,7 @@ export function makeGrantedPermissions(): PermissionsState {
 }
 
 /** Fully installed nix/darwin-rebuild snapshot for tests and stories. */
-export function makeNixInstallState(
-  overrides: Partial<NixInstallState> = {},
-): NixInstallState {
+export function makeNixInstallState(overrides: Partial<NixInstallState> = {}): NixInstallState {
   return {
     installed: true,
     darwinRebuildAvailable: true,

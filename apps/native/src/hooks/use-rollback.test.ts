@@ -1,6 +1,6 @@
 import type { EvolveState, GitStatus } from "@/ipc/types";
-import { initialUiState, useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { initialUiState, useUiState } from "@nixmac/state";
+import { useViewModel } from "@nixmac/state";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useRollback } from "./use-rollback";

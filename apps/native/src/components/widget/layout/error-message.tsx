@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { EVOLUTION_CANCELLED_MSG } from "@/lib/constants";
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 import { useCurrentStep } from "@/hooks/use-current-step";
 import { FeedbackType } from "@/types/feedback";
 import { Settings } from "lucide-react";

@@ -1,8 +1,8 @@
 "use client";
 
 import { EvolveProgress } from "@/components/widget/overlays/evolve-progress";
-import { useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { useUiState } from "@nixmac/state";
+import { useViewModel } from "@nixmac/state";
 import { clearEvolveEvents } from "@/viewmodel/evolution";
 import { tauriAPI } from "@/ipc/api";
 
@@ -32,9 +32,7 @@ export function EvolveOverlayPanel() {
   return (
     <div className="fixed inset-y-8 w-full max-w-[100vw] z-10 flex items-center justify-center bg-background/95 backdrop-blur-sm">
       <div className="h-full w-full max-h-[600px] max-w-[800px]">
-        <div
-          className="flex h-full w-full flex-col overflow-hidden rounded-2xl p-6"
-        >
+        <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl p-6">
           {/* Progress */}
           <div className="min-h-0 flex-1">
             <EvolveProgress

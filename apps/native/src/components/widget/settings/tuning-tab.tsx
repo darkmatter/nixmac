@@ -55,7 +55,9 @@ export function TuningTab() {
           Evolution settings
         </div>
         <p className="mb-3 text-xs text-muted-foreground">
-          Saved to <code className="rounded bg-muted px-1 font-mono">.nixmac/settings.json</code> in
+          Saved to <code className="rounded bg-muted px-1 font-mono">
+            .nixmac/settings.json
+          </code> in
           your config repo so they sync across machines.
         </p>
 

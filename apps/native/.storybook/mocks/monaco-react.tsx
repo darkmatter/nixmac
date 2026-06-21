@@ -45,10 +45,21 @@ export function Editor({
   return (
     <section
       {...wrapperProps}
-      style={{ display: "flex", position: "relative", textAlign: "initial", width: "100%", height: resolvedHeight }}
+      style={{
+        display: "flex",
+        position: "relative",
+        textAlign: "initial",
+        width: "100%",
+        height: resolvedHeight,
+      }}
     >
       <div data-keybinding-context="N" data-mode-id={defaultLanguage} style={{ width: "100%" }}>
-        <div className="monaco-editor" role="code" data-uri="inmemory://model/N" style={{ width: "100%", height: resolvedHeight }}>
+        <div
+          className="monaco-editor"
+          role="code"
+          data-uri="inmemory://model/N"
+          style={{ width: "100%", height: resolvedHeight }}
+        >
           <div data-slot="monaco-editor-placeholder" />
         </div>
       </div>
@@ -67,10 +78,19 @@ export function DiffEditor({ height, wrapperProps, beforeMount, onMount }: DiffE
   return (
     <section
       {...wrapperProps}
-      style={{ display: "flex", position: "relative", textAlign: "initial", width: "100%", height: resolvedHeight }}
+      style={{
+        display: "flex",
+        position: "relative",
+        textAlign: "initial",
+        width: "100%",
+        height: resolvedHeight,
+      }}
     >
       <div data-keybinding-context="N" style={{ width: "100%" }}>
-        <div className="monaco-diff-editor" style={{ position: "relative", height: resolvedHeight }}>
+        <div
+          className="monaco-diff-editor"
+          style={{ position: "relative", height: resolvedHeight }}
+        >
           <div data-slot="monaco-editor-placeholder" />
         </div>
       </div>

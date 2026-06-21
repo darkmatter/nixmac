@@ -15,8 +15,8 @@ import { PromptHistoryBadge } from "@/components/widget/promptinput/prompt-histo
 import { SystemDefaultsCTA } from "@/components/widget/promptinput/system-defaults-cta";
 import { useEvolve } from "@/hooks/use-evolve";
 import { getProviderConfigInvalidReason } from "@/lib/ai-provider-validation";
-import { useViewModel } from "@/stores/view-model";
-import { useUiState } from "@/stores/ui-state";
+import { useViewModel } from "@nixmac/state";
+import { useUiState } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import { ArrowUpIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -37,7 +37,10 @@ export function PromptInput() {
   const setSettingsOpen = useUiState((s) => s.setSettingsOpen);
   const { handleEvolve } = useEvolve();
   const [warningOpen, setWarningOpen] = useState(false);
-  const [providerErrors, setProviderErrors] = useState<{ evolve: string | null; summary: string | null }>({
+  const [providerErrors, setProviderErrors] = useState<{
+    evolve: string | null;
+    summary: string | null;
+  }>({
     evolve: null,
     summary: null,
   });
@@ -137,14 +140,18 @@ export function PromptInput() {
 
   return (
     <div className="space-y-3 flex-col min-h-24">
-      <BeginEvolveWarning open={warningOpen} onOpenChange={setWarningOpen} handleEvolve={handleEvolve} />
+      <BeginEvolveWarning
+        open={warningOpen}
+        onOpenChange={setWarningOpen}
+        handleEvolve={handleEvolve}
+      />
       <InputGroup className="bg-background flex-col min-h-24">
         <InputGroupTextarea
           id="evolve-prompt-input"
           data-testid="evolve-prompt-input"
           disabled={isLoading}
-          onChange={(e: { target: { value: string; }; }) => setEvolvePrompt(e.target.value)}
-          onKeyDown={(e: { key: string; }) => {
+          onChange={(e: { target: { value: string } }) => setEvolvePrompt(e.target.value)}
+          onKeyDown={(e: { key: string }) => {
             if (e.key === "Enter" && evolvePrompt.trim() && !sendDisabled) {
               handleSubmit();
             }
@@ -153,15 +160,15 @@ export function PromptInput() {
           value={evolvePrompt}
           className="outline-none"
         />
-          <InputGroupAddon align="block-end">
-            {/* <InputGroupButton
+        <InputGroupAddon align="block-end">
+          {/* <InputGroupButton
               className="rounded-full size-6 p-0.5"
               size="icon-xs"
               variant="outline"
             >
               <Plus />
             </InputGroupButton> */}
-             {/* <DropdownMenu>
+          {/* <DropdownMenu>
                <DropdownMenuTrigger asChild>
                  <InputGroupButton variant="ghost">Auto</InputGroupButton>
                </DropdownMenuTrigger>
@@ -175,22 +182,22 @@ export function PromptInput() {
                  <DropdownMenuItem>Manual</DropdownMenuItem>
                </DropdownMenuContent>
              </DropdownMenu> */}
-             <InputGroupText className="ml-auto">{contextUsage}</InputGroupText>
-             <Separator className="!h-4" orientation="vertical" />
-             <Separator className="!h-4" orientation="vertical" />
-             <InputGroupButton
-               className="rounded-full size-6 p-0.5"
-               size="icon-xs"
+          <InputGroupText className="ml-auto">{contextUsage}</InputGroupText>
+          <Separator className="!h-4" orientation="vertical" />
+          <Separator className="!h-4" orientation="vertical" />
+          <InputGroupButton
+            className="rounded-full size-6 p-0.5"
+            size="icon-xs"
             variant="default"
             id="evolve-prompt-send"
             data-testid="evolve-prompt-send"
             disabled={sendDisabled}
             onClick={handleSubmit}
-             >
-               <ArrowUpIcon />
-               <span className="sr-only">Send</span>
-             </InputGroupButton>
-           </InputGroupAddon>
+          >
+            <ArrowUpIcon />
+            <span className="sr-only">Send</span>
+          </InputGroupButton>
+        </InputGroupAddon>
       </InputGroup>
 
       {promptValidationError && (
@@ -210,10 +217,7 @@ export function PromptInput() {
       <div className="flex items-start gap-1">
         <div className="flex flex-wrap items-center gap-1">
           {STATIC_SUGGESTIONS.map((suggestion) => (
-            <BadgeButton
-              key={suggestion}
-              onClick={() => setEvolvePrompt(suggestion)}
-            >
+            <BadgeButton key={suggestion} onClick={() => setEvolvePrompt(suggestion)}>
               {suggestion}
             </BadgeButton>
           ))}

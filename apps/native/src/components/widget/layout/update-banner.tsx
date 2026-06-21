@@ -53,7 +53,7 @@ export function UpdateBanner() {
         expanded ? "items-start" : "items-center",
         error
           ? "border-destructive/40 bg-destructive/10 text-destructive"
-          : "border-blue-500/30 bg-blue-500/10 text-blue-200"
+          : "border-blue-500/30 bg-blue-500/10 text-blue-200",
       )}
     >
       <ArrowDownCircle className={cn("size-4 shrink-0", expanded && "mt-0.5")} />
@@ -68,15 +68,13 @@ export function UpdateBanner() {
           </p>
         ) : (
           <>
-            <p className="font-medium">
-              Update available: v{version}
-            </p>
+            <p className="font-medium">Update available: v{version}</p>
             {notes && (
               <p
                 ref={notesRef}
                 className={cn(
                   "text-xs opacity-70 mt-0.5",
-                  expanded ? "whitespace-pre-wrap break-words" : "truncate"
+                  expanded ? "whitespace-pre-wrap break-words" : "truncate",
                 )}
               >
                 {notes}
@@ -108,7 +106,7 @@ export function UpdateBanner() {
             onClick={installUpdate}
             className={cn(
               "rounded-md px-3 py-1 text-xs font-medium transition-colors",
-              "bg-blue-500/20 hover:bg-blue-500/30 text-blue-100"
+              "bg-blue-500/20 hover:bg-blue-500/30 text-blue-100",
             )}
           >
             Install &amp; Restart
