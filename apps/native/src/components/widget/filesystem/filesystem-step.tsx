@@ -5,14 +5,9 @@ import { useEffect, useState } from "react";
 import { tauriAPI } from "@/ipc/api";
 import { useLaunchdItems } from "@/hooks/use-launchd-items";
 import { useSystemDefaultsScan } from "@/hooks/use-system-defaults-scan";
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 
-import type {
-  HomebrewItem,
-  HomebrewState,
-  LaunchdItem,
-  SystemDefault,
-} from "@/ipc/types";
+import type { HomebrewItem, HomebrewState, LaunchdItem, SystemDefault } from "@/ipc/types";
 
 import {
   FILES,
@@ -98,10 +93,7 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
 
   const manageFiles = replaceLaunchdPlaceholder(
     replaceSystemDefaultsPlaceholder(
-      replaceHomebrewPlaceholders(
-        FILES.manage,
-        homebrewFilesFromDiff(homebrewDiff, homebrewError),
-      ),
+      replaceHomebrewPlaceholders(FILES.manage, homebrewFilesFromDiff(homebrewDiff, homebrewError)),
       systemDefaultsFileFromScan(systemDefaultsScan, systemDefaultsError),
     ),
     launchdItemsFileFromScan(launchdItems, launchdError),
@@ -145,9 +137,7 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
           itemType: item.itemType,
         };
       });
-      await tauriAPI.homebrew.addItems(
-        homebrewItems,
-      );
+      await tauriAPI.homebrew.addItems(homebrewItems);
       invalidateRecommendation();
       setShowFilesystem(false);
       setHomebrewDiff(null);
@@ -211,7 +201,8 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
         onTrackLaunchdItems={onTrackLaunchdItems}
       />
       <div className="shrink-0 border-border/50 border-t bg-card/40 px-3 py-1.5 text-[10.5px] text-muted-foreground">
-        Use these as starting points — every change goes through the standard plan → review → save flow.
+        Use these as starting points — every change goes through the standard plan → review → save
+        flow.
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import { tauriAPI } from "@/ipc/api";
 import type { NixInstallState } from "@/ipc/types";
-import { useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { useUiState } from "@nixmac/state";
+import { useViewModel } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
 
 function mirrorNixInstallState(next: NixInstallState): void {

@@ -9,7 +9,7 @@
 // - Do not add fields that are not on the GitStatus type.
 
 import { useState } from "react";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 
 function Bool({ label, value }: { label: string; value: boolean | undefined }) {
   if (value === undefined || !value) {

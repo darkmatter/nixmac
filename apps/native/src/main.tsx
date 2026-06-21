@@ -20,9 +20,7 @@ markBootStage("root-found");
 
 // Dropped from production, e2e harness
 if (import.meta.env.VITE_NIXMAC_E2E_MODE === "true") {
-  void import("@/e2e/boot-harness").then((m) =>
-    m.attachBootHarness({ rootElement }),
-  );
+  void import("@/e2e/boot-harness").then((m) => m.attachBootHarness({ rootElement }));
 }
 
 const root = ReactDOM.createRoot(rootElement);
@@ -31,9 +29,7 @@ const renderApp = (telemetry: TelemetryProvider) => {
   markBootStage("react-render-start");
   root.render(
     <React.StrictMode>
-      <AppErrorBoundary
-        fallback={(error) => <AppFatalFallback error={error} />}
-      >
+      <AppErrorBoundary fallback={(error) => <AppFatalFallback error={error} />}>
         <TelemetryContextProvider value={telemetry}>
           <App />
         </TelemetryContextProvider>
@@ -47,19 +43,21 @@ const bootstrap = async () => {
   // In E2E_MODE, initTelemetry returns a noop provider synchronously.
   const telemetry = await initTelemetry();
   setTelemetryProvider(telemetry);
-  telemetry.captureEvent({ name: "app_launched", props: { environment: (import.meta.env.VITE_NIXMAC_ENV || import.meta.env.MODE || "prod").toString() } });
+  telemetry.captureEvent({
+    name: "app_launched",
+    props: {
+      environment: (import.meta.env.VITE_NIXMAC_ENV || import.meta.env.MODE || "prod").toString(),
+    },
+  });
 
   try {
     renderApp(telemetry);
   } catch (error) {
     markBootStage("react-render-fatal");
-    getTelemetry().captureError(
-      error instanceof Error ? error : new Error(String(error)),
-      { name: "render-fatal" },
-    );
-    root.render(
-      <AppFatalFallback error={error instanceof Error ? error : null} />,
-    );
+    getTelemetry().captureError(error instanceof Error ? error : new Error(String(error)), {
+      name: "render-fatal",
+    });
+    root.render(<AppFatalFallback error={error instanceof Error ? error : null} />);
   }
 };
 

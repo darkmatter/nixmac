@@ -2,7 +2,7 @@
 
 import { ChevronDown, ChevronUp, GripHorizontal } from "lucide-react";
 import { useState, useCallback, useRef } from "react";
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 import { DebugOverlay } from "@/components/widget/layout/debug-overlay";
 
 /** Minimum console height in pixels. */
@@ -87,18 +87,11 @@ export function Console() {
           {expanded && <GripHorizontal className="h-3 w-3 opacity-40" />}
           Console
         </span>
-        {expanded ? (
-          <ChevronDown className="h-4 w-4" />
-        ) : (
-          <ChevronUp className="h-4 w-4" />
-        )}
+        {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
       </div>
 
       {expanded && (
-        <div
-          className="flex flex-col bg-black/40"
-          style={{ height }}
-        >
+        <div className="flex flex-col bg-black/40" style={{ height }}>
           {/* Debug Info */}
           <div className="relative shrink-0 border-b border-yellow-500/30">
             <DebugOverlay />

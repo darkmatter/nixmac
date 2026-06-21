@@ -2,16 +2,15 @@
 
 import { ConfigDirBadge } from "@/components/widget/badges/config-dir-badge";
 import { AnalyzeCurrentButton } from "@/components/widget/summaries/analyze-current-button";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 
 export function UnsummarizedChangesDetected() {
   const configDir = useViewModel((s) => s.preferences?.configDir ?? "");
   const changeMap = useViewModel((s) => s.changeMap);
   if (!changeMap) return null;
-  const hasUnsummarized = changeMap?.unsummarizedHashes.length
-  if (!hasUnsummarized) return null
-  const hasSummaries = changeMap.groups.length || changeMap.singles.length
-
+  const hasUnsummarized = changeMap?.unsummarizedHashes.length;
+  if (!hasUnsummarized) return null;
+  const hasSummaries = changeMap.groups.length || changeMap.singles.length;
 
   return (
     <div className="flex w-full shrink-0 items-center justify-between gap-2 px-2 py-1.5 text-muted-foreground text-xs">

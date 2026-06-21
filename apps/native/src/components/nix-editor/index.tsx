@@ -37,9 +37,7 @@ export function NixEditor({ filePath, onSave, className, disableRuntime = false 
       )}
       <div className="absolute top-2 right-3 z-10 flex items-center gap-2">
         {lspStatus === "running" && (
-          <div className="rounded bg-muted px-2 py-0.5 text-muted-foreground text-xs">
-            nixd
-          </div>
+          <div className="rounded bg-muted px-2 py-0.5 text-muted-foreground text-xs">nixd</div>
         )}
         {lspStatus === "error" && (
           <div className="rounded bg-destructive/10 px-2 py-0.5 text-destructive text-xs">

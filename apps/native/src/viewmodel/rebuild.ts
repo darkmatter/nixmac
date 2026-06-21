@@ -1,11 +1,7 @@
 import { tauriAPI, ipcRenderer } from "@/ipc/api";
-import type {
-  DarwinApplyDataEvent,
-  DarwinApplySummaryEvent,
-  RebuildStatus,
-} from "@/ipc/types";
-import { useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import type { DarwinApplyDataEvent, DarwinApplySummaryEvent, RebuildStatus } from "@/ipc/types";
+import { useUiState } from "@nixmac/state";
+import { useViewModel } from "@nixmac/state";
 import type { RebuildLine } from "@/types/rebuild";
 import { bindBackendSlice } from "./_helpers";
 

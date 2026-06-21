@@ -7,8 +7,8 @@ import type {
   PermissionsState,
   SemanticChangeMap,
 } from "@/ipc/types";
-import { useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { useUiState } from "@nixmac/state";
+import { useViewModel } from "@nixmac/state";
 import {
   makeGlobalPreferences,
   makeGrantedPermissions,
@@ -201,18 +201,66 @@ const CHANGE_MAP_PRESETS: Record<string, SemanticChangeMap | null> = {
 };
 
 const BASIC_EVOLVE_EVENTS: EvolveEvent[] = [
-  { eventType: "start", summary: "Starting AI evolution...", raw: "Starting evolution with model gpt-5.1", iteration: null, timestampMs: 0 },
-  { eventType: "iteration", summary: "Processing iteration 1...", raw: "Iteration 1 | messages=2", iteration: 1, timestampMs: 500 },
-  { eventType: "apiRequest", summary: "Querying AI model...", raw: "Sending request to AI provider", iteration: 1, timestampMs: 550 },
-  { eventType: "apiResponse", summary: "Received AI response", raw: "Received response | tokens used: 1523", iteration: 1, timestampMs: 2300 },
-  { eventType: "thinking", summary: "Planning approach...", raw: "[planning] Analyzing configuration structure...", iteration: 1, timestampMs: 2400 },
-  { eventType: "reading", summary: "Reading default.nix", raw: "Reading file: modules/darwin/default.nix", iteration: 2, timestampMs: 4600 },
+  {
+    eventType: "start",
+    summary: "Starting AI evolution...",
+    raw: "Starting evolution with model gpt-5.1",
+    iteration: null,
+    timestampMs: 0,
+  },
+  {
+    eventType: "iteration",
+    summary: "Processing iteration 1...",
+    raw: "Iteration 1 | messages=2",
+    iteration: 1,
+    timestampMs: 500,
+  },
+  {
+    eventType: "apiRequest",
+    summary: "Querying AI model...",
+    raw: "Sending request to AI provider",
+    iteration: 1,
+    timestampMs: 550,
+  },
+  {
+    eventType: "apiResponse",
+    summary: "Received AI response",
+    raw: "Received response | tokens used: 1523",
+    iteration: 1,
+    timestampMs: 2300,
+  },
+  {
+    eventType: "thinking",
+    summary: "Planning approach...",
+    raw: "[planning] Analyzing configuration structure...",
+    iteration: 1,
+    timestampMs: 2400,
+  },
+  {
+    eventType: "reading",
+    summary: "Reading default.nix",
+    raw: "Reading file: modules/darwin/default.nix",
+    iteration: 2,
+    timestampMs: 4600,
+  },
 ];
 
 const DETAILED_EVOLVE_EVENTS: EvolveEvent[] = [
   ...BASIC_EVOLVE_EVENTS,
-  { eventType: "editing", summary: "Editing default.nix", raw: "Editing file: modules/darwin/default.nix", iteration: 3, timestampMs: 6000 },
-  { eventType: "buildCheck", summary: "Running build check...", raw: "Running build check for host: Demo-MacBook-Pro", iteration: 3, timestampMs: 6500 },
+  {
+    eventType: "editing",
+    summary: "Editing default.nix",
+    raw: "Editing file: modules/darwin/default.nix",
+    iteration: 3,
+    timestampMs: 6000,
+  },
+  {
+    eventType: "buildCheck",
+    summary: "Running build check...",
+    raw: "Running build check for host: Demo-MacBook-Pro",
+    iteration: 3,
+    timestampMs: 6500,
+  },
 ];
 
 const EVOLVE_EVENT_PRESETS: Record<string, EvolveEvent[]> = {
@@ -392,36 +440,69 @@ const meta = preview.meta({
       options: ["begin", "evolve", "commit", "manualEvolve", "manualCommit"],
       ...cat("Routing / Gating", "Evolve sub-step (used when no earlier gate wins)"),
     },
-    configDir: { control: "text", ...cat("Routing / Gating", "Selected config dir; empty → Setup step") },
+    configDir: {
+      control: "text",
+      ...cat("Routing / Gating", "Selected config dir; empty → Setup step"),
+    },
     host: {
       control: "select",
       options: ["", "Demo-MacBook-Pro", "Work-MacBook"],
       ...cat("Routing / Gating", "Selected host; must be in the hosts list to pass Setup"),
     },
-    hostsListed: { control: "boolean", ...cat("Routing / Gating", "Hosts discovered from the flake (false = fresh onboarding)") },
-    permissionsGranted: { control: "boolean", ...cat("Routing / Gating", "false → Permissions step") },
-    isBootstrapping: { control: "boolean", ...cat("Routing / Gating", "Creating a default config → Setup step") },
+    hostsListed: {
+      control: "boolean",
+      ...cat("Routing / Gating", "Hosts discovered from the flake (false = fresh onboarding)"),
+    },
+    permissionsGranted: {
+      control: "boolean",
+      ...cat("Routing / Gating", "false → Permissions step"),
+    },
+    isBootstrapping: {
+      control: "boolean",
+      ...cat("Routing / Gating", "Creating a default config → Setup step"),
+    },
     showHistory: { control: "boolean", ...cat("Routing / Gating", "Open the History panel") },
     showFilesystem: { control: "boolean", ...cat("Routing / Gating", "Open the Filesystem view") },
 
     // --- Evolve session
-    committable: { control: "boolean", ...cat("Evolve session", "evolve.committable — build succeeded, ready to commit") },
+    committable: {
+      control: "boolean",
+      ...cat("Evolve session", "evolve.committable — build succeeded, ready to commit"),
+    },
 
     // --- Processing & UI flags (transient `useUiState`)
-    isProcessing: { control: "boolean", ...cat("Processing & UI", "Global processing flag (spinner / disabled inputs)") },
+    isProcessing: {
+      control: "boolean",
+      ...cat("Processing & UI", "Global processing flag (spinner / disabled inputs)"),
+    },
     processingAction: {
       control: "select",
       options: ["none", "evolve", "apply", "merge", "cancel"],
       ...cat("Processing & UI", "Which long-running action is in flight"),
     },
-    isGenerating: { control: "boolean", ...cat("Processing & UI", "AI is streaming an evolution (shows progress overlay)") },
-    isSummarizing: { control: "boolean", ...cat("Processing & UI", "Change summaries are being generated") },
+    isGenerating: {
+      control: "boolean",
+      ...cat("Processing & UI", "AI is streaming an evolution (shows progress overlay)"),
+    },
+    isSummarizing: {
+      control: "boolean",
+      ...cat("Processing & UI", "Change summaries are being generated"),
+    },
     evolvePrompt: { control: "text", ...cat("Processing & UI", "Text in the prompt input") },
     error: { control: "text", ...cat("Processing & UI", "Error banner text (empty = no error)") },
     settingsOpen: { control: "boolean", ...cat("Processing & UI", "Settings dialog open") },
     settingsTab: {
       control: "select",
-      options: ["none", "general", "account", "api-keys", "ai-models", "preferences", "tuning", "developer"],
+      options: [
+        "none",
+        "general",
+        "account",
+        "api-keys",
+        "ai-models",
+        "preferences",
+        "tuning",
+        "developer",
+      ],
       ...cat("Processing & UI", "Active settings tab"),
     },
     feedbackOpen: { control: "boolean", ...cat("Processing & UI", "Feedback dialog open") },

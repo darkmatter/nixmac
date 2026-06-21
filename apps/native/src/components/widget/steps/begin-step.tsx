@@ -16,8 +16,8 @@ import { useHomebrewDiff } from "@/hooks/use-homebrew-diff";
 import { useLaunchdItems } from "@/hooks/use-launchd-items";
 import { useSystemDefaultsScan } from "@/hooks/use-system-defaults-scan";
 import { filesystemViewEnabled } from "@/lib/flags";
-import { useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { useUiState } from "@nixmac/state";
+import { useViewModel } from "@nixmac/state";
 
 export function BeginStep() {
   const setShowFilesystem = useUiState((s) => s.setShowFilesystem);

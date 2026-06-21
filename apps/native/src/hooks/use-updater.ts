@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { tauriAPI } from "@/ipc/api";
 import type { UpdateInfo } from "@/ipc/types";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 
 interface UpdateState {
   /** Whether we're currently checking for updates */
@@ -57,8 +57,8 @@ export function useUpdater() {
       }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      const isPluginMissing = errMsg.includes("plugin updater not found") ||
-                              errMsg.includes("plugin not found");
+      const isPluginMissing =
+        errMsg.includes("plugin updater not found") || errMsg.includes("plugin not found");
 
       if (isDevMode || isPluginMissing) {
         // Suppress errors when the updater plugin isn't registered (NIXMAC_DISABLE_UPDATER=1)

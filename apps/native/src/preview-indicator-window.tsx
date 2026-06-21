@@ -30,12 +30,9 @@ function PreviewIndicatorWindow() {
         setError(String(err));
       });
 
-    const unsubscribe = listen<PreviewIndicatorState>(
-      "preview-indicator:update",
-      (event) => {
-        setState(event.payload);
-      }
-    );
+    const unsubscribe = listen<PreviewIndicatorState>("preview-indicator:update", (event) => {
+      setState(event.payload);
+    });
 
     return () => {
       unsubscribe.then((unlisten) => unlisten());
@@ -55,9 +52,7 @@ function PreviewIndicatorWindow() {
   // DEBUG: Show error or loading state
   if (error) {
     return (
-      <div
-        style={{ background: "red", color: "white", padding: 8, fontSize: 12 }}
-      >
+      <div style={{ background: "red", color: "white", padding: 8, fontSize: 12 }}>
         Error: {error}
       </div>
     );
@@ -65,9 +60,7 @@ function PreviewIndicatorWindow() {
 
   if (!mounted) {
     return (
-      <div
-        style={{ background: "blue", color: "white", padding: 8, fontSize: 12 }}
-      >
+      <div style={{ background: "blue", color: "white", padding: 8, fontSize: 12 }}>
         Mounting...
       </div>
     );
@@ -92,6 +85,6 @@ if (rootElement) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
       <PreviewIndicatorWindow />
-    </React.StrictMode>
+    </React.StrictMode>,
   );
 }

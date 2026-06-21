@@ -1,4 +1,4 @@
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import type { SetDirResult } from "@/ipc/types";
 

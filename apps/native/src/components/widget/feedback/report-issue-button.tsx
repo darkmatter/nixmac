@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 import { FeedbackType } from "@/types/feedback";
 
 export function ReportIssueButton() {

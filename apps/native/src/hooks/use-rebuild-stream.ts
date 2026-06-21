@@ -1,4 +1,4 @@
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 import type { RebuildContext } from "@/types/rebuild";
 import { tauriAPI, ipcRenderer } from "@/ipc/api";
 import type { DarwinApplyEndEvent } from "@/ipc/types";

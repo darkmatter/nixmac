@@ -52,7 +52,10 @@ export function AutoConfigField({ structName, field, current, onCommit }: Props)
 
   const labelRow = (
     <div className="flex items-center gap-2">
-      <label className="text-xs font-medium text-muted-foreground" htmlFor={inputId(structName, field.key)}>
+      <label
+        className="text-xs font-medium text-muted-foreground"
+        htmlFor={inputId(structName, field.key)}
+      >
         {field.label}
       </label>
       {field.help && (

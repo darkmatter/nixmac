@@ -9,8 +9,8 @@ import type {
   RebuildStatus,
   SemanticChangeMap,
 } from "@/ipc/types";
-import { useUiState, initialUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { useUiState, initialUiState } from "@nixmac/state";
+import { useViewModel } from "@nixmac/state";
 import {
   makeGlobalPreferences,
   makeNixInstallState,

@@ -1,4 +1,4 @@
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import { refreshGitSnapshot } from "@/viewmodel/git";
 import { refreshHostsSnapshot } from "@/viewmodel/preferences";
@@ -8,7 +8,9 @@ import { toast } from "sonner";
  * Hook for git operations.
  * Provides functions for refreshing git status changes.
  */
-export const prefetchFileDiffContents = async (status: { changes: { filename: string }[] } | null) => {
+export const prefetchFileDiffContents = async (
+  status: { changes: { filename: string }[] } | null,
+) => {
   const setFileDiffContents = useUiState.getState().setFileDiffContents;
   if (!status) {
     setFileDiffContents({});

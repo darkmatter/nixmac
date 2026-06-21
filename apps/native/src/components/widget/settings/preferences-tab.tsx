@@ -1,6 +1,6 @@
 import { Switch } from "@/components/ui/switch";
 import { usePrefs } from "@/hooks/use-prefs";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 
 export function PreferencesTab() {
   const { setPref } = usePrefs();
@@ -21,7 +21,9 @@ export function PreferencesTab() {
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
               <div className="space-y-0.5">
                 <div className="text-sm">Build</div>
-                <div className="text-muted-foreground text-xs">Ask before rebuilding with changes</div>
+                <div className="text-muted-foreground text-xs">
+                  Ask before rebuilding with changes
+                </div>
               </div>
               <Switch
                 checked={confirmBuild}
@@ -41,7 +43,9 @@ export function PreferencesTab() {
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
               <div className="space-y-0.5">
                 <div className="text-sm">Rollback</div>
-                <div className="text-muted-foreground text-xs">Ask before rolling back to a previous commit</div>
+                <div className="text-muted-foreground text-xs">
+                  Ask before rolling back to a previous commit
+                </div>
               </div>
               <Switch
                 checked={confirmRollback}
@@ -58,7 +62,9 @@ export function PreferencesTab() {
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
               <div className="space-y-0.5">
                 <div className="text-sm">Auto-summarize on focus</div>
-                <div className="text-muted-foreground text-xs">Summarize unsummarized changes when the window is focused</div>
+                <div className="text-muted-foreground text-xs">
+                  Summarize unsummarized changes when the window is focused
+                </div>
               </div>
               <Switch
                 checked={autoSummarizeOnFocus}
@@ -68,7 +74,9 @@ export function PreferencesTab() {
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
               <div className="space-y-0.5">
                 <div className="text-sm">Diff Tab</div>
-                <div className="text-muted-foreground text-xs">Prefer Diff tab when reviewing changes</div>
+                <div className="text-muted-foreground text-xs">
+                  Prefer Diff tab when reviewing changes
+                </div>
               </div>
               <Switch
                 checked={defaultToDiffTab}
@@ -85,7 +93,9 @@ export function PreferencesTab() {
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
               <div className="space-y-0.5">
                 <div className="text-sm">Scan Homebrew</div>
-                <div className="text-muted-foreground text-xs">Detect Homebrew drift and offer to resolve</div>
+                <div className="text-muted-foreground text-xs">
+                  Detect Homebrew drift and offer to resolve
+                </div>
               </div>
               <Switch
                 checked={scanHomebrewOnStartup}

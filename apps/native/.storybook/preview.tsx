@@ -30,17 +30,13 @@ const withViewModelBypass: Decorator = (Story) => {
 const withDarkTheme: Decorator = (Story) => {
   useEffect(() => {
     document.documentElement.classList.add("dark");
-    const sbRoot = document.getElementsByClassName(
-          'sb-show-main',
-        )[0] as HTMLElement;
-        if (sbRoot) {
-          sbRoot.style.backgroundColor = darkTheme.appBg;
-        }
+    const sbRoot = document.getElementsByClassName("sb-show-main")[0] as HTMLElement;
+    if (sbRoot) {
+      sbRoot.style.backgroundColor = darkTheme.appBg;
+    }
     return () => {
       document.documentElement.classList.remove("dark");
-      const sbRoot = document.getElementsByClassName(
-        'sb-show-main',
-      )[0] as HTMLElement;
+      const sbRoot = document.getElementsByClassName("sb-show-main")[0] as HTMLElement;
       if (sbRoot) {
         sbRoot.style.backgroundColor = "";
       }
@@ -50,14 +46,11 @@ const withDarkTheme: Decorator = (Story) => {
   return <Story />;
 };
 
-
 // CI-only: when capturing screenshots of failed snapshot stories, this regex
 // (built from the failed story names by scripts/resolve-failed-stories.mjs) is
 // injected at build time so Creevey skips every story whose name is NOT in the
 // failed set. Unset in normal builds, so this is a no-op for dev/Vitest.
-const creeveySkipRegex = import.meta.env.VITE_CREEVEY_SKIP_REGEX as
-  | string
-  | undefined;
+const creeveySkipRegex = import.meta.env.VITE_CREEVEY_SKIP_REGEX as string | undefined;
 
 const creeveyParameters = creeveySkipRegex
   ? {

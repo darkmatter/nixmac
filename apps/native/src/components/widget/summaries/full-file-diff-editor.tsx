@@ -59,7 +59,9 @@ export function FullFileDiffEditor({
       return;
     }
     if (target != null) {
-      editorRef.current?.getModifiedEditor().revealLineInCenter(target, monaco.editor.ScrollType.Smooth);
+      editorRef.current
+        ?.getModifiedEditor()
+        .revealLineInCenter(target, monaco.editor.ScrollType.Smooth);
     }
   };
 
@@ -81,11 +83,12 @@ export function FullFileDiffEditor({
 
   const changeType = displayChange.changeType;
   const fileStats = sumDiffLineStats(changes);
-  const fallbackNewFileContents = changeType === "new"
-    ? newFileContentFromDiffs(changes.map((change) => change.diff))
-    : null;
+  const fallbackNewFileContents =
+    changeType === "new" ? newFileContentFromDiffs(changes.map((change) => change.diff)) : null;
   const displayContents =
-    changeType === "new" && fallbackNewFileContents !== null && (!contents || contents.modified === "")
+    changeType === "new" &&
+    fallbackNewFileContents !== null &&
+    (!contents || contents.modified === "")
       ? { original: "", modified: fallbackNewFileContents }
       : contents;
 
@@ -104,7 +107,11 @@ export function FullFileDiffEditor({
       {displayContents ? (
         <div className="relative">
           {changeType === "new" ? (
-            <FileView contents={displayContents} filename={filename} disableRuntime={disableEditorRuntime} />
+            <FileView
+              contents={displayContents}
+              filename={filename}
+              disableRuntime={disableEditorRuntime}
+            />
           ) : (
             <DiffView
               contents={displayContents}

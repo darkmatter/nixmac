@@ -1,0 +1,18 @@
+{
+  "name": "@nixmac/state",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./view-model": "./src/view-model.ts",
+    "./ui-state": "./src/ui-state.ts",
+    "./onboarding": "./src/onboarding.ts"
+  },
+  "dependencies": {
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@types/react": "^19"
+  }
+}

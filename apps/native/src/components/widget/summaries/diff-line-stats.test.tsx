@@ -46,10 +46,7 @@ describe("diff line stats", () => {
   });
 
   it("sums stats across hunks", () => {
-    const changes = [
-      { diff: "@@ -1 +1 @@\n-old\n+new" },
-      { diff: "@@ -5,0 +6,2 @@\n+one\n+two" },
-    ];
+    const changes = [{ diff: "@@ -1 +1 @@\n-old\n+new" }, { diff: "@@ -5,0 +6,2 @@\n+one\n+two" }];
 
     expect(sumDiffLineStats(changes)).toEqual({ added: 3, removed: 1 });
   });

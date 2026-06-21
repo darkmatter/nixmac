@@ -64,9 +64,7 @@ export function ConfirmationDialog({
       <DialogContent className={cn("max-w-md gap-6 border-2", colors.border)}>
         <DialogHeader>
           <DialogTitle className="sr-only">Confirm Action</DialogTitle>
-          <DialogDescription className="text-base leading-relaxed">
-            {message}
-          </DialogDescription>
+          <DialogDescription className="text-base leading-relaxed">{message}</DialogDescription>
         </DialogHeader>
         {children}
         <DialogFooter className="gap-3">

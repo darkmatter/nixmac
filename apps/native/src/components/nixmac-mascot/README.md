@@ -25,7 +25,7 @@ bun add lottie-react
 
 ```tsx
 import { NixmacMascotLottie } from "@/components/nixmac-mascot/NixmacMascotLottie";
-<NixmacMascotLottie size={160} />          // speed={2.5} to surface the hop quickly
+<NixmacMascotLottie size={160} />; // speed={2.5} to surface the hop quickly
 ```
 
 ## Option B — SVG + CSS (lightest)
@@ -35,12 +35,12 @@ Best if you only need it in this app and don't need the portable .json.
 
 ```tsx
 import { NixmacMascot } from "@/components/nixmac-mascot/NixmacMascot";
-<NixmacMascot size={160} />
+<NixmacMascot size={160} />;
 ```
 
 ## Tuning the motion
 
-The animation *is* the design decision — both paths expose a "personality" block:
+The animation _is_ the design decision — both paths expose a "personality" block:
 
 - **Lottie:** edit the `PERSONALITY` constants at the top of `build_lottie.py`
   (`LOOP_S` = hop cadence, `JUMP_HEIGHT`, `SPIN_DEG`, `SQUASH`/`STRETCH`, …), then

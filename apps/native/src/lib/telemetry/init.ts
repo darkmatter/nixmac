@@ -26,11 +26,7 @@ export async function initTelemetry(): Promise<TelemetryProvider> {
   }
 
   const key = (import.meta.env.VITE_POSTHOG_KEY || "").toString().trim();
-  const host = (
-    import.meta.env.VITE_POSTHOG_HOST || "https://us.i.posthog.com"
-  )
-    .toString()
-    .trim();
+  const host = (import.meta.env.VITE_POSTHOG_HOST || "https://us.i.posthog.com").toString().trim();
 
   if (key.length === 0) {
     setTelemetryProvider(noopProvider);
@@ -50,11 +46,7 @@ export async function initTelemetry(): Promise<TelemetryProvider> {
       key,
       host,
       release: (import.meta.env.VITE_NIXMAC_VERSION || "unknown").toString(),
-      environment: (
-        import.meta.env.VITE_NIXMAC_ENV ||
-        import.meta.env.MODE ||
-        "prod"
-      ).toString(),
+      environment: (import.meta.env.VITE_NIXMAC_ENV || import.meta.env.MODE || "prod").toString(),
     },
     sendDiagnostics,
   );

@@ -1,7 +1,7 @@
 import { Loader2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 
 interface HistoryRestoreItemButtonProps {
   hash: string;
@@ -24,7 +24,8 @@ export function HistoryRestoreItemButton({
       disabled={isRestoring}
       className={cn(
         "h-auto whitespace-nowrap border-white/10 bg-white/[0.06] px-[10px] py-1 text-[10px] text-neutral-400 hover:border-white/30",
-        uncommittedChanges && "opacity-40 cursor-default hover:border-white/10 hover:bg-white/[0.06] hover:text-neutral-400",
+        uncommittedChanges &&
+          "opacity-40 cursor-default hover:border-white/10 hover:bg-white/[0.06] hover:text-neutral-400",
       )}
       onClick={(e) => {
         e.stopPropagation();

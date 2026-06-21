@@ -10,7 +10,7 @@ import {
 import { BootstrapConfig } from "@/components/widget/controls/bootstrap-config";
 import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
 import { getWebSiteUrl } from "@/lib/env";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import { useTelemetry } from "@/lib/telemetry/context";
 import { getVersion } from "@tauri-apps/api/app";
@@ -38,7 +38,10 @@ async function openExternalUrl(url: string) {
   try {
     await open(url);
   } catch (error) {
-    console.warn("Failed to open external URL with Tauri shell; falling back to browser window.", error);
+    console.warn(
+      "Failed to open external URL with Tauri shell; falling back to browser window.",
+      error,
+    );
     window.open(url, "_blank");
   }
 }
@@ -67,7 +70,16 @@ export function GeneralTab({
             <div className="space-y-2">
               <label className="font-medium text-sm">Host</label>
               <div className="flex items-center gap-2">
-                <Select onValueChange={(value) => { saveHost(value); telemetry.captureEvent({ name: "settings_changed", props: { setting: "host" } }); }} value={host || undefined}>
+                <Select
+                  onValueChange={(value) => {
+                    saveHost(value);
+                    telemetry.captureEvent({
+                      name: "settings_changed",
+                      props: { setting: "host" },
+                    });
+                  }}
+                  value={host || undefined}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select a host" />
                   </SelectTrigger>
@@ -121,7 +133,9 @@ export function GeneralTab({
                 try {
                   await tauriAPI.ui.setPrefs({ sendDiagnostics: checked });
                   telemetry.setEnabled(checked);
-                  telemetry.captureEvent({ name: checked ? "diagnostics_opt_in" : "diagnostics_opt_out" });
+                  telemetry.captureEvent({
+                    name: checked ? "diagnostics_opt_in" : "diagnostics_opt_out",
+                  });
                 } catch (error) {
                   // Revert the field value if persisting the preference fails
                   sendDiagnosticsField.handleChange(previousValue);
@@ -134,9 +148,7 @@ export function GeneralTab({
           <div className="flex items-center justify-between rounded-lg border border-border p-3">
             <div className="space-y-0.5">
               <div className="font-medium text-sm">Support Nixmac</div>
-              <div className="text-muted-foreground text-xs">
-                Help fund continued development.
-              </div>
+              <div className="text-muted-foreground text-xs">Help fund continued development.</div>
             </div>
             <Button
               aria-label="Open Support Nixmac"
@@ -169,7 +181,9 @@ function VersionRow() {
   const tapTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    getVersion().then(setVersion).catch(() => setVersion("unknown"));
+    getVersion()
+      .then(setVersion)
+      .catch(() => setVersion("unknown"));
   }, []);
 
   const handleVersionTap = async () => {
@@ -218,20 +232,16 @@ function VersionRow() {
           title={developerMode ? "Developer mode is enabled" : undefined}
         >
           {version ?? "…"}
-          {developerMode && <span className="ml-2 text-[10px] uppercase tracking-wide text-primary">dev</span>}
+          {developerMode && (
+            <span className="ml-2 text-[10px] uppercase tracking-wide text-primary">dev</span>
+          )}
         </button>
       </div>
-      {tapHint && !developerMode && (
-        <div className="mt-1 text-[11px] text-primary">{tapHint}</div>
-      )}
+      {tapHint && !developerMode && <div className="mt-1 text-[11px] text-primary">{tapHint}</div>}
       {developerMode && (
         <div className="mt-2 flex items-center justify-between text-[11px]">
           <span>Developer settings panel is enabled.</span>
-          <button
-            type="button"
-            onClick={handleDisable}
-            className="underline hover:text-foreground"
-          >
+          <button type="button" onClick={handleDisable} className="underline hover:text-foreground">
             Disable
           </button>
         </div>

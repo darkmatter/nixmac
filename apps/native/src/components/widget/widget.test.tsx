@@ -1,5 +1,5 @@
-import { initialUiState, useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { initialUiState, useUiState } from "@nixmac/state";
+import { useViewModel } from "@nixmac/state";
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DarwinWidget } from "./widget";

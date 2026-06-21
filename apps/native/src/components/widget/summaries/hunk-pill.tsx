@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import type { ChangeWithRichType } from "@/components/widget/utils";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 import { countDiffLineStats, DiffLineStatsBadge } from "./diff-line-stats";
 
 interface HunkPillProps {

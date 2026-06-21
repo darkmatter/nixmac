@@ -5,6 +5,5 @@ export { ManualEvolveStep } from "./manual-evolve-step";
 export { ManualCommitStep } from "./manual-commit-step";
 export { HistoryStep } from "./history-step";
 export { FilesystemStep } from "../filesystem/filesystem-step";
-export { NixSetupStep } from "./nix-setup-step";
-export { PermissionsStep } from "./permissions-step";
-export { SetupStep } from "./setup-step";
+// Onboarding steps (permissions, nix-setup, setup) now live under
+// components/widget/onboarding and render via OnboardingFlow.

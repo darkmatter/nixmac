@@ -2,8 +2,8 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import "@testing-library/jest-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { useUiState } from "@nixmac/state";
+import { useViewModel } from "@nixmac/state";
 import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
 import { makeGlobalPreferences as makePrefs } from "@/utils/test-fixtures";
 
@@ -219,8 +219,6 @@ describe("<DirectoryPicker>", () => {
       useViewModel.setState({ preferences: makePrefs({ configDir: "/Users/me/empty" }) });
     });
 
-    expect(
-      await screen.findByText(/flake\.nix not found in this directory/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/flake\.nix not found in this directory/i)).toBeInTheDocument();
   });
 });

@@ -3,8 +3,8 @@ import type { EvolveEvent } from "@/ipc/types";
 import { EVOLVE_EVENT_CHANNEL } from "@/lib/constants";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import { formatDurationMs } from "@/lib/utils";
-import { useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { useUiState } from "@nixmac/state";
+import { useViewModel } from "@nixmac/state";
 import { toast } from "sonner";
 
 /** Reset the evolve event stream (debug tooling / e2e reset / cancel). */
@@ -57,8 +57,7 @@ export function startEvolutionSync(): Promise<() => void> {
     if (!payload) return;
 
     useViewModel.setState((state) => ({
-      evolveEvents:
-        payload.eventType === "start" ? [payload] : [...state.evolveEvents, payload],
+      evolveEvents: payload.eventType === "start" ? [payload] : [...state.evolveEvents, payload],
     }));
 
     if (payload.raw) {

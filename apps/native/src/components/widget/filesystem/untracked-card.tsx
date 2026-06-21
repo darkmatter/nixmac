@@ -74,8 +74,7 @@ export function UntrackedCard({
   const Icon = resolveIcon(file.iconName);
   const hasItems = items.length > 0;
   const canTrackHomebrew = isHomebrewCandidateFile(file) && !!onTrackHomebrewItems;
-  const canTrackSystemDefaults =
-    isSystemDefaultsCandidateFile(file) && !!onTrackSystemDefaults;
+  const canTrackSystemDefaults = isSystemDefaultsCandidateFile(file) && !!onTrackSystemDefaults;
   const canTrackLaunchd = isLaunchdCandidateFile(file) && !!onTrackLaunchdItems;
   const canTrack = canTrackHomebrew || canTrackSystemDefaults || canTrackLaunchd;
 
@@ -137,13 +136,10 @@ export function UntrackedCard({
             <span>{file.scannedAt}</span>
             <span>·</span>
             <span>
-              would land in{" "}
-              <span className="font-mono text-foreground">{file.destination}</span>
+              would land in <span className="font-mono text-foreground">{file.destination}</span>
             </span>
           </div>
-          {trackError && (
-            <div className="mt-2 text-[11px] text-destructive">{trackError}</div>
-          )}
+          {trackError && <div className="mt-2 text-[11px] text-destructive">{trackError}</div>}
         </div>
       </div>
 
@@ -159,7 +155,11 @@ export function UntrackedCard({
                 data-testid={`track-all-${file.id}`}
               >
                 <CirclePlus className="h-3 w-3" />{" "}
-                {trackingKey === "all" ? "Tracking..." : (items.length === 1 ? "Track this one" : `Track these ${items.length}`)}
+                {trackingKey === "all"
+                  ? "Tracking..."
+                  : items.length === 1
+                    ? "Track this one"
+                    : `Track these ${items.length}`}
               </Button>
               <Button
                 size="sm"
@@ -216,17 +216,12 @@ export function UntrackedCard({
             <pre className="m-0 max-h-[260px] overflow-auto whitespace-pre border-border/40 border-t bg-card/40 p-3 font-mono text-[11.5px] leading-[1.7]">
               {items.flatMap((it) =>
                 it.attr.split("\n").map((line, lineIndex) => (
-                  <span
-                    key={`${it.name}-${lineIndex}`}
-                    className="block bg-emerald-500/[0.06]"
-                  >
+                  <span key={`${it.name}-${lineIndex}`} className="block bg-emerald-500/[0.06]">
                     <span className="select-none pr-2 text-teal-400">+</span>
                     <span className="text-muted-foreground"> </span>
                     <span>{highlightNixLine(line)}</span>
                     {lineIndex === 0 && (
-                      <span className="ml-2 text-[10.5px] text-muted-foreground">
-                        # {it.name}
-                      </span>
+                      <span className="ml-2 text-[10.5px] text-muted-foreground"># {it.name}</span>
                     )}
                   </span>
                 )),

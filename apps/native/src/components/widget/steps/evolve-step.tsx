@@ -11,18 +11,9 @@ import { Eraser, Loader2, Wrench } from "lucide-react";
 import { NoiseBackground } from "@/components/ui/noise-background";
 import { cn } from "@/lib/utils";
 
+const ACTIVE_GRADIENT = ["rgb(45, 212, 191)", "rgb(20, 184, 166)", "rgb(13, 148, 136)"] as const;
 
-const ACTIVE_GRADIENT = [
-  "rgb(45, 212, 191)",
-  "rgb(20, 184, 166)",
-  "rgb(13, 148, 136)",
-] as const;
-
-const INACTIVE_GRADIENT = [
-  "rgb(115, 115, 115)",
-  "rgb(82, 82, 82)",
-  "rgb(64, 64, 64)",
-] as const;
+const INACTIVE_GRADIENT = ["rgb(115, 115, 115)", "rgb(82, 82, 82)", "rgb(64, 64, 64)"] as const;
 
 /**
  * Evolve Review Step: AI session active, not yet built.
@@ -52,7 +43,7 @@ export function EvolveStep() {
           Discard
         </ConfirmButton>
 
-          <NoiseBackground
+        <NoiseBackground
           animating={isBuildReady}
           shimmer={false}
           speed={isLoading ? 0.35 : 0.1}
@@ -60,9 +51,7 @@ export function EvolveStep() {
             "w-fit rounded-full p-0.5 transition-opacity duration-300",
             !isBuildReady && "opacity-70 saturate-50",
           )}
-          gradientColors={
-            isBuildReady ? [...ACTIVE_GRADIENT] : [...INACTIVE_GRADIENT]
-          }
+          gradientColors={isBuildReady ? [...ACTIVE_GRADIENT] : [...INACTIVE_GRADIENT]}
           noiseIntensity={isBuildReady ? 0.2 : 0.08}
         >
           <ConfirmButton

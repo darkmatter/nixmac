@@ -1,6 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 
 export function useTrayEvents() {
   useEffect(() => {

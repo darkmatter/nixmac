@@ -4,9 +4,9 @@ import { filesystemViewEnabled } from "@/lib/flags";
 import { cn } from "@/lib/utils";
 import { Clock, FolderTree, Settings, MessageSquarePlus } from "lucide-react";
 import { APP_NAME } from "../../../../shared/constants";
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 import { computeCurrentStep } from "@/components/widget/utils";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 
 export function Header() {
   const setSettingsOpen = useUiState((s) => s.setSettingsOpen);
@@ -58,7 +58,8 @@ export function Header() {
           <Button
             className={cn(
               "h-6 w-6 p-0 mr-[2px]",
-              showFilesystem && "border border-teal-500/50 text-teal-400 hover:text-teal-300 hover:border-teal-500/70",
+              showFilesystem &&
+                "border border-teal-500/50 text-teal-400 hover:text-teal-300 hover:border-teal-500/70",
             )}
             size="sm"
             variant="ghost"
@@ -77,7 +78,8 @@ export function Header() {
         <Button
           className={cn(
             "h-6 w-6 p-0 mr-[2px]",
-            showHistory && "border border-teal-500/50 text-teal-400 hover:text-teal-300 hover:border-teal-500/70",
+            showHistory &&
+              "border border-teal-500/50 text-teal-400 hover:text-teal-300 hover:border-teal-500/70",
           )}
           size="sm"
           variant="ghost"

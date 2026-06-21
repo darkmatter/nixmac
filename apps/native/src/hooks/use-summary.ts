@@ -1,5 +1,5 @@
-import { useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { useUiState } from "@nixmac/state";
+import { useViewModel } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 
 /**

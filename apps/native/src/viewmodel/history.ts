@@ -1,5 +1,5 @@
 import { tauriAPI } from "@/ipc/api";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 
 export async function refreshHistorySnapshot(): Promise<void> {
   try {

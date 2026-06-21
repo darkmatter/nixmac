@@ -1,4 +1,4 @@
-import { FeedbackType } from "@/types/feedback";
+import { FeedbackType } from "@nixmac/native/types/feedback";
 import { beforeEach, describe, expect, it } from "vitest";
 import { initialUiState, useUiState } from "./ui-state";
 

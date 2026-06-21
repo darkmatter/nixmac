@@ -1,7 +1,7 @@
 "use client";
 
 import { tauriAPI } from "@/ipc/api";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 import { useState } from "react";
 import { GitStatusDebug } from "@/components/widget/layout/git-status-debug";
 

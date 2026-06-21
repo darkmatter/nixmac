@@ -58,12 +58,8 @@ export function DiffLineStatsBadge({ stats, className }: DiffLineStatsBadgeProps
       )}
       title={`${stats.added} additions, ${stats.removed} deletions`}
     >
-      {stats.added > 0 && (
-        <span className="font-semibold text-emerald-400">+{stats.added}</span>
-      )}
-      {stats.removed > 0 && (
-        <span className="font-semibold text-red-400">-{stats.removed}</span>
-      )}
+      {stats.added > 0 && <span className="font-semibold text-emerald-400">+{stats.added}</span>}
+      {stats.removed > 0 && <span className="font-semibold text-red-400">-{stats.removed}</span>}
     </span>
   );
 }

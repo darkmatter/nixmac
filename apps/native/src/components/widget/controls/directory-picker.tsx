@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 import { HoverClickPopoverIcon } from "@/components/ui/hover-click-popover-icon";
 import { ConfigDirBadge } from "@/components/widget/badges/config-dir-badge";
 import { GitignoreBadge } from "@/components/widget/badges/gitignore-badge";
@@ -21,8 +21,7 @@ type DirectoryPickerProps = {
 
 type SetupChoice = "new" | "existing" | "import";
 
-const INITIAL_HINT =
-  "Select your own, or proceed below for defaults";
+const INITIAL_HINT = "Select your own, or proceed below for defaults";
 
 function getDirectoryName(path: string | undefined): string {
   if (!path) return ".darwin";
@@ -117,7 +116,9 @@ export function DirectoryPicker({
     }
   };
 
-  const onBlur = () => { submit(); };
+  const onBlur = () => {
+    submit();
+  };
   const onKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Enter") return;
     const target = e.currentTarget;
@@ -247,7 +248,8 @@ export function DirectoryPicker({
               </Button>
             </div>
             <p className="text-muted-foreground text-xs">
-              Creates an empty folder in your home directory, then nixmac can generate a default flake.
+              Creates an empty folder in your home directory, then nixmac can generate a default
+              flake.
             </p>
           </div>
         ) : (
@@ -268,7 +270,9 @@ export function DirectoryPicker({
           </div>
         )}
         {validationMessage && (
-          <p className={`text-xs ${validationMessage === INITIAL_HINT ? "text-teal-300" : "text-rose-300"}`}>
+          <p
+            className={`text-xs ${validationMessage === INITIAL_HINT ? "text-teal-300" : "text-rose-300"}`}
+          >
             {validationMessage}
           </p>
         )}

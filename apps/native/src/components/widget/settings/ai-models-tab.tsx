@@ -75,7 +75,10 @@ function modelPlaceholder(provider: string, fallback: string): string {
 function useCliToolStatus() {
   const [status, setStatus] = useState<CliToolsState | null>(null);
   useEffect(() => {
-    tauriAPI.cli.checkTools().then(setStatus).catch(() => {});
+    tauriAPI.cli
+      .checkTools()
+      .then(setStatus)
+      .catch(() => {});
   }, []);
   return status;
 }
@@ -122,12 +125,14 @@ export function AiModelsTab({
 
   const renderProviderItems = () => (
     <>
-      {([
-        { value: "openrouter", label: "OpenRouter" },
-        { value: "openai", label: "OpenAI" },
-        { value: "ollama", label: "Ollama" },
-        { value: "vllm", label: "OpenAI Compatible" },
-      ] as const).map(({ value, label }) => {
+      {(
+        [
+          { value: "openrouter", label: "OpenRouter" },
+          { value: "openai", label: "OpenAI" },
+          { value: "ollama", label: "Ollama" },
+          { value: "vllm", label: "OpenAI Compatible" },
+        ] as const
+      ).map(({ value, label }) => {
         return (
           <SelectItem key={value} value={value}>
             {label}
@@ -193,9 +198,7 @@ export function AiModelsTab({
                   <SelectTrigger id="evolveProvider">
                     <SelectValue placeholder="Select provider" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {renderProviderItems()}
-                  </SelectContent>
+                  <SelectContent>{renderProviderItems()}</SelectContent>
                 </Select>
                 {evolveProviderError && (
                   <p className="text-destructive text-xs">{evolveProviderError}</p>
@@ -210,7 +213,10 @@ export function AiModelsTab({
                 >
                   {([evolveProvider]: any[]) => (
                     <>
-                      <label className="text-xs font-medium text-muted-foreground" htmlFor="evolveModel">
+                      <label
+                        className="text-xs font-medium text-muted-foreground"
+                        htmlFor="evolveModel"
+                      >
                         Model Name{isCliProvider(evolveProvider) ? " (optional)" : ""}
                       </label>
                       {isPlainInputCliProvider(evolveProvider) ? (
@@ -226,7 +232,14 @@ export function AiModelsTab({
                         />
                       ) : (
                         <ModelCombobox
-                          provider={evolveProvider as "openrouter" | "openai" | "ollama" | "vllm" | "opencode"}
+                          provider={
+                            evolveProvider as
+                              | "openrouter"
+                              | "openai"
+                              | "ollama"
+                              | "vllm"
+                              | "opencode"
+                          }
                           value={evolveModelField.state.value}
                           onChange={async (value) => {
                             evolveModelField.handleChange(value);
@@ -273,9 +286,7 @@ export function AiModelsTab({
                   <SelectTrigger id="summaryProvider">
                     <SelectValue placeholder="Select provider" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {renderProviderItems()}
-                  </SelectContent>
+                  <SelectContent>{renderProviderItems()}</SelectContent>
                 </Select>
                 {summaryProviderError && (
                   <p className="text-destructive text-xs">{summaryProviderError}</p>
@@ -290,7 +301,10 @@ export function AiModelsTab({
                 >
                   {([summaryProvider]: any[]) => (
                     <>
-                      <label className="text-xs font-medium text-muted-foreground" htmlFor="summaryModel">
+                      <label
+                        className="text-xs font-medium text-muted-foreground"
+                        htmlFor="summaryModel"
+                      >
                         Model Name{isCliProvider(summaryProvider) ? " (optional)" : ""}
                       </label>
                       {isPlainInputCliProvider(summaryProvider) ? (
@@ -306,7 +320,14 @@ export function AiModelsTab({
                         />
                       ) : (
                         <ModelCombobox
-                          provider={summaryProvider as "openrouter" | "openai" | "ollama" | "vllm" | "opencode"}
+                          provider={
+                            summaryProvider as
+                              | "openrouter"
+                              | "openai"
+                              | "ollama"
+                              | "vllm"
+                              | "opencode"
+                          }
                           value={summaryModelField.state.value}
                           onChange={async (value) => {
                             summaryModelField.handleChange(value);
@@ -322,7 +343,6 @@ export function AiModelsTab({
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </div>

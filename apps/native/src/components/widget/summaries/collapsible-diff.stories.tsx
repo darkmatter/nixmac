@@ -81,7 +81,9 @@ export const WithHeaderExtra = meta.story({
         change={makeChange("edited", "modules/darwin/packages.nix")}
         defaultOpen
         headerExtra={
-          <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground">+3 -1</span>
+          <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+            +3 -1
+          </span>
         }
       >
         <div className="p-4 text-muted-foreground text-xs">Diff content here</div>

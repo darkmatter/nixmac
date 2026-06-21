@@ -1,5 +1,5 @@
 import { tauriAPI } from "@/ipc/api";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
 
 export function mirrorPromptHistory(promptHistory: string[]): void {

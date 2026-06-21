@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { tauriAPI } from "@/ipc/api";
-import { useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { useUiState } from "@nixmac/state";
+import { useViewModel } from "@nixmac/state";
 
 /**
  * Experimental: drives the spinning-mascot corner-indicator window.

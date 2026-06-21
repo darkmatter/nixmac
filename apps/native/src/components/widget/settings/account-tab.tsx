@@ -2,7 +2,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { tauriAPI } from "@/ipc/api";
 import type { AuthStatus, SyncRemoteStatus } from "@/ipc/types";
-import { CheckCircle2, CloudDownload, CloudUpload, LogOut, RefreshCw, UserCircle2 } from "lucide-react";
+import {
+  CheckCircle2,
+  CloudDownload,
+  CloudUpload,
+  LogOut,
+  RefreshCw,
+  UserCircle2,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 type Busy = "idle" | "signing-in" | "signing-out" | "saving-url" | "pushing" | "pulling" | "status";

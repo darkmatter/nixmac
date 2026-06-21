@@ -2,7 +2,7 @@
 
 import { BadgeButton } from "@/components/ui/badge-button";
 import { useRecommendedPrompt } from "@/hooks/use-recommended-prompt";
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 
 export function MacRecommendationChip() {
   const { recommendation } = useRecommendedPrompt();
@@ -11,9 +11,7 @@ export function MacRecommendationChip() {
   if (!recommendation) return null;
 
   return (
-    <BadgeButton
-      onClick={() => setEvolvePrompt(recommendation.promptText)}
-    >
+    <BadgeButton onClick={() => setEvolvePrompt(recommendation.promptText)}>
       {recommendation.promptText}
     </BadgeButton>
   );

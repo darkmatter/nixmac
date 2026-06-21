@@ -1,15 +1,12 @@
 "use client";
 
-import {
-  AnimatedTabsList,
-  AnimatedTabsTrigger,
-} from "@/components/ui/animated-tabs";
+import { AnimatedTabsList, AnimatedTabsTrigger } from "@/components/ui/animated-tabs";
 import { Tabs } from "@/components/ui/tabs";
 import { DiffSection } from "@/components/widget/summaries/diff-section";
 import { SummaryItems } from "@/components/widget/summaries/summary-items";
 import { prefetchFileDiffContents } from "@/hooks/use-git-operations";
 import { cn } from "@/lib/utils";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 import type { Change } from "@/ipc/types";
 import { Dna, Wrench } from "lucide-react";
 import { Activity, useEffect, useMemo, useState } from "react";
@@ -28,10 +25,12 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   const [openFiles, setOpenFiles] = useState<Record<string, boolean>>({});
   const [includedFiles, setIncludedFiles] = useState<Record<string, boolean>>({});
 
-
   const fileDiffKey = useMemo(
     () =>
-      gitStatus?.changes.map((c) => `${c.filename}:${c.hash}`).sort().join("\n") ?? "",
+      gitStatus?.changes
+        .map((c) => `${c.filename}:${c.hash}`)
+        .sort()
+        .join("\n") ?? "",
     [gitStatus],
   );
 
@@ -56,8 +55,7 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   }
 
   const hashSet = new Set(changeMap?.unsummarizedHashes);
-  const unsummarized = (gitStatus?.changes.filter((c) => hashSet.has(c.hash)) ||
-    []) as Change[];
+  const unsummarized = (gitStatus?.changes.filter((c) => hashSet.has(c.hash)) || []) as Change[];
   const enrichedUnsummarizedChanges = enrichChanges(unsummarized);
 
   return (
@@ -77,9 +75,7 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
             <Dna className="h-4 w-4 text-primary" />
           )}
           <h2 className="font-medium text-sm">
-            {evolveState.step === "commit"
-              ? "Active Changes"
-              : "What's changed"}
+            {evolveState.step === "commit" ? "Active Changes" : "What's changed"}
           </h2>
         </div>
         <AnimatedTabsList value={activeTab}>
@@ -89,12 +85,7 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
       </div>
       <>
         <Activity mode={activeTab === "summary" ? "visible" : "hidden"}>
-          {changeMap && (
-            <SummaryItems
-              map={changeMap}
-              unsummarized={enrichedUnsummarizedChanges}
-            />
-          )}
+          {changeMap && <SummaryItems map={changeMap} unsummarized={enrichedUnsummarizedChanges} />}
         </Activity>
         {activeTab === "diff" && (
           <DiffSection

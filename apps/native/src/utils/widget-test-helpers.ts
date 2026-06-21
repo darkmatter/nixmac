@@ -3,8 +3,8 @@
  * Exposed on window.__testWidget so WDIO tests can call them via browser.execute.
  */
 
-import { useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { useUiState } from "@nixmac/state";
+import { useViewModel } from "@nixmac/state";
 import { clearChangeMap } from "@/viewmodel/change-map";
 import { clearEvolveEvents } from "@/viewmodel/evolution";
 import { refreshEvolveSnapshot } from "@/viewmodel/evolve";

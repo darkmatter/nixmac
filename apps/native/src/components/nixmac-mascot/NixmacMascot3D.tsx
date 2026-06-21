@@ -45,7 +45,12 @@ function sampleHop(t: number): { yPct: number; rotDeg: number; sx: number; sy: n
   const span = b[0] - a[0] || 1;
   const f = Math.min(Math.max((t - a[0]) / span, 0), 1);
   const lerp = (x: number, y: number) => x + (y - x) * f;
-  return { yPct: lerp(a[1], b[1]), rotDeg: lerp(a[2], b[2]), sx: lerp(a[3], b[3]), sy: lerp(a[4], b[4]) };
+  return {
+    yPct: lerp(a[1], b[1]),
+    rotDeg: lerp(a[2], b[2]),
+    sx: lerp(a[3], b[3]),
+    sy: lerp(a[4], b[4]),
+  };
 }
 
 /** Rasterize a raw SVG string into an sRGB CanvasTexture (alpha preserved). */
