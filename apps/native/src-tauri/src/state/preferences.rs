@@ -20,7 +20,7 @@ const GLOBAL_PREFERENCES_PATH: &str = "global-preferences.json";
 /// Marker key set in the legacy `settings.json` once its preference values
 /// have been copied into `global-preferences.json`. The legacy values are
 /// left in place (reversible one-shot) but no longer read.
-const LEGACY_MIGRATED_MARKER: &str = "globalPreferencesMigratedV1";
+pub(crate) const LEGACY_MIGRATED_MARKER: &str = "globalPreferencesMigratedV1";
 
 pub const GLOBAL_PREFERENCES_CHANGED_EVENT: &str = "global_preferences_changed";
 

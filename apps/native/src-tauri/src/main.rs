@@ -296,6 +296,25 @@ fn main() {
     run_gui_mode(context, log_guard);
 }
 
+/// Register all app-wide managed observable state.
+///
+/// Tauri runs the `.setup()` closure only from the event loop
+/// (`RunEvent::Ready`), so CLI mode — which builds the app but never starts the
+/// event loop — must call this explicitly after `build()`. The GUI path runs it
+/// from `setup`. Keeping both on one helper stops them drifting (which is how
+/// the CLI lost its `GlobalPreferences` observable in the first place).
+fn register_managed_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> anyhow::Result<()> {
+    app.manage(state::preferences::load_global_observable(app)?);
+    app.manage(evolve::config::load_observable(app)?);
+    app.manage(state::evolve_state::load_observable(app)?);
+    app.manage(state::git_state::load_observable(app));
+    app.manage(state::change_map::load_observable(app));
+    app.manage(state::permissions_state::load_observable(app));
+    app.manage(state::nix_install_state::load_observable(app));
+    app.manage(state::rebuild_status::load_observable(app));
+    Ok(())
+}
+
 fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
     let cli = match cli::parse_cli() {
         Ok(c) => c,
@@ -338,17 +357,6 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                     .plugin(tauri_plugin_keyring::init())
                     .plugin(tauri_plugin_notification::init())
                     .invoke_handler(tauri::generate_handler![])
-                    .setup(|app| {
-                        app.manage(state::preferences::load_global_observable(app.handle())?);
-                        app.manage(evolve::config::load_observable(app.handle())?);
-                        app.manage(state::evolve_state::load_observable(app.handle())?);
-                        app.manage(state::git_state::load_observable(app.handle()));
-                        app.manage(state::change_map::load_observable(app.handle()));
-                        app.manage(state::permissions_state::load_observable(app.handle()));
-                        app.manage(state::nix_install_state::load_observable(app.handle()));
-                        app.manage(state::rebuild_status::load_observable(app.handle()));
-                        Ok(())
-                    })
                     .build(context)
                 {
                     Ok(app) => app,
@@ -359,6 +367,16 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                 };
 
                 let app_handle = app.handle();
+
+                // `build()` does NOT run the `.setup()` closure — Tauri defers
+                // that to the event loop's `RunEvent::Ready`, which CLI mode
+                // never starts. Register managed state (incl. the
+                // `GlobalPreferences` observable that config/repo-root reads
+                // depend on) explicitly here instead.
+                if let Err(e) = register_managed_state(app_handle) {
+                    eprintln!("Failed to initialize app state: {}", e);
+                    return Err(format!("App state initialization failed: {}", e));
+                }
 
                 // Initialize DB schema for CLI mode so commands depending on tables succeed
                 if let Err(e) = db::init(app_handle).await {
@@ -604,14 +622,7 @@ fn run_gui_mode(
             // Set up panic handler to catch crashes and show feedback dialog
             panic_handler::setup_panic_hook(handle.clone());
 
-            app.manage(state::preferences::load_global_observable(handle)?);
-            app.manage(evolve::config::load_observable(handle)?);
-            app.manage(state::evolve_state::load_observable(handle)?);
-            app.manage(state::git_state::load_observable(handle));
-            app.manage(state::change_map::load_observable(handle));
-            app.manage(state::permissions_state::load_observable(handle));
-            app.manage(state::nix_install_state::load_observable(handle));
-            app.manage(state::rebuild_status::load_observable(handle));
+            register_managed_state(handle)?;
 
             // Initialize SQLite database before any consumer that reads the
             // managed DbPool from app state.
@@ -971,6 +982,57 @@ fn run_gui_mode(
                 }
             }
         });
+}
+
+#[cfg(test)]
+mod managed_state_tests {
+    use super::*;
+    use crate::observable::Observable;
+    use crate::shared_types::GlobalPreferences;
+    use tauri::Manager;
+
+    /// Regression for the PR #411 CLI breakage: `run_cli_mode` calls
+    /// `Builder::build()` but never starts the event loop, and Tauri only runs
+    /// `.setup()` from `RunEvent::Ready`. So the `GlobalPreferences` observable
+    /// (which config/repo-root reads depend on) must be registered explicitly
+    /// via `register_managed_state`, not from a `.setup()` closure. This builds
+    /// the app the CLI way — no `.run()` — and asserts the observable lands.
+    #[test]
+    fn register_managed_state_registers_observables_without_event_loop() {
+        let app = tauri::test::mock_builder()
+            // CLI builds with the store plugin available; the repo-scoped
+            // loaders read it during registration.
+            .plugin(tauri_plugin_store::Builder::default().build())
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .expect("mock app builds");
+        let handle = app.handle();
+
+        // Skip the one-shot legacy migration, which writes to the OS app-data
+        // dir that the mock runtime doesn't provide a writable path for. We're
+        // exercising registration, not migration.
+        crate::storage::store::get_store(handle)
+            .expect("store plugin available")
+            .set(
+                crate::state::preferences::LEGACY_MIGRATED_MARKER,
+                serde_json::Value::Bool(true),
+            );
+
+        assert!(
+            handle
+                .try_state::<Observable<GlobalPreferences>>()
+                .is_none(),
+            "observable must not be managed before explicit registration",
+        );
+
+        register_managed_state(handle).expect("registration succeeds");
+
+        assert!(
+            handle
+                .try_state::<Observable<GlobalPreferences>>()
+                .is_some(),
+            "GlobalPreferences observable must be managed after registration",
+        );
+    }
 }
 
 #[cfg(test)]
