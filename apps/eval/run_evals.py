@@ -295,7 +295,12 @@ def create_nix_config_git_repo(template_dir: Path, hostname: str | None = None):
     # testing doing a lock upfront wastes time and having it always
     # a part of dirty changes is noisy and obfuscates the actual changes
     # made by the evolve engine during test runs.
-    (tmpdir / ".gitignore").write_text("flake.lock\n")
+    #
+    # .nixmac/ holds repo-scoped EvolutionLimits (maxTokenBudget,
+    # maxIterations, etc.) the eval writes per-case via
+    # generate_repo_scoped_settings; keep it out of git so it doesn't
+    # show up in the model's view of the working tree.
+    (tmpdir / ".gitignore").write_text("flake.lock\n.nixmac/\n")
 
     # Initialize git repo
     repo = Repo.init(str(tmpdir))
@@ -329,6 +334,7 @@ def run_test_case(
     openrouter_key: str | None = None,
     auth_props: dict | None = None,
     max_iterations: int | None = None,
+    max_token_budget: int | None = None,
     host: str | None = None,
     case_timeout: int | None = None,
 ) -> Any:
@@ -348,6 +354,15 @@ def run_test_case(
         config_dir = create_nix_config_git_repo(template_dir, hostname=eval_hostname)
         print(f"Created git repo with config at: {config_dir}")
 
+        # Repo-scoped EvolutionLimits (maxTokenBudget, maxIterations) live
+        # under <config_dir>/.nixmac/settings.json. Write after git init
+        # so the file lands in the .gitignored .nixmac/ dir.
+        generate_repo_scoped_settings(
+            config_dir,
+            max_token_budget=max_token_budget,
+            max_iterations=max_iterations,
+        )
+
         # Generate nixmac settings.json pointing to the config dir
         # Use the same eval_hostname for hostAttr so template and build agree
         generate_nixmac_settings(
@@ -357,6 +372,7 @@ def run_test_case(
             openrouter_key,
             auth_props,
             max_iterations,
+            max_token_budget,
             eval_hostname,
             str(config_dir),
         )
@@ -437,11 +453,11 @@ def run_test_case(
                 shutil.rmtree(result_dir)
 
 
-def update_test_case_status(case_num: Any, result: Any) -> None:
+def update_test_case_status(case_num: Any, result: Any, results_dir: Path = RESULTS_DIR) -> None:
     """Persist test result to file system."""
-    print(f"Writing results JSON to results directory for case {case_num}...")
-    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    result_path = RESULTS_DIR / f"case_{case_num}_result.json"
+    print(f"Writing results JSON to {results_dir} for case {case_num}...")
+    results_dir.mkdir(parents=True, exist_ok=True)
+    result_path = results_dir / f"case_{case_num}_result.json"
     with open(result_path, "w") as f:
         json.dump(result, f, indent=4)
     print(f"Saved results for case {case_num} to: {result_path}")
@@ -515,6 +531,35 @@ def restore_nixmac_settings(backups: dict) -> None:
             print(f"Warning: failed to restore {original_path} from {backup_path}: {exc}")
 
 
+def generate_repo_scoped_settings(
+    config_dir: Path,
+    max_token_budget: int | None = None,
+    max_iterations: int | None = None,
+) -> None:
+    """Write `<config_dir>/.nixmac/settings.json` for EvolutionLimits.
+
+    The evolve-loop safety knobs (maxTokenBudget, maxIterations,
+    maxBuildAttempts, maxOutputTokens) are persisted per-repo via
+    `ConfiguredRepoScopedJson`, not in the global preferences observable.
+    We only write fields the eval is overriding; everything else falls
+    back to EvolutionLimits's own defaults inside the binary.
+
+    No-op when nothing is overridden, so the binary uses its defaults.
+    """
+    settings: dict[str, Any] = {}
+    if max_token_budget is not None:
+        settings["maxTokenBudget"] = max_token_budget
+    if max_iterations is not None:
+        settings["maxIterations"] = max_iterations
+    if not settings:
+        return
+    nixmac_dir = config_dir / ".nixmac"
+    nixmac_dir.mkdir(parents=True, exist_ok=True)
+    settings_path = nixmac_dir / "settings.json"
+    settings_path.write_text(json.dumps(settings, indent=2))
+    print(f"Wrote repo-scoped EvolutionLimits to {settings_path}: {settings}")
+
+
 def generate_nixmac_settings(
     evolve_model: str | None = None,
     summary_model: str | None = None,
@@ -522,6 +567,7 @@ def generate_nixmac_settings(
     openrouter_key: str | None = None,
     auth_props: dict | None = None,
     max_iterations: int | None = None,
+    max_token_budget: int | None = None,
     host: str | None = None,
     configDir: str | None = None,
 ) -> None:
@@ -554,6 +600,11 @@ def generate_nixmac_settings(
     settings["maxIterations"] = (
         max_iterations if max_iterations is not None else DEFAULT_MAX_ITERATIONS
     )
+
+    # Only set maxTokenBudget when explicitly overridden so the binary uses
+    # its own DEFAULT_MAX_TOKEN_BUDGET otherwise.
+    if max_token_budget is not None:
+        settings["maxTokenBudget"] = max_token_budget
 
     # Merge any auth_props (e.g., ollamaApiBaseUrl OR vllmApiBaseUrl/vllmApiKey)
     # Also set provider per auth type.
@@ -589,6 +640,14 @@ def main(parsed_args: argparse.Namespace) -> None:
         print("\nSIGINT received: will stop after current test (press again to force).")
 
     old_handler = signal.signal(signal.SIGINT, _sigint_handler)
+
+    # Per-run results directory (overridable so two runs can sit side-by-side).
+    results_dir = (
+        Path(parsed_args.results_dir).expanduser()
+        if getattr(parsed_args, "results_dir", None)
+        else RESULTS_DIR
+    )
+    print(f"Writing results to: {results_dir}")
 
     # Session-level clone dir, only allocated if --base-config is a URL.
     clone_dir: Path | None = None
@@ -689,6 +748,7 @@ def main(parsed_args: argparse.Namespace) -> None:
                     parsed_args.openrouter_key,
                     auth_props,
                     parsed_args.max_iterations,
+                    parsed_args.max_token_budget,
                     parsed_args.host,
                     case_timeout=parsed_args.case_timeout,
                 )
@@ -699,7 +759,7 @@ def main(parsed_args: argparse.Namespace) -> None:
                 stop_requested = True
                 print(f"Interrupted during case {case.num}; finishing cleanup and exiting...")
                 result = {"success": False, "error": "Interrupted by user", "case": case.num}
-            update_test_case_status(case.num, result)
+            update_test_case_status(case.num, result, results_dir=results_dir)
             if stop_requested:
                 print("Stop requested; exiting after current test.")
                 break
@@ -790,6 +850,19 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--max-token-budget",
+        dest="max_token_budget",
+        type=int,
+        default=None,
+        help=(
+            "Override the binary's maxTokenBudget (cumulative session-token cap "
+            "that triggers limitReached). Leave unset to use the binary's own "
+            "default (~50k). Real-world configs (e.g. user dotfiles) tend to "
+            "need 200k+ because the repo-view context eats per-call budget."
+        ),
+    )
+
+    parser.add_argument(
         "--case-timeout",
         dest="case_timeout",
         type=int,
@@ -803,6 +876,17 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--csv", type=str, default=None, help="Path to CSV file containing test prompts"
+    )
+    parser.add_argument(
+        "--results-dir",
+        dest="results_dir",
+        type=str,
+        default=None,
+        help=(
+            "Directory to write case_<n>_result.json files into. Useful for "
+            "side-by-side runs (e.g. comparing two --base-config baselines) "
+            "without one overwriting the other. Default: data/results."
+        ),
     )
     parser.add_argument(
         "--rows",
