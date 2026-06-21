@@ -5,7 +5,7 @@
 All options under `services.flarum`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.flarum.adminEmail` | | |
 | `services.flarum.adminUser` | | |
 | `services.flarum.baseUrl` | | |

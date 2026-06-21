@@ -5,7 +5,7 @@
 All options under `programs.fish`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.fish.babelfishPackage` | `package` | The babelfish package to use when useBabelfish is set to true. |
 | `programs.fish.enable` | `boolean` | Whether to configure fish as an interactive shell. |
 | `programs.fish.interactiveShellInit` | `strings concatenated with “\n”` | Shell script code called during interactive fish shell initialisation. |

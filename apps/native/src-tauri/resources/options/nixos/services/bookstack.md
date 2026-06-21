@@ -5,7 +5,7 @@
 All options under `services.bookstack`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.bookstack.appKeyFile` | | |
 | `services.bookstack.appURL` | | |
 | `services.bookstack.cacheDir` | | |

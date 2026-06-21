@@ -5,7 +5,7 @@
 All options under `services.fluidd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.fluidd.enable` | | |
 | `services.fluidd.hostName` | | |
 | `services.fluidd.nginx` | | |

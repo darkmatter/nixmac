@@ -5,7 +5,7 @@
 All options under `qt`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `qt.enable` | `boolean` | Whether to enable Qt 5 and 6 configuration. |
 | `qt.kde.settings` | `attribute set of (KDE option value)` | A set of values to be modified by kwriteconfig6 . |
 | `qt.kvantum.enable` | `boolean` | Whether to enable Kvantum configuration. |

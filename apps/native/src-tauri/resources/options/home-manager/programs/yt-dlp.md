@@ -5,7 +5,7 @@
 All options under `programs.yt-dlp`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | `programs.yt-dlp.enable` | `boolean` | Whether to enable yt-dlp. |
 | `programs.yt-dlp.extraConfig` | `strings concatenated with “\n”` | Extra configuration to add to $XDG_CONFIG_HOME/yt-dlp/config . |
 | `programs.yt-dlp.package` | `package` | The yt-dlp package to use. |

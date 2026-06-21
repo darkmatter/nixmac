@@ -5,7 +5,7 @@
 All options under `services.crowdsec-firewall-bouncer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------------------------- | ---- | ----------- |
 | `services.crowdsec-firewall-bouncer.createRulesets` | | |
 | `services.crowdsec-firewall-bouncer.enable` | | |
 | `services.crowdsec-firewall-bouncer.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.byedpi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.byedpi.enable` | | |
 | `services.byedpi.extraArgs` | | |
 | `services.byedpi.package` | | |

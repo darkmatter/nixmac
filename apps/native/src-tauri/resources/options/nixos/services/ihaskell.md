@@ -5,6 +5,6 @@
 All options under `services.ihaskell`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.ihaskell.enable` | | |
 | `services.ihaskell.extraPackages` | | |

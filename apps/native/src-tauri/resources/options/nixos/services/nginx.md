@@ -5,7 +5,7 @@
 All options under `services.nginx`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.nginx.additionalModules` | | |
 | `services.nginx.appendConfig` | | |
 | `services.nginx.appendHttpConfig` | | |

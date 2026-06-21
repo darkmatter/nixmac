@@ -5,7 +5,7 @@
 All options under `programs.msmtp`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `programs.msmtp.accounts` | | |
 | `programs.msmtp.defaults` | | |
 | `programs.msmtp.enable` | | |

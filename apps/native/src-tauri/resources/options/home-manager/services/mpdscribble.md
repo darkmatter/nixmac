@@ -5,7 +5,7 @@
 All options under `services.mpdscribble`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `services.mpdscribble.enable` | `boolean` | Whether to enable mpdscribble, an MPD client which submits info about tracks being played to Last.fm (formerly AudioScrobbler) . |
 | `services.mpdscribble.endpoints` | `attribute set of (submodule)` | Endpoints to scrobble to. If the endpoint is one of “jamendo”, “last.fm”, “libre.fm”, “listenbrainz” the url is set automatically. |
 | `services.mpdscribble.host` | `string` | Host for the mpdscribble daemon to search for a mpd daemon on. |

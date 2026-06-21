@@ -5,7 +5,7 @@
 All options under `services.haproxy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.haproxy.config` | | |
 | `services.haproxy.enable` | | |
 | `services.haproxy.group` | | |

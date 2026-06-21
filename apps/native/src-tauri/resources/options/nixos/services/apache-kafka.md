@@ -5,7 +5,7 @@
 All options under `services.apache-kafka`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------------- | ---- | ----------- |
 | `services.apache-kafka.brokerId` | | |
 | `services.apache-kafka.clusterId` | | |
 | `services.apache-kafka.configFiles.log4jProperties` | | |

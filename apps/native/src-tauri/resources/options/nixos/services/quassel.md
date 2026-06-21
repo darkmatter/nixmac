@@ -5,7 +5,7 @@
 All options under `services.quassel`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.quassel.certificateFile` | | |
 | `services.quassel.dataDir` | | |
 | `services.quassel.enable` | | |

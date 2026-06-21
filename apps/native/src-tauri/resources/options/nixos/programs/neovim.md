@@ -5,7 +5,7 @@
 All options under `programs.neovim`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `programs.neovim.configure` | | |
 | `programs.neovim.defaultEditor` | | |
 | `programs.neovim.enable` | | |

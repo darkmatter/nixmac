@@ -5,7 +5,7 @@
 All options under `services.atftpd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.atftpd.enable` | | |
 | `services.atftpd.extraOptions` | | |
 | `services.atftpd.root` | | |

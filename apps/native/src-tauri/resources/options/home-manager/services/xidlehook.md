@@ -5,7 +5,7 @@
 All options under `services.xidlehook`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `services.xidlehook.detect-sleep` | `boolean` | Whether to enable detecting when the system wakes up from a suspended state and resetting the idle timer. |
 | `services.xidlehook.enable` | `boolean` | Whether to enable xidlehook systemd service. |
 | `services.xidlehook.environment` | `attribute set of string` | Extra environment variables to be exported in the script. These options are passed unescaped as export name=value . |

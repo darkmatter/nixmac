@@ -5,6 +5,6 @@
 All options under `submoduleSupport`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `submoduleSupport.enable` | | |
 | `submoduleSupport.externalPackageInstall` | | |

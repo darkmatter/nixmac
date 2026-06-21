@@ -5,6 +5,6 @@
 All options under `services.passSecretService`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.passSecretService.enable` | | |
 | `services.passSecretService.package` | | |

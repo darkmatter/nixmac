@@ -5,7 +5,7 @@
 All options under `programs.envision`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `programs.envision.enable` | | |
 | `programs.envision.openFirewall` | | |
 | `programs.envision.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.pantheon`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.pantheon.apps.enable` | | |
 | `services.pantheon.contractor.enable` | | |
 | `services.pantheon.files` | | |

@@ -5,5 +5,5 @@
 All options under `services.cinnamon`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.cinnamon.apps.enable` | | |

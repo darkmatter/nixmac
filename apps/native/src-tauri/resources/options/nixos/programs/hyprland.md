@@ -5,7 +5,7 @@
 All options under `programs.hyprland`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `programs.hyprland.enable` | | |
 | `programs.hyprland.enableNvidiaPatches` | | |
 | `programs.hyprland.nvidiaPatches` | | |

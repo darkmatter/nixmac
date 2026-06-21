@@ -5,7 +5,7 @@
 All options under `services.bosun`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.bosun.checkFrequency` | | |
 | `services.bosun.enable` | | |
 | `services.bosun.extraConfig` | | |

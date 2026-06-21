@@ -5,7 +5,7 @@
 All options under `services.pcscd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.pcscd.enable` | | |
 | `services.pcscd.extendReaderNames` | | |
 | `services.pcscd.extraArgs` | | |

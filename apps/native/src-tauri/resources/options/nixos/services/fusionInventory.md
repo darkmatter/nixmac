@@ -5,7 +5,7 @@
 All options under `services.fusionInventory`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.fusionInventory.enable` | | |
 | `services.fusionInventory.extraConfig` | | |
 | `services.fusionInventory.servers` | | |

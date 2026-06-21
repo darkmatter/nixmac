@@ -5,6 +5,6 @@
 All options under `services.dante`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `services.dante.config` | | |
 | `services.dante.enable` | | |

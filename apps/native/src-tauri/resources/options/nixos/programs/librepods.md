@@ -5,5 +5,5 @@
 All options under `programs.librepods`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `programs.librepods.enable` | | |

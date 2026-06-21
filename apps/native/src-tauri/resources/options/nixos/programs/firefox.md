@@ -5,7 +5,7 @@
 All options under `programs.firefox`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------ | ---- | ----------- |
 | `programs.firefox.autoConfig` | | |
 | `programs.firefox.autoConfigFiles` | | |
 | `programs.firefox.enable` | | |

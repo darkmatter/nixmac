@@ -5,7 +5,7 @@
 All options under `services.munin-cron`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.munin-cron.enable` | | |
 | `services.munin-cron.extraCSS` | | |
 | `services.munin-cron.extraGlobalConfig` | | |

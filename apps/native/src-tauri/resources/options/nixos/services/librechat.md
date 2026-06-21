@@ -5,7 +5,7 @@
 All options under `services.librechat`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.librechat.credentials` | | |
 | `services.librechat.credentialsFile` | | |
 | `services.librechat.dataDir` | | |

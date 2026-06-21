@@ -5,7 +5,7 @@
 All options under `programs.browserpass`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------- |
 | `programs.browserpass.browsers` | `list of (one of “brave”, “chrome”, “chromium”, “firefox”, “librewolf”, “vivaldi”)` | Which browsers to install browserpass for |
 | `programs.browserpass.enable` | `boolean` | Whether to enable the browserpass extension host application. |
 | `programs.browserpass.package` | `package` | The browserpass package to use. |

@@ -5,7 +5,7 @@
 All options under `programs.streamlink`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `programs.streamlink.enable` | `boolean` | Whether to enable streamlink. |
 | `programs.streamlink.package` | `null or package` | The streamlink package to use. |
 | `programs.streamlink.plugins` | `attribute set of (submodule)` | Streamlink plugins. |

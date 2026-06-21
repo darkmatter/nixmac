@@ -5,7 +5,7 @@
 All options under `programs.uwsm`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `programs.uwsm.enable` | | |
 | `programs.uwsm.package` | | |
 | `programs.uwsm.waylandCompositors` | | |

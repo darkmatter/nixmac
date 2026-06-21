@@ -5,7 +5,7 @@
 All options under `services.kanata`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.kanata.enable` | | |
 | `services.kanata.keyboards` | | |
 | `services.kanata.package` | | |

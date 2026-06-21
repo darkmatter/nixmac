@@ -5,7 +5,7 @@
 All options under `programs.hstr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `programs.hstr.enable` | `boolean` | Whether to enable Bash And Zsh shell history suggest box - easily view, navigate, search and manage your command history. |
 | `programs.hstr.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.hstr.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |

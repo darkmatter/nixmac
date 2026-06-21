@@ -5,7 +5,7 @@
 All options under `programs.zellij`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.zellij.attachExistingSession` | `boolean` | Whether to attach to the default session after being autostarted if a Zellij session already exists. |
 | `programs.zellij.enable` | `boolean` | Whether to enable Zellij. |
 | `programs.zellij.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |

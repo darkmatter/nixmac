@@ -5,7 +5,7 @@
 All options under `wayland`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `wayland.systemd.target` | `string` | The systemd target that will automatically start the graphical Wayland services. This option is a generalization of individual systemd.target or systemdTarget , and affect all Wayland services by default. |
 | `wayland.windowManager.hyprland.configType` | | |
 | `wayland.windowManager.hyprland.enable` | `boolean` | Whether to enable configuration for Hyprland, a tiling Wayland compositor that doesn’t sacrifice on its looks. |

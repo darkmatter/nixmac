@@ -5,6 +5,6 @@
 All options under `services.realmd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.realmd.enable` | | |
 | `services.realmd.package` | | |

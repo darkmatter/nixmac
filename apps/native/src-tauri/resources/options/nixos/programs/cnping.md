@@ -5,5 +5,5 @@
 All options under `programs.cnping`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `programs.cnping.enable` | | |

@@ -19,7 +19,7 @@ Of the 13 PRs in scope, only five carry actionable feedback. The others were
 either docs/process PRs or were approved without comment.
 
 | PR | Title | Review | Inline comments |
-| --- | -------------------------------------------------- | ---------- | ------------------------------------------------------- |
+| --- | ----------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------- |
 | 228 | implement derive(Configurable) macro | — | — |
 | 244 | docs(state): add migration plan issues | — | — |
 | 245 | refactor(configurable): split derive and generated UI | CHANGES_REQUESTED | `configurable/src/lib.rs:91`, `commands/dev_configs.rs:33` |
@@ -57,9 +57,9 @@ already provides; using the same noun for our local primitive collides on the
 first read. The `state/slice` module name should go.
 
 The "registry is not needed" claim is more subtle and worth pushing back on.
-`tauri::State<T>` is keyed by `TypeId` and is *not enumerable* — you cannot
+`tauri::State<T>` is keyed by `TypeId` and is _not enumerable_ — you cannot
 ask Tauri "give me every state that implements `Configurable`." The
-`dev_configs_list` command needs that enumeration. So *some* registry exists
+`dev_configs_list` command needs that enumeration. So _some_ registry exists
 either way; the only design choice is whether it is **built at compile time**
 (linker-section magic via the [`inventory`](https://docs.rs/inventory/) crate,
 populated by the derive macro) or **at runtime** (the current
@@ -85,7 +85,7 @@ The current type is doing three things: it owns a typed value, it notifies on
 write (via `SliceEventEmitter`), and it persists on write (via `Persistence`).
 "Observable" captures the notification axis but hides the persistence axis,
 and in the JS/RxJS-influenced corner of the field it strongly suggests a
-*stream you subscribe to*, not a *cell you read and write*.
+_stream you subscribe to_, not a _cell you read and write_.
 
 Better candidates, roughly ranked:
 
@@ -141,8 +141,8 @@ decoupling is real:
   the same dependency into a thin `configurable-json` wrapper, with the same
   total complexity but more crates.
 
-I would do the *type-level* split (separate `ConfigFieldSchema` from value)
-without doing the *crate-level* decoupling. Keep `serde` as a hard dependency
+I would do the _type-level_ split (separate `ConfigFieldSchema` from value)
+without doing the _crate-level_ decoupling. Keep `serde` as a hard dependency
 of `configurable`. If a second non-Serde consumer ever shows up, splitting
 crates is a mechanical extraction at that point.
 
@@ -216,7 +216,7 @@ widget-store that would be nice to get rid of in later commits."
 The migration plan slates `widget-store.impl.ts` deletion for Phase 8
 ("Decommission"). The current state is ~30 import sites in
 `apps/native/src/components/widget/**` and a couple of utility files. Some
-of those imports are for *types* (`WidgetStep`, `EvolveEvent`, `GitStatus`,
+of those imports are for _types_ (`WidgetStep`, `EvolveEvent`, `GitStatus`,
 `RebuildErrorType`, `RebuildLine`) that legitimately still need a home; the
 rest are uses of `useWidgetStore` that should already be reading from the
 ViewModel or `useUiState`.
@@ -324,7 +324,7 @@ criterion. Items are numbered B (backend) and F (frontend).
   to update its mapping.
 - **Pushback on the review:** The reviewer also asked to **decouple from
   Serde / `serde_json::Value`** so a non-Tauri consumer could use the crate.
-  This document recommends *not* doing the crate-level decoupling, because
+  This document recommends _not_ doing the crate-level decoupling, because
   there is no second consumer and the cost is real. The schema/value
   type-level split delivers the clarity benefit without the
   speculative-future-proofing cost. See §2.3 for the full reasoning. If
@@ -426,7 +426,7 @@ criterion. Items are numbered B (backend) and F (frontend).
 ### 4.1 Dependency table
 
 | Item | Depends on | External wait | Size | Risk |
-| ---- | ------------- | -------------------------- | ---- | ------ |
+| ---- | ---------- | ----------------------------------------------------- | ---- | ------ |
 | B2 | — | — | M | low |
 | B3 | — | — | M | medium |
 | B1 | B2, B3 | — | L | medium |
@@ -525,7 +525,7 @@ F2  bindBackendSlice     └── B4  whole-struct set    F1c delete files
 - **B3 before B1** because B1's `inventory` entries hold static schemas,
   and the static schemas are exactly what B3 introduces.
 - **B4 last in Wave 2** because the whole-struct setter is the cleanest
-  expression *after* the registry is static and the schema is decoupled
+  expression _after_ the registry is static and the schema is decoupled
   from runtime values. Doing it earlier would mean designing it around the
   per-field dispatch table that B1 deletes.
 - **B5 deferred** because the rename collides with the still-living
@@ -555,7 +555,7 @@ If the work has to halt midway, these are the safe halt points:
 ## 5. Open questions for the reviewer
 
 - **O1.** Should B3 include the crate-level Serde decoupling (this document
-  recommends *no*), or only the type-level schema/value split?
+  recommends _no_), or only the type-level schema/value split?
 - **O2.** Final name for the renamed primitive in B2. This document proposes
   `Persisted<T>`; the original review proposed `Observable<T>`. Other
   candidates: `WatchedCell<T>`, `SyncedCell<T>`.
@@ -583,7 +583,7 @@ not in code:
   PR #246. The first PR cannot have compiled in isolation. This is a
   stacked-PR slicing error — the rebase that produced #245 included #246's
   files. Fix in process: rebase each PR in the stack onto its parent
-  *after* the parent is approved, never before.
+  _after_ the parent is approved, never before.
 - **PR #249 "includes the previous one."** The base of #249 was the #246
   branch; when GitHub renders the diff of #249 against the wrong base, the
   parent's content reappears. The fix is the same: rebase stacked branches

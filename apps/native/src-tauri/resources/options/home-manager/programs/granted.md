@@ -5,7 +5,7 @@
 All options under `programs.granted`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | --------- | ----------------------------------- |
 | `programs.granted.enable` | `boolean` | Whether to enable granted. |
 | `programs.granted.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
 | `programs.granted.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |

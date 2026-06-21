@@ -5,7 +5,7 @@
 All options under `programs.nheko`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
 | `programs.nheko.enable` | `boolean` | Whether to enable Qt desktop client for Matrix. |
 | `programs.nheko.package` | `null or package` | The nheko package to use. |
 | `programs.nheko.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Attribute set of Nheko preferences (converted to an INI file). |

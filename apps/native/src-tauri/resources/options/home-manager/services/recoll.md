@@ -5,7 +5,7 @@
 All options under `services.recoll`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | `services.recoll.configDir` | `string` | The directory to contain Recoll configuration files. This will be set as RECOLL_CONFDIR . |
 | `services.recoll.enable` | `boolean` | Whether to enable Recoll file index service. |
 | `services.recoll.package` | `package` | The recoll package to use. |

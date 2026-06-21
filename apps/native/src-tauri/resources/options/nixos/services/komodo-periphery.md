@@ -5,7 +5,7 @@
 All options under `services.komodo-periphery`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------------- | ---- | ----------- |
 | `services.komodo-periphery.allowedIps` | | |
 | `services.komodo-periphery.bindIp` | | |
 | `services.komodo-periphery.configFile` | | |

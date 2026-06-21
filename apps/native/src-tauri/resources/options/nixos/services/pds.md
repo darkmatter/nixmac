@@ -5,7 +5,7 @@
 All options under `services.pds`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.pds.enable` | | |
 | `services.pds.environmentFiles` | | |
 | `services.pds.package` | | |

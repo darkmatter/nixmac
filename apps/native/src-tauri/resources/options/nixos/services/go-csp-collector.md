@@ -5,7 +5,7 @@
 All options under `services.go-csp-collector`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.go-csp-collector.enable` | | |
 | `services.go-csp-collector.package` | | |
 | `services.go-csp-collector.settings` | | |

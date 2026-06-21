@@ -5,7 +5,7 @@
 All options under `services.pretalx`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.pretalx.celery.enable` | | |
 | `services.pretalx.celery.extraArgs` | | |
 | `services.pretalx.database.createLocally` | | |

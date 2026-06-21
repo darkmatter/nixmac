@@ -5,7 +5,7 @@
 All options under `services.restic`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.restic.backups` | | |
 | `services.restic.server.appendOnly` | | |
 | `services.restic.server.dataDir` | | |

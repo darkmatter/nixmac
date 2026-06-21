@@ -5,7 +5,7 @@
 All options under `services.shpool`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `services.shpool.enable` | `boolean` | Whether to enable shpool. |
 | `services.shpool.package` | `null or package` | The shpool package to use. |
 | `services.shpool.settings` | `TOML value` | Configuration to use for shpool. See https://github.com/shell-pool/shpool/blob/master/CONFIG.md for available options. |

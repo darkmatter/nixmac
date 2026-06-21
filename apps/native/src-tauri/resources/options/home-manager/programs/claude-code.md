@@ -5,7 +5,7 @@
 All options under `programs.claude-code`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.claude-code.agents` | `attribute set of (strings concatenated with “\n” or absolute path)` | Custom agents for Claude Code. The attribute name becomes the agent filename, and the value is either: |
 | `programs.claude-code.agentsDir` | `null or absolute path` | Path to a directory containing agent files for Claude Code. Agent files from this directory will be symlinked to .claude/agents/. |
 | `programs.claude-code.commands` | `attribute set of (strings concatenated with “\n” or absolute path)` | Custom commands for Claude Code. The attribute name becomes the command filename, and the value is either: |

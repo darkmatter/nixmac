@@ -5,7 +5,7 @@
 All options under `services.sing-box`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.sing-box.enable` | | |
 | `services.sing-box.package` | | |
 | `services.sing-box.settings` | | |

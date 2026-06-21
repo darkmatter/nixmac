@@ -5,5 +5,5 @@
 All options under `programs.nbd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------- | ---- | ----------- |
 | `programs.nbd.enable` | | |

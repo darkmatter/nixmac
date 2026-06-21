@@ -5,7 +5,7 @@
 All options under `programs.mods`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---------------- | --------------------------------------------------------- |
 | `programs.mods.enable` | `boolean` | Whether to enable mods. |
 | `programs.mods.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.mods.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |

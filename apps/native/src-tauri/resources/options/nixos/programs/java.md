@@ -5,7 +5,7 @@
 All options under `programs.java`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `programs.java.binfmt` | | |
 | `programs.java.enable` | | |
 | `programs.java.package` | | |

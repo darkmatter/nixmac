@@ -5,7 +5,7 @@
 All options under `services.memos`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.memos.dataDir` | | |
 | `services.memos.enable` | | |
 | `services.memos.environmentFile` | | |

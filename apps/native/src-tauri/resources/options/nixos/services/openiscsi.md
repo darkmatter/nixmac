@@ -5,7 +5,7 @@
 All options under `services.openiscsi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.openiscsi.discoverPortal` | | |
 | `services.openiscsi.enable` | | |
 | `services.openiscsi.enableAutoLoginOut` | | |

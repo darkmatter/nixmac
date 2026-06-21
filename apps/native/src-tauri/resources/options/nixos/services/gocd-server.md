@@ -5,7 +5,7 @@
 All options under `services.gocd-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.gocd-server.enable` | | |
 | `services.gocd-server.environment` | | |
 | `services.gocd-server.extraGroups` | | |

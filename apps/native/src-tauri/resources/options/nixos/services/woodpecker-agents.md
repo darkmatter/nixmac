@@ -5,5 +5,5 @@
 All options under `services.woodpecker-agents`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.woodpecker-agents.agents` | | |

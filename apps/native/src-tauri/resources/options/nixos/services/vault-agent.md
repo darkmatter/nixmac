@@ -5,5 +5,5 @@
 All options under `services.vault-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.vault-agent.instances` | | |

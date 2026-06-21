@@ -5,6 +5,6 @@
 All options under `services.ddccontrol`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.ddccontrol.enable` | | |
 | `services.ddccontrol.package` | | |

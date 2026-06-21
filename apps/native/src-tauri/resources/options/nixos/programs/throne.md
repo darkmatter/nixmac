@@ -5,7 +5,7 @@
 All options under `programs.throne`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `programs.throne.enable` | | |
 | `programs.throne.package` | | |
 | `programs.throne.tunMode.enable` | | |

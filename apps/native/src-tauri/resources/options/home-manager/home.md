@@ -5,7 +5,7 @@
 All options under `home`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `home.activation` | `DAG of string` | The activation scripts blocks to run when activating a Home Manager generation. Any entry here should be idempotent, meaning running twice or more times produces the same result as running it once. |
 | `home.activationGenerateGcRoot` | | |
 | `home.activationPackage` | | |

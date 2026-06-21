@@ -5,7 +5,7 @@
 All options under `services.mobilizon`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.mobilizon.enable` | | |
 | `services.mobilizon.nginx.enable` | | |
 | `services.mobilizon.package` | | |

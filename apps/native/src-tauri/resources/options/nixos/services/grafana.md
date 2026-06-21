@@ -5,7 +5,7 @@
 All options under `services.grafana`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------------ | ---- | ----------- |
 | `services.grafana.addr` | | |
 | `services.grafana.analytics.reporting.enable` | | |
 | `services.grafana.auth.anonymous.enable` | | |

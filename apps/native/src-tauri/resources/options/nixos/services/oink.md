@@ -5,7 +5,7 @@
 All options under `services.oink`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.oink.apiKeyFile` | | |
 | `services.oink.domains` | | |
 | `services.oink.enable` | | |

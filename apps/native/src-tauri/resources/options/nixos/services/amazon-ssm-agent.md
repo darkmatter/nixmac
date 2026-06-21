@@ -5,6 +5,6 @@
 All options under `services.amazon-ssm-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.amazon-ssm-agent.enable` | | |
 | `services.amazon-ssm-agent.package` | | |

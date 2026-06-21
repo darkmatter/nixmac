@@ -5,7 +5,7 @@
 All options under `services.invidious-router`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.invidious-router.address` | | |
 | `services.invidious-router.enable` | | |
 | `services.invidious-router.nginx.domain` | | |

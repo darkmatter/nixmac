@@ -5,7 +5,7 @@
 All options under `services.airsonic`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.airsonic.contextPath` | | |
 | `services.airsonic.enable` | | |
 | `services.airsonic.home` | | |

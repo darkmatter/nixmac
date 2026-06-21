@@ -5,7 +5,7 @@
 All options under `services.reposilite`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.reposilite.database` | | |
 | `services.reposilite.enable` | | |
 | `services.reposilite.extraArgs` | | |

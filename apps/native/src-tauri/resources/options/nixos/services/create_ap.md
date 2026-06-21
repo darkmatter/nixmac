@@ -5,6 +5,6 @@
 All options under `services.create_ap`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.create_ap.enable` | | |
 | `services.create_ap.settings` | | |

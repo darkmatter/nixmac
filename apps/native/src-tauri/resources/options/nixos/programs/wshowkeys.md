@@ -5,6 +5,6 @@
 All options under `programs.wshowkeys`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `programs.wshowkeys.enable` | | |
 | `programs.wshowkeys.package` | | |

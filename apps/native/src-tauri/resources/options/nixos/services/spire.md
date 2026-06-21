@@ -5,7 +5,7 @@
 All options under `services.spire`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.spire.agent.configFile` | | |
 | `services.spire.agent.enable` | | |
 | `services.spire.agent.expandEnv` | | |

@@ -5,7 +5,7 @@
 All options under `services.wasabibackend`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.wasabibackend.customConfigFile` | | |
 | `services.wasabibackend.dataDir` | | |
 | `services.wasabibackend.enable` | | |

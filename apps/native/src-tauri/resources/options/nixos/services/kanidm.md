@@ -5,7 +5,7 @@
 All options under `services.kanidm`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------ | ---- | ----------- |
 | `services.kanidm.client.enable` | | |
 | `services.kanidm.client.settings` | | |
 | `services.kanidm.clientSettings` | | |

@@ -5,7 +5,7 @@
 All options under `services.gromit-mpx`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.gromit-mpx.enable` | `boolean` | Whether to enable Gromit-MPX annotation tool. |
 | `services.gromit-mpx.hotKey` | `null or string or (positive integer, meaning >0)` | A keysym or raw keycode that toggles the activation state of gromit-mpx. Set to null to disable the hotkey in which case you’ll have to activate gromit-mpx manually using the command line. |
 | `services.gromit-mpx.opacity` | `float between 0.0 and 1.0 (inclusive)` | Opacity of the drawing overlay. |

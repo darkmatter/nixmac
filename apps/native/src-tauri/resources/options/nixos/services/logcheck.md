@@ -5,7 +5,7 @@
 All options under `services.logcheck`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.logcheck.config` | | |
 | `services.logcheck.enable` | | |
 | `services.logcheck.extraGroups` | | |

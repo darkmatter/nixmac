@@ -5,7 +5,7 @@
 All options under `services.clamav`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.clamav.clamonacc.enable` | | |
 | `services.clamav.daemon.enable` | | |
 | `services.clamav.daemon.extraConfig` | | |

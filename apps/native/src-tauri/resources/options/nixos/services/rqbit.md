@@ -5,7 +5,7 @@
 All options under `services.rqbit`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.rqbit.downloadDir` | | |
 | `services.rqbit.enable` | | |
 | `services.rqbit.group` | | |

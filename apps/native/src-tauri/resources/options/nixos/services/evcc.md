@@ -5,7 +5,7 @@
 All options under `services.evcc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.evcc.enable` | | |
 | `services.evcc.environmentFile` | | |
 | `services.evcc.extraArgs` | | |

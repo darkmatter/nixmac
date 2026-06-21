@@ -5,7 +5,7 @@
 All options under `services.birdwatcher`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.birdwatcher.enable` | | |
 | `services.birdwatcher.flags` | | |
 | `services.birdwatcher.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.ngircd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.ngircd.config` | | |
 | `services.ngircd.enable` | | |
 | `services.ngircd.package` | | |

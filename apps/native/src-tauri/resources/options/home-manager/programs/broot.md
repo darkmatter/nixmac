@@ -5,7 +5,7 @@
 All options under `programs.broot`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | -------------------------------- | -------------------------------------------------------------- |
 | `programs.broot.enable` | `boolean` | Whether to enable Broot, a better way to navigate directories. |
 | `programs.broot.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.broot.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |

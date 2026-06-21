@@ -5,7 +5,7 @@
 All options under `services.conman`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.conman.config` | | |
 | `services.conman.configFile` | | |
 | `services.conman.enable` | | |

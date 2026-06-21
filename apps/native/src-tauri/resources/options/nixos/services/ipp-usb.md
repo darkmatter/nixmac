@@ -5,5 +5,5 @@
 All options under `services.ipp-usb`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.ipp-usb.enable` | | |

@@ -5,7 +5,7 @@
 All options under `programs.sway`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `programs.sway.enable` | | |
 | `programs.sway.extraOptions` | | |
 | `programs.sway.extraPackages` | | |

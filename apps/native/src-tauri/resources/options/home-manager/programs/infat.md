@@ -5,7 +5,7 @@
 All options under `programs.infat`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.infat.autoActivate` | `boolean` | Automatically activate infat on startup. This is useful if you want to use infat as a default application handler for certain file types. If you don’t want this, set this to false. This option is only effective if settings is set. |
 | `programs.infat.enable` | `boolean` | Whether to enable infat. |
 | `programs.infat.package` | `null or package` | The infat package to use. |

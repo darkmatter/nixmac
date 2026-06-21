@@ -5,7 +5,7 @@
 All options under `programs.halloy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.halloy.enable` | `boolean` | Whether to enable halloy. |
 | `programs.halloy.package` | `null or package` | The halloy package to use. |
 | `programs.halloy.settings` | `TOML value` | Configuration settings for halloy. All available options can be found here: https://halloy.chat/configuration.html . Note that halloy requires at least one server to be configured, see example. |

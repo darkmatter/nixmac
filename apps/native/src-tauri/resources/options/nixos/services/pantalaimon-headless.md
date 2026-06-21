@@ -5,5 +5,5 @@
 All options under `services.pantalaimon-headless`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.pantalaimon-headless.instances` | | |

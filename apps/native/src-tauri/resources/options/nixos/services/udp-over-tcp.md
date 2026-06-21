@@ -5,7 +5,7 @@
 All options under `services.udp-over-tcp`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.udp-over-tcp.package` | | |
 | `services.udp-over-tcp.tcp2udp` | | |
 | `services.udp-over-tcp.udp2tcp` | | |

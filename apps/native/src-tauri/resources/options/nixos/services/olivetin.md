@@ -5,7 +5,7 @@
 All options under `services.olivetin`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.olivetin.enable` | | |
 | `services.olivetin.extraConfigFiles` | | |
 | `services.olivetin.group` | | |

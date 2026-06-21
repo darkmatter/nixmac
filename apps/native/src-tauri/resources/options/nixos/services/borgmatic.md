@@ -5,7 +5,7 @@
 All options under `services.borgmatic`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.borgmatic.configurations` | | |
 | `services.borgmatic.enable` | | |
 | `services.borgmatic.enableConfigCheck` | | |

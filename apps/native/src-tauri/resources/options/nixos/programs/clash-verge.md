@@ -5,7 +5,7 @@
 All options under `programs.clash-verge`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `programs.clash-verge.autoStart` | | |
 | `programs.clash-verge.enable` | | |
 | `programs.clash-verge.group` | | |

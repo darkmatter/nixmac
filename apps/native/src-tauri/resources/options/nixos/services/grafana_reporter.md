@@ -5,7 +5,7 @@
 All options under `services.grafana_reporter`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.grafana_reporter.addr` | | |
 | `services.grafana_reporter.enable` | | |
 | `services.grafana_reporter.grafana.addr` | | |

@@ -5,7 +5,7 @@
 All options under `services.redshift`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.redshift.brightness.day` | | |
 | `services.redshift.brightness.night` | | |
 | `services.redshift.enable` | | |

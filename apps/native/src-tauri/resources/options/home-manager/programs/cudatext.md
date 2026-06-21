@@ -5,7 +5,7 @@
 All options under `programs.cudatext`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | `programs.cudatext.enable` | `boolean` | Whether to enable cudatext. |
 | `programs.cudatext.hotkeys` | `JSON value` | Hotkeys for Cudatext. To see the available options, change the settings in the dialog “Help | Command palette” and look at the changes in settings/keys.json . |
 | `programs.cudatext.lexerHotkeys` | `attribute set of (JSON value)` | Hotkeys settings specific to each lexer. |

@@ -5,7 +5,7 @@
 All options under `services.meshtasticd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.meshtasticd.dataDir` | | |
 | `services.meshtasticd.enable` | | |
 | `services.meshtasticd.group` | | |

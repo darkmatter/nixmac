@@ -5,7 +5,7 @@
 All options under `services.bind`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.bind.blockedNetworks` | | |
 | `services.bind.cacheNetworks` | | |
 | `services.bind.checkConfig` | | |

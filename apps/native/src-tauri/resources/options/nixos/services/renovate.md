@@ -5,7 +5,7 @@
 All options under `services.renovate`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.renovate.credentials` | | |
 | `services.renovate.enable` | | |
 | `services.renovate.environment` | | |

@@ -5,7 +5,7 @@
 All options under `services.opencloud`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.opencloud.address` | | |
 | `services.opencloud.enable` | | |
 | `services.opencloud.environment` | | |

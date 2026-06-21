@@ -5,6 +5,6 @@
 All options under `services.monit`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `services.monit.config` | | |
 | `services.monit.enable` | | |

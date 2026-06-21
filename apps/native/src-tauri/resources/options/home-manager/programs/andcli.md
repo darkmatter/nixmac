@@ -5,7 +5,7 @@
 All options under `programs.andcli`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.andcli.enable` | `boolean` | Whether to enable andcli. |
 | `programs.andcli.package` | `null or package` | The andcli package to use. |
 | `programs.andcli.settings` | `YAML 1.1 value` | Configuration settings for andcli. All the details can be found here: https://github.com/tjblackheart/andcli/blob/7de13cc933eeb23d53558f76fefef226bd531c2c/internal/config/config.go#L16 |

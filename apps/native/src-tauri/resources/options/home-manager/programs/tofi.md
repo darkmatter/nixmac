@@ -5,7 +5,7 @@
 All options under `programs.tofi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | -------------------------------------------------------- | -------------------------------------------------------- |
 | `programs.tofi.enable` | `boolean` | Whether to enable Tofi, a tiny dynamic menu for Wayland. |
 | `programs.tofi.package` | `null or package` | The tofi package to use. |
 | `programs.tofi.settings` | `attribute set of (string or signed integer or boolean)` | Settings to be written to the Tofi configuration file. |

@@ -5,7 +5,7 @@
 All options under `services.open-webui`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.open-webui.enable` | | |
 | `services.open-webui.environment` | | |
 | `services.open-webui.environmentFile` | | |

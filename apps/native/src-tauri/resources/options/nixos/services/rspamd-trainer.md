@@ -5,7 +5,7 @@
 All options under `services.rspamd-trainer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.rspamd-trainer.enable` | | |
 | `services.rspamd-trainer.secrets` | | |
 | `services.rspamd-trainer.settings` | | |

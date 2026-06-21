@@ -5,7 +5,7 @@
 All options under `services.netdata`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------------- | ---- | ----------- |
 | `services.netdata.claimTokenFile` | | |
 | `services.netdata.config` | | |
 | `services.netdata.configDir` | | |

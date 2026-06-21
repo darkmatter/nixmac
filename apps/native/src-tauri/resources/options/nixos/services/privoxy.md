@@ -5,7 +5,7 @@
 All options under `services.privoxy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.privoxy.actionsFiles` | | |
 | `services.privoxy.certsLifetime` | | |
 | `services.privoxy.enable` | | |

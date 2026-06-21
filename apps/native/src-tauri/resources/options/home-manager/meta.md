@@ -5,7 +5,7 @@
 All options under `meta`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------- |
 | `meta.buildDocsInSandbox` | | |
 | `meta.doc` | | |
 | `meta.maintainers` | `list of lib.maintainers` | List of maintainers of each module. This option should be defined at most once per module. |

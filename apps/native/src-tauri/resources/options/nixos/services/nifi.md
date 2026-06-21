@@ -5,7 +5,7 @@
 All options under `services.nifi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.nifi.enable` | | |
 | `services.nifi.enableHTTPS` | | |
 | `services.nifi.group` | | |

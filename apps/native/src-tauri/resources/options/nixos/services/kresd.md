@@ -5,7 +5,7 @@
 All options under `services.kresd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.kresd.cacheDir` | | |
 | `services.kresd.enable` | | |
 | `services.kresd.extraConfig` | | |

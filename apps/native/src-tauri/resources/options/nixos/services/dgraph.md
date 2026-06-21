@@ -5,7 +5,7 @@
 All options under `services.dgraph`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.dgraph.alpha.host` | | |
 | `services.dgraph.alpha.port` | | |
 | `services.dgraph.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.plantuml-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.plantuml-server.allowPlantumlInclude` | | |
 | `services.plantuml-server.enable` | | |
 | `services.plantuml-server.graphvizPackage` | | |

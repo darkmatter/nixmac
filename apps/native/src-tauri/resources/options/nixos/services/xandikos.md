@@ -5,7 +5,7 @@
 All options under `services.xandikos`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.xandikos.address` | | |
 | `services.xandikos.enable` | | |
 | `services.xandikos.extraOptions` | | |

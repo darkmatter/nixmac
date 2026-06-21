@@ -5,7 +5,7 @@
 All options under `services.portunus`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.portunus.dex.enable` | | |
 | `services.portunus.dex.oidcClients` | | |
 | `services.portunus.dex.port` | | |

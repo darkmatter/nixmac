@@ -5,7 +5,7 @@
 All options under `programs.alot`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.alot.bindings` | `submodule` | Keybindings. |
 | `programs.alot.enable` | `boolean` | Whether to enable the Alot mail user agent. Alot uses the Notmuch email system and will therefore be automatically enabled for each email account that is managed by Notmuch. |
 | `programs.alot.extraConfig` | `strings concatenated with “\n”` | Extra lines added to alot configuration file. |

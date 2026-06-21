@@ -5,5 +5,5 @@
 All options under `services.mailpit`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.mailpit.instances` | | |

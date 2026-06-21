@@ -5,7 +5,7 @@
 All options under `services.ipfs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.ipfs.apiAddress` | | |
 | `services.ipfs.autoMigrate` | | |
 | `services.ipfs.autoMount` | | |

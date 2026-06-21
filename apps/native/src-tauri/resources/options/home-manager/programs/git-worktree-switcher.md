@@ -5,7 +5,7 @@
 All options under `programs.git-worktree-switcher`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------ | --------- | ----------------------------------------- |
 | `programs.git-worktree-switcher.enable` | `boolean` | Whether to enable git-worktree-switcher. |
 | `programs.git-worktree-switcher.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.git-worktree-switcher.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |

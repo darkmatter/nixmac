@@ -5,7 +5,7 @@
 All options under `programs.i3status-rust`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.i3status-rust.bars` | `attribute set of (submodule)` | Attribute set of i3status-rust bars, each with their own configuration. Each bar name generates a config file suffixed with the bar’s name from the attribute set, like so: config-${name}.toml . |
 | `programs.i3status-rust.enable` | `boolean` | Whether to enable a replacement for i3-status written in Rust. |
 | `programs.i3status-rust.package` | `package` | The i3status-rust package to use. |

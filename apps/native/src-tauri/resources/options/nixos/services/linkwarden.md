@@ -5,7 +5,7 @@
 All options under `services.linkwarden`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.linkwarden.cacheLocation` | | |
 | `services.linkwarden.database.createLocally` | | |
 | `services.linkwarden.database.host` | | |

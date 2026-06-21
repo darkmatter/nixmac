@@ -5,7 +5,7 @@
 All options under `services.mpd-discord-rpc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | `services.mpd-discord-rpc.enable` | `boolean` | Whether to enable the mpd-discord-rpc service. |
 | `services.mpd-discord-rpc.package` | `package` | The mpd-discord-rpc package to use. |
 | `services.mpd-discord-rpc.settings` | `TOML value` | Configuration included in config.toml . For available options see https://github.com/JakeStanger/mpd-discord-rpc#configuration |

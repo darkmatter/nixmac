@@ -5,7 +5,7 @@
 All options under `services.orthanc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.orthanc.enable` | | |
 | `services.orthanc.environment` | | |
 | `services.orthanc.environmentFile` | | |

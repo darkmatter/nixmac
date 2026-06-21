@@ -5,7 +5,7 @@
 All options under `programs.k9s`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.k9s.aliases` | `YAML 1.1 value` | Aliases written to $XDG_CONFIG_HOME/k9s/aliases.yaml (linux) or Library/Application Support/k9s/aliases.yaml (darwin). See https://k9scli.io/topics/aliases/ for supported values. |
 | `programs.k9s.enable` | `boolean` | Whether to enable k9s - Kubernetes CLI To Manage Your Clusters In Style. |
 | `programs.k9s.hotKeys` | `YAML 1.1 value` | Hotkeys written to $XDG_CONFIG_HOME/k9s/hotkeys.yaml (linux) or Library/Application Support/k9s/hotkeys.yaml (darwin). See https://k9scli.io/topics/hotkeys/ for supported values. |

@@ -5,7 +5,7 @@
 All options under `services.librespot`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
 | `services.librespot.args` | | |
 | `services.librespot.enable` | `boolean` | Whether to enable Librespot (Spotify Connect speaker daemon). |
 | `services.librespot.package` | `package` | The librespot package to use. |

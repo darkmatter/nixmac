@@ -5,7 +5,7 @@
 All options under `programs.vinegar`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ------------------------------- | --------------------------------------------------------------- |
 | `programs.vinegar.enable` | `boolean` | Whether to enable Vinegar. |
 | `programs.vinegar.package` | `null or package` | The vinegar package to use. |
 | `programs.vinegar.settings` | `attribute set of (TOML value)` | Configuration written to $XDG_CONFIG_HOME/vinegar/config.toml . |

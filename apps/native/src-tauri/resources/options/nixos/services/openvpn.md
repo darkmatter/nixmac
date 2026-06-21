@@ -5,7 +5,7 @@
 All options under `services.openvpn`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.openvpn.enable` | | |
 | `services.openvpn.package` | | |
 | `services.openvpn.restartAfterSleep` | | |

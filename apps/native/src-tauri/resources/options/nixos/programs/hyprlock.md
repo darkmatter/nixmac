@@ -5,6 +5,6 @@
 All options under `programs.hyprlock`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `programs.hyprlock.enable` | | |
 | `programs.hyprlock.package` | | |

@@ -5,7 +5,7 @@
 All options under `programs.gitui`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | `programs.gitui.enable` | `boolean` | Whether to enable gitui, blazing fast terminal-ui for git written in rust. |
 | `programs.gitui.keyConfig` | `absolute path or strings concatenated with “\n”` | Key config in Ron file format. This is written to $XDG_CONFIG_HOME/gitui/key_config.ron . |
 | `programs.gitui.package` | `package` | The gitui package to use. |

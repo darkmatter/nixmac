@@ -5,7 +5,7 @@
 Top-level option categories for `nix-darwin`.
 
 | Key | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | -------- | ----------------------------- |
 | [`_module`](_module.md) | category | 4 options |
 | `assertions` | option | |
 | [`documentation`](documentation.md) | category | 3 subcategories, 4 options |

@@ -5,7 +5,7 @@
 All options under `services.btrbk`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.btrbk.extraPackages` | | |
 | `services.btrbk.instances` | | |
 | `services.btrbk.ioSchedulingClass` | | |

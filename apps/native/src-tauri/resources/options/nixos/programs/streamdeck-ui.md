@@ -5,7 +5,7 @@
 All options under `programs.streamdeck-ui`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `programs.streamdeck-ui.autoStart` | | |
 | `programs.streamdeck-ui.enable` | | |
 | `programs.streamdeck-ui.package` | | |

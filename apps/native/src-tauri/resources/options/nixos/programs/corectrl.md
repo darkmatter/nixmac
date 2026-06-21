@@ -5,7 +5,7 @@
 All options under `programs.corectrl`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `programs.corectrl.enable` | | |
 | `programs.corectrl.gpuOverclock.enable` | | |
 | `programs.corectrl.gpuOverclock.ppfeaturemask` | | |

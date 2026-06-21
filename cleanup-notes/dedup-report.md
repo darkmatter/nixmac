@@ -11,7 +11,7 @@ ______________________________________________________________________
 ### Side-by-side analysis
 
 | Dimension | `providers/` | `evolve/providers/` |
-|---|---|---|
+| ------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------- |
 | Trait | `ChatCompletionProvider` | `AiProvider` |
 | Call signature | `(system_prompt, user_prompt, max_tokens, context_window_tokens, temperature, request_id)` | `(messages: &[Message], tools: &[Tool])` |
 | Message handling | Simple system+user pair | Full message history with Tool/Assistant variants |

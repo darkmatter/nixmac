@@ -5,7 +5,7 @@
 All options under `location`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------- | ---- | ----------- |
 | `location.latitude` | | |
 | `location.longitude` | | |
 | `location.provider` | | |

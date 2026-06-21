@@ -5,6 +5,6 @@
 All options under `services.gobgpd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.gobgpd.enable` | | |
 | `services.gobgpd.settings` | | |

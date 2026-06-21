@@ -5,7 +5,7 @@
 All options under `programs.newsboat`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------ | -------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `programs.newsboat.autoFetchArticles.enable` | `boolean` | Whether to enable automatic article fetcher timer. |
 | `programs.newsboat.autoFetchArticles.onCalendar` | `string` | How often to fetch new articles. |
 | `programs.newsboat.autoReload` | `boolean` | Whether to enable automatic reloading while newsboat is running. |

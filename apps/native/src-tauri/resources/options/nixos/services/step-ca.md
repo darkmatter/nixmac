@@ -5,7 +5,7 @@
 All options under `services.step-ca`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.step-ca.address` | | |
 | `services.step-ca.enable` | | |
 | `services.step-ca.intermediatePasswordFile` | | |

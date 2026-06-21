@@ -5,5 +5,5 @@
 All options under `services.novacomd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.novacomd.enable` | | |

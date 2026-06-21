@@ -5,7 +5,7 @@
 All options under `services.nixops-dns`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.nixops-dns.dnsmasq` | | |
 | `services.nixops-dns.domain` | | |
 | `services.nixops-dns.enable` | | |

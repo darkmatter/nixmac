@@ -5,7 +5,7 @@
 All options under `services.kerberos_server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.kerberos_server.enable` | | |
 | `services.kerberos_server.extraKDCArgs` | | |
 | `services.kerberos_server.realms` | | |

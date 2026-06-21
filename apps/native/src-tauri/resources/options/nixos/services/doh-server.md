@@ -5,7 +5,7 @@
 All options under `services.doh-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.doh-server.configFile` | | |
 | `services.doh-server.enable` | | |
 | `services.doh-server.package` | | |

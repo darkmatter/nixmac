@@ -8,7 +8,7 @@ callers — Rust resolves both identically.
 ## Root modules
 
 | Module | Purpose | Called by |
-|---|---|---|
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | `main.rs` | App entry point: initializes Tauri GUI (window, tray, plugins, DB, watcher) or dispatches to CLI mode | OS / process launcher |
 | `cli.rs` | Clap argument parsing and headless `nixmac evolve` execution | main.rs |
 | `shared_types.rs` | Specta-exported contract types (events, evolve state, feedback, git, prefs, system). Regenerated into TypeScript via `cargo run --example specta_gen_ts` | Nearly every module |

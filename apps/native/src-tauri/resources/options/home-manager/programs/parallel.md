@@ -5,7 +5,7 @@
 All options under `programs.parallel`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `programs.parallel.enable` | `boolean` | Whether to enable GNU Parallel. |
 | `programs.parallel.package` | `null or package` | The parallel-full package to use. |
 | `programs.parallel.will-cite` | `boolean` | Accept GNU Parallels citation policy: https://www.gnu.org/software/parallel/parallel_design.html#citation-notice |

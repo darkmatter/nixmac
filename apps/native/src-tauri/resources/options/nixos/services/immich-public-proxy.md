@@ -5,7 +5,7 @@
 All options under `services.immich-public-proxy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.immich-public-proxy.enable` | | |
 | `services.immich-public-proxy.immichUrl` | | |
 | `services.immich-public-proxy.openFirewall` | | |

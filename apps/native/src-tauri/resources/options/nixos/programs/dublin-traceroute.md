@@ -5,6 +5,6 @@
 All options under `programs.dublin-traceroute`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `programs.dublin-traceroute.enable` | | |
 | `programs.dublin-traceroute.package` | | |

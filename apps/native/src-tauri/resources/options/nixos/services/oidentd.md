@@ -5,5 +5,5 @@
 All options under `services.oidentd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.oidentd.enable` | | |

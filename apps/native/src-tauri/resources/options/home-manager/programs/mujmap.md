@@ -5,6 +5,6 @@
 All options under `programs.mujmap`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | --------- | ----------------------------------------------------------- |
 | `programs.mujmap.enable` | `boolean` | Whether to enable mujmap Gmail synchronization for notmuch. |
 | `programs.mujmap.package` | `package` | The mujmap package to use. |

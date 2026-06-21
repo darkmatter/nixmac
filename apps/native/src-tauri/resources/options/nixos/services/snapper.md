@@ -5,7 +5,7 @@
 All options under `services.snapper`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.snapper.cleanupInterval` | | |
 | `services.snapper.configs` | | |
 | `services.snapper.filters` | | |

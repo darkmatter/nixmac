@@ -5,7 +5,7 @@
 All options under `programs.anvil-editor`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.anvil-editor.enable` | `boolean` | Whether to enable anvil-editor. |
 | `programs.anvil-editor.package` | `null or package` | The anvil-editor package to use. |
 | `programs.anvil-editor.settings` | `TOML value` | Configuration settings for anvil-editor. All available options can be found here: https://anvil-editor.net/reference/config/#settingstoml . |

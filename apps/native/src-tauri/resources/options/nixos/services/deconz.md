@@ -5,7 +5,7 @@
 All options under `services.deconz`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.deconz.allowRebootSystem` | | |
 | `services.deconz.allowRestartService` | | |
 | `services.deconz.allowSetSystemTime` | | |

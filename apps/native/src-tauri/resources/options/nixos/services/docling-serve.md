@@ -5,7 +5,7 @@
 All options under `services.docling-serve`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.docling-serve.enable` | | |
 | `services.docling-serve.environment` | | |
 | `services.docling-serve.environmentFile` | | |

@@ -5,7 +5,7 @@
 All options under `programs.rmpc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.rmpc.config` | `strings concatenated with “\n”` | Configuration settings for rmpc in the Rusty Object Notation format. All available options can be found in the official documentation at https://mierak.github.io/rmpc/next/configuration/ . |
 | `programs.rmpc.enable` | `boolean` | Whether to enable rmpc. |
 | `programs.rmpc.package` | `null or package` | The rmpc package to use. |

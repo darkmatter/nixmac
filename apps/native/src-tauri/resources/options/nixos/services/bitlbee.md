@@ -5,7 +5,7 @@
 All options under `services.bitlbee`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.bitlbee.authBackend` | | |
 | `services.bitlbee.authMode` | | |
 | `services.bitlbee.configDir` | | |

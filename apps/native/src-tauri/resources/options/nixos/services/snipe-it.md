@@ -5,7 +5,7 @@
 All options under `services.snipe-it`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------- | ---- | ----------- |
 | `services.snipe-it.appKeyFile` | | |
 | `services.snipe-it.appURL` | | |
 | `services.snipe-it.config` | | |

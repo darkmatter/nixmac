@@ -5,7 +5,7 @@
 All options under `services.mtprotoproxy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.mtprotoproxy.adTag` | | |
 | `services.mtprotoproxy.enable` | | |
 | `services.mtprotoproxy.extraConfig` | | |

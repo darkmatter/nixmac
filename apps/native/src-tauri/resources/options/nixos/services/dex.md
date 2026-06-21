@@ -5,7 +5,7 @@
 All options under `services.dex`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.dex.enable` | | |
 | `services.dex.environmentFile` | | |
 | `services.dex.package` | | |

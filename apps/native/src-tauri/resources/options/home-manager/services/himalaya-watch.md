@@ -5,5 +5,5 @@
 All options under `services.himalaya-watch`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.himalaya-watch.enable` | | |

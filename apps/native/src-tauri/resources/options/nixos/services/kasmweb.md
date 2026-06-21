@@ -5,7 +5,7 @@
 All options under `services.kasmweb`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.kasmweb.datastorePath` | | |
 | `services.kasmweb.defaultAdminPassword` | | |
 | `services.kasmweb.defaultGuacToken` | | |

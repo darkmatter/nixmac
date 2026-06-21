@@ -5,7 +5,7 @@
 All options under `programs.discord`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | -------------------------------- | ----------------------------------------------------------------------------- |
 | `programs.discord.configName` | | |
 | `programs.discord.enable` | `boolean` | Whether to enable Discord, the chat platform. |
 | `programs.discord.package` | `null or package` | The discord package to use. |

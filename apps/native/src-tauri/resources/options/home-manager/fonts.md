@@ -5,7 +5,7 @@
 All options under `fonts`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `fonts.fontconfig.antialiasing` | `null or boolean` | Whether to enable font antialiasing. |
 | `fonts.fontconfig.configFile` | `attribute set of (submodule)` | Extra font config files that will be added to ~/.config/fontconfig/conf.d/ . Files are named like fontconfig/conf.d/{priority}-{label}.conf . |
 | `fonts.fontconfig.defaultFonts.emoji` | `list of string` | Per-user default emoji font(s). Multiple fonts may be listed in case a font does not support all emoji. |

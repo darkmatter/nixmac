@@ -2,14 +2,14 @@
 
 _Date: 2026-05-03_
 _Scope: `apps/native/src-tauri/src/**` — legacy, fallback, backwards-compat, deprecated paths_
-_Method: `rg -n 'legacy|fallback|deprecated|backwards|backcompat|compat|v1|old_|_old'` + `git blame` / `git log -p`_
+_Method: `rg -n 'legacy|fallback|deprecated|backwards|backcompat|compat|v1|old_|_old'`+`git blame`/`git log -p`_
 
 ______________________________________________________________________
 
 ## Summary Table
 
 | # | Location | Pattern | Classification | Proposed Action |
-|---|----------|---------|----------------|-----------------|
+| --- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------- | ----------------------- |
 | 1 | `credential_store.rs` + `store.rs` | `legacy_settings_store`, `get_with_lazy_migration`, `set_with_cleanup` | **Active migration — KEEP** | No action |
 | 2 | `db/schema.rs` `repair_legacy_evolutions_schema` | Migration hook for pre-migration-03 DBs | **Active migration — KEEP** | No action |
 | 3 | `store.rs:109` `read_host_attr_from_file` | Reads `~/.config/darwin/host` for backwards compat | **Active compat — KEEP** | No action |
@@ -196,7 +196,7 @@ ______________________________________________________________________
 ## Requires Approval
 
 | Item | File:Lines | What to remove | Why waiting |
-|------|-----------|----------------|-------------|
+| ----------------------- | --------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `_up_` bundle candidate | `default_config.rs:133-134` | Comment + `resource_dir.join("_up_/templates/nix-darwin-determinate"),` | Tauri 2 never produces `_up_/` paths; this candidate cannot match in production. But if wrong, bootstrap silently fails for affected users. Removal is a 2-line edit. Low risk, needs explicit sign-off. |
 
 ______________________________________________________________________

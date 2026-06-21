@@ -5,7 +5,7 @@
 All options under `services.tailscaleAuth`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.tailscaleAuth.enable` | | |
 | `services.tailscaleAuth.group` | | |
 | `services.tailscaleAuth.package` | | |

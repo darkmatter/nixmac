@@ -5,7 +5,7 @@
 All options under `services.inadyn`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.inadyn.configFile` | | |
 | `services.inadyn.enable` | | |
 | `services.inadyn.group` | | |

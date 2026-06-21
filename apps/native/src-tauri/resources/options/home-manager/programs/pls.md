@@ -5,7 +5,7 @@
 All options under `programs.pls`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | --------- | ---------------------------------------------------- |
 | `programs.pls.enable` | `boolean` | Whether to enable pls, a modern replacement for ls . |
 | `programs.pls.enableAliases` | | |
 | `programs.pls.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |

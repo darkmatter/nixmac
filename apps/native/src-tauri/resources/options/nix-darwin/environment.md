@@ -5,7 +5,7 @@
 All options under `environment`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `environment.darwinConfig` | `null or absolute path or string` | The path of the darwin configuration.nix used to configure the system, this updates the default darwin-config entry in NIX_PATH. Since this changes an environment variable it will only apply to new shells. |
 | `environment.defaultPackages` | `list of package` | Set of default packages that aren’t strictly necessary for a running system, entries can be removed for a more minimal NixOS installation. |
 | `environment.enableAllTerminfo` | `boolean` | Whether to install all terminfo outputs |

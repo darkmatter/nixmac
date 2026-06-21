@@ -5,7 +5,7 @@
 All options under `services.zram-generator`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.zram-generator.enable` | | |
 | `services.zram-generator.package` | | |
 | `services.zram-generator.settings` | | |

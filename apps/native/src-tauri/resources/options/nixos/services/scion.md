@@ -5,7 +5,7 @@
 All options under `services.scion`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.scion.bypassBootstrapWarning` | | |
 | `services.scion.enable` | | |
 | `services.scion.package` | | |

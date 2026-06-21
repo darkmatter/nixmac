@@ -5,6 +5,6 @@
 All options under `services.target`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.target.config` | | |
 | `services.target.enable` | | |

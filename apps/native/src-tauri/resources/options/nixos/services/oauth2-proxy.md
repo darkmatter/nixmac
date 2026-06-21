@@ -5,7 +5,7 @@
 All options under `services.oauth2-proxy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------- | ---- | ----------- |
 | `services.oauth2-proxy.approvalPrompt` | | |
 | `services.oauth2-proxy.azure.resource` | | |
 | `services.oauth2-proxy.azure.tenant` | | |

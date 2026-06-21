@@ -5,7 +5,7 @@
 All options under `services.sssd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.sssd.config` | | |
 | `services.sssd.enable` | | |
 | `services.sssd.environmentFile` | | |

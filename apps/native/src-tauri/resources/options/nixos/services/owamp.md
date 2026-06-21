@@ -5,5 +5,5 @@
 All options under `services.owamp`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `services.owamp.enable` | | |

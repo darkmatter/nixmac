@@ -5,7 +5,7 @@
 All options under `services.httpd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.httpd.adminAddr` | | |
 | `services.httpd.configFile` | | |
 | `services.httpd.customLogFormat` | | |

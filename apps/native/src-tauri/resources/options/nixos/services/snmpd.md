@@ -5,7 +5,7 @@
 All options under `services.snmpd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.snmpd.configFile` | | |
 | `services.snmpd.configText` | | |
 | `services.snmpd.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.autorandr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.autorandr.enable` | `boolean` | Whether to enable the Autorandr systemd service. This module is complementary to programs.autorandr which handles the configuration (profiles). |
 | `services.autorandr.extraOptions` | `list of string` | Extra options to pass to Autorandr. |
 | `services.autorandr.ignoreLid` | `boolean` | Treat outputs as connected even if their lids are closed. |

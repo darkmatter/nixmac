@@ -5,7 +5,7 @@
 All options under `openstack`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `openstack.efi` | | |
 | `openstack.zfs.datasets` | | |
 | `openstack.zfs.enable` | | |

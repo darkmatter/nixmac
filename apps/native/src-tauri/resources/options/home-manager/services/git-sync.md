@@ -5,7 +5,7 @@
 All options under `services.git-sync`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ------------------------------ | --------------------------------------------- |
 | `services.git-sync.enable` | `boolean` | Whether to enable git-sync services. |
 | `services.git-sync.package` | `package` | The git-sync package to use. |
 | `services.git-sync.repositories` | `attribute set of (submodule)` | The repositories that should be synchronized. |

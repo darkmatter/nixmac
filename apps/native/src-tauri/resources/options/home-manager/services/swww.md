@@ -5,7 +5,7 @@
 All options under `services.swww`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.swww.enable` | | |
 | `services.swww.extraArgs` | | |
 | `services.swww.package` | | |

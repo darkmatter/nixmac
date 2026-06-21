@@ -5,7 +5,7 @@
 All options under `services.hyprshell`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.hyprshell.enable` | `boolean` | Whether to enable hyprshell. |
 | `services.hyprshell.package` | `null or package` | The hyprshell package to use. |
 | `services.hyprshell.settings` | `JSON value` | Configuration settings for hyprshell. All the available options can be found here: https://github.com/H3rmt/hyprshell/blob/hyprshell-release/docs/CONFIGURE.md#config-options |

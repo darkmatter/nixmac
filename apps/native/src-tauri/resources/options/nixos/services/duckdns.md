@@ -5,7 +5,7 @@
 All options under `services.duckdns`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.duckdns.domains` | | |
 | `services.duckdns.domainsFile` | | |
 | `services.duckdns.enable` | | |

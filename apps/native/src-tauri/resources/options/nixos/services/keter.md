@@ -5,7 +5,7 @@
 All options under `services.keter`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.keter.bundle.appName` | | |
 | `services.keter.bundle.domain` | | |
 | `services.keter.bundle.executable` | | |

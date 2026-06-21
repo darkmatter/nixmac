@@ -5,7 +5,7 @@
 All options under `services.pimsync`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | `services.pimsync.configFile` | `null or absolute path` | Optional configuration file to use instead of the default file ( $XDG_CONFIG_HOME/pimsync/pimsync.conf ). |
 | `services.pimsync.enable` | `boolean` | Whether to enable pimsync. |
 | `services.pimsync.package` | `package` | The pimsync package to use. |

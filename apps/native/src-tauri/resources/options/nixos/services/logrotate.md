@@ -5,7 +5,7 @@
 All options under `services.logrotate`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.logrotate.allowNetworking` | | |
 | `services.logrotate.checkConfig` | | |
 | `services.logrotate.config` | | |

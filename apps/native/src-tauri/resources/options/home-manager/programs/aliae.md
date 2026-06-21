@@ -5,7 +5,7 @@
 All options under `programs.aliae`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.aliae.configLocation` | `string` | Path where aliae should look for its config file. This doesn’t override where Home-Manager places the generated config file. Changing this option could prevent aliae from using the settings defined in your Home-Manager configuration. |
 | `programs.aliae.enable` | `boolean` | Whether to enable aliae. |
 | `programs.aliae.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |

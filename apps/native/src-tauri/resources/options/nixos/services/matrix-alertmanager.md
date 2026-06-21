@@ -5,7 +5,7 @@
 All options under `services.matrix-alertmanager`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.matrix-alertmanager.enable` | | |
 | `services.matrix-alertmanager.homeserverUrl` | | |
 | `services.matrix-alertmanager.matrixRooms` | | |

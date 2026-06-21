@@ -5,7 +5,7 @@
 All options under `services.szurubooru`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.szurubooru.client.package` | | |
 | `services.szurubooru.dataDir` | | |
 | `services.szurubooru.database.host` | | |

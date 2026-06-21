@@ -5,7 +5,7 @@
 All options under `services.fediwall`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.fediwall.enable` | | |
 | `services.fediwall.hostName` | | |
 | `services.fediwall.nginx` | | |

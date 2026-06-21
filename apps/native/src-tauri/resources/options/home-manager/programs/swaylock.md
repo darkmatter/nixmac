@@ -5,7 +5,7 @@
 All options under `programs.swaylock`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | `programs.swaylock.enable` | `boolean` | Whether to enable swaylock. |
 | `programs.swaylock.package` | `null or package` | The swaylock package to use. |
 | `programs.swaylock.settings` | `attribute set of (boolean or floating point number or signed integer or absolute path or string)` | Default arguments to swaylock . An empty set disables configuration generation. |

@@ -5,5 +5,5 @@
 All options under `services.sundtek`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.sundtek.enable` | | |

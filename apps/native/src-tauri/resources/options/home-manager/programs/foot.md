@@ -5,7 +5,7 @@
 All options under `programs.foot`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.foot.enable` | `boolean` | Whether to enable Foot terminal. |
 | `programs.foot.package` | `package` | The foot package to use. |
 | `programs.foot.server.enable` | `boolean` | Whether to enable Foot terminal server. |

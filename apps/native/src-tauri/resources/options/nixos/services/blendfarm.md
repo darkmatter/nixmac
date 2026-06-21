@@ -5,7 +5,7 @@
 All options under `services.blendfarm`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.blendfarm.basicSecurityPasswordFile` | | |
 | `services.blendfarm.blenderPackage` | | |
 | `services.blendfarm.enable` | | |

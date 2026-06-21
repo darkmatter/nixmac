@@ -5,7 +5,7 @@
 All options under `services.locate`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.locate.enable` | | |
 | `services.locate.extraFlags` | | |
 | `services.locate.includeStore` | | |

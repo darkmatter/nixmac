@@ -5,7 +5,7 @@
 All options under `programs.foot`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `programs.foot.enable` | | |
 | `programs.foot.enableBashIntegration` | | |
 | `programs.foot.enableFishIntegration` | | |

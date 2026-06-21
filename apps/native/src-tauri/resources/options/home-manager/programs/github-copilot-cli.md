@@ -5,7 +5,7 @@
 All options under `programs.github-copilot-cli`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------- | ---- | ----------- |
 | `programs.github-copilot-cli.agents` | | |
 | `programs.github-copilot-cli.configDir` | | |
 | `programs.github-copilot-cli.context` | | |

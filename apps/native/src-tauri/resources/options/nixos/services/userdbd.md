@@ -5,7 +5,7 @@
 All options under `services.userdbd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.userdbd.enable` | | |
 | `services.userdbd.enableSSHSupport` | | |
 | `services.userdbd.silenceHighSystemUsers` | | |

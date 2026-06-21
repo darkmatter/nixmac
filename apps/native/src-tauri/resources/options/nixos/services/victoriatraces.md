@@ -5,7 +5,7 @@
 All options under `services.victoriatraces`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.victoriatraces.basicAuthPasswordFile` | | |
 | `services.victoriatraces.basicAuthUsername` | | |
 | `services.victoriatraces.enable` | | |

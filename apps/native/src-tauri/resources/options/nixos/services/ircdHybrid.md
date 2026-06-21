@@ -5,7 +5,7 @@
 All options under `services.ircdHybrid`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.ircdHybrid.adminEmail` | | |
 | `services.ircdHybrid.certificate` | | |
 | `services.ircdHybrid.description` | | |

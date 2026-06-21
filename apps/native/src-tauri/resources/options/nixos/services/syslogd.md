@@ -5,7 +5,7 @@
 All options under `services.syslogd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.syslogd.defaultConfig` | | |
 | `services.syslogd.enable` | | |
 | `services.syslogd.enableNetworkInput` | | |

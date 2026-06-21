@@ -5,5 +5,5 @@
 All options under `programs.kclock`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `programs.kclock.enable` | | |

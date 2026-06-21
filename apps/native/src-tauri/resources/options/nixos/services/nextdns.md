@@ -5,6 +5,6 @@
 All options under `services.nextdns`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.nextdns.arguments` | | |
 | `services.nextdns.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.traccar`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.traccar.enable` | | |
 | `services.traccar.environmentFile` | | |
 | `services.traccar.settings` | | |

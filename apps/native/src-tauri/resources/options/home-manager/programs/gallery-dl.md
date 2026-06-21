@@ -5,7 +5,7 @@
 All options under `programs.gallery-dl`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.gallery-dl.enable` | `boolean` | Whether to enable gallery-dl. |
 | `programs.gallery-dl.package` | `null or package` | The gallery-dl package to use. |
 | `programs.gallery-dl.settings` | `JSON value` | Configuration written to $XDG_CONFIG_HOME/gallery-dl/config.json . See https://github.com/mikf/gallery-dl#configuration for supported values. |

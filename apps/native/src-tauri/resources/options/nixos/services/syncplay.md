@@ -5,7 +5,7 @@
 All options under `services.syncplay`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.syncplay.certDir` | | |
 | `services.syncplay.chat` | | |
 | `services.syncplay.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.ergo`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.ergo.api.keyHash` | | |
 | `services.ergo.api.listen.ip` | | |
 | `services.ergo.api.listen.port` | | |

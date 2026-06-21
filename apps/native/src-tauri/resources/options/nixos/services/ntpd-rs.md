@@ -5,7 +5,7 @@
 All options under `services.ntpd-rs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.ntpd-rs.enable` | | |
 | `services.ntpd-rs.metrics.enable` | | |
 | `services.ntpd-rs.package` | | |

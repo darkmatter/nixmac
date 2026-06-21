@@ -5,6 +5,6 @@
 All options under `programs.thunar`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `programs.thunar.enable` | | |
 | `programs.thunar.plugins` | | |

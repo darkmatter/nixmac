@@ -5,7 +5,7 @@
 All options under `programs.intelli-shell`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.intelli-shell.enable` | `boolean` | Whether to enable intelli-shell. |
 | `programs.intelli-shell.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.intelli-shell.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |

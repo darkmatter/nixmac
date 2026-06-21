@@ -5,7 +5,7 @@
 All options under `services.lldap`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------- | ---- | ----------- |
 | `services.lldap.database.createLocally` | | |
 | `services.lldap.database.type` | | |
 | `services.lldap.enable` | | |

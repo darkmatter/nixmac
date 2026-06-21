@@ -14,6 +14,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // is false — return 403 from Vite's fs guard.
 const repoRoot = path.resolve(__dirname, "../..");
 const uiPackageRoot = path.resolve(repoRoot, "packages/ui/src");
+const statePackageRoot = path.resolve(repoRoot, "packages/state/src");
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -26,6 +27,22 @@ export default defineConfig({
       {
         find: "@nixmac/ui",
         replacement: uiPackageRoot,
+      },
+      {
+        find: "@nixmac/state",
+        replacement: statePackageRoot,
+      },
+      {
+        find: "@nixmac/native/ipc/types",
+        replacement: path.resolve(__dirname, "src/ipc/types.ts"),
+      },
+      {
+        find: "@nixmac/native/types/feedback",
+        replacement: path.resolve(__dirname, "src/types/feedback.ts"),
+      },
+      {
+        find: "@nixmac/native/types/rebuild",
+        replacement: path.resolve(__dirname, "src/types/rebuild.ts"),
       },
       {
         find: "@",
@@ -42,19 +59,13 @@ export default defineConfig({
         plugins: [["babel-plugin-react-compiler"]],
       },
     }),
-    (monacoEditorPlugin as unknown as { default: typeof monacoEditorPlugin })
-      .default({}),
+    (monacoEditorPlugin as unknown as { default: typeof monacoEditorPlugin }).default({}),
   ],
   server: {
     watch: {
       // Critical for Nix: don't follow symlinks
       followSymlinks: false,
-      ignored: [
-        "**/src-tauri/**",
-        "**/node_modules/**",
-        "**/.direnv/**",
-        "**/.devenv/**",
-      ],
+      ignored: ["**/src-tauri/**", "**/node_modules/**", "**/.direnv/**", "**/.devenv/**"],
       // Use polling as fallback for Nix
       // usePolling: true,
       // interval: 1000,

@@ -5,6 +5,6 @@
 All options under `services.eg25-manager`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.eg25-manager.enable` | | |
 | `services.eg25-manager.package` | | |

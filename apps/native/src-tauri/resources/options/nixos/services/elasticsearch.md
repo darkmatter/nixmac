@@ -5,7 +5,7 @@
 All options under `services.elasticsearch`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.elasticsearch.cluster_name` | | |
 | `services.elasticsearch.dataDir` | | |
 | `services.elasticsearch.enable` | | |

@@ -5,6 +5,6 @@
 All options under `services.saned`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.saned.enable` | | |
 | `services.saned.extraConfig` | | |

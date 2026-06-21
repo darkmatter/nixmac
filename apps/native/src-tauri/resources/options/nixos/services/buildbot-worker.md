@@ -5,7 +5,7 @@
 All options under `services.buildbot-worker`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.buildbot-worker.adminMessage` | | |
 | `services.buildbot-worker.buildbotDir` | | |
 | `services.buildbot-worker.enable` | | |

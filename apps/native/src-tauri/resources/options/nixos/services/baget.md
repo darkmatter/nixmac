@@ -5,5 +5,5 @@
 All options under `services.baget`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `services.baget.enable` | | |

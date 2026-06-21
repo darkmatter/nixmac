@@ -5,7 +5,7 @@
 All options under `services.slurm`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.slurm.client.enable` | | |
 | `services.slurm.clusterName` | | |
 | `services.slurm.controlAddr` | | |

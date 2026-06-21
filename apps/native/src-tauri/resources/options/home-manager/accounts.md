@@ -5,7 +5,7 @@
 All options under `accounts`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `accounts.calendar.accounts` | `attribute set of (submodule)` | List of calendars. |
 | `accounts.calendar.basePath` | `string` | The base directory in which to save calendars. May be a relative path, in which case it is relative the home directory. |
 | `accounts.contact.accounts` | `attribute set of (submodule)` | List of contacts. |

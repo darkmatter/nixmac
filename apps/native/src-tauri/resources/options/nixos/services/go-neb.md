@@ -5,7 +5,7 @@
 All options under `services.go-neb`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.go-neb.baseUrl` | | |
 | `services.go-neb.bindAddress` | | |
 | `services.go-neb.config` | | |

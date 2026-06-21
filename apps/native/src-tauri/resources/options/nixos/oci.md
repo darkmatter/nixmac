@@ -5,6 +5,6 @@
 All options under `oci`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------- | ---- | ----------- |
 | `oci.diskSize` | | |
 | `oci.efi` | | |

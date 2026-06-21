@@ -5,7 +5,7 @@
 All options under `services.artalk`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.artalk.allowModify` | | |
 | `services.artalk.configFile` | | |
 | `services.artalk.enable` | | |

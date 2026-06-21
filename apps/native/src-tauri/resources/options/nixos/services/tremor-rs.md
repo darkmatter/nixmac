@@ -5,7 +5,7 @@
 All options under `services.tremor-rs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.tremor-rs.enable` | | |
 | `services.tremor-rs.host` | | |
 | `services.tremor-rs.loggerSettings` | | |

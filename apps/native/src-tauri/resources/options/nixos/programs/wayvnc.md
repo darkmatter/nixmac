@@ -5,6 +5,6 @@
 All options under `programs.wayvnc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `programs.wayvnc.enable` | | |
 | `programs.wayvnc.package` | | |

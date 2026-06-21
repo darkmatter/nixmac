@@ -5,7 +5,7 @@
 All options under `networking`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `networking.applicationFirewall.allowSigned` | `null or boolean` | Whether to allow built-in software to receive incoming connections. |
 | `networking.applicationFirewall.allowSignedApp` | `null or boolean` | Whether to allow downloaded signed software to receive incoming connections. |
 | `networking.applicationFirewall.blockAllIncoming` | `null or boolean` | Whether to block all incoming connections. |

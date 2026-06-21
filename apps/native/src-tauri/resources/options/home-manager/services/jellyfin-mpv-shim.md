@@ -5,7 +5,7 @@
 All options under `services.jellyfin-mpv-shim`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.jellyfin-mpv-shim.enable` | `boolean` | Whether to enable Jellyfin mpv shim. |
 | `services.jellyfin-mpv-shim.mpvBindings` | `null or (attribute set of string)` | mpv input bindings to use for jellyfin-mpv-shim. If null, jellyfin-mpv-shim will use its default input configuration. |
 | `services.jellyfin-mpv-shim.mpvConfig` | `null or (attribute set of (string or signed integer or boolean or floating point number))` | mpv configuration options to use for jellyfin-mpv-shim. If null, jellyfin-mpv-shim will use its default mpv configuration. |

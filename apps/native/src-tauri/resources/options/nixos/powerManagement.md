@@ -5,7 +5,7 @@
 All options under `powerManagement`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `powerManagement.bootCommands` | | |
 | `powerManagement.cpuFreqGovernor` | | |
 | `powerManagement.cpufreq.max` | | |

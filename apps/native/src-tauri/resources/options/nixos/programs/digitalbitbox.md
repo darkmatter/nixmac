@@ -5,6 +5,6 @@
 All options under `programs.digitalbitbox`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `programs.digitalbitbox.enable` | | |
 | `programs.digitalbitbox.package` | | |

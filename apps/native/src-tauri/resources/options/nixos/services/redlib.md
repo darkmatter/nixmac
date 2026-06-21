@@ -5,7 +5,7 @@
 All options under `services.redlib`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.redlib.address` | | |
 | `services.redlib.enable` | | |
 | `services.redlib.openFirewall` | | |

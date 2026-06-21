@@ -5,7 +5,7 @@
 All options under `services.readeck`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.readeck.enable` | | |
 | `services.readeck.environmentFile` | | |
 | `services.readeck.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.squeezelite`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.squeezelite.enable` | | |
 | `services.squeezelite.extraArgs` | | |
 | `services.squeezelite.extraArguments` | | |

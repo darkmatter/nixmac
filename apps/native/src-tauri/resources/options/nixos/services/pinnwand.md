@@ -5,7 +5,7 @@
 All options under `services.pinnwand`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.pinnwand.enable` | | |
 | `services.pinnwand.port` | | |
 | `services.pinnwand.settings` | | |

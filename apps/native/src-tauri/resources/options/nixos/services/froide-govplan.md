@@ -5,7 +5,7 @@
 All options under `services.froide-govplan`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.froide-govplan.dataDir` | | |
 | `services.froide-govplan.enable` | | |
 | `services.froide-govplan.hostName` | | |

@@ -5,7 +5,7 @@
 All options under `services.interception-tools`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.interception-tools.enable` | | |
 | `services.interception-tools.plugins` | | |
 | `services.interception-tools.udevmonConfig` | | |

@@ -5,7 +5,7 @@
 All options under `programs.sm64ex`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
 | `programs.sm64ex.baserom` | `null or absolute path` | The path to the Super Mario 64 baserom to extract assets from. |
 | `programs.sm64ex.enable` | `boolean` | Whether to enable sm64ex. |
 | `programs.sm64ex.extraCompileFlags` | `null or (list of string)` | Extra flags to pass to the compiler. See https://github.com/sm64pc/sm64ex/wiki/Build-options for more information. |

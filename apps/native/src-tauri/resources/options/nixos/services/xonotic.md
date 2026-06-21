@@ -5,7 +5,7 @@
 All options under `services.xonotic`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.xonotic.appendConfig` | | |
 | `services.xonotic.dataDir` | | |
 | `services.xonotic.enable` | | |

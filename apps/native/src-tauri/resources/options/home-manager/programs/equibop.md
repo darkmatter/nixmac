@@ -5,7 +5,7 @@
 All options under `programs.equibop`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `programs.equibop.enable` | | |
 | `programs.equibop.equicord.extraQuickCss` | | |
 | `programs.equibop.equicord.settings` | | |

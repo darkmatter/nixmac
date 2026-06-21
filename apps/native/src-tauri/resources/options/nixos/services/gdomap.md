@@ -5,5 +5,5 @@
 All options under `services.gdomap`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.gdomap.enable` | | |

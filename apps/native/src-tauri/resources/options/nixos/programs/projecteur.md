@@ -5,6 +5,6 @@
 All options under `programs.projecteur`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `programs.projecteur.enable` | | |
 | `programs.projecteur.package` | | |

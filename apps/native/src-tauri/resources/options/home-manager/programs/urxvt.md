@@ -5,7 +5,7 @@
 All options under `programs.urxvt`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------- |
 | `programs.urxvt.enable` | `boolean` | Whether to enable rxvt-unicode terminal emulator. |
 | `programs.urxvt.extraConfig` | `attribute set of anything` | Additional configuration to add. |
 | `programs.urxvt.fonts` | `list of string` | List of fonts to be used. |

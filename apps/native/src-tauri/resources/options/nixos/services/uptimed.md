@@ -5,5 +5,5 @@
 All options under `services.uptimed`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.uptimed.enable` | | |

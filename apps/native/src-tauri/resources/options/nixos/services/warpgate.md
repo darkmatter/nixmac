@@ -5,7 +5,7 @@
 All options under `services.warpgate`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.warpgate.databaseUrlFile` | | |
 | `services.warpgate.enable` | | |
 | `services.warpgate.package` | | |

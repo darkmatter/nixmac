@@ -5,7 +5,7 @@
 All options under `services.opentelemetry-collector`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------------- | ---- | ----------- |
 | `services.opentelemetry-collector.configFile` | | |
 | `services.opentelemetry-collector.enable` | | |
 | `services.opentelemetry-collector.package` | | |

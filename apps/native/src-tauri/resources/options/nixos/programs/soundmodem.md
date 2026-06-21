@@ -5,6 +5,6 @@
 All options under `programs.soundmodem`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `programs.soundmodem.enable` | | |
 | `programs.soundmodem.package` | | |

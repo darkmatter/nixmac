@@ -5,7 +5,7 @@
 All options under `services.linux-wallpaperengine`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | `services.linux-wallpaperengine.assetsPath` | `null or absolute path` | Path to the assets directory. |
 | `services.linux-wallpaperengine.clamping` | `null or one of “clamp”, “border”, “repeat”` | Clamping mode for all wallpapers. |
 | `services.linux-wallpaperengine.enable` | `boolean` | Whether to enable linux-wallpaperengine, an implementation of Wallpaper Engine functionality. |

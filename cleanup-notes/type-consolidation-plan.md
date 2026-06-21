@@ -68,7 +68,7 @@ ______________________________________________________________________
 ## Non-actions (explicitly excluded)
 
 | Candidate | Reason excluded |
-|---|---|
+| ------------------------------------------------------- | ------------------------------------------------------------- |
 | `sqlite_types::Evolution` vs `evolve::types::Evolution` | Different types, already disambiguated by module path |
 | `CommitResult` in `commands.rs` | Used only there; no duplication; leave inline |
 | `darwin.rs::BuildResult`, `ActivateResult` | Private to `darwin.rs`; no duplication; leave |

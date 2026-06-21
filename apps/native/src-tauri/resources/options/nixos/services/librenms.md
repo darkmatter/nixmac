@@ -5,7 +5,7 @@
 All options under `services.librenms`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------------- | ---- | ----------- |
 | `services.librenms.dataDir` | | |
 | `services.librenms.database.createLocally` | | |
 | `services.librenms.database.database` | | |

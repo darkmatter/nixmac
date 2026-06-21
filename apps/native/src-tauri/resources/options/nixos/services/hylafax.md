@@ -5,7 +5,7 @@
 All options under `services.hylafax`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.hylafax.areaCode` | | |
 | `services.hylafax.autostart` | | |
 | `services.hylafax.commonModemConfig` | | |

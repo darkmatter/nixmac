@@ -5,7 +5,7 @@
 All options under `programs.bottom`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------- |
 | `programs.bottom.enable` | `boolean` | Whether to enable bottom, a cross-platform graphical process/system monitor with a customizable interface. |
 | `programs.bottom.package` | `null or package` | The bottom package to use. |
 | `programs.bottom.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/bottom/bottom.toml . |

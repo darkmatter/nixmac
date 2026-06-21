@@ -5,7 +5,7 @@
 All options under `programs.foliate`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.foliate.enable` | `boolean` | Whether to enable Foliate. |
 | `programs.foliate.package` | `null or package` | The foliate package to use. |
 | `programs.foliate.settings` | `attribute set of ((GVariant value) or attribute set of (GVariant value))` | Added to config.dconf.settings under com/github/johnfactotum/Foliate , the scheme is defined at https://github.com/johnfactotum/foliate/blob/gtk4/data/com.github.johnfactotum.Foliate.gschema.xml |

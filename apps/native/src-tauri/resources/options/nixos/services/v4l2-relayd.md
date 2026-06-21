@@ -5,5 +5,5 @@
 All options under `services.v4l2-relayd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.v4l2-relayd.instances` | | |

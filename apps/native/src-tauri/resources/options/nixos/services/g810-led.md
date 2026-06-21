@@ -5,7 +5,7 @@
 All options under `services.g810-led`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.g810-led.earlySetup` | | |
 | `services.g810-led.enable` | | |
 | `services.g810-led.package` | | |

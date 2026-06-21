@@ -5,7 +5,7 @@
 All options under `services.howdy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.howdy.control` | | |
 | `services.howdy.enable` | | |
 | `services.howdy.package` | | |

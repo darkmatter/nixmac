@@ -49,7 +49,7 @@ nixmac/
 ## Tech stack
 
 | Layer | Technologies |
-|-------|-------------|
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Rust backend | Tauri 2, tokio, serde/serde_json, anyhow, thiserror, rusqlite + rusqlite_migration, specta (type export), rnix + rowan (Nix AST), clap (CLI), async-openai, tiktoken-rs |
 | TypeScript frontend | React 19, Vite 7, Zustand, Radix UI, TailwindCSS 3, Monaco Editor, Shiki, Sonner, motion |
 | Package manager | **Bun** (1.3.x) — use `bun install`, never `npm install` or `yarn` |
@@ -137,7 +137,7 @@ async fn json_completion(&self, ...) -> Result<(String, TokenUsage)>
 ## Key domain concepts
 
 | Concept | Description |
-|---------|-------------|
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Evolution** | One AI-driven config change cycle: prompt → tool use → file edits → `darwin-rebuild build` → `darwin-rebuild switch` → git commit |
 | **EvolutionState** | Enum: `Pending`, `Running`, `Complete`, `Failed`, `Cancelled` |
 | **SemanticFileEdit** | Structured Nix AST edit (`Add`, `Remove`, `Set`, `SetAttrs`) applied by `edit_nix_file.rs` via rnix/rowan |

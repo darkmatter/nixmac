@@ -5,5 +5,5 @@
 All options under `programs.bcc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------- | ---- | ----------- |
 | `programs.bcc.enable` | | |

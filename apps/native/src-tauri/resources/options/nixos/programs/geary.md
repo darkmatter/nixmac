@@ -5,5 +5,5 @@
 All options under `programs.geary`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `programs.geary.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.openvscode-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------------- | ---- | ----------- |
 | `services.openvscode-server.connectionToken` | | |
 | `services.openvscode-server.connectionTokenFile` | | |
 | `services.openvscode-server.enable` | | |

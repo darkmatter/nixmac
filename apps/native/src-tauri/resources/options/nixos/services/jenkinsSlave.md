@@ -5,7 +5,7 @@
 All options under `services.jenkinsSlave`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.jenkinsSlave.enable` | | |
 | `services.jenkinsSlave.group` | | |
 | `services.jenkinsSlave.home` | | |

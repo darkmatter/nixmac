@@ -5,7 +5,7 @@
 All options under `services.rauc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.rauc.bootloader` | | |
 | `services.rauc.bundleFormats` | | |
 | `services.rauc.client.enable` | | |

@@ -5,7 +5,7 @@
 All options under `programs.macchina`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.macchina.enable` | `boolean` | Whether to enable macchina system information fetcher. |
 | `programs.macchina.package` | `null or package` | The macchina package to use. |
 | `programs.macchina.settings.current_shell` | `null or boolean` | Show the current shell rather than the user’s default shell. |

@@ -5,7 +5,7 @@
 All options under `services.rabbitmq`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.rabbitmq.config` | | |
 | `services.rabbitmq.configItems` | | |
 | `services.rabbitmq.cookie` | | |

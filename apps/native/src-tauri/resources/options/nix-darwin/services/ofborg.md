@@ -5,7 +5,7 @@
 All options under `services.ofborg`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | --------------- | ---------------------------------------------------- |
 | `services.ofborg.configFile` | `absolute path` | Configuration file to use for ofborg. |
 | `services.ofborg.enable` | `boolean` | Whether to enable the ofborg builder service. |
 | `services.ofborg.logFile` | `absolute path` | The logfile to use for the ofborg service. |

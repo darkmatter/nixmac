@@ -5,7 +5,7 @@
 All options under `services.mpd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.mpd.credentials` | | |
 | `services.mpd.dataDir` | | |
 | `services.mpd.dbFile` | | |

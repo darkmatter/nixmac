@@ -5,5 +5,5 @@
 All options under `services.sysprof`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.sysprof.enable` | | |

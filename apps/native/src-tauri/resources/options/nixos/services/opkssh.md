@@ -5,7 +5,7 @@
 All options under `services.opkssh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.opkssh.authorizations` | | |
 | `services.opkssh.enable` | | |
 | `services.opkssh.group` | | |

@@ -5,7 +5,7 @@
 All options under `services.monetdb`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.monetdb.dataDir` | | |
 | `services.monetdb.enable` | | |
 | `services.monetdb.group` | | |

@@ -5,7 +5,7 @@
 All options under `services.cfdyndns`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.cfdyndns.apiTokenFile` | | |
 | `services.cfdyndns.apikey` | | |
 | `services.cfdyndns.apikeyFile` | | |

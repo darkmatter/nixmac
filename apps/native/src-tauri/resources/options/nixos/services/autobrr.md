@@ -5,7 +5,7 @@
 All options under `services.autobrr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.autobrr.enable` | | |
 | `services.autobrr.openFirewall` | | |
 | `services.autobrr.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.picom`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.picom.activeOpacity` | `integer or floating point number between 0 and 1 (both inclusive)` | Opacity of active windows. |
 | `services.picom.backend` | `one of “egl”, “glx”, “xrender”, “xr_glx_hybrid”` | Backend to use: egl , glx , xrender or xr_glx_hybrid . |
 | `services.picom.enable` | `boolean` | Whether to enable Picom X11 compositor. |

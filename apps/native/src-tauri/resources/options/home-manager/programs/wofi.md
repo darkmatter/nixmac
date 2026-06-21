@@ -5,7 +5,7 @@
 All options under `programs.wofi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `programs.wofi.enable` | `boolean` | Whether to enable wofi: a launcher/menu program for wlroots based wayland compositors such as sway. |
 | `programs.wofi.package` | `null or package` | The wofi package to use. |
 | `programs.wofi.settings` | `attribute set` | Configuration options for wofi. See wofi (5) . |

@@ -5,7 +5,7 @@
 All options under `services.firefly-iii-data-importer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------ | ---- | ----------- |
 | `services.firefly-iii-data-importer.dataDir` | | |
 | `services.firefly-iii-data-importer.enable` | | |
 | `services.firefly-iii-data-importer.enableNginx` | | |

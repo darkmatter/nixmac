@@ -5,6 +5,6 @@
 All options under `services.evremap`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.evremap.enable` | | |
 | `services.evremap.settings` | | |

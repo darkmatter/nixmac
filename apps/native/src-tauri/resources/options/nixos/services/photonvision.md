@@ -5,7 +5,7 @@
 All options under `services.photonvision`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.photonvision.enable` | | |
 | `services.photonvision.openFirewall` | | |
 | `services.photonvision.package` | | |

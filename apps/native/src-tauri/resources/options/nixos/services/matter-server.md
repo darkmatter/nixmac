@@ -5,7 +5,7 @@
 All options under `services.matter-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.matter-server.enable` | | |
 | `services.matter-server.extraArgs` | | |
 | `services.matter-server.logLevel` | | |

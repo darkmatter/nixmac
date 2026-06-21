@@ -5,7 +5,7 @@
 All options under `services.uwsgi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.uwsgi.capabilities` | | |
 | `services.uwsgi.enable` | | |
 | `services.uwsgi.group` | | |

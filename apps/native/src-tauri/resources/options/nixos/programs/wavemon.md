@@ -5,5 +5,5 @@
 All options under `programs.wavemon`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `programs.wavemon.enable` | | |

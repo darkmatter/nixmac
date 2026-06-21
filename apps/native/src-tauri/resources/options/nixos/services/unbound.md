@@ -5,7 +5,7 @@
 All options under `services.unbound`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.unbound.allowedAccess` | | |
 | `services.unbound.checkconf` | | |
 | `services.unbound.enable` | | |

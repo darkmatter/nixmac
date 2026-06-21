@@ -5,5 +5,5 @@
 All options under `services.autossh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | --------------------- | --------------------------------------------------------------------------------------------------- |
 | `services.autossh.sessions` | `list of (submodule)` | List of AutoSSH sessions to start as launchd daemon. Each daemon is named ‘autossh-{session.name}’. |

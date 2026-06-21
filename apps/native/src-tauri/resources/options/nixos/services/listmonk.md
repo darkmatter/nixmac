@@ -5,7 +5,7 @@
 All options under `services.listmonk`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.listmonk.database.createLocally` | | |
 | `services.listmonk.database.mutableSettings` | | |
 | `services.listmonk.database.settings` | | |

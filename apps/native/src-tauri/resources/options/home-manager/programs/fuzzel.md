@@ -5,7 +5,7 @@
 All options under `programs.fuzzel`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
 | `programs.fuzzel.enable` | `boolean` | Whether to enable fuzzel. |
 | `programs.fuzzel.package` | `null or package` | The fuzzel package to use. |
 | `programs.fuzzel.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration for fuzzel written to $XDG_CONFIG_HOME/fuzzel/fuzzel.ini . See fuzzel.ini (5) for a list of available options. |

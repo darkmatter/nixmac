@@ -5,5 +5,5 @@
 All options under `services.sshd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------- | ---- | ----------- |
 | `services.sshd.enable` | | |

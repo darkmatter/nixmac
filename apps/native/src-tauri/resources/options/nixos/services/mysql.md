@@ -5,7 +5,7 @@
 All options under `services.mysql`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.mysql.bind` | | |
 | `services.mysql.configFile` | | |
 | `services.mysql.dataDir` | | |

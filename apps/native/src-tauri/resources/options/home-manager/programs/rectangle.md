@@ -5,7 +5,7 @@
 All options under `programs.rectangle`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `programs.rectangle.defaults` | | |
 | `programs.rectangle.enable` | | |
 | `programs.rectangle.package` | | |

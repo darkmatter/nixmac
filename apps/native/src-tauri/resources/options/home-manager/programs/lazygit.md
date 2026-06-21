@@ -5,7 +5,7 @@
 All options under `programs.lazygit`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.lazygit.enable` | `boolean` | Whether to enable lazygit, a simple terminal UI for git commands. |
 | `programs.lazygit.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.lazygit.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |

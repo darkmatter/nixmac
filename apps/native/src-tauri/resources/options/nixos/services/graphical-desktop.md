@@ -5,5 +5,5 @@
 All options under `services.graphical-desktop`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.graphical-desktop.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.zitadel`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.zitadel.enable` | | |
 | `services.zitadel.extraSettingsPaths` | | |
 | `services.zitadel.extraStepsPaths` | | |

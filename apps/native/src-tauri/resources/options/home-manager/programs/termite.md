@@ -5,7 +5,7 @@
 All options under `programs.termite`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.termite.allowBold` | `null or boolean` | Allow the output of bold characters when the bold escape sequence appears. |
 | `programs.termite.audibleBell` | `null or boolean` | Have the terminal beep on the terminal bell. |
 | `programs.termite.backgroundColor` | `null or string` | Background color value. |

@@ -5,7 +5,7 @@
 All options under `services.unison`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ------------------------------ | ----------------------------------------- |
 | `services.unison.enable` | `boolean` | Whether to enable Unison synchronisation. |
 | `services.unison.package` | `package` | The unison package to use. |
 | `services.unison.pairs` | `attribute set of (submodule)` | Unison root pairs to keep synchronised. |

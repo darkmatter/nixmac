@@ -5,7 +5,7 @@
 All options under `services.mopidy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.mopidy.configuration` | | |
 | `services.mopidy.dataDir` | | |
 | `services.mopidy.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.ferm`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `services.ferm.config` | | |
 | `services.ferm.enable` | | |
 | `services.ferm.package` | | |

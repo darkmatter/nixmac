@@ -5,7 +5,7 @@
 All options under `programs.ec`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `programs.ec.enable` | | |
 | `programs.ec.enableGitIntegration` | | |
 | `programs.ec.package` | | |

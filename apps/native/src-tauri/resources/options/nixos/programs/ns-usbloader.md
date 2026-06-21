@@ -5,5 +5,5 @@
 All options under `programs.ns-usbloader`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `programs.ns-usbloader.enable` | | |

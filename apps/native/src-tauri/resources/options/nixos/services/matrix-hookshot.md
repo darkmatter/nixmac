@@ -5,7 +5,7 @@
 All options under `services.matrix-hookshot`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.matrix-hookshot.enable` | | |
 | `services.matrix-hookshot.package` | | |
 | `services.matrix-hookshot.registrationFile` | | |

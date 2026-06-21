@@ -5,7 +5,7 @@
 All options under `programs.delta`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
 | `programs.delta.enable` | `boolean` | Whether to enable delta, a syntax highlighter for git diffs. |
 | `programs.delta.enableGitIntegration` | `boolean` | Whether to enable git integration for delta. |
 | `programs.delta.enableJujutsuIntegration` | `boolean` | Whether to enable jujutsu integration for delta. |

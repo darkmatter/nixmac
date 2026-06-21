@@ -5,6 +5,6 @@
 All options under `services.status-notifier-watcher`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | --------- | ------------------------------------------ |
 | `services.status-notifier-watcher.enable` | `boolean` | Whether to enable Status Notifier Watcher. |
 | `services.status-notifier-watcher.package` | `package` | The status-notifier-item package to use. |

@@ -5,5 +5,5 @@
 All options under `services.blueman`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.blueman.enable` | | |

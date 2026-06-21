@@ -5,5 +5,5 @@
 All options under `programs.browserpass`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `programs.browserpass.enable` | | |

@@ -5,6 +5,6 @@
 All options under `programs.nexttrace`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `programs.nexttrace.enable` | | |
 | `programs.nexttrace.package` | | |

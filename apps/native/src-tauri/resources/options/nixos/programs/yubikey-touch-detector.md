@@ -5,7 +5,7 @@
 All options under `programs.yubikey-touch-detector`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `programs.yubikey-touch-detector.enable` | | |
 | `programs.yubikey-touch-detector.libnotify` | | |
 | `programs.yubikey-touch-detector.unixSocket` | | |

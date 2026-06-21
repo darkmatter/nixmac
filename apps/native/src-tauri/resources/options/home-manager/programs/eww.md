@@ -5,7 +5,7 @@
 All options under `programs.eww`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ----------------------- | ----------------------------------------------------------- |
 | `programs.eww.configDir` | `null or absolute path` | The directory that gets symlinked to $XDG_CONFIG_HOME/eww . |
 | `programs.eww.enable` | `boolean` | Whether to enable eww. |
 | `programs.eww.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |

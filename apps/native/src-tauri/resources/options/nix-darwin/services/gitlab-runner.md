@@ -5,7 +5,7 @@
 All options under `services.gitlab-runner`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------ | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.gitlab-runner.checkInterval` | `signed integer` | Defines the interval length, in seconds, between new jobs check. The default value is 3; if set to 0 or lower, the default value will be used. See runner documentation for more information. |
 | `services.gitlab-runner.concurrent` | `signed integer` | Limits how many jobs globally can be run concurrently. The most upper limit of jobs using all defined runners. 0 does not mean unlimited. |
 | `services.gitlab-runner.configFile` | `null or absolute path` | Configuration file for gitlab-runner. |

@@ -5,7 +5,7 @@
 All options under `services.deluge`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.deluge.authFile` | | |
 | `services.deluge.config` | | |
 | `services.deluge.dataDir` | | |

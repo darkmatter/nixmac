@@ -5,7 +5,7 @@
 All options under `services.lifecycled`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.lifecycled.awsRegion` | | |
 | `services.lifecycled.cloudwatchGroup` | | |
 | `services.lifecycled.cloudwatchStream` | | |

@@ -5,7 +5,7 @@
 All options under `services.radvd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.radvd.config` | | |
 | `services.radvd.debugLevel` | | |
 | `services.radvd.enable` | | |

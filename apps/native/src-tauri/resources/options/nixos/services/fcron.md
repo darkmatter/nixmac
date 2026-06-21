@@ -5,7 +5,7 @@
 All options under `services.fcron`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.fcron.allow` | | |
 | `services.fcron.deny` | | |
 | `services.fcron.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.pinchflat`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.pinchflat.enable` | | |
 | `services.pinchflat.extraConfig` | | |
 | `services.pinchflat.group` | | |

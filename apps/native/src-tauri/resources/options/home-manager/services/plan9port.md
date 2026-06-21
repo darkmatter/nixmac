@@ -5,7 +5,7 @@
 All options under `services.plan9port`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | --------- | -------------------------------------------------------------------- |
 | `services.plan9port.fontsrv.enable` | `boolean` | Whether to enable the Plan 9 file system access to host fonts. |
 | `services.plan9port.package` | `package` | The plan9port package to use. |
 | `services.plan9port.plumber.enable` | `boolean` | Whether to enable the Plan 9 file system for interprocess messaging. |

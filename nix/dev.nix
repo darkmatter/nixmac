@@ -39,7 +39,8 @@ lib.mkIf (!config.container.isBuilding) {
     pkgs.ruff
     pkgs.yq
     pkgs.playwright
-
+    pkgs.oxfmt
+    pkgs.oxlint
     # Python packages used in one-off scripts
     pkgs.python312Packages.requests
     pkgs.python312Packages.beautifulsoup4

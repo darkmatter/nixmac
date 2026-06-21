@@ -5,7 +5,7 @@
 All options under `services.teleport`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.teleport.diag.addr` | | |
 | `services.teleport.diag.enable` | | |
 | `services.teleport.diag.port` | | |

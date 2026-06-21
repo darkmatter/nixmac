@@ -5,7 +5,7 @@
 All options under `services.pangolin`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.pangolin.baseDomain` | | |
 | `services.pangolin.dashboardDomain` | | |
 | `services.pangolin.dataDir` | | |

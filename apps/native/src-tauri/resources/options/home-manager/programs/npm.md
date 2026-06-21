@@ -5,7 +5,7 @@
 All options under `programs.npm`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.npm.enable` | `boolean` | Whether to enable npm user config. |
 | `programs.npm.package` | `null or package` | The nodejs package to use. |
 | `programs.npm.settings` | `attribute set of (INI atom (null, bool, int, float or string) or a list of them for duplicate keys)` | The user-specific npm configuration. See https://docs.npmjs.com/cli/using-npm/config and https://docs.npmjs.com/cli/configuring-npm/npmrc for more information. |

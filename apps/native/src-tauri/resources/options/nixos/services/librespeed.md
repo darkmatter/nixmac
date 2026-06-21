@@ -5,7 +5,7 @@
 All options under `services.librespeed`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.librespeed.domain` | | |
 | `services.librespeed.downloadIPDB` | | |
 | `services.librespeed.enable` | | |

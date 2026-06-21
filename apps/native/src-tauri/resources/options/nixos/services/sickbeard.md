@@ -5,7 +5,7 @@
 All options under `services.sickbeard`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.sickbeard.configFile` | | |
 | `services.sickbeard.dataDir` | | |
 | `services.sickbeard.enable` | | |

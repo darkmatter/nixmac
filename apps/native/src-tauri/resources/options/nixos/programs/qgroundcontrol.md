@@ -5,7 +5,7 @@
 All options under `programs.qgroundcontrol`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------------------- | ---- | ----------- |
 | `programs.qgroundcontrol.blacklistModemManagerFromTTYUSB` | | |
 | `programs.qgroundcontrol.enable` | | |
 | `programs.qgroundcontrol.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.bitbox-bridge`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.bitbox-bridge.enable` | | |
 | `services.bitbox-bridge.package` | | |
 | `services.bitbox-bridge.port` | | |

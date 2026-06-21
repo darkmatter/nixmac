@@ -5,5 +5,5 @@
 All options under `services.malcontent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.malcontent.enable` | | |

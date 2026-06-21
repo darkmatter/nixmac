@@ -5,7 +5,7 @@
 All options under `services.soft-serve`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.soft-serve.enable` | | |
 | `services.soft-serve.package` | | |
 | `services.soft-serve.settings` | | |

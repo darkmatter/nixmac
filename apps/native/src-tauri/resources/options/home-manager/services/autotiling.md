@@ -5,7 +5,7 @@
 All options under `services.autotiling`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---------------- | -------------------------------------------- |
 | `services.autotiling.enable` | `boolean` | Whether to enable enable autotiling service. |
 | `services.autotiling.extraArgs` | `list of string` | Extra arguments to pass to autotiling. |
 | `services.autotiling.package` | `package` | The autotiling package to use. |

@@ -5,7 +5,7 @@
 All options under `programs.pyenv`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | --------------- | ---------------------------------------- |
 | `programs.pyenv.enable` | `boolean` | Whether to enable pyenv. |
 | `programs.pyenv.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.pyenv.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |

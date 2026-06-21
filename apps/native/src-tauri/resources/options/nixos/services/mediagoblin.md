@@ -5,7 +5,7 @@
 All options under `services.mediagoblin`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.mediagoblin.createDatabaseLocally` | | |
 | `services.mediagoblin.domain` | | |
 | `services.mediagoblin.enable` | | |

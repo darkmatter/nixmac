@@ -5,7 +5,7 @@
 All options under `services.gpg-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `services.gpg-agent.defaultCacheTtl` | `null or signed integer` | Set the time a cache entry is valid to the given number of seconds. |
 | `services.gpg-agent.defaultCacheTtlSsh` | `null or signed integer` | Set the time a cache entry used for SSH keys is valid to the given number of seconds. |
 | `services.gpg-agent.enable` | `boolean` | Whether to enable GnuPG private key agent. |

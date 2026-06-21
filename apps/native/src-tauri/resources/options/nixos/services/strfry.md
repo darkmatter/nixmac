@@ -5,7 +5,7 @@
 All options under `services.strfry`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.strfry.enable` | | |
 | `services.strfry.package` | | |
 | `services.strfry.settings` | | |

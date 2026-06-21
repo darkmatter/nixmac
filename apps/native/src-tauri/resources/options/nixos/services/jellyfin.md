@@ -5,7 +5,7 @@
 All options under `services.jellyfin`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------------------- | ---- | ----------- |
 | `services.jellyfin.cacheDir` | | |
 | `services.jellyfin.configDir` | | |
 | `services.jellyfin.dataDir` | | |

@@ -5,7 +5,7 @@
 All options under `services.meilisearch`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.meilisearch.dumplessUpgrade` | | |
 | `services.meilisearch.enable` | | |
 | `services.meilisearch.environment` | | |

@@ -5,7 +5,7 @@
 All options under `programs.nixbit`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `programs.nixbit.enable` | | |
 | `programs.nixbit.forceAutostart` | | |
 | `programs.nixbit.package` | | |

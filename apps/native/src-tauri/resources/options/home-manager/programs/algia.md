@@ -5,7 +5,7 @@
 All options under `programs.algia`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.algia.enable` | `boolean` | Whether to enable algia. |
 | `programs.algia.package` | `null or package` | The algia package to use. |
 | `programs.algia.settings` | `JSON value` | Configuration settings for algia. All the available options can be found here: https://github.com/mattn/algia?tab=readme-ov-file#configuration |

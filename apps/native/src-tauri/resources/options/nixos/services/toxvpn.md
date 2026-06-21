@@ -5,7 +5,7 @@
 All options under `services.toxvpn`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.toxvpn.auto_add_peers` | | |
 | `services.toxvpn.enable` | | |
 | `services.toxvpn.localip` | | |

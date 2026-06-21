@@ -5,6 +5,6 @@
 All options under `services.haveged`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.haveged.enable` | | |
 | `services.haveged.refill_threshold` | | |

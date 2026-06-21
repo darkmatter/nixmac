@@ -5,7 +5,7 @@
 All options under `services.bcachefs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.bcachefs.autoScrub.enable` | | |
 | `services.bcachefs.autoScrub.fileSystems` | | |
 | `services.bcachefs.autoScrub.interval` | | |

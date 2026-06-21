@@ -5,7 +5,7 @@
 All options under `services.rsyslogd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.rsyslogd.defaultConfig` | | |
 | `services.rsyslogd.enable` | | |
 | `services.rsyslogd.extraConfig` | | |

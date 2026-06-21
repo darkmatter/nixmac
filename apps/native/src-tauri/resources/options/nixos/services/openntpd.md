@@ -5,7 +5,7 @@
 All options under `services.openntpd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.openntpd.enable` | | |
 | `services.openntpd.extraConfig` | | |
 | `services.openntpd.extraOptions` | | |

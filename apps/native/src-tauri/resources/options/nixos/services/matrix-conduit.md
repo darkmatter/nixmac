@@ -5,7 +5,7 @@
 All options under `services.matrix-conduit`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.matrix-conduit.enable` | | |
 | `services.matrix-conduit.extraEnvironment` | | |
 | `services.matrix-conduit.package` | | |

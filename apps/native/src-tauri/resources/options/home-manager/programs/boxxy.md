@@ -5,7 +5,7 @@
 All options under `programs.boxxy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---------------------------------------------- | -------------------------------------------------------------- |
 | `programs.boxxy.enable` | `boolean` | Whether to enable boxxy: Boxes in badly behaving applications. |
 | `programs.boxxy.package` | `null or package` | The boxxy package to use. |
 | `programs.boxxy.rules` | `list of (open submodule of (YAML 1.1 value))` | List of boxxy rules |

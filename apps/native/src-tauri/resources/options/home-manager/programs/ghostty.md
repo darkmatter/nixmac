@@ -5,7 +5,7 @@
 All options under `programs.ghostty`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
 | `programs.ghostty.clearDefaultKeybinds` | `boolean` | Whether to clear default keybinds. |
 | `programs.ghostty.enable` | `boolean` | Whether to enable Ghostty. |
 | `programs.ghostty.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |

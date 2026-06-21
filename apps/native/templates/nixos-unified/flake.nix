@@ -11,7 +11,8 @@
     nixos-unified.url = "github:srid/nixos-unified";
   };
 
-  outputs = inputs:
+  outputs =
+    inputs:
     inputs.nixos-unified.lib.mkFlake {
       inherit inputs;
       root = ./.;

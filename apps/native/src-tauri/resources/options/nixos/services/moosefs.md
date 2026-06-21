@@ -5,7 +5,7 @@
 All options under `services.moosefs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.moosefs.cgiserver.enable` | | |
 | `services.moosefs.cgiserver.openFirewall` | | |
 | `services.moosefs.cgiserver.settings` | | |

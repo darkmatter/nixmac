@@ -5,7 +5,7 @@
 All options under `programs.vim`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------- |
 | `programs.vim.enable` | `boolean` | Whether to configure vim. |
 | `programs.vim.enableSensible` | `boolean` | Enable sensible configuration options for vim. |
 | `programs.vim.extraKnownPlugins` | `attribute set of package` | Custom plugin declarations to add to VAM’s knownPlugins. |

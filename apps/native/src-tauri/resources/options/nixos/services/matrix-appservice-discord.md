@@ -5,7 +5,7 @@
 All options under `services.matrix-appservice-discord`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------------- | ---- | ----------- |
 | `services.matrix-appservice-discord.enable` | | |
 | `services.matrix-appservice-discord.environmentFile` | | |
 | `services.matrix-appservice-discord.localpart` | | |

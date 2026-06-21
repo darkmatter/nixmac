@@ -5,7 +5,7 @@
 All options under `services.kismet`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.kismet.dataDir` | | |
 | `services.kismet.enable` | | |
 | `services.kismet.extraConfig` | | |

@@ -5,7 +5,7 @@
 All options under `services.jack`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.jack.alsa.enable` | | |
 | `services.jack.alsa.support32Bit` | | |
 | `services.jack.jackd.enable` | | |

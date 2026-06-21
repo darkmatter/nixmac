@@ -5,6 +5,6 @@
 All options under `programs.iio-hyprland`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `programs.iio-hyprland.enable` | | |
 | `programs.iio-hyprland.package` | | |

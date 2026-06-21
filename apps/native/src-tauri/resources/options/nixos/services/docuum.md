@@ -5,7 +5,7 @@
 All options under `services.docuum`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.docuum.deletionChunkSize` | | |
 | `services.docuum.enable` | | |
 | `services.docuum.keep` | | |

@@ -5,7 +5,7 @@
 All options under `services.magnetico`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.magnetico.crawler.address` | | |
 | `services.magnetico.crawler.extraOptions` | | |
 | `services.magnetico.crawler.maxLeeches` | | |

@@ -5,6 +5,6 @@
 All options under `services.uvcvideo`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.uvcvideo.dynctrl.enable` | | |
 | `services.uvcvideo.dynctrl.packages` | | |

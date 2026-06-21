@@ -5,7 +5,7 @@
 All options under `services.kanboard`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.kanboard.dataDir` | | |
 | `services.kanboard.domain` | | |
 | `services.kanboard.enable` | | |

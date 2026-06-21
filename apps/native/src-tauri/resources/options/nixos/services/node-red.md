@@ -5,7 +5,7 @@
 All options under `services.node-red`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.node-red.configFile` | | |
 | `services.node-red.define` | | |
 | `services.node-red.enable` | | |

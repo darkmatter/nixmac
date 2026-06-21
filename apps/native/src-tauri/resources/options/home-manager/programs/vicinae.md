@@ -5,7 +5,7 @@
 All options under `programs.vicinae`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `programs.vicinae.enable` | `boolean` | Whether to enable vicinae launcher daemon. |
 | `programs.vicinae.extensions` | `list of package` | List of Vicinae extensions to install. |
 | `programs.vicinae.package` | `null or package` | The vicinae package to use. |

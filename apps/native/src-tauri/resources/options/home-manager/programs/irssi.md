@@ -5,7 +5,7 @@
 All options under `programs.irssi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | -------------------------------- | ---------------------------------------------------- |
 | `programs.irssi.aliases` | `attribute set of string` | An attribute set that maps aliases to commands. |
 | `programs.irssi.enable` | `boolean` | Whether to enable the Irssi chat client. |
 | `programs.irssi.extraConfig` | `strings concatenated with “\n”` | These lines are appended to the Irssi configuration. |

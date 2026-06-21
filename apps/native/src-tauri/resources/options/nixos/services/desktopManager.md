@@ -5,7 +5,7 @@
 All options under `services.desktopManager`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------------------------- | ---- | ----------- |
 | `services.desktopManager.budgie.enable` | | |
 | `services.desktopManager.budgie.extraGSettingsOverridePackages` | | |
 | `services.desktopManager.budgie.extraGSettingsOverrides` | | |

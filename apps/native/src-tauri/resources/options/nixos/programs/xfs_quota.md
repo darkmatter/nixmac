@@ -5,5 +5,5 @@
 All options under `programs.xfs_quota`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `programs.xfs_quota.projects` | | |

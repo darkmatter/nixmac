@@ -5,7 +5,7 @@
 All options under `services.tang`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.tang.enable` | | |
 | `services.tang.ipAddressAllow` | | |
 | `services.tang.listenStream` | | |

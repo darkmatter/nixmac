@@ -5,7 +5,7 @@
 All options under `programs.sketchybar`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.sketchybar.config` | `null or strings concatenated with “\n” or (submodule)` | The sketchybar configuration. Can be specified as: |
 | `programs.sketchybar.configType` | `one of “bash”, “lua”` | The type of configuration to generate. |
 | `programs.sketchybar.enable` | `boolean` | Whether to enable sketchybar. |

@@ -5,7 +5,7 @@
 All options under `programs.element-desktop`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.element-desktop.enable` | `boolean` | Whether to enable element-desktop. |
 | `programs.element-desktop.package` | `null or package` | The element-desktop package to use. |
 | `programs.element-desktop.profiles` | `attribute set of (JSON value)` | Extra profiles for Element. Those can be accessed using the “–profile $NAME” flag. The same warning and options apply here. |

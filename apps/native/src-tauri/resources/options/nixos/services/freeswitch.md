@@ -5,7 +5,7 @@
 All options under `services.freeswitch`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.freeswitch.configDir` | | |
 | `services.freeswitch.configTemplate` | | |
 | `services.freeswitch.enable` | | |

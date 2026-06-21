@@ -5,7 +5,7 @@
 All options under `programs.abook`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.abook.enable` | `boolean` | Whether to enable Abook. |
 | `programs.abook.extraConfig` | `strings concatenated with “\n”` | Extra lines added to $HOME/.config/abook/abookrc . Available configuration options are described in the abook repository: https://sourceforge.net/p/abook/git/ci/master/tree/sample.abookrc . |
 | `programs.abook.package` | `null or package` | The abook package to use. |

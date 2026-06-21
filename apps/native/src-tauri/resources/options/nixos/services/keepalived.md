@@ -5,7 +5,7 @@
 All options under `services.keepalived`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.keepalived.enable` | | |
 | `services.keepalived.enableScriptSecurity` | | |
 | `services.keepalived.extraConfig` | | |

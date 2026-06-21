@@ -5,7 +5,7 @@
 All options under `services.chisel-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.chisel-server.authfile` | | |
 | `services.chisel-server.backend` | | |
 | `services.chisel-server.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.turn-rs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.turn-rs.enable` | | |
 | `services.turn-rs.package` | | |
 | `services.turn-rs.secretFile` | | |

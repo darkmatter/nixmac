@@ -5,7 +5,7 @@
 All options under `programs.jujutsu`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `programs.jujutsu.ediff` | `boolean` | Enable ediff as a merge tool |
 | `programs.jujutsu.enable` | `boolean` | Whether to enable a Git-compatible DVCS that is both simple and powerful. |
 | `programs.jujutsu.enableBashIntegration` | | |

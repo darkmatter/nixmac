@@ -5,7 +5,7 @@
 All options under `programs.offlineimap`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | -------------------------------------------------------- | ---------------------------------------------------------------------- |
 | `programs.offlineimap.enable` | `boolean` | Whether to enable OfflineIMAP. |
 | `programs.offlineimap.extraConfig.default` | `attribute set of (string or signed integer or boolean)` | Extra configuration options added to the DEFAULT section. |
 | `programs.offlineimap.extraConfig.general` | `attribute set of (string or signed integer or boolean)` | Extra configuration options added to the general section. |

@@ -5,7 +5,7 @@
 All options under `programs.helix`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.helix.defaultEditor` | `boolean` | Whether to configure hx as the default editor using the EDITOR and VISUAL environment variables. |
 | `programs.helix.enable` | `boolean` | Whether to enable helix text editor. |
 | `programs.helix.extraConfig` | `strings concatenated with “\n”` | Extra lines to be appended to the config file. Use this if you would like to maintain order for helix settings (eg. for minor modes) |

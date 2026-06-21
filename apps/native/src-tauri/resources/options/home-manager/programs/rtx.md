@@ -5,7 +5,7 @@
 All options under `programs.rtx`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `programs.rtx.enable` | | |
 | `programs.rtx.enableBashIntegration` | | |
 | `programs.rtx.enableFishIntegration` | | |

@@ -5,7 +5,7 @@
 All options under `programs.yazi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `programs.yazi.enable` | | |
 | `programs.yazi.flavors` | | |
 | `programs.yazi.initLua` | | |

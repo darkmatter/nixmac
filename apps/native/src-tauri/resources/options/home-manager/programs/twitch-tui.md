@@ -5,7 +5,7 @@
 All options under `programs.twitch-tui`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.twitch-tui.enable` | `boolean` | Whether to enable twitch-tui. |
 | `programs.twitch-tui.package` | `null or package` | The twitch-tui package to use. |
 | `programs.twitch-tui.settings` | `TOML value` | Configuration settings for twitch-tui. All the available options can be found here: https://github.com/Xithrius/twitch-tui/blob/main/default-config.toml |

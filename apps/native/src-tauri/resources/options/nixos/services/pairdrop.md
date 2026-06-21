@@ -5,7 +5,7 @@
 All options under `services.pairdrop`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.pairdrop.enable` | | |
 | `services.pairdrop.environment` | | |
 | `services.pairdrop.package` | | |

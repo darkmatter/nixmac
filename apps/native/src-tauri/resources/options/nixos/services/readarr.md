@@ -5,7 +5,7 @@
 All options under `services.readarr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.readarr.dataDir` | | |
 | `services.readarr.enable` | | |
 | `services.readarr.environmentFiles` | | |

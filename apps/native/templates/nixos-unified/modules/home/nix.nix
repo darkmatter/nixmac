@@ -1,4 +1,9 @@
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 {
   nix.package = lib.mkDefault pkgs.nix;
   home.packages = [

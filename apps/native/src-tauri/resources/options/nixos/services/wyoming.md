@@ -5,7 +5,7 @@
 All options under `services.wyoming`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------------- | ---- | ----------- |
 | `services.wyoming.faster-whisper.package` | | |
 | `services.wyoming.faster-whisper.servers` | | |
 | `services.wyoming.openwakeword.customModelsDirectories` | | |

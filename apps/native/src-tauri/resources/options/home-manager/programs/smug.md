@@ -5,7 +5,7 @@
 All options under `programs.smug`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ------------------------------ | ------------------------------------------ |
 | `programs.smug.enable` | `boolean` | Whether to enable Smug session manager. |
 | `programs.smug.package` | `null or package` | The smug package to use. |
 | `programs.smug.projects` | `attribute set of (submodule)` | Attribute set with project configurations. |

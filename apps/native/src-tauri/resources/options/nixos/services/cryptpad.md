@@ -5,7 +5,7 @@
 All options under `services.cryptpad`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.cryptpad.configureNginx` | | |
 | `services.cryptpad.enable` | | |
 | `services.cryptpad.package` | | |

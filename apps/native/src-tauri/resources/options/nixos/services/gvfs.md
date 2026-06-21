@@ -5,6 +5,6 @@
 All options under `services.gvfs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `services.gvfs.enable` | | |
 | `services.gvfs.package` | | |

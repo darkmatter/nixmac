@@ -5,7 +5,7 @@
 All options under `services.litestream`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.litestream.enable` | | |
 | `services.litestream.environmentFile` | | |
 | `services.litestream.package` | | |

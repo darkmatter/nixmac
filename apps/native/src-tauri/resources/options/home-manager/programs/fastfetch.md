@@ -5,7 +5,7 @@
 All options under `programs.fastfetch`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.fastfetch.enable` | `boolean` | Whether to enable Fastfetch. |
 | `programs.fastfetch.package` | `null or package` | The fastfetch package to use. |
 | `programs.fastfetch.settings` | `JSON value` | Configuration written to $XDG_CONFIG_HOME/fastfetch/config.jsonc . See https://github.com/fastfetch-cli/fastfetch/wiki/Json-Schema for the documentation. |

@@ -5,7 +5,7 @@
 All options under `services.litellm`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.litellm.enable` | | |
 | `services.litellm.environment` | | |
 | `services.litellm.environmentFile` | | |

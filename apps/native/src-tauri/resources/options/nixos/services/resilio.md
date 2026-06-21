@@ -5,7 +5,7 @@
 All options under `services.resilio`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.resilio.apiKey` | | |
 | `services.resilio.checkForUpdates` | | |
 | `services.resilio.deviceName` | | |

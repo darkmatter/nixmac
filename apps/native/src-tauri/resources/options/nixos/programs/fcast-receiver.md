@@ -5,7 +5,7 @@
 All options under `programs.fcast-receiver`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `programs.fcast-receiver.enable` | | |
 | `programs.fcast-receiver.openFirewall` | | |
 | `programs.fcast-receiver.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.ollama`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.ollama.acceleration` | | |
 | `services.ollama.enable` | | |
 | `services.ollama.environmentVariables` | | |

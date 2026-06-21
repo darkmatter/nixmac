@@ -5,7 +5,7 @@
 All options under `programs.spotify-player`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------- |
 | `programs.spotify-player.actions` | `list of (TOML value)` | Configuration written to the actions field of $XDG_CONFIG_HOME/spotify-player/keymap.toml . |
 | `programs.spotify-player.enable` | `boolean` | Whether to enable spotify-player. |
 | `programs.spotify-player.keymaps` | `list of (TOML value)` | Configuration written to the keymaps field of $XDG_CONFIG_HOME/spotify-player/keymap.toml . |

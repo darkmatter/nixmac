@@ -5,7 +5,7 @@
 All options under `services.strongswan`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.strongswan.ca` | | |
 | `services.strongswan.connections` | | |
 | `services.strongswan.enable` | | |

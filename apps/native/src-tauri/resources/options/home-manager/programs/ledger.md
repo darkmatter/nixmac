@@ -5,7 +5,7 @@
 All options under `programs.ledger`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.ledger.enable` | `boolean` | Whether to enable ledger, a double-entry accounting system. |
 | `programs.ledger.extraConfig` | `strings concatenated with “\n”` | Extra configuration to add to $XDG_CONFIG_HOME/ledger/ledgerrc . |
 | `programs.ledger.package` | `null or package` | The ledger package to use. |

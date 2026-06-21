@@ -5,7 +5,7 @@
 All options under `services.epgstation`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.epgstation.basicAuth` | | |
 | `services.epgstation.clientSocketioPort` | | |
 | `services.epgstation.database.name` | | |

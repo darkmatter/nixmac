@@ -5,7 +5,7 @@
 All options under `programs.hexchat`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.hexchat.channels` | `attribute set of (submodule)` | Configures $XDG_CONFIG_HOME/hexchat/servlist.conf . |
 | `programs.hexchat.enable` | `boolean` | Whether to enable HexChat, a graphical IRC client. |
 | `programs.hexchat.overwriteConfigFiles` | `null or boolean` | Enables overwriting HexChat configuration files ( hexchat.conf , servlist.conf ). Any existing HexChat configuration will be lost. Make sure to back up any previous configuration before enabling this. |

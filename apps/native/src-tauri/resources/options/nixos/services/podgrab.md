@@ -5,7 +5,7 @@
 All options under `services.podgrab`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.podgrab.dataDirectory` | | |
 | `services.podgrab.enable` | | |
 | `services.podgrab.group` | | |

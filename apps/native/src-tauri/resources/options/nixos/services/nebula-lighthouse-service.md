@@ -5,7 +5,7 @@
 All options under `services.nebula-lighthouse-service`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.nebula-lighthouse-service.enable` | | |
 | `services.nebula-lighthouse-service.settings` | | |
 | `services.nebula-lighthouse-service.user` | | |

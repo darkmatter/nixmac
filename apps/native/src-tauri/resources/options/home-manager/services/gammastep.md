@@ -5,7 +5,7 @@
 All options under `services.gammastep`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.gammastep.brightness.day` | | |
 | `services.gammastep.brightness.night` | | |
 | `services.gammastep.dawnTime` | `null or string` | Set the time interval of dawn manually. The times must be specified as HH:MM in 24-hour format. |

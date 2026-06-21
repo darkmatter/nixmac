@@ -5,7 +5,7 @@
 All options under `services.postgrey`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.postgrey.IPv4CIDR` | | |
 | `services.postgrey.IPv6CIDR` | | |
 | `services.postgrey.autoWhitelist` | | |

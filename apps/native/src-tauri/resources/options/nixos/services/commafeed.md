@@ -5,7 +5,7 @@
 All options under `services.commafeed`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.commafeed.enable` | | |
 | `services.commafeed.environment` | | |
 | `services.commafeed.environmentFile` | | |

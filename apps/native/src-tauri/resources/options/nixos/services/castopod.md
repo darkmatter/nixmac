@@ -5,7 +5,7 @@
 All options under `services.castopod`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.castopod.configureNginx` | | |
 | `services.castopod.dataDir` | | |
 | `services.castopod.database.createLocally` | | |

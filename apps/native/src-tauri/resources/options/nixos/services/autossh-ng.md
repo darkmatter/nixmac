@@ -5,5 +5,5 @@
 All options under `services.autossh-ng`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.autossh-ng.sessions` | | |

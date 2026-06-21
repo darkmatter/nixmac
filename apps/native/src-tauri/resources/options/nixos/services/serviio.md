@@ -5,7 +5,7 @@
 All options under `services.serviio`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.serviio.dataDir` | | |
 | `services.serviio.enable` | | |
 | `services.serviio.openFirewall` | | |

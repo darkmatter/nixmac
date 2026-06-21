@@ -5,7 +5,7 @@
 All options under `services.gammu-smsd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------ | ---- | ----------- |
 | `services.gammu-smsd.backend.files.errorSMSPath` | | |
 | `services.gammu-smsd.backend.files.inboxPath` | | |
 | `services.gammu-smsd.backend.files.outboxPath` | | |

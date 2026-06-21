@@ -5,7 +5,7 @@
 All options under `services.home-assistant`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------------- | ---- | ----------- |
 | `services.home-assistant.applyDefaultConfig` | | |
 | `services.home-assistant.autoExtraComponents` | | |
 | `services.home-assistant.blueprints.automation` | | |

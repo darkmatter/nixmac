@@ -5,6 +5,6 @@
 All options under `programs.oddjobd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `programs.oddjobd.enable` | | |
 | `programs.oddjobd.package` | | |

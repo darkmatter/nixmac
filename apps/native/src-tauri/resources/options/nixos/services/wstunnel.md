@@ -5,7 +5,7 @@
 All options under `services.wstunnel`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.wstunnel.clients` | | |
 | `services.wstunnel.enable` | | |
 | `services.wstunnel.servers` | | |

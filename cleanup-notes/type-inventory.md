@@ -8,7 +8,7 @@ ______________________________________________________________________
 ## 1. `src/types.rs` — Tauri IPC response types + evolve streaming
 
 | Name | Line | Kind | Specta? | Where used |
-|---|---|---|---|---|
+| ----------------------------- | ---- | ------ | ------- | -------------------------------------------------------------------------------- |
 | `Config` | 14 | struct | No | `commands.rs` only |
 | `ApplyResult` | 27 | struct | No | `commands.rs` only (legacy; different fields from `finalize_apply::ApplyResult`) |
 | `FeedbackShareOptions` | 48 | struct | No | `feedback.rs`, `commands.rs` |
@@ -32,7 +32,7 @@ ______________________________________________________________________
 All types here carry `#[derive(Type)]` and are exported to `apps/native/src/types/shared.ts`.
 
 | Name | Line | Kind | Where used |
-|---|---|---|---|
+| ------------------------ | ---- | ------ | ---------------------------------------------------------------------- |
 | `ChangeType` | 15 | enum | `git.rs`, exported |
 | `GitFileStatus` | 25 | struct | `git.rs`, `build_state.rs`, exported |
 | `GitStatus` | 33 | struct | widespread, exported |
@@ -61,7 +61,7 @@ ______________________________________________________________________
 All carry `#[derive(Type)]`; exported to `apps/native/src/types/sqlite.ts`.
 
 | Name | Line | Kind | Where used |
-|---|---|---|---|
+| --------------- | ---- | ------ | ------------------------------------------------------ |
 | `Commit` | 11 | struct | `git.rs`, `db/commits.rs`, `shared_types.rs`, exported |
 | `Evolution` | 22 | struct | `db/evolutions.rs`, exported |
 | `Prompt` | 33 | struct | `db/`, exported |
@@ -77,7 +77,7 @@ ______________________________________________________________________
 No `#[derive(Type)]`; not exported to TS.
 
 | Name | Line | Kind | Where used |
-|---|---|---|---|
+| ------------------ | ---- | ------ | ------------------------------------------------------------------------------------------ |
 | `FileEdit` | 7 | struct | `evolve/mod.rs`, `evolve/file_ops.rs`, `evolve/tools.rs` |
 | `FileEditAction` | 15 | enum | `evolve/edit_nix_file.rs`, `evolve/ensure_secret.rs`, `evolve/tools.rs`, `mac/homebrew.rs` |
 | `SemanticFileEdit` | 36 | struct | `evolve/edit_nix_file.rs`, `evolve/ensure_secret.rs`, `evolve/tools.rs` |
@@ -90,7 +90,7 @@ ______________________________________________________________________
 ## 5. Inline definitions in other files
 
 | Name | File | Line | Kind | Where else used |
-|---|---|---|---|---|
+| ------------------- | ------------------- | ---- | ---------------- | ----------------------- |
 | `ApplyResult` | `finalize_apply.rs` | 11 | struct | `commands.rs` |
 | `CommitResult` | `commands.rs` | 360 | struct | `commands.rs` only |
 | `BuildResult` | `darwin.rs` | 121 | struct (private) | `darwin.rs` only |
@@ -106,7 +106,7 @@ ______________________________________________________________________
 ### 6a. DUPLICATE: `ApplyResult` — name collision, different semantics
 
 | Location | Fields |
-|---|---|
+| ---------------------- | ----------------------------------------------------------------------------- |
 | `types.rs:27` | `ok: bool, code: Option<i32>, stdout: Option<String>, stderr: Option<String>` |
 | `finalize_apply.rs:11` | `git_status: GitStatus, evolve_state: EvolveState` |
 
@@ -117,7 +117,7 @@ These are **completely different types** with the same name. `types.rs::ApplyRes
 ### 6b. NEAR-DUPLICATE: `PanicInfo` ≈ `FeedbackPanicDetails`
 
 | Location | Fields |
-|---|---|
+| --------------------- | ----------------------------------------------------------------------------------------- |
 | `panic_handler.rs:21` | `message: String, location: Option<String>, backtrace: Option<String>, timestamp: String` |
 | `types.rs:142` | `message: String, location: Option<String>, backtrace: Option<String>, timestamp: String` |
 
@@ -128,7 +128,7 @@ These are **completely different types** with the same name. `types.rs::ApplyRes
 ### 6c. NEAR-DUPLICATE: `sqlite_types::Evolution` vs `evolve::types::Evolution`
 
 | Location | Fields |
-|---|---|
+| -------------------- | -------------------------------------------------------------------------------------------------- |
 | `sqlite_types.rs:22` | `id: i64, origin_branch: String, merged: i64, builds: i64` — DB row mirror |
 | `evolve/types.rs:75` | `id: String, created_at: i64, state: EvolutionState, prompt: String, ...` — in-memory AI evolution |
 
@@ -143,7 +143,7 @@ ______________________________________________________________________
 ## 7. Canonical Location Decisions
 
 | Type | Current | Action | Rationale |
-|---|---|---|---|
+| -------------------------------- | ------------------ | ------------------------------------------------ | --------------------------------------------------------------------------------- |
 | `types.rs::ApplyResult` | `types.rs` | Rename → `DarwinApplyLegacy` (inline in command) | Name-conflicts with `finalize_apply::ApplyResult`; legacy stub used in 1 place |
 | `PanicInfo` | `panic_handler.rs` | Delete; use `types::FeedbackPanicDetails` | Exact duplicate |
 | `EvolutionProgress` | `evolve/mod.rs` | Move → `evolve/types.rs` | Internal evolve type in god-module |

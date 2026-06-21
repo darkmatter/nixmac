@@ -5,7 +5,7 @@
 All options under `services.actkbd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.actkbd.bindings` | | |
 | `services.actkbd.enable` | | |
 | `services.actkbd.extraConfig` | | |

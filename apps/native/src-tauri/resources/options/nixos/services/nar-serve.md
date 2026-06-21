@@ -5,7 +5,7 @@
 All options under `services.nar-serve`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.nar-serve.cacheURL` | | |
 | `services.nar-serve.domain` | | |
 | `services.nar-serve.enable` | | |

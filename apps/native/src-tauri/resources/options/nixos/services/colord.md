@@ -5,5 +5,5 @@
 All options under `services.colord`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.colord.enable` | | |

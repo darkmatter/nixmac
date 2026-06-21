@@ -5,7 +5,7 @@
 All options under `services.hologram-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.hologram-agent.dialAddress` | | |
 | `services.hologram-agent.enable` | | |
 | `services.hologram-agent.httpPort` | | |

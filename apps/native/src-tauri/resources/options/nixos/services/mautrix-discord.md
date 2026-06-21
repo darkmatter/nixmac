@@ -5,7 +5,7 @@
 All options under `services.mautrix-discord`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------- | ---- | ----------- |
 | `services.mautrix-discord.dataDir` | | |
 | `services.mautrix-discord.enable` | | |
 | `services.mautrix-discord.environmentFile` | | |

@@ -5,7 +5,7 @@
 All options under `programs.cmus`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `programs.cmus.enable` | `boolean` | Whether to enable Enable cmus, the music player… |
 | `programs.cmus.extraConfig` | `strings concatenated with “\n”` | Extra configuration to add to cmus rc . |
 | `programs.cmus.package` | `null or package` | The cmus package to use. |

@@ -5,7 +5,7 @@
 All options under `programs.direnv`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `programs.direnv.angrr.autoUse` | | |
 | `programs.direnv.angrr.enable` | | |
 | `programs.direnv.direnvrcExtra` | | |

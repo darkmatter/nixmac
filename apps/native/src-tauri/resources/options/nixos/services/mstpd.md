@@ -5,5 +5,5 @@
 All options under `services.mstpd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `services.mstpd.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.cron`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.cron.cronFiles` | | |
 | `services.cron.enable` | | |
 | `services.cron.mailto` | | |

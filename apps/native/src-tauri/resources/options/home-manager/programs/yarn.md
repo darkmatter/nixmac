@@ -5,6 +5,6 @@
 All options under `programs.yarn`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---------------- | -------------------------------------------------------------------------------------- |
 | `programs.yarn.enable` | `boolean` | Whether to enable management of yarn config. |
 | `programs.yarn.settings` | `YAML 1.1 value` | Available configuration options for yarn see: https://yarnpkg.com/configuration/yarnrc |

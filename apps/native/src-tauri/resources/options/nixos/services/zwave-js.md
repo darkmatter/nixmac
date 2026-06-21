@@ -5,7 +5,7 @@
 All options under `services.zwave-js`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.zwave-js.enable` | | |
 | `services.zwave-js.extraFlags` | | |
 | `services.zwave-js.package` | | |

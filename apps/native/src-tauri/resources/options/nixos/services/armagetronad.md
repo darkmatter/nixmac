@@ -5,5 +5,5 @@
 All options under `services.armagetronad`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.armagetronad.servers` | | |

@@ -5,7 +5,7 @@
 All options under `services.gancio`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.gancio.enable` | | |
 | `services.gancio.nginx` | | |
 | `services.gancio.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.roundcube`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.roundcube.configureNginx` | | |
 | `services.roundcube.database.dbname` | | |
 | `services.roundcube.database.host` | | |

@@ -5,7 +5,7 @@
 All options under `programs.kakoune`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.kakoune.colorSchemePackage` | `null or package` | A kakoune color schemes to add to your colors folder. This works because kakoune recursively checks $XDG_CONFIG_HOME/kak/colors/ . To apply the color scheme use programs.kakoune.config.colorScheme = "theme" . |
 | `programs.kakoune.config` | `null or (submodule)` | kakoune configuration options. |
 | `programs.kakoune.defaultEditor` | `boolean` | Whether to configure kak as the default editor using the EDITOR and VISUAL environment variables. |

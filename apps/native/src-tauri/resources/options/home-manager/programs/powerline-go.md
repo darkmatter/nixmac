@@ -5,7 +5,7 @@
 All options under `programs.powerline-go`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.powerline-go.enable` | `boolean` | Whether to enable Powerline-go, a beautiful and useful low-latency prompt for your shell. |
 | `programs.powerline-go.extraUpdatePS1` | `string` | Shell code to execute after the prompt is set. |
 | `programs.powerline-go.modules` | `null or (list of string)` | List of module names to load. The list of all available modules as well as the choice of default ones are at https://github.com/justjanne/powerline-go . |

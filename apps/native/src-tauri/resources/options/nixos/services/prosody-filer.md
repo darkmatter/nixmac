@@ -5,6 +5,6 @@
 All options under `services.prosody-filer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.prosody-filer.enable` | | |
 | `services.prosody-filer.settings` | | |

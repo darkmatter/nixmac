@@ -5,7 +5,7 @@
 All options under `programs.i3status`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | `programs.i3status.enable` | `boolean` | Whether to enable i3status. |
 | `programs.i3status.enableDefault` | `boolean` | Whether or not to enable the default configuration. |
 | `programs.i3status.general` | `attribute set of (boolean or signed integer or string)` | Configuration to add to i3status config general section. See i3status (1) for options. |

@@ -5,7 +5,7 @@
 All options under `services.redshift`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.redshift.brightness.day` | | |
 | `services.redshift.brightness.night` | | |
 | `services.redshift.dawnTime` | `null or string` | Set the time interval of dawn manually. The times must be specified as HH:MM in 24-hour format. |

@@ -5,7 +5,7 @@
 All options under `services.karakeep`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------------- | ---- | ----------- |
 | `services.karakeep.browser.enable` | | |
 | `services.karakeep.browser.exe` | | |
 | `services.karakeep.browser.port` | | |

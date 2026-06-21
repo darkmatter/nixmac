@@ -5,7 +5,7 @@
 All options under `services.tuned`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.tuned.enable` | | |
 | `services.tuned.package` | | |
 | `services.tuned.ppdSettings` | | |

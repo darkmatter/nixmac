@@ -5,7 +5,7 @@
 All options under `services.prowlarr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.prowlarr.dataDir` | | |
 | `services.prowlarr.enable` | | |
 | `services.prowlarr.environmentFiles` | | |

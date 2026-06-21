@@ -5,6 +5,6 @@
 All options under `programs.arqbackup`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | --------- | ----------------------------- |
 | `programs.arqbackup.enable` | `boolean` | Whether to enable Arq backup. |
 | `programs.arqbackup.package` | `package` | The arq package to use. |

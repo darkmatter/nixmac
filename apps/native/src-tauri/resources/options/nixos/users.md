@@ -5,7 +5,7 @@
 All options under `users`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `users.allowNoPasswordLogin` | | |
 | `users.defaultUserHome` | | |
 | `users.defaultUserShell` | | |

@@ -5,7 +5,7 @@
 All options under `services.microsocks`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.microsocks.authOnce` | | |
 | `services.microsocks.authPasswordFile` | | |
 | `services.microsocks.authUsername` | | |

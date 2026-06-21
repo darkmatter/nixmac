@@ -5,7 +5,7 @@
 All options under `services.nmtrust`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.nmtrust.enable` | | |
 | `services.nmtrust.evalFailurePolicy` | | |
 | `services.nmtrust.excludedConnectionPatterns` | | |

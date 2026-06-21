@@ -5,6 +5,6 @@
 All options under `services.spice-autorandr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.spice-autorandr.enable` | | |
 | `services.spice-autorandr.package` | | |

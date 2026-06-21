@@ -5,7 +5,7 @@
 All options under `services.documize`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.documize.cert` | | |
 | `services.documize.db` | | |
 | `services.documize.dbtype` | | |

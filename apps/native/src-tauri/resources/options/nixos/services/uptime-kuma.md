@@ -5,7 +5,7 @@
 All options under `services.uptime-kuma`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.uptime-kuma.appriseSupport` | | |
 | `services.uptime-kuma.enable` | | |
 | `services.uptime-kuma.package` | | |

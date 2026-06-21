@@ -5,7 +5,7 @@
 All options under `programs.less`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | `programs.less.config` | `strings concatenated with “\n”` | Configuration for less , written to $XDG_CONFIG_HOME/lesskey . |
 | `programs.less.enable` | `boolean` | Whether to enable less, opposite of more. |
 | `programs.less.keys` | | |

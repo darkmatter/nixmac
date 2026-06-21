@@ -5,7 +5,7 @@
 All options under `services.headscale`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------------- | ---- | ----------- |
 | `services.headscale.address` | | |
 | `services.headscale.configFile` | | |
 | `services.headscale.derp.autoUpdate` | | |

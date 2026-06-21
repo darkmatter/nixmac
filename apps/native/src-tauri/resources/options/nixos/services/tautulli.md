@@ -5,7 +5,7 @@
 All options under `services.tautulli`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.tautulli.configFile` | | |
 | `services.tautulli.dataDir` | | |
 | `services.tautulli.enable` | | |

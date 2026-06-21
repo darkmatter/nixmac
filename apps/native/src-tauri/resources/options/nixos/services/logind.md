@@ -5,7 +5,7 @@
 All options under `services.logind`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.logind.enable` | | |
 | `services.logind.extraConfig` | | |
 | `services.logind.hibernateKey` | | |

@@ -5,7 +5,7 @@
 All options under `programs.nncp`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `programs.nncp.enable` | | |
 | `programs.nncp.group` | | |
 | `programs.nncp.package` | | |

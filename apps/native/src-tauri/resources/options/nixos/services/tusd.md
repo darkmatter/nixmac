@@ -5,7 +5,7 @@
 All options under `services.tusd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.tusd.basePath` | | |
 | `services.tusd.behindProxy` | | |
 | `services.tusd.enable` | | |

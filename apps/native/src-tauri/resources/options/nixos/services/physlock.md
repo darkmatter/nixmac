@@ -5,7 +5,7 @@
 All options under `services.physlock`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.physlock.allowAnyUser` | | |
 | `services.physlock.disableSysRq` | | |
 | `services.physlock.enable` | | |

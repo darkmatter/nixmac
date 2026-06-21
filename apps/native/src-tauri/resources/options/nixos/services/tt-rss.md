@@ -5,7 +5,7 @@
 All options under `services.tt-rss`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.tt-rss.auth.autoCreate` | | |
 | `services.tt-rss.auth.autoLogin` | | |
 | `services.tt-rss.checkForUpdates` | | |

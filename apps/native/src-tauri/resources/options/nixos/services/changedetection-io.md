@@ -5,7 +5,7 @@
 All options under `services.changedetection-io`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.changedetection-io.baseURL` | | |
 | `services.changedetection-io.behindProxy` | | |
 | `services.changedetection-io.chromePort` | | |

@@ -5,7 +5,7 @@
 All options under `programs.yofi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.yofi.blacklist` | `list of string` | List of .desktop files yofi should ignore. |
 | `programs.yofi.enable` | `boolean` | Whether to enable yofi. |
 | `programs.yofi.package` | `null or package` | The yofi package to use. |

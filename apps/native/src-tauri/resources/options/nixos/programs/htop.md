@@ -5,7 +5,7 @@
 All options under `programs.htop`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `programs.htop.enable` | | |
 | `programs.htop.package` | | |
 | `programs.htop.settings` | | |

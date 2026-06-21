@@ -5,7 +5,7 @@
 All options under `services.dragonflydb`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.dragonflydb.bind` | | |
 | `services.dragonflydb.cacheMode` | | |
 | `services.dragonflydb.dbNum` | | |

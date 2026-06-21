@@ -5,5 +5,5 @@
 All options under `services.sslmate-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.sslmate-agent.enable` | | |

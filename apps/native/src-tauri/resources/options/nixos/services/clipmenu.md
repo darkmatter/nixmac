@@ -5,6 +5,6 @@
 All options under `services.clipmenu`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.clipmenu.enable` | | |
 | `services.clipmenu.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.nncp`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------------- | ---- | ----------- |
 | `services.nncp.caller.enable` | | |
 | `services.nncp.caller.extraArgs` | | |
 | `services.nncp.daemon.enable` | | |

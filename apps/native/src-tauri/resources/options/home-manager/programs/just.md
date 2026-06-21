@@ -5,7 +5,7 @@
 All options under `programs.just`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `programs.just.enable` | | |
 | `programs.just.enableBashIntegration` | | |
 | `programs.just.enableFishIntegration` | | |

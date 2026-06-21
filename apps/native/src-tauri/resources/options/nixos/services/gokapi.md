@@ -5,7 +5,7 @@
 All options under `services.gokapi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.gokapi.enable` | | |
 | `services.gokapi.environment` | | |
 | `services.gokapi.mutableSettings` | | |

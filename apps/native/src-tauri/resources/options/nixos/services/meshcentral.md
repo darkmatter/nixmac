@@ -5,7 +5,7 @@
 All options under `services.meshcentral`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.meshcentral.enable` | | |
 | `services.meshcentral.package` | | |
 | `services.meshcentral.settings` | | |

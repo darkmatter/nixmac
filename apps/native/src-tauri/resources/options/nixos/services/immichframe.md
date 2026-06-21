@@ -5,7 +5,7 @@
 All options under `services.immichframe`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.immichframe.enable` | | |
 | `services.immichframe.package` | | |
 | `services.immichframe.port` | | |

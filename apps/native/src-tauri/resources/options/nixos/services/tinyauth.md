@@ -5,7 +5,7 @@
 All options under `services.tinyauth`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.tinyauth.dataDir` | | |
 | `services.tinyauth.enable` | | |
 | `services.tinyauth.environmentFile` | | |

@@ -5,7 +5,7 @@
 All options under `services.gerrit`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.gerrit.builtinPlugins` | | |
 | `services.gerrit.enable` | | |
 | `services.gerrit.jvmHeapLimit` | | |

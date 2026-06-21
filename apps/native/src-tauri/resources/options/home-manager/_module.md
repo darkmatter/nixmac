@@ -5,7 +5,7 @@
 All options under `_module`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `_module.args` | `lazy attribute set of raw value` | Additional arguments passed to each module in addition to ones like lib , config , and pkgs , modulesPath . |
 | `_module.check` | | |
 | `_module.freeformType` | | |

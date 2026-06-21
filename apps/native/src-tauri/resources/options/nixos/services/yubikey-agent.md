@@ -5,6 +5,6 @@
 All options under `services.yubikey-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.yubikey-agent.enable` | | |
 | `services.yubikey-agent.package` | | |

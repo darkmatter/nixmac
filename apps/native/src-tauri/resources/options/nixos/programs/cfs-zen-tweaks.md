@@ -5,5 +5,5 @@
 All options under `programs.cfs-zen-tweaks`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `programs.cfs-zen-tweaks.enable` | | |

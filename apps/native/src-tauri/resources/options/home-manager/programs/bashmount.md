@@ -5,7 +5,7 @@
 All options under `programs.bashmount`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `programs.bashmount.enable` | `boolean` | Whether to enable bashmount. |
 | `programs.bashmount.extraConfig` | `strings concatenated with “\n”` | Configuration written to $XDG_CONFIG_HOME/bashmount/config . Look at https://github.com/jamielinux/bashmount/blob/master/bashmount.conf for explanation about possible values. |
 | `programs.bashmount.package` | `null or package` | The bashmount package to use. |

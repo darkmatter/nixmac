@@ -5,7 +5,7 @@
 All options under `services.prometheus`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | `services.prometheus.exporters.node.disabledCollectors` | `list of string` | Collectors to disable from the list of collectors that are enabled by default . |
 | `services.prometheus.exporters.node.enable` | `boolean` | Whether to enable Prometheus Node exporter. |
 | `services.prometheus.exporters.node.enabledCollectors` | `list of string` | Collectors to enable in addition to the ones that are enabled by default . |

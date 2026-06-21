@@ -5,7 +5,7 @@
 All options under `services.rmfakecloud`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.rmfakecloud.enable` | | |
 | `services.rmfakecloud.environmentFile` | | |
 | `services.rmfakecloud.extraSettings` | | |

@@ -5,7 +5,7 @@
 All options under `services.galene`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.galene.certFile` | | |
 | `services.galene.dataDir` | | |
 | `services.galene.enable` | | |

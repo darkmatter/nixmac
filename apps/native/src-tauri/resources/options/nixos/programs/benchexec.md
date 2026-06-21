@@ -5,7 +5,7 @@
 All options under `programs.benchexec`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `programs.benchexec.enable` | | |
 | `programs.benchexec.package` | | |
 | `programs.benchexec.users` | | |

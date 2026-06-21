@@ -5,7 +5,7 @@
 All options under `services.mycelium`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.mycelium.addHostedPublicNodes` | | |
 | `services.mycelium.enable` | | |
 | `services.mycelium.extraArgs` | | |

@@ -5,5 +5,5 @@
 All options under `programs.plotinus`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `programs.plotinus.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.sympa`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.sympa.database.createLocally` | | |
 | `services.sympa.database.host` | | |
 | `services.sympa.database.name` | | |

@@ -5,7 +5,7 @@
 All options under `programs.lsd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.lsd.colors` | `YAML 1.1 value or absolute path` | Configuration written to $XDG_CONFIG_HOME/lsd/colors.yaml . See https://github.com/lsd-rs/lsd/tree/v1.0.0#color-theme-file-content for supported colors. |
 | `programs.lsd.enable` | `boolean` | Whether to enable lsd. |
 | `programs.lsd.enableAliases` | | |

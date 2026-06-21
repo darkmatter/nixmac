@@ -5,7 +5,7 @@
 All options under `programs.fabric-ai`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ----------------- | ---------------------------------------------------- |
 | `programs.fabric-ai.enable` | `boolean` | Whether to enable Fabric AI. |
 | `programs.fabric-ai.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.fabric-ai.enablePatternsAliases` | `boolean` | Whether to enable aliases for all Fabric’s patterns. |

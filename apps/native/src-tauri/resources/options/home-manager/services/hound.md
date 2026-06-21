@@ -5,7 +5,7 @@
 All options under `services.hound`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ------------------------------- | ---------------------------------------- |
 | `services.hound.databasePath` | `absolute path` | The Hound database path. |
 | `services.hound.enable` | `boolean` | Whether to enable hound. |
 | `services.hound.listenAddress` | `string` | Listen address of the Hound daemon. |

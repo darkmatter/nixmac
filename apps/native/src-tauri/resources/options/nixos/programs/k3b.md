@@ -5,5 +5,5 @@
 All options under `programs.k3b`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------- | ---- | ----------- |
 | `programs.k3b.enable` | | |

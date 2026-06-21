@@ -5,7 +5,7 @@
 All options under `programs.git`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `programs.git.attributes` | | |
 | `programs.git.config` | | |
 | `programs.git.enable` | | |

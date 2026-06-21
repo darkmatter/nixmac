@@ -5,6 +5,6 @@
 All options under `services.blanket`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | --------- | --------------------------- |
 | `services.blanket.enable` | `boolean` | Whether to enable blanket. |
 | `services.blanket.package` | `package` | The blanket package to use. |

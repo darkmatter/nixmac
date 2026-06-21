@@ -5,7 +5,7 @@
 All options under `services.filebeat`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.filebeat.enable` | | |
 | `services.filebeat.inputs` | | |
 | `services.filebeat.modules` | | |

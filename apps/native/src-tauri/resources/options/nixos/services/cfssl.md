@@ -5,7 +5,7 @@
 All options under `services.cfssl`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.cfssl.address` | | |
 | `services.cfssl.ca` | | |
 | `services.cfssl.caBundle` | | |

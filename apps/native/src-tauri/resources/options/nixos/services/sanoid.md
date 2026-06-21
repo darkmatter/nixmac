@@ -5,7 +5,7 @@
 All options under `services.sanoid`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.sanoid.datasets` | | |
 | `services.sanoid.enable` | | |
 | `services.sanoid.extraArgs` | | |

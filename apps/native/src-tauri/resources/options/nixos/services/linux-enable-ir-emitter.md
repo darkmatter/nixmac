@@ -5,7 +5,7 @@
 All options under `services.linux-enable-ir-emitter`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.linux-enable-ir-emitter.device` | | |
 | `services.linux-enable-ir-emitter.enable` | | |
 | `services.linux-enable-ir-emitter.package` | | |

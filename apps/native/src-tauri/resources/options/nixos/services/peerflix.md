@@ -5,7 +5,7 @@
 All options under `services.peerflix`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.peerflix.downloadDir` | | |
 | `services.peerflix.enable` | | |
 | `services.peerflix.stateDir` | | |

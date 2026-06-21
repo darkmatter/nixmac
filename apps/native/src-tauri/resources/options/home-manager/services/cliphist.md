@@ -5,7 +5,7 @@
 All options under `services.cliphist`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---------------------------- | ----------------------------------------------------------------------- |
 | `services.cliphist.allowImages` | `boolean` | Store images in clipboard history. |
 | `services.cliphist.clipboardPackage` | `package` | The wl-clipboard package to use. |
 | `services.cliphist.enable` | `boolean` | Whether to enable cliphist, a clipboard history “manager” for wayland. |

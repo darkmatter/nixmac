@@ -5,7 +5,7 @@
 All options under `services.auto-epp`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.auto-epp.enable` | | |
 | `services.auto-epp.package` | | |
 | `services.auto-epp.settings` | | |

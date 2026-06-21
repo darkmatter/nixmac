@@ -5,7 +5,7 @@
 All options under `services.dump1090-fa`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.dump1090-fa.enable` | | |
 | `services.dump1090-fa.extraArgs` | | |
 | `services.dump1090-fa.package` | | |

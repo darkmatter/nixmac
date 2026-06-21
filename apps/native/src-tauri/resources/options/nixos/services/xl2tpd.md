@@ -5,7 +5,7 @@
 All options under `services.xl2tpd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.xl2tpd.clientIpRange` | | |
 | `services.xl2tpd.enable` | | |
 | `services.xl2tpd.extraPppdOptions` | | |

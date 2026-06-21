@@ -5,7 +5,7 @@
 All options under `manual`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `manual.html.enable` | `boolean` | Whether to install the HTML manual. This also installs the home-manager-help tool, which opens a local copy of the Home Manager manual in the system web browser. |
 | `manual.json.enable` | `boolean` | Whether to install a JSON formatted list of all Home Manager options. This can be located at <profile directory>/share/doc/home-manager/options.json , and may be used for navigating definitions, auto-completing, and other miscellaneous tasks. |
 | `manual.manpages.enable` | `boolean` | Whether to install the configuration manual page. The manual can be reached by man home-configuration.nix . |

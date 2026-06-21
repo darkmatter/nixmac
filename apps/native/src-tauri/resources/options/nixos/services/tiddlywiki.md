@@ -5,6 +5,6 @@
 All options under `services.tiddlywiki`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.tiddlywiki.enable` | | |
 | `services.tiddlywiki.listenOptions` | | |

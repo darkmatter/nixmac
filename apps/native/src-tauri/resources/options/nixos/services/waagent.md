@@ -5,7 +5,7 @@
 All options under `services.waagent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.waagent.enable` | | |
 | `services.waagent.extraPackages` | | |
 | `services.waagent.package` | | |

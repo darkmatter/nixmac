@@ -5,7 +5,7 @@
 All options under `services.jupyter`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.jupyter.command` | | |
 | `services.jupyter.enable` | | |
 | `services.jupyter.extraEnvironmentVariables` | | |

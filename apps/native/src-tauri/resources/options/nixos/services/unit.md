@@ -5,7 +5,7 @@
 All options under `services.unit`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.unit.config` | | |
 | `services.unit.enable` | | |
 | `services.unit.group` | | |

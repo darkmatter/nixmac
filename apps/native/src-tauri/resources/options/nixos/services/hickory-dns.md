@@ -5,7 +5,7 @@
 All options under `services.hickory-dns`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.hickory-dns.configFile` | | |
 | `services.hickory-dns.debug` | | |
 | `services.hickory-dns.enable` | | |

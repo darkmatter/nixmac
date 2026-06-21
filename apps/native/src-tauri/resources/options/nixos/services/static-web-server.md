@@ -5,7 +5,7 @@
 All options under `services.static-web-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.static-web-server.configuration` | | |
 | `services.static-web-server.enable` | | |
 | `services.static-web-server.listen` | | |

@@ -5,7 +5,7 @@
 All options under `services.thanos`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------------------- | ---- | ----------- |
 | `services.thanos.compact.arguments` | | |
 | `services.thanos.compact.compact.concurrency` | | |
 | `services.thanos.compact.consistency-delay` | | |

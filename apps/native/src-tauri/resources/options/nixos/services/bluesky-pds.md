@@ -5,7 +5,7 @@
 All options under `services.bluesky-pds`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.bluesky-pds.enable` | | |
 | `services.bluesky-pds.environmentFiles` | | |
 | `services.bluesky-pds.goat.enable` | | |

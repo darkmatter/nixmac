@@ -5,7 +5,7 @@
 All options under `services.timesyncd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.timesyncd.enable` | | |
 | `services.timesyncd.extraConfig` | | |
 | `services.timesyncd.fallbackServers` | | |

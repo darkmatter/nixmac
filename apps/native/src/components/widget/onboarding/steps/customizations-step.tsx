@@ -15,6 +15,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ButtonGlow } from "@/components/ui/button-glow";
 import { StepShell } from "@/components/widget/onboarding/step-shell";
 import { stepEyebrow } from "@/components/widget/onboarding/lib/onboarding";
 import {
@@ -149,14 +150,12 @@ export function CustomizationsStep({ tracked, onSetTracked, onContinue }: Custom
             ))}
           </ul>
 
-          <Button
-            size="lg"
-            className="brand-glow mt-7 bg-brand text-brand-foreground hover:bg-brand/90"
-            onClick={startScan}
-          >
-            <Radar className="size-4" aria-hidden="true" />
-            Scan this Mac
-          </Button>
+          <div className="mt-7">
+            <ButtonGlow active onClick={startScan}>
+              <Radar className="size-4" aria-hidden="true" />
+              Scan this Mac
+            </ButtonGlow>
+          </div>
         </div>
 
         <div className="mt-6 flex items-center justify-end">

@@ -5,7 +5,7 @@
 All options under `programs.nix-required-mounts`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------------- | ---- | ----------- |
 | `programs.nix-required-mounts.allowedPatterns` | | |
 | `programs.nix-required-mounts.enable` | | |
 | `programs.nix-required-mounts.extraWrapperArgs` | | |

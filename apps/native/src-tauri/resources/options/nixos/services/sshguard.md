@@ -5,7 +5,7 @@
 All options under `services.sshguard`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.sshguard.attack_threshold` | | |
 | `services.sshguard.blacklist_file` | | |
 | `services.sshguard.blacklist_threshold` | | |

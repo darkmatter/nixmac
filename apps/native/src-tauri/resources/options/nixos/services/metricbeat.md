@@ -5,7 +5,7 @@
 All options under `services.metricbeat`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.metricbeat.enable` | | |
 | `services.metricbeat.modules` | | |
 | `services.metricbeat.package` | | |

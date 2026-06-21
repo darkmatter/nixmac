@@ -5,7 +5,7 @@
 All options under `power`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------- |
 | `power.restartAfterFreeze` | `null or boolean` | Whether to restart the computer after a system freeze. |
 | `power.restartAfterPowerFailure` | `null or boolean` | Whether to restart the computer after a power failure. |
 | `power.sleep.allowSleepByPowerButton` | `null or boolean` | Whether the power button can sleep the computer. |

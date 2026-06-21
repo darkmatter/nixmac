@@ -5,7 +5,7 @@
 All options under `services.clipse`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---------------------------------- | -------------------------------------------------------------------- |
 | `services.clipse.allowDuplicates` | `boolean` | Allow duplicates |
 | `services.clipse.enable` | `boolean` | Whether to enable Enable clipse clipboard manager. |
 | `services.clipse.historySize` | `signed integer` | Number of history lines to keep. |

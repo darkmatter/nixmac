@@ -5,7 +5,7 @@
 All options under `services.fractalart`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.fractalart.enable` | | |
 | `services.fractalart.height` | | |
 | `services.fractalart.width` | | |

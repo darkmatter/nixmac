@@ -5,7 +5,7 @@
 All options under `services.photoprism`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.photoprism.address` | | |
 | `services.photoprism.databasePasswordFile` | | |
 | `services.photoprism.enable` | | |

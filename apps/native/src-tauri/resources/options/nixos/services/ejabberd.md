@@ -5,7 +5,7 @@
 All options under `services.ejabberd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.ejabberd.configFile` | | |
 | `services.ejabberd.ctlConfig` | | |
 | `services.ejabberd.enable` | | |

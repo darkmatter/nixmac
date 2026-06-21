@@ -5,7 +5,7 @@
 All options under `services.mautrix-signal`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.mautrix-signal.enable` | | |
 | `services.mautrix-signal.environmentFile` | | |
 | `services.mautrix-signal.package` | | |

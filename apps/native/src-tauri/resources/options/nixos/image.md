@@ -5,5 +5,5 @@
 All options under `image`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------- | ---- | ----------- |
 | `image.modules` | | |

@@ -5,6 +5,6 @@
 All options under `programs.ente-auth`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `programs.ente-auth.enable` | | |
 | `programs.ente-auth.package` | | |

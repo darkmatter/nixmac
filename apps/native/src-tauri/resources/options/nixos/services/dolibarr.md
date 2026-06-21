@@ -5,7 +5,7 @@
 All options under `services.dolibarr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.dolibarr.database.createLocally` | | |
 | `services.dolibarr.database.host` | | |
 | `services.dolibarr.database.name` | | |

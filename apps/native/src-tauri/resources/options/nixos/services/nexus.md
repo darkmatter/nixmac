@@ -5,7 +5,7 @@
 All options under `services.nexus`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.nexus.enable` | | |
 | `services.nexus.group` | | |
 | `services.nexus.home` | | |

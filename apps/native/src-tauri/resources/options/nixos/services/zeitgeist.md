@@ -5,5 +5,5 @@
 All options under `services.zeitgeist`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.zeitgeist.enable` | | |

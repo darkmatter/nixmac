@@ -5,6 +5,6 @@
 All options under `services.touchegg`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.touchegg.enable` | | |
 | `services.touchegg.package` | | |

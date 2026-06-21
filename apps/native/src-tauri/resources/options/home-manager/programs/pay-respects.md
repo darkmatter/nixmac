@@ -5,7 +5,7 @@
 All options under `programs.pay-respects`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------ | ------------------------------- | ------------------------------------------------------------------------------- |
 | `programs.pay-respects.enable` | `boolean` | Whether to enable pay-respects. |
 | `programs.pay-respects.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.pay-respects.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |

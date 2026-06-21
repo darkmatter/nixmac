@@ -5,7 +5,7 @@
 All options under `services.journaldriver`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.journaldriver.applicationCredentials` | | |
 | `services.journaldriver.enable` | | |
 | `services.journaldriver.googleCloudProject` | | |

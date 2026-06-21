@@ -5,7 +5,7 @@
 All options under `services.ludusavi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.ludusavi.backupNotification` | `boolean` | Send a notification message after a successful backup. |
 | `services.ludusavi.configFile` | `null or absolute path` | Path to a Ludusavi config.yaml . Mutually exclusive with the settings option. See https://github.com/mtkennerly/ludusavi/blob/master/docs/help/configuration-file.md for available options. |
 | `services.ludusavi.enable` | `boolean` | Whether to enable Ludusavi game backup tool. |

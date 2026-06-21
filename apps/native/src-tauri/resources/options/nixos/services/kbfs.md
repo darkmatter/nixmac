@@ -5,7 +5,7 @@
 All options under `services.kbfs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.kbfs.enable` | | |
 | `services.kbfs.enableRedirector` | | |
 | `services.kbfs.extraFlags` | | |

@@ -5,6 +5,6 @@
 All options under `programs.pywal`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | --------- | ------------------------- |
 | `programs.pywal.enable` | `boolean` | Whether to enable pywal. |
 | `programs.pywal.package` | `package` | The pywal package to use. |

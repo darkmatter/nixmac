@@ -5,7 +5,7 @@
 All options under `programs.kickoff`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.kickoff.enable` | `boolean` | Whether to enable kickoff. |
 | `programs.kickoff.package` | `null or package` | The kickoff package to use. |
 | `programs.kickoff.settings` | `TOML value` | Configuration settings for kickoff. All the available options can be found here: https://github.com/j0ru/kickoff/blob/main/assets/default_config.toml . |

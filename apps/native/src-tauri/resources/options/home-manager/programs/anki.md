@@ -5,7 +5,7 @@
 All options under `programs.anki`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.anki.addons` | `list of package` | List of Anki add-on packages to install. |
 | `programs.anki.answerKeys` | `list of (submodule)` | Overrides for choosing what keyboard shortcut activates each answer button. The Anki default will be used for ones without an override defined. |
 | `programs.anki.enable` | `boolean` | Whether to enable Anki. |

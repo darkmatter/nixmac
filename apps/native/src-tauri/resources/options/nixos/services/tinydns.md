@@ -5,7 +5,7 @@
 All options under `services.tinydns`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.tinydns.data` | | |
 | `services.tinydns.enable` | | |
 | `services.tinydns.ip` | | |

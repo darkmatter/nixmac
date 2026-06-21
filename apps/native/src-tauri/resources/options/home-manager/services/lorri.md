@@ -5,7 +5,7 @@
 All options under `services.lorri`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | --------- | -------------------------------------------- |
 | `services.lorri.enable` | `boolean` | Whether to enable lorri build daemon. |
 | `services.lorri.enableNotifications` | `boolean` | Whether to enable lorri build notifications. |
 | `services.lorri.nixPackage` | `package` | Which nix package to use. |

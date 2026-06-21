@@ -5,7 +5,7 @@
 All options under `services.nipap`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.nipap.authBackendSettings` | | |
 | `services.nipap.enable` | | |
 | `services.nipap.nipap-www.enable` | | |

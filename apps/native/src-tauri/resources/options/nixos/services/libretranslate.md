@@ -5,7 +5,7 @@
 All options under `services.libretranslate`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.libretranslate.configureNginx` | | |
 | `services.libretranslate.dataDir` | | |
 | `services.libretranslate.disableWebUI` | | |

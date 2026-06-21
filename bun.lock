@@ -25,6 +25,7 @@
       "version": "0.22.0",
       "dependencies": {
         "@monaco-editor/react": "^4.7.0",
+        "@nixmac/state": "workspace:*",
         "@nixmac/ui": "workspace:*",
         "@opentelemetry/api": "^1.9.1",
         "@opentelemetry/core": "^2.7.1",
@@ -78,7 +79,6 @@
         "tauri-plugin-macos-permissions-api": "^2.3.0",
         "three": "^0.184.0",
         "vscode-oniguruma": "^2.0.1",
-        "zustand": "^5.0.8",
       },
       "devDependencies": {
         "@playwright/test": "1.59.1",
@@ -131,6 +131,16 @@
       "version": "0.0.0",
       "devDependencies": {
         "@turbo/gen": "^2.9.18",
+      },
+    },
+    "packages/state": {
+      "name": "@nixmac/state",
+      "version": "0.0.0",
+      "dependencies": {
+        "zustand": "^5.0.8",
+      },
+      "devDependencies": {
+        "@types/react": "^19",
       },
     },
     "packages/ui": {
@@ -454,6 +464,8 @@
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@1.1.4", "", { "dependencies": { "@tybys/wasm-util": "^0.10.1" }, "peerDependencies": { "@emnapi/core": "^1.7.1", "@emnapi/runtime": "^1.7.1" } }, "sha512-3NQNNgA1YSlJb/kMH1ildASP9HW7/7kYnRI2szWJaofaS1hWmbGI4H+d3+22aGzXXN9IJ+n+GiFVcGipJP18ow=="],
 
     "@nixmac/gen": ["@nixmac/gen@workspace:packages/gen"],
+
+    "@nixmac/state": ["@nixmac/state@workspace:packages/state"],
 
     "@nixmac/ui": ["@nixmac/ui@workspace:packages/ui"],
 

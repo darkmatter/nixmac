@@ -5,7 +5,7 @@
 All options under `programs.windsurf`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `programs.windsurf.argvSettings` | | |
 | `programs.windsurf.enable` | | |
 | `programs.windsurf.mutableExtensionsDir` | | |

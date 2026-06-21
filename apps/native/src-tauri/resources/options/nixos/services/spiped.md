@@ -5,6 +5,6 @@
 All options under `services.spiped`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.spiped.config` | | |
 | `services.spiped.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.onlyoffice`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.onlyoffice.allowLocalConnections` | | |
 | `services.onlyoffice.enable` | | |
 | `services.onlyoffice.enableExampleServer` | | |

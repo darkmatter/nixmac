@@ -5,7 +5,7 @@
 All options under `qt`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------ | ---- | ----------- |
 | `qt.enable` | | |
 | `qt.platformTheme` | | |
 | `qt.style` | | |

@@ -5,7 +5,7 @@
 All options under `services.dunst`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.dunst.enable` | | |
 | `services.dunst.enableWayland` | | |
 | `services.dunst.enableX11` | | |

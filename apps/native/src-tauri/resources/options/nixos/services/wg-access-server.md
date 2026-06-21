@@ -5,7 +5,7 @@
 All options under `services.wg-access-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.wg-access-server.enable` | | |
 | `services.wg-access-server.package` | | |
 | `services.wg-access-server.secretsFile` | | |

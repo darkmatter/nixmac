@@ -5,7 +5,7 @@
 All options under `services.umami`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.umami.createPostgresqlDatabase` | | |
 | `services.umami.enable` | | |
 | `services.umami.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.miredo`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.miredo.bindAddress` | | |
 | `services.miredo.bindPort` | | |
 | `services.miredo.enable` | | |

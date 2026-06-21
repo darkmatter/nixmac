@@ -5,7 +5,7 @@
 All options under `services.smartdns`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.smartdns.bindPort` | | |
 | `services.smartdns.enable` | | |
 | `services.smartdns.settings` | | |

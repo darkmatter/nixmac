@@ -5,7 +5,7 @@
 All options under `services.smartd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------- | ---- | ----------- |
 | `services.smartd.autodetect` | | |
 | `services.smartd.defaults.autodetected` | | |
 | `services.smartd.defaults.monitored` | | |

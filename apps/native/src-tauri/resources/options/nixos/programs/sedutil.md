@@ -5,5 +5,5 @@
 All options under `programs.sedutil`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `programs.sedutil.enable` | | |

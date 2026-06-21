@@ -5,7 +5,7 @@
 All options under `programs.opengamepadui`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `programs.opengamepadui.args` | | |
 | `programs.opengamepadui.enable` | | |
 | `programs.opengamepadui.extraPackages` | | |

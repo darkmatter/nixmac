@@ -5,7 +5,7 @@
 All options under `services.roon-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.roon-server.enable` | | |
 | `services.roon-server.group` | | |
 | `services.roon-server.openFirewall` | | |

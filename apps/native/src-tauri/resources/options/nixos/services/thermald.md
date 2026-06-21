@@ -5,7 +5,7 @@
 All options under `services.thermald`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.thermald.configFile` | | |
 | `services.thermald.debug` | | |
 | `services.thermald.enable` | | |

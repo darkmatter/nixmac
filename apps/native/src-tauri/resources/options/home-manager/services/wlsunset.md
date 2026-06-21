@@ -5,7 +5,7 @@
 All options under `services.wlsunset`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | `services.wlsunset.enable` | `boolean` | Whether to enable wlsunset. |
 | `services.wlsunset.gamma` | `string or floating point number or signed integer` | Gamma value to use. |
 | `services.wlsunset.latitude` | `null or string or floating point number or signed integer` | Your current latitude, between -90.0 and 90.0 . |

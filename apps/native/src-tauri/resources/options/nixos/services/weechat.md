@@ -5,7 +5,7 @@
 All options under `services.weechat`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.weechat.binary` | | |
 | `services.weechat.enable` | | |
 | `services.weechat.headless` | | |

@@ -5,7 +5,7 @@
 All options under `programs.joshuto`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ------------ | ----------------------------------------------------------------- |
 | `programs.joshuto.enable` | `boolean` | Whether to enable joshuto file manager. |
 | `programs.joshuto.keymap` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/joshuto/keymap.toml . |
 | `programs.joshuto.mimetype` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/joshuto/mimetype.toml . |

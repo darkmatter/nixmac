@@ -5,7 +5,7 @@
 All options under `programs.river`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `programs.river.enable` | | |
 | `programs.river.extraPackages` | | |
 | `programs.river.package` | | |

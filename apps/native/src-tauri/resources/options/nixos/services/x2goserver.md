@@ -5,7 +5,7 @@
 All options under `services.x2goserver`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.x2goserver.enable` | | |
 | `services.x2goserver.nxagentDefaultOptions` | | |
 | `services.x2goserver.package` | | |

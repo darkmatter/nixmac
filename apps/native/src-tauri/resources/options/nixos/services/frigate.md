@@ -5,7 +5,7 @@
 All options under `services.frigate`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.frigate.checkConfig` | | |
 | `services.frigate.enable` | | |
 | `services.frigate.hostname` | | |

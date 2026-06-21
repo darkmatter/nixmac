@@ -5,7 +5,7 @@
 All options under `services.unclutter-xfixes`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.unclutter-xfixes.enable` | | |
 | `services.unclutter-xfixes.extraOptions` | | |
 | `services.unclutter-xfixes.package` | | |

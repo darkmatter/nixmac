@@ -5,7 +5,7 @@
 All options under `services.postfix-tlspol`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.postfix-tlspol.configurePostfix` | | |
 | `services.postfix-tlspol.enable` | | |
 | `services.postfix-tlspol.package` | | |

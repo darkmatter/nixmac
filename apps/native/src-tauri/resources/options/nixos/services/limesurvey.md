@@ -5,7 +5,7 @@
 All options under `services.limesurvey`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.limesurvey.config` | | |
 | `services.limesurvey.database.createLocally` | | |
 | `services.limesurvey.database.dbEngine` | | |

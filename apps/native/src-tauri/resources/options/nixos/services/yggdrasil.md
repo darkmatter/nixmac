@@ -5,7 +5,7 @@
 All options under `services.yggdrasil`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.yggdrasil.config` | | |
 | `services.yggdrasil.denyDhcpcdInterfaces` | | |
 | `services.yggdrasil.enable` | | |

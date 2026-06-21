@@ -5,7 +5,7 @@
 All options under `programs.navi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.navi.enable` | `boolean` | Whether to enable Navi. |
 | `programs.navi.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.navi.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |

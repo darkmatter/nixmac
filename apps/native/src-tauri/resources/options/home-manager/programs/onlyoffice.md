@@ -5,7 +5,7 @@
 All options under `programs.onlyoffice`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ------------------------------------------------------------ | --------------------------------------------- |
 | `programs.onlyoffice.enable` | `boolean` | Whether to enable onlyoffice. |
 | `programs.onlyoffice.package` | `null or package` | The onlyoffice-desktopeditors package to use. |
 | `programs.onlyoffice.settings` | `attribute set of (atom (null, bool, int, float or string))` | Configuration settings for Onlyoffice. |

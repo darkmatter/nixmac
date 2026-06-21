@@ -5,6 +5,6 @@
 All options under `programs.flexoptix-app`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `programs.flexoptix-app.enable` | | |
 | `programs.flexoptix-app.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.kbfs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---------------- | ------------------------------------------------------------- |
 | `services.kbfs.enable` | `boolean` | Whether to enable Keybase File System. |
 | `services.kbfs.extraFlags` | `list of string` | Additional flags to pass to the Keybase filesystem on launch. |
 | `services.kbfs.mountPoint` | `string` | Mount point for the Keybase filesystem, relative to HOME . |

@@ -5,7 +5,7 @@
 All options under `services.lemmy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.lemmy.adminPasswordFile` | | |
 | `services.lemmy.caddy.enable` | | |
 | `services.lemmy.database.createLocally` | | |
