@@ -529,6 +529,18 @@ def generate_nixmac_settings(
     if host is None:
         host = _get_eval_hostname()
 
+    # Wipe the observable's persisted file BETWEEN cases as well, not just
+    # at the start of main(). After any successful case the binary persists
+    # derived state (repoRoot, etc.) back to global-preferences.json; the
+    # legacy-store migration only overrides keys present in the eval-written
+    # settings.json, so fields like repoRoot — which the eval doesn't write
+    # — would otherwise leak from case N into case N+1 and point at a temp
+    # dir that's already been cleaned up.
+    global_prefs_path = NIXMAC_CONFIG_DIR / "global-preferences.json"
+    if global_prefs_path.exists():
+        with suppress(Exception):
+            global_prefs_path.unlink()
+
     settings = {
         "evolveModel": evolve_model,
         "summaryModel": summary_model,
