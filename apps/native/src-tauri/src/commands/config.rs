@@ -310,6 +310,28 @@ fn finalize_imported_dir(
     })
 }
 
+fn resolve_imported_repo_root(spec: &import::RepoRef, target: &Path) -> Result<PathBuf, String> {
+    let Some(subdir) = &spec.subdir else {
+        return Ok(target.to_path_buf());
+    };
+
+    let root = target.join(subdir);
+    if !root.is_dir() {
+        return Err(format!(
+            "Repository subdirectory does not exist: {}",
+            subdir
+        ));
+    }
+    if !root.join("flake.nix").is_file() {
+        return Err(format!(
+            "Repository subdirectory does not contain flake.nix: {}",
+            subdir
+        ));
+    }
+
+    Ok(root)
+}
+
 /// Opens a native file picker for a `.zip` archive and returns its path.
 #[tauri::command]
 pub async fn config_pick_zip(app: AppHandle) -> Result<Option<String>, String> {
@@ -334,12 +356,16 @@ pub async fn config_import_github(
 
     // Clone on a blocking thread; libgit2 network I/O is synchronous.
     let target_for_clone = target.clone();
-    tauri::async_runtime::spawn_blocking(move || import::clone_repo(&spec, &target_for_clone))
-        .await
-        .map_err(|e| capture_err("config_import_github", e))?
-        .map_err(|e| capture_err("config_import_github", e))?;
+    let spec_for_clone = spec.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        import::clone_repo(&spec_for_clone, &target_for_clone)
+    })
+    .await
+    .map_err(|e| capture_err("config_import_github", e))?
+    .map_err(|e| capture_err("config_import_github", e))?;
 
-    finalize_imported_dir(&app, &target)
+    let imported_root = resolve_imported_repo_root(&spec, &target)?;
+    finalize_imported_dir(&app, &imported_root)
 }
 
 /// Extracts a local `.zip` archive into a fresh config directory.
@@ -429,5 +455,43 @@ mod tests {
         assert!(validate_new_dir_location(&home.join(".darwin-test")).is_ok());
         assert!(validate_new_dir_location(&home.join("configs").join("darwin")).is_err());
         assert!(validate_new_dir_location(Path::new("/tmp/darwin")).is_err());
+    }
+
+    #[test]
+    fn imported_repo_root_uses_requested_subdir() {
+        let target = temp_dir("repo-subdir");
+        let flake_root = target.join("hosts").join("work");
+        fs::create_dir_all(&flake_root).expect("create flake root");
+        fs::write(flake_root.join("flake.nix"), "{ }").expect("create flake");
+
+        let spec = import::RepoRef {
+            clone_url: "https://example.com/repo.git".to_string(),
+            git_ref: None,
+            subdir: Some("hosts/work".to_string()),
+        };
+
+        assert_eq!(
+            resolve_imported_repo_root(&spec, &target).expect("resolve subdir"),
+            flake_root
+        );
+
+        let _ = fs::remove_dir_all(target);
+    }
+
+    #[test]
+    fn imported_repo_root_rejects_missing_subdir_flake() {
+        let target = temp_dir("repo-subdir-missing-flake");
+        fs::create_dir_all(target.join("hosts").join("work")).expect("create subdir");
+
+        let spec = import::RepoRef {
+            clone_url: "https://example.com/repo.git".to_string(),
+            git_ref: None,
+            subdir: Some("hosts/work".to_string()),
+        };
+
+        let err = resolve_imported_repo_root(&spec, &target).expect_err("missing flake");
+        assert!(err.contains("does not contain flake.nix"));
+
+        let _ = fs::remove_dir_all(target);
     }
 }

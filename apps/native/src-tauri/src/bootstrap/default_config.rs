@@ -57,16 +57,24 @@ pub fn detect_hostname() -> Result<String, String> {
     Ok(hostname)
 }
 
-/// Detects the current macOS username from the environment, defaulting to "unknown" if not found.
-pub fn detect_username() -> String {
-    let username = whoami::username().unwrap();
-
-    // If we didn't get a user name from this, try the USER environment variable as a fallback before giving up entirely.
-    if !username.is_empty() {
-        return username;
+fn username_from_sources<E>(
+    whoami_username: Result<String, E>,
+    env_user: Option<String>,
+) -> String {
+    if let Ok(username) = whoami_username {
+        if !username.is_empty() {
+            return username;
+        }
     }
 
-    std::env::var("USER").unwrap_or_else(|_| "unknown".to_string())
+    env_user
+        .filter(|username| !username.is_empty())
+        .unwrap_or_else(|| "unknown".to_string())
+}
+
+/// Detects the current macOS username from the environment, defaulting to "unknown" if not found.
+pub fn detect_username() -> String {
+    username_from_sources(whoami::username(), std::env::var("USER").ok())
 }
 
 /// Detects the Darwin platform architecture.
@@ -341,6 +349,27 @@ mod tests {
     fn test_detect_darwin_platform() {
         let platform = detect_darwin_platform();
         assert!(platform == "aarch64-darwin" || platform == "x86_64-darwin");
+    }
+
+    #[test]
+    fn username_detection_uses_whoami_when_available() {
+        assert_eq!(
+            username_from_sources::<()>(Ok("alice".to_string()), Some("fallback".to_string())),
+            "alice"
+        );
+    }
+
+    #[test]
+    fn username_detection_falls_back_after_whoami_error_or_empty_name() {
+        assert_eq!(
+            username_from_sources::<()>(Err(()), Some("fallback".to_string())),
+            "fallback"
+        );
+        assert_eq!(
+            username_from_sources::<()>(Ok(String::new()), Some("fallback".to_string())),
+            "fallback"
+        );
+        assert_eq!(username_from_sources::<()>(Err(()), None), "unknown");
     }
 
     #[test]
