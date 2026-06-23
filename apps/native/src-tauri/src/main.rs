@@ -493,6 +493,12 @@ fn run_gui_mode(
             commands::config::config_pick_zip,
             commands::config::config_import_github,
             commands::config::config_import_zip,
+            commands::config::github_import,
+            // GitHub App connection (server-brokered)
+            commands::github::github_connect_start,
+            commands::github::github_status,
+            commands::github::github_list_repos,
+            commands::github::github_disconnect,
             // nixmac account + non-GitHub sync
             commands::account::account_status,
             commands::account::account_sign_in,
@@ -742,9 +748,9 @@ fn run_gui_mode(
             // Create the main window
             let initial_width = 800.0;
             let initial_height = 800.0;
-            let min_width = 400.0;
-            let max_width = 2000.0;
-            let min_height = 400.0;
+            let min_width = 800.0;
+            let max_width = 2400.0;
+            let min_height = 600.0;
             let max_height = 1800.0;
             let e2e_opaque_window = e2e_opaque_window_enabled();
             let e2e_solid_capture = e2e_solid_capture_enabled();

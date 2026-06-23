@@ -16,9 +16,12 @@ pub mod signing;
 use anyhow::{Result, anyhow};
 use tauri::{AppHandle, Runtime};
 
-use crate::shared_types::{AuthAccount, AuthStatus, SyncRemoteStatus, SyncResult};
+use crate::shared_types::{
+    AuthAccount, AuthStatus, GithubConnectStart, GithubRepo, GithubStatus, SyncRemoteStatus,
+    SyncResult,
+};
 use crate::storage::store::{self, SyncAccountMeta};
-use client::{SyncClient, SyncCredentials};
+use client::{GithubCloneToken, SyncClient, SyncCredentials};
 
 /// Best-effort human-friendly device label sent to the server.
 fn device_name<R: Runtime>(app: &AppHandle<R>) -> String {
@@ -178,6 +181,45 @@ pub async fn pull<R: Runtime>(app: &AppHandle<R>) -> Result<SyncResult> {
         head_commit_hash,
         message,
     })
+}
+
+/// Starts the server-brokered GitHub App connect flow; returns the install URL.
+pub async fn github_connect_start<R: Runtime>(app: &AppHandle<R>) -> Result<GithubConnectStart> {
+    let creds = require_credentials(app)?;
+    let client = SyncClient::new(store::get_sync_server_url(app)?);
+    client.github_connect_start(&creds).await
+}
+
+/// Returns whether the account is linked to a GitHub App installation.
+pub async fn github_status<R: Runtime>(app: &AppHandle<R>) -> Result<GithubStatus> {
+    let creds = require_credentials(app)?;
+    let client = SyncClient::new(store::get_sync_server_url(app)?);
+    client.github_status(&creds).await
+}
+
+/// Lists the repositories the account's installation can access.
+pub async fn github_list_repos<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<GithubRepo>> {
+    let creds = require_credentials(app)?;
+    let client = SyncClient::new(store::get_sync_server_url(app)?);
+    client.github_list_repos(&creds).await
+}
+
+/// Mints a short-lived, repo-scoped clone token for `owner/repo`.
+pub async fn github_clone_token<R: Runtime>(
+    app: &AppHandle<R>,
+    owner: &str,
+    repo: &str,
+) -> Result<GithubCloneToken> {
+    let creds = require_credentials(app)?;
+    let client = SyncClient::new(store::get_sync_server_url(app)?);
+    client.github_clone_token(&creds, owner, repo).await
+}
+
+/// Drops the account↔installation link (the user revokes in GitHub settings).
+pub async fn github_disconnect<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
+    let creds = require_credentials(app)?;
+    let client = SyncClient::new(store::get_sync_server_url(app)?);
+    client.github_disconnect(&creds).await
 }
 
 fn short_hash(hash: &str) -> &str {

@@ -8,7 +8,7 @@
 //! `~/.darwin`) so the rest of onboarding can proceed exactly as if the user
 //! had selected an existing flake.
 
-use anyhow::{Context, Result, anyhow, bail};
+use anyhow::{anyhow, bail, Context, Result};
 use git2::{Cred, FetchOptions, RemoteCallbacks};
 use std::fs::File;
 use std::path::{Component, Path, PathBuf};
