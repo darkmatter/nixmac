@@ -173,9 +173,29 @@ fn validate_subdir(path: &str) -> Result<()> {
 /// Clones `spec` into `dest`. `dest` must not already exist as a non-empty
 /// directory (libgit2 requires an empty/absent target).
 pub fn clone_repo(spec: &RepoRef, dest: &Path) -> Result<()> {
+    clone_repo_with_token(spec, dest, None)
+}
+
+/// Clones `spec` into `dest`, optionally authenticating with a GitHub
+/// installation token (for private repos). The token is supplied via
+/// `RemoteCallbacks` for the fetch only — it is never written into the cloned
+/// repo's remote URL / `.git/config`.
+pub fn clone_repo_with_token(spec: &RepoRef, dest: &Path, token: Option<&str>) -> Result<()> {
     let mut builder = git2::build::RepoBuilder::new();
     if let Some(branch) = &spec.git_ref {
         builder.branch(branch);
+    }
+    if let Some(token) = token {
+        let token = token.to_string();
+        let mut callbacks = git2::RemoteCallbacks::new();
+        // GitHub accepts the installation token as the password with any
+        // username; `x-access-token` is the conventional username.
+        callbacks.credentials(move |_url, _username, _allowed| {
+            git2::Cred::userpass_plaintext("x-access-token", &token)
+        });
+        let mut fetch_options = git2::FetchOptions::new();
+        fetch_options.remote_callbacks(callbacks);
+        builder.fetch_options(fetch_options);
     }
     builder
         .clone(&spec.clone_url, dest)

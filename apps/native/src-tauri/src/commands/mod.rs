@@ -20,6 +20,7 @@ pub mod evolve;
 pub mod evolve_state;
 pub mod feedback;
 pub mod git;
+pub mod github;
 pub mod homebrew;
 pub mod launchd;
 pub mod peek;

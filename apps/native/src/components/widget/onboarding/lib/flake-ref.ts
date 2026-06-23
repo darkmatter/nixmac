@@ -167,27 +167,6 @@ export const EXAMPLE_REFS: { ref: string; note: string }[] = [
   { ref: "github:alice/dotfiles/main", note: "GitHub branch" },
 ];
 
-export interface MockRepo {
-  owner: string;
-  name: string;
-  private: boolean;
-  updated: string;
-  hasFlake: boolean;
-}
-
-/**
- * Sample repositories shown once GitHub is "connected". Until real GitHub
- * OAuth + repo listing lands, these are illustrative; selecting one runs the
- * real `config.importGithub` against `owner/repo`. Typing a specific repo is
- * always available via the Flake reference tab.
- */
-export const MOCK_REPOS: MockRepo[] = [
-  { owner: "you", name: "nix-darwin-config", private: true, updated: "2 days ago", hasFlake: true },
-  { owner: "you", name: "dotfiles", private: false, updated: "3 weeks ago", hasFlake: true },
-  { owner: "you", name: "home-manager-config", private: true, updated: "1 month ago", hasFlake: true },
-  { owner: "you", name: "personal-site", private: false, updated: "5 months ago", hasFlake: false },
-];
-
 export interface StarterTemplate {
   id: string;
   name: string;

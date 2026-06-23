@@ -342,6 +342,38 @@ pub async fn config_import_github(
     finalize_imported_dir(&app, &target)
 }
 
+/// Imports `owner/repo` from a connected GitHub App installation, cloning with
+/// a short-lived, repo-scoped token minted by the nixmac server. Works for
+/// private repos; the token is used only for the clone and never persisted.
+#[tauri::command]
+pub async fn github_import(
+    app: AppHandle,
+    owner: String,
+    repo: String,
+    dir_name: Option<String>,
+) -> Result<shared_types::SetDirResult, String> {
+    let token = crate::sync::github_clone_token(&app, &owner, &repo)
+        .await
+        .map_err(|e| capture_err("github_import", e))?;
+    let target = prepare_import_target(dir_name)?;
+
+    let spec = import::RepoRef {
+        clone_url: token.clone_url,
+        git_ref: None,
+        subdir: None,
+    };
+    let target_for_clone = target.clone();
+    let access = token.token;
+    tauri::async_runtime::spawn_blocking(move || {
+        import::clone_repo_with_token(&spec, &target_for_clone, Some(&access))
+    })
+    .await
+    .map_err(|e| capture_err("github_import", e))?
+    .map_err(|e| capture_err("github_import", e))?;
+
+    finalize_imported_dir(&app, &target)
+}
+
 /// Extracts a local `.zip` archive into a fresh config directory.
 #[tauri::command]
 pub async fn config_import_zip(

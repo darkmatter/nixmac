@@ -3,7 +3,7 @@ import preview from "#storybook/preview";
 import type React from "react";
 import { useEffect, useRef } from "react";
 import { OnboardingFlow } from "@/components/widget/onboarding/onboarding-flow";
-import { useOnboarding } from "@nixmac/state";
+import { onboardingActions, useOnboarding, viewModelActions } from "@nixmac/state";
 import { useViewModel } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 
@@ -127,6 +127,33 @@ const MOCK_LAUNCHD = [
   },
 ];
 
+const MOCK_GITHUB_REPOS = [
+  {
+    owner: "you",
+    name: "nix-darwin-config",
+    private: true,
+    updatedAt: "2026-06-19T10:00:00Z",
+    defaultBranch: "main",
+    hasFlake: true,
+  },
+  {
+    owner: "you",
+    name: "dotfiles",
+    private: false,
+    updatedAt: "2026-05-30T10:00:00Z",
+    defaultBranch: "main",
+    hasFlake: true,
+  },
+  {
+    owner: "you",
+    name: "personal-site",
+    private: false,
+    updatedAt: "2026-01-15T10:00:00Z",
+    defaultBranch: "main",
+    hasFlake: false,
+  },
+];
+
 const BUILD_LINES = [
   "building the system configuration...",
   "evaluating flake...",
@@ -155,6 +182,7 @@ function installBackend(startAt: string) {
     hosts: startIdx >= 3 ? SAMPLE_HOSTS : [],
     hostAttr: startIdx >= 3 ? SAMPLE_HOSTS[0] : "",
     flakeExists: startIdx >= 3,
+    githubConnected: false,
   };
 
   function permissionsState() {
@@ -169,7 +197,7 @@ function installBackend(startAt: string) {
   }
 
   function syncVM() {
-    useViewModel.setState({
+    viewModelActions.setState({
       permissions: permissionsState(),
       permissionsHydrated: true,
       nixInstall: {
@@ -208,17 +236,17 @@ function installBackend(startAt: string) {
 
   // Seed the stores for the entry point.
   syncVM();
-  useOnboarding.setState({
+  onboardingActions.setState({
     trackedCustomizations: [],
     customizationsReviewed: startIdx >= 4,
     inference:
       startIdx >= 5
         ? {
-            mode: "byok",
-            providerId: "openrouter",
-            providerName: "OpenRouter",
-            model: "anthropic/claude-sonnet-4",
-          }
+          mode: "byok",
+          providerId: "openrouter",
+          providerName: "OpenRouter",
+          model: "anthropic/claude-sonnet-4",
+        }
         : null,
     inferenceSkipped: false,
     buildComplete: false,
@@ -321,6 +349,24 @@ function installBackend(startAt: string) {
     syncVM();
   });
 
+  // GitHub App connection — connectStart simulates the user finishing the
+  // browser install, so the poll then sees `connected`.
+  ensure("github");
+  patch(tauriAPI.github, "connectStart", async () => {
+    state.githubConnected = true;
+    return { installUrl: "https://github.com/apps/nixmac/installations/new", state: "demo" };
+  });
+  patch(tauriAPI.github, "status", async () => ({
+    connected: state.githubConnected,
+    login: state.githubConnected ? "you" : null,
+    installationId: state.githubConnected ? 1 : null,
+  }));
+  patch(tauriAPI.github, "listRepos", async () => MOCK_GITHUB_REPOS);
+  patch(tauriAPI.github, "import", async () => setConfigWithHosts("/Users/demo/.darwin"));
+  patch(tauriAPI.github, "disconnect", async () => {
+    state.githubConnected = false;
+  });
+
   ensure("path");
   patch(tauriAPI.path, "normalize", async (input: string) =>
     input.startsWith("~/") ? `/Users/demo/${input.slice(2)}` : input,
@@ -350,7 +396,7 @@ function installBackend(startAt: string) {
   const timers: ReturnType<typeof setTimeout>[] = [];
   ensure("darwin");
   patch(tauriAPI.darwin, "applyStreamStart", async () => {
-    useViewModel.setState({
+    viewModelActions.setState({
       rebuildStatus: { isRunning: true, success: null, exitCode: null } as any,
       rebuildLog: { lines: [], rawLines: [] },
     });
@@ -358,11 +404,11 @@ function installBackend(startAt: string) {
       timers.push(
         setTimeout(
           () => {
-            useViewModel.setState((s: any) => ({
+            viewModelActions.setState((s: any) => ({
               rebuildLog: { ...s.rebuildLog, rawLines: [...s.rebuildLog.rawLines, line] },
             }));
             if (i === BUILD_LINES.length - 1) {
-              useViewModel.setState({
+              viewModelActions.setState({
                 rebuildStatus: { isRunning: false, success: true, exitCode: 0 } as any,
               });
             }
@@ -374,7 +420,7 @@ function installBackend(startAt: string) {
     return { ok: true };
   });
   patch(tauriAPI.darwin, "finalizeApply", async () => ({}));
-  patch(tauriAPI.darwin, "rebuildStatus", async () => useViewModel.getState().rebuildStatus);
+  patch(tauriAPI.darwin, "rebuildStatus", async () => viewModelActions.getState().rebuildStatus);
 
   return () => {
     timers.forEach(clearTimeout);

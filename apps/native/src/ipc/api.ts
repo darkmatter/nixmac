@@ -21,6 +21,9 @@ import type {
   FileDiffContents,
   GitState,
   GitStatus,
+  GithubConnectStart,
+  GithubRepo,
+  GithubStatus,
   GlobalPreferences,
   HomebrewItem,
   HomebrewState,
@@ -59,6 +62,19 @@ export const tauriAPI = {
     importZip: (zipPath: string, dirName?: string) =>
       invoke<SetDirResult>("config_import_zip", { zipPath, dirName: dirName ?? null }),
     getThisHostname: () => invoke<string>("get_this_hostname"),
+  },
+  github: {
+    /** Start the GitHub App connect flow; returns the install URL to open. */
+    connectStart: () => invoke<GithubConnectStart>("github_connect_start"),
+    /** Poll while the browser install completes. */
+    status: () => invoke<GithubStatus>("github_status"),
+    /** Repos the connected installation can access. */
+    listRepos: () => invoke<GithubRepo[]>("github_list_repos"),
+    /** Clone owner/repo via a short-lived, server-minted token. */
+    import: (owner: string, repo: string, dirName?: string) =>
+      invoke<SetDirResult>("github_import", { owner, repo, dirName: dirName ?? null }),
+    /** Drop the account↔installation link. */
+    disconnect: () => invoke<void>("github_disconnect"),
   },
   account: {
     status: () => invoke<AuthStatus>("account_status"),
