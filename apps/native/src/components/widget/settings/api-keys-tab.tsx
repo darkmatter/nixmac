@@ -236,7 +236,7 @@ export function ApiKeysTab({
           {/* OpenRouter API Key */}
           <div className="rounded-lg border border-border p-4">
             <div className="mb-3 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-purple-500 to-pink-500">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-linear-to-br from-purple-500 to-pink-500">
                 <span className="font-bold text-white text-xs">OR</span>
               </div>
               <div>
@@ -264,7 +264,7 @@ export function ApiKeysTab({
           {/* OpenAI API Key */}
           <div className="rounded-lg border border-border p-4">
             <div className="mb-3 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-emerald-500 to-teal-500">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-linear-to-br from-emerald-500 to-teal-500">
                 <span className="font-bold text-white text-xs">OA</span>
               </div>
               <div>
@@ -292,7 +292,7 @@ export function ApiKeysTab({
           {/* Ollama API Base URL */}
           <div className="rounded-lg border border-border p-4">
             <div className="mb-3 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-amber-500 to-orange-500">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-linear-to-br from-amber-500 to-orange-500">
                 <span className="font-bold text-white text-xs">OL</span>
               </div>
               <div>
@@ -316,7 +316,7 @@ export function ApiKeysTab({
           {/* OpenAI Compatible */}
           <div className="rounded-lg border border-border p-4">
             <div className="mb-3 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-cyan-500">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-linear-to-br from-blue-500 to-cyan-500">
                 <span className="font-bold text-white text-xs">OC</span>
               </div>
               <div>

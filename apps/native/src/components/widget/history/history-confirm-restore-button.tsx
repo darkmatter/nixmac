@@ -34,7 +34,7 @@ export function HistoryConfirmRestoreButton({
           type="button"
           variant="outline"
           size="sm"
-          className="h-auto whitespace-nowrap border-white/10 bg-white/[0.06] px-[10px] py-1 text-[10px] text-neutral-500 hover:border-white/20 hover:text-neutral-400"
+          className="h-auto whitespace-nowrap border-white/10 bg-white/6 px-[10px] py-1 text-[10px] text-neutral-500 hover:border-white/20 hover:text-neutral-400"
           onClick={(e) => {
             e.stopPropagation();
             onCancel?.();

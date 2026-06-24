@@ -73,7 +73,7 @@ export function StepperWizardStyle() {
       {/* Header */}
       <div className="flex items-center justify-between border-border border-b px-5 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-linear-to-br from-emerald-500 to-teal-600">
             <span className="font-bold text-lg text-white">N</span>
           </div>
           <div>
@@ -178,7 +178,7 @@ export function StepperWizardStyle() {
 
         {currentStep === 2 && (
           <div className="flex h-full flex-col items-center justify-center py-8">
-            <div className="mb-6 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 p-4">
+            <div className="mb-6 rounded-full bg-linear-to-r from-emerald-500 to-teal-500 p-4">
               <Sparkles className="h-8 w-8 text-white" />
             </div>
             <h3 className="mb-2 font-semibold text-lg">How This Helps You</h3>

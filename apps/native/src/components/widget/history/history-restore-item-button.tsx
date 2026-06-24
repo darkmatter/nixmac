@@ -23,9 +23,9 @@ export function HistoryRestoreItemButton({
       size="sm"
       disabled={isRestoring}
       className={cn(
-        "h-auto whitespace-nowrap border-white/10 bg-white/[0.06] px-[10px] py-1 text-[10px] text-neutral-400 hover:border-white/30",
+        "h-auto whitespace-nowrap border-white/10 bg-white/6 px-[10px] py-1 text-[10px] text-neutral-400 hover:border-white/30",
         uncommittedChanges &&
-          "opacity-40 cursor-default hover:border-white/10 hover:bg-white/[0.06] hover:text-neutral-400",
+          "opacity-40 cursor-default hover:border-white/10 hover:bg-white/6 hover:text-neutral-400",
       )}
       onClick={(e) => {
         e.stopPropagation();

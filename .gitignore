@@ -157,3 +157,5 @@ blob-report/
 .playwright-mcp/
 **/.playwright-mcp/
 .claude
+.agents
+.codex

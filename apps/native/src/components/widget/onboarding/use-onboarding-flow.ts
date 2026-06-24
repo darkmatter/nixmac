@@ -1,14 +1,21 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   computeOnboardingStep,
+  resolveOnboardingStep,
+  stepIndex,
   STEPS,
   type StepId,
 } from "@/components/widget/onboarding/lib/onboarding";
-import { useOnboarding } from "@nixmac/state";
+import { onboardingActions, useOnboarding } from "@nixmac/state";
 import { settings } from "@/lib/env";
 import { useViewModel } from "@nixmac/state";
 
-export function useOnboardingFlow(): { currentStep: StepId; progress: number } {
+export function useOnboardingFlow(): {
+  activeStep: StepId;
+  furthestStep: StepId;
+  progress: number;
+  goToStep: (stepId: StepId) => void;
+} {
   const permissions = useViewModel((s) => s.permissions);
   const permissionsHydrated = useViewModel((s) => s.permissionsHydrated);
   const nixInstalled = useViewModel((s) => s.nixInstall?.installed ?? null);
@@ -17,7 +24,12 @@ export function useOnboardingFlow(): { currentStep: StepId; progress: number } {
   const host = useViewModel((s) => s.preferences?.hostAttr ?? "");
   const hosts = useViewModel((s) => s.hosts);
 
-  const onboarding = useOnboarding();
+  const customizationsReviewed = useOnboarding((s) => s.customizationsReviewed);
+  const inference = useOnboarding((s) => s.inference);
+  const inferenceSkipped = useOnboarding((s) => s.inferenceSkipped);
+  const onboardingActive = useOnboarding((s) => s.active);
+  const onboardingCompleted = useOnboarding((s) => s.completed);
+  const viewingStep = useOnboarding((s) => s.viewingStep);
 
   const permissionsReady = !(permissionsHydrated && permissions && !permissions.allRequiredGranted);
   const nixReady =
@@ -25,36 +37,59 @@ export function useOnboardingFlow(): { currentStep: StepId; progress: number } {
     settings.NIX_INSTALLED_OVERRIDE === true;
   const flakeReady = Boolean(configDir) && Boolean(host) && hosts.includes(host);
 
-  const currentStep = useMemo(
+  const furthestStep = useMemo(
     () =>
       computeOnboardingStep({
         permissionsReady,
         nixReady,
         flakeReady,
-        customizationsReviewed: onboarding.customizationsReviewed,
-        hasInference: Boolean(onboarding.inference),
-        inferenceSkipped: onboarding.inferenceSkipped,
+        customizationsReviewed,
+        hasInference: Boolean(inference),
+        inferenceSkipped,
       }),
     [
       permissionsReady,
       nixReady,
       flakeReady,
-      onboarding.customizationsReviewed,
-      onboarding.inference,
-      onboarding.inferenceSkipped,
+      customizationsReviewed,
+      inference,
+      inferenceSkipped,
     ],
   );
 
+  const prevFurthestStep = useRef(furthestStep);
   useEffect(() => {
-    if (flakeReady && !onboarding.active && !onboarding.completed) {
-      onboarding.beginPostSetup();
+    if (prevFurthestStep.current !== furthestStep) {
+      onboardingActions.setViewingStep(null);
+      prevFurthestStep.current = furthestStep;
     }
-  }, [flakeReady, onboarding]);
+  }, [furthestStep]);
+
+  useEffect(() => {
+    if (flakeReady && !onboardingActive && !onboardingCompleted) {
+      onboardingActions.beginPostSetup();
+    }
+  }, [flakeReady, onboardingActive, onboardingCompleted]);
+
+  const activeStep = useMemo(
+    () => resolveOnboardingStep(furthestStep, viewingStep),
+    [furthestStep, viewingStep],
+  );
 
   const progress = useMemo(() => {
-    const currentIndex = STEPS.findIndex((s) => s.id === currentStep);
-    return (currentIndex / (STEPS.length - 1)) * 100;
-  }, [currentStep]);
+    const furthestIndex = stepIndex(furthestStep);
+    return (furthestIndex / (STEPS.length - 1)) * 100;
+  }, [furthestStep]);
 
-  return { currentStep, progress };
+  const goToStep = useCallback(
+    (stepId: StepId) => {
+      const furthestIndex = stepIndex(furthestStep);
+      const targetIndex = stepIndex(stepId);
+      if (targetIndex === -1 || targetIndex > furthestIndex) return;
+      onboardingActions.setViewingStep(stepId === furthestStep ? null : stepId);
+    },
+    [furthestStep],
+  );
+
+  return { activeStep, furthestStep, progress, goToStep };
 }

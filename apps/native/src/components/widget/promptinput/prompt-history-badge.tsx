@@ -11,16 +11,14 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { useUiState } from "@nixmac/state";
-import { useViewModel } from "@nixmac/state";
+import { uiActions, useUiState, useViewModel } from "@nixmac/state";
 import { ClockIcon } from "lucide-react";
 import { useState } from "react";
 
 export function PromptHistoryBadge() {
   const history = useViewModel((s) => s.promptHistory);
   const evolvePrompt = useUiState((s) => s.evolvePrompt);
-  const setEvolvePrompt = useUiState((s) => s.setEvolvePrompt);
-  const isProcessing = useUiState((s) => s.isProcessing);
+    const isProcessing = useUiState((s) => s.isProcessing);
   const processingAction = useUiState((s) => s.processingAction);
 
   const disabled = isProcessing && processingAction === "evolve";
@@ -32,7 +30,7 @@ export function PromptHistoryBadge() {
   }
 
   const handleSelect = (prompt: string) => {
-    setEvolvePrompt(prompt);
+    uiActions.setEvolvePrompt(prompt);
     setOpen(false);
     setSearchValue("");
   };

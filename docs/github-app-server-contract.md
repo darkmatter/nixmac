@@ -18,14 +18,16 @@ ______________________________________________________________________
 > `GITHUB_APP_ID`, `GITHUB_APP_SLUG`, `GITHUB_APP_PRIVATE_KEY` (PEM), `GITHUB_APP_CLIENT_ID`,
 > `GITHUB_APP_CLIENT_SECRET`, and (if webhooks are on) `GITHUB_APP_WEBHOOK_SECRET`.
 >
-> **Existing auth to reuse:** every desktop request to `/v1/github/*` (except the public browser
-> callback) carries the **same HMAC `Authorization` header** as the existing `/sync/*` endpoints
-> (per-device `keyId` + `secret`, HMAC-SHA256 over `method + path + timestamp + body`). Resolve the
-> **account** from that header exactly as the sync endpoints do. Do not invent a new auth scheme.
+> **Auth:** every desktop request to `/github/*` (except the public browser callback) carries a
+> **per-device Better Auth API key** (`@better-auth/api-key`, `nixmac_…` prefix) in the `x-api-key`
+> header (a `Bearer` `Authorization` header is also accepted). Resolve the **account** by verifying
+> the key (`auth.api.verifyApiKey`) and reading its `referenceId` (the Better Auth user id). The
+> desktop mints this key once per device via Better Auth (`POST /api/auth/sign-in/email` →
+> `POST /api/auth/api-key/create`) and stores it in the OS keychain.
 >
 > **Build these endpoints** (all JSON, all `camelCase`):
 >
-> 1. `POST /v1/github/connect/start` — *(HMAC-authed)*
+> 1. `POST /github/connect/start` — *(api-key-authed)*
 >
 >    - Generate a random `state`, persist `state → { accountId, createdAt }` with a short TTL (~10 min).
 >    - Return `{ "installUrl": string, "state": string }` where `installUrl` =
@@ -42,12 +44,12 @@ ______________________________________________________________________
 >    - Respond with a minimal self-contained HTML page: "✓ Connected to nixmac — you can close this
 >      tab and return to the app." (No redirect needed; the app polls.)
 >
-> 1. `GET /v1/github/status` — *(HMAC-authed)*
+> 1. `GET /github/status` — *(api-key-authed)*
 >
 >    - Return `{ "connected": boolean, "login": string | null, "installationId": number | null }`
 >      for the calling account.
 >
-> 1. `GET /v1/github/repos` — *(HMAC-authed)*
+> 1. `GET /github/repos` — *(api-key-authed)*
 >
 >    - Mint an **installation access token** for the account's installation (sign a short-lived JWT
 >      with `GITHUB_APP_PRIVATE_KEY`/`GITHUB_APP_ID`, then `POST /app/installations/{id}/access_tokens`).
@@ -59,7 +61,7 @@ ______________________________________________________________________
 >      Sort newest-updated first.
 >    - If the account has no installation, return `409` with `{ "error": "not_connected" }`.
 >
-> 1. `POST /v1/github/clone-token` — *(HMAC-authed)* Body: `{ "owner": string, "repo": string }`
+> 1. `POST /github/clone-token` — *(api-key-authed)* Body: `{ "owner": string, "repo": string }`
 >
 >    - Mint an installation token **scoped to that single repo** with **`contents: read`** only
 >      (`POST /app/installations/{id}/access_tokens` with `repositories: ["<repo>"]` and
@@ -68,7 +70,7 @@ ______________________________________________________________________
 >    - The desktop clones with `x-access-token:<token>` and discards it immediately. Keep TTL short
 >      (GitHub default is 1h; fine).
 >
-> 1. `POST /v1/github/disconnect` — *(HMAC-authed; optional but nice)*
+> 1. `POST /github/disconnect` — *(api-key-authed; optional but nice)*
 >
 >    - Delete the `accountId → installationId` mapping (this does **not** uninstall the App; the user
 >      revokes in GitHub settings). Return `{ "ok": true }`.
@@ -77,9 +79,9 @@ ______________________________________________________________________
 >
 > - `GITHUB_APP_PRIVATE_KEY` / client secret **never** leave the server.
 > - The desktop only ever receives **short-lived, repo-scoped, read-only** installation tokens (from
->   `/v1/github/clone-token`) and the proxied repo list — never the App JWT or a user token.
+>   `/github/clone-token`) and the proxied repo list — never the App JWT or a user token.
 > - Validate `state` (CSRF) on the callback; bind it to the account; expire it.
-> - Rate-limit `/v1/github/repos` and `/v1/github/clone-token` per account.
+> - Rate-limit `/github/repos` and `/github/clone-token` per account.
 >
 > **Acceptance:** a desktop client that is signed in to a nixmac account can call
 > `connect/start` → open the returned URL → install on selected repos → see `status.connected=true`
@@ -90,9 +92,10 @@ ______________________________________________________________________
 
 ## Notes for the desktop (Tauri) side
 
-- Desktop commands map 1:1: `github_connect_start` → `/v1/github/connect/start`, `github_status` →
-  `/v1/github/status`, `github_list_repos` → `/v1/github/repos`, `github_import` → `/v1/github/clone-token`
-  then `clone_repo` with the token, `github_disconnect` → `/v1/github/disconnect`.
-- The desktop persists **no** GitHub secret — the account HMAC secret already in the OS keychain is
-  the only device credential. Installation linkage lives server-side, keyed by account.
+- Desktop commands map 1:1: `github_connect_start` → `/github/connect/start`, `github_status` →
+  `/github/status`, `github_list_repos` → `/github/repos`, `github_import` → `/github/clone-token`
+  then `clone_repo` with the token, `github_disconnect` → `/github/disconnect`.
+- The desktop persists **no** GitHub secret — the per-device Better Auth API key (`nixmac_…`) in the
+  OS keychain is the only credential it sends. Installation linkage lives server-side, keyed by
+  account.
 - `hasFlake=false` repos are shown disabled in the picker (matches the current UI).

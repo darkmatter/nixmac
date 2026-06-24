@@ -10,7 +10,9 @@
 //! pair, the secret is stored in the OS keychain, and every subsequent request
 //! is signed with HMAC-SHA256. The secret is never sent again after sign-in.
 
+pub mod account_client;
 pub mod client;
+pub mod github_client;
 pub mod signing;
 
 use anyhow::{Result, anyhow};
@@ -20,8 +22,10 @@ use crate::shared_types::{
     AuthAccount, AuthStatus, GithubConnectStart, GithubRepo, GithubStatus, SyncRemoteStatus,
     SyncResult,
 };
-use crate::storage::store::{self, SyncAccountMeta};
-use client::{GithubCloneToken, SyncClient, SyncCredentials};
+use crate::storage::store::{self, SyncAccountMeta, WebAccountMeta};
+use account_client::AccountClient;
+use client::{SyncClient, SyncCredentials};
+use github_client::{GithubClient, GithubCloneToken};
 
 /// Best-effort human-friendly device label sent to the server.
 fn device_name<R: Runtime>(app: &AppHandle<R>) -> String {
@@ -70,11 +74,19 @@ pub fn status<R: Runtime>(app: &AppHandle<R>) -> Result<AuthStatus> {
         _ => (None, None),
     };
 
+    let github_ready = store::github_ready(app)?;
+    let web_account = store::get_web_account(app)?.map(|meta| AuthAccount {
+        id: meta.account_id,
+        email: meta.email,
+    });
+
     Ok(AuthStatus {
         signed_in,
         account,
         key_id,
         server_url,
+        github_ready,
+        web_account,
     })
 }
 
@@ -120,14 +132,113 @@ pub async fn sign_in<R: Runtime>(
         return Err(err);
     }
 
+    // Mint a per-device Better Auth API key against the web origin for
+    // server-brokered GitHub access. Best-effort: a healthy sync sign-in must
+    // not fail just because the web origin is unconfigured or unreachable —
+    // GitHub features simply stay unavailable until the next successful mint.
+    mint_device_api_key(app, email, password).await;
+
     status(app)
+}
+
+/// Signs in (or creates) a nixmac account on the **web origin** and stores the
+/// per-device api-key used for server-brokered GitHub access. Does not touch the
+/// legacy HMAC sync server — use this during onboarding before GitHub connect.
+pub async fn sign_in_web<R: Runtime>(
+    app: &AppHandle<R>,
+    email: &str,
+    password: &str,
+) -> Result<AuthStatus> {
+    let email = email.trim();
+    if email.is_empty() || password.is_empty() {
+        return Err(anyhow!("Email and password are required"));
+    }
+    let base = store::get_web_server_url()?;
+    let client = AccountClient::new(base)?;
+    let device = device_name(app);
+    let outcome = client
+        .sign_in_and_mint_key(email, password, &device)
+        .await?;
+    persist_web_session(app, &outcome)?;
+    status(app)
+}
+
+/// Creates a nixmac account on the web origin and stores the device api-key.
+pub async fn sign_up_web<R: Runtime>(
+    app: &AppHandle<R>,
+    name: &str,
+    email: &str,
+    password: &str,
+) -> Result<AuthStatus> {
+    let name = name.trim();
+    let email = email.trim();
+    if name.is_empty() || email.is_empty() || password.is_empty() {
+        return Err(anyhow!("Name, email, and password are required"));
+    }
+    if password.len() < 8 {
+        return Err(anyhow!("Password must be at least 8 characters"));
+    }
+    let base = store::get_web_server_url()?;
+    let client = AccountClient::new(base)?;
+    let device = device_name(app);
+    let outcome = client
+        .sign_up_and_mint_key(name, email, password, &device)
+        .await?;
+    persist_web_session(app, &outcome)?;
+    status(app)
+}
+
+fn persist_web_session<R: Runtime>(
+    app: &AppHandle<R>,
+    outcome: &account_client::WebAuthOutcome,
+) -> Result<()> {
+    store::set_device_api_key(app, &outcome.api_key)?;
+    store::set_web_account(
+        app,
+        &WebAccountMeta {
+            account_id: outcome.account_id.clone(),
+            email: outcome.email.clone(),
+        },
+    )
+}
+
+/// Signs in to the web origin's Better Auth and stores the resulting per-device
+/// API key. Errors are logged, never propagated (see `sign_in`).
+async fn mint_device_api_key<R: Runtime>(app: &AppHandle<R>, email: &str, password: &str) {
+    let base = match store::get_web_server_url() {
+        Ok(base) => base,
+        Err(err) => {
+            log::warn!("github: web origin not configured, skipping api-key mint: {err:#}");
+            return;
+        }
+    };
+    let client = match AccountClient::new(base) {
+        Ok(client) => client,
+        Err(err) => {
+            log::warn!("github: failed to build account client: {err:#}");
+            return;
+        }
+    };
+    match client
+        .sign_in_and_mint_key(email, password, &device_name(app))
+        .await
+    {
+        Ok(outcome) => {
+            if let Err(err) = persist_web_session(app, &outcome) {
+                log::warn!("github: failed to store device api-key: {err:#}");
+            }
+        }
+        Err(err) => log::warn!("github: failed to mint device api-key: {err:#}"),
+    }
 }
 
 /// Clears the stored account and device secret.
 pub fn sign_out<R: Runtime>(app: &AppHandle<R>) -> Result<AuthStatus> {
     // Delete the secret first so we never leave a usable secret without
-    // matching metadata. Both deletes are idempotent.
+    // matching metadata. All deletes are idempotent.
     store::delete_sync_secret(app)?;
+    store::delete_device_api_key(app)?;
+    store::delete_web_account(app)?;
     store::delete_sync_account(app)?;
     status(app)
 }
@@ -183,25 +294,29 @@ pub async fn pull<R: Runtime>(app: &AppHandle<R>) -> Result<SyncResult> {
     })
 }
 
+/// Builds a [`GithubClient`] for the web origin from the stored per-device API
+/// key. Errors when the device has no key yet (sign in to mint one).
+fn require_github_client<R: Runtime>(app: &AppHandle<R>) -> Result<GithubClient> {
+    let api_key = store::get_device_api_key(app)?.ok_or_else(|| {
+        anyhow!("Create or sign in to your nixmac account below, then connect GitHub")
+    })?;
+    let base = store::get_web_server_url()?;
+    Ok(GithubClient::new(base, api_key))
+}
+
 /// Starts the server-brokered GitHub App connect flow; returns the install URL.
 pub async fn github_connect_start<R: Runtime>(app: &AppHandle<R>) -> Result<GithubConnectStart> {
-    let creds = require_credentials(app)?;
-    let client = SyncClient::new(store::get_sync_server_url(app)?);
-    client.github_connect_start(&creds).await
+    require_github_client(app)?.connect_start().await
 }
 
 /// Returns whether the account is linked to a GitHub App installation.
 pub async fn github_status<R: Runtime>(app: &AppHandle<R>) -> Result<GithubStatus> {
-    let creds = require_credentials(app)?;
-    let client = SyncClient::new(store::get_sync_server_url(app)?);
-    client.github_status(&creds).await
+    require_github_client(app)?.status().await
 }
 
 /// Lists the repositories the account's installation can access.
 pub async fn github_list_repos<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<GithubRepo>> {
-    let creds = require_credentials(app)?;
-    let client = SyncClient::new(store::get_sync_server_url(app)?);
-    client.github_list_repos(&creds).await
+    require_github_client(app)?.list_repos().await
 }
 
 /// Mints a short-lived, repo-scoped clone token for `owner/repo`.
@@ -210,16 +325,12 @@ pub async fn github_clone_token<R: Runtime>(
     owner: &str,
     repo: &str,
 ) -> Result<GithubCloneToken> {
-    let creds = require_credentials(app)?;
-    let client = SyncClient::new(store::get_sync_server_url(app)?);
-    client.github_clone_token(&creds, owner, repo).await
+    require_github_client(app)?.clone_token(owner, repo).await
 }
 
 /// Drops the account↔installation link (the user revokes in GitHub settings).
 pub async fn github_disconnect<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
-    let creds = require_credentials(app)?;
-    let client = SyncClient::new(store::get_sync_server_url(app)?);
-    client.github_disconnect(&creds).await
+    require_github_client(app)?.disconnect().await
 }
 
 fn short_hash(hash: &str) -> &str {

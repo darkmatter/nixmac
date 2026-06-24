@@ -1,6 +1,5 @@
 import type { EvolveState, GitStatus } from "@/ipc/types";
-import { initialUiState, useUiState } from "@nixmac/state";
-import { useViewModel } from "@nixmac/state";
+import { initialUiState, uiActions, useUiState, viewModelActions } from "@nixmac/state";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useRollback } from "./use-rollback";
@@ -63,9 +62,9 @@ describe("useRollback", () => {
     });
     mocks.triggerRebuild.mockResolvedValue(undefined);
 
-    useUiState.setState({ ...initialUiState });
-    useUiState.getState().setEvolvePrompt("Install vim");
-    useViewModel.setState({
+    uiActions.setState({ ...initialUiState });
+    uiActions.setEvolvePrompt("Install vim");
+    viewModelActions.setState({
       evolve: committableEvolveState,
       git: cleanGitStatus,
       build: { externalBuildDetected: false },
@@ -99,7 +98,7 @@ describe("useRollback", () => {
   });
 
   it("releases processing immediately when there is nothing to rebuild", async () => {
-    useViewModel.setState({
+    viewModelActions.setState({
       evolve: { ...committableEvolveState, committable: false },
     });
 

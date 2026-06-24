@@ -13,7 +13,7 @@ export function ChangeBadge({ title, style, index }: ChangeBadgeProps) {
   if (!title) {
     return (
       <span
-        className="inline-block h-[18px] rounded animate-shimmer bg-[length:200%_100%] bg-gradient-to-r from-white/[0.03] via-white/[0.065] to-white/[0.03]"
+        className="inline-block h-[18px] rounded animate-shimmer bg-size-[200%_100%] bg-linear-to-r from-white/3 via-white/6.5 to-white/3"
         style={{ width: `${SHIMMER_WIDTHS[index % SHIMMER_WIDTHS.length]}px` }}
       />
     );

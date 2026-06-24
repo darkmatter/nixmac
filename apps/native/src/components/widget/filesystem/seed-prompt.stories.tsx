@@ -33,7 +33,7 @@ function SeedTable() {
                 {f.path}
               </td>
               <td className="px-3 py-2 align-top">
-                <pre className="m-0 whitespace-pre-wrap break-words font-mono text-[10.5px] text-teal-200 leading-[1.5]">
+                <pre className="m-0 whitespace-pre-wrap wrap-break-word font-mono text-[10.5px] text-teal-200 leading-normal">
                   {seedForFile(f)}
                 </pre>
               </td>

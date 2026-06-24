@@ -9,8 +9,7 @@ import type {
   RebuildStatus,
   SemanticChangeMap,
 } from "@/ipc/types";
-import { useUiState, initialUiState } from "@nixmac/state";
-import { useViewModel } from "@nixmac/state";
+import { initialUiState, uiActions, useUiState, viewModelActions } from "@nixmac/state";
 import {
   makeGlobalPreferences,
   makeNixInstallState,
@@ -116,7 +115,7 @@ describe("view model sync", () => {
     apiMocks.refreshPermissions.mockReset();
     apiMocks.refreshPermissions.mockResolvedValue(null);
 
-    useViewModel.setState({
+    viewModelActions.setState({
       evolve: null,
       git: null,
       build: { externalBuildDetected: false },
@@ -131,18 +130,18 @@ describe("view model sync", () => {
       rebuildLog: { lines: [], rawLines: [] },
       evolveEvents: [],
     });
-    useUiState.setState({ ...initialUiState });
+    uiActions.setState({ ...initialUiState });
   });
 
   it("hydrates and mirrors the evolve slice", async () => {
     const stop = await startEvolveSync();
 
-    expect(useViewModel.getState().evolve).toBe(apiMocks.evolveState);
+    expect(viewModelActions.getState().evolve).toBe(apiMocks.evolveState);
 
     const next = { step: "commit" } as unknown as EvolveState;
     apiMocks.listeners.get("evolve_state_changed")?.({ payload: next });
 
-    expect(useViewModel.getState().evolve).toBe(next);
+    expect(viewModelActions.getState().evolve).toBe(next);
 
     stop();
     expect(apiMocks.unlisten).toHaveBeenCalledTimes(1);
@@ -151,8 +150,8 @@ describe("view model sync", () => {
   it("hydrates git from get_git_state and mirrors git slice events", async () => {
     const stop = await startGitSync();
 
-    expect(useViewModel.getState().git).toBe(apiMocks.gitState.gitStatus);
-    expect(useViewModel.getState().build.externalBuildDetected).toBe(false);
+    expect(viewModelActions.getState().git).toBe(apiMocks.gitState.gitStatus);
+    expect(viewModelActions.getState().build.externalBuildDetected).toBe(false);
 
     const gitStatus = { hasChanges: true, files: [] } as unknown as GitStatus;
     const event: GitState = {
@@ -162,8 +161,8 @@ describe("view model sync", () => {
 
     apiMocks.listeners.get("git_state_changed")?.({ payload: event });
 
-    expect(useViewModel.getState().git).toBe(gitStatus);
-    expect(useViewModel.getState().build.externalBuildDetected).toBe(true);
+    expect(viewModelActions.getState().git).toBe(gitStatus);
+    expect(viewModelActions.getState().build.externalBuildDetected).toBe(true);
 
     stop();
     expect(apiMocks.unlisten).toHaveBeenCalledTimes(2);
@@ -182,12 +181,12 @@ describe("view model sync", () => {
   it("hydrates the change-map slice from get_change_map and mirrors events", async () => {
     const stop = await startChangeMapSync();
 
-    expect(useViewModel.getState().changeMap).toBe(apiMocks.changeMap);
+    expect(viewModelActions.getState().changeMap).toBe(apiMocks.changeMap);
 
     const changeMap = { groups: [{}], singles: [] } as unknown as SemanticChangeMap;
     apiMocks.listeners.get("change_map_changed")?.({ payload: changeMap });
 
-    expect(useViewModel.getState().changeMap).toBe(changeMap);
+    expect(viewModelActions.getState().changeMap).toBe(changeMap);
 
     stop();
     expect(apiMocks.unlisten).toHaveBeenCalledTimes(1);
@@ -197,12 +196,12 @@ describe("view model sync", () => {
     apiMocks.preferences = makeGlobalPreferences({ developerMode: true });
     const stop = await startPreferencesSync();
 
-    expect(useViewModel.getState().preferences).toBe(apiMocks.preferences);
+    expect(viewModelActions.getState().preferences).toBe(apiMocks.preferences);
 
     const next = makeGlobalPreferences({ confirmBuild: false });
     apiMocks.listeners.get("global_preferences_changed")?.({ payload: next });
 
-    expect(useViewModel.getState().preferences).toBe(next);
+    expect(viewModelActions.getState().preferences).toBe(next);
 
     stop();
     expect(apiMocks.unlisten).toHaveBeenCalledTimes(1);
@@ -213,14 +212,14 @@ describe("view model sync", () => {
     apiMocks.hosts = ["mbp"];
     const stop = await startPreferencesSync();
 
-    expect(useViewModel.getState().hosts).toEqual(["mbp"]);
+    expect(viewModelActions.getState().hosts).toEqual(["mbp"]);
 
     apiMocks.hosts = ["mbp", "workbook"];
     apiMocks.listeners.get("global_preferences_changed")?.({
       payload: makeGlobalPreferences({ configDir: "/Users/me/.darwin" }),
     });
     await vi.waitFor(() => {
-      expect(useViewModel.getState().hosts).toEqual(["mbp", "workbook"]);
+      expect(viewModelActions.getState().hosts).toEqual(["mbp", "workbook"]);
     });
 
     stop();
@@ -230,11 +229,11 @@ describe("view model sync", () => {
     // No configDir -> listHosts is never queried.
     const stop = await startPreferencesSync();
     expect(apiMocks.listHosts).not.toHaveBeenCalled();
-    expect(useViewModel.getState().hosts).toEqual([]);
+    expect(viewModelActions.getState().hosts).toEqual([]);
 
     // configDir set but listing fails -> hosts unchanged, error logged.
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
-    useViewModel.setState({ hosts: ["existing"] });
+    viewModelActions.setState({ hosts: ["existing"] });
     apiMocks.listHosts.mockRejectedValue(new Error("nix missing"));
     apiMocks.listeners.get("global_preferences_changed")?.({
       payload: makeGlobalPreferences({ configDir: "/Users/me/.darwin" }),
@@ -242,7 +241,7 @@ describe("view model sync", () => {
     await vi.waitFor(() => {
       expect(consoleError).toHaveBeenCalled();
     });
-    expect(useViewModel.getState().hosts).toEqual(["existing"]);
+    expect(viewModelActions.getState().hosts).toEqual(["existing"]);
     consoleError.mockRestore();
 
     stop();
@@ -252,8 +251,8 @@ describe("view model sync", () => {
     const stop = await startPermissionsSync();
 
     // Hydrated to null (never probed) still counts as hydrated.
-    expect(useViewModel.getState().permissions).toBeNull();
-    expect(useViewModel.getState().permissionsHydrated).toBe(true);
+    expect(viewModelActions.getState().permissions).toBeNull();
+    expect(viewModelActions.getState().permissionsHydrated).toBe(true);
 
     const next: PermissionsState = {
       permissions: [],
@@ -262,7 +261,7 @@ describe("view model sync", () => {
     };
     apiMocks.listeners.get("permissions_changed")?.({ payload: next });
 
-    expect(useViewModel.getState().permissions).toBe(next);
+    expect(viewModelActions.getState().permissions).toBe(next);
 
     stop();
     expect(apiMocks.unlisten).toHaveBeenCalledTimes(1);
@@ -271,14 +270,14 @@ describe("view model sync", () => {
   it("hydrates and mirrors the nix-install slice, surfacing errors", async () => {
     const stop = await startNixInstallSync();
 
-    expect(useViewModel.getState().nixInstall).toBe(apiMocks.nixInstallState);
+    expect(viewModelActions.getState().nixInstall).toBe(apiMocks.nixInstallState);
 
     const installed = makeNixInstallState({
       installed: true,
       darwinRebuildAvailable: true,
     });
     apiMocks.listeners.get("nix_install_state_changed")?.({ payload: installed });
-    expect(useViewModel.getState().nixInstall).toBe(installed);
+    expect(viewModelActions.getState().nixInstall).toBe(installed);
 
     // A freshly recorded error surfaces in UI state.
     const failed = makeNixInstallState({
@@ -295,42 +294,42 @@ describe("view model sync", () => {
   it("hydrates and mirrors the rebuild slice, resetting the log on new runs", async () => {
     const stop = await startRebuildSync();
 
-    expect(useViewModel.getState().rebuildStatus).toBe(apiMocks.rebuildStatus);
+    expect(viewModelActions.getState().rebuildStatus).toBe(apiMocks.rebuildStatus);
 
     // A new run resets the fold and seeds the preparing line.
-    useViewModel.setState({
+    viewModelActions.setState({
       rebuildLog: { lines: [{ id: 7, text: "stale", type: "info" }], rawLines: ["stale"] },
     });
-    useUiState.getState().setRebuildPanelDismissed(true);
+    uiActions.setRebuildPanelDismissed(true);
     const running = makeRebuildStatus({ isRunning: true });
     apiMocks.listeners.get("rebuild_status_changed")?.({ payload: running });
 
-    expect(useViewModel.getState().rebuildStatus).toBe(running);
-    expect(useViewModel.getState().rebuildLog.lines).toEqual([
+    expect(viewModelActions.getState().rebuildStatus).toBe(running);
+    expect(viewModelActions.getState().rebuildLog.lines).toEqual([
       { id: 0, text: "Preparing rebuild...", type: "info" },
     ]);
-    expect(useViewModel.getState().rebuildLog.rawLines).toEqual([]);
+    expect(viewModelActions.getState().rebuildLog.rawLines).toEqual([]);
     expect(useUiState.getState().rebuildPanelDismissed).toBe(false);
 
     // Output streams fold into the log.
     apiMocks.listeners.get("darwin:apply:data")?.({ payload: { chunk: "raw a\nraw b\n" } });
-    expect(useViewModel.getState().rebuildLog.rawLines).toEqual(["raw a", "raw b"]);
+    expect(viewModelActions.getState().rebuildLog.rawLines).toEqual(["raw a", "raw b"]);
 
     apiMocks.listeners.get("darwin:apply:summary")?.({ payload: { text: "Building..." } });
     apiMocks.listeners.get("darwin:apply:summary")?.({
       payload: { text: "It broke", error: true, error_type: "build_error" },
     });
-    expect(useViewModel.getState().rebuildLog.lines).toEqual([
+    expect(viewModelActions.getState().rebuildLog.lines).toEqual([
       { id: 0, text: "Preparing rebuild...", type: "info" },
       { id: 1, text: "Building...", type: "info" },
       { id: 2, text: "It broke", type: "stderr" },
     ]);
 
     // Run ending releases the processing flag.
-    useUiState.getState().setProcessing(true, "apply");
+    uiActions.setProcessing(true, "apply");
     const done = makeRebuildStatus({ success: true, exitCode: 0 });
     apiMocks.listeners.get("rebuild_status_changed")?.({ payload: done });
-    expect(useViewModel.getState().rebuildStatus).toBe(done);
+    expect(viewModelActions.getState().rebuildStatus).toBe(done);
     expect(useUiState.getState().isProcessing).toBe(false);
     expect(apiMocks.refreshPermissions).not.toHaveBeenCalled();
 
@@ -375,12 +374,12 @@ describe("view model sync", () => {
       timestampMs: 100,
     };
 
-    useViewModel.setState({ evolveEvents: [thinking] });
+    viewModelActions.setState({ evolveEvents: [thinking] });
     apiMocks.listeners.get("darwin:evolve:event")?.({ payload: start });
-    expect(useViewModel.getState().evolveEvents).toEqual([start]);
+    expect(viewModelActions.getState().evolveEvents).toEqual([start]);
 
     apiMocks.listeners.get("darwin:evolve:event")?.({ payload: thinking });
-    expect(useViewModel.getState().evolveEvents).toEqual([start, thinking]);
+    expect(viewModelActions.getState().evolveEvents).toEqual([start, thinking]);
 
     // Raw payloads append to the console log; empty ones do not.
     expect(useUiState.getState().consoleLogs).toBe("Starting evolution...\n");
@@ -454,13 +453,13 @@ describe("view model sync", () => {
     apiMocks.promptHistory = ["first prompt"];
     const stop = await startPromptHistorySync();
 
-    expect(useViewModel.getState().promptHistory).toEqual(["first prompt"]);
+    expect(viewModelActions.getState().promptHistory).toEqual(["first prompt"]);
 
     apiMocks.listeners.get("prompt_history_changed")?.({
       payload: ["second prompt", "first prompt"],
     });
 
-    expect(useViewModel.getState().promptHistory).toEqual(["second prompt", "first prompt"]);
+    expect(viewModelActions.getState().promptHistory).toEqual(["second prompt", "first prompt"]);
 
     stop();
     expect(apiMocks.unlisten).toHaveBeenCalledTimes(1);

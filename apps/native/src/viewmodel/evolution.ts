@@ -3,13 +3,12 @@ import type { EvolveEvent } from "@/ipc/types";
 import { EVOLVE_EVENT_CHANNEL } from "@/lib/constants";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import { formatDurationMs } from "@/lib/utils";
-import { useUiState } from "@nixmac/state";
-import { useViewModel } from "@nixmac/state";
+import { uiActions, viewModelActions } from "@nixmac/state";
 import { toast } from "sonner";
 
 /** Reset the evolve event stream (debug tooling / e2e reset / cancel). */
 export function clearEvolveEvents(): void {
-  useViewModel.setState({ evolveEvents: [] });
+  viewModelActions.setState({ evolveEvents: [] });
 }
 
 /**
@@ -19,10 +18,9 @@ export function clearEvolveEvents(): void {
  * belong to the run (log line, toast, telemetry capture).
  */
 function handleEvolutionComplete(payload: EvolveEvent): void {
-  const ui = useUiState.getState();
   const telemetry = payload.telemetry ?? null;
-  ui.setEvolutionTelemetry(telemetry);
-  ui.setConversationalResponse(payload.conversationalResponse ?? null);
+  uiActions.setEvolutionTelemetry(telemetry);
+  uiActions.setConversationalResponse(payload.conversationalResponse ?? null);
 
   const isLimitReached = telemetry?.state === "limitReached";
   const iterationSuffix = telemetry
@@ -31,7 +29,7 @@ function handleEvolutionComplete(payload: EvolveEvent): void {
   const completionMsg = isLimitReached
     ? `⏸ Evolution stopped (safety limit reached)${iterationSuffix}\n`
     : `✓ Evolution complete${iterationSuffix}\n`;
-  ui.appendLog(completionMsg);
+  uiActions.appendLog(completionMsg);
   if (isLimitReached) {
     toast.info(completionMsg);
   } else {
@@ -40,7 +38,7 @@ function handleEvolutionComplete(payload: EvolveEvent): void {
 
   // The backend updates the evolve-state cell before emitting the terminal
   // event, so the mirrored step is already current here.
-  const step = useViewModel.getState().evolve?.step;
+  const step = viewModelActions.getState().evolve?.step;
   if (step) {
     getTelemetry().captureEvent({ name: "evolve_completed", props: { step } });
   }
@@ -56,12 +54,12 @@ export function startEvolutionSync(): Promise<() => void> {
     const payload = event.payload;
     if (!payload) return;
 
-    useViewModel.setState((state) => ({
+    viewModelActions.setState((state) => ({
       evolveEvents: payload.eventType === "start" ? [payload] : [...state.evolveEvents, payload],
     }));
 
     if (payload.raw) {
-      useUiState.getState().appendLog(`${payload.raw}\n`);
+      uiActions.appendLog(`${payload.raw}\n`);
     }
 
     if (payload.eventType === "complete") {

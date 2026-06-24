@@ -1,9 +1,9 @@
 import { tauriAPI } from "@/ipc/api";
-import { useViewModel } from "@nixmac/state";
+import { viewModelActions } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
 
 export function mirrorPromptHistory(promptHistory: string[]): void {
-  useViewModel.setState({ promptHistory });
+  viewModelActions.setState({ promptHistory });
 }
 
 export function startPromptHistorySync(): Promise<() => void> {

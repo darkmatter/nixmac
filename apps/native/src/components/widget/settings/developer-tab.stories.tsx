@@ -1,7 +1,7 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 
 import preview from "#storybook/preview";
-import { useViewModel } from "@nixmac/state";
+import { useViewModel, viewModelActions } from "@nixmac/state";
 import { makeGlobalPreferences } from "@/utils/test-fixtures";
 import type React from "react";
 import { useEffect } from "react";
@@ -30,7 +30,7 @@ export const Unpinned = meta.story({
   decorators: [
     (Story: React.ComponentType) => {
       useEffect(() => {
-        useViewModel.setState({
+        viewModelActions.setState({
           preferences: makeGlobalPreferences({
             developerMode: true,
             pinnedVersion: null,
@@ -48,7 +48,7 @@ export const PinnedToPastVersion = meta.story({
   decorators: [
     (Story: React.ComponentType) => {
       useEffect(() => {
-        useViewModel.setState({
+        viewModelActions.setState({
           preferences: makeGlobalPreferences({
             developerMode: true,
             pinnedVersion: "0.21.0",

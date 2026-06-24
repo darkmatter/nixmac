@@ -1,7 +1,6 @@
 import { tauriAPI, ipcRenderer } from "@/ipc/api";
 import type { DarwinApplyDataEvent, DarwinApplySummaryEvent, RebuildStatus } from "@/ipc/types";
-import { useUiState } from "@nixmac/state";
-import { useViewModel } from "@nixmac/state";
+import { uiActions, viewModelActions } from "@nixmac/state";
 import type { RebuildLine } from "@/types/rebuild";
 import { bindBackendSlice } from "./_helpers";
 
@@ -19,11 +18,11 @@ export function setRebuildRawLineEcho(echo: boolean): void {
 /** Reset the rebuild output fold (debug tooling / e2e reset). */
 export function clearRebuildLog(): void {
   nextLineId = 1;
-  useViewModel.setState({ rebuildLog: { lines: [], rawLines: [] } });
+  viewModelActions.setState({ rebuildLog: { lines: [], rawLines: [] } });
 }
 
 function appendSummaryLines(texts: string[], type: RebuildLine["type"]): void {
-  useViewModel.setState((state) => ({
+  viewModelActions.setState((state) => ({
     rebuildLog: {
       ...state.rebuildLog,
       lines: [
@@ -35,7 +34,7 @@ function appendSummaryLines(texts: string[], type: RebuildLine["type"]): void {
 }
 
 function appendRawLines(lines: string[]): void {
-  useViewModel.setState((state) => ({
+  viewModelActions.setState((state) => ({
     rebuildLog: {
       ...state.rebuildLog,
       rawLines: [...state.rebuildLog.rawLines, ...lines].slice(-500), // Keep last 500 raw lines
@@ -44,30 +43,30 @@ function appendRawLines(lines: string[]): void {
 }
 
 function mirrorRebuildStatus(status: RebuildStatus): void {
-  const wasRunning = useViewModel.getState().rebuildStatus?.isRunning ?? false;
+  const wasRunning = viewModelActions.getState().rebuildStatus?.isRunning ?? false;
 
   if (status.isRunning && !wasRunning) {
     // A new run started: reset the output fold and re-show the panel.
     nextLineId = 1;
-    useViewModel.setState({
+    viewModelActions.setState({
       rebuildStatus: status,
       rebuildLog: {
         lines: [{ id: 0, text: "Preparing rebuild...", type: "info" }],
         rawLines: [],
       },
     });
-    useUiState.getState().setRebuildPanelDismissed(false);
+    uiActions.setRebuildPanelDismissed(false);
     return;
   }
 
-  useViewModel.setState({ rebuildStatus: status });
+  viewModelActions.setState({ rebuildStatus: status });
 
   if (wasRunning && !status.isRunning) {
     // Run ended: release the global processing flag. On Full Disk Access
     // failures, re-probe permissions — the backend writes the cell and
     // `permissions_changed` mirrors it, routing the UI to the permissions
     // step.
-    useUiState.getState().setProcessing(false);
+    uiActions.setProcessing(false);
     if (status.errorType === "full_disk_access") {
       void tauriAPI.permissions.refresh();
     }

@@ -49,11 +49,19 @@ pub const SYNC_SERVER_URL_KEY: &str = "syncServerUrl";
 pub const SYNC_ACCOUNT_ID_KEY: &str = "syncAccountId";
 pub const SYNC_ACCOUNT_EMAIL_KEY: &str = "syncAccountEmail";
 pub const SYNC_KEY_ID_KEY: &str = "syncKeyId";
+/// Web-origin account id (Better Auth user id) for GitHub App access.
+pub const WEB_ACCOUNT_ID_KEY: &str = "webAccountId";
+/// Web-origin account email for display.
+pub const WEB_ACCOUNT_EMAIL_KEY: &str = "webAccountEmail";
 /// Keychain account name for the per-device HMAC secret. Never written to the
 /// plaintext settings store.
 pub const SYNC_SECRET_KEYCHAIN_KEY: &str = "nixmacSyncSecret";
 /// Default sync server when the user has not configured a custom endpoint.
 pub const DEFAULT_SYNC_BASE_URL: &str = "https://sync.nixmac.app";
+/// Keychain account name for the per-device Better Auth API key (`nixmac_…`)
+/// used to authenticate server-brokered GitHub App requests against the web
+/// origin. Distinct from the HMAC sync secret. Never written to plaintext.
+pub const DEVICE_API_KEY_KEYCHAIN_KEY: &str = "nixmacDeviceApiKey";
 
 pub const DEFAULT_MAX_ITERATIONS: usize = 25;
 pub const DEFAULT_MAX_OUTPUT_TOKENS: usize = 32_768;
@@ -602,6 +610,38 @@ pub fn delete_sync_account<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
     Ok(())
 }
 
+/// Non-secret metadata for the web-origin account (GitHub App broker).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WebAccountMeta {
+    pub account_id: String,
+    pub email: String,
+}
+
+pub fn get_web_account<R: Runtime>(app: &AppHandle<R>) -> Result<Option<WebAccountMeta>> {
+    let account_id = get_string_pref(app, WEB_ACCOUNT_ID_KEY)?;
+    let email = get_string_pref(app, WEB_ACCOUNT_EMAIL_KEY)?;
+    match (account_id, email) {
+        (Some(account_id), Some(email)) => Ok(Some(WebAccountMeta { account_id, email })),
+        _ => Ok(None),
+    }
+}
+
+pub fn set_web_account<R: Runtime>(app: &AppHandle<R>, meta: &WebAccountMeta) -> Result<()> {
+    set_string_pref(app, WEB_ACCOUNT_ID_KEY, &meta.account_id)?;
+    set_string_pref(app, WEB_ACCOUNT_EMAIL_KEY, &meta.email)?;
+    Ok(())
+}
+
+pub fn delete_web_account<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
+    delete_pref_raw(app, WEB_ACCOUNT_ID_KEY)?;
+    delete_pref_raw(app, WEB_ACCOUNT_EMAIL_KEY)?;
+    Ok(())
+}
+
+pub fn github_ready<R: Runtime>(app: &AppHandle<R>) -> Result<bool> {
+    Ok(get_device_api_key(app)?.is_some() && get_web_server_url().is_ok())
+}
+
 /// Gets the per-device HMAC secret from the keychain.
 pub fn get_sync_secret<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
     get_secret_pref(app, SYNC_SECRET_KEYCHAIN_KEY)
@@ -615,6 +655,37 @@ pub fn set_sync_secret<R: Runtime>(app: &AppHandle<R>, secret: &str) -> Result<(
 /// Removes the per-device HMAC secret from the keychain (used on sign-out).
 pub fn delete_sync_secret<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
     delete_secret_pref(app, SYNC_SECRET_KEYCHAIN_KEY)
+}
+
+/// Gets the per-device Better Auth API key (`nixmac_…`) from the keychain.
+pub fn get_device_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
+    get_secret_pref(app, DEVICE_API_KEY_KEYCHAIN_KEY)
+}
+
+/// Stores the per-device Better Auth API key in the keychain.
+pub fn set_device_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()> {
+    set_secret_pref(app, DEVICE_API_KEY_KEYCHAIN_KEY, key)
+}
+
+/// Removes the per-device Better Auth API key from the keychain (sign-out).
+pub fn delete_device_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
+    delete_secret_pref(app, DEVICE_API_KEY_KEYCHAIN_KEY)
+}
+
+/// Resolves the nixmac web/API origin that hosts Better Auth (`/api/auth/*`)
+/// and the server-brokered GitHub endpoints (`/github/*`,
+/// `/auth/github/callback`). Embedded at build time via `VITE_SERVER_URL`,
+/// with an env override for development and a dedicated E2E override.
+pub fn get_web_server_url() -> Result<String> {
+    if let Some(url) = e2e_env_value("NIXMAC_E2E_WEB_SERVER_URL") {
+        return Ok(url.trim_end_matches('/').to_string());
+    }
+    let url = option_env!("VITE_SERVER_URL")
+        .map(|s| s.to_string())
+        .or_else(|| std::env::var("VITE_SERVER_URL").ok())
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("nixmac web server URL not configured (VITE_SERVER_URL)"))?;
+    Ok(url.trim_end_matches('/').to_string())
 }
 
 // =============================================================================

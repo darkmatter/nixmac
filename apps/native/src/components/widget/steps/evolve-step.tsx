@@ -8,12 +8,8 @@ import { SummaryOrDiff } from "@/components/widget/summaries/summary-or-diff";
 import { useApply } from "@/hooks/use-apply";
 import { useRollback } from "@/hooks/use-rollback";
 import { Eraser, Loader2, Wrench } from "lucide-react";
-import { NoiseBackground } from "@/components/ui/noise-background";
+import { GlowFrame } from "@/components/button-glow";
 import { cn } from "@/lib/utils";
-
-const ACTIVE_GRADIENT = ["rgb(45, 212, 191)", "rgb(20, 184, 166)", "rgb(13, 148, 136)"] as const;
-
-const INACTIVE_GRADIENT = ["rgb(115, 115, 115)", "rgb(82, 82, 82)", "rgb(64, 64, 64)"] as const;
 
 /**
  * Evolve Review Step: AI session active, not yet built.
@@ -43,17 +39,7 @@ export function EvolveStep() {
           Discard
         </ConfirmButton>
 
-        <NoiseBackground
-          animating={isBuildReady}
-          shimmer={false}
-          speed={isLoading ? 0.35 : 0.1}
-          containerClassName={cn(
-            "w-fit rounded-full p-0.5 transition-opacity duration-300",
-            !isBuildReady && "opacity-70 saturate-50",
-          )}
-          gradientColors={isBuildReady ? [...ACTIVE_GRADIENT] : [...INACTIVE_GRADIENT]}
-          noiseIntensity={isBuildReady ? 0.2 : 0.08}
-        >
+        <GlowFrame active={isBuildReady}>
           <ConfirmButton
             size="sm"
             disabled={!isBuildReady}
@@ -75,7 +61,7 @@ export function EvolveStep() {
             )}
             Build & Test
           </ConfirmButton>
-        </NoiseBackground>
+        </GlowFrame>
       </StepActionsHeader>
       <SummaryOrDiff />
       <PromptInputSection />

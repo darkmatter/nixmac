@@ -1,10 +1,12 @@
 import { FeedbackType } from "@nixmac/native/types/feedback";
 import { beforeEach, describe, expect, it } from "vitest";
-import { initialUiState, useUiState } from "./ui-state";
+import { uiActions } from "./actions";
+import { initialUiState } from "./store";
+import { useUiState } from "./selectors";
 
 describe("useUiState", () => {
   beforeEach(() => {
-    useUiState.setState(initialUiState);
+    uiActions.reset();
   });
 
   it("keeps UI-only defaults outside the backend view model", () => {
@@ -23,13 +25,11 @@ describe("useUiState", () => {
   });
 
   it("updates modal, processing, feedback, and log state through UI setters", () => {
-    const state = useUiState.getState();
-
-    state.setSettingsOpen(true, "developer");
-    state.setProcessing(true, "evolve");
-    state.openFeedback(FeedbackType.Bug, "broken");
-    state.appendLog("first");
-    state.appendLog(" second");
+    uiActions.setSettingsOpen(true, "developer");
+    uiActions.setProcessing(true, "evolve");
+    uiActions.openFeedback(FeedbackType.Bug, "broken");
+    uiActions.appendLog("first");
+    uiActions.appendLog(" second");
 
     const next = useUiState.getState();
     expect(next.settingsOpen).toBe(true);
@@ -43,41 +43,41 @@ describe("useUiState", () => {
   });
 
   it("setError stores the message and can clear it with null", () => {
-    useUiState.getState().setError("boom");
+    uiActions.setError("boom");
     expect(useUiState.getState().error).toBe("boom");
-    useUiState.getState().setError(null);
+    uiActions.setError(null);
     expect(useUiState.getState().error).toBeNull();
   });
 
   it("setProcessing clears the action when not processing and defaults it to null", () => {
-    useUiState.getState().setProcessing(true, "apply");
+    uiActions.setProcessing(true, "apply");
     expect(useUiState.getState().processingAction).toBe("apply");
 
-    useUiState.getState().setProcessing(false, "apply");
+    uiActions.setProcessing(false, "apply");
     expect(useUiState.getState().isProcessing).toBe(false);
     expect(useUiState.getState().processingAction).toBeNull();
 
-    useUiState.getState().setProcessing(true);
+    uiActions.setProcessing(true);
     expect(useUiState.getState().processingAction).toBeNull();
   });
 
   it("setSettingsOpen(false) resets the active tab", () => {
-    useUiState.getState().setSettingsOpen(true, "api-keys");
+    uiActions.setSettingsOpen(true, "api-keys");
     expect(useUiState.getState().settingsActiveTab).toBe("api-keys");
 
-    useUiState.getState().setSettingsOpen(false);
+    uiActions.setSettingsOpen(false);
     expect(useUiState.getState().settingsOpen).toBe(false);
     expect(useUiState.getState().settingsActiveTab).toBeNull();
   });
 
   it("clearLogs resets the console buffer", () => {
-    useUiState.getState().appendLog("hello");
-    useUiState.getState().clearLogs();
+    uiActions.appendLog("hello");
+    uiActions.clearLogs();
     expect(useUiState.getState().consoleLogs).toBe("");
   });
 
   it("removing an absent analyzing hash is a no-op", () => {
-    expect(() => useUiState.getState().removeAnalyzingHistoryHash("nope")).not.toThrow();
+    expect(() => uiActions.removeAnalyzingHistoryHash("nope")).not.toThrow();
     expect(useUiState.getState().analyzingHistoryForHashes.size).toBe(0);
   });
 
@@ -85,13 +85,13 @@ describe("useUiState", () => {
     expect(useUiState.getState().isBootstrapping).toBe(false);
     expect(useUiState.getState().commitMessageSuggestion).toBeNull();
 
-    useUiState.getState().setBootstrapping(true);
-    useUiState.getState().setCommitMessageSuggestion("feat: add vim");
+    uiActions.setBootstrapping(true);
+    uiActions.setCommitMessageSuggestion("feat: add vim");
     expect(useUiState.getState().isBootstrapping).toBe(true);
     expect(useUiState.getState().commitMessageSuggestion).toBe("feat: add vim");
 
-    useUiState.getState().setBootstrapping(false);
-    useUiState.getState().setCommitMessageSuggestion(null);
+    uiActions.setBootstrapping(false);
+    uiActions.setCommitMessageSuggestion(null);
     expect(useUiState.getState().isBootstrapping).toBe(false);
     expect(useUiState.getState().commitMessageSuggestion).toBeNull();
   });
@@ -99,14 +99,20 @@ describe("useUiState", () => {
   it("updates analyzing history hashes immutably", () => {
     const before = useUiState.getState().analyzingHistoryForHashes;
 
-    useUiState.getState().addAnalyzingHistoryHash("abc");
+    uiActions.addAnalyzingHistoryHash("abc");
     const afterAdd = useUiState.getState().analyzingHistoryForHashes;
-    useUiState.getState().removeAnalyzingHistoryHash("abc");
+    uiActions.removeAnalyzingHistoryHash("abc");
     const afterRemove = useUiState.getState().analyzingHistoryForHashes;
 
     expect(afterAdd).not.toBe(before);
     expect(afterAdd.has("abc")).toBe(true);
     expect(afterRemove).not.toBe(afterAdd);
     expect(afterRemove.has("abc")).toBe(false);
+  });
+
+  it("reset restores initial state", () => {
+    uiActions.setError("boom");
+    uiActions.reset();
+    expect(useUiState.getState()).toEqual(initialUiState);
   });
 });

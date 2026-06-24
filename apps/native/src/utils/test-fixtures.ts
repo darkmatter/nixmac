@@ -1,4 +1,4 @@
-import { useViewModel } from "@nixmac/state";
+import { viewModelActions } from "@nixmac/state";
 import type {
   GlobalPreferences,
   NixInstallState,
@@ -81,8 +81,8 @@ export function makeRebuildStatus(overrides: Partial<RebuildStatus> = {}): Rebui
  * this) can still override any field.
  */
 export function seedViewModelBypass(): void {
-  const current = useViewModel.getState();
-  useViewModel.setState({
+  const current = viewModelActions.getState();
+  viewModelActions.setState({
     permissions: makeGrantedPermissions(),
     permissionsHydrated: true,
     nixInstall: makeNixInstallState(),

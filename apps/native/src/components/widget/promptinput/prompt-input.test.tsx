@@ -4,8 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PromptInput } from "@/components/widget/promptinput/prompt-input";
 import type { GitStatus } from "@/ipc/types";
-import { useUiState } from "@nixmac/state";
-import { useViewModel } from "@nixmac/state";
+import { uiActions, viewModelActions } from "@nixmac/state";
 
 const mocks = vi.hoisted(() => ({
   handleEvolve: vi.fn<() => Promise<void>>(),
@@ -71,15 +70,14 @@ const dirtyGitStatus: GitStatus = {
 };
 
 function resetStore() {
-  const ui = useUiState.getState();
-  ui.setEvolvePrompt("");
-  useViewModel.setState({
+  uiActions.setEvolvePrompt("");
+  viewModelActions.setState({
     git: null,
     evolve: null,
     build: { externalBuildDetected: false },
   });
-  ui.setProcessing(false);
-  ui.setSettingsOpen(false);
+  uiActions.setProcessing(false);
+  uiActions.setSettingsOpen(false);
 }
 
 describe("<PromptInput>", () => {
@@ -98,8 +96,8 @@ describe("<PromptInput>", () => {
   });
 
   it("opens the dirty-tree resolution dialog instead of racing adopt and evolve", async () => {
-    useUiState.getState().setEvolvePrompt("install vim");
-    useViewModel.setState({ git: dirtyGitStatus, evolve: null });
+    uiActions.setEvolvePrompt("install vim");
+    viewModelActions.setState({ git: dirtyGitStatus, evolve: null });
 
     render(<PromptInput />);
 

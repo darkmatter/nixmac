@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, ExternalLink, Loader2, Lock, ShieldCheck } from "lucide-react";
+import { Check, ExternalLink, Folder, HardDrive, Loader2, ShieldCheck, Terminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StepShell } from "@/components/widget/onboarding/step-shell";
 import { stepEyebrow } from "@/components/widget/onboarding/lib/onboarding";
@@ -47,6 +47,7 @@ export function PermissionsStep() {
 
   const permissions = permissionsState?.permissions ?? [];
 
+
   return (
     <StepShell
       eyebrow={stepEyebrow("permissions")}
@@ -58,6 +59,23 @@ export function PermissionsStep() {
           const isGranted = perm.status === "granted";
           const isRequesting = requesting === perm.id;
           const canRequest = perm.canRequestProgrammatically;
+          const icon = (() => {
+            if (isGranted) {
+              return <ShieldCheck className="size-5" />;
+            }
+            switch (perm.id) {
+              case "desktop":
+                return <Folder className="size-5" />;
+              case "documents":
+                return <Folder className="size-5" />;
+              case "admin":
+                return <Terminal className="size-5" />;
+              case "full-disk":
+                return <HardDrive className="size-5" />;
+              default:
+                return <Loader2 className="size-5 animate-spin" aria-hidden="true" />;
+            }
+          })()
 
           return (
             <li
@@ -75,7 +93,7 @@ export function PermissionsStep() {
                   )}
                   aria-hidden="true"
                 >
-                  {isGranted ? <ShieldCheck className="size-5" /> : <Lock className="size-5" />}
+                  {icon}
                 </span>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -143,3 +161,4 @@ export function PermissionsStep() {
     </StepShell>
   );
 }
+

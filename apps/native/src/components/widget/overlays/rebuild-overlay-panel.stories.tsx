@@ -2,8 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import React, { useEffect } from "react";
 import { RebuildOverlayPanel } from "@/components/widget/overlays/rebuild-overlay-panel";
 import type { RebuildStatus } from "@/ipc/types";
-import { useUiState } from "@nixmac/state";
-import { useViewModel } from "@nixmac/state";
+import { uiActions, viewModelActions } from "@nixmac/state";
 import type { RebuildContext, RebuildLine } from "@/types/rebuild";
 import { makeRebuildStatus } from "@/utils/test-fixtures";
 
@@ -25,17 +24,17 @@ const withRebuildState = ({
 }: RebuildScenario) => {
   return (Story: () => React.ReactNode) => {
     useEffect(() => {
-      useViewModel.setState({
+      viewModelActions.setState({
         rebuildStatus: makeRebuildStatus(status),
         rebuildLog: { lines, rawLines },
       });
-      useUiState.setState({ rebuildContext: context, rebuildPanelDismissed: false });
+      uiActions.setState({ rebuildContext: context, rebuildPanelDismissed: false });
       return () => {
-        useViewModel.setState({
+        viewModelActions.setState({
           rebuildStatus: null,
           rebuildLog: { lines: [], rawLines: [] },
         });
-        useUiState.setState({ rebuildContext: "apply", rebuildPanelDismissed: false });
+        uiActions.setState({ rebuildContext: "apply", rebuildPanelDismissed: false });
       };
     }, []);
 

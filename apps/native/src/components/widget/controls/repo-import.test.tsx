@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import "@testing-library/jest-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useViewModel } from "@nixmac/state";
+import { viewModelActions } from "@nixmac/state";
 import { RepoImport } from "@/components/widget/controls/repo-import";
 
 // ---------------------------------------------------------------------------
@@ -47,7 +47,7 @@ function resetMocks() {
 
 beforeEach(() => {
   resetMocks();
-  useViewModel.setState({ preferences: null, hosts: [] });
+  viewModelActions.setState({ preferences: null, hosts: [] });
 });
 
 afterEach(() => {

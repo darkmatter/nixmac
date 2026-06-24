@@ -82,7 +82,7 @@ export function PreviewIndicator({
   };
 
   return (
-    <div className="fixed right-4 bottom-4 z-[100]">
+    <div className="fixed right-4 bottom-4 z-100">
       {/* Expanded panel */}
       {isExpanded && (
         <div className="fade-in slide-in-from-bottom-2 mb-3 w-80 animate-in duration-200">
@@ -159,7 +159,7 @@ export function PreviewIndicator({
       )}
 
       <button
-        className="relative inline-flex h-12 overflow-hidden rounded-full p-[1px] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-slate-50"
+        className="relative inline-flex h-12 overflow-hidden rounded-full p-px focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-slate-50"
         onClick={handleClick}
         type="button"
       >

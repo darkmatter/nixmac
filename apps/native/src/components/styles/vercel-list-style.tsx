@@ -70,7 +70,7 @@ export function VercelListStyle() {
       {/* Header */}
       <div className="flex items-center justify-between border-border border-b px-5 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-linear-to-br from-cyan-500 to-blue-600">
             <span className="font-bold text-lg text-white">N</span>
           </div>
           <div>

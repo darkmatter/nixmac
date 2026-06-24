@@ -1,7 +1,7 @@
 "use client";
 
 import { EvolveProgress } from "@/components/widget/overlays/evolve-progress";
-import { useUiState } from "@nixmac/state";
+import { uiActions, useUiState } from "@nixmac/state";
 import { useViewModel } from "@nixmac/state";
 import { clearEvolveEvents } from "@/viewmodel/evolution";
 import { tauriAPI } from "@/ipc/api";
@@ -17,7 +17,7 @@ export function EvolveOverlayPanel() {
   const handleStopEvolution = async () => {
     try {
       await tauriAPI.darwin.evolveCancel();
-      useUiState.setState({ isGenerating: false });
+      uiActions.setState({ isGenerating: false });
       clearEvolveEvents();
     } catch (e) {
       console.error("Failed to cancel evolution:", e);

@@ -1,5 +1,5 @@
 import { EVOLUTION_CANCELLED_MSG } from "@/lib/constants";
-import { useUiState } from "@nixmac/state";
+import { uiActions, useUiState } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import { getTelemetry } from "@/lib/telemetry/instance";
 
@@ -36,13 +36,13 @@ const handleEvolve = async () => {
 
   await refreshPromptHistory(ui.evolvePrompt.trim());
 
-  ui.setProcessing(true, "evolve");
-  ui.setGenerating(true);
-  ui.setError(null);
-  ui.clearLogs();
-  ui.setConversationalResponse(null);
-  ui.setEvolutionTelemetry(null);
-  ui.appendLog(`\n> Evolving: "${ui.evolvePrompt}"\n`);
+  uiActions.setProcessing(true, "evolve");
+  uiActions.setGenerating(true);
+  uiActions.setError(null);
+  uiActions.clearLogs();
+  uiActions.setConversationalResponse(null);
+  uiActions.setEvolutionTelemetry(null);
+  uiActions.appendLog(`\n> Evolving: "${ui.evolvePrompt}"\n`);
 
   // Track evolution start. The evolve event stream itself is folded into
   // the ViewModel by `viewmodel/evolution.ts` (and reset on the run's
@@ -56,7 +56,7 @@ const handleEvolve = async () => {
     // the viewmodel sync modules mirror everything.
     await tauriAPI.darwin.evolve(ui.evolvePrompt);
 
-    ui.setEvolvePrompt("");
+    uiActions.setEvolvePrompt("");
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
     // User-initiated cancellation isn't an error — backup still ran (and the
@@ -64,7 +64,7 @@ const handleEvolve = async () => {
     const isCancelled = msg.includes(EVOLUTION_CANCELLED_MSG);
 
     if (isCancelled) {
-      useUiState.getState().appendLog("✗ Evolution cancelled\n");
+      uiActions.appendLog("✗ Evolution cancelled\n");
     } else {
       console.error("[useEvolve] Evolution failed:", {
         error: e,
@@ -72,8 +72,8 @@ const handleEvolve = async () => {
         stack: (e as Error)?.stack,
         timestamp: new Date().toISOString(),
       });
-      useUiState.getState().setError(msg);
-      useUiState.getState().appendLog(`✗ Error: ${msg}\n`);
+      uiActions.setError(msg);
+      uiActions.appendLog(`✗ Error: ${msg}\n`);
 
       // Track evolution failure
       const stage = msg.toLowerCase().includes("build")
@@ -87,8 +87,8 @@ const handleEvolve = async () => {
       });
     }
   } finally {
-    useUiState.getState().setGenerating(false);
-    useUiState.getState().setProcessing(false, "evolve");
+    uiActions.setGenerating(false);
+    uiActions.setProcessing(false, "evolve");
   }
 };
 

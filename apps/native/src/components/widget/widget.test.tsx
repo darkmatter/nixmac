@@ -1,5 +1,4 @@
-import { initialUiState, useUiState } from "@nixmac/state";
-import { useViewModel } from "@nixmac/state";
+import { initialUiState, uiActions, viewModelActions } from "@nixmac/state";
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DarwinWidget } from "./widget";
@@ -67,7 +66,7 @@ vi.mock("@/hooks/use-summary", () => ({
 describe("DarwinWidget", () => {
   beforeEach(() => {
     // Reset store to initial state before each test
-    useViewModel.setState({
+    viewModelActions.setState({
       git: null,
       preferences: makePrefs({
         configDir: "/Users/test/nixmac",
@@ -76,7 +75,7 @@ describe("DarwinWidget", () => {
       hosts: ["Test-MacBook"],
       evolveEvents: [],
     });
-    useUiState.setState({ ...initialUiState });
+    uiActions.setState({ ...initialUiState });
   });
 
   it("renders without crashing", () => {
@@ -85,7 +84,7 @@ describe("DarwinWidget", () => {
   });
 
   it("renders setup step when no config", () => {
-    useViewModel.setState({
+    viewModelActions.setState({
       preferences: makePrefs({ configDir: null, hostAttr: null }),
       hosts: [],
     });
@@ -95,7 +94,7 @@ describe("DarwinWidget", () => {
   });
 
   it("renders evolving step with git changes", () => {
-    useViewModel.setState({
+    viewModelActions.setState({
       git: {
         files: [{ path: "test.nix", changeType: "edited" }],
         branch: null,
@@ -113,7 +112,7 @@ describe("DarwinWidget", () => {
   });
 
   it("renders with error message", () => {
-    useUiState.getState().setError("Test error message");
+    uiActions.setError("Test error message");
 
     const { container } = render(<DarwinWidget />);
     expect(container).toBeTruthy();

@@ -80,31 +80,31 @@ export type CategoryStyle = {
 
 const EMERALD: CategoryStyle = {
   text: "text-emerald-500",
-  bg: "bg-emerald-500/[0.08]",
+  bg: "bg-emerald-500/8",
   dot: "bg-emerald-500",
   border: "border-emerald-500/40",
 };
 const BLUE: CategoryStyle = {
   text: "text-blue-500",
-  bg: "bg-blue-500/[0.08]",
+  bg: "bg-blue-500/8",
   dot: "bg-blue-500",
   border: "border-blue-500/40",
 };
 const AMBER: CategoryStyle = {
   text: "text-amber-500",
-  bg: "bg-amber-500/[0.08]",
+  bg: "bg-amber-500/8",
   dot: "bg-amber-500",
   border: "border-amber-500/40",
 };
 const VIOLET: CategoryStyle = {
   text: "text-violet-500",
-  bg: "bg-violet-500/[0.08]",
+  bg: "bg-violet-500/8",
   dot: "bg-violet-500",
   border: "border-violet-500/40",
 };
 const GRAY: CategoryStyle = {
   text: "text-gray-500",
-  bg: "bg-gray-500/[0.08]",
+  bg: "bg-gray-500/8",
   dot: "bg-gray-500",
   border: "border-gray-500/40",
 };
@@ -193,9 +193,9 @@ type ChangeTypeStyle = {
 
 export const CHANGE_TYPE_STYLES: Record<ChangeType, ChangeTypeStyle> = {
   new: { icon: FilePlus, bg: "bg-emerald-300/[0.07]", iconColor: "text-emerald-400" },
-  edited: { icon: FilePen, bg: "bg-white/[0.06]", iconColor: "text-neutral-400" },
+  edited: { icon: FilePen, bg: "bg-white/6", iconColor: "text-neutral-400" },
   removed: { icon: FileX, bg: "bg-red-500/[0.07]", iconColor: "text-red-400" },
-  renamed: { icon: FileCode, bg: "bg-white/[0.06]", iconColor: "text-neutral-400" },
+  renamed: { icon: FileCode, bg: "bg-white/6", iconColor: "text-neutral-400" },
 };
 
 export type ChangeWithRichType = Change & {

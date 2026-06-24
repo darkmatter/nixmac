@@ -6,7 +6,7 @@ import { MarkdownDescription } from "@/components/widget/summaries/markdown-desc
 import { commitMessageBody } from "@/components/widget/summaries/markdown-utils";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useSummary } from "@/hooks/use-summary";
-import { useViewModel } from "@nixmac/state";
+import { uiActions, useViewModel } from "@nixmac/state";
 import { useUiState } from "@nixmac/state";
 import { GitMerge, Loader2 } from "lucide-react";
 import { useEffect } from "react";
@@ -30,7 +30,7 @@ export function MergeSection() {
     const body = commitMessageBody(commitMessageSuggestion ?? "");
     const message = body ? `${subject}\n\n${body}` : subject;
     await handleCommit({ message });
-    useUiState.getState().setEvolvePrompt("");
+    uiActions.setEvolvePrompt("");
   }
 
   const commitSubject = (commitMessageSuggestion ?? "").split(/\r?\n/)[0] ?? "";

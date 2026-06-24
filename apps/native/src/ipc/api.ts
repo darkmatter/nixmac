@@ -80,6 +80,10 @@ export const tauriAPI = {
     status: () => invoke<AuthStatus>("account_status"),
     signIn: (email: string, password: string) =>
       invoke<AuthStatus>("account_sign_in", { email, password }),
+    signInWeb: (email: string, password: string) =>
+      invoke<AuthStatus>("account_sign_in_web", { email, password }),
+    signUpWeb: (name: string, email: string, password: string) =>
+      invoke<AuthStatus>("account_sign_up_web", { name, email, password }),
     signOut: () => invoke<AuthStatus>("account_sign_out"),
     setServerUrl: (url: string) => invoke<AuthStatus>("account_set_server_url", { url }),
   },

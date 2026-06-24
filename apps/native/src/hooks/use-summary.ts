@@ -1,5 +1,4 @@
-import { useUiState } from "@nixmac/state";
-import { useViewModel } from "@nixmac/state";
+import { uiActions, viewModelActions } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 
 /**
@@ -16,28 +15,26 @@ const findChangeMap = async (): Promise<void> => {
 };
 
 const generateCommitMessage = async () => {
-  const { setCommitMessageSuggestion } = useUiState.getState();
-  setCommitMessageSuggestion(null);
+  uiActions.setCommitMessageSuggestion(null);
   try {
     const message = await tauriAPI.summarizedChanges.generateCommitMessage();
-    setCommitMessageSuggestion(message);
+    uiActions.setCommitMessageSuggestion(message);
   } catch {
     // Keep null on error — user can type manually
   }
 };
 
 const generateCurrentSummary = async () => {
-  const { setSummarizing } = useUiState.getState();
-  setSummarizing(true);
+  uiActions.setSummarizing(true);
   try {
     await tauriAPI.summarizedChanges.summarizeCurrent();
   } finally {
-    setSummarizing(false);
+    uiActions.setSummarizing(false);
   }
 };
 
 const summarizeOnFocus = () => {
-  if (useViewModel.getState().preferences?.autoSummarizeOnFocus) {
+  if (viewModelActions.getState().preferences?.autoSummarizeOnFocus) {
     generateCurrentSummary();
   }
 };

@@ -79,7 +79,7 @@ export function CardGridStyle() {
       {/* Header */}
       <div className="flex items-center justify-between border-border border-b px-5 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-rose-500 to-orange-500">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-linear-to-br from-rose-500 to-orange-500">
             <span className="font-bold text-lg text-white">N</span>
           </div>
           <div>
@@ -147,7 +147,7 @@ export function CardGridStyle() {
       {/* AI Summary */}
       <div className="mx-5 mb-5 rounded-lg border border-border bg-muted/30 p-4">
         <div className="mb-2 flex items-center gap-2">
-          <div className="rounded-full bg-gradient-to-r from-rose-500 to-orange-500 p-1.5">
+          <div className="rounded-full bg-linear-to-r from-rose-500 to-orange-500 p-1.5">
             <Sparkles className="h-3 w-3 text-white" />
           </div>
           <span className="font-medium text-sm">What You're Getting</span>

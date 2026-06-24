@@ -1,4 +1,4 @@
-import { useUiState } from "@nixmac/state";
+import { uiActions } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 
@@ -12,7 +12,7 @@ export function useApply() {
   const { triggerRebuild } = useRebuildStream();
 
   const handleApply = async () => {
-    useUiState.getState().setProcessing(true, "apply");
+    uiActions.setProcessing(true, "apply");
 
     await triggerRebuild({
       context: "apply",
@@ -27,7 +27,7 @@ export function useApply() {
   };
 
   const handleHistoryBuild = async () => {
-    useUiState.getState().setProcessing(true, "apply");
+    uiActions.setProcessing(true, "apply");
     await triggerRebuild({
       context: "apply",
       onSuccess: async () => {

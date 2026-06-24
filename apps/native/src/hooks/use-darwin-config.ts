@@ -1,4 +1,4 @@
-import { useUiState } from "@nixmac/state";
+import { uiActions, useUiState } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import type { SetDirResult } from "@/ipc/types";
 
@@ -51,15 +51,14 @@ const saveHost = async (host: string) => {
     await tauriAPI.config.setHostAttr(host);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    useUiState.getState().setError(`Failed to save host: ${message}`);
+    uiActions.setError(`Failed to save host: ${message}`);
   }
 };
 
 const bootstrap = async (hostname: string) => {
   const commitExisting = !hostname.trim();
-  const ui = useUiState.getState();
-  ui.setError(null);
-  ui.setBootstrapping(true);
+  uiActions.setError(null);
+  uiActions.setBootstrapping(true);
 
   try {
     await tauriAPI.flake.bootstrapDefault(hostname);
@@ -77,9 +76,9 @@ const bootstrap = async (hostname: string) => {
     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    ui.setError(`Failed to create configuration: ${message}`);
+    uiActions.setError(`Failed to create configuration: ${message}`);
   } finally {
-    ui.setBootstrapping(false);
+    uiActions.setBootstrapping(false);
   }
 };
 

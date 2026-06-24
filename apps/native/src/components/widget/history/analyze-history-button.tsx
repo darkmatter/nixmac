@@ -24,7 +24,7 @@ export function AnalyzeHistoryButton() {
         type="button"
         variant="outline"
         size="sm"
-        className="h-auto whitespace-nowrap px-[10px] py-1 text-[10px] border border-red-500/30 bg-red-500/[0.08] text-neutral-400 hover:border-red-500/60"
+        className="h-auto whitespace-nowrap px-[10px] py-1 text-[10px] border border-red-500/30 bg-red-500/8 text-neutral-400 hover:border-red-500/60"
         onClick={stopAnalyzing}
       >
         <Square className="h-[10px] w-[10px] fill-current" />

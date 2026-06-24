@@ -21,6 +21,27 @@ export function stepEyebrow(id: StepId): string {
   return `Step ${index + 1} of ${STEPS.length}`;
 }
 
+/** Human-readable step name for the header and chrome. */
+export function stepLabel(id: StepId): string {
+  return STEPS.find((s) => s.id === id)?.label ?? id;
+}
+
+export function stepIndex(id: StepId): number {
+  return STEPS.findIndex((s) => s.id === id);
+}
+
+/**
+ * Picks the step to render: the user's explicit back-navigation target when
+ * valid, otherwise the furthest gate they've reached.
+ */
+export function resolveOnboardingStep(furthestStep: StepId, viewingStep: StepId | null): StepId {
+  if (!viewingStep) return furthestStep;
+  const furthestIndex = stepIndex(furthestStep);
+  const viewingIndex = stepIndex(viewingStep);
+  if (viewingIndex === -1 || viewingIndex > furthestIndex) return furthestStep;
+  return viewingStep;
+}
+
 /** Inputs to the onboarding step machine — backend gates plus local progress. */
 export interface OnboardingStepInputs {
   /** All required macOS permissions granted. */

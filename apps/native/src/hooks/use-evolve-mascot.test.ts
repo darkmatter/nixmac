@@ -1,12 +1,11 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useUiState } from "@nixmac/state";
-import { useViewModel } from "@nixmac/state";
+import { uiActions, viewModelActions } from "@nixmac/state";
 import { useEvolveMascot } from "./use-evolve-mascot";
 import { makeGlobalPreferences as makePrefs, makeRebuildStatus } from "@/utils/test-fixtures";
 
 function setSpinningMascot(enabled: boolean) {
-  useViewModel.setState({
+  viewModelActions.setState({
     preferences: makePrefs({ experimentalSpinningMascot: enabled }),
   });
 }
@@ -29,8 +28,8 @@ describe("useEvolveMascot", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setSpinningMascot(false);
-    useViewModel.setState({ rebuildStatus: null });
-    useUiState.setState({ isGenerating: false });
+    viewModelActions.setState({ rebuildStatus: null });
+    uiActions.setState({ isGenerating: false });
   });
 
   it("shows the mascot only when the experimental flag and active evolve state are both enabled", async () => {
@@ -41,13 +40,13 @@ describe("useEvolveMascot", () => {
 
     act(() => {
       setSpinningMascot(true);
-      useUiState.getState().setGenerating(true);
+      uiActions.setGenerating(true);
     });
 
     await waitFor(() => expect(mocks.show).toHaveBeenCalledTimes(1));
 
     act(() => {
-      useUiState.getState().setGenerating(false);
+      uiActions.setGenerating(false);
     });
 
     await waitFor(() => expect(mocks.hide).toHaveBeenCalledTimes(2));
@@ -58,7 +57,7 @@ describe("useEvolveMascot", () => {
 
     act(() => {
       setSpinningMascot(true);
-      useViewModel.setState({ rebuildStatus: makeRebuildStatus({ isRunning: true }) });
+      viewModelActions.setState({ rebuildStatus: makeRebuildStatus({ isRunning: true }) });
     });
 
     await waitFor(() => expect(mocks.show).toHaveBeenCalledTimes(1));

@@ -28,13 +28,13 @@ const CARD_TONE_CLASSES: Record<
 > = {
   amber: {
     border: "border-amber-500/30",
-    gradient: "from-amber-500/[0.06] to-amber-500/[0.02]",
+    gradient: "from-amber-500/6 to-amber-500/2",
     icon: "text-amber-400",
     divider: "border-amber-500/20",
   },
   blue: {
     border: "border-sky-500/30",
-    gradient: "from-sky-500/[0.06] to-sky-500/[0.02]",
+    gradient: "from-sky-500/6 to-sky-500/2",
     icon: "text-sky-400",
     divider: "border-sky-500/20",
   },
@@ -46,13 +46,13 @@ const CARD_TONE_CLASSES: Record<
   },
   rose: {
     border: "border-rose-500/30",
-    gradient: "from-rose-500/[0.06] to-rose-500/[0.02]",
+    gradient: "from-rose-500/6 to-rose-500/2",
     icon: "text-rose-400",
     divider: "border-rose-500/20",
   },
   teal: {
     border: "border-teal-500/30",
-    gradient: "from-teal-500/[0.06] to-teal-500/[0.02]",
+    gradient: "from-teal-500/6 to-teal-500/2",
     icon: "text-teal-400",
     divider: "border-teal-500/20",
   },
@@ -103,7 +103,7 @@ export function UntrackedCard({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg border bg-gradient-to-b",
+        "overflow-hidden rounded-lg border bg-linear-to-b",
         tone.border,
         tone.gradient,
       )}
@@ -216,7 +216,7 @@ export function UntrackedCard({
             <pre className="m-0 max-h-[260px] overflow-auto whitespace-pre border-border/40 border-t bg-card/40 p-3 font-mono text-[11.5px] leading-[1.7]">
               {items.flatMap((it) =>
                 it.attr.split("\n").map((line, lineIndex) => (
-                  <span key={`${it.name}-${lineIndex}`} className="block bg-emerald-500/[0.06]">
+                  <span key={`${it.name}-${lineIndex}`} className="block bg-emerald-500/6">
                     <span className="select-none pr-2 text-teal-400">+</span>
                     <span className="text-muted-foreground"> </span>
                     <span>{highlightNixLine(line)}</span>

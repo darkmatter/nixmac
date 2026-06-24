@@ -1,8 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { useViewModel } from "@nixmac/state";
-import { useUiState } from "@nixmac/state";
+import { uiActions, useViewModel } from "@nixmac/state";
 import { clearChangeMap } from "@/viewmodel/change-map";
 import { clearEvolveEvents } from "@/viewmodel/evolution";
 import { clearRebuildLog } from "@/viewmodel/rebuild";
@@ -130,14 +129,13 @@ export function DeveloperTab() {
   };
 
   const handleClearUiBuffers = () => {
-    const ui = useUiState.getState();
-    ui.clearLogs();
+    uiActions.clearLogs();
     clearEvolveEvents();
     clearChangeMap();
     clearRebuildLog();
-    ui.setRebuildPanelDismissed(true);
-    ui.setConversationalResponse(null);
-    ui.setCommitMessageSuggestion(null);
+    uiActions.setRebuildPanelDismissed(true);
+    uiActions.setConversationalResponse(null);
+    uiActions.setCommitMessageSuggestion(null);
     setStatusMessage("Cleared local UI debug buffers.");
     setErrorMessage(null);
   };

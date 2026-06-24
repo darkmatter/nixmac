@@ -4,8 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RebuildOverlayPanel } from "@/components/widget/overlays/rebuild-overlay-panel";
 import type { RebuildStatus } from "@/ipc/types";
-import { initialUiState, useUiState } from "@nixmac/state";
-import { useViewModel } from "@nixmac/state";
+import { initialUiState, uiActions, viewModelActions } from "@nixmac/state";
 import type { RebuildContext } from "@/types/rebuild";
 import { makeRebuildStatus } from "@/utils/test-fixtures";
 
@@ -45,11 +44,11 @@ const safetyMessage = "No changes were made to your system.";
 
 function resetStores() {
   act(() => {
-    useViewModel.setState({
+    viewModelActions.setState({
       rebuildStatus: null,
       rebuildLog: { lines: [], rawLines: [] },
     });
-    useUiState.setState({ ...initialUiState });
+    uiActions.setState({ ...initialUiState });
   });
 }
 
@@ -58,7 +57,7 @@ async function renderWithRebuildState(
   context: RebuildContext = "apply",
 ) {
   act(() => {
-    useViewModel.setState({
+    viewModelActions.setState({
       rebuildStatus: makeRebuildStatus({
         isRunning: false,
         success: false,
@@ -71,7 +70,7 @@ async function renderWithRebuildState(
         rawLines: [],
       },
     });
-    useUiState.setState({ rebuildContext: context, rebuildPanelDismissed: false });
+    uiActions.setState({ rebuildContext: context, rebuildPanelDismissed: false });
   });
 
   const result = render(<RebuildOverlayPanel />);
@@ -117,7 +116,7 @@ describe("<RebuildOverlayPanel>", () => {
     await renderWithRebuildState({ systemUntouched: true });
 
     act(() => {
-      useUiState.getState().setRebuildPanelDismissed(true);
+      uiActions.setRebuildPanelDismissed(true);
     });
 
     expect(screen.queryByText(safetyMessage)).not.toBeInTheDocument();

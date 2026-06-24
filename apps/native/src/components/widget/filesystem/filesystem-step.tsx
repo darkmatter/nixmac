@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { tauriAPI } from "@/ipc/api";
 import { useLaunchdItems } from "@/hooks/use-launchd-items";
 import { useSystemDefaultsScan } from "@/hooks/use-system-defaults-scan";
-import { useUiState } from "@nixmac/state";
+import { uiActions, useUiState } from "@nixmac/state";
 
 import type { HomebrewItem, HomebrewState, LaunchdItem, SystemDefault } from "@/ipc/types";
 
@@ -37,9 +37,7 @@ interface FilesystemStepProps {
 }
 
 export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
-  const setEvolvePrompt = useUiState((s) => s.setEvolvePrompt);
-  const setShowFilesystem = useUiState((s) => s.setShowFilesystem);
-  const targetSection = useUiState((s) => s.filesystemTargetSection);
+      const targetSection = useUiState((s) => s.filesystemTargetSection);
 
   // Honor an upstream "open at section X" intent (e.g. the Untracked
   // banner's View button passes "manage"). Default to System.
@@ -66,7 +64,7 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
   // (which passes no section) returns to the user's last view.
   useEffect(() => {
     if (targetSection) {
-      useUiState.setState({ filesystemTargetSection: null });
+      uiActions.setState({ filesystemTargetSection: null });
     }
   }, [targetSection]);
 
@@ -111,21 +109,20 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
       onSeedPrompt(text);
       return;
     }
-    setEvolvePrompt(text);
-    setShowFilesystem(false);
+    uiActions.setEvolvePrompt(text);
+    uiActions.setShowFilesystem(false);
   };
 
   // The managed-edit apply path updates the git/evolve/change-map cells on
   // the backend, which emit their change events; the viewmodel sync modules
   // mirror them. We only invalidate the now-stale recommended prompt.
   const invalidateRecommendation = () => {
-    useUiState.getState().setRecommendedPrompt(undefined);
+    uiActions.setRecommendedPrompt(undefined);
   };
 
   const onEditWithPrompt = (file: FsFile) => seed(seedForFile(file));
   const onTrackHomebrewItems = async (items: CandidateItem[]) => {
-    const store = useUiState.getState();
-    store.setProcessing(true, "apply");
+    uiActions.setProcessing(true, "apply");
     try {
       const homebrewItems: HomebrewItem[] = items.map((item) => {
         if (item.source !== "homebrew" || !item.itemType) {
@@ -139,16 +136,15 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
       });
       await tauriAPI.homebrew.addItems(homebrewItems);
       invalidateRecommendation();
-      setShowFilesystem(false);
+      uiActions.setShowFilesystem(false);
       setHomebrewDiff(null);
     } finally {
-      store.setProcessing(false);
+      uiActions.setProcessing(false);
     }
   };
 
   const onTrackSystemDefaults = async (items: CandidateItem[]) => {
-    const store = useUiState.getState();
-    store.setProcessing(true, "apply");
+    uiActions.setProcessing(true, "apply");
     try {
       const defaults: SystemDefault[] = items.map((item) => {
         if (item.source !== "system") {
@@ -159,15 +155,14 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
       await tauriAPI.scanner.applyDefaults(defaults);
       invalidateRecommendation();
       await refreshSystemDefaults();
-      setShowFilesystem(false);
+      uiActions.setShowFilesystem(false);
     } finally {
-      store.setProcessing(false);
+      uiActions.setProcessing(false);
     }
   };
 
   const onTrackLaunchdItems = async (items: CandidateItem[]) => {
-    const store = useUiState.getState();
-    store.setProcessing(true, "apply");
+    uiActions.setProcessing(true, "apply");
     try {
       const launchdItemsToApply: LaunchdItem[] = items.map((item) => {
         if (item.source !== "launchd") {
@@ -178,9 +173,9 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
       await tauriAPI.launchd.applyLaunchdItems(launchdItemsToApply);
       invalidateRecommendation();
       await refreshLaunchdItems();
-      setShowFilesystem(false);
+      uiActions.setShowFilesystem(false);
     } finally {
-      store.setProcessing(false);
+      uiActions.setProcessing(false);
     }
   };
 

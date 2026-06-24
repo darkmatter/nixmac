@@ -1,8 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { cn } from "@/lib/utils";
-import { useViewModel } from "@nixmac/state";
-import { useUiState, type SettingsTab } from "@nixmac/state";
+import { uiActions, useUiState, useViewModel, type SettingsTab } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import { refreshHostsSnapshot } from "@/viewmodel/preferences";
 import { useForm } from "@tanstack/react-form";
@@ -57,7 +56,8 @@ function NavItem({ icon, label, active, onClick }: NavItemProps) {
 }
 
 export function SettingsDialog() {
-  const { settingsOpen: isOpen, settingsActiveTab, setSettingsOpen } = useUiState();
+  const isOpen = useUiState((s) => s.settingsOpen);
+  const settingsActiveTab = useUiState((s) => s.settingsActiveTab);
   const configDir = useViewModel((s) => s.preferences?.configDir ?? "");
   const hosts = useViewModel((s) => s.hosts);
   const host = useViewModel((s) => s.preferences?.hostAttr ?? "");
@@ -188,11 +188,11 @@ export function SettingsDialog() {
 
   return (
     <Suspense fallback={<div>loading...</div>}>
-      <div className="fixed inset-0 z-[40] flex items-center justify-center" data-tauri-no-drag>
+      <div className="fixed inset-0 z-40 flex items-center justify-center" data-tauri-no-drag>
         <button
           aria-label="Close settings"
           className="absolute inset-0 bg-black/40"
-          onClick={() => setSettingsOpen(false)}
+          onClick={() => uiActions.setSettingsOpen(false)}
           type="button"
         />
         <div className="relative z-10 flex h-[460px] w-[620px] max-w-[90vw] overflow-hidden rounded-xl border border-border bg-card/95 shadow-2xl backdrop-blur-xl">
@@ -251,7 +251,7 @@ export function SettingsDialog() {
             <div className="mt-auto">
               <Button
                 className="w-full"
-                onClick={() => setSettingsOpen(false)}
+                onClick={() => uiActions.setSettingsOpen(false)}
                 size="sm"
                 variant="secondary"
               >
@@ -273,7 +273,7 @@ export function SettingsDialog() {
                     hosts={hosts}
                     saveHost={saveHost}
                     sendDiagnosticsField={sendDiagnosticsField}
-                    setSettingsOpen={setSettingsOpen}
+                    setSettingsOpen={uiActions.setSettingsOpen}
                   />
                 )}
               </form.Field>

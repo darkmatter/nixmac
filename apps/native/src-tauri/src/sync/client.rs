@@ -13,9 +13,7 @@ use anyhow::{Context, Result, anyhow};
 use serde::{Deserialize, Serialize};
 
 use super::signing::{SigningRequest, authorization_header};
-use crate::shared_types::{
-    AuthAccount, GithubConnectStart, GithubRepo, GithubStatus, SyncRemoteStatus,
-};
+use crate::shared_types::{AuthAccount, SyncRemoteStatus};
 
 /// Secret material needed to sign authenticated sync requests.
 #[derive(Debug, Clone)]
@@ -208,112 +206,6 @@ impl SyncClient {
         let body: HeadResponse = resp.json().await.context("invalid sync pull response")?;
         Ok(body.head_commit_hash)
     }
-
-    /// Starts the GitHub App connect flow. `POST /v1/github/connect/start` (signed).
-    pub async fn github_connect_start(
-        &self,
-        creds: &SyncCredentials,
-    ) -> Result<GithubConnectStart> {
-        let resp = self
-            .signed(
-                reqwest::Method::POST,
-                "/v1/github/connect/start",
-                creds,
-                Vec::new(),
-            )
-            .send()
-            .await
-            .context("github connect/start request failed")?;
-        let resp = error_for_status(resp).await?;
-        resp.json()
-            .await
-            .context("invalid github connect/start response")
-    }
-
-    /// Returns whether the account has a linked installation. `GET /v1/github/status` (signed).
-    pub async fn github_status(&self, creds: &SyncCredentials) -> Result<GithubStatus> {
-        let resp = self
-            .signed(reqwest::Method::GET, "/v1/github/status", creds, Vec::new())
-            .send()
-            .await
-            .context("github status request failed")?;
-        let resp = error_for_status(resp).await?;
-        resp.json().await.context("invalid github status response")
-    }
-
-    /// Lists installation-accessible repos. `GET /v1/github/repos` (signed).
-    pub async fn github_list_repos(&self, creds: &SyncCredentials) -> Result<Vec<GithubRepo>> {
-        let resp = self
-            .signed(reqwest::Method::GET, "/v1/github/repos", creds, Vec::new())
-            .send()
-            .await
-            .context("github repos request failed")?;
-        let resp = error_for_status(resp).await?;
-        let body: GithubReposResponse =
-            resp.json().await.context("invalid github repos response")?;
-        Ok(body.repos)
-    }
-
-    /// Mints a short-lived, repo-scoped clone token. `POST /v1/github/clone-token` (signed).
-    pub async fn github_clone_token(
-        &self,
-        creds: &SyncCredentials,
-        owner: &str,
-        repo: &str,
-    ) -> Result<GithubCloneToken> {
-        let body = serde_json::to_vec(&GithubCloneTokenRequest { owner, repo })
-            .context("failed to encode clone-token request")?;
-        let resp = self
-            .signed(reqwest::Method::POST, "/v1/github/clone-token", creds, body)
-            .send()
-            .await
-            .context("github clone-token request failed")?;
-        let resp = error_for_status(resp).await?;
-        resp.json()
-            .await
-            .context("invalid github clone-token response")
-    }
-
-    /// Drops the account↔installation link. `POST /v1/github/disconnect` (signed).
-    pub async fn github_disconnect(&self, creds: &SyncCredentials) -> Result<()> {
-        let resp = self
-            .signed(
-                reqwest::Method::POST,
-                "/v1/github/disconnect",
-                creds,
-                Vec::new(),
-            )
-            .send()
-            .await
-            .context("github disconnect request failed")?;
-        error_for_status(resp).await?;
-        Ok(())
-    }
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct GithubCloneTokenRequest<'a> {
-    owner: &'a str,
-    repo: &'a str,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct GithubReposResponse {
-    repos: Vec<GithubRepo>,
-}
-
-/// Short-lived, repo-scoped installation token for a single clone. Internal
-/// wire type — the token never reaches the frontend.
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GithubCloneToken {
-    pub token: String,
-    /// ISO-8601 expiry (informational; the token is used immediately).
-    #[allow(dead_code)]
-    pub expires_at: String,
-    pub clone_url: String,
 }
 
 fn unix_now_secs() -> u64 {

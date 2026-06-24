@@ -90,7 +90,7 @@ export function HistoryItemCard({
             "flex-1",
             isPreview &&
               "border-teal-400/40 group-hover:border-teal-400/50 group-hover:bg-[#111111]",
-            item.isBuilt && isPreviewActive && "border-white/[0.12]",
+            item.isBuilt && isPreviewActive && "border-white/12",
           )}
           onClick={isCardInteractive ? handleCardClick : undefined}
           onKeyDown={isCardInteractive ? handleKeyDown : undefined}

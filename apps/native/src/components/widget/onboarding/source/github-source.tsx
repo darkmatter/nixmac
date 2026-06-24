@@ -14,6 +14,7 @@ interface GitHubSourceProps {
 }
 
 type AuthState = "checking" | "disconnected" | "connecting" | "connected";
+type AccountMode = "sign-in" | "sign-up";
 
 const DEFAULT_DIR = ".darwin";
 
@@ -48,6 +49,12 @@ function relativeUpdated(iso: string): string {
  */
 export function GitHubSource({ onImported }: GitHubSourceProps) {
   const [auth, setAuth] = useState<AuthState>("checking");
+  const [githubReady, setGithubReady] = useState(false);
+  const [accountMode, setAccountMode] = useState<AccountMode>("sign-up");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [accountWorking, setAccountWorking] = useState(false);
   const [login, setLogin] = useState<string | null>(null);
   const [repos, setRepos] = useState<GithubRepo[] | null>(null);
   const [loadingRepos, setLoadingRepos] = useState(false);
@@ -62,11 +69,18 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     };
   }, []);
 
-  // Already connected? Skip straight to the repo list on mount.
+  // Probe account + GitHub linkage on mount.
   useEffect(() => {
-    tauriAPI.github
+    tauriAPI.account
       .status()
-      .then((s) => {
+      .then(async (accountStatus) => {
+        if (cancelled.current) return;
+        setGithubReady(accountStatus.githubReady);
+        if (!accountStatus.githubReady) {
+          setAuth("disconnected");
+          return;
+        }
+        const s = await tauriAPI.github.status();
         if (cancelled.current) return;
         if (s.connected) {
           setLogin(s.login ?? null);
@@ -115,15 +129,29 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
       });
   }, [auth, repos]);
 
+  async function ensureWebAccount() {
+    if (githubReady) return;
+    if (accountMode === "sign-up") {
+      await tauriAPI.account.signUpWeb(name.trim() || email.split("@")[0] || "nixmac", email, password);
+    } else {
+      await tauriAPI.account.signInWeb(email, password);
+    }
+    setGithubReady(true);
+  }
+
   async function connect() {
     setError(null);
-    setAuth("connecting");
+    setAccountWorking(true);
     try {
+      await ensureWebAccount();
+      setAuth("connecting");
       const { installUrl } = await tauriAPI.github.connectStart();
       await openExternal(installUrl);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
       setAuth("disconnected");
+    } finally {
+      if (!cancelled.current) setAccountWorking(false);
     }
   }
 
@@ -168,6 +196,10 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
   // ---- Connect screen ----
   if (auth !== "connected") {
     const connecting = auth === "connecting";
+    const emailValid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+    const accountFormReady =
+      emailValid && password.length >= 8 && (accountMode === "sign-in" || name.trim().length > 0);
+    const canContinue = githubReady || accountFormReady;
     return (
       <div className="flex flex-col items-center rounded-xl border border-dashed border-border bg-background px-6 py-10 text-center">
         <span
@@ -178,14 +210,98 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
         </span>
         <p className="mt-4 font-medium text-sm">Connect your GitHub account</p>
         <p className="mt-1 max-w-sm text-pretty text-muted-foreground text-sm">
-          New Mac with nothing set up yet? Connect GitHub to pull your flake straight from a
-          repository — no local git required.
+          Import your nix-darwin flake from a GitHub repository. GitHub authorizes read-only repo
+          access; nixmac links that access to your account.
         </p>
-        <Button className="mt-5" onClick={connect} disabled={connecting} data-testid="github-connect-button">
-          {connecting ? (
+
+        {!githubReady ? (
+          <div className="mt-5 w-full max-w-sm text-left">
+            <div className="mb-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setAccountMode("sign-up")}
+                className={cn(
+                  "flex-1 rounded-lg border px-3 py-2 text-sm transition-colors",
+                  accountMode === "sign-up"
+                    ? "border-primary bg-primary/5 font-medium"
+                    : "border-border text-muted-foreground hover:bg-accent",
+                )}
+              >
+                Create account
+              </button>
+              <button
+                type="button"
+                onClick={() => setAccountMode("sign-in")}
+                className={cn(
+                  "flex-1 rounded-lg border px-3 py-2 text-sm transition-colors",
+                  accountMode === "sign-in"
+                    ? "border-primary bg-primary/5 font-medium"
+                    : "border-border text-muted-foreground hover:bg-accent",
+                )}
+              >
+                Sign in
+              </button>
+            </div>
+
+            {accountMode === "sign-up" ? (
+              <div className="mb-3 flex flex-col gap-1.5">
+                <label htmlFor="github-onboarding-name" className="font-medium text-sm">
+                  Name
+                </label>
+                <input
+                  id="github-onboarding-name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your name"
+                  autoComplete="name"
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </div>
+            ) : null}
+
+            <div className="mb-3 flex flex-col gap-1.5">
+              <label htmlFor="github-onboarding-email" className="font-medium text-sm">
+                Email
+              </label>
+              <input
+                id="github-onboarding-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                autoComplete="email"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="github-onboarding-password" className="font-medium text-sm">
+                Password
+              </label>
+              <input
+                id="github-onboarding-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="At least 8 characters"
+                autoComplete={accountMode === "sign-up" ? "new-password" : "current-password"}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+          </div>
+        ) : null}
+
+        <Button
+          className="mt-5"
+          onClick={connect}
+          disabled={connecting || accountWorking || !canContinue}
+          data-testid="github-connect-button"
+        >
+          {connecting || accountWorking ? (
             <>
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-              Waiting for GitHub…
+              {connecting ? "Waiting for GitHub…" : "Setting up account…"}
             </>
           ) : (
             <>

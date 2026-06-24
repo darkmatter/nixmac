@@ -7,7 +7,7 @@ import type {
   PermissionsState,
   SemanticChangeMap,
 } from "@/ipc/types";
-import { useUiState } from "@nixmac/state";
+import { uiActions, useUiState, viewModelActions } from "@nixmac/state";
 import { useViewModel } from "@nixmac/state";
 import {
   makeGlobalPreferences,
@@ -280,13 +280,13 @@ const EVOLVE_EVENT_PRESETS: Record<string, EvolveEvent[]> = {
  */
 function applyArgsToStores(a: Record<string, any>): void {
   const ui = useUiState.getState();
-  const vm = useViewModel.getState();
+  const vm = viewModelActions.getState();
 
   // Seed *every* slice the widget re-hydrates on mount, so the async mount
   // sequence (startViewModelSync → checkPermissions/checkNix → getInitialStatus)
   // mirrors back exactly what's here and produces no post-render DOM change.
   // Otherwise the `afterEach` snapshot races those late writes → flaky.
-  useViewModel.setState({
+  viewModelActions.setState({
     preferences: makeGlobalPreferences({
       ...(vm.preferences ?? {}),
       configDir: a.configDir || null,
@@ -308,19 +308,19 @@ function applyArgsToStores(a: Record<string, any>): void {
     history: [],
   });
 
-  ui.setSettingsOpen(a.settingsOpen, a.settingsTab === "none" ? null : a.settingsTab);
-  ui.setShowHistory(a.showHistory);
-  ui.setShowFilesystem(a.showFilesystem);
-  ui.setFeedbackOpen(a.feedbackOpen);
-  ui.setBootstrapping(a.isBootstrapping);
-  ui.setEvolvePrompt(a.evolvePrompt ?? "");
-  ui.setError(a.error ? a.error : null);
-  ui.setGenerating(a.isGenerating);
-  ui.setSummarizing(a.isSummarizing);
-  ui.setProcessing(a.isProcessing, a.processingAction === "none" ? null : a.processingAction);
+  uiActions.setSettingsOpen(a.settingsOpen, a.settingsTab === "none" ? null : a.settingsTab);
+  uiActions.setShowHistory(a.showHistory);
+  uiActions.setShowFilesystem(a.showFilesystem);
+  uiActions.setFeedbackOpen(a.feedbackOpen);
+  uiActions.setBootstrapping(a.isBootstrapping);
+  uiActions.setEvolvePrompt(a.evolvePrompt ?? "");
+  uiActions.setError(a.error ? a.error : null);
+  uiActions.setGenerating(a.isGenerating);
+  uiActions.setSummarizing(a.isSummarizing);
+  uiActions.setProcessing(a.isProcessing, a.processingAction === "none" ? null : a.processingAction);
 
-  ui.clearLogs();
-  if (a.consoleLogs) ui.appendLog(a.consoleLogs);
+  uiActions.clearLogs();
+  if (a.consoleLogs) uiActions.appendLog(a.consoleLogs);
 }
 
 /**
@@ -330,7 +330,7 @@ function applyArgsToStores(a: Record<string, any>): void {
  */
 function computeArgsView(): Record<string, any> {
   const ui = useUiState.getState();
-  const vm = useViewModel.getState();
+  const vm = viewModelActions.getState();
   return {
     evolveStep: vm.evolve?.step ?? "begin",
     committable: vm.evolve?.committable ?? false,

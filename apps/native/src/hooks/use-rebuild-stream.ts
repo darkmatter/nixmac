@@ -1,4 +1,4 @@
-import { useUiState } from "@nixmac/state";
+import { uiActions } from "@nixmac/state";
 import type { RebuildContext } from "@/types/rebuild";
 import { tauriAPI, ipcRenderer } from "@/ipc/api";
 import type { DarwinApplyEndEvent } from "@/ipc/types";
@@ -27,7 +27,7 @@ export function useRebuildStream() {
   const { refreshGitStatus } = useGitOperations();
 
   const triggerRebuild = async (options: RebuildOptions) => {
-    useUiState.getState().setRebuildContext(options.context);
+    uiActions.setRebuildContext(options.context);
     // Store-path activation has no log summarizer; let the rebuild slice
     // echo raw output into the summary lines.
     setRebuildRawLineEcho(options.storePath != null);
@@ -40,7 +40,7 @@ export function useRebuildStream() {
         // Full Disk Access error: the rebuild slice re-probes permissions;
         // dismiss the panel so the UI can route to the permissions step.
         if (event.payload.error_type === "full_disk_access") {
-          useUiState.getState().setRebuildPanelDismissed(true);
+          uiActions.setRebuildPanelDismissed(true);
           await refreshGitStatus();
           return;
         }
@@ -54,11 +54,11 @@ export function useRebuildStream() {
               await options.onSuccess();
             } catch (e: unknown) {
               const msg = (e as Error)?.message || String(e);
-              useUiState.getState().setError(msg);
+              uiActions.setError(msg);
             }
           }
           // Auto-dismiss rebuild panel after success (even if onSuccess failed)
-          useUiState.getState().setRebuildPanelDismissed(true);
+          uiActions.setRebuildPanelDismissed(true);
         } else {
           if (options.context === "apply") {
             getTelemetry().captureEvent({ name: "apply_failed" });
@@ -79,8 +79,8 @@ export function useRebuildStream() {
       }
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
-      useUiState.getState().setError(msg);
-      useUiState.getState().setProcessing(false);
+      uiActions.setError(msg);
+      uiActions.setProcessing(false);
       unlistenEnd();
     }
   };

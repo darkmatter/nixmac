@@ -2,6 +2,7 @@ export { OnboardingFlow } from "@/components/widget/onboarding/onboarding-flow";
 export { useOnboarding } from "@nixmac/state";
 export {
   computeOnboardingStep,
+  resolveOnboardingStep,
   STEPS,
   stepEyebrow,
   type StepId,

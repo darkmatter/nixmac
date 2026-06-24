@@ -1,6 +1,7 @@
 "use client";
 
 import { OnboardingHeader } from "@/components/widget/onboarding/onboarding-header";
+import { stepLabel } from "@/components/widget/onboarding/lib/onboarding";
 import { OnboardingSidebar } from "@/components/widget/onboarding/onboarding-sidebar";
 import { OnboardingStepContent } from "@/components/widget/onboarding/onboarding-step-content";
 import { useOnboardingFlow } from "@/components/widget/onboarding/use-onboarding-flow";
@@ -12,18 +13,23 @@ import { useOnboardingFlow } from "@/components/widget/onboarding/use-onboarding
  * session-local onboarding store.
  */
 export function OnboardingFlow() {
-  const { currentStep, progress } = useOnboardingFlow();
+  const { activeStep, furthestStep, progress, goToStep } = useOnboardingFlow();
 
   return (
     <div
       className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-y-auto px-4 py-8 sm:px-6"
       data-testid="onboarding-flow"
     >
-      <OnboardingHeader />
+      <OnboardingHeader title={stepLabel(activeStep)} />
 
       <div className="grid flex-1 gap-8 md:grid-cols-[220px_1fr]">
-        <OnboardingSidebar currentStep={currentStep} progress={progress} />
-        <OnboardingStepContent currentStep={currentStep} />
+        <OnboardingSidebar
+          activeStep={activeStep}
+          furthestStep={furthestStep}
+          progress={progress}
+          onStepSelect={goToStep}
+        />
+        <OnboardingStepContent currentStep={activeStep} />
       </div>
     </div>
   );

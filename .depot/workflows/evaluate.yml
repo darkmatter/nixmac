@@ -1,0 +1,110 @@
+# Depot CI Migration
+# Source: .github/workflows/evaluate.yml
+#
+# Changes made:
+# - Rewrote .github/ path references to .depot/
+# - Changed runs-on from "self-hosted" to "depot-ubuntu-latest" in job "rust-check"
+# - Changed runs-on from "macOS" to "depot-ubuntu-latest" in job "rust-check"
+# - Changed runs-on from "ubuntu-latest" to "depot-ubuntu-latest" throughout
+
+name: Evaluate
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  merge_group:
+  # Post-merge tripwire: re-run cargo check on develop itself so any compile
+  # breakage that slips past the pre-merge gate (merge-queue edge cases, the
+  # main->develop merge producing a broken tree from two green parents, a
+  # ruleset change) turns develop's commit status red quickly instead of
+  # costing the next person a confusing local build failure. Only the Rust
+  # Check job runs on push (see the per-job `if` guards below); the full build
+  # already gates the PR path.
+  push:
+    branches: [develop]
+  workflow_dispatch:
+concurrency:
+  group: evaluate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  rust-check:
+    name: Rust Check
+    runs-on: [depot-ubuntu-latest, # was: self-hosted. Nonstandard GitHub runner label detected, changed to default Depot runner.
+      depot-ubuntu-latest, # was: macOS. Nonstandard GitHub runner label detected, changed to default Depot runner.
+    ]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      # cargo check needs only the Rust toolchain plus the system C compiler
+      # (libgit2-sys / libsqlite3-sys build their vendored C with `cc`). It does
+      # not need the devenv profile (node/bun/sops/python) or JS deps, so skip
+      # both — that drops the ~8 min devenv provisioning to a ~1 min toolchain
+      # setup. This speeds up the PR check too; the full build (build.yaml) is
+      # unaffected and still provides heavyweight coverage.
+      - uses: ./.depot/actions/setup
+        with:
+          darkmatter-cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          setup-rust: true
+          rust-cache-workspaces: apps/native/src-tauri
+          install-devenv: false
+          install-bun-deps: false
+      - name: Check Rust app crate
+        working-directory: apps/native/src-tauri
+        run: cargo check --locked
+  typescript:
+    name: TypeScript
+    # PR/merge-queue only — the develop push tripwire is cargo check alone.
+    if: github.event_name != 'push'
+    runs-on: depot-ubuntu-latest # was: ubuntu-latest. Mapped standard GitHub runner to Depot equivalent.
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      # tsc only needs bun + node_modules — skip the nix/devenv setup, which
+      # costs ~10 minutes on GitHub-hosted runners.
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+      - name: Type-check native app
+        working-directory: apps/native
+        run: bunx tsc --noEmit
+  treefmt:
+    name: Treefmt
+    # PR/merge-queue only — the develop push tripwire is cargo check alone.
+    if: github.event_name != 'push'
+    runs-on: depot-ubuntu-latest # was: ubuntu-latest. Mapped standard GitHub runner to Depot equivalent.
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      # `nix fmt` only evaluates the flake's formatter — the devenv profile
+      # is not needed, and skipping it saves ~10 minutes on hosted runners.
+      - uses: ./.depot/actions/setup
+        with:
+          darkmatter-cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          install-bun-deps: false
+          install-devenv: false
+      - name: Check changed Nix and shell files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+
+          base="${BASE_SHA:-}"
+          if [ -z "$base" ]; then
+            base="$(git rev-parse HEAD^)"
+          fi
+
+          git diff -z --name-only --diff-filter=ACMR "$base" HEAD -- '*.nix' '*.sh' > /tmp/treefmt-files
+
+          if [ ! -s /tmp/treefmt-files ]; then
+            echo "No treefmt-covered files changed."
+            exit 0
+          fi
+
+          xargs -0 nix fmt -- --ci --formatters nixfmt --formatters shellcheck < /tmp/treefmt-files

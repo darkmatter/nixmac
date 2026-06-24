@@ -6,7 +6,7 @@ import { DiffSection } from "@/components/widget/summaries/diff-section";
 import { SummaryItems } from "@/components/widget/summaries/summary-items";
 import { prefetchFileDiffContents } from "@/hooks/use-git-operations";
 import { cn } from "@/lib/utils";
-import { useViewModel } from "@nixmac/state";
+import { useViewModel, viewModelActions } from "@nixmac/state";
 import type { Change } from "@/ipc/types";
 import { Dna, Wrench } from "lucide-react";
 import { Activity, useEffect, useMemo, useState } from "react";
@@ -35,7 +35,7 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   );
 
   useEffect(() => {
-    prefetchFileDiffContents(useViewModel.getState().git);
+    prefetchFileDiffContents(viewModelActions.getState().git);
   }, [fileDiffKey]);
 
   useEffect(() => {
