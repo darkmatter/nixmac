@@ -83,10 +83,37 @@ fn nix_eval_value_to_string(value: serde_json::Value) -> String {
     }
 }
 
+/// Gets the `system.primaryUser` for the given host by running `nix eval` if it's
+/// defined. This is required for (for example) setting system.defaults.
+pub fn get_system_primary_user(hostname: &str, config_dir: &str) -> Option<String> {
+    let host_attr = serde_json::to_string(hostname).ok()?;
+    let flake_attr = format!(
+        ".#darwinConfigurations.{}.config.system.primaryUser",
+        host_attr
+    );
+
+    let output = nix_command(config_dir)
+        .args(["eval", "--json", &flake_attr])
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        log::debug!(
+            "Failed to evaluate system.primaryUser for host {}: {}",
+            hostname,
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return None;
+    }
+
+    let stdout = String::from_utf8(output.stdout).ok()?;
+    let primary_user: Option<String> = serde_json::from_str(&stdout).ok()?;
+    primary_user
+}
+
 /// Gets the current system.defaults values for a given host by running `nix eval`.
 /// NOTE that this only returns key entries for non-null values since `nix eval` always
 /// lists all available keys regardless of whether they are "set" in a flake or not.
-#[allow(dead_code)]
 pub fn get_nix_system_defaults_for_domain(
     hostname: &str,
     config_dir: &str,
@@ -799,5 +826,20 @@ mod tests {
         println!("System defaults for domain {}: {:#?}", domain, defaults);
 
         Ok(())
+    }
+
+    #[ignore = "Runs against the local system; enable explicitly when debugging the nix system defaults."]
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_get_system_primary_user() {
+        use crate::bootstrap::default_config::detect_hostname;
+
+        let this_host_name = detect_hostname().expect("failed to get hostname");
+        const CONFIG_DIR: &str = "~/.darwin";
+
+        match get_system_primary_user(&this_host_name, CONFIG_DIR) {
+            Some(user) => println!("Primary user for host {}: {}", this_host_name, user),
+            None => println!("No primary user defined for host {}", this_host_name),
+        }
     }
 }
