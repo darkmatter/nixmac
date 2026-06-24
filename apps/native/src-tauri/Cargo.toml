@@ -114,3 +114,8 @@ objc = "0.2"
 
 [dependencies.tera]
 version = "1"
+
+[dev-dependencies]
+# Enables `tauri::test` (mock runtime). Dev-only: with resolver "2" this feature
+# is not unified into normal/release builds of the binary.
+tauri = { version = "2", features = ["test"] }
