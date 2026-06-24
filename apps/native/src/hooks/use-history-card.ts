@@ -34,7 +34,7 @@ export function useHistoryCard(item: HistoryItem, isPreview = false): UseHistory
     if (e.key === "Enter" || e.key === " ") setExpanded((prev) => !prev);
   };
 
-  const borderColor = item.isBuilt ? "border-teal-400/40" : "border-white/[0.12]";
+  const borderColor = item.isBuilt ? "border-teal-400/40" : "border-white/12";
   const interactivity =
     item.changeMap && !isPreview
       ? cn(

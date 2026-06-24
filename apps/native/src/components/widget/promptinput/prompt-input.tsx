@@ -15,8 +15,7 @@ import { PromptHistoryBadge } from "@/components/widget/promptinput/prompt-histo
 import { SystemDefaultsCTA } from "@/components/widget/promptinput/system-defaults-cta";
 import { useEvolve } from "@/hooks/use-evolve";
 import { getProviderConfigInvalidReason } from "@/lib/ai-provider-validation";
-import { useViewModel } from "@nixmac/state";
-import { useUiState } from "@nixmac/state";
+import { uiActions, useUiState, useViewModel } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import { ArrowUpIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -28,14 +27,12 @@ const STATIC_SUGGESTIONS = ["Install vim", "Add Rectangle app"];
 
 export function PromptInput() {
   const evolvePrompt = useUiState((s) => s.evolvePrompt);
-  const setEvolvePrompt = useUiState((s) => s.setEvolvePrompt);
-  const isProcessing = useUiState((s) => s.isProcessing);
+    const isProcessing = useUiState((s) => s.isProcessing);
   const processingAction = useUiState((s) => s.processingAction);
   const evolveState = useViewModel((s) => s.evolve);
   const gitStatus = useViewModel((s) => s.git);
   const settingsOpen = useUiState((s) => s.settingsOpen);
-  const setSettingsOpen = useUiState((s) => s.setSettingsOpen);
-  const { handleEvolve } = useEvolve();
+    const { handleEvolve } = useEvolve();
   const [warningOpen, setWarningOpen] = useState(false);
   const [providerErrors, setProviderErrors] = useState<{
     evolve: string | null;
@@ -150,7 +147,7 @@ export function PromptInput() {
           id="evolve-prompt-input"
           data-testid="evolve-prompt-input"
           disabled={isLoading}
-          onChange={(e: { target: { value: string } }) => setEvolvePrompt(e.target.value)}
+          onChange={(e: { target: { value: string } }) => uiActions.setEvolvePrompt(e.target.value)}
           onKeyDown={(e: { key: string }) => {
             if (e.key === "Enter" && evolvePrompt.trim() && !sendDisabled) {
               handleSubmit();
@@ -183,8 +180,8 @@ export function PromptInput() {
                </DropdownMenuContent>
              </DropdownMenu> */}
           <InputGroupText className="ml-auto">{contextUsage}</InputGroupText>
-          <Separator className="!h-4" orientation="vertical" />
-          <Separator className="!h-4" orientation="vertical" />
+          <Separator className="h-4!" orientation="vertical" />
+          <Separator className="h-4!" orientation="vertical" />
           <InputGroupButton
             className="rounded-full size-6 p-0.5"
             size="icon-xs"
@@ -205,7 +202,7 @@ export function PromptInput() {
           {promptValidationError}{" "}
           <button
             className="underline underline-offset-2"
-            onClick={() => setSettingsOpen(true, "ai-models")}
+            onClick={() => uiActions.setSettingsOpen(true, "ai-models")}
             type="button"
           >
             Open AI Models settings
@@ -217,7 +214,7 @@ export function PromptInput() {
       <div className="flex items-start gap-1">
         <div className="flex flex-wrap items-center gap-1">
           {STATIC_SUGGESTIONS.map((suggestion) => (
-            <BadgeButton key={suggestion} onClick={() => setEvolvePrompt(suggestion)}>
+            <BadgeButton key={suggestion} onClick={() => uiActions.setEvolvePrompt(suggestion)}>
               {suggestion}
             </BadgeButton>
           ))}

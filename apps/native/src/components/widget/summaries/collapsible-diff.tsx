@@ -57,7 +57,7 @@ export function CollapsibleDiff({
           {headerExtra && <div className="flex shrink-0 items-center gap-1">{headerExtra}</div>}
         </div>
       </div>
-      <CollapsibleContent className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=open]:[animation-delay:50ms] data-[state=open]:[animation-fill-mode:backwards] data-[state=closed]:animate-collapsible-up">
+      <CollapsibleContent className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=open]:[animation-delay:50ms] data-[state=open]:fill-mode-[backwards] data-[state=closed]:animate-collapsible-up">
         <div className="overflow-hidden border-border border-t">{children}</div>
       </CollapsibleContent>
     </Collapsible>

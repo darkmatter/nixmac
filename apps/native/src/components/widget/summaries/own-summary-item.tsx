@@ -12,7 +12,7 @@ export function OwnSummaryItem({ change, style }: OwnSummaryItemProps) {
   return (
     <div
       className={cn(
-        "my-[3px] rounded border-l-2 bg-white/[0.02] px-2 py-1 text-[11px]",
+        "my-[3px] rounded border-l-2 bg-white/2 px-2 py-1 text-[11px]",
         style.border,
       )}
     >

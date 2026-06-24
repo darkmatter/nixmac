@@ -1,15 +1,14 @@
 import { tauriAPI } from "@/ipc/api";
 import type { NixInstallState } from "@/ipc/types";
-import { useUiState } from "@nixmac/state";
-import { useViewModel } from "@nixmac/state";
+import { uiActions, viewModelActions } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
 
 function mirrorNixInstallState(next: NixInstallState): void {
-  const prev = useViewModel.getState().nixInstall;
-  useViewModel.setState({ nixInstall: next });
+  const prev = viewModelActions.getState().nixInstall;
+  viewModelActions.setState({ nixInstall: next });
   // Surface a freshly recorded failure (e.g. a future install/prefetch path).
   if (next.lastError && next.lastError !== prev?.lastError) {
-    useUiState.getState().setError(next.lastError);
+    uiActions.setError(next.lastError);
   }
 }
 

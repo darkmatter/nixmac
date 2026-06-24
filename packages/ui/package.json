@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./components/ui/*": "./src/components/ui/*",
+    "./components/*": "./src/components/*",
     "./lib/utils": "./src/lib/utils.ts"
   },
   "dependencies": {

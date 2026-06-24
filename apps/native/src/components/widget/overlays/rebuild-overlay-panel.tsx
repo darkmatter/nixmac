@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useRollback } from "@/hooks/use-rollback";
 import { cn } from "@/lib/utils";
-import { useUiState } from "@nixmac/state";
+import { uiActions, useUiState } from "@nixmac/state";
 import { useViewModel } from "@nixmac/state";
 import type { RebuildErrorType, RebuildLine } from "@/types/rebuild";
 import {
@@ -258,7 +258,7 @@ function LoaderCore({
                           <span
                             className={cn(
                               textClass,
-                              "block whitespace-pre-wrap break-words text-sm font-normal transition-colors duration-500",
+                              "block whitespace-pre-wrap wrap-break-word text-sm font-normal transition-colors duration-500",
                             )}
                           >
                             {cleanText}
@@ -366,12 +366,12 @@ export function RebuildOverlayPanel() {
   const systemSafetyMessage = getSystemSafetyMessage(systemUntouched, context);
 
   const handleRetry = async () => {
-    useUiState.getState().setProcessing(true, "cancel");
+    uiActions.setProcessing(true, "cancel");
     await triggerRebuild({ context: "rollback" });
   };
 
   const handleDismiss = () => {
-    useUiState.getState().setRebuildPanelDismissed(true);
+    uiActions.setRebuildPanelDismissed(true);
   };
 
   const [showConsole, setShowConsole] = useState(false);

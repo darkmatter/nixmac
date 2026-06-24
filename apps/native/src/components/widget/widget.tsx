@@ -13,7 +13,7 @@ import { SettingsDialog } from "@/components/widget/settings/settings-dialog";
 import { StepContentWrapper } from "@/components/widget/layout/step-content-wrapper";
 import { Stepper } from "@/components/widget/layout/stepper";
 import { OnboardingFlow } from "@/components/widget/onboarding/onboarding-flow";
-import { useOnboarding } from "@nixmac/state";
+import { uiActions, useOnboarding } from "@nixmac/state";
 import {
   BeginStep,
   CommitStep,
@@ -78,25 +78,17 @@ export function DarwinWidget() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
-      const {
-        settingsOpen,
-        showHistory,
-        showFilesystem,
-        isProcessing,
-        isGenerating,
-        setSettingsOpen,
-        setShowHistory,
-        setShowFilesystem,
-      } = useUiState.getState();
+      const { settingsOpen, showHistory, showFilesystem, isProcessing, isGenerating } =
+        useUiState.getState();
       if (settingsOpen) {
         e.preventDefault();
-        setSettingsOpen(false);
+        uiActions.setSettingsOpen(false);
       } else if (showHistory && !(isProcessing || isGenerating)) {
         e.preventDefault();
-        setShowHistory(false);
+        uiActions.setShowHistory(false);
       } else if (showFilesystem && !(isProcessing || isGenerating)) {
         e.preventDefault();
-        setShowFilesystem(false);
+        uiActions.setShowFilesystem(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -127,7 +119,7 @@ export function DarwinWidget() {
         await checkNix();
         await getInitialStatus();
       } catch (e: unknown) {
-        useUiState.getState().setError((e as Error)?.message || String(e));
+        uiActions.setError((e as Error)?.message || String(e));
       }
 
       if (cancelled) return;

@@ -502,6 +502,8 @@ fn run_gui_mode(
             // nixmac account + non-GitHub sync
             commands::account::account_status,
             commands::account::account_sign_in,
+            commands::account::account_sign_in_web,
+            commands::account::account_sign_up_web,
             commands::account::account_sign_out,
             commands::account::account_set_server_url,
             commands::account::sync_status,

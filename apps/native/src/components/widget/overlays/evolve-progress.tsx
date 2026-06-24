@@ -86,7 +86,7 @@ function formatTokenProgress(progress: { total: number; budget: number | null })
 // =============================================================================
 
 function getEventIcon(eventType: EvolveEventType, isLatest: boolean) {
-  const iconClassName = cn("h-4 w-4 flex-shrink-0", isLatest && "animate-pulse");
+  const iconClassName = cn("h-4 w-4 shrink-0", isLatest && "animate-pulse");
 
   switch (eventType) {
     case "start":

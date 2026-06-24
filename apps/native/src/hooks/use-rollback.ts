@@ -1,7 +1,6 @@
-import { useUiState } from "@nixmac/state";
+import { uiActions, viewModelActions } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
-import { useViewModel } from "@nixmac/state";
 import { getTelemetry } from "@/lib/telemetry/instance";
 /**
  * Hook for discarding changes and restoring the working tree to its
@@ -12,16 +11,15 @@ export function useRollback() {
   const { triggerRebuild } = useRebuildStream();
 
   const handleRollback = async () => {
-    const ui = useUiState.getState();
-    const wasCommittable = useViewModel.getState().evolve?.committable === true;
+    const wasCommittable = viewModelActions.getState().evolve?.committable === true;
 
-    ui.setProcessing(true, "cancel");
-    ui.appendLog("\n> Discarding changes...\n");
+    uiActions.setProcessing(true, "cancel");
+    uiActions.appendLog("\n> Discarding changes...\n");
 
     try {
       const result = await tauriAPI.darwin.rollbackErase();
-      ui.setEvolvePrompt("");
-      ui.appendLog("✓ Changes discarded\n");
+      uiActions.setEvolvePrompt("");
+      uiActions.appendLog("✓ Changes discarded\n");
 
       // Track rollback
       getTelemetry().captureEvent({ name: "rollback_performed" });
@@ -38,13 +36,13 @@ export function useRollback() {
           },
         });
       } else {
-        useUiState.getState().setProcessing(false);
+        uiActions.setProcessing(false);
       }
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
-      useUiState.getState().setError(msg);
-      useUiState.getState().appendLog(`✗ Error: ${msg}\n`);
-      useUiState.getState().setProcessing(false);
+      uiActions.setError(msg);
+      uiActions.appendLog(`✗ Error: ${msg}\n`);
+      uiActions.setProcessing(false);
     }
   };
 

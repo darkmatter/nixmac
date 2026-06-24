@@ -1,7 +1,7 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
 import type { EvolveState } from "@/ipc/types";
-import { useViewModel } from "@nixmac/state";
+import { useViewModel, viewModelActions } from "@nixmac/state";
 import { fn } from "storybook/test";
 import { useEffect } from "react";
 import { ExternalBuildDetected } from "@/components/widget/notifications/external-build-detected";
@@ -47,7 +47,7 @@ function setup({
   evolveState: EvolveState | null;
 }) {
   useEffect(() => {
-    useViewModel.setState((state) => ({
+    viewModelActions.setState((state) => ({
       evolve: evolveState,
       build: {
         ...state.build,

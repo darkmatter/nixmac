@@ -1,4 +1,4 @@
-import { useUiState } from "@nixmac/state";
+import { uiActions } from "@nixmac/state";
 
 const RECOVERY_STORAGE_KEY = "nixmac:pending-error-report";
 
@@ -56,14 +56,12 @@ export function surfaceRecoveryReport(): void {
   if (!report) return;
   clearStoredReport();
 
-  const { setError, setPanicDetails } = useUiState.getState();
-
-  setPanicDetails({
+  uiActions.setPanicDetails({
     message: report.message,
     location: undefined,
     backtrace: report.stack.length > 0 ? report.stack : undefined,
     timestamp: report.timestamp,
   });
 
-  setError(`Recovered from an unexpected error: ${report.message}`);
+  uiActions.setError(`Recovered from an unexpected error: ${report.message}`);
 }

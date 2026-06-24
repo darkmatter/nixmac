@@ -1,10 +1,10 @@
 import { tauriAPI } from "@/ipc/api";
 import type { PermissionsState } from "@/ipc/types";
-import { useViewModel } from "@nixmac/state";
+import { viewModelActions } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
 
 export function mirrorPermissions(permissions: PermissionsState | null): void {
-  useViewModel.setState({ permissions, permissionsHydrated: true });
+  viewModelActions.setState({ permissions, permissionsHydrated: true });
 }
 
 export function startPermissionsSync(): Promise<() => void> {

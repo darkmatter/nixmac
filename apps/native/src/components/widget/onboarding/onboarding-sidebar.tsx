@@ -2,11 +2,18 @@ import { OnboardingStepper } from "@/components/widget/onboarding/stepper";
 import type { StepId } from "@/components/widget/onboarding/lib/onboarding";
 
 interface OnboardingSidebarProps {
-  currentStep: StepId;
+  activeStep: StepId;
+  furthestStep: StepId;
   progress: number;
+  onStepSelect: (stepId: StepId) => void;
 }
 
-export function OnboardingSidebar({ currentStep, progress }: OnboardingSidebarProps) {
+export function OnboardingSidebar({
+  activeStep,
+  furthestStep,
+  progress,
+  onStepSelect,
+}: OnboardingSidebarProps) {
   return (
     <aside className="md:border-border md:border-r md:pr-6">
       <div className="mb-4 md:hidden">
@@ -18,7 +25,11 @@ export function OnboardingSidebar({ currentStep, progress }: OnboardingSidebarPr
         </div>
       </div>
       <div className="hidden md:block">
-        <OnboardingStepper currentStep={currentStep} />
+        <OnboardingStepper
+          activeStep={activeStep}
+          furthestStep={furthestStep}
+          onStepSelect={onStepSelect}
+        />
       </div>
     </aside>
   );

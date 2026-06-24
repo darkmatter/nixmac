@@ -1,6 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { ButtonGlow } from "@/components/button-glow";
+import { Button } from "@/components/ui/button";
+import { DottedGlowBackground } from "@/components/ui/dotted-glow-background";
+import {
+  buildCustomizationGroups,
+  MOCK_CUSTOMIZATION_GROUPS,
+  totalCustomizations,
+  type CustomizationGroup,
+} from "@/components/widget/onboarding/lib/customizations";
+import { stepEyebrow } from "@/components/widget/onboarding/lib/onboarding";
+import { StepShell } from "@/components/widget/onboarding/step-shell";
+import { tauriAPI } from "@/ipc/api";
+import { getTelemetry } from "@/lib/telemetry/instance";
+import { cn } from "@/lib/utils";
 import {
   ArrowRight,
   Braces,
@@ -11,22 +24,9 @@ import {
   Radar,
   SkipForward,
   SlidersHorizontal,
-  Sparkles,
   TriangleAlert,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { ButtonGlow } from "@/components/ui/button-glow";
-import { StepShell } from "@/components/widget/onboarding/step-shell";
-import { stepEyebrow } from "@/components/widget/onboarding/lib/onboarding";
-import {
-  buildCustomizationGroups,
-  MOCK_CUSTOMIZATION_GROUPS,
-  totalCustomizations,
-  type CustomizationGroup,
-} from "@/components/widget/onboarding/lib/customizations";
-import { tauriAPI } from "@/ipc/api";
-import { cn } from "@/lib/utils";
-import { getTelemetry } from "@/lib/telemetry/instance";
+import { useEffect, useRef, useState } from "react";
 
 type ScanState = "idle" | "scanning" | "done";
 
@@ -116,45 +116,47 @@ export function CustomizationsStep({ tracked, onSetTracked, onContinue }: Custom
         title="Import your customizations"
         description="Already set this Mac up by hand? nixmac can scan for tweaks that aren't in your flake yet — macOS preferences, Homebrew casks and taps, launch agents — and turn them into code."
       >
-        <div className="brand-halo flex flex-col items-center overflow-hidden rounded-2xl border border-brand/30 bg-card px-6 py-12 text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/30 bg-brand/10 px-3 py-1 font-semibold text-brand text-xs">
-            <Sparkles className="size-3.5" aria-hidden="true" />
-            Signature feature
-          </span>
+        <div className="relative flex flex-col overflow-hidden rounded-2xl rounded-tl-3xl rounded-br-3xl rounded-bl-3xl border border-transparent shadow ring-1 shadow-black/10 ring-white/5">
+          <DottedGlowBackground
+            className="pointer-events-none mask-radial-to-90% mask-radial-at-center"
+            opacity={0.5}
+            gap={10}
+            radius={1.6}
+            color="rgba(115, 115, 115, 0.55)"
+            darkColor="rgba(115, 115, 115, 0.55)"
+            glowColor="rgba(115, 115, 115, 0.85)"
+            darkGlowColor="rgba(45, 212, 191, 0.85)"
+            backgroundOpacity={1}
+            speedMin={0.1}
+            speedMax={1}
+            speedScale={.8}
+          />
+
+
 
           <span
-            className="brand-glow brand-pulse mt-6 flex size-16 items-center justify-center rounded-2xl bg-brand/15 text-brand"
+            className="relative z-20 mx-auto mt-8 flex size-16 items-center justify-center rounded-2xl bg-brand/10 text-brand ring-1 ring-brand/30"
             aria-hidden="true"
           >
             <Radar className="size-8" />
           </span>
 
-          <h3 className="mt-6 text-balance font-semibold text-xl">
-            Scan this Mac for untracked settings
-          </h3>
-          <p className="mt-2 max-w-md text-pretty text-muted-foreground text-sm leading-relaxed">
-            Already set this Mac up by hand? We&apos;ll run a few read-only commands to detect what
-            you&apos;ve customized and turn it into code. Nothing changes on your system — you
-            choose what to track afterward.
-          </p>
+          <div className="relative z-20 flex flex-1 flex-col items-center px-6 pt-6 pb-8 text-center">
+            <h3 className="text-balance font-semibold text-xl">
+              Scan this Mac for untracked settings
+            </h3>
+            <p className="mt-2 max-w-md text-pretty text-muted-foreground text-sm leading-relaxed">
+              Already set this Mac up by hand? We&apos;ll run a few read-only commands to detect what
+              you&apos;ve customized and turn it into code. Nothing changes on your system — you
+              choose what to track afterward.
+            </p>
 
-          <ul className="mt-6 grid w-full max-w-sm grid-cols-2 gap-2 text-left">
-            {SCAN_TARGETS.map((t) => (
-              <li
-                key={t.label}
-                className="flex flex-col gap-0.5 rounded-lg border border-border bg-background/50 px-3 py-2"
-              >
-                <span className="font-medium text-xs">{t.label}</span>
-                <span className="font-mono text-[11px] text-muted-foreground">$ {t.command}</span>
-              </li>
-            ))}
-          </ul>
-
-          <div className="mt-7">
-            <ButtonGlow active onClick={startScan}>
-              <Radar className="size-4" aria-hidden="true" />
-              Scan this Mac
-            </ButtonGlow>
+            <div className="relative z-20 mt-7">
+              <ButtonGlow className="bg-slate-900" active onClick={startScan}>
+                <Radar className="size-4" aria-hidden="true" />
+                Scan this Mac
+              </ButtonGlow>
+            </div>
           </div>
         </div>
 

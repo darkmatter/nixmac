@@ -9,7 +9,7 @@ interface StepShellProps {
 }
 
 /** Shared header/body/footer scaffold for every onboarding step. */
-export function StepShell({ eyebrow, title, description, children, footer }: StepShellProps) {
+export function StepShell({ eyebrow: _eyebrow, title: _title, description, children, footer }: StepShellProps) {
   return (
     <div className="flex h-full flex-col">
       <header className="mb-6">

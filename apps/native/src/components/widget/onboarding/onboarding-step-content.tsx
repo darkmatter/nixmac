@@ -5,7 +5,7 @@ import { NixSetupStep } from "@/components/widget/onboarding/steps/nix-setup-ste
 import { PermissionsStep } from "@/components/widget/onboarding/steps/permissions-step";
 import { SetupStep } from "@/components/widget/onboarding/steps/setup-step";
 import type { StepId } from "@/components/widget/onboarding/lib/onboarding";
-import { useOnboarding } from "@nixmac/state";
+import { onboardingActions, useOnboarding } from "@nixmac/state";
 import { getTelemetry } from "@/lib/telemetry/instance";
 
 interface OnboardingStepContentProps {
@@ -13,7 +13,8 @@ interface OnboardingStepContentProps {
 }
 
 export function OnboardingStepContent({ currentStep }: OnboardingStepContentProps) {
-  const onboarding = useOnboarding();
+  const trackedCustomizations = useOnboarding((s) => s.trackedCustomizations);
+  const inference = useOnboarding((s) => s.inference);
 
   return (
     <main className="min-w-0">
@@ -23,24 +24,24 @@ export function OnboardingStepContent({ currentStep }: OnboardingStepContentProp
         {currentStep === "setup" && <SetupStep />}
         {currentStep === "customizations" && (
           <CustomizationsStep
-            tracked={onboarding.trackedCustomizations}
-            onSetTracked={onboarding.setTrackedCustomizations}
-            onContinue={onboarding.reviewCustomizations}
+            tracked={trackedCustomizations}
+            onSetTracked={onboardingActions.setTrackedCustomizations}
+            onContinue={onboardingActions.reviewCustomizations}
           />
         )}
         {currentStep === "inference" && (
           <InferenceStep
-            onConfigured={onboarding.configureInference}
-            onSkip={onboarding.skipInference}
+            onConfigured={onboardingActions.configureInference}
+            onSkip={onboardingActions.skipInference}
           />
         )}
         {currentStep === "build" && (
           <BuildStep
-            hasInference={Boolean(onboarding.inference)}
-            onConfigureInference={onboarding.configureInference}
+            hasInference={Boolean(inference)}
+            onConfigureInference={onboardingActions.configureInference}
             onComplete={() => {
               getTelemetry().captureEvent({ name: "onboarding_completed" });
-              onboarding.complete();
+              onboardingActions.complete();
             }}
           />
         )}

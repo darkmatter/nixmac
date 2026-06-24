@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { useUiState } from "@nixmac/state";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useHistory } from "@/hooks/use-history";
 import { tauriAPI } from "@/ipc/api";
 import type { HistoryItem } from "@/ipc/types";
-import { useViewModel } from "@nixmac/state";
+import { uiActions, useViewModel } from "@nixmac/state";
 import { getTelemetry } from "@/lib/telemetry/instance";
 
 // Sentinel hash used to identify the frontend-only preview item.
@@ -188,7 +187,6 @@ export function useHistoryRestore(
   onUncommittedChanges: () => void,
 ): HistoryRestoreResult {
   const { loadHistory } = useHistory();
-  const setProcessing = useUiState((state) => state.setProcessing);
   const gitStatus = useViewModel((state) => state.git);
   const { triggerRebuild } = useRebuildStream();
 
@@ -235,7 +233,7 @@ export function useHistoryRestore(
 
   const doRestore = async (hash: string) => {
     setRestoringHash(hash);
-    setProcessing(true);
+    uiActions.setProcessing(true);
     try {
       await tauriAPI.darwin.prepareRestore(hash);
       await triggerRebuild({
@@ -251,7 +249,7 @@ export function useHistoryRestore(
         },
       });
     } catch {
-      setProcessing(false);
+      uiActions.setProcessing(false);
     } finally {
       setRestoringHash(null);
     }

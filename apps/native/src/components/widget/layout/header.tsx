@@ -4,17 +4,12 @@ import { filesystemViewEnabled } from "@/lib/flags";
 import { cn } from "@/lib/utils";
 import { Clock, FolderTree, Settings, MessageSquarePlus } from "lucide-react";
 import { APP_NAME } from "../../../../shared/constants";
-import { useUiState } from "@nixmac/state";
+import { uiActions, useUiState, viewModelActions } from "@nixmac/state";
 import { computeCurrentStep } from "@/components/widget/utils";
-import { useViewModel } from "@nixmac/state";
 
 export function Header() {
-  const setSettingsOpen = useUiState((s) => s.setSettingsOpen);
-  const setFeedbackOpen = useUiState((s) => s.setFeedbackOpen);
   const showHistory = useUiState((s) => s.showHistory);
-  const setShowHistory = useUiState((s) => s.setShowHistory);
   const showFilesystem = useUiState((s) => s.showFilesystem);
-  const setShowFilesystem = useUiState((s) => s.setShowFilesystem);
   const isProcessing = useUiState((s) => s.isProcessing);
   const isGenerating = useUiState((s) => s.isGenerating);
   const [isPulsing, setIsPulsing] = useState(false);
@@ -22,7 +17,7 @@ export function Header() {
   // Flash the feedback icon when an error occurs (subscribe to detect all changes)
   useEffect(() => {
     return useUiState.subscribe((state, prevState) => {
-      const viewModel = useViewModel.getState();
+      const viewModel = viewModelActions.getState();
       const step = computeCurrentStep({
         nixInstalled: viewModel.nixInstall?.installed ?? null,
         darwinRebuildAvailable: viewModel.nixInstall?.darwinRebuildAvailable ?? null,
@@ -45,10 +40,10 @@ export function Header() {
 
   return (
     <div
-      className="relative flex flex-shrink-0 cursor-move select-none items-center justify-center border-border border-b bg-card/50 px-3 pt-3 pb-3"
+      className="relative flex shrink-0 cursor-move select-none items-center justify-center border-border border-b bg-card/50 px-3 pt-3 pb-3"
       data-tauri-drag-region
     >
-      <div className="absolute top-2 left-0 h-4 w-16 z-[9999] cursor-default" />
+      <div className="absolute top-2 left-0 h-4 w-16 z-9999 cursor-default" />
 
       <h3 className="font-medium text-muted-foreground text-xs" data-tauri-drag-region>
         {APP_NAME}
@@ -66,8 +61,8 @@ export function Header() {
             onClick={() => {
               if (isProcessing || isGenerating) return;
               const next = !showFilesystem;
-              setShowFilesystem(next);
-              if (next && showHistory) setShowHistory(false);
+              uiActions.setShowFilesystem(next);
+              if (next && showHistory) uiActions.setShowHistory(false);
             }}
             aria-label="Filesystem"
             title="Filesystem"
@@ -86,8 +81,8 @@ export function Header() {
           onClick={() => {
             if (isProcessing || isGenerating) return;
             const next = !showHistory;
-            setShowHistory(next);
-            if (next && showFilesystem) setShowFilesystem(false);
+            uiActions.setShowHistory(next);
+            if (next && showFilesystem) uiActions.setShowFilesystem(false);
           }}
           aria-label="History"
           title="History"
@@ -98,7 +93,7 @@ export function Header() {
           className="h-6 w-6 p-0"
           size="sm"
           variant="ghost"
-          onClick={() => setFeedbackOpen(true)}
+          onClick={() => uiActions.setFeedbackOpen(true)}
           aria-label="Give feedback"
           title="Give feedback"
         >
@@ -110,7 +105,7 @@ export function Header() {
           className="h-6 w-6 p-0"
           size="sm"
           variant="ghost"
-          onClick={() => setSettingsOpen(true)}
+          onClick={() => uiActions.setSettingsOpen(true)}
           aria-label="Settings"
           title="Settings"
         >

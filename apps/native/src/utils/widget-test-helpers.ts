@@ -3,8 +3,7 @@
  * Exposed on window.__testWidget so WDIO tests can call them via browser.execute.
  */
 
-import { useUiState } from "@nixmac/state";
-import { useViewModel } from "@nixmac/state";
+import { uiActions, useUiState, viewModelActions } from "@nixmac/state";
 import { clearChangeMap } from "@/viewmodel/change-map";
 import { clearEvolveEvents } from "@/viewmodel/evolution";
 import { refreshEvolveSnapshot } from "@/viewmodel/evolve";
@@ -49,30 +48,29 @@ export function setupWidgetTestHelpers() {
 
   const helpers: WidgetTestHelpers = {
     setEvolvePrompt: (value: string) => {
-      useUiState.getState().setEvolvePrompt(value);
+      uiActions.setEvolvePrompt(value);
     },
     isEvolveProcessing: () => {
       const state = useUiState.getState();
       return state.isProcessing && state.processingAction === "evolve";
     },
     getPromptHistory: () => {
-      return [...useViewModel.getState().promptHistory];
+      return [...viewModelActions.getState().promptHistory];
     },
     getChangeMap: () => {
-      return JSON.stringify(useViewModel.getState().changeMap);
+      return JSON.stringify(viewModelActions.getState().changeMap);
     },
     resetForTest: () => {
-      const ui = useUiState.getState();
-      ui.setEvolvePrompt("");
-      ui.clearLogs();
+      uiActions.setEvolvePrompt("");
+      uiActions.clearLogs();
       clearEvolveEvents();
-      ui.setConversationalResponse(null);
-      ui.setCommitMessageSuggestion(null);
+      uiActions.setConversationalResponse(null);
+      uiActions.setCommitMessageSuggestion(null);
       clearChangeMap();
-      ui.setError(null);
+      uiActions.setError(null);
       clearRebuildLog();
-      ui.setRebuildPanelDismissed(false);
-      ui.setRebuildContext("apply");
+      uiActions.setRebuildPanelDismissed(false);
+      uiActions.setRebuildContext("apply");
     },
     refreshGitStatus: async () => {
       // Best-effort, like the rest of the reset helpers: a refresh failure

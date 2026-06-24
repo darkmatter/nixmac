@@ -14,7 +14,7 @@ import { ConfigDirBadge } from "@/components/widget/badges/config-dir-badge";
 import { useEvolve } from "@/hooks/use-evolve";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useRollback } from "@/hooks/use-rollback";
-import { useViewModel } from "@nixmac/state";
+import { uiActions, useViewModel, viewModelActions } from "@nixmac/state";
 import { useUiState } from "@nixmac/state";
 import { Loader2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -58,7 +58,7 @@ export function BeginEvolveWarning({ open, onOpenChange, handleEvolve }: BeginEv
 
   const handleDiscard = async () => {
     await handleRollback();
-    const newFiles = useViewModel.getState().git?.files?.length ?? 1;
+    const newFiles = viewModelActions.getState().git?.files?.length ?? 1;
     if (newFiles === 0) {
       toast.success("Changes discarded");
     } else {
@@ -75,14 +75,14 @@ export function BeginEvolveWarning({ open, onOpenChange, handleEvolve }: BeginEv
   const handleContinue = async () => {
     if (adoptOnContinue) {
       onOpenChange(false);
-      useUiState.getState().setGenerating(true);
+      uiActions.setGenerating(true);
       try {
         await evolveFromManual();
         // evolveFromManual persists evolveState on the backend; handleEvolve picks it up
         await handleEvolve();
       } catch {
         toast.error("Failed to adopt changes");
-        useUiState.getState().setGenerating(false);
+        uiActions.setGenerating(false);
       }
     } else {
       onOpenChange(false);

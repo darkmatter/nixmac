@@ -12,8 +12,8 @@ type TimelineLineVariant = "normal" | "undone" | "fade-to-undone" | "fade-from-u
 const VARIANT_CLASSES: Record<TimelineLineVariant, string> = {
   normal: LINE_NORMAL,
   undone: LINE_UNDONE,
-  "fade-to-undone": "bg-gradient-to-b from-teal-400/40 to-neutral-700",
-  "fade-from-undone": "bg-gradient-to-b from-neutral-700 to-teal-400/40",
+  "fade-to-undone": "bg-linear-to-b from-teal-400/40 to-neutral-700",
+  "fade-from-undone": "bg-linear-to-b from-neutral-700 to-teal-400/40",
 };
 
 // 29px = mt-6 (24px dot offset) + h-2.5/2 (5px half-dot) — the dot center.
@@ -65,8 +65,8 @@ export function TimeLineConnector({
   const baseColor = isUndone
     ? isPreviewActive
       ? cn("bg-rose-300/25", isInteractive && "group-hover:bg-rose-300/35")
-      : cn("bg-white/[0.10]", isInteractive && "group-hover:bg-neutral-600")
-    : "bg-gradient-to-r from-teal-400/40 to-white/[0.08]";
+      : cn("bg-white/10", isInteractive && "group-hover:bg-neutral-600")
+    : "bg-linear-to-r from-teal-400/40 to-white/8";
 
   return (
     <div

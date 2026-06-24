@@ -30,6 +30,11 @@ pub struct AuthStatus {
     pub key_id: Option<String>,
     /// Base URL of the sync server this device is configured to talk to.
     pub server_url: String,
+    /// Whether this device can call server-brokered GitHub endpoints (has a
+    /// minted Better Auth api-key for the web origin).
+    pub github_ready: bool,
+    /// The web-origin account used for GitHub, when `github_ready` is true.
+    pub web_account: Option<AuthAccount>,
 }
 
 /// Remote sync state for the current account, returned by `sync_status`.

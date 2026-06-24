@@ -40,7 +40,7 @@ export function UnsummarizedChange({
         <FilePath path={filename} />
       )}
       {hunkCount > 1 && (
-        <span className="shrink-0 rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[10px] text-neutral-500">
+        <span className="shrink-0 rounded bg-white/6 px-1.5 py-0.5 font-mono text-[10px] text-neutral-500">
           x{hunkCount}
         </span>
       )}

@@ -62,7 +62,7 @@ export function UpdateBanner() {
         {error ? (
           <p
             ref={errorRef}
-            className={cn(expanded ? "whitespace-pre-wrap break-words" : "truncate")}
+            className={cn(expanded ? "whitespace-pre-wrap wrap-break-word" : "truncate")}
           >
             {errorSource === "install" ? "Update install failed" : "Update check failed"}: {error}
           </p>
@@ -74,7 +74,7 @@ export function UpdateBanner() {
                 ref={notesRef}
                 className={cn(
                   "text-xs opacity-70 mt-0.5",
-                  expanded ? "whitespace-pre-wrap break-words" : "truncate",
+                  expanded ? "whitespace-pre-wrap wrap-break-word" : "truncate",
                 )}
               >
                 {notes}

@@ -19,7 +19,7 @@ export function HistoryDayLabel({ label, isFirst, isUndone }: HistoryDayLabelPro
         />
       )}
       <div className={cn("w-3 flex-none ml-2", isUndone && "ml-6")} />
-      <p className="mt-1 px-0.5 pb-[6px] pt-1 text-[10px] font-semibold uppercase tracking-[0.05em] text-neutral-500">
+      <p className="mt-1 px-0.5 pb-[6px] pt-1 text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
         {label}
       </p>
     </div>

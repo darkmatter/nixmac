@@ -16,12 +16,10 @@ import { useHomebrewDiff } from "@/hooks/use-homebrew-diff";
 import { useLaunchdItems } from "@/hooks/use-launchd-items";
 import { useSystemDefaultsScan } from "@/hooks/use-system-defaults-scan";
 import { filesystemViewEnabled } from "@/lib/flags";
-import { useUiState } from "@nixmac/state";
-import { useViewModel } from "@nixmac/state";
+import { uiActions, useViewModel } from "@nixmac/state";
 
 export function BeginStep() {
-  const setShowFilesystem = useUiState((s) => s.setShowFilesystem);
-  const prefsLoaded = useViewModel((s) => s.preferences !== null);
+    const prefsLoaded = useViewModel((s) => s.preferences !== null);
   const scanHomebrewOnStartup = useViewModel((s) => s.preferences?.scanHomebrewOnStartup ?? false);
   const shouldScan = filesystemViewEnabled && prefsLoaded && scanHomebrewOnStartup;
   const { diff, error } = useHomebrewDiff(shouldScan);
@@ -45,7 +43,7 @@ export function BeginStep() {
       {filesystemViewEnabled && (
         <UntrackedBanner
           candidates={untrackedCandidates}
-          onView={() => setShowFilesystem(true, "manage")}
+          onView={() => uiActions.setShowFilesystem(true, "manage")}
         />
       )}
       <PromptInputSection />

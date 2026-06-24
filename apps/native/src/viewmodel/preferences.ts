@@ -1,10 +1,10 @@
 import { tauriAPI } from "@/ipc/api";
 import type { GlobalPreferences } from "@/ipc/types";
-import { useViewModel } from "@nixmac/state";
+import { viewModelActions } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
 
 export function mirrorPreferences(preferences: GlobalPreferences): void {
-  useViewModel.setState({ preferences });
+  viewModelActions.setState({ preferences });
 }
 
 /**
@@ -13,11 +13,11 @@ export function mirrorPreferences(preferences: GlobalPreferences): void {
  * change. On failure the previous hosts are kept.
  */
 export async function refreshHostsSnapshot(): Promise<void> {
-  const preferences = useViewModel.getState().preferences;
+  const preferences = viewModelActions.getState().preferences;
   if (!preferences?.configDir) return;
   try {
     const hosts = await tauriAPI.flake.listHosts();
-    useViewModel.setState({ hosts });
+    viewModelActions.setState({ hosts });
   } catch (error) {
     console.error("[viewmodel] hosts refresh failed:", error);
   }

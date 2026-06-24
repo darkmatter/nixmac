@@ -5,9 +5,10 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./view-model": "./src/view-model.ts",
-    "./ui-state": "./src/ui-state.ts",
-    "./onboarding": "./src/onboarding.ts"
+    "./viewmodel": "./src/viewmodel/index.ts",
+    "./ui": "./src/ui/index.ts",
+    "./ui-state": "./src/ui/index.ts",
+    "./onboarding": "./src/onboarding/index.ts"
   },
   "dependencies": {
     "zustand": "^5.0.8"

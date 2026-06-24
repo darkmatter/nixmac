@@ -1,4 +1,4 @@
-import { useUiState } from "@nixmac/state";
+import { uiActions } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import { refreshGitSnapshot } from "@/viewmodel/git";
 import { refreshHostsSnapshot } from "@/viewmodel/preferences";
@@ -11,7 +11,7 @@ import { toast } from "sonner";
 export const prefetchFileDiffContents = async (
   status: { changes: { filename: string }[] } | null,
 ) => {
-  const setFileDiffContents = useUiState.getState().setFileDiffContents;
+  const setFileDiffContents = uiActions.setFileDiffContents;
   if (!status) {
     setFileDiffContents({});
     return;
@@ -34,7 +34,7 @@ export const refreshGitStatus = async () => {
     await refreshGitSnapshot();
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
-    useUiState.getState().setError(msg);
+    uiActions.setError(msg);
     await refreshHostsSnapshot();
   }
 };
@@ -45,23 +45,22 @@ const getInitialStatus = async () => {
 };
 
 const handleCommit = async ({ message }: { message: string }) => {
-  const ui = useUiState.getState();
-  ui.setProcessing(true, "merge");
-  ui.appendLog(`\n> Committing changes...\n`);
+  uiActions.setProcessing(true, "merge");
+  uiActions.appendLog(`\n> Committing changes...\n`);
 
   try {
     // The backend clears the evolve state, refreshes the git-state cell, and
     // resets the change-map cell; the `*_changed` events mirror everything.
     await tauriAPI.git.commit(message);
-    useUiState.getState().appendLog("✓ Committed successfully\n");
-    useUiState.getState().setError(null);
+    uiActions.appendLog("✓ Committed successfully\n");
+    uiActions.setError(null);
     toast.success("Committed successfully");
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
-    useUiState.getState().setError(msg);
-    useUiState.getState().appendLog(`✗ Error: ${msg}\n`);
+    uiActions.setError(msg);
+    uiActions.appendLog(`✗ Error: ${msg}\n`);
   } finally {
-    useUiState.getState().setProcessing(false);
+    uiActions.setProcessing(false);
   }
 };
 

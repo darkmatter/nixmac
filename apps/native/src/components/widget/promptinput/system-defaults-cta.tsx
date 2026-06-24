@@ -2,7 +2,7 @@
 
 import { BadgeButton } from "@/components/ui/badge-button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useUiState } from "@nixmac/state";
+import { uiActions } from "@nixmac/state";
 import type { SystemDefault, SystemDefaultsScan } from "@/ipc/types";
 import { tauriAPI } from "@/ipc/api";
 import { useViewModel } from "@nixmac/state";
@@ -71,21 +71,21 @@ export function SystemDefaultsCTA() {
 
   const handleApply = async (defaults: SystemDefault[]) => {
     setApplying(true);
-    useUiState.getState().setProcessing(true, "apply");
+    uiActions.setProcessing(true, "apply");
 
     try {
       // The backend records the resulting evolve/change-map/git state in the
       // cells; the `*_changed` events mirror it into the ViewModel.
       await tauriAPI.scanner.applyDefaults(defaults);
       // Invalidate recommended prompt — settings changed
-      useUiState.getState().setRecommendedPrompt(undefined);
+      uiActions.setRecommendedPrompt(undefined);
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
       console.error("[SystemDefaultsCTA] apply failed:", msg);
     } finally {
       setApplying(false);
       setOpen(false);
-      useUiState.getState().setProcessing(false);
+      uiActions.setProcessing(false);
     }
   };
 

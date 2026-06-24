@@ -153,9 +153,9 @@ function emit(eventName: string, payload: unknown) {
 function addListener<T>(eventName: string, handler: (event: { payload: T }) => void, once = false) {
   const wrapped = once
     ? (event: { payload: T }) => {
-        handler(event);
-        removeListener(eventName, wrapped as (event: { payload: unknown }) => void);
-      }
+      handler(event);
+      removeListener(eventName, wrapped as (event: { payload: unknown }) => void);
+    }
     : (handler as (event: { payload: unknown }) => void);
 
   const eventListeners = listeners.get(eventName) ?? new Set();
@@ -328,7 +328,7 @@ export const storybookTauriAPI = {
     status: async () => baseGitStatus(),
     statusAndCache: async () => {
       const { useViewModel } = await import("@nixmac/state");
-      return useViewModel.getState().git ?? baseGitStatus();
+      return viewModelActions.getState().git ?? baseGitStatus();
     },
     cached: async () => baseGitStatus(),
     commit: async () => ({ hash: "mock123", evolveState: baseEvolveState() }),
@@ -406,7 +406,7 @@ export const storybookTauriAPI = {
   summarizedChanges: {
     findChangeMap: async () => {
       const { useViewModel } = await import("@nixmac/state");
-      return useViewModel.getState().changeMap ?? baseSemanticChangeMap();
+      return viewModelActions.getState().changeMap ?? baseSemanticChangeMap();
     },
     summarizeCurrent: async () => baseSemanticChangeMap(),
     generateCommitMessage: async () => {
@@ -481,7 +481,7 @@ export const storybookTauriAPI = {
       // Dynamic import avoids circular dep at module-evaluation time; by the time
       // this async method is called the store module is fully initialized.
       const { useViewModel } = await import("@nixmac/state");
-      return useViewModel.getState().evolve ?? baseEvolveState();
+      return viewModelActions.getState().evolve ?? baseEvolveState();
     },
     clear: async () => baseEvolveState(),
   },

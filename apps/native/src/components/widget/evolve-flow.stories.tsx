@@ -1,6 +1,6 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
-import { useUiState } from "@nixmac/state";
+import { uiActions, useUiState, viewModelActions } from "@nixmac/state";
 import { useViewModel } from "@nixmac/state";
 import type { EvolveEvent } from "@/ipc/types";
 import type { SemanticChangeMap, EvolveState, GitStatus, Change } from "@/ipc/types";
@@ -228,14 +228,14 @@ function WidgetWithState({ storeState }: { storeState: Record<string, unknown> }
       commitMessageSuggestion,
       evolveEvents,
     } = storeState;
-    useUiState.setState({
+    uiActions.setState({
       ...(isGenerating !== undefined && { isGenerating: isGenerating as boolean }),
       ...(evolvePrompt !== undefined && { evolvePrompt: evolvePrompt as string }),
       ...(commitMessageSuggestion !== undefined && {
         commitMessageSuggestion: commitMessageSuggestion as string | null,
       }),
     });
-    useViewModel.setState({
+    viewModelActions.setState({
       evolve: (evolveState as EvolveState | undefined) ?? null,
       git: (gitStatus as GitStatus | undefined) ?? null,
       changeMap: (changeMap as SemanticChangeMap | undefined) ?? null,
@@ -250,15 +250,15 @@ function AnimatedEvolveFlow() {
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
-    useViewModel.setState({ evolve: evolveStateBegin });
-    useUiState.setState({
+    viewModelActions.setState({ evolve: evolveStateBegin });
+    uiActions.setState({
       evolvePrompt: "Add system monitoring tools like htop and btop",
     });
 
     // Phase 1: Start generating (show overlay with streaming events)
     const t1 = setTimeout(() => {
-      useUiState.setState({ isGenerating: true });
-      useViewModel.setState({
+      uiActions.setState({ isGenerating: true });
+      viewModelActions.setState({
         evolveEvents: [mockEvolveEvents[0]],
       });
     }, 800);
@@ -267,7 +267,7 @@ function AnimatedEvolveFlow() {
     // Stream events one by one
     for (let i = 1; i < mockEvolveEvents.length; i++) {
       const t = setTimeout(() => {
-        useViewModel.setState((state) => ({
+        viewModelActions.setState((state) => ({
           evolveEvents: [...state.evolveEvents, mockEvolveEvents[i]],
         }));
       }, 800 + mockEvolveEvents[i].timestampMs);
@@ -277,12 +277,12 @@ function AnimatedEvolveFlow() {
     // Phase 2: Evolution complete -> show review step with changes
     const completionTime = 800 + mockEvolveEvents[mockEvolveEvents.length - 1].timestampMs + 1500;
     const t2 = setTimeout(() => {
-      useViewModel.setState({
+      viewModelActions.setState({
         evolve: evolveStateEvolve,
         git: mockGitStatus,
         changeMap: mockChangeMap,
       });
-      useUiState.setState({
+      uiActions.setState({
         isGenerating: false,
       });
     }, completionTime);
@@ -290,8 +290,8 @@ function AnimatedEvolveFlow() {
 
     // Phase 3: Transition to merge step
     const t3 = setTimeout(() => {
-      useViewModel.setState({ evolve: evolveStateMerge });
-      useUiState.setState({
+      viewModelActions.setState({ evolve: evolveStateMerge });
+      uiActions.setState({
         commitMessageSuggestion:
           "feat: add system monitoring tools (htop, btop, bottom, bandwhich, procs)",
       });

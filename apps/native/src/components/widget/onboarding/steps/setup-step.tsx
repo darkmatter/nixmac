@@ -1,6 +1,8 @@
 "use client";
 
+import type { ComponentType } from "react";
 import { useEffect, useState } from "react";
+import { GitHubLogoIcon } from "@radix-ui/react-icons";
 import {
   ArrowLeft,
   Check,
@@ -29,12 +31,14 @@ import { useViewModel } from "@nixmac/state";
 type Mode = "choose" | "import" | "create";
 type Method = "github" | "local" | "ref";
 
-const METHODS: { id: Method; label: string; blurb: string; icon: typeof GitBranch }[] = [
+type StepIcon = ComponentType<{ className?: string }>;
+
+const METHODS: { id: Method; label: string; blurb: string; icon: StepIcon }[] = [
   {
     id: "github",
     label: "GitHub",
     blurb: "Pull your flake straight from a public repository. No local git required.",
-    icon: GitBranch,
+    icon: GitHubLogoIcon,
   },
   {
     id: "local",
@@ -58,7 +62,7 @@ function PathCard({
   onClick,
   testId,
 }: {
-  icon: typeof GitBranch;
+  icon: StepIcon;
   title: string;
   description: string;
   badge?: string;

@@ -2,49 +2,23 @@
 // Re-run: cd apps/native/src-tauri && cargo run --example specta_gen_ts
 // Source: src-tauri/src/sqlite_types.rs
 
-export type Change = {
-  id: number;
-  hash: string;
-  filename: string;
-  diff: string;
-  lineCount: number;
-  createdAt: number;
-  ownSummaryId: number | null;
-};
+export type Change = { id: number; hash: string; filename: string; diff: string; lineCount: number; createdAt: number; ownSummaryId: number | null }
 
 /**
  * Groups Changes for a commit→base_commit pair. `commit_id` is NULL for speculative
  * (uncommitted) changesets. Membership is stored in the `set_changes` join table.
  */
-export type ChangeSet = {
-  id: number;
-  commitId: number | null;
-  baseCommitId: number;
-  commitMessage: string | null;
-  generatedCommitMessage: string | null;
-  createdAt: number;
-  evolutionId: number | null;
-};
+export type ChangeSet = { id: number; commitId: number | null; baseCommitId: number; commitMessage: string | null; generatedCommitMessage: string | null; createdAt: number; evolutionId: number | null }
 
-export type ChangeSummary = {
-  id: number;
-  title: string;
-  description: string;
-  /**
-   * One of `"QUEUED"`, `"DONE"`, `"FAILED"`, `"CANCELLED"`.
-   */
-  status: string;
-  createdAt: number;
-};
+export type ChangeSummary = { id: number; title: string; description: string; 
+/**
+ * One of `"QUEUED"`, `"DONE"`, `"FAILED"`, `"CANCELLED"`.
+ */
+status: string; createdAt: number }
 
-export type Commit = {
-  id: number;
-  hash: string;
-  treeHash: string;
-  message: string | null;
-  createdAt: number;
-};
+export type Commit = { id: number; hash: string; treeHash: string; message: string | null; createdAt: number }
 
-export type Evolution = { id: number; originBranch: string; merged: number; builds: number };
+export type Evolution = { id: number; originBranch: string; merged: number; builds: number }
 
-export type Prompt = { id: number; text: string; commitId: number | null; createdAt: number };
+export type Prompt = { id: number; text: string; commitId: number | null; createdAt: number }
+

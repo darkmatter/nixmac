@@ -174,7 +174,7 @@ export function BuildStep({ hasInference, onConfigureInference, onComplete }: Bu
               <div
                 key={i}
                 className={cn(
-                  "whitespace-pre-wrap break-words text-foreground/90",
+                  "whitespace-pre-wrap wrap-break-word text-foreground/90",
                   /error|failed|fatal/i.test(line) && "text-destructive",
                 )}
               >

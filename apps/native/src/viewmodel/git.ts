@@ -1,12 +1,11 @@
 import { tauriAPI, ipcRenderer } from "@/ipc/api";
 import type { GitState, GitStatus } from "@/ipc/types";
-import { useUiState } from "@nixmac/state";
-import { useViewModel } from "@nixmac/state";
+import { uiActions, viewModelActions } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
 import { refreshHistorySnapshot } from "./history";
 
 function mirrorGitState(git: GitStatus | null, externalBuildDetected = false): void {
-  useViewModel.setState((state) => ({
+  viewModelActions.setState((state) => ({
     git,
     build: {
       ...state.build,
@@ -36,7 +35,7 @@ export async function startGitSync(): Promise<() => void> {
       onEvent: () => void refreshHistorySnapshot(),
     }),
     ipcRenderer.on<string>("git_state_error", (event) => {
-      useUiState.getState().setError(event.payload);
+      uiActions.setError(event.payload);
     }),
   ]);
 

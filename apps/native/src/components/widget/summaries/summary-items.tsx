@@ -14,7 +14,7 @@ function ShimmerBar({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "rounded-md animate-shimmer bg-[length:200%_100%] bg-gradient-to-r from-white/[0.03] via-white/[0.065] to-white/[0.03]",
+        "rounded-md animate-shimmer bg-size-[200%_100%] bg-linear-to-r from-white/3 via-white/6.5 to-white/3",
         className,
       )}
     />
@@ -55,7 +55,7 @@ function GroupItem({ group, index }: { group: SemanticChangeGroup; index: number
           <span className={cn("text-[14px] font-medium leading-snug", style.text)}>
             {group.summary.title}
           </span>
-          <CollapsibleTrigger className="flex h-[18px] w-[26px] items-center justify-center rounded bg-white/[0.06] font-mono text-[11.5px] text-neutral-300 transition-colors hover:bg-white/[0.1] hover:text-neutral-300">
+          <CollapsibleTrigger className="flex h-[18px] w-[26px] items-center justify-center rounded bg-white/6 font-mono text-[11.5px] text-neutral-300 transition-colors hover:bg-white/10 hover:text-neutral-300">
             <span className="group-data-[state=open]/root:hidden">{group.changes.length}</span>
             <Layers className="hidden h-[11px] w-[11px] group-data-[state=open]/root:block" />
           </CollapsibleTrigger>
@@ -70,7 +70,7 @@ function GroupItem({ group, index }: { group: SemanticChangeGroup; index: number
           {group.changes.map((change) => (
             <div
               key={change.hash}
-              className={cn("rounded border-l-2 bg-white/[0.02] px-2 py-1.5", style.border)}
+              className={cn("rounded border-l-2 bg-white/2 px-2 py-1.5", style.border)}
             >
               <div className="truncate text-[11px] text-neutral-300">
                 {change.title || getShortFilename(change.filename)}
