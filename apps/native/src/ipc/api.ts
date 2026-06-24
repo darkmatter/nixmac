@@ -77,9 +77,6 @@ export const tauriAPI = {
     status: () => client.github.status(),
     /** @deprecated Use `client.github.listRepos()` or `orpc.github.listRepos` from `@/lib/orpc`. */
     listRepos: () => client.github.listRepos(),
-    /** @deprecated Use `client.github.import()` or `orpc.github.import` from `@/lib/orpc`. */
-    import: (owner: string, repo: string, dirName?: string) =>
-      client.github.import({ owner, repo, dirName: dirName ?? null }),
     /** @deprecated Use `client.github.disconnect()` or `orpc.github.disconnect` from `@/lib/orpc`. */
     disconnect: () => client.github.disconnect(),
   },

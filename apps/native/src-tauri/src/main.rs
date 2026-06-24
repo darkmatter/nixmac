@@ -47,18 +47,18 @@ use state::watcher;
 use storage::store;
 
 use std::sync::{
-    Arc, Mutex,
     atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
 };
 use std::time::Duration;
 use tauri::{
-    Emitter, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
     image::Image,
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
     webview::PageLoadEvent,
+    Emitter, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
 };
-use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 /// Global app handle, set during GUI setup so background threads (such as the
 /// drift watcher) can access plugins like notifications without threading an
@@ -533,7 +533,19 @@ fn run_gui_mode(
             app: app.clone(),
         }))
         .invoke_handler(tauri::generate_handler![
-            // Configuration — see `orpc::config`, `orpc::flake`, `orpc::path`, `orpc::github::import`
+            // Configuration
+            commands::config::config_get,
+            commands::config::config_set_host_attr,
+            commands::config::config_set_dir,
+            commands::config::config_prepare_new_dir,
+            commands::config::config_pick_dir,
+            commands::config::flake_exists_at,
+            commands::config::get_this_hostname,
+            commands::config::path_exists,
+            commands::config::path_normalize,
+            commands::config::config_pick_zip,
+            commands::config::config_import_github,
+            commands::config::config_import_zip,
             // GitHub App connection (server-brokered) — see `orpc::github`
             // nixmac account + non-GitHub sync
             commands::account::account_status,
