@@ -334,10 +334,12 @@ pub async fn config_import_github(
 
     // Clone on a blocking thread; libgit2 network I/O is synchronous.
     let target_for_clone = target.clone();
-    tauri::async_runtime::spawn_blocking(move || import::clone_repo(&spec, &target_for_clone))
-        .await
-        .map_err(|e| capture_err("config_import_github", e))?
-        .map_err(|e| capture_err("config_import_github", e))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        import::materialize_repo(&spec, &target_for_clone)
+    })
+    .await
+    .map_err(|e| capture_err("config_import_github", e))?
+    .map_err(|e| capture_err("config_import_github", e))?;
 
     finalize_imported_dir(&app, &target)
 }
