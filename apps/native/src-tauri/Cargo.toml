@@ -30,6 +30,13 @@ tauri-plugin-websocket = "2.0.0"
 tauri-plugin-window-state = "2.0.0"
 tauri-plugin-notification = "2"
 
+git2 = { version = "0.21.0", features = [
+  "https",
+  "ssh",
+  "vendored-libgit2",
+  "vendored-openssl",
+] }
+
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }
@@ -45,7 +52,6 @@ tempfile = "3.23.0"
 async-openai = "0.30.1"
 async-trait = "0.1"
 glob = "0.3"
-git2 = "0.21.0"
 ignore = "0.4"
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4"] }

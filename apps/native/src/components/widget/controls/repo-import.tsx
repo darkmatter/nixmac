@@ -98,11 +98,14 @@ export function RepoImport({ onImported }: RepoImportProps) {
             placeholder="owner/repo"
             className="font-mono text-xs"
             aria-label="GitHub repository reference"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             disabled={isImporting}
           />
           <p className="text-muted-foreground text-xs">
-            A public GitHub repo, e.g. <span className="font-mono">czxtm/darwin</span>. Add{" "}
-            <span className="font-mono">#branch</span> to clone a specific branch.
+            A public GitHub repo, e.g. <span className="font-mono">github.com/darkmatter/nixmac</span>. Add{" "}
+            <span className="font-mono">?ref= and/or ?dir=</span> to clone a specific branch or use a subdirectory.
           </p>
         </div>
       ) : (

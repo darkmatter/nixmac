@@ -9,6 +9,7 @@
 //! had selected an existing flake.
 
 use anyhow::{Context, Result, anyhow, bail};
+use git2::{Cred, FetchOptions, RemoteCallbacks};
 use std::fs::File;
 use std::path::{Component, Path, PathBuf};
 
@@ -25,6 +26,23 @@ pub struct RepoRef {
     pub git_ref: Option<String>,
     /// Optional subdirectory inside the repo to use as the flake root.
     pub subdir: Option<String>,
+}
+
+/// Sanitize a clone URL for logging, removing any embedded credentials.
+fn sanitize_clone_url_for_logs(clone_url: &str) -> String {
+    if let Ok(mut url) = url::Url::parse(clone_url) {
+        let _ = url.set_username("");
+        let _ = url.set_password(None);
+        return url.to_string();
+    }
+
+    if let Some((_, rest)) = clone_url.split_once('@') {
+        if rest.contains(':') {
+            return format!("***@{}", rest);
+        }
+    }
+
+    clone_url.to_string()
 }
 
 fn is_valid_segment(segment: &str) -> bool {
@@ -170,17 +188,176 @@ fn validate_subdir(path: &str) -> Result<()> {
     Ok(())
 }
 
+/// Clones the repository specified by `spec` into `dest`, then copies the specified
+/// subdirectory (if any) into `dest`, stripping the wrapper directory that git sparse
+/// sparse checkout would normally require. This allows us to support subdirectory imports
+/// without forcing users to understand git's sparse checkout semantics.
+pub fn materialize_repo(spec: &RepoRef, dest: &Path) -> Result<()> {
+    // We're going to have issues later if `dest` already exists as a non-empty directory, so check that upfront before doing any cloning.
+    if dest.exists() {
+        if !dest.is_dir() {
+            bail!(
+                "destination exists and is not a directory: {}",
+                dest.display()
+            );
+        } else if dest.read_dir()?.next().is_some() {
+            bail!("destination directory is not empty: {}", dest.display());
+        }
+    }
+
+    // Easy case. No subdirectory means we can clone directly into the destination.
+    if spec.subdir.is_none() {
+        return clone_repo(spec, dest);
+    }
+
+    let temp = tempfile::tempdir().context("failed to create temporary clone directory")?;
+    let checkout_dir = temp.path().join("repo");
+
+    // Perform the actual clone into a temp directory, then copy the specified subdirectory into the final destination.
+    clone_repo(spec, &checkout_dir)?;
+
+    let subdir = spec.subdir.as_ref().unwrap();
+    let source = checkout_dir.join(subdir);
+
+    if !source.is_dir() {
+        bail!(
+            "subdirectory '{}' does not exist in {}",
+            subdir,
+            sanitize_clone_url_for_logs(&spec.clone_url),
+        );
+    }
+
+    copy_dir_contents(&source, dest)
+        .with_context(|| format!("failed to copy subdirectory '{}' into destination", subdir))?;
+
+    Ok(())
+}
+
 /// Clones `spec` into `dest`. `dest` must not already exist as a non-empty
 /// directory (libgit2 requires an empty/absent target).
-pub fn clone_repo(spec: &RepoRef, dest: &Path) -> Result<()> {
+fn clone_repo(spec: &RepoRef, dest: &Path) -> Result<()> {
+    log::info!(
+        "Cloning {} into {} at {}",
+        sanitize_clone_url_for_logs(&spec.clone_url),
+        dest.display(),
+        spec.git_ref.as_deref().unwrap_or("default branch")
+    );
     let mut builder = git2::build::RepoBuilder::new();
     if let Some(branch) = &spec.git_ref {
         builder.branch(branch);
     }
-    builder
-        .clone(&spec.clone_url, dest)
-        .with_context(|| format!("failed to clone {}", spec.clone_url))?;
+
+    // Add ssh agent auth. This is required even if we are ostensibly cloning with an https url and even for a public repo
+    // because libgit2 will sometimes attempt to use the ssh transport for https urls when the remote supports it,
+    // and/or somebody is remapping to always use ssh in their local git config (if they have it).
+    // So without these callbacks the clone will fail with an auth error instead of falling back to https.
+    let mut callbacks = RemoteCallbacks::new();
+    callbacks.credentials(|_url, username_from_url, allowed| {
+        if allowed.contains(git2::CredentialType::SSH_KEY) {
+            return Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"));
+        }
+        if allowed.contains(git2::CredentialType::DEFAULT) {
+            return Cred::default();
+        }
+        Cred::default()
+    });
+
+    let mut fetch_options = FetchOptions::new();
+    fetch_options.remote_callbacks(callbacks);
+
+    builder.fetch_options(fetch_options);
+
+    if let Err(error) = builder.clone(&spec.clone_url, dest) {
+        log::error!(
+            "libgit2 clone failed: clone_url={}, destination={}, git_ref={:?}, libgit2_code={:?}, libgit2_class={:?}, libgit2_message={}, error={}",
+            sanitize_clone_url_for_logs(&spec.clone_url),
+            dest.display(),
+            spec.git_ref,
+            error.code(),
+            error.class(),
+            error.message(),
+            error
+        );
+
+        bail!(
+            "failed to clone {}, detail = {}",
+            sanitize_clone_url_for_logs(&spec.clone_url),
+            error
+        );
+    }
     Ok(())
+}
+
+/// Copies the contents of `source` into `dest`, creating `dest`. Assumes `dest` does not exist or is empty as a precondition.
+fn copy_dir_contents(source: &Path, dest: &Path) -> Result<()> {
+    std::fs::create_dir_all(dest)
+        .with_context(|| format!("failed to create destination {}", dest.display()))?;
+
+    for entry in std::fs::read_dir(source)
+        .with_context(|| format!("failed to read source directory {}", source.display()))?
+    {
+        let entry = entry?;
+        let from = entry.path();
+        let to = dest.join(entry.file_name());
+
+        let file_type = entry.file_type()?;
+
+        if file_type.is_dir() {
+            copy_dir_recursive(&from, &to)?;
+        } else if file_type.is_file() {
+            std::fs::copy(&from, &to).with_context(|| {
+                format!("failed to copy {} to {}", from.display(), to.display())
+            })?;
+        } else if file_type.is_symlink() {
+            copy_symlink(&from, &to)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn copy_dir_recursive(source: &Path, dest: &Path) -> Result<()> {
+    std::fs::create_dir_all(dest)
+        .with_context(|| format!("failed to create directory {}", dest.display()))?;
+
+    for entry in std::fs::read_dir(source)? {
+        let entry = entry?;
+        let from = entry.path();
+        let to = dest.join(entry.file_name());
+        let file_type = entry.file_type()?;
+
+        if file_type.is_dir() {
+            copy_dir_recursive(&from, &to)?;
+        } else if file_type.is_file() {
+            std::fs::copy(&from, &to).with_context(|| {
+                format!("failed to copy {} to {}", from.display(), to.display())
+            })?;
+        } else if file_type.is_symlink() {
+            // Yes, git repos can contain symlinks, and we need to preserve them when copying subdirectories out of the temp clone.
+            copy_symlink(&from, &to)?;
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(unix)]
+fn copy_symlink(source: &Path, dest: &Path) -> Result<()> {
+    let target = std::fs::read_link(source)
+        .with_context(|| format!("failed to read symlink {}", source.display()))?;
+
+    std::os::unix::fs::symlink(&target, dest)
+        .with_context(|| format!("failed to create symlink {}", dest.display()))?;
+
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn copy_symlink(source: &Path, _dest: &Path) -> Result<()> {
+    bail!(
+        "symlinks are not supported on this platform: {}",
+        source.display()
+    )
 }
 
 /// Returns the single shared top-level directory across all archive entries,
@@ -327,6 +504,115 @@ pub fn extract_zip(zip_path: &Path, dest: &Path) -> Result<()> {
 mod tests {
     use super::*;
     use std::{fs, io::Write};
+
+    fn create_local_repo(path: &Path) -> git2::Repository {
+        let repo = git2::Repository::init(path).unwrap();
+
+        fs::create_dir_all(path.join("config/modules")).unwrap();
+        fs::write(path.join("README.md"), "repository root").unwrap();
+        fs::write(path.join("config/flake.nix"), "default branch").unwrap();
+        fs::write(path.join("config/modules/default.nix"), "{ }").unwrap();
+
+        let mut index = repo.index().unwrap();
+        index
+            .add_all(["*"], git2::IndexAddOption::DEFAULT, None)
+            .unwrap();
+        index.write().unwrap();
+        let tree_id = index.write_tree().unwrap();
+        let tree = repo.find_tree(tree_id).unwrap();
+        let signature = git2::Signature::now("Test User", "test@example.com").unwrap();
+        let initial_id = repo
+            .commit(
+                Some("HEAD"),
+                &signature,
+                &signature,
+                "initial commit",
+                &tree,
+                &[],
+            )
+            .unwrap();
+        drop(tree);
+
+        let initial = repo.find_commit(initial_id).unwrap();
+        repo.branch("import-me", &initial, false).unwrap();
+        drop(initial);
+
+        repo.set_head("refs/heads/import-me").unwrap();
+        repo.checkout_head(None).unwrap();
+        fs::write(path.join("config/flake.nix"), "import branch").unwrap();
+
+        let mut index = repo.index().unwrap();
+        index.add_path(Path::new("config/flake.nix")).unwrap();
+        index.write().unwrap();
+        let tree_id = index.write_tree().unwrap();
+        let tree = repo.find_tree(tree_id).unwrap();
+        let parent = repo.find_commit(initial_id).unwrap();
+        repo.commit(
+            Some("HEAD"),
+            &signature,
+            &signature,
+            "branch commit",
+            &tree,
+            &[&parent],
+        )
+        .unwrap();
+        drop(parent);
+        drop(tree);
+
+        repo.set_head("refs/heads/master").unwrap();
+        repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))
+            .unwrap();
+
+        repo
+    }
+
+    #[test]
+    fn materialize_repo_clones_requested_branch_from_local_repo() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("source");
+        let _repo = create_local_repo(&source);
+        let dest = tmp.path().join("dest");
+        let spec = RepoRef {
+            clone_url: source.to_string_lossy().into_owned(),
+            git_ref: Some("import-me".to_string()),
+            subdir: None,
+        };
+
+        materialize_repo(&spec, &dest).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(dest.join("config/flake.nix")).unwrap(),
+            "import branch"
+        );
+        assert!(dest.join(".git").is_dir());
+        let cloned_repo = git2::Repository::open(&dest).unwrap();
+        let head = cloned_repo.head().unwrap();
+        assert_eq!(head.shorthand().unwrap(), "import-me");
+    }
+
+    #[test]
+    fn materialize_repo_copies_only_requested_subdirectory() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("source");
+        let _repo = create_local_repo(&source);
+        let dest = tmp.path().join("dest");
+        let spec = RepoRef {
+            clone_url: source.to_string_lossy().into_owned(),
+            git_ref: None,
+            subdir: Some("config".to_string()),
+        };
+
+        materialize_repo(&spec, &dest).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(dest.join("flake.nix")).unwrap(),
+            "default branch"
+        );
+        assert!(dest.join("modules/default.nix").is_file());
+        assert!(!dest.join("config").exists());
+        assert!(!dest.join("README.md").exists());
+        assert!(!dest.join(".git").exists());
+    }
 
     #[test]
     fn parses_owner_repo_shorthand() {
@@ -611,5 +897,22 @@ mod tests {
         assert!(txt.contains("HOSTNAME_PLACEHOLDER"));
         assert!(txt.contains("PLATFORM_PLACEHOLDER"));
         assert!(txt.contains("USERNAME_PLACEHOLDER"));
+    }
+
+    #[test]
+    fn test_sanitize_clone_url_for_logs() {
+        let url = "https://user:password@github.com/repo.git";
+        let sanitized = sanitize_clone_url_for_logs(url);
+        assert_eq!(sanitized, "https://github.com/repo.git");
+
+        // SSH
+        let url = "ssh://user:password@github.com/repo.git";
+        let sanitized = sanitize_clone_url_for_logs(url);
+        assert_eq!(sanitized, "ssh://github.com/repo.git");
+
+        // SCP-style with git://.
+        let url = "git://user:password@github.com/repo.git";
+        let sanitized = sanitize_clone_url_for_logs(url);
+        assert_eq!(sanitized, "git://github.com/repo.git");
     }
 }
