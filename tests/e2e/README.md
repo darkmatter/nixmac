@@ -183,7 +183,7 @@ Only one GitHub Secret needed:
 
 | Secret | Description |
 | -------------- | ----------------------------------------------------- |
-| `SOPS_AGE_KEY` | age private key to decrypt `ops/secrets/e2e.enc.yaml` |
+| `SOPS_AGE_KEY` | age private key to decrypt `ops/secrets/e2e.sops.json` |
 
 ### Outputs
 

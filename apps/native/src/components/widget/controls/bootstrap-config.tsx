@@ -39,6 +39,7 @@ export function BootstrapConfig({
       let nextHostname = DEFAULT_HOSTNAME;
 
       try {
+        // deprecated(orpc): replace with client/orpc from @/lib/orpc
         nextHostname = (await tauriAPI.config.getThisHostname()).trim() || DEFAULT_HOSTNAME;
       } catch {}
 
@@ -63,6 +64,7 @@ export function BootstrapConfig({
       setFlakeExists(false);
       return;
     }
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     tauriAPI.flake
       .existsAt(configDir)
       .then(setFlakeExists)

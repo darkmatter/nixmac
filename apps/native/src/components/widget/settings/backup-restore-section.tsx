@@ -15,6 +15,7 @@ export function BackupRestoreSection() {
     setStatusMessage(null);
     setExporting(true);
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       const result = await tauriAPI.settings.export(includeSecretsInExport);
       if (!result) {
         return;
@@ -43,6 +44,7 @@ export function BackupRestoreSection() {
     setStatusMessage(null);
     setImporting(true);
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       const result = await tauriAPI.settings.import();
       if (!result) {
         return;

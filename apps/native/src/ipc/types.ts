@@ -948,6 +948,57 @@ cleanHead: boolean;
 changes: Change[] }
 
 /**
+ * Current state of a GitHub-first desktop bootstrap flow.
+ */
+export type GithubBootstrapState =
+/**
+ * The browser OAuth/install flow has not finished yet.
+ */
+"pending" |
+/**
+ * The server created/bound the Better Auth user and returned a device key.
+ */
+"complete" |
+/**
+ * The server could not create an account from GitHub identity; use email OTP.
+ */
+"fallbackRequired" |
+/**
+ * The state token expired or is no longer usable.
+ */
+"expired"
+
+/**
+ * Public bootstrap status returned to the frontend. Secret material returned by
+ * the server is persisted natively and intentionally omitted from this type.
+ */
+export type GithubBootstrapStatus = {
+/**
+ * Bootstrap lifecycle state for this browser flow.
+ */
+state: GithubBootstrapState;
+/**
+ * True once the account is linked to a GitHub App installation.
+ */
+connected: boolean;
+/**
+ * The connected GitHub login (for display), when known.
+ */
+login: string | null;
+/**
+ * The linked installation id, when connected.
+ */
+installationId: number | null;
+/**
+ * The Better Auth account created or bound by the server, when complete.
+ */
+account: AuthAccount | null;
+/**
+ * Human-readable reason to show when email OTP fallback is needed.
+ */
+fallbackReason: string | null }
+
+/**
  * Result of `github_connect_start`: the GitHub App install URL to open in the
  * browser. `state` is server-tracked CSRF; the client only needs `install_url`.
  */

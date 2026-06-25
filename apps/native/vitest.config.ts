@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import storybookTest from "@storybook/addon-vitest/vitest-plugin";
 import type {} from "@vitest/browser/providers/playwright";
 import { defineConfig } from "vitest/config";
+import { nixmacBuildDefines } from "./nixmac-profile";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 const uiPackageRoot = path.resolve(repoRoot, "packages/ui/src");
@@ -33,6 +34,7 @@ const storybookOptimizeDeps = [
 ] as const;
 
 export default defineConfig({
+  define: nixmacBuildDefines(import.meta.dirname),
   plugins: [react()],
   optimizeDeps: {
     include: storybookOptimizeDeps,

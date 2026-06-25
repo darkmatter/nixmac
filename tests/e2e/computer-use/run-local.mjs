@@ -67,7 +67,7 @@ const TEST_DATA_DIR = path.join(REPO_ROOT, "apps/native/e2e-tauri/tests/data");
 const DEFAULT_FIXTURE = "add-font.jsonl";
 const DETERMINISTIC_APP_COMMAND = [
   "cd apps/native",
-  "VITE_NIXMAC_SKIP_PERMISSIONS=true VITE_NIXMAC_E2E_MODE=true ./node_modules/.bin/tauri build --debug --bundles app --no-sign --config src-tauri/tauri.conf.dev.json",
+  "NIXMAC_ENV=e2e ./node_modules/.bin/tauri build --debug --bundles app --no-sign --config src-tauri/tauri.conf.dev.json",
   "open -n ../../target/debug/bundle/macos/nixmac.app",
 ].join(" && ");
 const REAL_APP_PATH = process.env.NIXMAC_COMPUTER_USE_APP ?? "/Applications/nixmac.app";

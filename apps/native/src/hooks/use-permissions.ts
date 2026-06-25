@@ -8,6 +8,7 @@ import { tauriAPI } from "@/ipc/api";
  * ViewModel by the permissions sync module.
  */
 const checkPermissions = async (): Promise<void> => {
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   await tauriAPI.permissions.refresh();
 };
 

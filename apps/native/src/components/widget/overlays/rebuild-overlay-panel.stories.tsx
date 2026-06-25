@@ -1,10 +1,11 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import React, { useEffect } from "react";
 import { RebuildOverlayPanel } from "@/components/widget/overlays/rebuild-overlay-panel";
 import type { RebuildStatus } from "@/ipc/types";
-import { uiActions, viewModelActions } from "@nixmac/state";
+import { REBUILD_ERROR_CODES } from "@/lib/errors";
 import type { RebuildContext, RebuildLine } from "@/types/rebuild";
 import { makeRebuildStatus } from "@/utils/test-fixtures";
+import { uiActions, viewModelActions } from "@nixmac/state";
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import React, { useEffect } from "react";
 
 type RebuildScenario = Partial<RebuildStatus> & {
   context?: RebuildContext;
@@ -132,7 +133,7 @@ export const InfiniteRecursionError: Story = {
       isRunning: false,
       lines: errorLines,
       success: false,
-      errorType: "infinite_recursion",
+      errorType: REBUILD_ERROR_CODES.INFINITE_RECURSION,
       errorMessage: "error: infinite recursion encountered at /nix/store/...-source/flake.nix:42",
       systemUntouched: true,
     }),
@@ -148,7 +149,7 @@ export const EvaluationError: Story = {
       isRunning: false,
       lines: errorLines,
       success: false,
-      errorType: "evaluation_error",
+      errorType: REBUILD_ERROR_CODES.EVALUATION_ERROR,
       errorMessage:
         "error: attribute 'missing-package' not found at /nix/store/...-source/configuration.nix:15",
       systemUntouched: true,
@@ -170,7 +171,7 @@ export const BuildError: Story = {
         { id: 4, text: "❌ Package build failed", type: "stderr" },
       ],
       success: false,
-      errorType: "build_error",
+      errorType: REBUILD_ERROR_CODES.BUILD_ERROR,
       errorMessage: "builder for '/nix/store/abc123-some-package.drv' failed with exit code 1",
     }),
   ],
@@ -185,7 +186,7 @@ export const GenericError: Story = {
       isRunning: false,
       lines: errorLines,
       success: false,
-      errorType: "generic_error",
+      errorType: REBUILD_ERROR_CODES.GENERIC_ERROR,
       errorMessage: "An unexpected error occurred during the rebuild process",
     }),
   ],

@@ -4,16 +4,6 @@ use crate::system::nix::determine_host_attr;
 use crate::{git, shared_types};
 use tauri::AppHandle;
 
-pub(super) fn wrap_result_and_capture_err<T, E: std::fmt::Display>(
-    ctx: &str,
-    res: Result<T, E>,
-) -> Result<T, String> {
-    res.map_err(|e| {
-        tracing::error!(context = ctx, error = %e, "command error");
-        e.to_string()
-    })
-}
-
 pub(super) fn capture_err<E: std::fmt::Display>(cmd: &str, e: E) -> String {
     tracing::error!(command = cmd, error = %e, "command error");
     e.to_string()

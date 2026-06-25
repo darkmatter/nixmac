@@ -6,6 +6,7 @@ export function useRecommendedPrompt() {
   const recommendation = useUiState((s) => s.recommendedPrompt);
 
   const refresh = () => {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     tauriAPI.scanner
       .getRecommendedPrompt()
       .then((result) => {

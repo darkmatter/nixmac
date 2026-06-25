@@ -1,9 +1,23 @@
 import { Button } from "@/components/ui/button";
+import { AccountTab } from "@/components/widget/settings/account-tab";
+import { AiModelsTab } from "@/components/widget/settings/ai-models-tab";
+import { ApiKeysTab } from "@/components/widget/settings/api-keys-tab";
+import { DeveloperTab } from "@/components/widget/settings/developer-tab";
+import { GeneralTab } from "@/components/widget/settings/general-tab";
+import { PreferencesTab } from "@/components/widget/settings/preferences-tab";
+import { TuningTab } from "@/components/widget/settings/tuning-tab";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
-import { cn } from "@/lib/utils";
-import { uiActions, useUiState, useViewModel, type SettingsTab } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
+import { resolveOpenAiCompatibleProvider } from "@/lib/providers/ai-provider-validation";
+import {
+  createVerifiedApiKeyHandler,
+  verifyOpenaiApiKey,
+  verifyOpenrouterApiKey,
+  type ApiKeyStatus,
+} from "@/lib/providers/api-key-verification";
+import { cn } from "@/lib/utils";
 import { refreshHostsSnapshot } from "@/viewmodel/preferences";
+import { uiActions, useUiState, useViewModel, type SettingsTab } from "@nixmac/state";
 import { useForm } from "@tanstack/react-form";
 import {
   Bot,
@@ -15,20 +29,6 @@ import {
   Wrench,
 } from "lucide-react";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import {
-  type ApiKeyStatus,
-  createVerifiedApiKeyHandler,
-  verifyOpenaiApiKey,
-  verifyOpenrouterApiKey,
-} from "@/lib/api-key-verification";
-import { AccountTab } from "@/components/widget/settings/account-tab";
-import { AiModelsTab } from "@/components/widget/settings/ai-models-tab";
-import { ApiKeysTab } from "@/components/widget/settings/api-keys-tab";
-import { DeveloperTab } from "@/components/widget/settings/developer-tab";
-import { GeneralTab } from "@/components/widget/settings/general-tab";
-import { PreferencesTab } from "@/components/widget/settings/preferences-tab";
-import { TuningTab } from "@/components/widget/settings/tuning-tab";
-import { resolveOpenAiCompatibleProvider } from "@/lib/ai-provider-validation";
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -88,6 +88,7 @@ export function SettingsDialog() {
     () =>
       createVerifiedApiKeyHandler({
         saveKey: async (key) => {
+          // deprecated(orpc): replace with client/orpc from @/lib/orpc
           await tauriAPI.ui.setPrefs({ openrouterApiKey: key });
         },
         setStatus: setOpenrouterKeyStatus,
@@ -100,6 +101,7 @@ export function SettingsDialog() {
     () =>
       createVerifiedApiKeyHandler({
         saveKey: async (key) => {
+          // deprecated(orpc): replace with client/orpc from @/lib/orpc
           await tauriAPI.ui.setPrefs({ openaiApiKey: key });
         },
         setStatus: setOpenaiKeyStatus,
@@ -109,16 +111,20 @@ export function SettingsDialog() {
   );
 
   const saveOllamaUrl = async (url: string) => {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.ui.setPrefs({ ollamaApiBaseUrl: url });
     // Clear cached Ollama models when the base URL changes
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.models.clearCached("ollama");
   };
 
   const saveVllmUrl = async (url: string) => {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.ui.setPrefs({ vllmApiBaseUrl: url });
   };
 
   const saveVllmKey = async (key: string) => {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.ui.setPrefs({ vllmApiKey: key });
   };
 
@@ -142,6 +148,7 @@ export function SettingsDialog() {
   useEffect(() => {
     const loadPrefs = async () => {
       try {
+        // deprecated(orpc): replace with client/orpc from @/lib/orpc
         const prefs = await tauriAPI.ui.getPrefs();
         if (prefs) {
           const summaryProvider = resolveOpenAiCompatibleProvider(prefs.summaryProvider, prefs);
@@ -156,13 +163,13 @@ export function SettingsDialog() {
           form.setFieldValue(
             "summaryModel",
             prefs.summaryModel ??
-              (summaryProvider === "openai" ? "gpt-4o-mini" : "openai/gpt-4o-mini"),
+            (summaryProvider === "openai" ? "gpt-4o-mini" : "openai/gpt-4o-mini"),
           );
           form.setFieldValue("evolveProvider", evolveProvider);
           form.setFieldValue(
             "evolveModel",
             prefs.evolveModel ??
-              (evolveProvider === "openai" ? "gpt-4o" : "anthropic/claude-sonnet-4"),
+            (evolveProvider === "openai" ? "gpt-4o" : "anthropic/claude-sonnet-4"),
           );
           form.setFieldValue("sendDiagnostics", prefs.sendDiagnostics ?? false);
 

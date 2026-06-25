@@ -58,6 +58,7 @@ export function SystemDefaultsCTA() {
     }
 
     let cancelled = false;
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     tauriAPI.scanner
       .scanDefaults()
       .then((result) => {
@@ -76,6 +77,7 @@ export function SystemDefaultsCTA() {
     try {
       // The backend records the resulting evolve/change-map/git state in the
       // cells; the `*_changed` events mirror it into the ViewModel.
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.scanner.applyDefaults(defaults);
       // Invalidate recommended prompt — settings changed
       uiActions.setRecommendedPrompt(undefined);

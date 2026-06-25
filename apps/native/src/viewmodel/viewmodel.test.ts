@@ -9,12 +9,13 @@ import type {
   RebuildStatus,
   SemanticChangeMap,
 } from "@/ipc/types";
-import { initialUiState, uiActions, useUiState, viewModelActions } from "@nixmac/state";
+import { REBUILD_ERROR_CODES } from "@/lib/errors";
 import {
   makeGlobalPreferences,
   makeNixInstallState,
   makeRebuildStatus,
 } from "@/utils/test-fixtures";
+import { initialUiState, uiActions, useUiState, viewModelActions } from "@nixmac/state";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { startChangeMapSync } from "./change-map";
 import { startEvolutionSync } from "./evolution";
@@ -232,7 +233,7 @@ describe("view model sync", () => {
     expect(viewModelActions.getState().hosts).toEqual([]);
 
     // configDir set but listing fails -> hosts unchanged, error logged.
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => { });
     viewModelActions.setState({ hosts: ["existing"] });
     apiMocks.listHosts.mockRejectedValue(new Error("nix missing"));
     apiMocks.listeners.get("global_preferences_changed")?.({
@@ -317,7 +318,7 @@ describe("view model sync", () => {
 
     apiMocks.listeners.get("darwin:apply:summary")?.({ payload: { text: "Building..." } });
     apiMocks.listeners.get("darwin:apply:summary")?.({
-      payload: { text: "It broke", error: true, error_type: "build_error" },
+      payload: { text: "It broke", error: true, error_type: REBUILD_ERROR_CODES.BUILD_ERROR },
     });
     expect(viewModelActions.getState().rebuildLog.lines).toEqual([
       { id: 0, text: "Preparing rebuild...", type: "info" },
@@ -346,7 +347,7 @@ describe("view model sync", () => {
     apiMocks.listeners.get("rebuild_status_changed")?.({
       payload: makeRebuildStatus({
         success: false,
-        errorType: "full_disk_access",
+        errorType: REBUILD_ERROR_CODES.FULL_DISK_ACCESS,
         errorMessage: "needs FDA",
       }),
     });

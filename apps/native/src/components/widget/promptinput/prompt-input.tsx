@@ -8,18 +8,18 @@ import {
   InputGroupText,
   InputGroupTextarea,
 } from "@/components/ui/input-group";
+import { Separator } from "@/components/ui/separator";
 import { BeginEvolveWarning } from "@/components/widget/promptinput/begin-evolve-warning";
-import { MacRecommendationChip } from "@/components/widget/promptinput/mac-recommendation-chip";
 import { HomebrewBadge } from "@/components/widget/promptinput/homebrew-badge";
+import { MacRecommendationChip } from "@/components/widget/promptinput/mac-recommendation-chip";
 import { PromptHistoryBadge } from "@/components/widget/promptinput/prompt-history-badge";
 import { SystemDefaultsCTA } from "@/components/widget/promptinput/system-defaults-cta";
 import { useEvolve } from "@/hooks/use-evolve";
-import { getProviderConfigInvalidReason } from "@/lib/ai-provider-validation";
-import { uiActions, useUiState, useViewModel } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
+import { getProviderConfigInvalidReason } from "@/lib/providers/ai-provider-validation";
+import { uiActions, useUiState, useViewModel } from "@nixmac/state";
 import { ArrowUpIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Separator } from "@/components/ui/separator";
 
 const MAX_CONTEXT_LENGTH = 1000;
 
@@ -27,12 +27,12 @@ const STATIC_SUGGESTIONS = ["Install vim", "Add Rectangle app"];
 
 export function PromptInput() {
   const evolvePrompt = useUiState((s) => s.evolvePrompt);
-    const isProcessing = useUiState((s) => s.isProcessing);
+  const isProcessing = useUiState((s) => s.isProcessing);
   const processingAction = useUiState((s) => s.processingAction);
   const evolveState = useViewModel((s) => s.evolve);
   const gitStatus = useViewModel((s) => s.git);
   const settingsOpen = useUiState((s) => s.settingsOpen);
-    const { handleEvolve } = useEvolve();
+  const { handleEvolve } = useEvolve();
   const [warningOpen, setWarningOpen] = useState(false);
   const [providerErrors, setProviderErrors] = useState<{
     evolve: string | null;
@@ -48,7 +48,9 @@ export function PromptInput() {
     const refreshProviderValidation = async () => {
       try {
         const [prefs, cliStatus] = await Promise.all([
+          // deprecated(orpc): replace with client/orpc from @/lib/orpc
           tauriAPI.ui.getPrefs(),
+          // deprecated(orpc): replace with client/orpc from @/lib/orpc
           tauriAPI.cli.checkTools(),
         ]);
 

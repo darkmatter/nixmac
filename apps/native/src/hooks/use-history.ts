@@ -6,6 +6,7 @@ const loadHistory = () => refreshHistorySnapshot();
 
 const analyzeOne = async (hash: string) => {
   try {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.history.generateFrom(hash, 1);
     await loadHistory();
   } catch (e) {
@@ -26,6 +27,7 @@ const analyzeMany = async (hashes: string[]) => {
       continue;
     }
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.history.generateFrom(hash, 1);
       await loadHistory();
     } catch (e) {

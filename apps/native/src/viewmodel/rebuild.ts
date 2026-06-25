@@ -1,7 +1,8 @@
-import { tauriAPI, ipcRenderer } from "@/ipc/api";
+import { ipcRenderer, tauriAPI } from "@/ipc/api";
 import type { DarwinApplyDataEvent, DarwinApplySummaryEvent, RebuildStatus } from "@/ipc/types";
-import { uiActions, viewModelActions } from "@nixmac/state";
+import { REBUILD_ERROR_CODES } from "@/lib/errors";
 import type { RebuildLine } from "@/types/rebuild";
+import { uiActions, viewModelActions } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
 
 // Monotonic id for summary lines; reset on every new run.
@@ -67,7 +68,8 @@ function mirrorRebuildStatus(status: RebuildStatus): void {
     // `permissions_changed` mirrors it, routing the UI to the permissions
     // step.
     uiActions.setProcessing(false);
-    if (status.errorType === "full_disk_access") {
+    if (status.errorType === REBUILD_ERROR_CODES.FULL_DISK_ACCESS) {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       void tauriAPI.permissions.refresh();
     }
   }
@@ -76,6 +78,7 @@ function mirrorRebuildStatus(status: RebuildStatus): void {
 export async function startRebuildSync(): Promise<() => void> {
   const [statusUnlisten, dataUnlisten, summaryUnlisten] = await Promise.all([
     bindBackendSlice<RebuildStatus>({
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       hydrate: () => tauriAPI.darwin.rebuildStatus(),
       event: "rebuild_status_changed",
       mirror: mirrorRebuildStatus,

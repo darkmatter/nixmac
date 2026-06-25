@@ -18,6 +18,7 @@ export function useApply() {
       context: "apply",
       onSuccess: async () => {
         try {
+          // deprecated(orpc): replace with client/orpc from @/lib/orpc
           await tauriAPI.darwin.finalizeApply();
         } catch (e) {
           console.error("Failed to finalize apply:", e);
@@ -31,6 +32,7 @@ export function useApply() {
     await triggerRebuild({
       context: "apply",
       onSuccess: async () => {
+        // deprecated(orpc): replace with client/orpc from @/lib/orpc
         await tauriAPI.darwin.finalizeApply();
       },
     });
@@ -38,6 +40,7 @@ export function useApply() {
 
   const handleManualBuildConfirm = async () => {
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.darwin.finalizeApply();
     } catch (e) {
       console.error("Failed to finalize manual build:", e);

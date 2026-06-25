@@ -41,6 +41,7 @@ export function FlakeRefSource({ onImported }: FlakeRefSourceProps) {
         const repoRef = branch ? `${owner}/${repo}#${branch}` : `${owner}/${repo}`;
         await importGithub(repoRef, ".darwin");
       } else {
+        // deprecated(orpc): replace with client/orpc from @/lib/orpc
         const normalized = await tauriAPI.path.normalize(value.trim().replace(/^path:/i, ""));
         await setDir(normalized);
       }

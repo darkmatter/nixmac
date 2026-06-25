@@ -5,6 +5,7 @@
 //! installation tokens on demand (see `docs/github-app-server-contract.md`).
 //! These structs are what the frontend consumes.
 
+use super::account::AuthAccount;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -19,6 +20,40 @@ pub struct GithubConnectStart {
     pub state: String,
 }
 
+/// Current state of a GitHub-first desktop bootstrap flow.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum GithubBootstrapState {
+    /// The browser OAuth/install flow has not finished yet.
+    Pending,
+    /// The server created/bound the Better Auth user and returned a device key.
+    Complete,
+    /// The server could not create an account from GitHub identity; use email OTP.
+    FallbackRequired,
+    /// The state token expired or is no longer usable.
+    Expired,
+}
+
+/// Public bootstrap status returned to the frontend. Secret material returned by
+/// the server is persisted natively and intentionally omitted from this type.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct GithubBootstrapStatus {
+    /// Bootstrap lifecycle state for this browser flow.
+    pub state: GithubBootstrapState,
+    /// True once the account is linked to a GitHub App installation.
+    pub connected: bool,
+    /// The connected GitHub login (for display), when known.
+    pub login: Option<String>,
+    /// The linked installation id, when connected.
+    #[specta(type = f64)]
+    pub installation_id: Option<i64>,
+    /// The Better Auth account created or bound by the server, when complete.
+    pub account: Option<AuthAccount>,
+    /// Human-readable reason to show when email OTP fallback is needed.
+    pub fallback_reason: Option<String>,
+}
+
 /// Whether this account has a linked GitHub App installation, returned by
 /// `github_status` (polled while the browser install completes).
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -29,6 +64,7 @@ pub struct GithubStatus {
     /// The connected GitHub login (for display), when known.
     pub login: Option<String>,
     /// The linked installation id, when connected.
+    #[specta(type = f64)]
     pub installation_id: Option<i64>,
 }
 

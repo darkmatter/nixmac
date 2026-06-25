@@ -70,6 +70,7 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
 
   useEffect(() => {
     let cancelled = false;
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     tauriAPI.homebrew
       .getStateDiff()
       .then((diff) => {
@@ -134,6 +135,7 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
           itemType: item.itemType,
         };
       });
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.homebrew.addItems(homebrewItems);
       invalidateRecommendation();
       uiActions.setShowFilesystem(false);
@@ -152,6 +154,7 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
         }
         return item.systemDefault;
       });
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.scanner.applyDefaults(defaults);
       invalidateRecommendation();
       await refreshSystemDefaults();
@@ -170,6 +173,7 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
         }
         return item.launchdItem;
       });
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.launchd.applyLaunchdItems(launchdItemsToApply);
       invalidateRecommendation();
       await refreshLaunchdItems();

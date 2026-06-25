@@ -126,7 +126,7 @@ jobs:
             echo "::error::Partial MAC_E2E_* secret configuration. Set all four direct secrets or remove them and use SOPS fallback."
             exit 1
           else
-            SECRETS_FILE="ops/secrets/e2e.enc.yaml"
+            SECRETS_FILE="ops/secrets/e2e.sops.json"
             SOPS_AGE_KEY="${SOPS_AGE_KEY_DRKMTTR_DEV_SECRET:-$SOPS_AGE_KEY_SECRET}"
             export SOPS_AGE_KEY
 

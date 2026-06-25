@@ -17,6 +17,7 @@ function mirrorNixInstallState(next: NixInstallState): void {
 // ViewModel. There is no install-progress stream to fold.
 export function startNixInstallSync(): Promise<() => void> {
   return bindBackendSlice<NixInstallState>({
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     hydrate: () => tauriAPI.nix.installState(),
     event: "nix_install_state_changed",
     mirror: mirrorNixInstallState,

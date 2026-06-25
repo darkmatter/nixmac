@@ -53,6 +53,27 @@ pub async fn account_sign_up_web(
         .map_err(|e| capture_err("account_sign_up_web", e))
 }
 
+/// Sends a sign-in code for the web-origin nixmac account.
+#[tauri::command]
+pub async fn account_send_otp(email: String) -> Result<(), String> {
+    sync::send_web_sign_in_otp(&email)
+        .await
+        .map_err(|e| capture_err("account_send_otp", e))
+}
+
+/// Verifies a sign-in code and stores the device api-key for GitHub access.
+#[tauri::command]
+pub async fn account_verify_otp(
+    app: AppHandle,
+    email: String,
+    otp: String,
+    name: String,
+) -> Result<AuthStatus, String> {
+    sync::verify_web_sign_in_otp(&app, &email, &otp, &name)
+        .await
+        .map_err(|e| capture_err("account_verify_otp", e))
+}
+
 /// Signs out, removing the stored account metadata and device secret.
 #[tauri::command]
 pub async fn account_sign_out(app: AppHandle) -> Result<AuthStatus, String> {

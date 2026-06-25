@@ -47,6 +47,7 @@ export function DebugOverlay() {
       </div>
       <button
         className="pointer-events-auto rounded bg-black/80 px-2 py-1 font-mono text-xs text-rose-400/60 hover:text-rose-400"
+        // deprecated(orpc): replace with client/orpc from @/lib/orpc
         onClick={() => void tauriAPI.evolveState.clear()}
         style={{ backdropFilter: "blur(4px)" }}
         type="button"

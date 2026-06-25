@@ -9,6 +9,7 @@ export function mirrorPermissions(permissions: PermissionsState | null): void {
 
 export function startPermissionsSync(): Promise<() => void> {
   return bindBackendSlice<PermissionsState | null>({
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     hydrate: () => tauriAPI.permissions.get(),
     event: "permissions_changed",
     mirror: mirrorPermissions,

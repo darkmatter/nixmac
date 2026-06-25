@@ -35,6 +35,7 @@ export function CreateSource({ onCreated }: CreateSourceProps) {
   // Suggest this Mac's hostname as the default config name.
   useEffect(() => {
     let cancelled = false;
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     tauriAPI.config
       .getThisHostname()
       .then((name) => {
@@ -52,6 +53,7 @@ export function CreateSource({ onCreated }: CreateSourceProps) {
     setError(null);
     setCreating(true);
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       const normalized = await tauriAPI.path.normalize(dir.trim() || DEFAULT_CONFIG_DIR);
       await prepareNewDir(normalized);
       await bootstrap(host);

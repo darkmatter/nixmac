@@ -12,6 +12,7 @@ unexpected_cfgs = "allow"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
+serde_json = "1"
 
 [dependencies]
 tauri = { version = "2", features = [
@@ -99,6 +100,9 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 walkdir = "2.5.0"
 plist = "1.9.0"
 whoami = "2.1.2"
+orpc = "1.1.0"
+orpc-specta = "1.1.0"
+tauri-plugin-orpc = "1.1.0"
 
 [dependencies.tauri-plugin-sql]
 features = ["sqlite"] # or "postgres", or "mysql"

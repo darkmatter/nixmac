@@ -2,11 +2,9 @@ use super::helpers::capture_err;
 use crate::state::{build_state, evolve_state};
 use crate::storage::store;
 use crate::{db, git, shared_types};
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
-/// Returns original (HEAD) and modified (working-tree) content for each requested file.
-#[tauri::command]
-pub async fn git_file_diff_contents(
+pub async fn fetch_file_diff_contents(
     app: AppHandle,
     filenames: Vec<String>,
 ) -> Result<std::collections::HashMap<String, shared_types::FileDiffContents>, String> {
@@ -18,6 +16,73 @@ pub async fn git_file_diff_contents(
             (f, shared_types::FileDiffContents { original, modified })
         })
         .collect())
+}
+
+pub async fn create_commit(
+    app: AppHandle,
+    message: String,
+) -> Result<shared_types::CommitResult, String> {
+    let db_pool = app.state::<db::DbPool>();
+    let dir = store::ensure_git_repo_folder(&app).map_err(|e| capture_err("git_commit", e))?;
+    let commit_info = git::commit_all(&dir, &message).map_err(|e| capture_err("git_commit", e))?;
+
+    if let Err(e) = git::tag_commit(
+        &dir,
+        &format!("nixmac-commit-{}", &commit_info.hash[..8]),
+        &commit_info.hash,
+        false,
+    ) {
+        log::warn!("[git_commit] Failed to tag commit: {}", e);
+    }
+
+    let now = crate::utils::unix_now();
+    match db::commits::upsert_commit(
+        &db_pool,
+        &commit_info.hash,
+        &commit_info.tree_hash,
+        Some(&message),
+        now,
+    ) {
+        Ok(id) => log::info!(
+            "[git_commit] Saved commit to database (id={}, hash={})",
+            id,
+            &commit_info.hash[..8]
+        ),
+        Err(e) => log::error!("[git_commit] Failed to save commit: {}", e),
+    }
+
+    if let Ok(current_build_state) = build_state::get(&app) {
+        let updated = build_state::BuildState {
+            head_commit_hash: Some(commit_info.hash.clone()),
+            changeset_id: None,
+            ..current_build_state
+        };
+        if let Err(e) = build_state::set(&app, updated) {
+            log::warn!("[git_commit] Failed to update build state: {}", e);
+        }
+    }
+
+    if let Err(e) = evolve_state::clear(&app) {
+        log::error!("[git_commit] Failed to clear evolve state: {}", e);
+    }
+
+    if let Err(e) = git::query::status_and_cache(&dir, &app) {
+        log::warn!("[git_commit] Failed to refresh git state: {}", e);
+    }
+    crate::state::change_map::clear(&app);
+
+    Ok(shared_types::CommitResult {
+        hash: commit_info.hash,
+    })
+}
+
+/// Returns original (HEAD) and modified (working-tree) content for each requested file.
+#[tauri::command]
+pub async fn git_file_diff_contents(
+    app: AppHandle,
+    filenames: Vec<String>,
+) -> Result<std::collections::HashMap<String, shared_types::FileDiffContents>, String> {
+    fetch_file_diff_contents(app, filenames).await
 }
 
 /// Returns the last-known git state from the in-memory cell.
@@ -69,59 +134,6 @@ pub async fn git_commit(
     db_pool: State<'_, db::DbPool>,
     message: String,
 ) -> Result<shared_types::CommitResult, String> {
-    let dir = store::ensure_git_repo_folder(&app).map_err(|e| capture_err("git_commit", e))?;
-    let commit_info = git::commit_all(&dir, &message).map_err(|e| capture_err("git_commit", e))?;
-
-    if let Err(e) = git::tag_commit(
-        &dir,
-        &format!("nixmac-commit-{}", &commit_info.hash[..8]),
-        &commit_info.hash,
-        false,
-    ) {
-        log::warn!("[git_commit] Failed to tag commit: {}", e);
-    }
-
-    let now = crate::utils::unix_now();
-    match db::commits::upsert_commit(
-        &db_pool,
-        &commit_info.hash,
-        &commit_info.tree_hash,
-        Some(&message),
-        now,
-    ) {
-        Ok(id) => log::info!(
-            "[git_commit] Saved commit to database (id={}, hash={})",
-            id,
-            &commit_info.hash[..8]
-        ),
-        Err(e) => log::error!("[git_commit] Failed to save commit: {}", e),
-    }
-
-    // Update build state: new HEAD hash, no changeset (working tree is now clean).
-    if let Ok(current_build_state) = build_state::get(&app) {
-        let updated = build_state::BuildState {
-            head_commit_hash: Some(commit_info.hash.clone()),
-            changeset_id: None,
-            ..current_build_state
-        };
-        if let Err(e) = build_state::set(&app, updated) {
-            log::warn!("[git_commit] Failed to update build state: {}", e);
-        }
-    }
-
-    // The cell write emits `evolve_state_changed`; the frontend mirrors it.
-    if let Err(e) = evolve_state::clear(&app) {
-        log::error!("[git_commit] Failed to clear evolve state: {}", e);
-    }
-
-    // The commit folded the working tree's changes into history: refresh the
-    // git-state cell and reset the change-map cell (emits both `*_changed`).
-    if let Err(e) = git::query::status_and_cache(&dir, &app) {
-        log::warn!("[git_commit] Failed to refresh git state: {}", e);
-    }
-    crate::state::change_map::clear(&app);
-
-    Ok(shared_types::CommitResult {
-        hash: commit_info.hash,
-    })
+    let _ = db_pool;
+    create_commit(app, message).await
 }

@@ -1,4 +1,5 @@
 {
+  "identifier": "com.darkmatter.nixmac.dev",
   "bundle": {
     "createUpdaterArtifacts": false
   },

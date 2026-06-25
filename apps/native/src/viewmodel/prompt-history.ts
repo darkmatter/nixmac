@@ -8,6 +8,7 @@ export function mirrorPromptHistory(promptHistory: string[]): void {
 
 export function startPromptHistorySync(): Promise<() => void> {
   return bindBackendSlice<string[]>({
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     hydrate: () => tauriAPI.promptHistory.get(),
     event: "prompt_history_changed",
     mirror: mirrorPromptHistory,

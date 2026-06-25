@@ -3534,6 +3534,8 @@ dependencies = [
  "opentelemetry-appender-tracing",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
+ "orpc",
+ "orpc-specta",
  "plist",
  "r2d2",
  "regex",
@@ -3553,6 +3555,7 @@ dependencies = [
  "tauri-plugin-keyring",
  "tauri-plugin-macos-permissions",
  "tauri-plugin-notification",
+ "tauri-plugin-orpc",
  "tauri-plugin-positioner",
  "tauri-plugin-process",
  "tauri-plugin-shell",
@@ -4116,6 +4119,77 @@ checksum = "9aa2b01e1d916879f73a53d01d1d6cee68adbb31d6d9177a8cfce093cced1d50"
 dependencies = [
  "futures-core",
  "pin-project-lite",
+]
+
+[[package]]
+name = "orpc"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "201332dc6288e50d72391f804bee9a96283ffc213e3b1979d7fe67a8c4807546"
+dependencies = [
+ "base64 0.22.1",
+ "futures-core",
+ "orpc-macros",
+ "orpc-procedure",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "orpc-macros"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e8aea2e1ce9479dd98bacb0c995ccab4e3d3e8652e9d92091c379dea37c981b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "orpc-procedure"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b885390a2249d50f5e347c0383a5f8abc91fea0351c1dce28c9ca023efa3a9d5"
+dependencies = [
+ "erased-serde",
+ "futures-core",
+ "pin-project-lite",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "orpc-server"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d69df0257261d627d82be160646c5157f64155943f5a9277f35c6defe843f0f8"
+dependencies = [
+ "futures-core",
+ "futures-util",
+ "http",
+ "orpc",
+ "orpc-procedure",
+ "serde",
+ "serde_json",
+ "serde_qs",
+]
+
+[[package]]
+name = "orpc-specta"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2f1d6959ca2777bb61f0b38b2638f4e43a8aef991b0d4ccd44e23dd711d06b1"
+dependencies = [
+ "orpc",
+ "orpc-procedure",
+ "serde",
+ "serde_json",
+ "specta",
+ "specta-serde",
+ "specta-typescript",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -5628,6 +5702,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_qs"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67d525c8ff68aa99e5818302259bdd02d86d0303710616f39c0f44846ff6d332"
+dependencies = [
+ "itoa",
+ "percent-encoding",
+ "ryu",
+ "serde",
+]
+
+[[package]]
 name = "serde_repr"
 version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6704,6 +6790,23 @@ dependencies = [
  "thiserror 2.0.18",
  "time",
  "url",
+]
+
+[[package]]
+name = "tauri-plugin-orpc"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45caee175f133d8bc4e4e95f314ad7b0cdd59ee894faa7390f57fe2753223902"
+dependencies = [
+ "futures-util",
+ "orpc",
+ "orpc-procedure",
+ "orpc-server",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-plugin",
+ "tokio",
 ]
 
 [[package]]

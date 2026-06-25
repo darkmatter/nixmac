@@ -134,6 +134,7 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
     setError(null);
     try {
       // Real account credential exchange via the backend.
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.account.signIn(email, password);
       posthog.identify(email, { email });
       getTelemetry().captureEvent({ name: "account_signed_in" });
@@ -361,6 +362,7 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
     setServerError("");
     try {
       // Persist the key + provider/model exactly like Settings → AI Models.
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.ui.setPrefs({
         [provider.prefsKeyField]: key.trim(),
         evolveProvider: provider.id,

@@ -14,11 +14,13 @@ function mirrorEvolveState(evolve: EvolveState | null): void {
  * deterministic.
  */
 export async function refreshEvolveSnapshot(): Promise<void> {
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   mirrorEvolveState(await tauriAPI.evolveState.get());
 }
 
 export function startEvolveSync(): Promise<() => void> {
   return bindBackendSlice({
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     hydrate: () => tauriAPI.evolveState.get(),
     event: "evolve_state_changed",
     mirror: mirrorEvolveState,

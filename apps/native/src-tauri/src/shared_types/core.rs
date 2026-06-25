@@ -31,6 +31,7 @@ pub struct RollbackResult {
     /// Store path to reactivate as part of the rollback flow.
     pub rollback_store_path: Option<String>,
     /// Changeset id associated with the rollback target.
+    #[specta(type = f64)]
     pub rollback_changeset_id: Option<i64>,
 }
 

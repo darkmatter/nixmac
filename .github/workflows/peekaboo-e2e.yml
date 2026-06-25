@@ -227,7 +227,7 @@ jobs:
           for ((attempt = 1; attempt <= BUILD_ATTEMPTS; attempt += 1)); do
             if bun install --frozen-lockfile && \
               cd apps/native && \
-              VITE_NIXMAC_SKIP_PERMISSIONS=true VITE_NIXMAC_E2E_MODE=true ./node_modules/.bin/tauri build \
+              NIXMAC_ENV=e2e ./node_modules/.bin/tauri build \
                 --debug \
                 --bundles app \
                 --no-sign \

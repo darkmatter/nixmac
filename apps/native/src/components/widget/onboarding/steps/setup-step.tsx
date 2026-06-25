@@ -146,6 +146,7 @@ export function SetupStep() {
       return;
     }
     setFlakeExists(null);
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     tauriAPI.flake
       .existsAt(configDir)
       .then((exists) => {
@@ -160,6 +161,7 @@ export function SetupStep() {
   }, [configDir]);
 
   useEffect(() => {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     tauriAPI.config
       .getThisHostname()
       .then((name) => {

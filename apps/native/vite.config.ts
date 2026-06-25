@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import monacoEditorPlugin from "vite-plugin-monaco-editor";
 import { defineConfig } from "vite";
+import { nixmacBuildDefines } from "./nixmac-profile";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -19,6 +20,7 @@ const statePackageRoot = path.resolve(repoRoot, "packages/state/src");
 
 // https://vite.dev/config/
 export default defineConfig({
+  define: nixmacBuildDefines(__dirname),
   resolve: {
     alias: [
       {

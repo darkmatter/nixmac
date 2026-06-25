@@ -521,7 +521,7 @@ fn get_report_path(app: &AppHandle) -> Result<PathBuf> {
 /// Submit feedback: try to POST, save to disk on failure, also flush any pending reports.
 /// Returns true if the new submission was sent successfully.
 pub async fn submit(app: &AppHandle, payload: String) -> Result<bool> {
-    let feedback_url = match get_feedback_url() {
+    let feedback_url = match crate::env::feedback_url() {
         Ok(url) => url,
         Err(_) => {
             log::error!("[feedback] Feedback system is not configured");
@@ -596,30 +596,10 @@ fn save_to_queue(app: &AppHandle, payload: &Value, failure_reason: &str) -> Resu
     Ok(())
 }
 
-/// Construct the full feedback submission URL from environment configuration.
-/// If VITE_SERVER_URL is not set, returns an error indicating feedback is not configured.
-/// In a production binary, VITE_SERVER_URL should be embedded at build time;
-/// in development it can be set in the environment.
-fn get_feedback_url() -> Result<String> {
-    let base = option_env!("VITE_SERVER_URL")
-        .map(|s| s.to_string())
-        .or_else(|| std::env::var("VITE_SERVER_URL").ok())
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| anyhow::anyhow!("sending feedback not configured (url)"))?;
-
-    let dsn = option_env!("SUBMITTED_FEEDBACK_DSN")
-        .map(|s| s.to_string())
-        .or_else(|| std::env::var("SUBMITTED_FEEDBACK_DSN").ok())
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| anyhow::anyhow!("sending feedback not configured (dsn)"))?;
-
-    Ok(format!("{}/api/feedback/{}", base, dsn))
-}
-
 /// Retry all pending feedback reports in the background.
 /// Reads report.json, POSTs each entry, removes successes.
 pub async fn retry_pending(app: &AppHandle) -> Result<usize> {
-    let feedback_url = match get_feedback_url() {
+    let feedback_url = match crate::env::feedback_url() {
         Ok(url) => url,
         Err(_) => return Ok(0), // If feedback is not configured, skip retrying
     };
@@ -933,31 +913,6 @@ regex = "token=([A-Za-z0-9]+)"
                 .unwrap(),
             "before [REDACTED (High Entropy)] after"
         );
-    }
-
-    #[test]
-    fn test_get_feedback_url() {
-        let _env_lock = crate::test_support::e2e_env_lock();
-        let _env_restore = crate::test_support::EnvVarRestore::capture(&[
-            "VITE_SERVER_URL",
-            "SUBMITTED_FEEDBACK_DSN",
-        ]);
-
-        // Test with env var set
-        std::env::set_var("VITE_SERVER_URL", "https://example.com");
-        std::env::set_var("SUBMITTED_FEEDBACK_DSN", "test-dsn");
-        let url = super::get_feedback_url().unwrap();
-        assert_eq!(url, "https://example.com/api/feedback/test-dsn");
-
-        // Test with env var missing
-        std::env::remove_var("VITE_SERVER_URL");
-        std::env::remove_var("SUBMITTED_FEEDBACK_DSN");
-        assert!(super::get_feedback_url().is_err());
-
-        // Test with env var empty
-        std::env::set_var("VITE_SERVER_URL", "");
-        std::env::set_var("SUBMITTED_FEEDBACK_DSN", "");
-        assert!(super::get_feedback_url().is_err());
     }
 
     #[test]

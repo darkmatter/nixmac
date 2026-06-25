@@ -7,6 +7,7 @@ import { tauriAPI } from "@/ipc/api";
  * the prompt-history sync module mirrors the payload into the ViewModel.
  */
 const addToPromptHistory = async (prompt: string) => {
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   await tauriAPI.promptHistory.add(prompt).catch(console.error);
 };
 

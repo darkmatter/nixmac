@@ -16,6 +16,7 @@ export async function refreshHostsSnapshot(): Promise<void> {
   const preferences = viewModelActions.getState().preferences;
   if (!preferences?.configDir) return;
   try {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     const hosts = await tauriAPI.flake.listHosts();
     viewModelActions.setState({ hosts });
   } catch (error) {
@@ -25,6 +26,7 @@ export async function refreshHostsSnapshot(): Promise<void> {
 
 export async function startPreferencesSync(): Promise<() => void> {
   const unlisten = await bindBackendSlice<GlobalPreferences>({
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     hydrate: () => tauriAPI.preferences.get(),
     event: "global_preferences_changed",
     mirror: mirrorPreferences,

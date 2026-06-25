@@ -1,43 +1,23 @@
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
-import React, { useEffect, useState } from "react";
-import ReactDOM from "react-dom/client";
 import { PreviewIndicator } from "@/components/preview-indicator/preview-indicator";
-import type { PreviewIndicatorState } from "@/ipc/types";
+import { orpc } from "@/lib/orpc";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { invoke } from "@tauri-apps/api/core";
+import React from "react";
+import ReactDOM from "react-dom/client";
 import "./index.css";
 
 function PreviewIndicatorWindow() {
-  const [state, setState] = useState<PreviewIndicatorState>({
-    visible: false,
-    summary: null,
-    filesChanged: 0,
-    additions: null,
-    deletions: null,
-    isLoading: false,
-  });
-  const [error, setError] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const queryClient = useQueryClient();
+  const {
+    data: state,
+    error,
+  } = useQuery(orpc.previewIndicator.getState.queryOptions());
+  const updatePreviewIndicator = useMutation(orpc.previewIndicator.update.mutationOptions({
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: orpc.previewIndicator.key() });
+    },
+  }));
 
-  useEffect(() => {
-    setMounted(true);
-
-    invoke<PreviewIndicatorState>("preview_indicator_get_state")
-      .then((initialState) => {
-        setState(initialState);
-      })
-      .catch((err) => {
-        console.error("[preview-indicator] Failed to get initial state:", err);
-        setError(String(err));
-      });
-
-    const unsubscribe = listen<PreviewIndicatorState>("preview-indicator:update", (event) => {
-      setState(event.payload);
-    });
-
-    return () => {
-      unsubscribe.then((unlisten) => unlisten());
-    };
-  }, []);
 
   const handleClick = async () => {
     // Show and focus the main window via Tauri command
@@ -53,15 +33,15 @@ function PreviewIndicatorWindow() {
   if (error) {
     return (
       <div style={{ background: "red", color: "white", padding: 8, fontSize: 12 }}>
-        Error: {error}
+        Error: {error.message}
       </div>
     );
   }
 
-  if (!mounted) {
+  if (!state) {
     return (
       <div style={{ background: "blue", color: "white", padding: 8, fontSize: 12 }}>
-        Mounting...
+        Loading...
       </div>
     );
   }

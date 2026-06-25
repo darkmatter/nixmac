@@ -30,10 +30,13 @@ pub struct PreviewIndicatorState {
     /// Summary text displayed in the indicator.
     pub summary: Option<String>,
     /// Number of changed files represented by the indicator.
+    #[specta(type = f64)]
     pub files_changed: usize,
     /// Added lines displayed in the indicator.
+    #[specta(type = f64)]
     pub additions: Option<usize>,
     /// Removed lines displayed in the indicator.
+    #[specta(type = f64)]
     pub deletions: Option<usize>,
     /// Whether the indicator should show a loading state.
     pub is_loading: bool,

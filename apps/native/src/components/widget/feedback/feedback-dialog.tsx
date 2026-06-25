@@ -298,6 +298,7 @@ export function FeedbackDialog() {
       return;
     }
 
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     tauriAPI.promptHistory.get().then(setPromptHistory).catch(console.error);
   }, [feedbackOpen]);
 
@@ -359,6 +360,7 @@ export function FeedbackDialog() {
   const buildFeedbackPayload = async () => {
     let metadata: Awaited<ReturnType<typeof tauriAPI.feedback.gatherMetadata>> | null = null;
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       metadata = await tauriAPI.feedback.gatherMetadata(feedbackType, shareOptions);
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -401,6 +403,7 @@ export function FeedbackDialog() {
   };
 
   const submitPayload = async (payload: string) => {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     const sent = await tauriAPI.feedback.submit(payload);
 
     if (sent) {

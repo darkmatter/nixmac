@@ -57,7 +57,7 @@ nixmac/
 | Testing | Vitest (unit + Storybook browser tests), Playwright (e2e web), WebdriverIO (e2e Tauri app) |
 | Build system | `bun run desktop:build` (Tauri) wraps `cargo build` + Vite |
 | CI | GitHub Actions — `.github/workflows/build.yaml` runs on `macos-latest` |
-| Secrets | SOPS + age (`ops/secrets/secrets.yaml`) — never commit plaintext secrets |
+| Secrets | SOPS + age (`ops/secrets/secrets.sops.json`) — never commit plaintext secrets |
 
 ## ⚠️ macOS-only constraints for the cloud agent
 

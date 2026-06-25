@@ -34,7 +34,7 @@ export function useOnboardingFlow(): {
   const permissionsReady = !(permissionsHydrated && permissions && !permissions.allRequiredGranted);
   const nixReady =
     (nixInstalled === true && darwinRebuildAvailable === true) ||
-    settings.NIX_INSTALLED_OVERRIDE === true;
+    settings.nixInstalledOverride === true;
   const flakeReady = Boolean(configDir) && Boolean(host) && hosts.includes(host);
 
   const furthestStep = useMemo(

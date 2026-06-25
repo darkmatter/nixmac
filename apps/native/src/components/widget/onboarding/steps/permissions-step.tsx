@@ -22,6 +22,7 @@ export function PermissionsStep() {
 
   // Refresh permissions when the step mounts.
   useEffect(() => {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     tauriAPI.permissions.refresh().catch((error) => {
       console.error("Failed to check permissions:", error);
     });
@@ -35,8 +36,10 @@ export function PermissionsStep() {
         // Give the user a beat to grant access in System Settings, then re-probe.
         await new Promise((resolve) => setTimeout(resolve, 1000));
       } else {
+        // deprecated(orpc): replace with client/orpc from @/lib/orpc
         await tauriAPI.permissions.request(permission.id);
       }
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.permissions.refresh();
     } catch (error) {
       console.error("Failed to request permission:", error);

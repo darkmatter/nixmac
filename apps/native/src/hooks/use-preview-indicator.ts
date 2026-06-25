@@ -28,6 +28,7 @@ const updatePreviewIndicator = async (params: {
     isLoading: params.isLoading,
   };
 
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   await tauriAPI.previewIndicator.update(state).catch(() => {
     // Ignore errors - window might not exist yet
   });

@@ -157,8 +157,10 @@ lib.mkIf (!config.container.isBuilding) {
 
   processes.tauri = {
     cwd = "${config.git.root}/apps/native";
-    exec = "${pkgs.sops}/bin/sops exec-env ${config.git.root}/ops/secrets/secrets.yaml '${config.git.root}/apps/native/src-tauri/scripts/tauri-dev.sh'";
+    exec = "${config.git.root}/apps/native/src-tauri/scripts/tauri-dev.sh";
   };
+
+  # processes.tauri
 
   # processes.server = {
   #   cwd = "${config.git.root}/apps/server";
@@ -176,7 +178,7 @@ lib.mkIf (!config.container.isBuilding) {
 
   processes.test = {
     cwd = "${config.git.root}/apps/native";
-    exec = "sops exec-env ${config.git.root}/ops/secrets/secrets.yaml 'bun run test:watch'";
+    exec = "sops exec-env ${config.git.root}/ops/secrets/secrets.sops.json 'bun run test:watch'";
   };
 
   # Formatting

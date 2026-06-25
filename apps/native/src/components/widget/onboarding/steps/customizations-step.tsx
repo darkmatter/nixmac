@@ -47,7 +47,9 @@ interface CustomizationsStepProps {
 /** Run the real read-only scanners and assemble customization groups. */
 async function runScan(): Promise<CustomizationGroup[]> {
   const [defaults, homebrew, launchd] = await Promise.all([
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     tauriAPI.scanner.scanDefaults().catch(() => ({ defaults: [], totalScanned: 0 })),
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     tauriAPI.homebrew.getStateDiff().catch(() => ({
       isInstalled: false,
       casks: [],
@@ -56,6 +58,7 @@ async function runScan(): Promise<CustomizationGroup[]> {
       source: null,
       lastChecked: 0,
     })),
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     tauriAPI.launchd.scanLaunchdItems().catch(() => []),
   ]);
   return buildCustomizationGroups({ defaults, homebrew, launchd });

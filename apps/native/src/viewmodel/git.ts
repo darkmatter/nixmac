@@ -21,6 +21,7 @@ function mirrorGitState(git: GitStatus | null, externalBuildDetected = false): v
  * wait for the watcher's poll interval.
  */
 export async function refreshGitSnapshot(): Promise<void> {
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   const status = await tauriAPI.git.statusAndCache();
   mirrorGitState(status);
 }
@@ -28,6 +29,7 @@ export async function refreshGitSnapshot(): Promise<void> {
 export async function startGitSync(): Promise<() => void> {
   const [stateUnlisten, errorUnlisten] = await Promise.all([
     bindBackendSlice<GitState>({
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       hydrate: () => tauriAPI.git.state(),
       event: "git_state_changed",
       mirror: ({ gitStatus, externalBuildDetected }) =>

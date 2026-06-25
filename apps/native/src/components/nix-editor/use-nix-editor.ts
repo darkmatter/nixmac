@@ -31,6 +31,7 @@ export function useNixEditor({
     if (!editor) return;
     const content = editor.getValue();
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.editor.writeFile(filePath, content);
       originalContentRef.current = content;
       setIsDirty(false);
@@ -55,7 +56,9 @@ export function useNixEditor({
       try {
         // Load file content (and config dir when not disabled)
         const [content, config] = disabled
+          // deprecated(orpc): replace with client/orpc from @/lib/orpc
           ? [await tauriAPI.editor.readFile(filePath), null as { configDir: string } | null]
+          // deprecated(orpc): replace with client/orpc from @/lib/orpc
           : await Promise.all([tauriAPI.editor.readFile(filePath), tauriAPI.config.get()]);
         if (disposed) return;
 
@@ -112,6 +115,7 @@ export function useNixEditor({
           // Cmd+S to save
           editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
             const content = editor!.getValue();
+            // deprecated(orpc): replace with client/orpc from @/lib/orpc
             tauriAPI.editor
               .writeFile(filePath, content)
               .then(() => {

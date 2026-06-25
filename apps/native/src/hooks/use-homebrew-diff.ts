@@ -29,6 +29,7 @@ export function useHomebrewDiff(enabled = true) {
   const refresh = useCallback(() => {
     setIsLoading(true);
     setError(null);
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     tauriAPI.homebrew
       .getStateDiff()
       .then(setDiff)
@@ -55,6 +56,7 @@ export function useHomebrewDiff(enabled = true) {
     try {
       // The backend records the resulting evolve/change-map/git state in the
       // cells; the `*_changed` events mirror it into the ViewModel.
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.homebrew.applyDiff(diff);
       uiActions.setRecommendedPrompt(undefined);
       // Clear so we re-fetch on next render (the watcher will also advance the step).

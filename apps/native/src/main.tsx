@@ -1,5 +1,6 @@
 import { AppFatalFallback } from "@/components/widget/layout/AppFatalFallback";
 import { markBootStage } from "@/lib/boot-diagnostics";
+import { isE2eProfile, nixmacEnvironment } from "@/lib/env";
 import { initTelemetry } from "@/lib/telemetry/init";
 import { TelemetryContextProvider } from "@/lib/telemetry/context";
 import { getTelemetry, setTelemetryProvider } from "@/lib/telemetry/instance";
@@ -19,8 +20,12 @@ if (!rootElement) {
 markBootStage("root-found");
 
 // Dropped from production, e2e harness
-if (import.meta.env.VITE_NIXMAC_E2E_MODE === "true") {
+if (isE2eProfile) {
   void import("@/e2e/boot-harness").then((m) => m.attachBootHarness({ rootElement }));
+}
+
+if (import.meta.env.DEV) {
+  void import("@/lib/dev-onboarding-reset");
 }
 
 const root = ReactDOM.createRoot(rootElement);
@@ -46,7 +51,7 @@ const bootstrap = async () => {
   telemetry.captureEvent({
     name: "app_launched",
     props: {
-      environment: (import.meta.env.VITE_NIXMAC_ENV || import.meta.env.MODE || "prod").toString(),
+      environment: nixmacEnvironment,
     },
   });
 

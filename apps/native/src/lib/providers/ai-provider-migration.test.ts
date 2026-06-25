@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
 import type { UiPrefs } from "@/ipc/types";
-import { migrateLegacyOpenaiProviderPrefs } from "@/lib/ai-provider-migration";
+import { migrateLegacyOpenaiProviderPrefs } from "@/lib/providers/ai-provider-migration";
+import { describe, expect, it } from "vitest";
 
 const PREFS: UiPrefs = {
   openrouterApiKey: "",

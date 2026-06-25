@@ -145,6 +145,7 @@ export function DirectoryPicker({
     }
 
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       const normalized = await tauriAPI.path.normalize(trimmedInput);
       if (!normalized) {
         setValidationMessage("Directory path is required");
@@ -165,6 +166,7 @@ export function DirectoryPicker({
 
   async function validateDirectoryExists(path: string): Promise<boolean> {
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       const exists = await tauriAPI.path.exists(path);
       if (!exists) {
         validateOrInitial(path, `Directory does not exist: ${path}`);
@@ -181,6 +183,7 @@ export function DirectoryPicker({
 
   async function validateFlakeExists(path?: string): Promise<boolean> {
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       const hasFlake = path ? await tauriAPI.flake.existsAt(path) : await tauriAPI.flake.exists();
       if (hasFlake) {
         setValidationMessage(null);

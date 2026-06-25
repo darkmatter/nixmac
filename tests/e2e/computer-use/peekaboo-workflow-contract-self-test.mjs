@@ -844,12 +844,12 @@ assert.match(
 );
 assert.match(
   frontendSentryInit,
-  /E2E_MODE = import\.meta\.env\.VITE_NIXMAC_E2E_MODE === "true"[\s\S]*Sentry init skipped for E2E boot[\s\S]*return;/,
+  /isE2eProfile[\s\S]*Sentry init skipped for E2E boot[\s\S]*return;/,
   "Sentry init module must use the build-time E2E mode flag to skip boot-time Sentry prefs IPC without adding another IPC gate",
 );
 assert.match(
   frontendMain,
-  /import\.meta\.env\.VITE_NIXMAC_E2E_MODE === "true"[\s\S]*void import\("@\/e2e\/boot-harness"\)[\s\S]*attachBootHarness\(\{ rootElement \}\)/,
+  /isE2eProfile[\s\S]*void import\("@\/e2e\/boot-harness"\)[\s\S]*attachBootHarness\(\{ rootElement \}\)/,
   "Frontend main must conditionally dynamic-import the E2E boot harness so it is tree-shaken from production builds",
 );
 assert.match(

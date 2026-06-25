@@ -13,7 +13,7 @@ use configurable::Configurable;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::sync::Arc;
-use tauri::{AppHandle, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 
 use crate::observable::{ConfiguredRepoScopedJson, Observable, Persistence};
 use crate::state::preferences;
@@ -79,6 +79,45 @@ impl Default for EvolutionLimits {
             max_output_tokens: 32_768,
         }
     }
+}
+
+impl EvolutionLimits {
+    pub fn apply_ui_update(&mut self, update: &crate::shared_types::UiPrefsUpdate) {
+        if let Some(v) = update.max_iterations {
+            self.max_iterations = v;
+        }
+        if let Some(v) = update.max_token_budget {
+            self.max_token_budget = v;
+        }
+        if let Some(v) = update.max_build_attempts {
+            self.max_build_attempts = v;
+        }
+        if let Some(v) = update.max_output_tokens {
+            self.max_output_tokens = v;
+        }
+    }
+}
+
+pub fn try_read<R: Runtime>(app: &AppHandle<R>) -> Option<EvolutionLimits> {
+    app.try_state::<Observable<EvolutionLimits>>()
+        .map(|limits| limits.read_sync().clone())
+}
+
+pub fn write<R: Runtime>(app: &AppHandle<R>, f: impl FnOnce(&mut EvolutionLimits)) -> Result<()> {
+    let limits = app
+        .try_state::<Observable<EvolutionLimits>>()
+        .ok_or_else(|| anyhow::anyhow!("EvolutionLimits observable is not managed"))?;
+    let mut next = limits.read_sync().clone();
+    f(&mut next);
+    if *limits.read_sync() == next {
+        return Ok(());
+    }
+    *limits.write_sync() = next;
+    Ok(())
+}
+
+pub fn read_or_default<R: Runtime>(app: &AppHandle<R>) -> EvolutionLimits {
+    try_read(app).unwrap_or_default()
 }
 
 pub fn load_observable<R: Runtime>(app: &AppHandle<R>) -> Result<Observable<EvolutionLimits>> {

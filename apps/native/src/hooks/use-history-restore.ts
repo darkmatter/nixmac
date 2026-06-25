@@ -235,16 +235,19 @@ export function useHistoryRestore(
     setRestoringHash(hash);
     uiActions.setProcessing(true);
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.darwin.prepareRestore(hash);
       await triggerRebuild({
         context: "rollback",
         onSuccess: async () => {
           // The backend writes the git-state cell; `git_state_changed` mirrors it.
+          // deprecated(orpc): replace with client/orpc from @/lib/orpc
           await tauriAPI.darwin.finalizeRestore(hash);
           getTelemetry().captureEvent({ name: "history_restored" });
           await loadHistory();
         },
         onFailure: async () => {
+          // deprecated(orpc): replace with client/orpc from @/lib/orpc
           await tauriAPI.darwin.abortRestore();
         },
       });

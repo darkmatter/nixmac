@@ -1,10 +1,11 @@
-import { uiActions } from "@nixmac/state";
-import type { RebuildContext } from "@/types/rebuild";
-import { tauriAPI, ipcRenderer } from "@/ipc/api";
+import { ipcRenderer, tauriAPI } from "@/ipc/api";
 import type { DarwinApplyEndEvent } from "@/ipc/types";
-import { setRebuildRawLineEcho } from "@/viewmodel/rebuild";
-import { useGitOperations } from "./use-git-operations";
+import { REBUILD_ERROR_CODES } from "@/lib/errors";
 import { getTelemetry } from "@/lib/telemetry/instance";
+import type { RebuildContext } from "@/types/rebuild";
+import { setRebuildRawLineEcho } from "@/viewmodel/rebuild";
+import { uiActions } from "@nixmac/state";
+import { useGitOperations } from "./use-git-operations";
 
 interface RebuildOptions {
   context: RebuildContext;
@@ -39,7 +40,7 @@ export function useRebuildStream() {
 
         // Full Disk Access error: the rebuild slice re-probes permissions;
         // dismiss the panel so the UI can route to the permissions step.
-        if (event.payload.error_type === "full_disk_access") {
+        if (event.payload.error_type === REBUILD_ERROR_CODES.FULL_DISK_ACCESS) {
           uiActions.setRebuildPanelDismissed(true);
           await refreshGitStatus();
           return;
@@ -73,8 +74,10 @@ export function useRebuildStream() {
 
     try {
       if (options.storePath) {
+        // deprecated(orpc): replace with client/orpc from @/lib/orpc
         await tauriAPI.darwin.activateStorePath(options.storePath);
       } else {
+        // deprecated(orpc): replace with client/orpc from @/lib/orpc
         await tauriAPI.darwin.applyStreamStart();
       }
     } catch (e: unknown) {

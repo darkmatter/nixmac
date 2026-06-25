@@ -1,12 +1,13 @@
-import { act, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RebuildOverlayPanel } from "@/components/widget/overlays/rebuild-overlay-panel";
 import type { RebuildStatus } from "@/ipc/types";
-import { initialUiState, uiActions, viewModelActions } from "@nixmac/state";
+import { REBUILD_ERROR_CODES } from "@/lib/errors";
 import type { RebuildContext } from "@/types/rebuild";
 import { makeRebuildStatus } from "@/utils/test-fixtures";
+import { initialUiState, uiActions, viewModelActions } from "@nixmac/state";
 
 vi.mock("motion/react", async () => {
   const React = await import("react");
@@ -61,7 +62,7 @@ async function renderWithRebuildState(
       rebuildStatus: makeRebuildStatus({
         isRunning: false,
         success: false,
-        errorType: "build_error",
+        errorType: REBUILD_ERROR_CODES.BUILD_ERROR,
         errorMessage: "darwin-rebuild build failed",
         ...status,
       }),
@@ -74,7 +75,7 @@ async function renderWithRebuildState(
   });
 
   const result = render(<RebuildOverlayPanel />);
-  await act(async () => {});
+  await act(async () => { });
   return result;
 }
 
@@ -91,7 +92,7 @@ describe("<RebuildOverlayPanel>", () => {
 
   it("does not reassure when the backend cannot prove the system was untouched", async () => {
     await renderWithRebuildState({
-      errorType: "generic_error",
+      errorType: REBUILD_ERROR_CODES.GENERIC_ERROR,
       errorMessage: "Activation failed",
       systemUntouched: false,
     });
@@ -102,7 +103,7 @@ describe("<RebuildOverlayPanel>", () => {
   it("does not show apply reassurance while rollback is failing", async () => {
     await renderWithRebuildState(
       {
-        errorType: "user_cancelled",
+        errorType: REBUILD_ERROR_CODES.USER_CANCELLED,
         errorMessage: "Activation cancelled by user",
         systemUntouched: true,
       },

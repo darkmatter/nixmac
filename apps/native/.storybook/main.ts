@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import type { StorybookConfig } from "@storybook/react-vite";
 import { mergeConfig } from "vite";
+import { nixmacBuildDefines } from "../nixmac-profile";
 
 const storybookDir = fileURLToPath(new URL(".", import.meta.url));
 const appRoot = path.resolve(storybookDir, "..");
@@ -49,7 +50,9 @@ const config: StorybookConfig = {
     options: {},
   },
   viteFinal: async (config) => {
+    process.env.NIX_INSTALLED_OVERRIDE = "true";
     const merged = mergeConfig(config, {
+      define: nixmacBuildDefines(appRoot),
       plugins: [tailwindcss()],
       resolve: {
         alias: {
@@ -85,10 +88,6 @@ const config: StorybookConfig = {
     merged.server.hmr.host = "localhost";
     return merged;
   },
-  env: (config) => ({
-    ...config,
-    NIX_INSTALLED_OVERRIDE: "true",
-  }),
 };
 
 export default config;

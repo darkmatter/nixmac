@@ -1,13 +1,8 @@
 // Rebuild state for showing progress inline in the widget
 
-export type RebuildErrorType =
-  | "infinite_recursion"
-  | "evaluation_error"
-  | "build_error"
-  | "full_disk_access"
-  | "user_cancelled"
-  | "authorization_denied"
-  | "generic_error";
+import type { RebuildErrorCode } from "@/lib/errors";
+
+export type RebuildErrorType = RebuildErrorCode;
 
 export interface RebuildLine {
   id: number;

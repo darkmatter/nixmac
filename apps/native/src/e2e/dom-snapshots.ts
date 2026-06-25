@@ -1,7 +1,8 @@
 import { bootBreadcrumb } from "@/lib/boot-diagnostics";
+import { isE2eProfile } from "@/lib/env";
 import { sanitizeDiagnosticText } from "@/lib/telemetry/sanitize";
 
-const e2eBootDiagnosticsEnabled = import.meta.env.VITE_NIXMAC_E2E_MODE === "true";
+const e2eBootDiagnosticsEnabled = isE2eProfile;
 
 function setStorageValue(key: string, value: string) {
   try {

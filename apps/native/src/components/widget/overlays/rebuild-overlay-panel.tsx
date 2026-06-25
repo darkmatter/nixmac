@@ -1,10 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useRollback } from "@/hooks/use-rollback";
+import {
+  getRebuildErrorSuggestion,
+  getRebuildErrorTitle,
+  getRebuildSystemSafetyMessage,
+} from "@/lib/errors";
 import { cn } from "@/lib/utils";
-import { uiActions, useUiState } from "@nixmac/state";
-import { useViewModel } from "@nixmac/state";
 import type { RebuildErrorType, RebuildLine } from "@/types/rebuild";
+import { uiActions, useUiState, useViewModel } from "@nixmac/state";
 import {
   AlertTriangle,
   Brain,
@@ -20,61 +24,6 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { Activity, useEffect, useRef, useState } from "react";
-
-/** Get a user-friendly title for the error type */
-function getErrorTitle(errorType: RebuildErrorType | undefined): string {
-  switch (errorType) {
-    case "infinite_recursion":
-      return "Infinite Recursion Detected";
-    case "evaluation_error":
-      return "Nix Evaluation Error";
-    case "build_error":
-      return "Build Failed";
-    case "full_disk_access":
-      return "Full Disk Access Required";
-    case "user_cancelled":
-      return "Activation Cancelled";
-    case "authorization_denied":
-      return "Authorization Denied";
-    default:
-      return "Build Failed";
-  }
-}
-
-/** Get helpful suggestion text for the error type */
-function getErrorSuggestion(errorType: RebuildErrorType | undefined): string {
-  switch (errorType) {
-    case "infinite_recursion":
-      return "Your configuration has a circular dependency. Rolling back will restore your previous working configuration.";
-    case "evaluation_error":
-      return "There's a syntax or evaluation error in your Nix files. Check the error message for details.";
-    case "build_error":
-      return "A package failed to build. You may need to update your flake or fix the package configuration.";
-    case "full_disk_access":
-      return "darwin-rebuild requires Full Disk Access. Make sure nixmac is in your Applications folder (not running from the install disk image), then grant access in System Settings → Privacy & Security → Full Disk Access.";
-    case "user_cancelled":
-      return "The activation was cancelled. You can retry the operation.";
-    case "authorization_denied":
-      return "The activation was denied due to insufficient permissions. You can adjust your settings and retry.";
-    default:
-      return "The build encountered an error. You can rollback to your previous configuration or dismiss to investigate.";
-  }
-}
-
-function getSystemSafetyMessage(
-  systemUntouched: boolean | undefined,
-  context: "apply" | "rollback",
-): string | null {
-  if (context !== "apply") {
-    return null;
-  }
-
-  if (systemUntouched === true) {
-    return "No changes were made to your system.";
-  }
-
-  return null;
-}
 
 /** Map backend emoji to icon component and strip from text */
 const EMOJI_MAP: Record<string, (className: string) => React.ReactNode> = {
@@ -363,7 +312,7 @@ export function RebuildOverlayPanel() {
   const systemUntouched = status?.systemUntouched ?? undefined;
 
   const isRollback = context === "rollback";
-  const systemSafetyMessage = getSystemSafetyMessage(systemUntouched, context);
+  const systemSafetyMessage = getRebuildSystemSafetyMessage(systemUntouched, context);
 
   const handleRetry = async () => {
     uiActions.setProcessing(true, "cancel");
@@ -396,12 +345,12 @@ export function RebuildOverlayPanel() {
     lines.length > 0
       ? lines
       : [
-          {
-            id: 0,
-            text: isRollback ? "Rolling back..." : "Starting rebuild...",
-            type: "info" as const,
-          },
-        ];
+        {
+          id: 0,
+          text: isRollback ? "Rolling back..." : "Starting rebuild...",
+          type: "info" as const,
+        },
+      ];
 
   // Step points to the current (most recent) line
   // - While running: last line is "in progress", previous lines are "completed"
@@ -444,7 +393,7 @@ export function RebuildOverlayPanel() {
 
                   {/* Error Title */}
                   <h2 className="text-center font-semibold text-white text-lg">
-                    {getErrorTitle(errorType)}
+                    {getRebuildErrorTitle(errorType)}
                   </h2>
 
                   {systemSafetyMessage && (
@@ -462,7 +411,7 @@ export function RebuildOverlayPanel() {
 
                   {/* Suggestion */}
                   <p className="max-w-xl text-center text-sm text-zinc-300">
-                    {getErrorSuggestion(errorType)}
+                    {getRebuildErrorSuggestion(errorType)}
                   </p>
                 </motion.div>
               )}

@@ -19,13 +19,13 @@ use anyhow::{Result, anyhow};
 use tauri::{AppHandle, Runtime};
 
 use crate::shared_types::{
-    AuthAccount, AuthStatus, GithubConnectStart, GithubRepo, GithubStatus, SyncRemoteStatus,
-    SyncResult,
+    AuthAccount, AuthStatus, GithubBootstrapState, GithubBootstrapStatus, GithubConnectStart,
+    GithubRepo, GithubStatus, SyncRemoteStatus, SyncResult,
 };
 use crate::storage::store::{self, SyncAccountMeta, WebAccountMeta};
 use account_client::AccountClient;
 use client::{SyncClient, SyncCredentials};
-use github_client::{GithubClient, GithubCloneToken};
+use github_client::{GithubBootstrapClient, GithubClient, GithubCloneToken};
 
 /// Best-effort human-friendly device label sent to the server.
 fn device_name<R: Runtime>(app: &AppHandle<R>) -> String {
@@ -188,6 +188,41 @@ pub async fn sign_up_web<R: Runtime>(
     status(app)
 }
 
+/// Sends a Better Auth sign-in OTP for the web-origin nixmac account.
+pub async fn send_web_sign_in_otp(email: &str) -> Result<()> {
+    let email = email.trim();
+    if email.is_empty() {
+        return Err(anyhow!("Email is required"));
+    }
+    let base = store::get_web_server_url()?;
+    let client = AccountClient::new(base)?;
+    client.send_sign_in_otp(email).await
+}
+
+/// Verifies a Better Auth sign-in OTP, mints a device api-key, and stores it
+/// for server-brokered GitHub access.
+pub async fn verify_web_sign_in_otp<R: Runtime>(
+    app: &AppHandle<R>,
+    email: &str,
+    otp: &str,
+    name: &str,
+) -> Result<AuthStatus> {
+    let email = email.trim();
+    let otp = otp.trim();
+    let name = name.trim();
+    if email.is_empty() || otp.is_empty() || name.is_empty() {
+        return Err(anyhow!("Email, code, and name are required"));
+    }
+    let base = store::get_web_server_url()?;
+    let client = AccountClient::new(base)?;
+    let device = device_name(app);
+    let outcome = client
+        .sign_in_with_otp_and_mint_key(email, otp, name, &device)
+        .await?;
+    persist_web_session(app, &outcome)?;
+    status(app)
+}
+
 fn persist_web_session<R: Runtime>(
     app: &AppHandle<R>,
     outcome: &account_client::WebAuthOutcome,
@@ -301,7 +336,50 @@ fn require_github_client<R: Runtime>(app: &AppHandle<R>) -> Result<GithubClient>
         anyhow!("Create or sign in to your nixmac account below, then connect GitHub")
     })?;
     let base = store::get_web_server_url()?;
-    Ok(GithubClient::new(base, api_key))
+    GithubClient::new(base, api_key)
+}
+
+/// Starts the GitHub-first bootstrap flow before this device has a Better Auth
+/// API key. The server creates/binds the Better Auth user during the callback.
+pub async fn github_bootstrap_start() -> Result<GithubConnectStart> {
+    let base = store::get_web_server_url()?;
+    GithubBootstrapClient::new(base)?.start().await
+}
+
+/// Polls a GitHub-first bootstrap flow. When the server returns the one-time
+/// device API key, persist it natively and only return non-secret status to JS.
+pub async fn github_bootstrap_status<R: Runtime>(
+    app: &AppHandle<R>,
+    state: &str,
+) -> Result<GithubBootstrapStatus> {
+    let state = state.trim();
+    if state.is_empty() {
+        return Err(anyhow!("GitHub bootstrap state is required"));
+    }
+
+    let base = store::get_web_server_url()?;
+    let poll = GithubBootstrapClient::new(base)?.status(state).await?;
+    if poll.status.state == GithubBootstrapState::Complete {
+        let api_key = poll
+            .api_key
+            .as_deref()
+            .ok_or_else(|| anyhow!("GitHub bootstrap completed without a device api key"))?;
+        let account = poll
+            .status
+            .account
+            .as_ref()
+            .ok_or_else(|| anyhow!("GitHub bootstrap completed without account metadata"))?;
+        persist_web_session(
+            app,
+            &account_client::WebAuthOutcome {
+                api_key: api_key.to_string(),
+                account_id: account.id.clone(),
+                email: account.email.clone(),
+            },
+        )?;
+    }
+
+    Ok(poll.status)
 }
 
 /// Starts the server-brokered GitHub App connect flow; returns the install URL.

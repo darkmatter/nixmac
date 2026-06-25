@@ -16,6 +16,7 @@ export function EvolveOverlayPanel() {
 
   const handleStopEvolution = async () => {
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.darwin.evolveCancel();
       uiActions.setState({ isGenerating: false });
       clearEvolveEvents();

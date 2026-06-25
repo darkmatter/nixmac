@@ -1,9 +1,10 @@
 import { tauriAPI } from "@/ipc/api";
+import { isE2eProfile } from "@/lib/env";
 
 const MAX_DETAIL_LENGTH = 1_000;
 const APP_TITLE = "nixmac";
 
-const e2eBootDiagnosticsEnabled = import.meta.env.VITE_NIXMAC_E2E_MODE === "true";
+const e2eBootDiagnosticsEnabled = isE2eProfile;
 let bootStageCleared = false;
 
 function setStorageValue(key: string, value: string) {

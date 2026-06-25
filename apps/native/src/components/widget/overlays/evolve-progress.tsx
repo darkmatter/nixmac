@@ -389,6 +389,7 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
   const prevEventsLengthRef = useRef(events.length);
 
   const handleQuestionAnswer = (answer: string) => {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     tauriAPI.darwin.evolveAnswer(answer).catch((e) => {
       console.error("Failed to send answer:", e);
     });

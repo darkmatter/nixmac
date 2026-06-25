@@ -90,6 +90,7 @@ export function DeveloperTab() {
     setErrorMessage(null);
     try {
       // The `global_preferences_changed` round-trip updates the ViewModel.
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.ui.setPrefs({ updateChannel: channel });
       setStatusMessage(
         channel === "stable"
@@ -152,6 +153,7 @@ export function DeveloperTab() {
 
   const handleDisableDeveloper = async () => {
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.ui.setPrefs({ developerMode: false });
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : String(err));

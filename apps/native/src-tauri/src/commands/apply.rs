@@ -4,10 +4,7 @@ use crate::system::nix;
 use crate::{rebuild, shared_types};
 use tauri::AppHandle;
 
-/// Starts a streaming darwin-rebuild switch operation.
-/// Progress is emitted via `darwin:apply:data` events, completion via `darwin:apply:end`.
-#[tauri::command]
-pub async fn darwin_apply_stream_start(
+pub async fn start_apply_stream(
     app: AppHandle,
     host_override: Option<String>,
 ) -> Result<shared_types::OkResult, String> {
@@ -40,9 +37,7 @@ pub async fn darwin_apply_stream_start(
     Ok(shared_types::OkResult::yes())
 }
 
-/// Used by rollback to restore a previous nix store without a full rebuild.
-#[tauri::command]
-pub async fn darwin_activate_store_path(
+pub async fn activate_store_path(
     app: AppHandle,
     store_path: String,
 ) -> Result<shared_types::OkResult, String> {
@@ -51,19 +46,13 @@ pub async fn darwin_activate_store_path(
         .map_err(|e| capture_err("darwin_activate_store_path", e))
 }
 
-/// Records build state and changeset after a successful darwin-rebuild switch.
-/// Resulting state flows through the `git_state_changed`/`evolve_state_changed` events.
-#[tauri::command]
-pub async fn finalize_apply(app: AppHandle) -> Result<(), String> {
+pub async fn run_finalize_apply(app: AppHandle) -> Result<(), String> {
     crate::rebuild::finalize_apply(&app)
         .await
         .map_err(|e| capture_err("finalize_apply", e))
 }
 
-/// Finalize a rollback store-path activation — restores the pre-evolution build record.
-/// Resulting state flows through the `*_changed` cell events.
-#[tauri::command]
-pub async fn finalize_rollback(
+pub async fn run_finalize_rollback(
     app: AppHandle,
     store_path: Option<String>,
     changeset_id: Option<i64>,
@@ -73,14 +62,45 @@ pub async fn finalize_rollback(
         .map_err(|e| capture_err("finalize_rollback", e))
 }
 
-/// Returns the lifecycle status of the current/last rebuild stream.
-#[tauri::command]
-pub async fn get_rebuild_status(app: AppHandle) -> Result<shared_types::RebuildStatus, String> {
+pub async fn fetch_rebuild_status(app: AppHandle) -> Result<shared_types::RebuildStatus, String> {
     Ok(crate::state::rebuild_status::get(&app))
 }
 
-/// Returns the last-known nix/darwin-rebuild installation status from the
-/// in-memory cell, without probing the system. `nix_check` is the probe.
+#[tauri::command]
+pub async fn darwin_apply_stream_start(
+    app: AppHandle,
+    host_override: Option<String>,
+) -> Result<shared_types::OkResult, String> {
+    start_apply_stream(app, host_override).await
+}
+
+#[tauri::command]
+pub async fn darwin_activate_store_path(
+    app: AppHandle,
+    store_path: String,
+) -> Result<shared_types::OkResult, String> {
+    activate_store_path(app, store_path).await
+}
+
+#[tauri::command]
+pub async fn finalize_apply(app: AppHandle) -> Result<(), String> {
+    run_finalize_apply(app).await
+}
+
+#[tauri::command]
+pub async fn finalize_rollback(
+    app: AppHandle,
+    store_path: Option<String>,
+    changeset_id: Option<i64>,
+) -> Result<(), String> {
+    run_finalize_rollback(app, store_path, changeset_id).await
+}
+
+#[tauri::command]
+pub async fn get_rebuild_status(app: AppHandle) -> Result<shared_types::RebuildStatus, String> {
+    fetch_rebuild_status(app).await
+}
+
 #[tauri::command]
 pub async fn get_nix_install_state(
     app: AppHandle,
@@ -101,7 +121,6 @@ pub async fn nix_check(app: AppHandle) -> Result<shared_types::NixCheckResult, S
     } else {
         false
     };
-    // Record the probe result; the cell write emits nix_install_state_changed.
     crate::state::nix_install_state::update(&app, |state| {
         state.installed = Some(installed);
         state.darwin_rebuild_available = Some(darwin_rebuild_available);
@@ -126,7 +145,6 @@ pub async fn nix_install_start(app: AppHandle) -> Result<shared_types::OkResult,
     Ok(shared_types::OkResult::yes())
 }
 
-/// Lists all darwinConfigurations defined in the flake.
 #[tauri::command]
 pub async fn flake_list_hosts(app: AppHandle) -> Result<Vec<String>, String> {
     let dir =

@@ -8,24 +8,28 @@ import type { SetDirResult } from "@/ipc/types";
 const applyDirResult = async (result: SetDirResult) => {
   if (result.changed) {
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.config.setHostAttr("");
     } catch {}
   }
 };
 
 const setDir = async (dir: string) => {
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   const result = await tauriAPI.config.setDir(dir);
   await applyDirResult(result);
   return result;
 };
 
 const prepareNewDir = async (dir: string) => {
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   const result = await tauriAPI.config.prepareNewDir(dir);
   await applyDirResult(result);
   return result;
 };
 
 const pickDir = async () => {
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   const result = await tauriAPI.config.pickDir();
   if (!result) return;
   await applyDirResult(result);
@@ -33,21 +37,25 @@ const pickDir = async () => {
 };
 
 const importGithub = async (repoRef: string, dirName?: string) => {
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   const result = await tauriAPI.config.importGithub(repoRef, dirName);
   await applyDirResult(result);
   return result;
 };
 
 const importZip = async (zipPath: string, dirName?: string) => {
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   const result = await tauriAPI.config.importZip(zipPath, dirName);
   await applyDirResult(result);
   return result;
 };
 
+// deprecated(orpc): replace with client/orpc from @/lib/orpc
 const pickZip = () => tauriAPI.config.pickZip();
 
 const saveHost = async (host: string) => {
   try {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.config.setHostAttr(host);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
@@ -61,17 +69,21 @@ const bootstrap = async (hostname: string) => {
   uiActions.setBootstrapping(true);
 
   try {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.flake.bootstrapDefault(hostname);
 
     if (commitExisting) {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       const hosts = await tauriAPI.flake.listHosts();
       if (hosts.length === 1) {
+        // deprecated(orpc): replace with client/orpc from @/lib/orpc
         await tauriAPI.config.setHostAttr(hosts[0]);
       }
     } else {
       // Set the host directly from the hostname used for bootstrap.
       // We can't call listHosts() here because Nix may not be installed yet
       // (listHosts requires `nix eval` which needs Nix).
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.config.setHostAttr(hostname);
     }
   } catch (error: unknown) {

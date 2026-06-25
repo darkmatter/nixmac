@@ -80,6 +80,7 @@ pub struct CommitResult {
 #[serde(rename_all = "camelCase")]
 pub struct ChangeWithSummary {
     /// Change row identifier.
+    #[specta(type = f64)]
     pub id: i64,
     /// Stable content hash for the change.
     pub hash: String,
@@ -88,10 +89,13 @@ pub struct ChangeWithSummary {
     /// Unified diff content for this change.
     pub diff: String,
     /// Number of lines in the change diff.
+    #[specta(type = f64)]
     pub line_count: i64,
     /// Unix timestamp when the change was recorded.
+    #[specta(type = f64)]
     pub created_at: i64,
     /// Direct summary row id assigned to this change, if any.
+    #[specta(type = f64)]
     pub own_summary_id: Option<i64>,
     /// Summary title used for display.
     pub title: String,
@@ -150,6 +154,7 @@ pub struct HistoryItem {
     /// Commit message, if available from git or local metadata.
     pub message: Option<String>,
     /// Commit timestamp.
+    #[specta(type = f64)]
     pub created_at: i64,
     /// Whether this commit corresponds to the active build record.
     pub is_built: bool,
@@ -158,6 +163,7 @@ pub struct HistoryItem {
     /// Whether this commit was created outside nixmac.
     pub is_external: bool,
     /// Number of files changed in this commit.
+    #[specta(type = f64)]
     pub file_count: usize,
     /// Matching persisted commit row, if one exists.
     pub commit: Option<crate::sqlite_types::Commit>,

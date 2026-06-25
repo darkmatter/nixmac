@@ -16,15 +16,19 @@ mod commands;
 mod db;
 mod e2e_runtime;
 mod editor;
+mod env;
+mod env_keys;
 mod evolve;
 mod feedback;
 mod git;
 mod history;
 mod managed_edits;
 mod observable;
+mod orpc;
 mod panic_handler;
 mod peek;
 mod rebuild;
+mod schema_gen;
 mod shared_types;
 mod sqlite_types;
 mod state;
@@ -41,7 +45,6 @@ mod utils;
 use state::watcher;
 use storage::store;
 
-use std::env;
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, Ordering},
@@ -218,6 +221,30 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
 "#;
 
 fn main() {
+    if std::env::args().nth(1).as_deref() == Some("gen-schemas") {
+        if let Err(error) = schema_gen::write_default_config_schemas() {
+            eprintln!("gen-schemas: {error:#}");
+            std::process::exit(1);
+        }
+        return;
+    }
+
+    if std::env::args().nth(1).as_deref() == Some("gen-orpc") {
+        let router = orpc::build_router();
+        let output_path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/ipc/orpc-bindings.ts");
+
+        if let Err(error) =
+            orpc_specta::export_ts(&router, output_path.to_str().expect("valid UTF-8 path"))
+        {
+            eprintln!("gen-orpc: {error}");
+            std::process::exit(1);
+        }
+
+        println!("Exported oRPC bindings to {}", output_path.display());
+        return;
+    }
+
     // Initialize tracing subscriber with optional file logging
     let env_filter = crate::e2e_runtime::value("RUST_LOG")
         .map(EnvFilter::new)
@@ -357,6 +384,18 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                     .plugin(tauri_plugin_keyring::init())
                     .plugin(tauri_plugin_notification::init())
                     .invoke_handler(tauri::generate_handler![])
+                    .setup(|app| {
+                        app.manage(state::preferences::load_global_observable(app.handle())?);
+                        app.manage(evolve::config::load_observable(app.handle())?);
+                        app.manage(env::config::load_observable(app.handle())?);
+                        app.manage(state::evolve_state::load_observable(app.handle())?);
+                        app.manage(state::git_state::load_observable(app.handle()));
+                        app.manage(state::change_map::load_observable(app.handle()));
+                        app.manage(state::permissions_state::load_observable(app.handle()));
+                        app.manage(state::nix_install_state::load_observable(app.handle()));
+                        app.manage(state::rebuild_status::load_observable(app.handle()));
+                        Ok(())
+                    })
                     .build(context)
                 {
                     Ok(app) => app,
@@ -433,15 +472,16 @@ fn run_gui_mode(
     // fall back to runtime environment variables.
     let nixmac_env = option_env!("NIXMAC_ENV")
         .map(|s| s.to_string())
-        .or_else(|| env::var("NIXMAC_ENV").ok())
+        .or_else(|| std::env::var("NIXMAC_ENV").ok())
         .unwrap_or_else(|| "prod".to_string());
 
     let nixmac_version = option_env!("NIXMAC_VERSION")
         .map(|s| s.to_string())
-        .or_else(|| env::var("NIXMAC_VERSION").ok())
+        .or_else(|| std::env::var("NIXMAC_VERSION").ok())
         .unwrap_or_else(|| "unknown".to_string());
 
     let mut builder = tauri::Builder::default().plugin(tauri_plugin_http::init());
+    let orpc_router = orpc::build_router();
 
     // The updater will misbehave in dev mode (always says an update is available, fails signature
     // checks, tries to downgrade your app, etc.), so we only include it in release builds.
@@ -479,6 +519,9 @@ fn run_gui_mode(
         .plugin(tauri_plugin_upload::init())
         .plugin(tauri_plugin_macos_permissions::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_orpc::init(orpc_router, |app| orpc::OrpcCtx {
+            app: app.clone(),
+        }))
         .invoke_handler(tauri::generate_handler![
             // Configuration
             commands::config::config_get,
@@ -494,16 +537,14 @@ fn run_gui_mode(
             commands::config::config_import_github,
             commands::config::config_import_zip,
             commands::config::github_import,
-            // GitHub App connection (server-brokered)
-            commands::github::github_connect_start,
-            commands::github::github_status,
-            commands::github::github_list_repos,
-            commands::github::github_disconnect,
+            // GitHub App connection (server-brokered) — see `orpc::github`
             // nixmac account + non-GitHub sync
             commands::account::account_status,
             commands::account::account_sign_in,
             commands::account::account_sign_in_web,
             commands::account::account_sign_up_web,
+            commands::account::account_send_otp,
+            commands::account::account_verify_otp,
             commands::account::account_sign_out,
             commands::account::account_set_server_url,
             commands::account::sync_status,
@@ -630,7 +671,15 @@ fn run_gui_mode(
             // Set up panic handler to catch crashes and show feedback dialog
             panic_handler::setup_panic_hook(handle.clone());
 
-            register_managed_state(handle)?;
+            app.manage(state::preferences::load_global_observable(handle)?);
+            app.manage(evolve::config::load_observable(handle)?);
+            app.manage(env::config::load_observable(handle)?);
+            app.manage(state::evolve_state::load_observable(handle)?);
+            app.manage(state::git_state::load_observable(handle));
+            app.manage(state::change_map::load_observable(handle));
+            app.manage(state::permissions_state::load_observable(handle));
+            app.manage(state::nix_install_state::load_observable(handle));
+            app.manage(state::rebuild_status::load_observable(handle));
 
             // Initialize SQLite database before any consumer that reads the
             // managed DbPool from app state.
@@ -662,7 +711,7 @@ fn run_gui_mode(
                  evolve::search_docs::initialize_docs_index();
              });
 
-            let send_diagnostics = store::get_send_diagnostics(handle).unwrap_or(false);
+            let send_diagnostics = crate::state::ui_prefs::send_diagnostics(handle);
             if send_diagnostics {
                 log::info!(
                     "Diagnostics enabled by user preference (env: {}, version: {})",
@@ -757,7 +806,7 @@ fn run_gui_mode(
             let e2e_opaque_window = e2e_opaque_window_enabled();
             let e2e_solid_capture = e2e_solid_capture_enabled();
             let e2e_css_capture = e2e_solid_capture || e2e_opaque_window;
-            let e2e_webview_watchdog = e2e_webview_watchdog_enabled() || e2e_opaque_window;
+            let e2e_webview_watchdog = e2e_webview_watchdog_enabled();
             if e2e_solid_capture {
                 log::info!("NIXMAC_E2E_SOLID_CAPTURE enabled; using CSS-only dark WebView capture while preserving the normal overlay window");
             }
@@ -940,9 +989,7 @@ fn run_gui_mode(
             // Experimental: create the spinning-mascot indicator window when the
             // flag is enabled at launch. Gated here so users who never enable it
             // pay no startup cost; enabling the flag applies on the next launch.
-            if store::get_bool_pref(handle, store::EXPERIMENTAL_SPINNING_MASCOT_KEY, false)
-                .unwrap_or(false)
-            {
+            if crate::state::ui_prefs::experimental_spinning_mascot(handle) {
                 if let Err(e) = peek::create_evolve_mascot_window(handle) {
                     log::error!("[peek] failed to create evolve mascot window: {}", e);
                 }
@@ -1045,7 +1092,6 @@ mod managed_state_tests {
 
 #[cfg(test)]
 mod test_support {
-    use std::env;
     use std::sync::{Mutex, MutexGuard, OnceLock};
 
     pub(crate) fn e2e_env_lock() -> MutexGuard<'static, ()> {
@@ -1062,7 +1108,10 @@ mod test_support {
     impl EnvVarRestore {
         pub(crate) fn capture(keys: &[&'static str]) -> Self {
             Self {
-                saved: keys.iter().map(|key| (*key, env::var(key).ok())).collect(),
+                saved: keys
+                    .iter()
+                    .map(|key| (*key, std::env::var(key).ok()))
+                    .collect(),
             }
         }
     }
@@ -1071,8 +1120,8 @@ mod test_support {
         fn drop(&mut self) {
             for (key, value) in &self.saved {
                 match value {
-                    Some(value) => env::set_var(key, value),
-                    None => env::remove_var(key),
+                    Some(value) => std::env::set_var(key, value),
+                    None => std::env::remove_var(key),
                 }
             }
         }

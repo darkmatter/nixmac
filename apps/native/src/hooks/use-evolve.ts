@@ -14,16 +14,19 @@ import { getTelemetry } from "@/lib/telemetry/instance";
  * `darwin:evolve:event` payload, handled by `viewmodel/evolution.ts`.
  */
 const evolveFromManual = async () => {
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   await tauriAPI.darwin.evolveFromManual();
 };
 
 const buildCheck = async () => {
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   return await tauriAPI.darwin.buildCheck();
 };
 
 const refreshPromptHistory = async (prompt: string) => {
   // The backend mutation emits `prompt_history_changed`; the sync module
   // mirrors the payload into the ViewModel.
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   await tauriAPI.promptHistory.add(prompt).catch(console.error);
 };
 
@@ -54,6 +57,7 @@ const handleEvolve = async () => {
     // git/evolve/change-map cells and emits the terminal `complete` event
     // (with telemetry and any conversational response) before this resolves;
     // the viewmodel sync modules mirror everything.
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.darwin.evolve(ui.evolvePrompt);
 
     uiActions.setEvolvePrompt("");

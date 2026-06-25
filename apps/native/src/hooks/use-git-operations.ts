@@ -22,6 +22,7 @@ export const prefetchFileDiffContents = async (
     return;
   }
   try {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     const result = await tauriAPI.git.fileDiffContents(filenames);
     setFileDiffContents(result ?? {});
   } catch {
@@ -51,6 +52,7 @@ const handleCommit = async ({ message }: { message: string }) => {
   try {
     // The backend clears the evolve state, refreshes the git-state cell, and
     // resets the change-map cell; the `*_changed` events mirror everything.
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.git.commit(message);
     uiActions.appendLog("✓ Committed successfully\n");
     uiActions.setError(null);

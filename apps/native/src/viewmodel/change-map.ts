@@ -15,6 +15,7 @@ export function clearChangeMap(): void {
 
 export function startChangeMapSync(): Promise<() => void> {
   return bindBackendSlice({
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     hydrate: () => tauriAPI.summarizedChanges.getChangeMap(),
     event: "change_map_changed",
     mirror: mirrorChangeMapState,

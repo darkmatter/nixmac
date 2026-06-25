@@ -8,6 +8,7 @@ import { tauriAPI } from "@/ipc/api";
  */
 const findChangeMap = async (): Promise<void> => {
   try {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.summarizedChanges.findChangeMap();
   } catch (e) {
     console.error("[SemanticChangeMap] error", e);
@@ -17,6 +18,7 @@ const findChangeMap = async (): Promise<void> => {
 const generateCommitMessage = async () => {
   uiActions.setCommitMessageSuggestion(null);
   try {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     const message = await tauriAPI.summarizedChanges.generateCommitMessage();
     uiActions.setCommitMessageSuggestion(message);
   } catch {
@@ -27,6 +29,7 @@ const generateCommitMessage = async () => {
 const generateCurrentSummary = async () => {
   uiActions.setSummarizing(true);
   try {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.summarizedChanges.summarizeCurrent();
   } finally {
     uiActions.setSummarizing(false);

@@ -131,6 +131,7 @@ export function GeneralTab({
                 const previousValue = !!sendDiagnosticsField.state.value;
                 sendDiagnosticsField.handleChange(checked);
                 try {
+                  // deprecated(orpc): replace with client/orpc from @/lib/orpc
                   await tauriAPI.ui.setPrefs({ sendDiagnostics: checked });
                   telemetry.setEnabled(checked);
                   telemetry.captureEvent({
@@ -202,6 +203,7 @@ function VersionRow() {
       try {
         // The `global_preferences_changed` round-trip flips developerMode
         // in the ViewModel.
+        // deprecated(orpc): replace with client/orpc from @/lib/orpc
         await tauriAPI.ui.setPrefs({ developerMode: true });
       } catch (err) {
         console.error("Failed to enable developer mode:", err);
@@ -215,6 +217,7 @@ function VersionRow() {
 
   const handleDisable = async () => {
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.ui.setPrefs({ developerMode: false });
     } catch (err) {
       console.error("Failed to disable developer mode:", err);

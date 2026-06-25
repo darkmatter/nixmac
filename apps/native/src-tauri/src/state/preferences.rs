@@ -74,7 +74,7 @@ fn migrate_from_legacy_store<R: Runtime>(
     app: &AppHandle<R>,
     prefs: &mut GlobalPreferences,
 ) -> Result<bool> {
-    let Ok(store) = crate::storage::store::get_store(app) else {
+    let Ok(store) = crate::storage::legacy_kv::get_store(app) else {
         return Ok(false);
     };
     if store

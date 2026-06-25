@@ -63,14 +63,13 @@ pub trait ChatCompletionProvider: Send + Sync {
     }
 }
 
-fn configured_model(store_model: Option<String>, env_var: &str) -> Option<String> {
+fn configured_model(
+    store_model: Option<String>,
+    env_model: impl Fn() -> Option<String>,
+) -> Option<String> {
     store_model
         .and_then(crate::utils::non_empty_trimmed_string)
-        .or_else(|| {
-            std::env::var(env_var)
-                .ok()
-                .and_then(crate::utils::non_empty_trimmed_string)
-        })
+        .or_else(env_model)
 }
 
 fn require_local_model(
@@ -78,7 +77,7 @@ fn require_local_model(
     store_model: Option<String>,
     env_var: &str,
 ) -> Result<String> {
-    configured_model(store_model, env_var).ok_or_else(|| {
+    configured_model(store_model, crate::env::default_summary_model).ok_or_else(|| {
         anyhow::anyhow!(
             "No {provider_name} model configured. Please select a model in Settings or set {env_var}."
         )
@@ -189,11 +188,15 @@ pub fn create_provider<R: Runtime>(
         .and_then(|app| crate::storage::store::get_summary_provider(app).ok())
         .flatten();
 
-    let configured_provider = store_provider.or_else(|| std::env::var("SUMMARY_AI_PROVIDER").ok());
+    let env_settings = crate::env::settings_from_app(app_handle);
+    let configured_provider = store_provider
+        .or_else(|| crate::env::optional(env_settings.default_summary_provider.clone()));
     let store_model = app_handle
         .and_then(|app| crate::storage::store::get_summary_model(app).ok())
         .flatten();
-    let configured_summary_model = configured_model(store_model.clone(), "SUMMARY_MODEL");
+    let configured_summary_model = configured_model(store_model.clone(), || {
+        crate::env::optional(env_settings.default_summary_model.clone())
+    });
     let (provider, used_legacy_openai_fallback) = resolve_summary_provider(
         app_handle,
         configured_provider,
@@ -211,22 +214,23 @@ pub fn create_provider<R: Runtime>(
             Ok(Box::new(CliCompletionClient::new(tool, model)))
         }
         "ollama" => {
-            let model = require_local_model("Ollama", store_model, "SUMMARY_MODEL")?;
+            let model =
+                require_local_model("Ollama", store_model, crate::env::keys::SUMMARY_MODEL)?;
 
             let base_url = app_handle
                 .and_then(|app| crate::storage::store::get_ollama_api_base_url(app).ok())
                 .flatten()
-                .or_else(|| std::env::var("OLLAMA_API_BASE").ok())
+                .or_else(|| crate::env::optional(env_settings.ollama_api_base.clone()))
                 .unwrap_or_else(|| DEFAULT_OLLAMA_API_BASE.to_string());
             Ok(Box::new(OllamaClient::new(&base_url, &model)))
         }
         "vllm" => {
-            let model = require_local_model("vLLM", store_model, "SUMMARY_MODEL")?;
+            let model = require_local_model("vLLM", store_model, crate::env::keys::SUMMARY_MODEL)?;
 
             let base_url = app_handle
                 .and_then(|app| crate::storage::store::get_vllm_api_base_url(app).ok())
                 .flatten()
-                .or_else(|| std::env::var("VLLM_API_BASE").ok())
+                .or_else(|| crate::env::optional(env_settings.vllm_api_base.clone()))
                 .ok_or_else(|| {
                     anyhow::anyhow!("No vLLM base URL configured. Please set it in Settings.")
                 })?;

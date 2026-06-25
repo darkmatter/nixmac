@@ -17,6 +17,7 @@ export function useRollback() {
     uiActions.appendLog("\n> Discarding changes...\n");
 
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       const result = await tauriAPI.darwin.rollbackErase();
       uiActions.setEvolvePrompt("");
       uiActions.appendLog("✓ Changes discarded\n");
@@ -29,6 +30,7 @@ export function useRollback() {
           context: "rollback",
           storePath: result.rollbackStorePath,
           onSuccess: async () => {
+            // deprecated(orpc): replace with client/orpc from @/lib/orpc
             await tauriAPI.darwin.finalizeRollback(
               result.rollbackStorePath,
               result.rollbackChangesetId,
