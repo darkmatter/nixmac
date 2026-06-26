@@ -65,19 +65,7 @@ jobs:
           bun-version-file: package.json
 
       - name: Install frontend dependencies
-        run: |
-          set -x
-          env | grep -iE "BUN|NPM|NODE|REGISTRY|AUTH" || true
-          echo "--- global bunfig ---"
-          cat ~/.bunfig.toml 2>/dev/null || echo "(none)"
-          echo "--- global npmrc ---"
-          cat ~/.npmrc 2>/dev/null || echo "(none)"
-          echo "--- local bunfig ---"
-          cat bunfig.toml 2>/dev/null || echo "(none)"
-          echo "--- bun revision ---"
-          bun --revision
-          echo "--- bun install ---"
-          bun install --frozen-lockfile --verbose 2>&1 | head -40
+        run: bun install --frozen-lockfile --verbose
 
       - name: Type-check native app
         working-directory: apps/native
