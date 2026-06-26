@@ -162,6 +162,7 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
   const [paygProductLoading, setPaygProductLoading] = useState(false);
   const [paygProductError, setPaygProductError] = useState<string | null>(null);
   const [creditAmount, setCreditAmount] = useState(25);
+  const [checkoutStarted, setCheckoutStarted] = useState(false);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -179,6 +180,23 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
     amountWithinBounds &&
     zipCode.trim().length > 0 &&
     country.trim().length > 0;
+
+  useEffect(() => {
+    let cancelled = false;
+    tauriAPI.account
+      .status()
+      .then((status) => {
+        if (cancelled || !status.webAccount) return;
+        setEmail(status.webAccount.email);
+        setOtp("");
+        setOtpSent(false);
+        setStage("payment");
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (stage !== "payment") return;
@@ -268,11 +286,7 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
         zipCode.trim(),
       );
       await openExternal(checkoutUrl);
-      getTelemetry().captureEvent({
-        name: "inference_configured",
-        props: { mode: "hosted" },
-      });
-      onConfigured({ mode: "hosted", email, plan: `${paygProduct.slug}:${creditAmount}` });
+      setCheckoutStarted(true);
     } catch (e: unknown) {
       setError(errorMessage(e));
     } finally {
@@ -490,6 +504,27 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
         <ShieldCheck className="size-3.5 text-success" aria-hidden="true" />
         Card details are handled by Polar. ZIP code and country are used for billing.
       </p>
+      {checkoutStarted ? (
+        <div className="rounded-lg border border-success/30 bg-success/5 p-3">
+          <p className="text-muted-foreground text-xs">
+            Finish checkout in Polar, then continue once the payment completes.
+          </p>
+          <Button
+            className="mt-2"
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              getTelemetry().captureEvent({
+                name: "inference_configured",
+                props: { mode: "hosted" },
+              });
+              onConfigured({ mode: "hosted", email, plan: `${paygProduct.slug}:${creditAmount}` });
+            }}
+          >
+            I completed checkout
+          </Button>
+        </div>
+      ) : null}
       {error ? <p className="text-destructive text-xs">{error}</p> : null}
     </div>
   );

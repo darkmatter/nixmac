@@ -407,6 +407,7 @@ function installBackend(startAt: string) {
     account: { email },
     credentialId: "demo",
   }));
+  patch(tauriAPI.account, "createPaygCheckout", async () => "https://polar.sh/demo-checkout");
   ensure("ui");
   patch(tauriAPI.ui, "setPrefs", async () => ({ ok: true }));
   patch(tauriAPI.ui, "getPrefs", async () => ({}));
