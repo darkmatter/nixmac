@@ -2,14 +2,13 @@ import { PreviewIndicator } from "@/components/preview-indicator/preview-indicat
 import { orpc, queryClient } from "@/lib/orpc";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
-import React from "react";
+import React, { useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
 
 function PreviewIndicatorWindow() {
   const {
     data: state,
-    error,
   } = useQuery(orpc.previewIndicator.getState.queryOptions());
   useEffect(() => {
     if (state) {

@@ -59,7 +59,7 @@ passed: boolean;
  */
 output: string }
 
-export type Change = { id: number; hash: string; filename: string; diff: string; lineCount: number; createdAt: number; ownSummaryId: number }
+export type Change = { id: number; hash: string; filename: string; diff: string; lineCount: number; createdAt: number; ownSummaryId: number | null }
 
 /**
  * Groups Changes for a commit→base_commit pair. `commit_id` is NULL for speculative
@@ -122,7 +122,7 @@ createdAt: number;
 /**
  * Direct summary row id assigned to this change, if any.
  */
-ownSummaryId: number; 
+ownSummaryId: number | null; 
 /**
  * Summary title used for display.
  */

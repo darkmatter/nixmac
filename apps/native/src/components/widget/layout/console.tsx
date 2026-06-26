@@ -1,6 +1,5 @@
 "use client";
 
-import { DebugOverlay } from "@/components/widget/layout/debug-overlay";
 import { useUiState } from "@nixmac/state";
 import { ChevronDown, ChevronUp, GripHorizontal } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
