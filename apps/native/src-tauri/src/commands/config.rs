@@ -372,7 +372,7 @@ pub async fn github_import(
     let target_for_clone = target.clone();
     let access = token.token;
     tauri::async_runtime::spawn_blocking(move || {
-        import::clone_repo_with_token(&spec, &target_for_clone, Some(&access))
+        import::materialize_repo_with_token(&spec, &target_for_clone, &access)
     })
     .await
     .map_err(|e| capture_err("github_import", e))?

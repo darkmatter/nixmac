@@ -258,6 +258,22 @@ mod tests {
     }
 
     #[test]
+    fn parse_struct_config_accepts_env_scope() {
+        let input: DeriveInput = parse_quote! {
+            #[config(scope = "env", display_name = "Environment")]
+            struct NixmacEnvSettings {
+                vite_server_url: String,
+            }
+        };
+
+        let config = parse_struct_config(&input.attrs, "NixmacEnvSettings").expect("config parses");
+
+        assert!(matches!(config.scope, StoreScope::Env));
+        assert_eq!(config.display_name.as_deref(), Some("Environment"));
+        assert_eq!(config.schema_file.as_deref(), Some("env.schema.json"));
+    }
+
+    #[test]
     fn parse_struct_config_defaults_to_global_scope() {
         let input: DeriveInput = parse_quote! {
             struct Preferences {

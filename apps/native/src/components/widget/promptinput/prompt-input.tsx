@@ -14,15 +14,70 @@ import { HomebrewBadge } from "@/components/widget/promptinput/homebrew-badge";
 import { MacRecommendationChip } from "@/components/widget/promptinput/mac-recommendation-chip";
 import { PromptHistoryBadge } from "@/components/widget/promptinput/prompt-history-badge";
 import { STARTER_PROMPT_CHIPS } from "@/components/widget/promptinput/starter-prompts";
+import type { StarterPromptIconName } from "@/components/widget/promptinput/starter-prompts";
 import { SystemDefaultsCTA } from "@/components/widget/promptinput/system-defaults-cta";
 import { useEvolve } from "@/hooks/use-evolve";
 import { tauriAPI } from "@/ipc/api";
 import { getProviderConfigInvalidReason } from "@/lib/providers/ai-provider-validation";
 import { uiActions, useUiState, useViewModel } from "@nixmac/state";
-import { ArrowUpIcon } from "lucide-react";
+import {
+  ArrowUpIcon,
+  BookOpen,
+  Brush,
+  Cable,
+  Code2,
+  FileKey,
+  Focus,
+  Gamepad2,
+  Joystick,
+  Keyboard,
+  KeyRound,
+  Network,
+  NotebookText,
+  Palette,
+  PanelsTopLeft,
+  Plane,
+  Presentation,
+  Radio,
+  RefreshCcw,
+  Server,
+  ShieldCheck,
+  Terminal,
+  Video,
+  Wifi,
+  Wrench,
+  type LucideIcon,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 const MAX_CONTEXT_LENGTH = 1000;
+
+const STARTER_PROMPT_ICON_COMPONENTS: Record<StarterPromptIconName, LucideIcon> = {
+  "book-open": BookOpen,
+  brush: Brush,
+  cable: Cable,
+  "code-2": Code2,
+  "file-key": FileKey,
+  focus: Focus,
+  "gamepad-2": Gamepad2,
+  joystick: Joystick,
+  keyboard: Keyboard,
+  "key-round": KeyRound,
+  network: Network,
+  "notebook-text": NotebookText,
+  palette: Palette,
+  "panels-top-left": PanelsTopLeft,
+  plane: Plane,
+  presentation: Presentation,
+  radio: Radio,
+  "refresh-ccw": RefreshCcw,
+  server: Server,
+  "shield-check": ShieldCheck,
+  terminal: Terminal,
+  video: Video,
+  wifi: Wifi,
+  wrench: Wrench,
+};
 
 export function PromptInput() {
   const evolvePrompt = useUiState((s) => s.evolvePrompt);
@@ -217,6 +272,7 @@ export function PromptInput() {
           {STARTER_PROMPT_CHIPS.map((suggestion) => (
             <BadgeButton
               key={suggestion.id}
+              icon={STARTER_PROMPT_ICON_COMPONENTS[suggestion.icon]}
               onClick={() => uiActions.setEvolvePrompt(suggestion.prompt)}
             >
               {suggestion.label}

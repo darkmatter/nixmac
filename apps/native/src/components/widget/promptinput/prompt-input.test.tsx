@@ -126,7 +126,10 @@ describe("<PromptInput>", () => {
     render(<PromptInput />);
     await settleProviderValidation();
 
-    fireEvent.click(screen.getByText(suggestion.label));
+    const chip = screen.getByRole("button", { name: suggestion.label });
+    expect(chip.querySelector("svg")).toBeInTheDocument();
+
+    fireEvent.click(chip);
 
     expect(screen.getByTestId("evolve-prompt-input")).toHaveValue(suggestion.prompt);
   });
