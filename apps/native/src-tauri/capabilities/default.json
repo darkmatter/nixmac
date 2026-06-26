@@ -21,12 +21,29 @@
     "keyring:allow-delete-password",
     "keyring:allow-ping",
     "macos-permissions:default",
+    "macos-passkey:default",
     "http:default",
     "updater:default",
     "updater:allow-check",
     "updater:allow-download-and-install",
     "process:allow-restart",
     "notification:default",
-    "orpc:default"
+    "orpc:default",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [
+        {
+          "path": ""
+        }
+      ]
+    },
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "https://*"
+        }
+      ]
+    }
   ]
 }

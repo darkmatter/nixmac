@@ -33,10 +33,10 @@ pub struct PreviewIndicatorState {
     #[specta(type = f64)]
     pub files_changed: usize,
     /// Added lines displayed in the indicator.
-    #[specta(type = f64)]
+    #[specta(type = Option<f64>)]
     pub additions: Option<usize>,
     /// Removed lines displayed in the indicator.
-    #[specta(type = f64)]
+    #[specta(type = Option<f64>)]
     pub deletions: Option<usize>,
     /// Whether the indicator should show a loading state.
     pub is_loading: bool,

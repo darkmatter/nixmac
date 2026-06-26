@@ -1,15 +1,18 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { GitHubLogoIcon } from "@radix-ui/react-icons";
-import { open } from "@tauri-apps/plugin-shell";
-import { Check, FileWarning, Globe, Loader2, Lock, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { tauriAPI } from "@/ipc/api";
 import type { GithubRepo } from "@/ipc/types";
+import { auth as authClient } from "@/lib/auth";
+import { client } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
-
+import { signInSocial } from "@daveyplate/better-auth-tauri";
+import { useBetterAuthTauri } from "@daveyplate/better-auth-tauri/react";
+import { GitHubLogoIcon } from "@radix-ui/react-icons";
+import { open } from "@tauri-apps/plugin-shell";
+import { Check, FileWarning, Globe, Loader2, Lock, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 interface GitHubSourceProps {
   onImported?: () => void;
 }
@@ -130,6 +133,21 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
   const [importingRef, setImportingRef] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const cancelled = useRef(false);
+  useBetterAuthTauri({
+    authClient,
+    scheme: "nixmac",
+    debugLogs: import.meta.env.DEV,
+    onSuccess: () => {
+      setGithubReady(true);
+      setShowEmailFallback(false);
+      void pollGitHubConnection();
+    },
+    onError: (error) => {
+      console.error("Auth error:", error);
+      setError(error.message ?? error.statusText ?? "GitHub sign-in failed.");
+    },
+  });
+
 
   const resetRejectedSession = useCallback((error: unknown): boolean => {
     if (!isUnauthorizedSession(error)) return false;
@@ -170,8 +188,7 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
           setAuth("disconnected");
           return;
         }
-        // deprecated(orpc): replace with client/orpc from @/lib/orpc
-        const s = await tauriAPI.github.status();
+        const s = await client.github.status();
         if (cancelled.current) return;
         if (s.connected) {
           setLogin(s.login ?? null);
@@ -192,8 +209,7 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     try {
       if (connectMode === "bootstrap") {
         if (!bootstrapState) return;
-        // deprecated(orpc): replace with client/orpc from @/lib/orpc
-        const s = await tauriAPI.github.bootstrapStatus(bootstrapState);
+        const s = await client.github.bootstrapStatus({ state: bootstrapState });
         if (cancelled.current) return;
         if (s.connected || s.state === "complete") {
           setGithubReady(true);
@@ -208,8 +224,7 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
         return;
       }
 
-      // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      const s = await tauriAPI.github.status();
+      const s = await client.github.status();
       if (cancelled.current) return;
       if (s.connected) {
         setLogin(s.login ?? null);
@@ -237,8 +252,7 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
   useEffect(() => {
     if (auth !== "connected" || repos !== null) return;
     setLoadingRepos(true);
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    tauriAPI.github
+    client.github
       .listRepos()
       .then((r) => {
         if (!cancelled.current) setRepos(r);
@@ -279,16 +293,14 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     setAuth("connecting");
     setConnectMode(mode);
     if (mode === "bootstrap") {
-      // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      const { installUrl, state } = await tauriAPI.github.bootstrapStart();
+      const { installUrl, state } = await client.github.bootstrapStart();
       setBootstrapState(state);
       await openExternal(installUrl);
       return;
     }
 
     setBootstrapState(null);
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    const { installUrl } = await tauriAPI.github.connectStart();
+    const { installUrl } = await client.github.connectStart();
     await openExternal(installUrl);
   }
 
@@ -318,7 +330,10 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     setAccountWorking(true);
     const mode: ConnectMode = githubReady ? "authed" : "bootstrap";
     try {
-      await startGitHubConnect(mode);
+      await signInSocial({
+        authClient,
+        provider: "github",
+      });
     } catch (e: unknown) {
       if (mode === "bootstrap") {
         requireEmailFallback(errorMessage(e));

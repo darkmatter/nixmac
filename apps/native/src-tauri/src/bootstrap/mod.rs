@@ -11,7 +11,7 @@ use std::path::Path;
 
 // Re-export the key public API so callers can use short paths.
 #[allow(unused_imports)]
-pub use default_config::{bootstrap, detect_darwin_platform, finalize_flake_lock};
+pub use default_config::{detect_darwin_platform, finalize_flake_lock};
 
 /// Returns true if the path has a `.nix` extension, indicating it is likely a Nix file.
 pub(crate) fn is_nix_file(path: &Path) -> bool {

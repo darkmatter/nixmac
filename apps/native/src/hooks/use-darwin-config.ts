@@ -1,6 +1,19 @@
 import { uiActions, useUiState } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import type { SetDirResult } from "@/ipc/types";
+import type { StarterTemplateId } from "@/components/widget/onboarding/lib/flake-ref";
+
+interface DarwinConfigActions {
+  setDir: (dir: string) => Promise<SetDirResult>;
+  prepareNewDir: (dir: string) => Promise<SetDirResult>;
+  pickDir: () => Promise<SetDirResult | undefined>;
+  saveHost: (host: string) => Promise<void>;
+  bootstrap: (hostname: string, templateId?: StarterTemplateId) => Promise<void>;
+  isBootstrapping: boolean;
+  importGithub: (repoRef: string, dirName?: string) => Promise<SetDirResult>;
+  importZip: (zipPath: string, dirName?: string) => Promise<SetDirResult>;
+  pickZip: () => Promise<string | null>;
+}
 
 // Config dir/host/hosts and the evolve/git mirrors are no longer written
 // locally: the backend emits `*_changed` events after these mutations and the
@@ -63,14 +76,14 @@ const saveHost = async (host: string) => {
   }
 };
 
-const bootstrap = async (hostname: string) => {
+const bootstrap = async (hostname: string, templateId?: StarterTemplateId) => {
   const commitExisting = !hostname.trim();
   uiActions.setError(null);
   uiActions.setBootstrapping(true);
 
   try {
     // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    await tauriAPI.flake.bootstrapDefault(hostname);
+    await tauriAPI.flake.bootstrapDefault(hostname, templateId);
 
     if (commitExisting) {
       // deprecated(orpc): replace with client/orpc from @/lib/orpc
@@ -94,7 +107,7 @@ const bootstrap = async (hostname: string) => {
   }
 };
 
-export function useDarwinConfig() {
+export function useDarwinConfig(): DarwinConfigActions {
   const isBootstrapping = useUiState((state) => state.isBootstrapping);
 
   return {

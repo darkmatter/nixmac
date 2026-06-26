@@ -1,15 +1,24 @@
 //! Keychain-backed secrets with env-first resolution for dev/CI.
 
-use crate::storage::credential_store::{CredentialStore, KeychainStore};
+use crate::storage::credential_store::CredentialStore;
+#[cfg(debug_assertions)]
+use crate::storage::credential_store::FileStore;
+#[cfg(not(debug_assertions))]
+use crate::storage::credential_store::KeychainStore;
 use crate::storage::legacy_kv::{delete_legacy_key, get_legacy_string, set_legacy_string};
 
 use anyhow::Result;
+#[cfg(debug_assertions)]
+use std::path::PathBuf;
 use tauri::{AppHandle, Runtime};
 
 pub const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
 pub const OPENAI_BASE_URL: &str = "https://api.openai.com/v1";
 
+#[cfg(not(debug_assertions))]
 const KEYCHAIN_SERVICE: &str = "com.darkmatter.nixmac";
+#[cfg(debug_assertions)]
+const DEV_SECRET_CACHE_DIR: &str = "/tmp/nixmac-dev-secrets";
 
 pub const SYNC_SECRET_KEYCHAIN_KEY: &str = "nixmacSyncSecret";
 pub const DEVICE_API_KEY_KEYCHAIN_KEY: &str = "nixmacDeviceApiKey";
@@ -33,8 +42,94 @@ where
     fallback()
 }
 
+#[cfg(not(debug_assertions))]
 fn keychain_store_for<R: Runtime>(app: &AppHandle<R>, key: &str) -> KeychainStore<R> {
     KeychainStore::new(app.clone(), KEYCHAIN_SERVICE, key)
+}
+
+#[cfg(debug_assertions)]
+fn sanitize_dev_cache_segment(value: &str) -> String {
+    let sanitized: String = value
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' {
+                ch
+            } else {
+                '_'
+            }
+        })
+        .collect();
+
+    if sanitized.is_empty() {
+        "unknown".to_string()
+    } else {
+        sanitized
+    }
+}
+
+#[cfg(debug_assertions)]
+fn dev_secret_cache_path(key: &str) -> PathBuf {
+    let username = whoami::username().unwrap_or_else(|_| "unknown".to_string());
+    let user = sanitize_dev_cache_segment(&username);
+    PathBuf::from(format!("{DEV_SECRET_CACHE_DIR}-{user}")).join(sanitize_dev_cache_segment(key))
+}
+
+#[cfg(debug_assertions)]
+fn get_persistent_secret_pref<R: Runtime>(
+    _app: &AppHandle<R>,
+    key: &'static str,
+) -> Result<Option<String>> {
+    FileStore::new(dev_secret_cache_path(key))
+        .get()
+        .map(normalize_secret)
+        .map_err(anyhow::Error::from)
+}
+
+#[cfg(not(debug_assertions))]
+fn get_persistent_secret_pref<R: Runtime>(
+    app: &AppHandle<R>,
+    key: &'static str,
+) -> Result<Option<String>> {
+    keychain_store_for(app, key)
+        .get()
+        .map(normalize_secret)
+        .map_err(anyhow::Error::from)
+}
+
+#[cfg(debug_assertions)]
+fn set_persistent_secret_pref<R: Runtime>(
+    _app: &AppHandle<R>,
+    key: &'static str,
+    value: &str,
+) -> Result<()> {
+    FileStore::new(dev_secret_cache_path(key))
+        .set(value)
+        .map_err(anyhow::Error::from)
+}
+
+#[cfg(not(debug_assertions))]
+fn set_persistent_secret_pref<R: Runtime>(
+    app: &AppHandle<R>,
+    key: &'static str,
+    value: &str,
+) -> Result<()> {
+    keychain_store_for(app, key)
+        .set(value)
+        .map_err(anyhow::Error::from)
+}
+
+#[cfg(debug_assertions)]
+fn delete_persistent_secret_pref<R: Runtime>(_app: &AppHandle<R>, key: &'static str) -> Result<()> {
+    FileStore::new(dev_secret_cache_path(key))
+        .delete()
+        .map_err(anyhow::Error::from)
+}
+
+#[cfg(not(debug_assertions))]
+fn delete_persistent_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> Result<()> {
+    keychain_store_for(app, key)
+        .delete()
+        .map_err(anyhow::Error::from)
 }
 
 fn get_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> Result<Option<String>> {
@@ -42,10 +137,7 @@ fn get_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> Result<
         return Ok(normalize_secret(get_legacy_string(app, key)?));
     }
 
-    keychain_store_for(app, key)
-        .get()
-        .map(normalize_secret)
-        .map_err(anyhow::Error::from)
+    get_persistent_secret_pref(app, key)
 }
 
 fn set_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str, value: &str) -> Result<()> {
@@ -57,9 +149,7 @@ fn set_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str, value: &st
         return set_legacy_string(app, key, &value);
     }
 
-    keychain_store_for(app, key)
-        .set(&value)
-        .map_err(anyhow::Error::from)
+    set_persistent_secret_pref(app, key, &value)
 }
 
 fn delete_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> Result<()> {
@@ -67,9 +157,7 @@ fn delete_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> Resu
         return delete_legacy_key(app, key);
     }
 
-    keychain_store_for(app, key)
-        .delete()
-        .map_err(anyhow::Error::from)
+    delete_persistent_secret_pref(app, key)
 }
 
 pub fn get_openrouter_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
@@ -253,5 +341,20 @@ mod tests {
 
         assert_eq!(result.as_deref(), Some("store-secret"));
         assert!(fallback_called.load(Ordering::SeqCst));
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn dev_secret_cache_path_stays_under_tmp_and_sanitizes_key() {
+        let path = dev_secret_cache_path("openai/../Api Key");
+
+        assert!(path.starts_with("/tmp"));
+        assert!(
+            path.parent()
+                .and_then(|parent| parent.file_name())
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.starts_with("nixmac-dev-secrets"))
+        );
+        assert!(!path.to_string_lossy().contains(".."));
     }
 }

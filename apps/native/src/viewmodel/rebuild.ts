@@ -1,6 +1,7 @@
 import { ipcRenderer, tauriAPI } from "@/ipc/api";
 import type { DarwinApplyDataEvent, DarwinApplySummaryEvent, RebuildStatus } from "@/ipc/types";
 import { REBUILD_ERROR_CODES } from "@/lib/errors";
+import { client } from "@/lib/orpc";
 import type { RebuildLine } from "@/types/rebuild";
 import { uiActions, viewModelActions } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
@@ -78,8 +79,7 @@ function mirrorRebuildStatus(status: RebuildStatus): void {
 export async function startRebuildSync(): Promise<() => void> {
   const [statusUnlisten, dataUnlisten, summaryUnlisten] = await Promise.all([
     bindBackendSlice<RebuildStatus>({
-      // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      hydrate: () => tauriAPI.darwin.rebuildStatus(),
+      hydrate: () => client.darwin.rebuildStatus(),
       event: "rebuild_status_changed",
       mirror: mirrorRebuildStatus,
     }),

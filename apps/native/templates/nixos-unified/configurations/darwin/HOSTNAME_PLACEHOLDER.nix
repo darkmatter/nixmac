@@ -8,11 +8,9 @@ in
     self.darwinModules.default
   ];
 
-  # For Apple Silicon use aarch64-darwin.
-  # For Intel Macs use x86_64-darwin.
-  nixpkgs.hostPlatform = "aarch64-darwin";
-  networking.hostName = "example";
-  system.primaryUser = "runner";
+  nixpkgs.hostPlatform = "PLATFORM_PLACEHOLDER";
+  networking.hostName = "HOSTNAME_PLACEHOLDER";
+  system.primaryUser = "USERNAME_PLACEHOLDER";
 
   home-manager.backupFileExtension = "nixmac-nixos-unified-backup";
   system.stateVersion = 4;

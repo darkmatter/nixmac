@@ -1,5 +1,5 @@
-import { tauriAPI } from "@/ipc/api";
 import type { EvolveState } from "@/ipc/types";
+import { client } from "@/lib/orpc";
 import { viewModelActions } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
 
@@ -14,14 +14,12 @@ function mirrorEvolveState(evolve: EvolveState | null): void {
  * deterministic.
  */
 export async function refreshEvolveSnapshot(): Promise<void> {
-  // deprecated(orpc): replace with client/orpc from @/lib/orpc
-  mirrorEvolveState(await tauriAPI.evolveState.get());
+  mirrorEvolveState(await client.evolveState.get());
 }
 
 export function startEvolveSync(): Promise<() => void> {
   return bindBackendSlice({
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    hydrate: () => tauriAPI.evolveState.get(),
+    hydrate: () => client.evolveState.get(),
     event: "evolve_state_changed",
     mirror: mirrorEvolveState,
   });

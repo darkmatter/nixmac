@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   DEFAULT_CONFIG_DIR,
   STARTER_TEMPLATES,
+  type StarterTemplateId,
 } from "@/components/widget/onboarding/lib/flake-ref";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { tauriAPI } from "@/ipc/api";
@@ -17,16 +18,12 @@ interface CreateSourceProps {
 }
 
 /**
- * Scaffold a starter configuration: create an empty config dir, then bootstrap
- * nixmac's default nix-darwin flake into it for the named host.
- *
- * NOTE: the backend bootstrap currently always writes the default scaffold;
- * the template choice below is presentational until template-specific
- * scaffolds land (tracked separately).
+ * Scaffold a starter configuration: create an empty config dir, then copy the
+ * selected bundled template into it for the named host.
  */
 export function CreateSource({ onCreated }: CreateSourceProps) {
   const { prepareNewDir, bootstrap } = useDarwinConfig();
-  const [templateId, setTemplateId] = useState("darwin-hm");
+  const [templateId, setTemplateId] = useState<StarterTemplateId>("nix-darwin-determinate");
   const [hostName, setHostName] = useState("");
   const [dir, setDir] = useState(DEFAULT_CONFIG_DIR);
   const [creating, setCreating] = useState(false);
@@ -56,7 +53,7 @@ export function CreateSource({ onCreated }: CreateSourceProps) {
       // deprecated(orpc): replace with client/orpc from @/lib/orpc
       const normalized = await tauriAPI.path.normalize(dir.trim() || DEFAULT_CONFIG_DIR);
       await prepareNewDir(normalized);
-      await bootstrap(host);
+      await bootstrap(host, templateId);
       const storeError = useUiState.getState().error;
       if (storeError) {
         setError(storeError);
@@ -157,7 +154,7 @@ export function CreateSource({ onCreated }: CreateSourceProps) {
         />
         <p className="text-muted-foreground text-xs">
           We&apos;ll write a <code className="font-mono">flake.nix</code> here and initialize git.
-          You can push it to GitHub anytime later.
+          Custom paths are symlinked to <code className="font-mono">/etc/nix-darwin</code>.
         </p>
       </div>
 

@@ -1,23 +1,21 @@
 import { PreviewIndicator } from "@/components/preview-indicator/preview-indicator";
-import { orpc } from "@/lib/orpc";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { orpc, queryClient } from "@/lib/orpc";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
 
 function PreviewIndicatorWindow() {
-  const queryClient = useQueryClient();
   const {
     data: state,
     error,
   } = useQuery(orpc.previewIndicator.getState.queryOptions());
-  const updatePreviewIndicator = useMutation(orpc.previewIndicator.update.mutationOptions({
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: orpc.previewIndicator.key() });
-    },
-  }));
-
+  useEffect(() => {
+    if (state) {
+      console.log("state", state);
+    }
+  }, [state]);
 
   const handleClick = async () => {
     // Show and focus the main window via Tauri command
@@ -30,32 +28,32 @@ function PreviewIndicatorWindow() {
   };
 
   // DEBUG: Show error or loading state
-  if (error) {
-    return (
-      <div style={{ background: "red", color: "white", padding: 8, fontSize: 12 }}>
-        Error: {error.message}
-      </div>
-    );
-  }
+  // if (error) {
+  //   return (
+  //     <div style={{ background: "red", color: "white", padding: 8, fontSize: 12 }}>
+  //       Error: {error.message}
+  //     </div>
+  //   );
+  // }
 
-  if (!state) {
-    return (
-      <div style={{ background: "blue", color: "white", padding: 8, fontSize: 12 }}>
-        Loading...
-      </div>
-    );
-  }
+  // if (!state) {
+  //   return (
+  //     <div style={{ background: "blue", color: "white", padding: 8, fontSize: 12 }}>
+  //       Loading...
+  //     </div>
+  //   );
+  // }
 
   return (
     <PreviewIndicator
-      additions={state.additions ?? undefined}
-      deletions={state.deletions ?? undefined}
+      additions={state?.additions ?? undefined}
+      deletions={state?.deletions ?? undefined}
       disableExpansion
-      filesChanged={state.filesChanged}
-      isLoading={state.isLoading}
+      filesChanged={state?.filesChanged}
+      isLoading={state?.isLoading}
       onClick={handleClick}
-      summary={state.summary ?? undefined}
-      visible={state.visible}
+      summary={state?.summary ?? undefined}
+      visible={state?.visible ?? false}
     />
   );
 }
@@ -64,7 +62,9 @@ const rootElement = document.getElementById("root");
 if (rootElement) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-      <PreviewIndicatorWindow />
+      <QueryClientProvider client={queryClient}>
+        <PreviewIndicatorWindow />
+      </QueryClientProvider>
     </React.StrictMode>,
   );
 }

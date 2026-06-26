@@ -1,6 +1,6 @@
 use super::helpers::{capture_err, handle_new_config_dir};
 use crate::bootstrap::{default_config, import};
-use crate::storage::store;
+use crate::storage::{canonical_config, store};
 use crate::{shared_types, types, utils};
 use std::path::{Component, Path, PathBuf};
 use tauri::AppHandle;
@@ -63,6 +63,7 @@ pub async fn config_set_dir(
     let prev_dir = store::get_config_dir(&app).ok();
     let new_dir = normalized_dir.to_string_lossy().to_string();
     store::set_config_dir(&app, &new_dir).map_err(|e| capture_err("config_set_dir", e))?;
+    store::sync_canonical_config_link(&new_dir).map_err(|e| capture_err("config_set_dir", e))?;
 
     let changed = prev_dir.as_deref() != Some(&new_dir);
     if changed {
@@ -96,6 +97,10 @@ fn is_dir_empty_or_only_git(path: &Path) -> Result<bool, String> {
 }
 
 fn validate_new_dir_location(path: &Path) -> Result<(), String> {
+    if canonical_config::is_canonical_config_path(path) {
+        return Ok(());
+    }
+
     let home = dirs::home_dir().ok_or_else(|| "Failed to resolve home directory".to_string())?;
     let relative = path.strip_prefix(&home).map_err(|_| {
         "New configuration directories must be created directly in your home directory".to_string()
@@ -138,17 +143,10 @@ pub async fn config_prepare_new_dir(
         );
     }
 
-    std::fs::create_dir_all(p).map_err(|e| {
-        format!(
-            "Failed to create directory {}: {}",
-            normalized_dir.display(),
-            e
-        )
-    })?;
-
     let prev_dir = store::get_config_dir(&app).ok();
     let new_dir = normalized_dir.to_string_lossy().to_string();
     store::set_config_dir(&app, &new_dir).map_err(|e| capture_err("config_prepare_new_dir", e))?;
+    store::ensure_config_dir_exists(&app).map_err(|e| capture_err("config_prepare_new_dir", e))?;
 
     let changed = prev_dir.as_deref() != Some(&new_dir);
     if changed {
@@ -231,25 +229,30 @@ pub async fn path_normalize(_app: AppHandle, input: String) -> Result<String, St
 
 /// Creates a new nix-darwin configuration from the bundled template.
 #[tauri::command]
-pub async fn bootstrap_default_config(app: AppHandle, hostname: String) -> Result<(), String> {
-    default_config::bootstrap(&app, &hostname)
+pub async fn bootstrap_default_config(
+    app: AppHandle,
+    hostname: String,
+    template_id: Option<String>,
+) -> Result<(), String> {
+    default_config::bootstrap_with_template(&app, &hostname, template_id.as_deref())
 }
 
-/// Resolves an optional directory name into an absolute, home-relative target
-/// for an imported configuration. Defaults to `~/.darwin`.
+/// Resolves an optional directory name into an absolute target for an imported
+/// configuration. Defaults to `/etc/nix-darwin`.
 fn resolve_import_target(dir_name: Option<String>) -> Result<PathBuf, String> {
-    let name = dir_name
-        .as_deref()
-        .map(str::trim)
-        .filter(|n| !n.is_empty())
-        .unwrap_or(".darwin");
+    let name = dir_name.as_deref().map(str::trim).filter(|n| !n.is_empty());
 
-    if name.contains('/') || name == "." || name == ".." {
-        return Err("Use a directory name, not a path".to_string());
+    if let Some(name) = name {
+        if name.contains('/') || name == "." || name == ".." {
+            return Err("Use a directory name, not a path".to_string());
+        }
+
+        let home =
+            dirs::home_dir().ok_or_else(|| "Failed to resolve home directory".to_string())?;
+        return Ok(home.join(name));
     }
 
-    let home = dirs::home_dir().ok_or_else(|| "Failed to resolve home directory".to_string())?;
-    Ok(home.join(name))
+    Ok(PathBuf::from(canonical_config::CANONICAL_CONFIG_DIR))
 }
 
 /// Returns true when `path` is absent or an empty directory (ignoring Finder
@@ -303,6 +306,8 @@ fn finalize_imported_dir(
 ) -> Result<shared_types::SetDirResult, String> {
     let new_dir = target.to_string_lossy().to_string();
     store::set_config_dir(app, &new_dir).map_err(|e| capture_err("finalize_imported_dir", e))?;
+    store::sync_canonical_config_link(&new_dir)
+        .map_err(|e| capture_err("finalize_imported_dir", e))?;
     handle_new_config_dir(app, &new_dir).map_err(|e| capture_err("finalize_imported_dir", e))?;
     Ok(shared_types::SetDirResult {
         dir: new_dir,

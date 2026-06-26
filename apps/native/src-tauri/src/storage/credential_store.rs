@@ -1,5 +1,8 @@
 #![allow(dead_code)] // Legacy credential migration helpers are retained for upgrade paths.
 
+use std::fs;
+use std::io::{ErrorKind, Write};
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::{AppHandle, Runtime};
 use tauri_plugin_keyring::KeyringExt;
@@ -72,6 +75,88 @@ impl<R: Runtime> CredentialStore for KeychainStore<R> {
             Err(e) => Err(CredentialStoreError::Keychain(e.to_string())),
         }
     }
+}
+
+pub struct FileStore {
+    path: PathBuf,
+}
+
+impl FileStore {
+    pub fn new(path: impl AsRef<Path>) -> Self {
+        Self {
+            path: path.as_ref().to_path_buf(),
+        }
+    }
+}
+
+impl CredentialStore for FileStore {
+    fn get(&self) -> Result<Option<String>, CredentialStoreError> {
+        match fs::read_to_string(&self.path) {
+            Ok(value) => Ok(Some(value)),
+            Err(err) if err.kind() == ErrorKind::NotFound => Ok(None),
+            Err(err) => Err(CredentialStoreError::Storage(err.to_string())),
+        }
+    }
+
+    fn set(&self, value: &str) -> Result<(), CredentialStoreError> {
+        if let Some(parent) = self.path.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|err| CredentialStoreError::Storage(err.to_string()))?;
+            set_private_dir_permissions(parent)?;
+        }
+
+        let mut options = fs::OpenOptions::new();
+        options.create(true).write(true).truncate(true);
+        set_private_file_mode(&mut options);
+
+        let mut file = options
+            .open(&self.path)
+            .map_err(|err| CredentialStoreError::Storage(err.to_string()))?;
+        file.write_all(value.as_bytes())
+            .map_err(|err| CredentialStoreError::Storage(err.to_string()))?;
+        set_private_file_permissions(&self.path)
+    }
+
+    fn delete(&self) -> Result<(), CredentialStoreError> {
+        match fs::remove_file(&self.path) {
+            Ok(()) => Ok(()),
+            Err(err) if err.kind() == ErrorKind::NotFound => Ok(()),
+            Err(err) => Err(CredentialStoreError::Storage(err.to_string())),
+        }
+    }
+}
+
+#[cfg(unix)]
+fn set_private_file_mode(options: &mut fs::OpenOptions) {
+    use std::os::unix::fs::OpenOptionsExt;
+    options.mode(0o600);
+}
+
+#[cfg(not(unix))]
+fn set_private_file_mode(_options: &mut fs::OpenOptions) {}
+
+#[cfg(unix)]
+fn set_private_dir_permissions(path: &Path) -> Result<(), CredentialStoreError> {
+    use std::os::unix::fs::PermissionsExt;
+    fs::set_permissions(path, fs::Permissions::from_mode(0o700))
+        .map_err(|err| CredentialStoreError::Storage(err.to_string()))
+}
+
+#[cfg(not(unix))]
+fn set_private_dir_permissions(_path: &Path) -> Result<(), CredentialStoreError> {
+    Ok(())
+}
+
+#[cfg(unix)]
+fn set_private_file_permissions(path: &Path) -> Result<(), CredentialStoreError> {
+    use std::os::unix::fs::PermissionsExt;
+    fs::set_permissions(path, fs::Permissions::from_mode(0o600))
+        .map_err(|err| CredentialStoreError::Storage(err.to_string()))
+}
+
+#[cfg(not(unix))]
+fn set_private_file_permissions(_path: &Path) -> Result<(), CredentialStoreError> {
+    Ok(())
 }
 
 fn is_not_found_keyring_error<E: std::fmt::Display + std::fmt::Debug>(err: &E) -> bool {
@@ -247,6 +332,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     struct FailingSetStore;
 
@@ -307,5 +393,46 @@ mod tests {
 
         assert!(result.is_err());
         assert_eq!(legacy.get().unwrap().as_deref(), Some("legacy-secret"));
+    }
+
+    #[test]
+    fn file_store_round_trips_and_deletes_secret() {
+        let temp = tempfile::tempdir().unwrap();
+        let path: PathBuf = temp.path().join("openaiApiKey");
+        let store = FileStore::new(&path);
+
+        assert_eq!(store.get().unwrap(), None);
+
+        store.set("dev-secret").unwrap();
+        assert_eq!(store.get().unwrap().as_deref(), Some("dev-secret"));
+
+        store.delete().unwrap();
+        assert_eq!(store.get().unwrap(), None);
+    }
+
+    #[test]
+    fn file_store_delete_ignores_missing_file() {
+        let temp = tempfile::tempdir().unwrap();
+        let store = FileStore::new(temp.path().join("missing"));
+
+        store.delete().unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn file_store_uses_private_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = tempfile::tempdir().unwrap();
+        let dir = temp.path().join("cache");
+        let path = dir.join("openaiApiKey");
+        let store = FileStore::new(&path);
+
+        store.set("dev-secret").unwrap();
+
+        let dir_mode = fs::metadata(&dir).unwrap().permissions().mode() & 0o777;
+        let file_mode = fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(dir_mode, 0o700);
+        assert_eq!(file_mode, 0o600);
     }
 }

@@ -1,5 +1,6 @@
 import { uiActions } from "@nixmac/state";
-import { tauriAPI } from "@/ipc/api";
+import type { FileDiffContents } from "@/ipc/types";
+import { client } from "@/lib/orpc";
 import { refreshGitSnapshot } from "@/viewmodel/git";
 import { refreshHostsSnapshot } from "@/viewmodel/preferences";
 import { toast } from "sonner";
@@ -22,13 +23,20 @@ export const prefetchFileDiffContents = async (
     return;
   }
   try {
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    const result = await tauriAPI.git.fileDiffContents(filenames);
-    setFileDiffContents(result ?? {});
+    const result = await client.git.fileDiffContents({ filenames });
+    setFileDiffContents(compactFileDiffContents(result));
   } catch {
     setFileDiffContents({});
   }
 };
+
+function compactFileDiffContents(
+  contents: Partial<Record<string, FileDiffContents>>,
+): Record<string, FileDiffContents> {
+  return Object.fromEntries(
+    Object.entries(contents).filter((entry): entry is [string, FileDiffContents] => entry[1] != null),
+  );
+}
 
 export const refreshGitStatus = async () => {
   try {
@@ -52,8 +60,7 @@ const handleCommit = async ({ message }: { message: string }) => {
   try {
     // The backend clears the evolve state, refreshes the git-state cell, and
     // resets the change-map cell; the `*_changed` events mirror everything.
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    await tauriAPI.git.commit(message);
+    await client.git.commit({ message });
     uiActions.appendLog("✓ Committed successfully\n");
     uiActions.setError(null);
     toast.success("Committed successfully");

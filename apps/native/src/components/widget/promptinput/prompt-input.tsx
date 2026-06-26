@@ -13,6 +13,7 @@ import { BeginEvolveWarning } from "@/components/widget/promptinput/begin-evolve
 import { HomebrewBadge } from "@/components/widget/promptinput/homebrew-badge";
 import { MacRecommendationChip } from "@/components/widget/promptinput/mac-recommendation-chip";
 import { PromptHistoryBadge } from "@/components/widget/promptinput/prompt-history-badge";
+import { STARTER_PROMPT_CHIPS } from "@/components/widget/promptinput/starter-prompts";
 import { SystemDefaultsCTA } from "@/components/widget/promptinput/system-defaults-cta";
 import { useEvolve } from "@/hooks/use-evolve";
 import { tauriAPI } from "@/ipc/api";
@@ -22,8 +23,6 @@ import { ArrowUpIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const MAX_CONTEXT_LENGTH = 1000;
-
-const STATIC_SUGGESTIONS = ["Install vim", "Add Rectangle app"];
 
 export function PromptInput() {
   const evolvePrompt = useUiState((s) => s.evolvePrompt);
@@ -215,9 +214,12 @@ export function PromptInput() {
 
       <div className="flex items-start gap-1">
         <div className="flex flex-wrap items-center gap-1">
-          {STATIC_SUGGESTIONS.map((suggestion) => (
-            <BadgeButton key={suggestion} onClick={() => uiActions.setEvolvePrompt(suggestion)}>
-              {suggestion}
+          {STARTER_PROMPT_CHIPS.map((suggestion) => (
+            <BadgeButton
+              key={suggestion.id}
+              onClick={() => uiActions.setEvolvePrompt(suggestion.prompt)}
+            >
+              {suggestion.label}
             </BadgeButton>
           ))}
           <MacRecommendationChip />

@@ -1,20 +1,12 @@
-# Mac Studio - Darwin system configuration
-{
-  config,
-  pkgs,
-  lib,
-  inputs,
-  hostname,
-  user,
-  ...
-}:
+# Generated Darwin system configuration
+{ ... }:
 
 {
   # Machine-specific network settings
   networking = {
-    hostName = "coopers-mac-pro";
-    computerName = "mac-pro";
-    localHostName = "mac-pro";
+    hostName = "HOSTNAME_PLACEHOLDER";
+    computerName = "HOSTNAME_PLACEHOLDER";
+    localHostName = "HOSTNAME_PLACEHOLDER";
   };
 
   # Machine-specific system defaults (uses common defaults, override here if needed)

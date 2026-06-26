@@ -92,6 +92,27 @@ vi.mock("@/ipc/api", () => ({
   },
 }));
 
+vi.mock("@/lib/orpc", () => ({
+  client: {
+    darwin: {
+      rebuildStatus: vi.fn<() => Promise<RebuildStatus | null>>(() =>
+        Promise.resolve(apiMocks.rebuildStatus),
+      ),
+    },
+    evolveState: {
+      get: vi.fn<() => Promise<EvolveState>>(() => Promise.resolve(apiMocks.evolveState)),
+    },
+    summarizedChanges: {
+      getChangeMap: vi.fn<() => Promise<SemanticChangeMap>>(() =>
+        Promise.resolve(apiMocks.changeMap),
+      ),
+    },
+    history: {
+      get: vi.fn<() => Promise<never[]>>(() => Promise.resolve([])),
+    },
+  },
+}));
+
 describe("view model sync", () => {
   beforeEach(() => {
     apiMocks.listeners.clear();

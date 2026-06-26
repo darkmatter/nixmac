@@ -2,6 +2,7 @@ import { EVOLUTION_CANCELLED_MSG } from "@/lib/constants";
 import { uiActions, useUiState } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import { getTelemetry } from "@/lib/telemetry/instance";
+import { client } from "@/lib/orpc";
 
 /**
  * Hook for the evolution operation.
@@ -14,13 +15,11 @@ import { getTelemetry } from "@/lib/telemetry/instance";
  * `darwin:evolve:event` payload, handled by `viewmodel/evolution.ts`.
  */
 const evolveFromManual = async () => {
-  // deprecated(orpc): replace with client/orpc from @/lib/orpc
-  await tauriAPI.darwin.evolveFromManual();
+  await client.darwin.evolveFromManual();
 };
 
 const buildCheck = async () => {
-  // deprecated(orpc): replace with client/orpc from @/lib/orpc
-  return await tauriAPI.darwin.buildCheck();
+  return await client.darwin.buildCheck();
 };
 
 const refreshPromptHistory = async (prompt: string) => {
@@ -57,8 +56,7 @@ const handleEvolve = async () => {
     // git/evolve/change-map cells and emits the terminal `complete` event
     // (with telemetry and any conversational response) before this resolves;
     // the viewmodel sync modules mirror everything.
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    await tauriAPI.darwin.evolve(ui.evolvePrompt);
+    await client.darwin.evolve({ description: ui.evolvePrompt });
 
     uiActions.setEvolvePrompt("");
   } catch (e: unknown) {

@@ -1,10 +1,9 @@
-import { tauriAPI } from "@/ipc/api";
+import { client } from "@/lib/orpc";
 import { viewModelActions } from "@nixmac/state";
 
 export async function refreshHistorySnapshot(): Promise<void> {
   try {
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    const items = await tauriAPI.history.get();
+    const items = await client.history.get();
     viewModelActions.setState({ history: items });
   } catch (error) {
     console.error("[viewmodel] history refresh failed:", error);

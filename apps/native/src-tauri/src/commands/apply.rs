@@ -147,8 +147,7 @@ pub async fn nix_install_start(app: AppHandle) -> Result<shared_types::OkResult,
 
 #[tauri::command]
 pub async fn flake_list_hosts(app: AppHandle) -> Result<Vec<String>, String> {
-    let dir =
-        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("flake_list_hosts", e))?;
+    let dir = store::get_config_dir(&app).map_err(|e| capture_err("flake_list_hosts", e))?;
     let hosts = nix::list_darwin_hosts(&dir).map_err(|e| capture_err("flake_list_hosts", e))?;
     Ok(hosts)
 }

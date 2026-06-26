@@ -1,7 +1,7 @@
 "use client";
 
+import { stepIndex, stepLabel, STEPS } from "@/components/widget/onboarding/lib/onboarding";
 import { OnboardingHeader } from "@/components/widget/onboarding/onboarding-header";
-import { stepLabel } from "@/components/widget/onboarding/lib/onboarding";
 import { OnboardingSidebar } from "@/components/widget/onboarding/onboarding-sidebar";
 import { OnboardingStepContent } from "@/components/widget/onboarding/onboarding-step-content";
 import { useOnboardingFlow } from "@/components/widget/onboarding/use-onboarding-flow";
@@ -20,16 +20,17 @@ export function OnboardingFlow() {
       className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-y-auto px-4 py-8 sm:px-6"
       data-testid="onboarding-flow"
     >
-      <OnboardingHeader title={stepLabel(activeStep)} />
+      <OnboardingHeader title={`Step ${stepIndex(activeStep) + 1} of ${STEPS.length}`} />
 
       <div className="grid flex-1 gap-8 md:grid-cols-[220px_1fr]">
         <OnboardingSidebar
+
           activeStep={activeStep}
           furthestStep={furthestStep}
           progress={progress}
           onStepSelect={goToStep}
         />
-        <OnboardingStepContent currentStep={activeStep} />
+        <OnboardingStepContent currentStep={activeStep} title={stepLabel(activeStep)} />
       </div>
     </div>
   );

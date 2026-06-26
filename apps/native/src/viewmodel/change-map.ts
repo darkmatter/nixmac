@@ -1,5 +1,5 @@
-import { tauriAPI } from "@/ipc/api";
 import type { SemanticChangeMap } from "@/ipc/types";
+import { client } from "@/lib/orpc";
 import { viewModelActions } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
 import { refreshHistorySnapshot } from "./history";
@@ -15,8 +15,7 @@ export function clearChangeMap(): void {
 
 export function startChangeMapSync(): Promise<() => void> {
   return bindBackendSlice({
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    hydrate: () => tauriAPI.summarizedChanges.getChangeMap(),
+    hydrate: () => client.summarizedChanges.getChangeMap(),
     event: "change_map_changed",
     mirror: mirrorChangeMapState,
     onEvent: () => void refreshHistorySnapshot(),

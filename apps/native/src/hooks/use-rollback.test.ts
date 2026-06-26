@@ -10,8 +10,8 @@ const mocks = vi.hoisted(() => ({
   triggerRebuild: vi.fn(),
 }));
 
-vi.mock("@/ipc/api", () => ({
-  tauriAPI: {
+vi.mock("@/lib/orpc", () => ({
+  client: {
     darwin: {
       finalizeRollback: mocks.finalizeRollback,
       rollbackErase: mocks.rollbackErase,
@@ -94,7 +94,32 @@ describe("useRollback", () => {
       await onSuccess();
     });
 
-    expect(mocks.finalizeRollback).toHaveBeenCalledWith("/nix/store/old-system", 1);
+    expect(mocks.finalizeRollback).toHaveBeenCalledWith({
+      storePath: "/nix/store/old-system",
+      changesetId: 1,
+    });
+  });
+
+  it("preserves a null rollback changeset id when finalizing after rebuild", async () => {
+    mocks.rollbackErase.mockResolvedValue({
+      rollbackChangesetId: null,
+      rollbackStorePath: "/nix/store/old-system",
+    });
+    const { result } = renderHook(() => useRollback());
+
+    await act(async () => {
+      await result.current.handleRollback();
+    });
+
+    const onSuccess = mocks.triggerRebuild.mock.calls[0][0].onSuccess as () => Promise<void>;
+    await act(async () => {
+      await onSuccess();
+    });
+
+    expect(mocks.finalizeRollback).toHaveBeenCalledWith({
+      storePath: "/nix/store/old-system",
+      changesetId: null,
+    });
   });
 
   it("releases processing immediately when there is nothing to rebuild", async () => {

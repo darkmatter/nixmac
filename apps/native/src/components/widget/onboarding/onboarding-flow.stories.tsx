@@ -2,9 +2,9 @@
 import preview from "#storybook/preview";
 import type React from "react";
 import { useEffect, useRef } from "react";
+import { FALLBACK_HOSTED_PAYG_PRODUCT } from "@/components/widget/onboarding/lib/inference";
 import { OnboardingFlow } from "@/components/widget/onboarding/onboarding-flow";
-import { onboardingActions, useOnboarding, viewModelActions } from "@nixmac/state";
-import { useViewModel } from "@nixmac/state";
+import { onboardingActions, viewModelActions } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 
 /**
@@ -165,6 +165,11 @@ const BUILD_LINES = [
   "✓ switched to configuration 'macbook-pro'.",
 ];
 
+const DEMO_HOSTED_PAYG_PRODUCT = {
+  ...FALLBACK_HOSTED_PAYG_PRODUCT,
+  productId: "prod_demo_payg",
+};
+
 /**
  * Patches the Storybook tauriAPI singleton so onboarding actions drive the
  * real ViewModel/onboarding stores. Returns a restore fn to undo the patches
@@ -266,6 +271,14 @@ function installBackend(startAt: string) {
   const patch = (obj: Record<string, any>, key: string, fn: unknown) => {
     saved.push([obj, key, obj[key]]);
     obj[key] = fn;
+  };
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    if (url.includes("/api/billing/payg-product")) {
+      return Response.json({ paygProduct: DEMO_HOSTED_PAYG_PRODUCT });
+    }
+    return originalFetch(input, init);
   };
 
   const setConfigWithHosts = (dir: string) => {
@@ -388,6 +401,12 @@ function installBackend(startAt: string) {
     account: { email },
     credentialId: "demo",
   }));
+  patch(tauriAPI.account, "sendOtp", async () => undefined);
+  patch(tauriAPI.account, "verifyOtp", async (email: string) => ({
+    signedIn: true,
+    account: { email },
+    credentialId: "demo",
+  }));
   ensure("ui");
   patch(tauriAPI.ui, "setPrefs", async () => ({ ok: true }));
   patch(tauriAPI.ui, "getPrefs", async () => ({}));
@@ -424,6 +443,7 @@ function installBackend(startAt: string) {
 
   return () => {
     timers.forEach(clearTimeout);
+    globalThis.fetch = originalFetch;
     for (const [obj, key, value] of saved) obj[key] = value;
   };
 }

@@ -1,28 +1,33 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  BYOK_PROVIDERS,
+  FALLBACK_HOSTED_PAYG_PRODUCT,
+  parseHostedPaygProductResponse,
+  validateKeyFormat,
+  type HostedPaygProduct,
+  type InferenceConfig,
+  type InferenceMode,
+} from "@/components/widget/onboarding/lib/inference";
+import { tauriAPI } from "@/ipc/api";
+import { getWebSiteUrl } from "@/lib/env";
+import { getTelemetry } from "@/lib/telemetry/instance";
+import { cn } from "@/lib/utils";
+import NixmacIcon from "@nixmac/ui/components/icon";
+import { open } from "@tauri-apps/plugin-shell";
 import {
   Check,
   CreditCard,
-  Globe,
   KeyRound,
   Loader2,
   Lock,
   ShieldCheck,
   TriangleAlert,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  BYOK_PROVIDERS,
-  HOSTED_PLANS,
-  validateKeyFormat,
-  type InferenceConfig,
-  type InferenceMode,
-} from "@/components/widget/onboarding/lib/inference";
-import { tauriAPI } from "@/ipc/api";
-import { cn } from "@/lib/utils";
-import { getTelemetry } from "@/lib/telemetry/instance";
 import posthog from "posthog-js";
+import type React from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface InferenceSetupProps {
   onConfigured: (config: InferenceConfig) => void;
@@ -36,7 +41,7 @@ export function InferenceSetup({ onConfigured }: InferenceSetupProps) {
       <div role="tablist" aria-label="Inference method" className="grid grid-cols-2 gap-2">
         <ModeCard
           active={mode === "hosted"}
-          icon={Globe}
+          icon={<NixmacIcon className="size-6 bg-none" />}
           title="nixmac hosted"
           blurb="We run the models. Sign in and add a payment method."
           badge="Recommended"
@@ -44,7 +49,7 @@ export function InferenceSetup({ onConfigured }: InferenceSetupProps) {
         />
         <ModeCard
           active={mode === "byok"}
-          icon={KeyRound}
+          icon={<KeyRound className="size-4" />}
           title="Bring your own key"
           blurb="Use your own provider account and API key."
           onClick={() => setMode("byok")}
@@ -62,14 +67,14 @@ export function InferenceSetup({ onConfigured }: InferenceSetupProps) {
 
 function ModeCard({
   active,
-  icon: Icon,
+  icon,
   title,
   blurb,
   badge,
   onClick,
 }: {
   active: boolean;
-  icon: typeof Globe;
+  icon: React.ReactNode;
   title: string;
   blurb: string;
   badge?: string;
@@ -90,11 +95,11 @@ function ModeCard({
         <span
           className={cn(
             "flex size-8 items-center justify-center rounded-lg",
-            active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+            active ? "bg-zinc-700/80 text-primary-foreground" : "bg-none text-muted-foreground",
           )}
           aria-hidden="true"
         >
-          <Icon className="size-4" />
+          {icon}
         </span>
         <span className="font-medium text-sm">{title}</span>
         {badge ? (
@@ -112,53 +117,174 @@ function ModeCard({
 
 type HostedStage = "account" | "payment";
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function otpErrorMessage(error: unknown): string {
+  const message = errorMessage(error);
+  if (/otp|code|verification|invalid|expired/i.test(message)) {
+    return "That code is invalid or expired. Request a new code and try again.";
+  }
+  return message;
+}
+
+function accountNameFromEmail(email: string): string {
+  return email.split("@")[0]?.trim() || "nixmac";
+}
+
+async function openExternal(url: string) {
+  try {
+    await open(url);
+  } catch {
+    window.open(url, "_blank");
+  }
+}
+
+async function loadHostedPaygProduct(): Promise<HostedPaygProduct> {
+  const base = getWebSiteUrl().replace(/\/$/, "");
+  const response = await fetch(`${base}/api/billing/payg-product`, {
+    headers: { accept: "application/json" },
+  });
+  if (!response.ok) {
+    throw new Error(`Could not load Polar PAYG product (${response.status})`);
+  }
+  return parseHostedPaygProductResponse(await response.json());
+}
+
 function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) => void }) {
   const [stage, setStage] = useState<HostedStage>("account");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [plan, setPlan] = useState("starter");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [paygProduct, setPaygProduct] = useState<HostedPaygProduct>(FALLBACK_HOSTED_PAYG_PRODUCT);
+  const [paygProductLoaded, setPaygProductLoaded] = useState(false);
+  const [paygProductLoading, setPaygProductLoading] = useState(false);
+  const [paygProductError, setPaygProductError] = useState<string | null>(null);
+  const [creditAmount, setCreditAmount] = useState(25);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [card, setCard] = useState("");
-  const [exp, setExp] = useState("");
-  const [cvc, setCvc] = useState("");
+  const [zipCode, setZipCode] = useState("");
+  const [country, setCountry] = useState("US");
 
-  const emailValid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
-  const accountReady = emailValid && password.length >= 8;
-  const cardReady = card.replace(/\s/g, "").length >= 15 && exp.length >= 4 && cvc.length >= 3;
+  const normalizedEmail = email.trim();
+  const emailValid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalizedEmail);
+  const accountReady = emailValid && (!otpSent || otp.trim().length > 0);
+  const amountWithinBounds =
+    creditAmount >= paygProduct.minimumAmountUsd &&
+    (paygProduct.maximumAmountUsd === undefined || creditAmount <= paygProduct.maximumAmountUsd);
+  const cardReady =
+    paygProductLoaded &&
+    amountWithinBounds &&
+    zipCode.trim().length > 0 &&
+    country.trim().length > 0;
 
-  async function submitAccount() {
-    if (!accountReady) return;
+  useEffect(() => {
+    if (stage !== "payment") return;
+    let cancelled = false;
+    setPaygProductLoading(true);
+    setPaygProductLoaded(false);
+    setPaygProductError(null);
+    loadHostedPaygProduct()
+      .then((product) => {
+        if (cancelled) return;
+        setPaygProduct(product);
+        setPaygProductLoaded(true);
+        setCreditAmount((current) =>
+          Math.max(
+            product.minimumAmountUsd,
+            Math.min(current, product.maximumAmountUsd ?? current),
+          ),
+        );
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) {
+          setPaygProductLoaded(false);
+          setPaygProductError(errorMessage(e));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setPaygProductLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [stage]);
+
+  async function sendSignInCode() {
+    if (!emailValid) return;
     setWorking(true);
     setError(null);
     try {
-      // Real account credential exchange via the backend.
       // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      await tauriAPI.account.signIn(email, password);
-      posthog.identify(email, { email });
-      getTelemetry().captureEvent({ name: "account_signed_in" });
-      setStage("payment");
+      await tauriAPI.account.sendOtp(normalizedEmail);
+      setOtp("");
+      setOtpSent(true);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setWorking(false);
     }
   }
 
-  function submitPayment() {
+  function changeEmail() {
+    setOtp("");
+    setOtpSent(false);
+    setError(null);
+  }
+
+  async function verifySignInCode() {
+    if (!accountReady || !otpSent) return;
+    setWorking(true);
+    setError(null);
+    try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
+      await tauriAPI.account.verifyOtp(
+        normalizedEmail,
+        otp.trim(),
+        accountNameFromEmail(normalizedEmail),
+      );
+      setEmail(normalizedEmail);
+      setOtp("");
+      posthog.identify(normalizedEmail, { email: normalizedEmail });
+      getTelemetry().captureEvent({ name: "account_signed_in" });
+      setStage("payment");
+    } catch (e: unknown) {
+      setError(otpErrorMessage(e));
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function submitPayment() {
     if (!cardReady) return;
     setWorking(true);
-    // TODO(billing): no payment backend yet — simulate tokenization then record
-    // the hosted choice. Account sign-in above is real.
-    setTimeout(() => {
+    setError(null);
+    try {
+      const checkoutUrl = await tauriAPI.account.createPaygCheckout(
+        creditAmount,
+        country,
+        zipCode.trim(),
+      );
+      await openExternal(checkoutUrl);
+      getTelemetry().captureEvent({
+        name: "inference_configured",
+        props: { mode: "hosted" },
+      });
+      onConfigured({ mode: "hosted", email, plan: `${paygProduct.slug}:${creditAmount}` });
+    } catch (e: unknown) {
+      setError(errorMessage(e));
+    } finally {
       setWorking(false);
-      getTelemetry().captureEvent({ name: "inference_configured", props: { mode: "hosted" } });
-      onConfigured({ mode: "hosted", email, plan });
-    }, 1200);
+    }
   }
 
   if (stage === "account") {
+    const accountAction = otpSent ? verifySignInCode : sendSignInCode;
+    const accountBusyLabel = otpSent ? "Verifying code…" : "Sending code…";
+    const accountLabel = otpSent ? "Verify code and continue" : "Send sign-in code";
+
     return (
       <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5">
         <p className="font-semibold text-sm">Sign in to nixmac</p>
@@ -174,33 +300,61 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
             autoComplete="email"
+            disabled={otpSent || working}
             className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="inf-password" className="font-medium text-sm">
-            Password
-          </label>
-          <input
-            id="inf-password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="At least 8 characters"
-            autoComplete="current-password"
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        </div>
+        {otpSent ? (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="inf-otp" className="font-medium text-sm">
+                Verification code
+              </label>
+              <input
+                id="inf-otp"
+                type="text"
+                inputMode="numeric"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                placeholder="Enter the code from your email"
+                autoComplete="one-time-code"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3 text-xs">
+              <button
+                type="button"
+                onClick={sendSignInCode}
+                disabled={working || !emailValid}
+                className="font-medium text-primary hover:underline disabled:pointer-events-none disabled:opacity-50"
+              >
+                Resend code
+              </button>
+              <button
+                type="button"
+                onClick={changeEmail}
+                disabled={working}
+                className="text-muted-foreground hover:underline disabled:pointer-events-none disabled:opacity-50"
+              >
+                Change email
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="text-muted-foreground text-xs">
+            We&apos;ll email you a one-time code to sign in or create your nixmac account.
+          </p>
+        )}
 
-        <Button onClick={submitAccount} disabled={!accountReady || working}>
+        <Button onClick={accountAction} disabled={!accountReady || working}>
           {working ? (
             <>
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-              Signing in…
+              {accountBusyLabel}
             </>
           ) : (
-            "Sign in & continue"
+            accountLabel
           )}
         </Button>
         {error ? <p className="text-destructive text-xs">{error}</p> : null}
@@ -223,110 +377,122 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
       </div>
 
       <fieldset>
-        <legend className="mb-2 font-medium text-sm">Choose a plan</legend>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {HOSTED_PLANS.map((p) => {
-            const active = plan === p.id;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                aria-pressed={active}
-                onClick={() => setPlan(p.id)}
-                className={cn(
-                  "flex flex-col gap-0.5 rounded-lg border p-3 text-left transition-colors",
-                  active
-                    ? "border-primary bg-primary/5"
-                    : "border-border bg-background hover:bg-accent",
-                )}
-              >
-                <span className="flex items-center gap-1.5 font-medium text-sm">
-                  {p.name}
-                  {p.recommended ? (
-                    <span className="rounded-full bg-success/15 px-1.5 py-0.5 font-semibold text-[10px] text-success">
-                      Popular
-                    </span>
-                  ) : null}
-                </span>
-                <span className="font-mono text-foreground text-xs">{p.price}</span>
-                <span className="text-pretty text-muted-foreground text-xs">{p.blurb}</span>
-              </button>
-            );
-          })}
+        <legend className="mb-2 font-medium text-sm">Choose credit top-up</legend>
+        <p className="mb-3 text-muted-foreground text-xs">
+          Type the hosted inference credit you want to add. Your nixmac subscription includes device syncing
+          across Macs.
+        </p>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="credit-amount" className="font-medium text-sm">
+            Credit amount
+          </label>
+          <div className="relative">
+            <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground text-sm">
+              $
+            </span>
+            <input
+              id="credit-amount"
+              type="number"
+              min={paygProduct.minimumAmountUsd}
+              max={paygProduct.maximumAmountUsd}
+              step={1}
+              value={creditAmount}
+              onChange={(e) => setCreditAmount(Number(e.target.value))}
+              className="w-full rounded-lg border border-input bg-background py-2 pr-3 pl-7 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+          <p className="text-muted-foreground text-xs">
+            {paygProduct.name}
+            {paygProductLoaded
+              ? ` via Polar PAYG (${paygProduct.currency.toUpperCase()})`
+              : " via Polar PAYG"}
+            . Minimum ${paygProduct.minimumAmountUsd}
+            {paygProduct.maximumAmountUsd ? `, maximum $${paygProduct.maximumAmountUsd}` : ""}.
+          </p>
         </div>
+        {paygProductLoading ? (
+          <p className="mt-2 flex items-center gap-1.5 text-muted-foreground text-xs">
+            <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+            Loading Polar PAYG product…
+          </p>
+        ) : null}
+        {paygProductError ? (
+          <p className="mt-2 text-destructive text-xs">
+            {paygProductError}. Check the billing server connection before continuing.
+          </p>
+        ) : null}
+        {!amountWithinBounds ? (
+          <p className="mt-2 text-destructive text-xs">
+            Enter an amount between ${paygProduct.minimumAmountUsd}
+            {paygProduct.maximumAmountUsd ? ` and $${paygProduct.maximumAmountUsd}` : " or more"}.
+          </p>
+        ) : null}
       </fieldset>
 
       <div className="flex flex-col gap-3">
         <p className="flex items-center gap-1.5 font-medium text-sm">
           <CreditCard className="size-4 text-muted-foreground" aria-hidden="true" />
-          Payment method
+          Checkout
         </p>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="card-number" className="sr-only">
-            Card number
-          </label>
-          <input
-            id="card-number"
-            inputMode="numeric"
-            value={card}
-            onChange={(e) => setCard(formatCard(e.target.value))}
-            placeholder="1234 5678 9012 3456"
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
+          <p className="text-muted-foreground text-xs">
+            We&apos;ll open Polar to collect payment details securely.
+          </p>
           <div className="flex gap-2">
-            <input
-              aria-label="Expiry date"
-              inputMode="numeric"
-              value={exp}
-              onChange={(e) => setExp(formatExp(e.target.value))}
-              placeholder="MM/YY"
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <input
-              aria-label="CVC"
-              inputMode="numeric"
-              value={cvc}
-              onChange={(e) => setCvc(e.target.value.replace(/\D/g, "").slice(0, 4))}
-              placeholder="CVC"
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
+            <div className="flex flex-1 flex-col gap-1.5">
+              <label htmlFor="billing-zip" className="font-medium text-sm">
+                ZIP code
+              </label>
+              <input
+                id="billing-zip"
+                value={zipCode}
+                onChange={(e) => setZipCode(e.target.value)}
+                placeholder="94107"
+                autoComplete="postal-code"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+            <div className="flex flex-1 flex-col gap-1.5">
+              <label htmlFor="billing-country" className="font-medium text-sm">
+                Country
+              </label>
+              <select
+                id="billing-country"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                autoComplete="country"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="US">United States</option>
+                <option value="CA">Canada</option>
+                <option value="GB">United Kingdom</option>
+                <option value="AU">Australia</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
 
-      <Button onClick={submitPayment} disabled={!cardReady || working}>
+      <Button onClick={submitPayment} disabled={!cardReady || working || paygProductLoading}>
         {working ? (
           <>
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-            Saving payment method…
+            Opening Polar…
           </>
         ) : (
           <>
             <Lock className="size-4" aria-hidden="true" />
-            Save & enable hosted inference
+            Add ${creditAmount}
           </>
         )}
       </Button>
       <p className="flex items-center gap-1.5 text-muted-foreground text-xs">
         <ShieldCheck className="size-3.5 text-success" aria-hidden="true" />
-        Card details are tokenized by our payment processor. Cancel anytime.
+        Card details are handled by Polar. ZIP code and country are used for billing.
       </p>
+      {error ? <p className="text-destructive text-xs">{error}</p> : null}
     </div>
   );
-}
-
-function formatCard(v: string): string {
-  return v
-    .replace(/\D/g, "")
-    .slice(0, 16)
-    .replace(/(.{4})/g, "$1 ")
-    .trim();
-}
-
-function formatExp(v: string): string {
-  const digits = v.replace(/\D/g, "").slice(0, 4);
-  if (digits.length <= 2) return digits;
-  return `${digits.slice(0, 2)}/${digits.slice(2)}`;
 }
 
 /* ------------------------------- BYOK flow ------------------------------- */

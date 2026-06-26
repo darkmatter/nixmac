@@ -31,8 +31,7 @@
           name = "cachix-deploy.json";
           text = builtins.toJSON {
             agents = {
-              "macbook-pro" = self.darwinConfigurations."macbook-pro".system;
-              "mac-pro" = self.darwinConfigurations."mac-pro".system;
+              "HOSTNAME_PLACEHOLDER" = self.darwinConfigurations."HOSTNAME_PLACEHOLDER".system;
             };
           };
         };

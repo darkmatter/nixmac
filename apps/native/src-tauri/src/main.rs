@@ -379,6 +379,9 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
 
             let result = runtime.block_on(async {
                 let app = match tauri::Builder::default()
+                    .plugin(tauri_plugin_os::init())
+                    .plugin(tauri_plugin_deep_link::init())
+                    .plugin(tauri_plugin_opener::init())
                     // Ensure store plugin (and its managed state) is initialized so we can load settings
                     .plugin(tauri_plugin_store::Builder::default().build())
                     .plugin(tauri_plugin_keyring::init())
@@ -503,6 +506,9 @@ fn run_gui_mode(
 
     builder
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_keyring::init())
@@ -518,6 +524,7 @@ fn run_gui_mode(
         .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_upload::init())
         .plugin(tauri_plugin_macos_permissions::init())
+        .plugin(tauri_plugin_macos_passkey::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_orpc::init(orpc_router, |app| orpc::OrpcCtx {
             app: app.clone(),
@@ -545,6 +552,7 @@ fn run_gui_mode(
             commands::account::account_sign_up_web,
             commands::account::account_send_otp,
             commands::account::account_verify_otp,
+            commands::account::account_create_payg_checkout,
             commands::account::account_sign_out,
             commands::account::account_set_server_url,
             commands::account::sync_status,
@@ -982,9 +990,9 @@ fn run_gui_mode(
             let _ = main_window;
 
             // Create the preview indicator window (persistent banner for uncommitted changes)
-            // if let Err(e) = peek::create_preview_indicator_window(handle) {
-            //     log::error!("[peek] ❌ Failed to create preview indicator window: {}", e);
-            // }
+            if let Err(e) = peek::create_preview_indicator_window(handle) {
+                log::error!("[peek] ❌ Failed to create preview indicator window: {}", e);
+            }
 
             // Experimental: create the spinning-mascot indicator window when the
             // flag is enabled at launch. Gated here so users who never enable it

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Check, Loader2, X, Eye, EyeOff } from "lucide-react";
-import type { ApiKeyStatus } from "@/lib/api-key-verification";
+import type { ApiKeyStatus } from "@/lib/providers/api-key-verification";
 import { cn } from "@/lib/utils";
 import type { AnyFieldApi, AnyFormApi } from "@tanstack/react-form";
 

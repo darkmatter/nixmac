@@ -1,5 +1,5 @@
 import { uiActions, viewModelActions } from "@nixmac/state";
-import { tauriAPI } from "@/ipc/api";
+import { client } from "@/lib/orpc";
 
 /**
  * Hook for fetching and managing the AI-generated summary of changes.
@@ -8,8 +8,7 @@ import { tauriAPI } from "@/ipc/api";
  */
 const findChangeMap = async (): Promise<void> => {
   try {
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    await tauriAPI.summarizedChanges.findChangeMap();
+    await client.summarizedChanges.findChangeMap();
   } catch (e) {
     console.error("[SemanticChangeMap] error", e);
   }
@@ -18,8 +17,7 @@ const findChangeMap = async (): Promise<void> => {
 const generateCommitMessage = async () => {
   uiActions.setCommitMessageSuggestion(null);
   try {
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    const message = await tauriAPI.summarizedChanges.generateCommitMessage();
+    const message = await client.summarizedChanges.generateCommitMessage();
     uiActions.setCommitMessageSuggestion(message);
   } catch {
     // Keep null on error — user can type manually
@@ -29,8 +27,7 @@ const generateCommitMessage = async () => {
 const generateCurrentSummary = async () => {
   uiActions.setSummarizing(true);
   try {
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    await tauriAPI.summarizedChanges.summarizeCurrent();
+    await client.summarizedChanges.summarizeCurrent();
   } finally {
     uiActions.setSummarizing(false);
   }

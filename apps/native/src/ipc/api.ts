@@ -6,22 +6,16 @@
  */
 import type {
   AuthStatus,
-  BuildCheckResult,
   CliToolsState,
-  CommitResult,
   ConfigEditApplyResult,
   ConfigurableSchema,
   Config as DarwinConfig,
-  EvolveCancelResult,
-  EvolveState,
   ExportResult,
   FeedbackMetadata,
   FeedbackShareOptions,
-  FileDiffContents,
   GitState,
   GitStatus,
   GlobalPreferences,
-  HistoryItem,
   HomebrewItem,
   HomebrewState,
   ImportResult,
@@ -32,11 +26,7 @@ import type {
   OkResult,
   Permission,
   PermissionsState,
-  PreviewIndicatorState,
-  RebuildStatus,
   RecommendedPrompt,
-  RollbackResult,
-  SemanticChangeMap,
   SetDirResult,
   SyncRemoteStatus,
   SyncResult,
@@ -44,7 +34,8 @@ import type {
   SystemDefaultsScan,
   UpdateInfo,
 } from "@/ipc/types";
-import { client } from "@/lib/orpc";
+import type { StarterTemplateId } from "@/components/widget/onboarding/lib/flake-ref";
+import { client, type PreviewIndicatorState } from "@/lib/orpc";
 import { invoke } from "@tauri-apps/api/core";
 import { type Event, listen, once } from "@tauri-apps/api/event";
 import {
@@ -112,6 +103,9 @@ export const tauriAPI = {
     verifyOtp: (email: string, otp: string, name: string) =>
       invoke<AuthStatus>("account_verify_otp", { email, otp, name }),
     /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
+    createPaygCheckout: (amountUsd: number, country: string, postalCode: string) =>
+      invoke<string>("account_create_payg_checkout", { amountUsd, country, postalCode }),
+    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
     signOut: () => invoke<AuthStatus>("account_sign_out"),
     /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
     setServerUrl: (url: string) => invoke<AuthStatus>("account_set_server_url", { url }),
@@ -132,43 +126,42 @@ export const tauriAPI = {
     /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
     statusAndCache: () => invoke<GitStatus>("git_status_and_cache"),
     /** @deprecated Use `client.git.commit()` or `orpc.git.commit` from `@/lib/orpc`. */
-    commit: (message: string) => invoke<CommitResult>("git_commit", { message }),
+    commit: (message: string) => client.git.commit({ message }),
     /** @deprecated Use `client.git.fileDiffContents()` or `orpc.git.fileDiffContents` from `@/lib/orpc`. */
-    fileDiffContents: (filenames: string[]) =>
-      invoke<Record<string, FileDiffContents>>("git_file_diff_contents", { filenames }),
+    fileDiffContents: (filenames: string[]) => client.git.fileDiffContents({ filenames }),
   },
   darwin: {
     /** @deprecated Use `client.darwin.evolve()` or `orpc.darwin.evolve` from `@/lib/orpc`. */
-    evolve: (description: string) => invoke<void>("darwin_evolve", { description }),
+    evolve: (description: string) => client.darwin.evolve({ description }),
     /** @deprecated Use `client.darwin.evolveAnswer()` or `orpc.darwin.evolveAnswer` from `@/lib/orpc`. */
-    evolveAnswer: (answer: string) => invoke<OkResult>("darwin_evolve_answer", { answer }),
+    evolveAnswer: (answer: string) => client.darwin.evolveAnswer({ answer }),
     /** @deprecated Use `client.darwin.buildCheck()` or `orpc.darwin.buildCheck` from `@/lib/orpc`. */
-    buildCheck: () => invoke<BuildCheckResult>("darwin_build_check"),
+    buildCheck: () => client.darwin.buildCheck(),
     /** @deprecated Use `client.darwin.evolveFromManual()` or `orpc.darwin.evolveFromManual` from `@/lib/orpc`. */
-    evolveFromManual: () => invoke<number>("darwin_adopt_manual_changes"),
+    evolveFromManual: async () => (await client.darwin.evolveFromManual()).evolutionId,
     /** @deprecated Use `client.darwin.evolveCancel()` or `orpc.darwin.evolveCancel` from `@/lib/orpc`. */
-    evolveCancel: () => invoke<EvolveCancelResult>("darwin_evolve_cancel"),
+    evolveCancel: () => client.darwin.evolveCancel(),
     /** @deprecated Use `client.darwin.applyStreamStart()` or `orpc.darwin.applyStreamStart` from `@/lib/orpc`. */
     applyStreamStart: (hostOverride?: string) =>
-      invoke<OkResult>("darwin_apply_stream_start", { hostOverride }),
+      client.darwin.applyStreamStart({ hostOverride: hostOverride ?? null }),
     /** @deprecated Use `client.darwin.activateStorePath()` or `orpc.darwin.activateStorePath` from `@/lib/orpc`. */
     activateStorePath: (storePath: string) =>
-      invoke<OkResult>("darwin_activate_store_path", { storePath }),
+      client.darwin.activateStorePath({ storePath }),
     /** @deprecated Use `client.darwin.finalizeApply()` or `orpc.darwin.finalizeApply` from `@/lib/orpc`. */
-    finalizeApply: () => invoke<void>("finalize_apply"),
+    finalizeApply: () => client.darwin.finalizeApply(),
     /** @deprecated Use `client.darwin.finalizeRollback()` or `orpc.darwin.finalizeRollback` from `@/lib/orpc`. */
     finalizeRollback: (storePath: string | null, changesetId: number | null) =>
-      invoke<void>("finalize_rollback", { storePath, changesetId }),
+      client.darwin.finalizeRollback({ storePath, changesetId }),
     /** @deprecated Use `client.darwin.rollbackErase()` or `orpc.darwin.rollbackErase` from `@/lib/orpc`. */
-    rollbackErase: () => invoke<RollbackResult>("rollback_erase"),
+    rollbackErase: () => client.darwin.rollbackErase(),
     /** @deprecated Use `client.darwin.prepareRestore()` or `orpc.darwin.prepareRestore` from `@/lib/orpc`. */
-    prepareRestore: (targetHash: string) => invoke<void>("prepare_restore", { targetHash }),
+    prepareRestore: (targetHash: string) => client.darwin.prepareRestore({ targetHash }),
     /** @deprecated Use `client.darwin.abortRestore()` or `orpc.darwin.abortRestore` from `@/lib/orpc`. */
-    abortRestore: () => invoke<void>("abort_restore"),
+    abortRestore: () => client.darwin.abortRestore(),
     /** @deprecated Use `client.darwin.finalizeRestore()` or `orpc.darwin.finalizeRestore` from `@/lib/orpc`. */
-    finalizeRestore: (targetHash: string) => invoke<void>("finalize_restore", { targetHash }),
+    finalizeRestore: (targetHash: string) => client.darwin.finalizeRestore({ targetHash }),
     /** @deprecated Use `client.darwin.rebuildStatus()` or `orpc.darwin.rebuildStatus` from `@/lib/orpc`. */
-    rebuildStatus: () => invoke<RebuildStatus>("get_rebuild_status"),
+    rebuildStatus: () => client.darwin.rebuildStatus(),
   },
   nix: {
     /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
@@ -184,7 +177,8 @@ export const tauriAPI = {
     /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
     existsAt: (dir: string) => invoke<boolean>("flake_exists_at", { dir }),
     /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    bootstrapDefault: (hostname: string) => invoke<void>("bootstrap_default_config", { hostname }),
+    bootstrapDefault: (hostname: string, templateId?: StarterTemplateId) =>
+      invoke<void>("bootstrap_default_config", { hostname, templateId: templateId ?? null }),
   },
   path: {
     /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
@@ -194,13 +188,13 @@ export const tauriAPI = {
   },
   summarizedChanges: {
     /** @deprecated Use `client.summarizedChanges.getChangeMap()` or `orpc.summarizedChanges.getChangeMap` from `@/lib/orpc`. */
-    getChangeMap: () => invoke<SemanticChangeMap>("get_change_map"),
+    getChangeMap: () => client.summarizedChanges.getChangeMap(),
     /** @deprecated Use `client.summarizedChanges.findChangeMap()` or `orpc.summarizedChanges.findChangeMap` from `@/lib/orpc`. */
-    findChangeMap: () => invoke<SemanticChangeMap>("find_change_map"),
+    findChangeMap: () => client.summarizedChanges.findChangeMap(),
     /** @deprecated Use `client.summarizedChanges.summarizeCurrent()` or `orpc.summarizedChanges.summarizeCurrent` from `@/lib/orpc`. */
-    summarizeCurrent: () => invoke<SemanticChangeMap>("summarize_current"),
+    summarizeCurrent: () => client.summarizedChanges.summarizeCurrent(),
     /** @deprecated Use `client.summarizedChanges.generateCommitMessage()` or `orpc.summarizedChanges.generateCommitMessage` from `@/lib/orpc`. */
-    generateCommitMessage: () => invoke<string>("generate_commit_message"),
+    generateCommitMessage: () => client.summarizedChanges.generateCommitMessage(),
   },
   feedback: {
     /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
@@ -291,14 +285,13 @@ export const tauriAPI = {
 
   previewIndicator: {
     /** @deprecated Use `client.previewIndicator.show()` or `orpc.previewIndicator.show` from `@/lib/orpc`. */
-    show: () => invoke<OkResult>("preview_indicator_show"),
+    show: () => client.previewIndicator.show(),
     /** @deprecated Use `client.previewIndicator.hide()` or `orpc.previewIndicator.hide` from `@/lib/orpc`. */
-    hide: () => invoke<OkResult>("preview_indicator_hide"),
+    hide: () => client.previewIndicator.hide(),
     /** @deprecated Use `client.previewIndicator.update()` or `orpc.previewIndicator.update` from `@/lib/orpc`. */
-    update: (state: PreviewIndicatorState) =>
-      invoke<OkResult>("preview_indicator_update", { state }),
+    update: (state: PreviewIndicatorState) => client.previewIndicator.update(state),
     /** @deprecated Use `client.previewIndicator.getState()` or `orpc.previewIndicator.getState` from `@/lib/orpc`. */
-    getState: () => invoke<PreviewIndicatorState>("preview_indicator_get_state"),
+    getState: () => client.previewIndicator.getState(),
   },
 
   // Experimental: the spinning-mascot corner indicator shown during evolve/build.
@@ -338,17 +331,17 @@ export const tauriAPI = {
 
   evolveState: {
     /** @deprecated Use `client.evolveState.get()` or `orpc.evolveState.get` from `@/lib/orpc`. */
-    get: () => invoke<EvolveState>("get_evolve_state"),
+    get: () => client.evolveState.get(),
     /** @deprecated Use `client.evolveState.clear()` or `orpc.evolveState.clear` from `@/lib/orpc`. */
-    clear: () => invoke<EvolveState>("clear_evolve_state"),
+    clear: () => client.evolveState.clear(),
   },
 
   history: {
     /** @deprecated Use `client.history.get()` or `orpc.history.get` from `@/lib/orpc`. */
-    get: () => invoke<HistoryItem[]>("get_history"),
+    get: () => client.history.get(),
     /** @deprecated Use `client.history.generateFrom()` or `orpc.history.generateFrom` from `@/lib/orpc`. */
     generateFrom: (commitHash: string, number: number) =>
-      invoke<void>("generate_history_from", { commitHash, number }),
+      client.history.generateFrom({ commitHash, number }),
   },
 
   editor: {

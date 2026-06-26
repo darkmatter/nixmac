@@ -6,8 +6,10 @@
 
 use crate::git::query::repo_root;
 use crate::state::preferences;
+use crate::storage::canonical_config::{self, CANONICAL_CONFIG_DIR};
 
 use anyhow::Result;
+use std::path::Path;
 use tauri::{AppHandle, Runtime};
 
 pub use crate::storage::legacy_kv::get_json as get_json_pref;
@@ -45,8 +47,7 @@ pub fn get_config_dir<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
         return Ok(dir);
     }
 
-    let home = dirs::home_dir().unwrap_or_default();
-    Ok(home.join(".darwin").to_string_lossy().to_string())
+    Ok(CANONICAL_CONFIG_DIR.to_string())
 }
 
 pub fn get_config_dir_if_set<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
@@ -79,16 +80,28 @@ pub fn get_repo_root<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
 
 pub fn set_config_dir<R: Runtime>(app: &AppHandle<R>, dir: &str) -> Result<()> {
     let repo_root = repo_root(dir).to_string_lossy().to_string();
-    let dir = dir.to_string();
+    let persisted = dir.to_string();
     preferences::write(app, move |prefs| {
-        prefs.config_dir = Some(dir);
+        prefs.config_dir = Some(persisted);
         prefs.repo_root = Some(repo_root);
     })
 }
 
+pub fn sync_canonical_config_link(dir: &str) -> Result<(), String> {
+    canonical_config::ensure_canonical_config_link(Path::new(dir))
+}
+
 pub fn ensure_config_dir_exists<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
     let dir = get_config_dir(app)?;
-    std::fs::create_dir_all(&dir)?;
+    let path = Path::new(&dir);
+
+    if canonical_config::is_canonical_config_path(path) {
+        canonical_config::ensure_canonical_config_link(path).map_err(anyhow::Error::msg)?;
+    } else {
+        std::fs::create_dir_all(path)?;
+        canonical_config::ensure_canonical_config_link(path).map_err(anyhow::Error::msg)?;
+    }
+
     Ok(dir)
 }
 

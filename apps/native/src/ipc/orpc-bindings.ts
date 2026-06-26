@@ -164,11 +164,11 @@ export type EvolveState = {
 /**
  * Active evolution database id.
  */
-evolutionId: number; 
+evolutionId: number | null; 
 /**
  * Active changeset id for the current repo state.
  */
-currentChangesetId: number; 
+currentChangesetId: number | null; 
 /**
  * Whether the current state has been successfully built and can be committed.
  */
@@ -188,7 +188,7 @@ rollbackStorePath: string | null;
 /**
  * Changeset id associated with the rollback target.
  */
-rollbackChangesetId: number; 
+rollbackChangesetId: number | null; 
 /**
  * UI step derived from the session plus live build/git state.
  */
@@ -228,7 +228,7 @@ export type EvolveStep =
  */
 export type FileDiffContents = { original: string; modified: string }
 
-export type FinalizeRollbackInput = { storePath: string | null; changesetId: number }
+export type FinalizeRollbackInput = { storePath: string | null; changesetId: number | null }
 
 export type GenerateHistoryFromInput = { commitHash: string; number: number }
 
@@ -443,11 +443,11 @@ filesChanged: number;
 /**
  * Added lines displayed in the indicator.
  */
-additions: number; 
+additions: number | null; 
 /**
  * Removed lines displayed in the indicator.
  */
-deletions: number; 
+deletions: number | null; 
 /**
  * Whether the indicator should show a loading state.
  */
@@ -496,7 +496,7 @@ rollbackStorePath: string | null;
 /**
  * Changeset id associated with the rollback target.
  */
-rollbackChangesetId: number }
+rollbackChangesetId: number | null }
 
 export type SemanticChangeGroup = { 
 /**

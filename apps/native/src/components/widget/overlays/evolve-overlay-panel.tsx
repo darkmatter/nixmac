@@ -4,7 +4,7 @@ import { EvolveProgress } from "@/components/widget/overlays/evolve-progress";
 import { uiActions, useUiState } from "@nixmac/state";
 import { useViewModel } from "@nixmac/state";
 import { clearEvolveEvents } from "@/viewmodel/evolution";
-import { tauriAPI } from "@/ipc/api";
+import { client } from "@/lib/orpc";
 
 /**
  * Overlay panel that shows evolution progress.
@@ -16,8 +16,7 @@ export function EvolveOverlayPanel() {
 
   const handleStopEvolution = async () => {
     try {
-      // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      await tauriAPI.darwin.evolveCancel();
+      await client.darwin.evolveCancel();
       uiActions.setState({ isGenerating: false });
       clearEvolveEvents();
     } catch (e) {

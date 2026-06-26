@@ -37,7 +37,7 @@ struct ActivateStorePathInput {
 #[serde(rename_all = "camelCase")]
 struct FinalizeRollbackInput {
     store_path: Option<String>,
-    #[specta(type = f64)]
+    #[specta(type = Option<f64>)]
     changeset_id: Option<i64>,
 }
 

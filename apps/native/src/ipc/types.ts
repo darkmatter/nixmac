@@ -59,7 +59,7 @@ passed: boolean;
  */
 output: string }
 
-export type Change = { id: number; hash: string; filename: string; diff: string; lineCount: number; createdAt: number; ownSummaryId: number | null }
+export type Change = { id: number; hash: string; filename: string; diff: string; lineCount: number; createdAt: number; ownSummaryId: number }
 
 /**
  * Groups Changes for a commit→base_commit pair. `commit_id` is NULL for speculative
@@ -122,7 +122,7 @@ createdAt: number;
 /**
  * Direct summary row id assigned to this change, if any.
  */
-ownSummaryId: number | null; 
+ownSummaryId: number; 
 /**
  * Summary title used for display.
  */
@@ -950,19 +950,19 @@ changes: Change[] }
 /**
  * Current state of a GitHub-first desktop bootstrap flow.
  */
-export type GithubBootstrapState =
+export type GithubBootstrapState = 
 /**
  * The browser OAuth/install flow has not finished yet.
  */
-"pending" |
+"pending" | 
 /**
  * The server created/bound the Better Auth user and returned a device key.
  */
-"complete" |
+"complete" | 
 /**
  * The server could not create an account from GitHub identity; use email OTP.
  */
-"fallbackRequired" |
+"fallbackRequired" | 
 /**
  * The state token expired or is no longer usable.
  */
@@ -972,27 +972,27 @@ export type GithubBootstrapState =
  * Public bootstrap status returned to the frontend. Secret material returned by
  * the server is persisted natively and intentionally omitted from this type.
  */
-export type GithubBootstrapStatus = {
+export type GithubBootstrapStatus = { 
 /**
  * Bootstrap lifecycle state for this browser flow.
  */
-state: GithubBootstrapState;
+state: GithubBootstrapState; 
 /**
  * True once the account is linked to a GitHub App installation.
  */
-connected: boolean;
+connected: boolean; 
 /**
  * The connected GitHub login (for display), when known.
  */
-login: string | null;
+login: string | null; 
 /**
  * The linked installation id, when connected.
  */
-installationId: number | null;
+installationId: number; 
 /**
  * The Better Auth account created or bound by the server, when complete.
  */
-account: AuthAccount | null;
+account: AuthAccount | null; 
 /**
  * Human-readable reason to show when email OTP fallback is needed.
  */
@@ -1057,7 +1057,7 @@ login: string | null;
 /**
  * The linked installation id, when connected.
  */
-installationId: number | null }
+installationId: number }
 
 /**
  * Preferences local to this app installation.

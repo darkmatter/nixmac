@@ -1,5 +1,10 @@
-import { tauriAPI } from "@/ipc/api";
-import type { PreviewIndicatorState } from "@/ipc/types";
+import type { PreviewIndicatorState } from "@/lib/orpc";
+import { client } from "@/lib/orpc";
+
+type GitStatusForPreview = {
+  diff?: string | null;
+  files?: unknown[] | null;
+} | null;
 
 /**
  * Hook for updating the preview indicator window.
@@ -7,7 +12,7 @@ import type { PreviewIndicatorState } from "@/ipc/types";
  * and the main window is collapsed.
  */
 const updatePreviewIndicator = async (params: {
-  gitStatus: Awaited<ReturnType<typeof tauriAPI.git.status>> | null;
+  gitStatus: GitStatusForPreview;
   summaryText: string | null;
   isLoading: boolean;
   additions?: number;
@@ -28,8 +33,7 @@ const updatePreviewIndicator = async (params: {
     isLoading: params.isLoading,
   };
 
-  // deprecated(orpc): replace with client/orpc from @/lib/orpc
-  await tauriAPI.previewIndicator.update(state).catch(() => {
+  await client.previewIndicator.update(state).catch(() => {
     // Ignore errors - window might not exist yet
   });
 };

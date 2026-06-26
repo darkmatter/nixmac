@@ -1,0 +1,384 @@
+export type StarterPromptArchetypeId =
+  | "programmers"
+  | "streamers"
+  | "homelab"
+  | "security"
+  | "designers"
+  | "writers"
+  | "nomads"
+  | "gamers";
+
+export type StarterPrompt = {
+  id: string;
+  label: string;
+  prompt: string;
+  sourceRefs: string[];
+  featured?: boolean;
+};
+
+export type StarterPromptArchetype = {
+  id: StarterPromptArchetypeId;
+  title: string;
+  description: string;
+  prompts: StarterPrompt[];
+};
+
+export const STARTER_PROMPT_ARCHETYPES: StarterPromptArchetype[] = [
+  {
+    id: "programmers",
+    title: "For Programmers",
+    description: "Editors, shells, project tooling, Git, containers, and daily dev ergonomics.",
+    prompts: [
+      {
+        id: "dev-terminal",
+        label: "Dev workstation",
+        featured: true,
+        prompt:
+          "Set up my daily coding terminal: enable zsh, starship, direnv with nix-direnv, git with SSH commit signing, lazygit, fzf, ripgrep, fd, jq, and Ghostty with a readable theme.",
+        sourceRefs: [
+          "home-manager/programs.zsh",
+          "home-manager/programs.starship",
+          "home-manager/programs.direnv",
+          "home-manager/programs.git",
+          "home-manager/programs.lazygit",
+          "home-manager/programs.fzf",
+          "home-manager/programs.ghostty",
+          "nix-darwin/environment.systemPackages",
+        ],
+      },
+      {
+        id: "emacs-daemon",
+        label: "Emacs daemon",
+        prompt:
+          "Set up Doom Emacs or Spacemacs as an Emacs daemon, make emacsclient my default editor, and add a rotating daily shell MOTD with useful Nix and macOS tips.",
+        sourceRefs: [
+          "home-manager/programs.emacs",
+          "home-manager/services.emacs",
+          "home-manager/home.file",
+          "home-manager/programs.zsh",
+        ],
+      },
+      {
+        id: "polyglot-projects",
+        label: "Polyglot projects",
+        prompt:
+          "Create a project workstation profile with uv, mise, Node, Go, Rust, Docker CLI contexts, k9s, kubecolor, and a direnv template for new repos.",
+        sourceRefs: [
+          "home-manager/programs.uv",
+          "home-manager/programs.mise",
+          "home-manager/programs.docker-cli",
+          "home-manager/programs.k9s",
+          "home-manager/programs.kubecolor",
+          "home-manager/programs.direnv",
+          "nix-darwin/environment.systemPackages",
+        ],
+      },
+    ],
+  },
+  {
+    id: "streamers",
+    title: "For Streamers",
+    description: "Recording, streaming, ingest tunnels, capture boxes, and stream-room utilities.",
+    prompts: [
+      {
+        id: "streaming-apps",
+        label: "OBS setup",
+        featured: true,
+        prompt:
+          "Install OBS Studio, Streamlink, yt-dlp, Twitch TUI, Discord, and a launchd login agent that prepares a recording folder and opens my stream checklist.",
+        sourceRefs: [
+          "nix-darwin/homebrew.casks",
+          "nix-darwin/homebrew.brews",
+          "home-manager/programs.streamlink",
+          "home-manager/programs.yt-dlp",
+          "home-manager/programs.twitch-tui",
+          "nix-darwin/launchd.user.agents",
+        ],
+      },
+      {
+        id: "capture-box",
+        label: "Capture box",
+        prompt:
+          "Set up a two-machine recording workflow: enable Tailscale, add SSH shortcuts to the capture box, and create a boot or login tunnel for the ingest server.",
+        sourceRefs: [
+          "nix-darwin/services.tailscale",
+          "home-manager/programs.ssh",
+          "nix-darwin/launchd.agents",
+          "nix-darwin/launchd.daemons",
+        ],
+      },
+      {
+        id: "linux-stream-rig",
+        label: "Linux stream rig",
+        prompt:
+          "For NixOS hosts in this flake, enable OBS Studio, GPU Screen Recorder, PipeWire/JACK, and GoXLR Utility for a dedicated streaming rig.",
+        sourceRefs: [
+          "nixos/programs.obs-studio",
+          "nixos/programs.gpu-screen-recorder",
+          "nixos/services.pipewire",
+          "nixos/services.goxlr-utility",
+        ],
+      },
+    ],
+  },
+  {
+    id: "homelab",
+    title: "For Homelab Admins",
+    description: "Tunnels, SSH profiles, network tools, local services, and remote access.",
+    prompts: [
+      {
+        id: "boot-tunnel",
+        label: "Boot tunnel",
+        featured: true,
+        prompt:
+          "Tunnel a local service automatically on boot with Tailscale or cloudflared, add a launchd daemon, and document the local URL in my shell login message.",
+        sourceRefs: [
+          "nix-darwin/services.tailscale",
+          "nix-darwin/launchd.daemons",
+          "nixos/services.cloudflared",
+          "home-manager/programs.zsh",
+        ],
+      },
+      {
+        id: "ssh-homelab",
+        label: "SSH homelab",
+        prompt:
+          "Set up SSH profiles for my homelab machines with ControlMaster, keepalives, known-hosts hashing, and short aliases for each server.",
+        sourceRefs: [
+          "home-manager/programs.ssh",
+          "nix-darwin/services.openssh",
+          "nix-darwin/environment.systemPackages",
+        ],
+      },
+      {
+        id: "ops-toolbelt",
+        label: "Ops toolbelt",
+        prompt:
+          "Install and configure lightweight ops tools: k9s, kubecolor, jq, yq, dig, iperf3, nmap, and a quick network diagnostics shell alias.",
+        sourceRefs: [
+          "home-manager/programs.k9s",
+          "home-manager/programs.kubecolor",
+          "nix-darwin/environment.systemPackages",
+          "home-manager/programs.zsh",
+        ],
+      },
+    ],
+  },
+  {
+    id: "security",
+    title: "For Security-Minded Users",
+    description: "Touch ID, firewall policy, SSH hygiene, certificates, and encrypted secrets.",
+    prompts: [
+      {
+        id: "harden-sudo-firewall",
+        label: "Harden sudo",
+        featured: true,
+        prompt:
+          "Enable Touch ID and Apple Watch for sudo, turn on the application firewall with stealth mode, and keep downloaded-app quarantine enabled.",
+        sourceRefs: [
+          "nix-darwin/security.pam.services.sudo_local",
+          "nix-darwin/networking.applicationFirewall",
+          "nix-darwin/system.defaults.LaunchServices.LSQuarantine",
+        ],
+      },
+      {
+        id: "ssh-hygiene",
+        label: "SSH hygiene",
+        prompt:
+          "Harden my SSH client config with hashed known hosts, short aliases, agent settings, and separate match blocks for work and personal hosts.",
+        sourceRefs: ["home-manager/programs.ssh", "nix-darwin/programs.ssh"],
+      },
+      {
+        id: "secret-recipients",
+        label: "Secret recipients",
+        prompt:
+          "Add SOPS/age secrets support for API keys and SSH deploy keys, with clear recipients and no plaintext secrets in the repo.",
+        sourceRefs: [
+          "apps/native/templates/nix-darwin-determinate/modules/darwin/sops.nix",
+          "apps/native/templates/nix-darwin-determinate/modules/darwin/sops-secrets.nix",
+        ],
+      },
+    ],
+  },
+  {
+    id: "designers",
+    title: "For Designers",
+    description: "Creative apps, fonts, screenshots, window management, and visual polish.",
+    prompts: [
+      {
+        id: "design-kit",
+        label: "Design kit",
+        prompt:
+          "Install design apps and fonts: Figma, Blender, ImageOptim, SF Mono or Nerd Fonts; set screenshots to ~/Pictures/Screenshots as PNG without shadows; show Finder path and status bars.",
+        sourceRefs: [
+          "nix-darwin/homebrew.casks",
+          "nix-darwin/fonts.packages",
+          "nix-darwin/system.defaults.screencapture",
+          "nix-darwin/system.defaults.finder",
+        ],
+      },
+      {
+        id: "window-workflow",
+        label: "Window workflow",
+        prompt:
+          "Set up a design-friendly window workflow with AeroSpace or yabai, Raycast, Rectangle, clean hotkeys, and sensible Dock and Stage Manager defaults.",
+        sourceRefs: [
+          "home-manager/programs.aerospace",
+          "nix-darwin/services.yabai",
+          "nix-darwin/homebrew.casks",
+          "nix-darwin/system.defaults.dock",
+          "nix-darwin/system.defaults.WindowManager",
+        ],
+      },
+      {
+        id: "terminal-theme",
+        label: "Terminal theme",
+        prompt:
+          "Give my terminal and CLI tools a consistent theme: Ghostty, bat, vivid, dircolors, fzf, and a clean prompt that works in light and dark macOS modes.",
+        sourceRefs: [
+          "home-manager/programs.ghostty",
+          "home-manager/programs.bat",
+          "home-manager/programs.vivid",
+          "home-manager/programs.fzf",
+          "home-manager/programs.starship",
+        ],
+      },
+    ],
+  },
+  {
+    id: "writers",
+    title: "For Writers and Researchers",
+    description: "Notes, citations, PDF workflows, study tools, and low-distraction defaults.",
+    prompts: [
+      {
+        id: "research-suite",
+        label: "Research suite",
+        prompt:
+          "Set up Obsidian vault defaults, pandoc, TeX Live, Zotero, Anki, citation styles, and a clean PDF reading workflow.",
+        sourceRefs: [
+          "home-manager/programs.obsidian",
+          "home-manager/programs.pandoc",
+          "home-manager/programs.texlive",
+          "home-manager/programs.anki",
+          "home-manager/programs.zathura",
+          "nix-darwin/homebrew.casks",
+        ],
+      },
+      {
+        id: "daily-writing",
+        label: "Daily writing",
+        prompt:
+          "Create a daily writing setup: a launchd reminder, a notes backup job, a distraction-free shell command, and Finder defaults that keep drafts easy to find.",
+        sourceRefs: [
+          "nix-darwin/launchd.user.agents",
+          "home-manager/programs.zsh",
+          "nix-darwin/system.defaults.finder",
+          "home-manager/home.file",
+        ],
+      },
+      {
+        id: "focus-defaults",
+        label: "Focus defaults",
+        prompt:
+          "Tune macOS for focused writing: disable auto-correct surprises, use expanded save dialogs, hide desktop clutter, and put screenshots in a dedicated folder.",
+        sourceRefs: [
+          "nix-darwin/system.defaults.NSGlobalDomain",
+          "nix-darwin/system.defaults.finder",
+          "nix-darwin/system.defaults.WindowManager",
+          "nix-darwin/system.defaults.screencapture",
+        ],
+      },
+    ],
+  },
+  {
+    id: "nomads",
+    title: "For Laptop Nomads",
+    description: "Travel-safe networking, battery behavior, remote access, and replacement-Mac parity.",
+    prompts: [
+      {
+        id: "travel-profile",
+        label: "Travel profile",
+        prompt:
+          "Create a travel laptop profile: enable firewall stealth mode, Tailscale, SSH aliases, stricter sleep settings, and a quick status command for network and battery health.",
+        sourceRefs: [
+          "nix-darwin/networking.applicationFirewall",
+          "nix-darwin/services.tailscale",
+          "home-manager/programs.ssh",
+          "nix-darwin/power.sleep",
+          "nix-darwin/environment.systemPackages",
+        ],
+      },
+      {
+        id: "presentation-mode",
+        label: "Presentation mode",
+        prompt:
+          "Add a presentation mode profile that keeps the display awake on AC power, disables notification-prone startup apps, and adds a one-command toggle.",
+        sourceRefs: [
+          "nix-darwin/power.sleep",
+          "nix-darwin/launchd.user.agents",
+          "home-manager/programs.zsh",
+        ],
+      },
+      {
+        id: "replacement-mac",
+        label: "Replacement Mac",
+        featured: true,
+        prompt:
+          "Capture my current non-default macOS settings, Homebrew apps, shell tools, and launchd items into the flake so a replacement Mac feels identical.",
+        sourceRefs: [
+          "nix-darwin/system.defaults",
+          "nix-darwin/homebrew",
+          "nix-darwin/launchd",
+          "nix-darwin/environment.systemPackages",
+        ],
+      },
+    ],
+  },
+  {
+    id: "gamers",
+    title: "For Gamers",
+    description: "Game launchers, remote play, Discord, Linux gaming hosts, and controller utilities.",
+    prompts: [
+      {
+        id: "mac-gaming",
+        label: "Mac gaming",
+        prompt:
+          "Install my Mac gaming basics: Steam, Discord, Prism Launcher, Moonlight, controller utilities, and a Finder folder for game captures.",
+        sourceRefs: [
+          "nix-darwin/homebrew.casks",
+          "home-manager/programs.prismlauncher",
+          "nix-darwin/system.defaults.finder",
+        ],
+      },
+      {
+        id: "nixos-gaming-box",
+        label: "NixOS gaming box",
+        prompt:
+          "For my NixOS gaming box, enable Steam, Gamescope, Gamemode, Sunshine remote play, and Prism Launcher with sensible firewall openings.",
+        sourceRefs: [
+          "nixos/programs.steam",
+          "nixos/programs.gamescope",
+          "nixos/programs.gamemode",
+          "nixos/services.sunshine",
+          "home-manager/programs.prismlauncher",
+        ],
+      },
+      {
+        id: "remote-play",
+        label: "Remote play",
+        prompt:
+          "Set up remote play between my gaming box and Mac with Tailscale, Moonlight/Sunshine, wake-on-LAN where supported, and a shell command to connect.",
+        sourceRefs: [
+          "nix-darwin/services.tailscale",
+          "nixos/services.sunshine",
+          "nix-darwin/networking.wakeOnLan",
+          "home-manager/programs.zsh",
+        ],
+      },
+    ],
+  },
+];
+
+export const STARTER_PROMPT_CHIPS = STARTER_PROMPT_ARCHETYPES.flatMap((archetype) =>
+  archetype.prompts.filter((prompt) => prompt.featured),
+);

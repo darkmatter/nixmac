@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { tauriAPI } from "@/ipc/api";
+import { client } from "@/lib/orpc";
 import type { EvolveEvent, EvolveEventType } from "@/ipc/types";
 
 // =============================================================================
@@ -389,8 +389,7 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
   const prevEventsLengthRef = useRef(events.length);
 
   const handleQuestionAnswer = (answer: string) => {
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    tauriAPI.darwin.evolveAnswer(answer).catch((e) => {
+    client.darwin.evolveAnswer({ answer }).catch((e) => {
       console.error("Failed to send answer:", e);
     });
   };

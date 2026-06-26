@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useHistory } from "@/hooks/use-history";
-import { tauriAPI } from "@/ipc/api";
 import type { HistoryItem } from "@/ipc/types";
 import { uiActions, useViewModel } from "@nixmac/state";
 import { getTelemetry } from "@/lib/telemetry/instance";
+import { client } from "@/lib/orpc";
 
 // Sentinel hash used to identify the frontend-only preview item.
 export const PREVIEW_ITEM_HASH = "n1xm4c0";
@@ -235,20 +235,17 @@ export function useHistoryRestore(
     setRestoringHash(hash);
     uiActions.setProcessing(true);
     try {
-      // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      await tauriAPI.darwin.prepareRestore(hash);
+      await client.darwin.prepareRestore({ targetHash: hash });
       await triggerRebuild({
         context: "rollback",
         onSuccess: async () => {
           // The backend writes the git-state cell; `git_state_changed` mirrors it.
-          // deprecated(orpc): replace with client/orpc from @/lib/orpc
-          await tauriAPI.darwin.finalizeRestore(hash);
+          await client.darwin.finalizeRestore({ targetHash: hash });
           getTelemetry().captureEvent({ name: "history_restored" });
           await loadHistory();
         },
         onFailure: async () => {
-          // deprecated(orpc): replace with client/orpc from @/lib/orpc
-          await tauriAPI.darwin.abortRestore();
+          await client.darwin.abortRestore();
         },
       });
     } catch {

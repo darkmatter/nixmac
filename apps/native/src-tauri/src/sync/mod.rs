@@ -16,6 +16,8 @@ pub mod github_client;
 pub mod signing;
 
 use anyhow::{Result, anyhow};
+use reqwest::header::ORIGIN;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Runtime};
 
 use crate::shared_types::{
@@ -54,6 +56,19 @@ fn current_credentials<R: Runtime>(app: &AppHandle<R>) -> Result<Option<SyncCred
 
 fn require_credentials<R: Runtime>(app: &AppHandle<R>) -> Result<SyncCredentials> {
     current_credentials(app)?.ok_or_else(|| anyhow!("Not signed in to a nixmac account"))
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PaygCheckoutRequest<'a> {
+    amount_usd: f64,
+    country: &'a str,
+    postal_code: &'a str,
+}
+
+#[derive(Deserialize)]
+struct PaygCheckoutResponse {
+    url: String,
 }
 
 /// Builds the current [`AuthStatus`] snapshot for the frontend.
@@ -221,6 +236,46 @@ pub async fn verify_web_sign_in_otp<R: Runtime>(
         .await?;
     persist_web_session(app, &outcome)?;
     status(app)
+}
+
+/// Creates a Polar-hosted PAYG checkout for the signed-in web-origin account.
+pub async fn create_payg_checkout<R: Runtime>(
+    app: &AppHandle<R>,
+    amount_usd: f64,
+    country: &str,
+    postal_code: &str,
+) -> Result<String> {
+    let country = country.trim();
+    let postal_code = postal_code.trim();
+    if amount_usd <= 0.0 || country.is_empty() || postal_code.is_empty() {
+        return Err(anyhow!("Amount, country, and ZIP code are required"));
+    }
+
+    let api_key = store::get_device_api_key(app)?
+        .ok_or_else(|| anyhow!("Sign in before starting checkout"))?;
+    let base = store::get_web_server_url()?;
+    let origin = account_client::web_origin(&base)?;
+    let url = format!("{}/api/billing/payg-checkout", base.trim_end_matches('/'));
+    let response = reqwest::Client::new()
+        .post(url)
+        .header("x-api-key", api_key)
+        .header(ORIGIN, origin)
+        .json(&PaygCheckoutRequest {
+            amount_usd,
+            country,
+            postal_code,
+        })
+        .send()
+        .await?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let body = response.text().await.unwrap_or_default();
+        return Err(anyhow!("Checkout request failed ({status}): {body}"));
+    }
+
+    let checkout: PaygCheckoutResponse = response.json().await?;
+    Ok(checkout.url)
 }
 
 fn persist_web_session<R: Runtime>(

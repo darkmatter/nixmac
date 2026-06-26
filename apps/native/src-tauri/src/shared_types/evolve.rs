@@ -196,10 +196,10 @@ pub struct EvolveSession {
 #[serde(rename_all = "camelCase")]
 pub struct EvolveState {
     /// Active evolution database id.
-    #[specta(type = f64)]
+    #[specta(type = Option<f64>)]
     pub evolution_id: Option<i64>,
     /// Active changeset id for the current repo state.
-    #[specta(type = f64)]
+    #[specta(type = Option<f64>)]
     pub current_changeset_id: Option<i64>,
     /// Whether the current state has been successfully built and can be committed.
     pub committable: bool,
@@ -210,7 +210,7 @@ pub struct EvolveState {
     /// Nix store path that should be reactivated during rollback.
     pub rollback_store_path: Option<String>,
     /// Changeset id associated with the rollback target.
-    #[specta(type = f64)]
+    #[specta(type = Option<f64>)]
     pub rollback_changeset_id: Option<i64>,
     /// UI step derived from the session plus live build/git state.
     pub step: EvolveStep,

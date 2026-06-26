@@ -168,35 +168,40 @@ export const EXAMPLE_REFS: { ref: string; note: string }[] = [
 ];
 
 export interface StarterTemplate {
-  id: string;
+  id: StarterTemplateId;
   name: string;
   description: string;
   includes: string[];
   recommended?: boolean;
 }
 
+export type StarterTemplateId = "nix-darwin-determinate" | "nixos-unified" | "flake-parts";
+
 /** Starter configurations offered to first-time users. */
 export const STARTER_TEMPLATES: StarterTemplate[] = [
   {
-    id: "darwin-hm",
-    name: "nix-darwin + home-manager",
-    description: "System settings plus per-user dotfiles. The best starting point for most people.",
-    includes: ["nix-darwin", "home-manager", "Sensible macOS defaults"],
+    id: "nix-darwin-determinate",
+    name: "nix-darwin + Determinate",
+    description: "The bundled nixmac starter: nix-darwin, Determinate Nix, sops-nix, and modular defaults.",
+    includes: ["nix-darwin", "Determinate Nix", "sops-nix", "Home Manager ready"],
     recommended: true,
   },
   {
-    id: "minimal",
-    name: "Minimal nix-darwin",
-    description: "Just the system layer. Add home-manager later whenever you want it.",
-    includes: ["nix-darwin", "A few CLI packages"],
+    id: "nixos-unified",
+    name: "nixos-unified",
+    description: "A cross-platform template for sharing NixOS, nix-darwin, and home-manager structure.",
+    includes: ["nixos-unified", "nix-darwin", "NixOS", "home-manager"],
   },
   {
-    id: "batteries",
-    name: "Batteries included",
-    description: "Opinionated setup with common developer tools and Homebrew casks wired in.",
-    includes: ["nix-darwin", "home-manager", "Homebrew casks", "Dev tooling"],
+    id: "flake-parts",
+    name: "Flake parts",
+    description: "A generic flake-parts starter with per-system outputs and a simple default package.",
+    includes: ["flake-parts", "nixpkgs", "perSystem", "packages.default"],
   },
 ];
 
 /** Default directory a new starter configuration is written to. */
-export const DEFAULT_CONFIG_DIR = "~/.darwin";
+export const DEFAULT_CONFIG_DIR = "/etc/nix-darwin";
+
+/** Canonical nix-darwin path; custom directories are symlinked here. */
+export const CANONICAL_CONFIG_DIR = "/etc/nix-darwin";

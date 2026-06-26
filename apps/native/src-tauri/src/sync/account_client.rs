@@ -233,7 +233,7 @@ impl AccountClient {
     }
 }
 
-fn web_origin(base_url: &str) -> Result<String> {
+pub(crate) fn web_origin(base_url: &str) -> Result<String> {
     Ok(Url::parse(base_url)
         .with_context(|| format!("invalid web server URL: {base_url}"))?
         .origin()

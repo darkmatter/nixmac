@@ -4,6 +4,7 @@ mod env_keys {
 }
 
 use std::path::Path;
+use std::process::Command;
 
 /// Embed `apps/native/env.{development,release,e2e}.json` selected by `NIXMAC_ENV`.
 fn embed_build_profile() {
@@ -32,8 +33,45 @@ fn embed_build_profile() {
     println!("cargo:rustc-env=NIXMAC_ENV_PROFILE_JSON={minified}");
 }
 
+fn add_debug_swift_runtime_rpaths() {
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("macos")
+        || std::env::var("PROFILE").as_deref() != Ok("debug")
+    {
+        return;
+    }
+
+    println!("cargo:rerun-if-env-changed=DEVELOPER_DIR");
+
+    let Ok(output) = Command::new("xcrun")
+        .args(["swift", "-print-target-info"])
+        .output()
+    else {
+        return;
+    };
+
+    if !output.status.success() {
+        return;
+    }
+
+    let Ok(target_info) = serde_json::from_slice::<serde_json::Value>(&output.stdout) else {
+        return;
+    };
+
+    let Some(paths) = target_info
+        .pointer("/paths/runtimeLibraryPaths")
+        .and_then(|value| value.as_array())
+    else {
+        return;
+    };
+
+    for path in paths.iter().filter_map(|value| value.as_str()) {
+        println!("cargo:rustc-link-arg=-Wl,-rpath,{path}");
+    }
+}
+
 fn main() {
     embed_build_profile();
+    add_debug_swift_runtime_rpaths();
 
     // Set up passthrough for relevant environment variables.
     // This allows configuration to be injected at build time (e.g. by CI)

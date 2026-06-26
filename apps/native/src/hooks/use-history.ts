@@ -1,4 +1,4 @@
-import { tauriAPI } from "@/ipc/api";
+import { client } from "@/lib/orpc";
 import { uiActions, useUiState, viewModelActions } from "@nixmac/state";
 import { refreshHistorySnapshot } from "@/viewmodel/history";
 
@@ -6,8 +6,7 @@ const loadHistory = () => refreshHistorySnapshot();
 
 const analyzeOne = async (hash: string) => {
   try {
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    await tauriAPI.history.generateFrom(hash, 1);
+    await client.history.generateFrom({ commitHash: hash, number: 1 });
     await loadHistory();
   } catch (e) {
     uiActions.setError(`Failed to analyze changes: ${e}`);
@@ -27,8 +26,7 @@ const analyzeMany = async (hashes: string[]) => {
       continue;
     }
     try {
-      // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      await tauriAPI.history.generateFrom(hash, 1);
+      await client.history.generateFrom({ commitHash: hash, number: 1 });
       await loadHistory();
     } catch (e) {
       uiActions.setState({ analyzingHistoryForHashes: new Set() });

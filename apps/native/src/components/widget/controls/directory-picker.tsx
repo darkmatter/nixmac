@@ -10,6 +10,7 @@ import { GitignoreBadge } from "@/components/widget/badges/gitignore-badge";
 import { RepoImport } from "@/components/widget/controls/repo-import";
 import { FolderOpen, FolderPlus } from "lucide-react";
 import { useEffect, useState } from "react";
+import { CANONICAL_CONFIG_DIR } from "@/components/widget/onboarding/lib/flake-ref";
 import { tauriAPI } from "@/ipc/api";
 
 type DirectoryPickerProps = {
@@ -24,8 +25,9 @@ type SetupChoice = "new" | "existing" | "import";
 const INITIAL_HINT = "Select your own, or proceed below for defaults";
 
 function getDirectoryName(path: string | undefined): string {
-  if (!path) return ".darwin";
-  return path.split("/").filter(Boolean).pop() || ".darwin";
+  if (!path) return "nix-darwin";
+  if (path === CANONICAL_CONFIG_DIR) return "nix-darwin";
+  return path.split("/").filter(Boolean).pop() || "nix-darwin";
 }
 
 export function DirectoryPicker({
@@ -45,7 +47,7 @@ export function DirectoryPicker({
   const [showPrivacyNote, setShowPrivacyNote] = useState(false);
 
   useEffect(() => {
-    setShowPrivacyNote(Boolean(configDir && !configDir.endsWith("/.darwin")));
+    setShowPrivacyNote(Boolean(configDir && configDir !== CANONICAL_CONFIG_DIR));
   }, [configDir]);
 
   useEffect(() => {

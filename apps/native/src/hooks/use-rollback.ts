@@ -1,7 +1,7 @@
 import { uiActions, viewModelActions } from "@nixmac/state";
-import { tauriAPI } from "@/ipc/api";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { getTelemetry } from "@/lib/telemetry/instance";
+import { client } from "@/lib/orpc";
 /**
  * Hook for discarding changes and restoring the working tree to its
  * pre-evolution state. Git/evolve/change-map state flows through the
@@ -17,8 +17,7 @@ export function useRollback() {
     uiActions.appendLog("\n> Discarding changes...\n");
 
     try {
-      // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      const result = await tauriAPI.darwin.rollbackErase();
+      const result = await client.darwin.rollbackErase();
       uiActions.setEvolvePrompt("");
       uiActions.appendLog("✓ Changes discarded\n");
 
@@ -30,11 +29,10 @@ export function useRollback() {
           context: "rollback",
           storePath: result.rollbackStorePath,
           onSuccess: async () => {
-            // deprecated(orpc): replace with client/orpc from @/lib/orpc
-            await tauriAPI.darwin.finalizeRollback(
-              result.rollbackStorePath,
-              result.rollbackChangesetId,
-            );
+            await client.darwin.finalizeRollback({
+              storePath: result.rollbackStorePath,
+              changesetId: result.rollbackChangesetId,
+            });
           },
         });
       } else {

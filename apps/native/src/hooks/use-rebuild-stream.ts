@@ -1,6 +1,7 @@
-import { ipcRenderer, tauriAPI } from "@/ipc/api";
+import { ipcRenderer } from "@/ipc/api";
 import type { DarwinApplyEndEvent } from "@/ipc/types";
 import { REBUILD_ERROR_CODES } from "@/lib/errors";
+import { client } from "@/lib/orpc";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import type { RebuildContext } from "@/types/rebuild";
 import { setRebuildRawLineEcho } from "@/viewmodel/rebuild";
@@ -74,11 +75,9 @@ export function useRebuildStream() {
 
     try {
       if (options.storePath) {
-        // deprecated(orpc): replace with client/orpc from @/lib/orpc
-        await tauriAPI.darwin.activateStorePath(options.storePath);
+        await client.darwin.activateStorePath({ storePath: options.storePath });
       } else {
-        // deprecated(orpc): replace with client/orpc from @/lib/orpc
-        await tauriAPI.darwin.applyStreamStart();
+        await client.darwin.applyStreamStart({ hostOverride: null });
       }
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);

@@ -1,9 +1,9 @@
 "use client";
 
-import { ChevronDown, ChevronUp, GripHorizontal } from "lucide-react";
-import { useState, useCallback, useRef } from "react";
-import { useUiState } from "@nixmac/state";
 import { DebugOverlay } from "@/components/widget/layout/debug-overlay";
+import { useUiState } from "@nixmac/state";
+import { ChevronDown, ChevronUp, GripHorizontal } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
 
 /** Minimum console height in pixels. */
 const CONSOLE_MIN_HEIGHT = 32;
@@ -93,9 +93,9 @@ export function Console() {
       {expanded && (
         <div className="flex flex-col bg-black/40" style={{ height }}>
           {/* Debug Info */}
-          <div className="relative shrink-0 border-b border-yellow-500/30">
+          {/* <div className="relative shrink-0 border-b border-yellow-500/30">
             <DebugOverlay />
-          </div>
+          </div> */}
 
           {/* Logs */}
           <div className="min-h-0 flex-1 overflow-auto p-3 pt-6">

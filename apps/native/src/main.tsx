@@ -4,8 +4,10 @@ import { isE2eProfile, nixmacEnvironment } from "@/lib/env";
 import { initTelemetry } from "@/lib/telemetry/init";
 import { TelemetryContextProvider } from "@/lib/telemetry/context";
 import { getTelemetry, setTelemetryProvider } from "@/lib/telemetry/instance";
+import { queryClient } from "@/lib/orpc";
 import type { TelemetryProvider } from "@/lib/telemetry/types";
 import { AppErrorBoundary } from "@/components/widget/layout/AppErrorBoundary";
+import { QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
@@ -35,9 +37,11 @@ const renderApp = (telemetry: TelemetryProvider) => {
   root.render(
     <React.StrictMode>
       <AppErrorBoundary fallback={(error) => <AppFatalFallback error={error} />}>
-        <TelemetryContextProvider value={telemetry}>
-          <App />
-        </TelemetryContextProvider>
+        <QueryClientProvider client={queryClient}>
+          <TelemetryContextProvider value={telemetry}>
+            <App />
+          </TelemetryContextProvider>
+        </QueryClientProvider>
       </AppErrorBoundary>
     </React.StrictMode>,
   );

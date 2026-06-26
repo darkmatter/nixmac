@@ -1,28 +1,41 @@
+import { z } from "zod";
+
 export type { InferenceConfig, InferenceMode } from "@nixmac/state";
 
-export interface HostedPlan {
-  id: string;
+export interface HostedPaygProduct {
+  slug: string;
+  productId: string;
   name: string;
-  price: string;
-  blurb: string;
-  recommended?: boolean;
+  currency: string;
+  minimumAmountUsd: number;
+  maximumAmountUsd?: number;
 }
 
-export const HOSTED_PLANS: HostedPlan[] = [
-  {
-    id: "starter",
-    name: "Starter",
-    price: "$0 + usage",
-    blurb: "Pay only for what you use. Great for occasional config edits.",
-    recommended: true,
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: "$20/mo",
-    blurb: "Higher rate limits and priority models for daily driving.",
-  },
-];
+export const FALLBACK_HOSTED_PAYG_PRODUCT: HostedPaygProduct = {
+  slug: "payg-tokens",
+  productId: "payg-tokens",
+  name: "Hosted inference credits",
+  currency: "usd",
+  minimumAmountUsd: 5,
+  maximumAmountUsd: 500,
+};
+
+const HostedPaygProductSchema = z.object({
+  slug: z.string().min(1),
+  productId: z.string().min(1),
+  name: z.string().min(1),
+  currency: z.string().min(1),
+  minimumAmountUsd: z.number().positive(),
+  maximumAmountUsd: z.number().positive().optional(),
+});
+
+const HostedPaygProductResponseSchema = z.object({
+  paygProduct: HostedPaygProductSchema,
+});
+
+export function parseHostedPaygProductResponse(response: unknown): HostedPaygProduct {
+  return HostedPaygProductResponseSchema.parse(response).paygProduct;
+}
 
 /** API-key fields on the app's UiPrefs that an onboarding provider maps to. */
 export type PrefsKeyField = "openrouterApiKey" | "openaiApiKey";

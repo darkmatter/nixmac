@@ -74,6 +74,19 @@ pub async fn account_verify_otp(
         .map_err(|e| capture_err("account_verify_otp", e))
 }
 
+/// Creates a Polar-hosted PAYG checkout and returns the URL to open.
+#[tauri::command]
+pub async fn account_create_payg_checkout(
+    app: AppHandle,
+    amount_usd: f64,
+    country: String,
+    postal_code: String,
+) -> Result<String, String> {
+    sync::create_payg_checkout(&app, amount_usd, &country, &postal_code)
+        .await
+        .map_err(|e| capture_err("account_create_payg_checkout", e))
+}
+
 /// Signs out, removing the stored account metadata and device secret.
 #[tauri::command]
 pub async fn account_sign_out(app: AppHandle) -> Result<AuthStatus, String> {

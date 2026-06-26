@@ -1,6 +1,6 @@
-import { RotateCcw } from "lucide-react";
-import { onboardingActions } from "@nixmac/state";
 import { getTelemetry } from "@/lib/telemetry/instance";
+import { onboardingActions } from "@nixmac/state";
+import { RotateCcw } from "lucide-react";
 
 interface Props {
   title: string;
@@ -18,7 +18,7 @@ export function OnboardingHeader({ title }: Props) {
       </div>
 
       <div className="flex items-center gap-1">
-        <h3 className="font-medium  text-xl tracking-tight">{title}</h3>
+        <h3 className="font-normal  text-xs tracking-tight text-zinc-400 font-mono uppercase">{title}</h3>
       </div>
 
       <button
