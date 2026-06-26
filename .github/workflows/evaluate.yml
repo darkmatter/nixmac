@@ -65,7 +65,7 @@ jobs:
           bun-version-file: package.json
 
       - name: Install frontend dependencies
-        run: bun install --frozen-lockfile
+        run: bun install --frozen-lockfile --verbose
 
       - name: Type-check native app
         working-directory: apps/native
