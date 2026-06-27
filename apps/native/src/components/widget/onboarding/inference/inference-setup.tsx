@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { ModelCombobox } from "@/components/widget/controls/model-combobox";
 import {
   BYOK_PROVIDERS,
   DEFAULT_NIXMAC_MODEL,
@@ -645,21 +646,13 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
           </select>
         </div>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="byok-model" className="font-medium text-sm">
-            Model
-          </label>
-          <select
-            id="byok-model"
+          <span className="font-medium text-sm">Model</span>
+          <ModelCombobox
+            provider={provider.id}
             value={model}
-            onChange={(e) => setModel(e.target.value)}
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {provider.models.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
+            onChange={setModel}
+            placeholder={provider.defaultModel}
+          />
         </div>
       </div>
 

@@ -37,9 +37,6 @@ concurrency:
   group: e2e-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  CI_IMAGE: ghcr.io/darkmatter/nixmac-ci:latest
-
 jobs:
   # --- Determine which scenarios to run ---
   resolve-scenarios:
@@ -86,7 +83,7 @@ jobs:
     needs: resolve-scenarios
     runs-on: blacksmith-4vcpu-ubuntu-2404
     container:
-      image: ${{ env.CI_IMAGE }}
+      image: ghcr.io/darkmatter/nixmac-ci:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}

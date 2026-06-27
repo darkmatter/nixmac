@@ -24,9 +24,6 @@ permissions:
   id-token: write
   packages: read
 
-env:
-  CI_IMAGE: ghcr.io/darkmatter/nixmac-ci:latest
-
 jobs:
   rust-check:
     name: Rust Check
@@ -70,7 +67,7 @@ jobs:
     if: github.event_name != 'push'
     runs-on: [self-hosted, linux]
     container:
-      image: ${{ env.CI_IMAGE }}
+      image: ghcr.io/darkmatter/nixmac-ci:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -95,7 +92,7 @@ jobs:
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
     container:
-      image: ${{ env.CI_IMAGE }}
+      image: ghcr.io/darkmatter/nixmac-ci:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}

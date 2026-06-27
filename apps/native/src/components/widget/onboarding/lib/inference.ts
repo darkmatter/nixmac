@@ -47,7 +47,6 @@ export interface InferenceProvider {
   /** Matches the app's evolveProvider value (model-combobox ModelProvider). */
   id: "openrouter" | "openai";
   name: string;
-  models: string[];
   /** Default evolve model persisted with this provider. */
   defaultModel: string;
   /** UiPrefs field the API key is written to. */
@@ -68,12 +67,6 @@ export const BYOK_PROVIDERS: InferenceProvider[] = [
   {
     id: "openrouter",
     name: "OpenRouter",
-    models: [
-      "anthropic/claude-sonnet-4",
-      "anthropic/claude-opus-4",
-      "openai/gpt-4o",
-      "google/gemini-2.5-pro",
-    ],
     defaultModel: "anthropic/claude-sonnet-4",
     prefsKeyField: "openrouterApiKey",
     keyPrefix: "sk-or-",
@@ -83,7 +76,6 @@ export const BYOK_PROVIDERS: InferenceProvider[] = [
   {
     id: "openai",
     name: "OpenAI",
-    models: ["gpt-4o", "gpt-4o-mini", "o4-mini"],
     defaultModel: "gpt-4o",
     prefsKeyField: "openaiApiKey",
     keyPrefix: "sk-",
