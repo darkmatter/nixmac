@@ -74,9 +74,25 @@ struct PaygCheckoutResponse {
 /// Builds the current [`AuthStatus`] snapshot for the frontend.
 pub fn status<R: Runtime>(app: &AppHandle<R>) -> Result<AuthStatus> {
     let server_url = store::get_sync_server_url(app)?;
+    let web_account = store::get_web_account(app)?.map(|meta| AuthAccount {
+        id: meta.account_id,
+        email: meta.email,
+    });
+    let has_device_api_key = store::get_device_api_key(app)?.is_some();
+
+    if let Some(account) = web_account.clone().filter(|_| has_device_api_key) {
+        return Ok(AuthStatus {
+            signed_in: true,
+            account: Some(account),
+            key_id: None,
+            server_url,
+            github_ready: store::get_web_server_url().is_ok(),
+            web_account,
+        });
+    }
+
     let meta = store::get_sync_account(app)?;
     let has_secret = store::get_sync_secret(app)?.is_some();
-
     let signed_in = meta.is_some() && has_secret;
     let (account, key_id) = match meta {
         Some(meta) if has_secret => (
@@ -90,10 +106,6 @@ pub fn status<R: Runtime>(app: &AppHandle<R>) -> Result<AuthStatus> {
     };
 
     let github_ready = store::github_ready(app)?;
-    let web_account = store::get_web_account(app)?.map(|meta| AuthAccount {
-        id: meta.account_id,
-        email: meta.email,
-    });
 
     Ok(AuthStatus {
         signed_in,
@@ -415,23 +427,24 @@ pub async fn github_bootstrap_status<R: Runtime>(
     let base = store::get_web_server_url()?;
     let poll = GithubBootstrapClient::new(base)?.status(state).await?;
     if poll.status.state == GithubBootstrapState::Complete {
-        let api_key = poll
-            .api_key
-            .as_deref()
-            .ok_or_else(|| anyhow!("GitHub bootstrap completed without a device api key"))?;
-        let account = poll
-            .status
-            .account
-            .as_ref()
-            .ok_or_else(|| anyhow!("GitHub bootstrap completed without account metadata"))?;
-        persist_web_session(
-            app,
-            &account_client::WebAuthOutcome {
-                api_key: api_key.to_string(),
-                account_id: account.id.clone(),
-                email: account.email.clone(),
-            },
-        )?;
+        if let Some(api_key) = poll.api_key.as_deref() {
+            let account =
+                poll.status.account.as_ref().ok_or_else(|| {
+                    anyhow!("GitHub bootstrap completed without account metadata")
+                })?;
+            persist_web_session(
+                app,
+                &account_client::WebAuthOutcome {
+                    api_key: api_key.to_string(),
+                    account_id: account.id.clone(),
+                    email: account.email.clone(),
+                },
+            )?;
+        } else if store::get_device_api_key(app)?.is_none() {
+            return Err(anyhow!(
+                "GitHub bootstrap completed without a persisted device api key"
+            ));
+        }
     }
 
     Ok(poll.status)

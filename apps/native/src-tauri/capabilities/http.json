@@ -19,6 +19,7 @@
     },
     "opener:default",
     "http:default",
-    "os:default"
+    "os:default",
+    "deep-link:default"
   ]
 }

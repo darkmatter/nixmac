@@ -4,6 +4,7 @@ import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { DEFAULT_NIXMAC_MODEL, NIXMAC_PROVIDER } from "@/components/widget/onboarding/lib/inference";
 import {
   Command,
   CommandEmpty,
@@ -17,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { tauriAPI } from "@/ipc/api";
 
 interface ModelComboboxProps {
-  provider: "openrouter" | "openai" | "ollama" | "vllm" | "opencode";
+  provider: "nixmac" | "openrouter" | "openai" | "ollama" | "vllm" | "opencode";
   value: string;
   onChange: (value: string) => void;
   onBlur?: () => void;
@@ -79,6 +80,9 @@ async function fetchOllamaModels(baseUrl?: string): Promise<string[]> {
 type ModelProvider = ModelComboboxProps["provider"];
 
 async function fetchFreshModels(provider: ModelProvider): Promise<string[]> {
+  if (provider === NIXMAC_PROVIDER) {
+    return [DEFAULT_NIXMAC_MODEL];
+  }
   if (provider === "openrouter") {
     return fetchOpenRouterModels();
   }
@@ -104,6 +108,10 @@ async function loadProviderModels(
 ) {
   if (provider === "openai") {
     applyModels([...OPENAI_MODELS]);
+    return;
+  }
+  if (provider === NIXMAC_PROVIDER) {
+    applyModels([DEFAULT_NIXMAC_MODEL]);
     return;
   }
 

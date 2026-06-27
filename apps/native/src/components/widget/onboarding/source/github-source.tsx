@@ -1,6 +1,13 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { tauriAPI } from "@/ipc/api";
 import type { GithubRepo } from "@/ipc/types";
 import { auth as authClient } from "@/lib/auth";
@@ -21,8 +28,11 @@ type AuthState = "checking" | "disconnected" | "connecting" | "connected";
 type ConnectMode = "bootstrap" | "authed";
 
 const DEFAULT_DIR = ".darwin";
+const REPOS_PER_PAGE = 3;
 const EMAIL_FALLBACK_MESSAGE =
   "GitHub could not finish account setup. Use an email code to continue, then reconnect GitHub.";
+
+const DEFAULT_BOOTSTRAP_POLL_MS = 5000;
 
 async function openExternal(url: string) {
   try {
@@ -124,15 +134,20 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
   const [otpSent, setOtpSent] = useState(false);
   const [showEmailFallback, setShowEmailFallback] = useState(false);
   const [connectMode, setConnectMode] = useState<ConnectMode | null>(null);
-  const [bootstrapState, setBootstrapState] = useState<string | null>(null);
+  const [bootstrapUserCode, setBootstrapUserCode] = useState<string | null>(null);
+  const [bootstrapVerificationUri, setBootstrapVerificationUri] = useState<string | null>(null);
+  const [bootstrapPollIntervalMs, setBootstrapPollIntervalMs] = useState(DEFAULT_BOOTSTRAP_POLL_MS);
   const [accountWorking, setAccountWorking] = useState(false);
   const [login, setLogin] = useState<string | null>(null);
   const [repos, setRepos] = useState<GithubRepo[] | null>(null);
   const [repoQuery, setRepoQuery] = useState("");
+  const [repoPage, setRepoPage] = useState(0);
   const [loadingRepos, setLoadingRepos] = useState(false);
   const [importingRef, setImportingRef] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const cancelled = useRef(false);
+  const bootstrapResolved = useRef(false);
+  const bootstrapStateRef = useRef<string | null>(null);
   useBetterAuthTauri({
     authClient,
     scheme: "nixmac",
@@ -148,7 +163,6 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     },
   });
 
-
   const resetRejectedSession = useCallback((error: unknown): boolean => {
     if (!isUnauthorizedSession(error)) return false;
     setGithubReady(false);
@@ -156,7 +170,11 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     setLogin(null);
     setRepos(null);
     setConnectMode(null);
-    setBootstrapState(null);
+    setBootstrapUserCode(null);
+    setBootstrapVerificationUri(null);
+    setBootstrapPollIntervalMs(DEFAULT_BOOTSTRAP_POLL_MS);
+    bootstrapStateRef.current = null;
+    bootstrapResolved.current = false;
     return true;
   }, []);
 
@@ -164,7 +182,11 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     setShowEmailFallback(true);
     setGithubReady(false);
     setConnectMode(null);
-    setBootstrapState(null);
+    setBootstrapUserCode(null);
+    setBootstrapVerificationUri(null);
+    setBootstrapPollIntervalMs(DEFAULT_BOOTSTRAP_POLL_MS);
+    bootstrapStateRef.current = null;
+    bootstrapResolved.current = false;
     setAuth("disconnected");
     setError(message?.trim() || EMAIL_FALLBACK_MESSAGE);
   }, []);
@@ -204,20 +226,33 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
       });
   }, [resetRejectedSession]);
 
+  const markBootstrapConnected = useCallback((loginValue: string | null) => {
+    bootstrapResolved.current = true;
+    setGithubReady(true);
+    setShowEmailFallback(false);
+    setConnectMode(null);
+    bootstrapStateRef.current = null;
+    setBootstrapUserCode(null);
+    setBootstrapVerificationUri(null);
+    setBootstrapPollIntervalMs(DEFAULT_BOOTSTRAP_POLL_MS);
+    setLogin(loginValue);
+    setAuth("connected");
+  }, []);
+
   // Poll for linkage while the browser install is in progress.
   const pollGitHubConnection = useCallback(async () => {
+    if (bootstrapResolved.current) return;
     try {
       if (connectMode === "bootstrap") {
-        if (!bootstrapState) return;
-        const s = await client.github.bootstrapStatus({ state: bootstrapState });
-        if (cancelled.current) return;
+        const state = bootstrapStateRef.current;
+        if (!state) return;
+        const s = await client.github.bootstrapStatus({ state });
+        if (cancelled.current || bootstrapResolved.current) return;
+        if (s.pollIntervalSeconds) {
+          setBootstrapPollIntervalMs(Math.max(s.pollIntervalSeconds * 1000, DEFAULT_BOOTSTRAP_POLL_MS));
+        }
         if (s.connected || s.state === "complete") {
-          setGithubReady(true);
-          setShowEmailFallback(false);
-          setConnectMode(null);
-          setBootstrapState(null);
-          setLogin(s.login ?? null);
-          setAuth("connected");
+          markBootstrapConnected(s.login ?? null);
         } else if (s.state === "fallbackRequired" || s.state === "expired") {
           requireEmailFallback(s.fallbackReason);
         }
@@ -225,28 +260,39 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
       }
 
       const s = await client.github.status();
-      if (cancelled.current) return;
+      if (cancelled.current || bootstrapResolved.current) return;
       if (s.connected) {
         setLogin(s.login ?? null);
         setConnectMode(null);
         setAuth("connected");
       }
     } catch (e: unknown) {
+      if (bootstrapResolved.current || cancelled.current) return;
       if (connectMode === "bootstrap") {
-        requireEmailFallback(errorMessage(e));
+        const message = errorMessage(e);
+        if (/rate_limited|429/i.test(message)) {
+          setBootstrapPollIntervalMs((current) => Math.max(current, 10_000));
+          return;
+        }
+        requireEmailFallback(message);
       } else if (resetRejectedSession(e)) {
         setError(errorMessage(e));
       }
     }
-  }, [bootstrapState, connectMode, requireEmailFallback, resetRejectedSession]);
+  }, [connectMode, markBootstrapConnected, requireEmailFallback, resetRejectedSession]);
 
   useEffect(() => {
     if (auth !== "connecting") return;
-    const id = setInterval(async () => {
-      await pollGitHubConnection();
-    }, 2500);
+    const intervalMs =
+      connectMode === "bootstrap"
+        ? Math.max(bootstrapPollIntervalMs, DEFAULT_BOOTSTRAP_POLL_MS)
+        : 2500;
+    void pollGitHubConnection();
+    const id = setInterval(() => {
+      void pollGitHubConnection();
+    }, intervalMs);
     return () => clearInterval(id);
-  }, [auth, pollGitHubConnection]);
+  }, [auth, bootstrapPollIntervalMs, connectMode, pollGitHubConnection]);
 
   // Load repos once connected.
   useEffect(() => {
@@ -266,6 +312,10 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
         if (!cancelled.current) setLoadingRepos(false);
       });
   }, [auth, repos, resetRejectedSession]);
+
+  useEffect(() => {
+    setRepoPage(0);
+  }, [repoQuery]);
 
   async function sendOtp() {
     setError(null);
@@ -290,16 +340,24 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
   }
 
   async function startGitHubConnect(mode: ConnectMode) {
+    bootstrapResolved.current = false;
     setAuth("connecting");
     setConnectMode(mode);
     if (mode === "bootstrap") {
-      const { installUrl, state } = await client.github.bootstrapStart();
-      setBootstrapState(state);
-      await openExternal(installUrl);
+      const { installUrl, state, userCode, verificationUri, interval } =
+        await client.github.bootstrapStart();
+      bootstrapStateRef.current = state;
+      setBootstrapUserCode(userCode);
+      setBootstrapVerificationUri(verificationUri ?? installUrl);
+      setBootstrapPollIntervalMs(Math.max((interval ?? 5) * 1000, DEFAULT_BOOTSTRAP_POLL_MS));
+      await openExternal(verificationUri ?? installUrl);
       return;
     }
 
-    setBootstrapState(null);
+    bootstrapStateRef.current = null;
+    setBootstrapUserCode(null);
+    setBootstrapVerificationUri(null);
+    setBootstrapPollIntervalMs(DEFAULT_BOOTSTRAP_POLL_MS);
     const { installUrl } = await client.github.connectStart();
     await openExternal(installUrl);
   }
@@ -347,6 +405,18 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     }
   }
 
+  async function connectWithServerBootstrap() {
+    setError(null);
+    setAccountWorking(true);
+    try {
+      await startGitHubConnect("bootstrap");
+    } catch (e: unknown) {
+      requireEmailFallback(errorMessage(e));
+    } finally {
+      if (!cancelled.current) setAccountWorking(false);
+    }
+  }
+
   async function checkNow() {
     await pollGitHubConnection();
   }
@@ -372,6 +442,13 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
   const filteredRepos = repos
     ?.filter((repo) => repoMatchesQuery(repo, normalizedRepoQuery))
     .sort(compareReposByFlake);
+  const totalFilteredRepos = filteredRepos?.length ?? 0;
+  const totalRepoPages = Math.max(1, Math.ceil(totalFilteredRepos / REPOS_PER_PAGE));
+  const safeRepoPage = Math.min(repoPage, totalRepoPages - 1);
+  const paginatedRepos = filteredRepos?.slice(
+    safeRepoPage * REPOS_PER_PAGE,
+    safeRepoPage * REPOS_PER_PAGE + REPOS_PER_PAGE,
+  );
 
   // ---- Initial status probe ----
   if (auth === "checking") {
@@ -501,6 +578,35 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
             </>
           )}
         </Button>
+        {connecting && connectMode === "bootstrap" && bootstrapUserCode ? (
+          <div className="mt-4 w-full max-w-sm rounded-lg border border-border bg-muted/30 p-3 text-left">
+            <p className="font-medium text-sm">Enter this code on GitHub</p>
+            <p className="mt-2 rounded-md bg-background px-3 py-2 text-center font-mono font-semibold text-lg tracking-widest">
+              {bootstrapUserCode}
+            </p>
+            <p className="mt-2 text-muted-foreground text-xs">
+              We opened{" "}
+              <button
+                type="button"
+                className="text-primary hover:underline"
+                onClick={() => openExternal(bootstrapVerificationUri ?? "https://github.com/login/device")}
+              >
+                {bootstrapVerificationUri ?? "https://github.com/login/device"}
+              </button>
+              . After approving the device, nixmac will link the existing GitHub App installation.
+            </p>
+          </div>
+        ) : null}
+        {!usingEmailFallback && !connecting ? (
+          <button
+            type="button"
+            onClick={connectWithServerBootstrap}
+            disabled={connectBusy}
+            className="mt-3 text-muted-foreground text-xs hover:underline disabled:pointer-events-none disabled:opacity-50"
+          >
+            Try server bootstrap flow
+          </button>
+        ) : null}
         {connecting ? (
           <div className="mt-3 flex flex-col items-center gap-1.5">
             <button
@@ -545,10 +651,27 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
         <span className="text-muted-foreground text-xs">Read-only</span>
       </div>
 
+      {error ? (
+        <div
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm"
+          role="alert"
+        >
+          {error}
+        </div>
+      ) : null}
+
       <div>
-        <p className="mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">
-          Your repositories
-        </p>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+            Your repositories
+          </p>
+          {!loadingRepos && totalFilteredRepos > 0 ? (
+            <span className="text-muted-foreground text-xs">
+              {totalFilteredRepos} repo{totalFilteredRepos === 1 ? "" : "s"}
+              {normalizedRepoQuery ? " matching" : ""}
+            </span>
+          ) : null}
+        </div>
 
         {loadingRepos ? (
           <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 py-6 text-muted-foreground text-sm">
@@ -571,46 +694,81 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
                 className="w-full rounded-lg border border-input bg-background py-2 pr-3 pl-9 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
-            {filteredRepos && filteredRepos.length > 0 ? (
-              <ul className="flex flex-col gap-2">
-                {filteredRepos.map((repo) => {
-                  const ref = repoRef(repo);
-                  const isImporting = importingRef === ref;
-                  return (
-                    <li key={ref}>
-                      <button
-                        type="button"
-                        onClick={() => chooseRepo(repo)}
-                        disabled={!repo.hasFlake || importingRef !== null}
-                        data-testid="import-repo-button"
-                        className={cn(
-                          "flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
-                          repo.hasFlake
-                            ? "border-border bg-card hover:border-primary/50"
-                            : "cursor-not-allowed border-border/60 bg-card/50 opacity-70",
-                          isImporting && "border-primary ring-1 ring-primary",
-                        )}
-                      >
-                        <span
-                          className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
-                          aria-hidden="true"
+            {paginatedRepos && paginatedRepos.length > 0 ? (
+              <>
+                <ul className="flex flex-col gap-2">
+                  {paginatedRepos.map((repo) => {
+                    const ref = repoRef(repo);
+                    const isImporting = importingRef === ref;
+                    return (
+                      <li key={ref}>
+                        <button
+                          type="button"
+                          onClick={() => chooseRepo(repo)}
+                          disabled={!repo.hasFlake || importingRef !== null}
+                          data-testid="import-repo-button"
+                          className={cn(
+                            "flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
+                            repo.hasFlake
+                              ? "border-border bg-card hover:border-primary/50"
+                              : "cursor-not-allowed border-border/60 bg-card/50 opacity-70",
+                            isImporting && "border-primary ring-1 ring-primary",
+                          )}
                         >
-                          {repoVisibilityIcon(repo)}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-mono text-sm">
-                            {repo.owner}/{repo.name}
+                          <span
+                            className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
+                            aria-hidden="true"
+                          >
+                            {repoVisibilityIcon(repo)}
                           </span>
-                          <span className="text-muted-foreground text-xs">
-                            Updated {relativeUpdated(repo.updatedAt)}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-mono text-sm">
+                              {repo.owner}/{repo.name}
+                            </span>
+                            <span className="text-muted-foreground text-xs">
+                              Updated {relativeUpdated(repo.updatedAt)}
+                            </span>
                           </span>
+                          {repoStatus(repo, isImporting)}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {totalRepoPages > 1 ? (
+                  <Pagination className="mt-3">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          className={cn(safeRepoPage === 0 && "pointer-events-none opacity-50")}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            setRepoPage((page) => Math.max(0, page - 1));
+                          }}
+                        />
+                      </PaginationItem>
+                      <PaginationItem>
+                        <span className="px-2 text-muted-foreground text-xs">
+                          Page {safeRepoPage + 1} of {totalRepoPages}
                         </span>
-                        {repoStatus(repo, isImporting)}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
+                      </PaginationItem>
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          className={cn(
+                            safeRepoPage >= totalRepoPages - 1 && "pointer-events-none opacity-50",
+                          )}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            setRepoPage((page) => Math.min(totalRepoPages - 1, page + 1));
+                          }}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                ) : null}
+              </>
             ) : (
               <div className="rounded-lg border border-dashed border-border bg-background px-3 py-6 text-center text-muted-foreground text-sm">
                 No repositories match "{repoQuery}".
@@ -626,8 +784,6 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
           </div>
         )}
       </div>
-
-      {error ? <p className="text-destructive text-xs">{error}</p> : null}
     </div>
   );
 }

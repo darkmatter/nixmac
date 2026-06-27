@@ -9,15 +9,24 @@ use super::account::AuthAccount;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-/// Result of `github_connect_start`: the GitHub App install URL to open in the
-/// browser. `state` is server-tracked CSRF; the client only needs `install_url`.
+/// Result of starting a GitHub connection flow. Authenticated connections use
+/// `install_url` as the GitHub App install URL; unauthenticated bootstrap uses
+/// GitHub device OAuth and includes a user code to display.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct GithubConnectStart {
-    /// GitHub App installation URL to open in the user's browser.
+    /// GitHub URL to open in the user's browser.
     pub install_url: String,
-    /// Opaque CSRF state bound to the account server-side.
+    /// Opaque state bound to the account/server flow.
     pub state: String,
+    /// Device OAuth code the user must enter at `verification_uri`.
+    pub user_code: Option<String>,
+    /// Device OAuth verification URL.
+    pub verification_uri: Option<String>,
+    /// Seconds until the device code expires.
+    pub expires_in: Option<u32>,
+    /// Minimum polling interval, in seconds.
+    pub interval: Option<u32>,
 }
 
 /// Current state of a GitHub-first desktop bootstrap flow.
@@ -52,6 +61,8 @@ pub struct GithubBootstrapStatus {
     pub account: Option<AuthAccount>,
     /// Human-readable reason to show when email OTP fallback is needed.
     pub fallback_reason: Option<String>,
+    /// Server-requested polling interval in seconds (used for GitHub slow_down).
+    pub poll_interval_seconds: Option<u32>,
 }
 
 /// Whether this account has a linked GitHub App installation, returned by

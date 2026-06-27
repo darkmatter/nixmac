@@ -29,6 +29,9 @@
     "process:allow-restart",
     "notification:default",
     "orpc:default",
+    "opener:allow-default-urls",
+    "deep-link:default",
+    "deep-link:allow-get-current",
     {
       "identifier": "opener:allow-open-path",
       "allow": [

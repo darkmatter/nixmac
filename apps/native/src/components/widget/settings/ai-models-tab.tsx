@@ -7,6 +7,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
+import { DEFAULT_NIXMAC_MODEL, NIXMAC_PROVIDER } from "@/components/widget/onboarding/lib/inference";
 import { tauriAPI } from "@/ipc/api";
 import type { CliToolsState } from "@/ipc/types";
 import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/providers/ai-provider-validation";
@@ -37,6 +38,7 @@ function isPlainInputCliProvider(provider: string): boolean {
 }
 
 const DEFAULT_EVOLVE_MODEL: Record<string, string> = {
+  [NIXMAC_PROVIDER]: DEFAULT_NIXMAC_MODEL,
   openrouter: "anthropic/claude-sonnet-4",
   openai: "gpt-4o",
   ollama: "",
@@ -47,6 +49,7 @@ const DEFAULT_EVOLVE_MODEL: Record<string, string> = {
 };
 
 const DEFAULT_SUMMARY_MODEL: Record<string, string> = {
+  [NIXMAC_PROVIDER]: DEFAULT_NIXMAC_MODEL,
   openrouter: "openai/gpt-4o-mini",
   openai: "gpt-4o-mini",
   ollama: "llama3.1",
@@ -57,6 +60,9 @@ const DEFAULT_SUMMARY_MODEL: Record<string, string> = {
 };
 
 function modelPlaceholder(provider: string, fallback: string): string {
+  if (provider === NIXMAC_PROVIDER) {
+    return DEFAULT_NIXMAC_MODEL;
+  }
   if (provider === "openai") {
     return fallback;
   }
@@ -128,6 +134,7 @@ export function AiModelsTab({
     <>
       {(
         [
+          { value: NIXMAC_PROVIDER, label: "nixmac hosted" },
           { value: "openrouter", label: "OpenRouter" },
           { value: "openai", label: "OpenAI" },
           { value: "ollama", label: "Ollama" },
@@ -238,6 +245,7 @@ export function AiModelsTab({
                         <ModelCombobox
                           provider={
                             evolveProvider as
+                            | "nixmac"
                             | "openrouter"
                             | "openai"
                             | "ollama"
@@ -330,6 +338,7 @@ export function AiModelsTab({
                         <ModelCombobox
                           provider={
                             summaryProvider as
+                            | "nixmac"
                             | "openrouter"
                             | "openai"
                             | "ollama"
