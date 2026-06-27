@@ -140,7 +140,7 @@ jobs:
         if: ${{ !inputs.skip_release_steps && (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
-          steps.check-secrets.outputs.has_certificate == 'true'
+          steps.check-secrets.outputs.has_certificate == 'true' }}
         shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         run: bash ops/scripts/release/import-certificate.sh
       - name: Normalize macOS system install names
@@ -164,7 +164,7 @@ jobs:
         if: ${{ !inputs.skip_release_steps && (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
-          steps.check-secrets.outputs.has_certificate == 'true'
+          steps.check-secrets.outputs.has_certificate == 'true' }}
         run: bash ops/scripts/release/sign-app.sh
       # Replace unsigned app inside the Tauri-built DMG with the signed one.
       # We mount the DMG read-write, swap the .app in place, and re-compress so
@@ -176,14 +176,14 @@ jobs:
         if: ${{ !inputs.skip_release_steps && (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
-          steps.check-secrets.outputs.has_certificate == 'true'
+          steps.check-secrets.outputs.has_certificate == 'true' }}
         run: bash ops/scripts/release/swap-signed-dmg.sh
       # Notarize the app (requires Apple Developer account)
       - name: Notarize app
         if: ${{ !inputs.skip_release_steps && (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
-          steps.check-secrets.outputs.has_notarization == 'true'
+          steps.check-secrets.outputs.has_notarization == 'true' }}
         shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         run: bash ops/scripts/release/notarize.sh
       - name: Check macOS app portability
@@ -249,7 +249,7 @@ jobs:
       - name: Create Release
         if: ${{ !inputs.skip_release_steps && (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'release') &&
-          !contains(steps.release-version.outputs.tag, '-test.')
+          !contains(steps.release-version.outputs.tag, '-test.') }}
         uses: softprops/action-gh-release@v2
         with:
           draft: false
@@ -267,7 +267,7 @@ jobs:
         if: ${{ !inputs.skip_release_steps && (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
-          !contains(steps.release-version.outputs.tag, '-test.')
+          !contains(steps.release-version.outputs.tag, '-test.') }}
         shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         env:
           AWS_DEFAULT_REGION: auto
@@ -283,7 +283,7 @@ jobs:
       - name: Sync release to Linear
         if: ${{ !inputs.skip_release_steps && (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'release') &&
-          !contains(steps.release-version.outputs.tag, '-test.')
+          !contains(steps.release-version.outputs.tag, '-test.') }}
         uses: linear/linear-release-action@v0
         with:
           access_key: ${{ secrets.LINEAR_ACCESS_KEY }}
