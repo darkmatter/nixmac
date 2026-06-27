@@ -1,5 +1,10 @@
 export { invoke } from "./tauri-runtime";
 
+/** Storybook runs in the browser, not inside a Tauri webview. */
+export function isTauri(): boolean {
+  return false;
+}
+
 // Minimal stubs for runtime classes required by @tauri-apps/plugin-updater
 // (and other plugins that import from @tauri-apps/api/core).
 // These are never called in Storybook – the exports just need to resolve so
@@ -10,7 +15,7 @@ export class Resource {
   constructor(rid: number) {
     this.rid = rid;
   }
-  async close(): Promise<void> {}
+  async close(): Promise<void> { }
 }
 
 export class Channel<T = unknown> {

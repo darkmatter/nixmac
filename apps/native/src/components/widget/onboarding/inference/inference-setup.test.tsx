@@ -1,8 +1,9 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { InferenceSetup } from "@/components/widget/onboarding/inference/inference-setup";
+import type { AccountBilling } from "@/ipc/types";
 
 type AuthStatus = {
   signedIn: boolean;
@@ -19,13 +20,22 @@ type AccountStatus = {
   webAccount: { id: string; email: string } | null;
 };
 
+const emptyBilling: AccountBilling = {
+  usage: { currency: "USD", remainingUsd: 0, spentUsd: 0, totalUsd: 0 },
+  subscriptions: [],
+  hasPaymentMethod: false,
+  canUseHostedInference: false,
+  canUseDeviceSync: false,
+};
+
 const mocks = vi.hoisted(() => ({
   status: vi.fn<() => Promise<AccountStatus>>(),
   sendOtp: vi.fn<(email: string) => Promise<void>>(),
   verifyOtp: vi.fn<(email: string, otp: string, name: string) => Promise<AuthStatus>>(),
+  billing: vi.fn<() => Promise<AccountBilling>>(),
+  createSubscriptionCheckout: vi.fn<(slug: "payg-tokens" | "pro") => Promise<string>>(),
   captureEvent: vi.fn<(event: unknown) => void>(),
   identify: vi.fn<(id: string, properties: Record<string, unknown>) => void>(),
-  fetch: vi.fn<typeof fetch>(),
 }));
 
 vi.mock("@/ipc/api", () => ({
@@ -34,6 +44,12 @@ vi.mock("@/ipc/api", () => ({
       status: () => mocks.status(),
       sendOtp: (email: string) => mocks.sendOtp(email),
       verifyOtp: (email: string, otp: string, name: string) => mocks.verifyOtp(email, otp, name),
+      billing: () => mocks.billing(),
+      createSubscriptionCheckout: (slug: "payg-tokens" | "pro") =>
+        mocks.createSubscriptionCheckout(slug),
+    },
+    ui: {
+      setPrefs: vi.fn<() => Promise<{ ok: boolean }>>().mockResolvedValue({ ok: true }),
     },
   },
 }));
@@ -53,7 +69,6 @@ vi.mock("posthog-js", () => ({
 describe("InferenceSetup", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal("fetch", mocks.fetch);
     mocks.status.mockResolvedValue({
       signedIn: false,
       account: null,
@@ -68,23 +83,8 @@ describe("InferenceSetup", () => {
       account: { email: "ada@example.com" },
       credentialId: "credential-1",
     });
-    mocks.fetch.mockImplementation(() =>
-      Promise.resolve(
-        new Response(
-          JSON.stringify({
-            paygProduct: {
-              currency: "usd",
-              maximumAmountUsd: 500,
-              minimumAmountUsd: 5,
-              name: "Hosted inference credits",
-              productId: "prod_payg",
-              slug: "payg-tokens",
-            },
-          }),
-          { status: 200, headers: { "content-type": "application/json" } },
-        ),
-      ),
-    );
+    mocks.billing.mockResolvedValue(emptyBilling);
+    mocks.createSubscriptionCheckout.mockResolvedValue("https://polar.sh/demo-checkout");
   });
 
   it("signs in to hosted inference with an email one-time code", async () => {
@@ -111,7 +111,7 @@ describe("InferenceSetup", () => {
     expect(screen.getByText(/signed in as/i)).toBeInTheDocument();
   });
 
-  it("loads the Polar PAYG product and collects a custom top-up amount", async () => {
+  it("shows subscription plan selection after sign in", async () => {
     render(<InferenceSetup onConfigured={vi.fn<(config: unknown) => void>()} />);
 
     fireEvent.change(screen.getByLabelText("Email"), {
@@ -124,13 +124,9 @@ describe("InferenceSetup", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /verify code and continue/i }));
 
-    const amount = await screen.findByLabelText(/credit amount/i);
-    expect(amount).toHaveValue(25);
-    expect(screen.queryByRole("button", { name: /\$25 credit/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/hosted inference credits/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/zip code/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/country/i)).toHaveValue("US");
-    expect(screen.getByText(/device syncing/i)).toBeInTheDocument();
+    expect(await screen.findByText(/choose a plan/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /subscribe to pay as you go/i })).toBeInTheDocument();
+    expect(screen.getByText(/device sync across macs/i)).toBeInTheDocument();
   });
 
   it("resumes at payment when a web account is already persisted", async () => {
@@ -148,5 +144,36 @@ describe("InferenceSetup", () => {
     expect(await screen.findByText(/signed in as/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /send sign-in code/i })).not.toBeInTheDocument();
     expect(screen.getByText("ada@example.com")).toBeInTheDocument();
+  });
+
+  it("skips checkout when the account already has an active subscription", async () => {
+    mocks.status.mockResolvedValue({
+      signedIn: false,
+      account: null,
+      keyId: null,
+      serverUrl: "https://sync.nixmac.app",
+      githubReady: true,
+      webAccount: { id: "acct_1", email: "ada@example.com" },
+    });
+    mocks.billing.mockResolvedValue({
+      ...emptyBilling,
+      subscriptions: [
+        {
+          id: "sub_1",
+          slug: "payg-tokens",
+          productId: "prod_payg",
+          status: "active",
+        },
+      ],
+      hasPaymentMethod: true,
+      canUseHostedInference: true,
+    });
+
+    render(<InferenceSetup onConfigured={vi.fn<(config: unknown) => void>()} />);
+
+    expect(
+      await screen.findByRole("button", { name: /continue with active subscription/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/choose a plan/i)).not.toBeInTheDocument();
   });
 });

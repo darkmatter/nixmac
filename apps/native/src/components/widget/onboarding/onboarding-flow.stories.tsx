@@ -1,12 +1,11 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
+import { orpcHandlers } from "#storybook/mocks/tauri-runtime";
 import preview from "#storybook/preview";
+import { OnboardingFlow } from "@/components/widget/onboarding/onboarding-flow";
+import { tauriAPI } from "@/ipc/api";
+import { onboardingActions, viewModelActions } from "@nixmac/state";
 import type React from "react";
 import { useEffect, useRef } from "react";
-import { FALLBACK_HOSTED_PAYG_PRODUCT } from "@/components/widget/onboarding/lib/inference";
-import { OnboardingFlow } from "@/components/widget/onboarding/onboarding-flow";
-import { onboardingActions, viewModelActions } from "@nixmac/state";
-import { orpcHandlers } from "#storybook/mocks/tauri-runtime";
-import { tauriAPI } from "@/ipc/api";
 
 /**
  * Interactive, fully-mocked onboarding stories. Each story is a clickable
@@ -20,7 +19,7 @@ import { tauriAPI } from "@/ipc/api";
  * - Import Flake → GitHub / local / flake-ref / "Start from scratch" all work;
  *   they populate a config dir + hosts, then pick a host.
  * - Import Customizations → "Scan this Mac" returns mocked defaults/casks/taps.
- * - AI Inference → BYOK (saves a key) or hosted (sign in + mock card).
+ * - AI Inference → BYOK (saves a key) or hosted (sign in + mock subscription checkout).
  * - First Build → "Run build" streams a mocked log to success → celebration.
  */
 
@@ -166,9 +165,12 @@ const BUILD_LINES = [
   "✓ switched to configuration 'macbook-pro'.",
 ];
 
-const DEMO_HOSTED_PAYG_PRODUCT = {
-  ...FALLBACK_HOSTED_PAYG_PRODUCT,
-  productId: "prod_demo_payg",
+const DEMO_ACCOUNT_BILLING = {
+  usage: { currency: "USD", remainingUsd: 0, spentUsd: 0, totalUsd: 0 },
+  subscriptions: [],
+  hasPaymentMethod: false,
+  canUseHostedInference: false,
+  canUseDeviceSync: false,
 };
 
 /**
@@ -276,14 +278,6 @@ function installBackend(startAt: string) {
   const patchOrpc = (path: string, fn: (input: unknown) => unknown | Promise<unknown>) => {
     saved.push([orpcHandlers, path, orpcHandlers[path]]);
     orpcHandlers[path] = fn;
-  };
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-    if (url.includes("/api/billing/payg-product")) {
-      return Response.json({ paygProduct: DEMO_HOSTED_PAYG_PRODUCT });
-    }
-    return originalFetch(input, init);
   };
 
   const setConfigWithHosts = (dir: string) => {
@@ -462,7 +456,12 @@ function installBackend(startAt: string) {
     githubReady: true,
     webAccount: { id: "demo-account", email },
   }));
-  patch(tauriAPI.account, "createPaygCheckout", async () => "https://polar.sh/demo-checkout");
+  patch(tauriAPI.account, "billing", async () => DEMO_ACCOUNT_BILLING);
+  patch(
+    tauriAPI.account,
+    "createSubscriptionCheckout",
+    async () => "https://polar.sh/demo-checkout",
+  );
   ensure("ui");
   patch(tauriAPI.ui, "setPrefs", async () => ({ ok: true }));
   patch(tauriAPI.ui, "getPrefs", async () => ({}));
@@ -499,7 +498,6 @@ function installBackend(startAt: string) {
 
   return () => {
     timers.forEach(clearTimeout);
-    globalThis.fetch = originalFetch;
     for (const [obj, key, value] of saved) obj[key] = value;
   };
 }
