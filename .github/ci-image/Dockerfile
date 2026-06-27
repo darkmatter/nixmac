@@ -71,6 +71,8 @@ ENV PATH="/nix/var/nix/profiles/default/bin:/root/.nix-profile/bin:${PATH}"
 # Each RUN is a separate Docker layer — background processes (nix-daemon) do
 # NOT persist between RUN commands. Start the daemon at the top of this RUN,
 # install nix packages, configure binary caches, verify, then kill the daemon.
+ENV USER=root
+
 RUN nix-daemon &>/var/log/nix-daemon.log & \
     DAEMON_PID=$! && \
     sleep 3 && \
@@ -101,7 +103,7 @@ RUN nix-daemon &>/var/log/nix-daemon.log & \
 # ---- Bun --------------------------------------------------------------------
 # Version pinned to match package.json `packageManager` field.
 ARG BUN_VERSION=1.3.13
-RUN curl -fsSL https://bun.sh/install | bash -s "bun@${BUN_VERSION}" \
+RUN curl -fsSL https://bun.sh/install | bash -s "${BUN_VERSION}" \
     && bun --version
 ENV BUN_INSTALL="/root/.bun"
 ENV PATH="/root/.bun/bin:${PATH}"

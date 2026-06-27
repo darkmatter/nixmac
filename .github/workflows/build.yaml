@@ -17,22 +17,8 @@ env:
   CARGO_TERM_COLOR: always
   SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 jobs:
-  # The Graphite check is a plain API call — run it on a linux runner so it
-  # doesn't queue on (or hold) one of the scarce macOS runner slots.
-  optimize_ci:
-    runs-on: [self-hosted, linux]
-    outputs:
-      skip: ${{ steps.check_skip.outputs.skip }}
-    steps:
-      - name: Optimize CI
-        id: check_skip
-        uses: withgraphite/graphite-ci-action@main
-        with:
-          graphite_token: ${{ secrets.GRAPHITE_TOKEN }}
   build:
     runs-on: [self-hosted, macOS]
-    needs: optimize_ci
-    if: needs.optimize_ci.outputs.skip == 'false'
     permissions:
       contents: write
     steps:
