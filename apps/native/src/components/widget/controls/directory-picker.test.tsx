@@ -1,10 +1,10 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { uiActions, viewModelActions } from "@nixmac/state";
 import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
 import { makeGlobalPreferences as makePrefs } from "@/utils/test-fixtures";
+import { uiActions, viewModelActions } from "@nixmac/state";
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -18,19 +18,19 @@ const mockSetHostAttr = vi.fn<(h: string) => Promise<void>>();
 const mockFlakeExistsAt = vi.fn<(p: string) => Promise<boolean>>();
 const mockFlakeExists = vi.fn<() => Promise<boolean>>();
 
-vi.mock("@/ipc/api", () => ({
-  tauriAPI: {
+vi.mock("@/lib/orpc", () => ({
+  client: {
     path: {
-      normalize: (p: string) => mockNormalize(p),
-      exists: (p: string) => mockExists(p),
+      normalize: ({ input }: { input: string }) => mockNormalize(input),
+      exists: ({ dir }: { dir: string }) => mockExists(dir),
     },
     config: {
-      setDir: (p: string) => mockSetDir(p),
+      setDir: ({ dir }: { dir: string }) => mockSetDir(dir),
       pickDir: () => mockPickDir(),
-      setHostAttr: (h: string) => mockSetHostAttr(h),
+      setHostAttr: ({ host }: { host: string }) => mockSetHostAttr(host),
     },
     flake: {
-      existsAt: (p: string) => mockFlakeExistsAt(p),
+      existsAt: ({ dir }: { dir: string }) => mockFlakeExistsAt(dir),
       exists: () => mockFlakeExists(),
     },
   },
@@ -143,7 +143,7 @@ describe("<DirectoryPicker>", () => {
     // Allow all chained awaits in onBlur to settle.
     await screen.findByDisplayValue("/Users/me/.darwin");
 
-    // Input is trimmed before being passed to `tauriAPI.path.normalize`.
+    // Input is trimmed before being passed to `client.path.normalize`.
     expect(mockNormalize).toHaveBeenCalledWith("/Users/me/.darwin");
     expect(mockExists).toHaveBeenCalledWith("/Users/me/.darwin");
     expect(mockSetDir).toHaveBeenCalledWith("/Users/me/.darwin");
