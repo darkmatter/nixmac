@@ -190,8 +190,8 @@ pub fn parse_repo_ref(input: &str) -> Result<RepoRef> {
         clone_url: format!("https://github.com/{owner}/{repo}.git"),
         git_ref,
         subdir,
-        owner,
-        repo,
+        owner: parsed_owner.to_string(),
+        repo: parsed_repo.to_string(),
     })
 }
 
