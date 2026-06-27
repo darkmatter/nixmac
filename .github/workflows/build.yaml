@@ -72,6 +72,15 @@ jobs:
           else
             echo "has_notarization=false" >> $GITHUB_OUTPUT
           fi
+      # tauri-plugin-macos-passkey 0.1.0 ships a Swift package declaring
+      # swift-tools-version 6.1, but the self-hosted runner has Swift 6.0.2
+      # (Xcode 16.1). Fetch crates and lower the declared tools version before
+      # building. Mirrors evaluate.yml's Rust Check job.
+      - name: Patch passkey Swift package
+        working-directory: apps/native/src-tauri
+        run: |
+          cargo fetch --locked
+          bash "$GITHUB_WORKSPACE/ops/scripts/ci/patch-passkey-swift.sh"
       # Build the Tauri app (TAURI_SIGNING_PRIVATE_KEY + PASSWORD come from sops)
       # NOTE: Certificate import is intentionally deferred until after this step.
       # Running `security list-keychain -d user -s <keychain>` before the build

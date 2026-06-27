@@ -524,7 +524,8 @@ fn run_gui_mode(
         .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_upload::init())
         .plugin(tauri_plugin_macos_permissions::init())
-        .plugin(tauri_plugin_macos_passkey::init())
+        // temporary disabled until we can get it working in CI
+        // .plugin(tauri_plugin_macos_passkey::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_orpc::init(orpc_router, |app| orpc::OrpcCtx {
             app: app.clone(),
