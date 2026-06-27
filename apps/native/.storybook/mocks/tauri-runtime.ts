@@ -1,3 +1,4 @@
+
 const defaultHosts = ["Demo-MacBook-Pro", "Work-MacBook"];
 let nextCallbackId = 1;
 
@@ -440,7 +441,7 @@ export const storybookTauriAPI = {
   git: {
     status: async () => baseGitStatus(),
     statusAndCache: async () => {
-      const { useViewModel } = await import("@nixmac/state");
+      const { useViewModel, viewModelActions } = await import("@nixmac/state");
       return viewModelActions.getState().git ?? baseGitStatus();
     },
     cached: async () => baseGitStatus(),
@@ -518,7 +519,7 @@ export const storybookTauriAPI = {
   },
   summarizedChanges: {
     findChangeMap: async () => {
-      const { useViewModel } = await import("@nixmac/state");
+      const { viewModelActions } = await import("@nixmac/state");
       return viewModelActions.getState().changeMap ?? baseSemanticChangeMap();
     },
     summarizeCurrent: async () => baseSemanticChangeMap(),
@@ -593,7 +594,7 @@ export const storybookTauriAPI = {
       // Return the store's current evolve state so init doesn't overwrite story state.
       // Dynamic import avoids circular dep at module-evaluation time; by the time
       // this async method is called the store module is fully initialized.
-      const { useViewModel } = await import("@nixmac/state");
+      const { viewModelActions } = await import("@nixmac/state");
       return viewModelActions.getState().evolve ?? baseEvolveState();
     },
     clear: async () => baseEvolveState(),
@@ -679,18 +680,26 @@ export const storybookTauriAPI = {
   },
 };
 
-if (typeof window !== "undefined") {
-  const storybookWindow = window as Window & {
+
+declare global {
+  interface Window {
     __NIXMAC__?: typeof storybookTauriAPI;
-    tauriAPI?: typeof storybookTauriAPI;
+  }
+}
+
+if (typeof window !== "undefined") {
+  type StorybookTauriAPI = NonNullable<Window["__NIXMAC__"]>;
+  const storybookWindow = window as Window & {
+    __NIXMAC__?: StorybookTauriAPI;
+    tauriAPI?: StorybookTauriAPI;
     __TAURI_INTERNALS__?: {
       invoke: typeof invoke;
       transformCallback: typeof transformCallback;
     };
   };
 
-  storybookWindow.__NIXMAC__ = storybookTauriAPI;
-  storybookWindow.tauriAPI = storybookTauriAPI;
+  storybookWindow.__NIXMAC__ = storybookTauriAPI as StorybookTauriAPI;
+  storybookWindow.tauriAPI = storybookTauriAPI as StorybookTauriAPI;
   storybookWindow.__TAURI_INTERNALS__ = {
     invoke,
     transformCallback,

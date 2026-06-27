@@ -1,10 +1,10 @@
 import addonA11y from "@storybook/addon-a11y";
 import addonDocs from "@storybook/addon-docs";
-import type { DocsContainerProps } from "@storybook/addon-docs/blocks";
 import type { Decorator } from "@storybook/react-vite";
 import { definePreview } from "@storybook/react-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+// @ts-ignore
 import "../src/index.css";
 import "./mocks/tauri-runtime";
 import darkTheme from "./theme";

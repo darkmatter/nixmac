@@ -27,9 +27,12 @@
     "noFallthroughCasesInSwitch": true,
     "strictNullChecks": true
   },
-  "include": ["src", "electron", ".storybook/**/*"],
+  "include": ["src", "electron"],
   "exclude": [
     "node_modules",
+    "**/*.stories.tsx",
+    "**/*.mdx",
+    ".storybook",
     "src/components/ui/accordion.tsx",
     "src/components/ui/alert-dialog.tsx",
     "src/components/ui/aspect-ratio.tsx",

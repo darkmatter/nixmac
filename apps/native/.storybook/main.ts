@@ -1,7 +1,7 @@
+import type { StorybookConfig } from "@storybook/react-vite";
+import tailwindcss from "@tailwindcss/vite";
 import path, { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import tailwindcss from "@tailwindcss/vite";
-import type { StorybookConfig } from "@storybook/react-vite";
 import { mergeConfig } from "vite";
 import { nixmacBuildDefines } from "../nixmac-profile";
 
@@ -10,27 +10,6 @@ const appRoot = path.resolve(storybookDir, "..");
 const repoRoot = path.resolve(appRoot, "../..");
 const uiPackageRoot = path.resolve(repoRoot, "packages/ui/src");
 const statePackageRoot = path.resolve(repoRoot, "packages/state/src");
-
-function withoutMonacoEditorPlugin(plugins: unknown): unknown {
-  if (!Array.isArray(plugins)) return plugins;
-
-  return plugins.flatMap((plugin) => {
-    if (Array.isArray(plugin)) {
-      return withoutMonacoEditorPlugin(plugin) as unknown[];
-    }
-
-    if (
-      plugin &&
-      typeof plugin === "object" &&
-      "name" in plugin &&
-      /monaco-editor|moncao-editor/.test(String((plugin as { name?: unknown }).name))
-    ) {
-      return [];
-    }
-
-    return [plugin];
-  });
-}
 
 const config: StorybookConfig = {
   stories: [
@@ -76,7 +55,6 @@ const config: StorybookConfig = {
         },
       },
     });
-    // merged.plugins = withoutMonacoEditorPlugin(merged.plugins) as typeof merged.plugins;
     merged.build ??= {};
     merged.build.target = "esnext";
     // Force Vite HMR to use localhost instead of the auto-detected link-local
