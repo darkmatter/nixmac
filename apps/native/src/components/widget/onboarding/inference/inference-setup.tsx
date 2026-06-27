@@ -4,23 +4,19 @@ import { Button } from "@/components/ui/button";
 import {
   BYOK_PROVIDERS,
   DEFAULT_NIXMAC_MODEL,
-  FALLBACK_HOSTED_PAYG_PRODUCT,
   NIXMAC_PROVIDER,
-  parseHostedPaygProductResponse,
   validateKeyFormat,
-  type HostedPaygProduct,
   type InferenceConfig,
   type InferenceMode,
 } from "@/components/widget/onboarding/lib/inference";
 import { tauriAPI } from "@/ipc/api";
-import { getWebSiteUrl } from "@/lib/env";
+import type { AccountBilling } from "@/ipc/types";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import { cn } from "@/lib/utils";
 import NixmacIcon from "@nixmac/ui/components/icon";
 import { open } from "@tauri-apps/plugin-shell";
 import {
   Check,
-  CreditCard,
   KeyRound,
   Loader2,
   Lock,
@@ -118,6 +114,19 @@ function ModeCard({
 /* ----------------------------- Hosted account ---------------------------- */
 
 type HostedStage = "account" | "payment";
+type SubscriptionPlan = "payg-tokens" | "pro";
+
+const PAYG_HIGHLIGHTS = [
+  "Pay only for the model usage you consume",
+  "Usage-based billing through Polar",
+  "Use credits across supported models",
+];
+
+const PRO_HIGHLIGHTS = [
+  "Everything in Pay as you go",
+  "Device sync for keeping configurations in step",
+  "Built for users managing more than one Mac",
+];
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -143,15 +152,15 @@ async function openExternal(url: string) {
   }
 }
 
-async function loadHostedPaygProduct(): Promise<HostedPaygProduct> {
-  const base = getWebSiteUrl().replace(/\/$/, "");
-  const response = await fetch(`${base}/api/billing/payg-product`, {
-    headers: { accept: "application/json" },
+function formatUsd(amount: number): string {
+  return amount.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
-  if (!response.ok) {
-    throw new Error(`Could not load Polar PAYG product (${response.status})`);
-  }
-  return parseHostedPaygProductResponse(await response.json());
+}
+
+function planLabel(slug: string): string {
+  return slug === "pro" ? "Pro" : "Pay as you go";
 }
 
 function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) => void }) {
@@ -159,29 +168,32 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
-  const [paygProduct, setPaygProduct] = useState<HostedPaygProduct>(FALLBACK_HOSTED_PAYG_PRODUCT);
-  const [paygProductLoaded, setPaygProductLoaded] = useState(false);
-  const [paygProductLoading, setPaygProductLoading] = useState(false);
-  const [paygProductError, setPaygProductError] = useState<string | null>(null);
-  const [creditAmount, setCreditAmount] = useState(25);
+  const [billing, setBilling] = useState<AccountBilling | null>(null);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [billingError, setBillingError] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>("payg-tokens");
   const [checkoutStarted, setCheckoutStarted] = useState(false);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [zipCode, setZipCode] = useState("");
-  const [country, setCountry] = useState("US");
-
   const normalizedEmail = email.trim();
   const emailValid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalizedEmail);
   const accountReady = emailValid && (!otpSent || otp.trim().length > 0);
-  const amountWithinBounds =
-    creditAmount >= paygProduct.minimumAmountUsd &&
-    (paygProduct.maximumAmountUsd === undefined || creditAmount <= paygProduct.maximumAmountUsd);
-  const cardReady =
-    paygProductLoaded &&
-    amountWithinBounds &&
-    zipCode.trim().length > 0 &&
-    country.trim().length > 0;
+  const canSkipPayment = billing?.canUseHostedInference ?? false;
+
+  async function finishHostedSetup(planSuffix: string) {
+    await tauriAPI.ui.setPrefs({
+      evolveProvider: NIXMAC_PROVIDER,
+      evolveModel: DEFAULT_NIXMAC_MODEL,
+      summaryProvider: NIXMAC_PROVIDER,
+      summaryModel: DEFAULT_NIXMAC_MODEL,
+    });
+    getTelemetry().captureEvent({
+      name: "inference_configured",
+      props: { mode: "hosted" },
+    });
+    onConfigured({ mode: "hosted", email, plan: planSuffix });
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -194,7 +206,7 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
         setOtpSent(false);
         setStage("payment");
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => {
       cancelled = true;
     };
@@ -203,29 +215,18 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
   useEffect(() => {
     if (stage !== "payment") return;
     let cancelled = false;
-    setPaygProductLoading(true);
-    setPaygProductLoaded(false);
-    setPaygProductError(null);
-    loadHostedPaygProduct()
-      .then((product) => {
-        if (cancelled) return;
-        setPaygProduct(product);
-        setPaygProductLoaded(true);
-        setCreditAmount((current) =>
-          Math.max(
-            product.minimumAmountUsd,
-            Math.min(current, product.maximumAmountUsd ?? current),
-          ),
-        );
+    setBillingLoading(true);
+    setBillingError(null);
+    tauriAPI.account
+      .billing()
+      .then((snapshot) => {
+        if (!cancelled) setBilling(snapshot);
       })
       .catch((e: unknown) => {
-        if (!cancelled) {
-          setPaygProductLoaded(false);
-          setPaygProductError(errorMessage(e));
-        }
+        if (!cancelled) setBillingError(errorMessage(e));
       })
       .finally(() => {
-        if (!cancelled) setPaygProductLoading(false);
+        if (!cancelled) setBillingLoading(false);
       });
     return () => {
       cancelled = true;
@@ -277,18 +278,45 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
     }
   }
 
-  async function submitPayment() {
-    if (!cardReady) return;
+  async function continueWithSubscription() {
+    if (!canSkipPayment) return;
     setWorking(true);
     setError(null);
     try {
-      const checkoutUrl = await tauriAPI.account.createPaygCheckout(
-        creditAmount,
-        country,
-        zipCode.trim(),
-      );
+      const activePlan = billing?.subscriptions[0]?.slug ?? "subscribed";
+      await finishHostedSetup(activePlan);
+    } catch (e: unknown) {
+      setError(errorMessage(e));
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function startCheckout() {
+    setWorking(true);
+    setError(null);
+    try {
+      const checkoutUrl = await tauriAPI.account.createSubscriptionCheckout(selectedPlan);
       await openExternal(checkoutUrl);
       setCheckoutStarted(true);
+    } catch (e: unknown) {
+      setError(errorMessage(e));
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function refreshBillingAfterCheckout() {
+    setWorking(true);
+    setError(null);
+    try {
+      const snapshot = await tauriAPI.account.billing();
+      setBilling(snapshot);
+      if (snapshot.canUseHostedInference) {
+        await finishHostedSetup(selectedPlan);
+        return;
+      }
+      setError("Subscription not active yet. Finish checkout in Polar, then try again.");
     } catch (e: unknown) {
       setError(errorMessage(e));
     } finally {
@@ -392,149 +420,143 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
         Signed in as <span className="font-medium">{email}</span>
       </div>
 
-      <fieldset>
-        <legend className="mb-2 font-medium text-sm">Choose credit top-up</legend>
-        <p className="mb-3 text-muted-foreground text-xs">
-          Type the hosted inference credit you want to add. Your nixmac subscription includes device syncing
-          across Macs.
+      {billingLoading ? (
+        <p className="flex items-center gap-1.5 text-muted-foreground text-xs">
+          <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+          Loading billing status…
         </p>
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="credit-amount" className="font-medium text-sm">
-            Credit amount
-          </label>
-          <div className="relative">
-            <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground text-sm">
-              $
-            </span>
-            <input
-              id="credit-amount"
-              type="number"
-              min={paygProduct.minimumAmountUsd}
-              max={paygProduct.maximumAmountUsd}
-              step={1}
-              value={creditAmount}
-              onChange={(e) => setCreditAmount(Number(e.target.value))}
-              className="w-full rounded-lg border border-input bg-background py-2 pr-3 pl-7 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </div>
-          <p className="text-muted-foreground text-xs">
-            {paygProduct.name}
-            {paygProductLoaded
-              ? ` via Polar PAYG (${paygProduct.currency.toUpperCase()})`
-              : " via Polar PAYG"}
-            . Minimum ${paygProduct.minimumAmountUsd}
-            {paygProduct.maximumAmountUsd ? `, maximum $${paygProduct.maximumAmountUsd}` : ""}.
+      ) : billingError ? (
+        <p className="text-destructive text-xs">{billingError}</p>
+      ) : billing ? (
+        <div className="rounded-lg border border-border bg-muted/30 p-3">
+          <p className="font-medium text-sm">Usage this period</p>
+          <p className="mt-1 font-mono text-lg">${formatUsd(billing.usage.remainingUsd)} remaining</p>
+          <p className="mt-1 text-muted-foreground text-xs">
+            ${formatUsd(billing.usage.spentUsd)} spent of ${formatUsd(billing.usage.totalUsd)} credited
           </p>
-        </div>
-        {paygProductLoading ? (
-          <p className="mt-2 flex items-center gap-1.5 text-muted-foreground text-xs">
-            <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-            Loading Polar PAYG product…
-          </p>
-        ) : null}
-        {paygProductError ? (
-          <p className="mt-2 text-destructive text-xs">
-            {paygProductError}. Check the billing server connection before continuing.
-          </p>
-        ) : null}
-        {!amountWithinBounds ? (
-          <p className="mt-2 text-destructive text-xs">
-            Enter an amount between ${paygProduct.minimumAmountUsd}
-            {paygProduct.maximumAmountUsd ? ` and $${paygProduct.maximumAmountUsd}` : " or more"}.
-          </p>
-        ) : null}
-      </fieldset>
-
-      <div className="flex flex-col gap-3">
-        <p className="flex items-center gap-1.5 font-medium text-sm">
-          <CreditCard className="size-4 text-muted-foreground" aria-hidden="true" />
-          Checkout
-        </p>
-        <div className="flex flex-col gap-1.5">
-          <p className="text-muted-foreground text-xs">
-            We&apos;ll open Polar to collect payment details securely.
-          </p>
-          <div className="flex gap-2">
-            <div className="flex flex-1 flex-col gap-1.5">
-              <label htmlFor="billing-zip" className="font-medium text-sm">
-                ZIP code
-              </label>
-              <input
-                id="billing-zip"
-                value={zipCode}
-                onChange={(e) => setZipCode(e.target.value)}
-                placeholder="94107"
-                autoComplete="postal-code"
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </div>
-            <div className="flex flex-1 flex-col gap-1.5">
-              <label htmlFor="billing-country" className="font-medium text-sm">
-                Country
-              </label>
-              <select
-                id="billing-country"
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-                autoComplete="country"
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="US">United States</option>
-                <option value="CA">Canada</option>
-                <option value="GB">United Kingdom</option>
-                <option value="AU">Australia</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <Button onClick={submitPayment} disabled={!cardReady || working || paygProductLoading}>
-        {working ? (
-          <>
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-            Opening Polar…
-          </>
-        ) : (
-          <>
-            <Lock className="size-4" aria-hidden="true" />
-            Add ${creditAmount}
-          </>
-        )}
-      </Button>
-      <p className="flex items-center gap-1.5 text-muted-foreground text-xs">
-        <ShieldCheck className="size-3.5 text-success" aria-hidden="true" />
-        Card details are handled by Polar. ZIP code and country are used for billing.
-      </p>
-      {checkoutStarted ? (
-        <div className="rounded-lg border border-success/30 bg-success/5 p-3">
-          <p className="text-muted-foreground text-xs">
-            Finish checkout in Polar, then continue once the payment completes.
-          </p>
-          <Button
-            className="mt-2"
-            size="sm"
-            variant="secondary"
-            onClick={async () => {
-              await tauriAPI.ui.setPrefs({
-                evolveProvider: NIXMAC_PROVIDER,
-                evolveModel: DEFAULT_NIXMAC_MODEL,
-                summaryProvider: NIXMAC_PROVIDER,
-                summaryModel: DEFAULT_NIXMAC_MODEL,
-              });
-              getTelemetry().captureEvent({
-                name: "inference_configured",
-                props: { mode: "hosted" },
-              });
-              onConfigured({ mode: "hosted", email, plan: `${paygProduct.slug}:${creditAmount}` });
-            }}
-          >
-            I completed checkout
-          </Button>
+          {billing.subscriptions.length > 0 ? (
+            <p className="mt-2 text-muted-foreground text-xs">
+              Active plan:{" "}
+              {billing.subscriptions.map((subscription) => planLabel(subscription.slug)).join(", ")}
+            </p>
+          ) : null}
         </div>
       ) : null}
+
+      {canSkipPayment ? (
+        <Button variant="secondary" onClick={() => void continueWithSubscription()} disabled={working}>
+          {working ? (
+            <>
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              Continuing…
+            </>
+          ) : (
+            "Continue with active subscription"
+          )}
+        </Button>
+      ) : (
+        <>
+          <fieldset>
+            <legend className="mb-2 font-medium text-sm">Choose a plan</legend>
+            <p className="mb-3 text-muted-foreground text-xs">
+              Both plans bill for model usage through Polar. Pro adds device sync across Macs.
+            </p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <PlanCard
+                active={selectedPlan === "payg-tokens"}
+                title="Pay as you go"
+                highlights={PAYG_HIGHLIGHTS}
+                onClick={() => setSelectedPlan("payg-tokens")}
+              />
+              <PlanCard
+                active={selectedPlan === "pro"}
+                title="Pro"
+                badge="Device sync"
+                highlights={PRO_HIGHLIGHTS}
+                onClick={() => setSelectedPlan("pro")}
+              />
+            </div>
+          </fieldset>
+
+          <Button onClick={() => void startCheckout()} disabled={working || billingLoading}>
+            {working ? (
+              <>
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                Opening Polar…
+              </>
+            ) : (
+              <>
+                <Lock className="size-4" aria-hidden="true" />
+                Subscribe to {planLabel(selectedPlan)}
+              </>
+            )}
+          </Button>
+          <p className="flex items-center gap-1.5 text-muted-foreground text-xs">
+            <ShieldCheck className="size-3.5 text-success" aria-hidden="true" />
+            Payment details are handled securely by Polar.
+          </p>
+          {checkoutStarted ? (
+            <div className="rounded-lg border border-success/30 bg-success/5 p-3">
+              <p className="text-muted-foreground text-xs">
+                Finish checkout in Polar, then continue once your subscription is active.
+              </p>
+              <Button
+                className="mt-2"
+                size="sm"
+                variant="secondary"
+                onClick={() => void refreshBillingAfterCheckout()}
+                disabled={working}
+              >
+                I completed checkout
+              </Button>
+            </div>
+          ) : null}
+        </>
+      )}
       {error ? <p className="text-destructive text-xs">{error}</p> : null}
     </div>
+  );
+}
+
+function PlanCard({
+  active,
+  title,
+  badge,
+  highlights,
+  onClick,
+}: {
+  active: boolean;
+  title: string;
+  badge?: string;
+  highlights: string[];
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex flex-col gap-2 rounded-xl border p-4 text-left transition-colors",
+        active ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-accent",
+      )}
+    >
+      <span className="flex items-center gap-2">
+        <span className="font-medium text-sm">{title}</span>
+        {badge ? (
+          <span className="rounded-full bg-success/15 px-1.5 py-0.5 font-semibold text-[10px] text-success">
+            {badge}
+          </span>
+        ) : null}
+      </span>
+      <ul className="flex flex-col gap-1 text-muted-foreground text-xs">
+        {highlights.map((highlight) => (
+          <li key={highlight} className="flex items-start gap-1.5">
+            <Check className="mt-0.5 size-3 shrink-0 text-success" aria-hidden="true" />
+            <span>{highlight}</span>
+          </li>
+        ))}
+      </ul>
+    </button>
   );
 }
 

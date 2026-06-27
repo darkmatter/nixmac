@@ -4,11 +4,14 @@
  * oRPC is end-to-end.Therefore this API is deprecated in favor of oRPC bindings..
  * @see {@link import("./orpc-bindings")} for the oRPC client.
  */
+import type { StarterTemplateId } from "@/components/widget/onboarding/lib/flake-ref";
 import type {
+  AccountBilling,
   AuthStatus,
   CliToolsState,
   ConfigEditApplyResult,
   ConfigurableSchema,
+  CreditBalance,
   ExportResult,
   FeedbackMetadata,
   FeedbackShareOptions,
@@ -32,7 +35,6 @@ import type {
   SystemDefaultsScan,
   UpdateInfo,
 } from "@/ipc/types";
-import type { StarterTemplateId } from "@/components/widget/onboarding/lib/flake-ref";
 import { client, type PreviewIndicatorState } from "@/lib/orpc";
 import { invoke } from "@tauri-apps/api/core";
 import { type Event, listen, once } from "@tauri-apps/api/event";
@@ -101,8 +103,12 @@ export const tauriAPI = {
     verifyOtp: (email: string, otp: string, name: string) =>
       invoke<AuthStatus>("account_verify_otp", { email, otp, name }),
     /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    createPaygCheckout: (amountUsd: number, country: string, postalCode: string) =>
-      invoke<string>("account_create_payg_checkout", { amountUsd, country, postalCode }),
+    createSubscriptionCheckout: (slug: "payg-tokens" | "pro") =>
+      invoke<string>("account_create_subscription_checkout", { slug }),
+    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
+    billing: () => invoke<AccountBilling>("account_billing"),
+    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
+    creditBalance: () => invoke<CreditBalance>("account_credit_balance"),
     /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
     signOut: () => invoke<AuthStatus>("account_sign_out"),
     /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */

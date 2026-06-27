@@ -26,7 +26,7 @@ import { FlakeRefSource } from "@/components/widget/onboarding/source/flake-ref-
 import { CreateSource } from "@/components/widget/onboarding/source/create-source";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { client } from "@/lib/orpc";
-import { useViewModel } from "@nixmac/state";
+import { onboardingActions, useViewModel } from "@nixmac/state";
 
 type Mode = "choose" | "import" | "create";
 type Method = "github" | "local" | "ref";
@@ -167,6 +167,13 @@ export function SetupStep() {
       })
       .catch(() => {});
   }, []);
+
+  async function confirmHost() {
+    await saveHost(effectiveHost);
+    // Back-navigation pins viewingStep to "setup" while furthestStep is already
+    // ahead. Saving the host does not move furthestStep, so clear the override.
+    onboardingActions.setViewingStep(null);
+  }
 
   // ---- No config dir yet: fork between existing vs. new ----
   if (showSources) {
@@ -388,7 +395,7 @@ export function SetupStep() {
                 aria-hidden="true"
               />
             </div>
-            <Button onClick={() => saveHost(effectiveHost)} disabled={!effectiveHost}>
+            <Button onClick={() => void confirmHost()} disabled={!effectiveHost}>
               Use this host
             </Button>
           </div>

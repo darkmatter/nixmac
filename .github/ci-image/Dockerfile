@@ -103,10 +103,15 @@ RUN nix-daemon &>/var/log/nix-daemon.log & \
 # ---- Bun --------------------------------------------------------------------
 # Version pinned to match package.json `packageManager` field.
 ARG BUN_VERSION=1.3.13
-RUN curl -fsSL https://bun.sh/install | bash -s "${BUN_VERSION}" \
-    && bun --version
+RUN BUN_TAG="bun-v${BUN_VERSION}" && \
+    curl -fsSL "https://github.com/oven-sh/bun/releases/download/${BUN_TAG}/bun-linux-x64.zip" -o /tmp/bun.zip && \
+    unzip -q /tmp/bun.zip -d /tmp/bun && \
+    mv /tmp/bun/bun-linux-x64/bun /usr/local/bin/bun && \
+    chmod +x /usr/local/bin/bun && \
+    rm -rf /tmp/bun /tmp/bun.zip && \
+    bun --version
 ENV BUN_INSTALL="/root/.bun"
-ENV PATH="/root/.bun/bin:${PATH}"
+ENV PATH="/usr/local/bin:${BUN_INSTALL}/bin:${PATH}"
 
 # ---- Non-nix system tools verification --------------------------------------
 RUN git --version && rsync --version | head -1 && jq --version && ffmpeg -version | head -1

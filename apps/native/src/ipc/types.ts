@@ -3,6 +3,11 @@
 // Source: src-tauri/src/shared_types/ (re-exported by shared_types.rs)
 
 /**
+ * Billing snapshot returned by `/rpc/me` for onboarding and account UI.
+ */
+export type AccountBilling = { usage: CreditBalance; subscriptions: BillingSubscription[]; hasPaymentMethod: boolean; canUseHostedInference: boolean; canUseDeviceSync: boolean }
+
+/**
  * The signed-in nixmac account, minus any secret material.
  */
 export type AuthAccount = { 
@@ -47,6 +52,11 @@ githubReady: boolean;
 webAccount: AuthAccount | null }
 
 /**
+ * Active Polar subscription mapped to a known nixmac product slug.
+ */
+export type BillingSubscription = { id: string; slug: string; productId: string; status: string }
+
+/**
  * Result of `darwin_build_check` — dry-run build outcome.
  */
 export type BuildCheckResult = { 
@@ -59,7 +69,7 @@ passed: boolean;
  */
 output: string }
 
-export type Change = { id: number; hash: string; filename: string; diff: string; lineCount: number; createdAt: number; ownSummaryId: number | null }
+export type Change = { id: number; hash: string; filename: string; diff: string; lineCount: number; createdAt: number; ownSummaryId: number }
 
 /**
  * Groups Changes for a commit→base_commit pair. `commit_id` is NULL for speculative
@@ -122,7 +132,7 @@ createdAt: number;
 /**
  * Direct summary row id assigned to this change, if any.
  */
-ownSummaryId: number | null; 
+ownSummaryId: number; 
 /**
  * Summary title used for display.
  */
@@ -243,6 +253,11 @@ displayName: string;
  * Optional one-line description shown under the title.
  */
 description?: string | null; fields: ConfigFieldSchema[] }
+
+/**
+ * Hosted inference credit balance for the signed-in web account.
+ */
+export type CreditBalance = { currency: string; remainingUsd: number; spentUsd: number; totalUsd: number }
 
 /**
  * Payload for `darwin:apply:data`.
@@ -996,7 +1011,11 @@ account: AuthAccount | null;
 /**
  * Human-readable reason to show when email OTP fallback is needed.
  */
-fallbackReason: string | null }
+fallbackReason: string | null; 
+/**
+ * Server-requested polling interval in seconds (used for GitHub slow_down).
+ */
+pollIntervalSeconds: number | null }
 
 /**
  * Result of starting a GitHub connection flow. Authenticated connections use

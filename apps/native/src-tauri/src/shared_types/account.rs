@@ -62,3 +62,34 @@ pub struct SyncResult {
     /// Human-readable status detail for display in the UI.
     pub message: String,
 }
+
+/// Hosted inference credit balance for the signed-in web account.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CreditBalance {
+    pub currency: String,
+    pub remaining_usd: f64,
+    pub spent_usd: f64,
+    pub total_usd: f64,
+}
+
+/// Active Polar subscription mapped to a known nixmac product slug.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct BillingSubscription {
+    pub id: String,
+    pub slug: String,
+    pub product_id: String,
+    pub status: String,
+}
+
+/// Billing snapshot returned by `/rpc/me` for onboarding and account UI.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountBilling {
+    pub usage: CreditBalance,
+    pub subscriptions: Vec<BillingSubscription>,
+    pub has_payment_method: bool,
+    pub can_use_hosted_inference: bool,
+    pub can_use_device_sync: bool,
+}

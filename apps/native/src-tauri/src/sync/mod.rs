@@ -21,8 +21,9 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Runtime};
 
 use crate::shared_types::{
-    AuthAccount, AuthStatus, GithubBootstrapState, GithubBootstrapStatus, GithubConnectStart,
-    GithubRepo, GithubStatus, SyncRemoteStatus, SyncResult,
+    AccountBilling, AuthAccount, AuthStatus, CreditBalance, GithubBootstrapState,
+    GithubBootstrapStatus, GithubConnectStart, GithubRepo, GithubStatus, SyncRemoteStatus,
+    SyncResult,
 };
 use crate::storage::store::{self, SyncAccountMeta, WebAccountMeta};
 use account_client::AccountClient;
@@ -59,16 +60,65 @@ fn require_credentials<R: Runtime>(app: &AppHandle<R>) -> Result<SyncCredentials
 }
 
 #[derive(Serialize)]
+struct OrpcRequest<T> {
+    json: T,
+}
+
+#[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct PaygCheckoutRequest<'a> {
-    amount_usd: f64,
-    country: &'a str,
-    postal_code: &'a str,
+struct SubscriptionCheckoutInput {
+    slug: String,
 }
 
 #[derive(Deserialize)]
-struct PaygCheckoutResponse {
+struct CheckoutResponse {
     url: String,
+}
+
+#[derive(Deserialize)]
+struct OrpcResponse<T> {
+    json: T,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MeResponse {
+    billing: AccountBilling,
+}
+
+async fn fetch_me<R: Runtime>(app: &AppHandle<R>) -> Result<AccountBilling> {
+    let api_key = store::get_device_api_key(app)?
+        .ok_or_else(|| anyhow!("Sign in before loading account billing"))?;
+    let base = store::get_web_server_url()?;
+    let origin = account_client::web_origin(&base)?;
+    let url = format!("{}/rpc/me", base.trim_end_matches('/'));
+    let response = reqwest::Client::new()
+        .get(url)
+        .header("x-api-key", api_key)
+        .header(ORIGIN, origin)
+        .header("accept", "application/json")
+        .send()
+        .await?;
+
+    let status = response.status();
+    let body = response.text().await.unwrap_or_default();
+    if !status.is_success() {
+        return Err(anyhow!("Account profile request failed ({status}): {body}"));
+    }
+
+    let payload: OrpcResponse<MeResponse> = serde_json::from_str(&body)
+        .map_err(|error| anyhow!("Failed to decode /rpc/me response: {error}: {body}"))?;
+    Ok(payload.json.billing)
+}
+
+/// Fetches the signed-in account's billing snapshot via `/rpc/me`.
+pub async fn account_billing<R: Runtime>(app: &AppHandle<R>) -> Result<AccountBilling> {
+    fetch_me(app).await
+}
+
+/// Fetches the signed-in account's hosted inference usage balance via `/rpc/me`.
+pub async fn credit_balance<R: Runtime>(app: &AppHandle<R>) -> Result<CreditBalance> {
+    Ok(fetch_me(app).await?.usage)
 }
 
 /// Builds the current [`AuthStatus`] snapshot for the frontend.
@@ -250,44 +300,51 @@ pub async fn verify_web_sign_in_otp<R: Runtime>(
     status(app)
 }
 
-/// Creates a Polar-hosted PAYG checkout for the signed-in web-origin account.
-pub async fn create_payg_checkout<R: Runtime>(
+/// Creates a Polar subscription checkout for the signed-in web-origin account.
+pub async fn create_subscription_checkout<R: Runtime>(
     app: &AppHandle<R>,
-    amount_usd: f64,
-    country: &str,
-    postal_code: &str,
+    slug: &str,
 ) -> Result<String> {
-    let country = country.trim();
-    let postal_code = postal_code.trim();
-    if amount_usd <= 0.0 || country.is_empty() || postal_code.is_empty() {
-        return Err(anyhow!("Amount, country, and ZIP code are required"));
+    let slug = slug.trim();
+    if slug != "payg-tokens" && slug != "pro" {
+        return Err(anyhow!("Subscription slug must be payg-tokens or pro"));
     }
 
     let api_key = store::get_device_api_key(app)?
         .ok_or_else(|| anyhow!("Sign in before starting checkout"))?;
     let base = store::get_web_server_url()?;
     let origin = account_client::web_origin(&base)?;
-    let url = format!("{}/api/billing/payg-checkout", base.trim_end_matches('/'));
+    let url = format!(
+        "{}/rpc/billing/subscription-checkout",
+        base.trim_end_matches('/')
+    );
     let response = reqwest::Client::new()
         .post(url)
         .header("x-api-key", api_key)
         .header(ORIGIN, origin)
-        .json(&PaygCheckoutRequest {
-            amount_usd,
-            country,
-            postal_code,
+        .header("accept", "application/json")
+        .json(&OrpcRequest {
+            json: SubscriptionCheckoutInput {
+                slug: slug.to_string(),
+            },
         })
         .send()
         .await?;
 
     let status = response.status();
+    let body = response.text().await.unwrap_or_default();
     if !status.is_success() {
-        let body = response.text().await.unwrap_or_default();
+        if let Ok(payload) = serde_json::from_str::<serde_json::Value>(&body) {
+            if let Some(message) = payload.get("message").and_then(|value| value.as_str()) {
+                return Err(anyhow!("Checkout request failed ({status}): {message}"));
+            }
+        }
         return Err(anyhow!("Checkout request failed ({status}): {body}"));
     }
 
-    let checkout: PaygCheckoutResponse = response.json().await?;
-    Ok(checkout.url)
+    let checkout: OrpcResponse<CheckoutResponse> = serde_json::from_str(&body)
+        .map_err(|error| anyhow!("Failed to decode checkout response: {error}: {body}"))?;
+    Ok(checkout.json.url)
 }
 
 fn persist_web_session<R: Runtime>(
