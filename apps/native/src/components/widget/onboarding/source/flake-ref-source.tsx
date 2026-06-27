@@ -5,7 +5,7 @@ import { Check, FileArchive, Link2, Loader2, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { EXAMPLE_REFS, parseFlakeRef } from "@/components/widget/onboarding/lib/flake-ref";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
-import { tauriAPI } from "@/ipc/api";
+import { client } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 
 interface FlakeRefSourceProps {
@@ -41,8 +41,9 @@ export function FlakeRefSource({ onImported }: FlakeRefSourceProps) {
         const repoRef = branch ? `${owner}/${repo}#${branch}` : `${owner}/${repo}`;
         await importGithub(repoRef, ".darwin");
       } else {
-        // deprecated(orpc): replace with client/orpc from @/lib/orpc
-        const normalized = await tauriAPI.path.normalize(value.trim().replace(/^path:/i, ""));
+        const normalized = await client.path.normalize({
+          input: value.trim().replace(/^path:/i, ""),
+        });
         await setDir(normalized);
       }
       onImported?.();

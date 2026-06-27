@@ -9,7 +9,7 @@ import {
   type StarterTemplateId,
 } from "@/components/widget/onboarding/lib/flake-ref";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
-import { tauriAPI } from "@/ipc/api";
+import { client } from "@/lib/orpc";
 import { useUiState } from "@nixmac/state";
 import { cn } from "@/lib/utils";
 
@@ -32,8 +32,7 @@ export function CreateSource({ onCreated }: CreateSourceProps) {
   // Suggest this Mac's hostname as the default config name.
   useEffect(() => {
     let cancelled = false;
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    tauriAPI.config
+    client.config
       .getThisHostname()
       .then((name) => {
         if (!cancelled && name.trim()) setHostName((current) => current || name.trim());
@@ -50,8 +49,9 @@ export function CreateSource({ onCreated }: CreateSourceProps) {
     setError(null);
     setCreating(true);
     try {
-      // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      const normalized = await tauriAPI.path.normalize(dir.trim() || DEFAULT_CONFIG_DIR);
+      const normalized = await client.path.normalize({
+        input: dir.trim() || DEFAULT_CONFIG_DIR,
+      });
       await prepareNewDir(normalized);
       await bootstrap(host, templateId);
       const storeError = useUiState.getState().error;

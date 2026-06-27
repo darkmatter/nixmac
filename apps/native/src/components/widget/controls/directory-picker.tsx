@@ -11,7 +11,7 @@ import { RepoImport } from "@/components/widget/controls/repo-import";
 import { FolderOpen, FolderPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CANONICAL_CONFIG_DIR } from "@/components/widget/onboarding/lib/flake-ref";
-import { tauriAPI } from "@/ipc/api";
+import { client } from "@/lib/orpc";
 
 type DirectoryPickerProps = {
   label: string;
@@ -147,8 +147,7 @@ export function DirectoryPicker({
     }
 
     try {
-      // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      const normalized = await tauriAPI.path.normalize(trimmedInput);
+      const normalized = await client.path.normalize({ input: trimmedInput });
       if (!normalized) {
         setValidationMessage("Directory path is required");
         return null;
@@ -168,8 +167,7 @@ export function DirectoryPicker({
 
   async function validateDirectoryExists(path: string): Promise<boolean> {
     try {
-      // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      const exists = await tauriAPI.path.exists(path);
+      const exists = await client.path.exists({ dir: path });
       if (!exists) {
         validateOrInitial(path, `Directory does not exist: ${path}`);
         return false;
@@ -185,8 +183,9 @@ export function DirectoryPicker({
 
   async function validateFlakeExists(path?: string): Promise<boolean> {
     try {
-      // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      const hasFlake = path ? await tauriAPI.flake.existsAt(path) : await tauriAPI.flake.exists();
+      const hasFlake = path
+        ? await client.flake.existsAt({ dir: path })
+        : await client.flake.exists();
       if (hasFlake) {
         setValidationMessage(null);
         return true;

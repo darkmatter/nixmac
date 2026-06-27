@@ -3,12 +3,15 @@
 //! Add procedures here and regenerate bindings with:
 //! `cd apps/native && bun run gen:orpc`
 
+mod config;
 mod darwin;
 mod evolve_state;
+mod flake;
 mod git;
 mod github;
 mod helpers;
 mod history;
+mod path;
 mod preview_indicator;
 mod summarized_changes;
 
@@ -22,6 +25,9 @@ pub struct OrpcCtx {
 
 pub fn build_router() -> Router<OrpcCtx> {
     github::routes()
+        .nest("config", config::routes())
+        .nest("flake", flake::routes())
+        .nest("path", path::routes())
         .nest("evolveState", evolve_state::routes())
         .nest("darwin", darwin::routes())
         .nest("summarizedChanges", summarized_changes::routes())

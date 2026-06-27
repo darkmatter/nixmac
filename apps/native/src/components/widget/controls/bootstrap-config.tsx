@@ -3,9 +3,9 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
+import { client } from "@/lib/orpc";
 import { useViewModel } from "@nixmac/state";
 import { useUiState } from "@nixmac/state";
-import { tauriAPI } from "@/ipc/api";
 import { AlertCircle, GitCommit, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -39,8 +39,7 @@ export function BootstrapConfig({
       let nextHostname = DEFAULT_HOSTNAME;
 
       try {
-        // deprecated(orpc): replace with client/orpc from @/lib/orpc
-        nextHostname = (await tauriAPI.config.getThisHostname()).trim() || DEFAULT_HOSTNAME;
+        nextHostname = (await client.config.getThisHostname()).trim() || DEFAULT_HOSTNAME;
       } catch {}
 
       if (cancelled) return;
@@ -64,9 +63,8 @@ export function BootstrapConfig({
       setFlakeExists(false);
       return;
     }
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    tauriAPI.flake
-      .existsAt(configDir)
+    client.flake
+      .existsAt({ dir: configDir })
       .then(setFlakeExists)
       .catch(() => setFlakeExists(false));
   }, [configDir]);

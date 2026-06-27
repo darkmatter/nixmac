@@ -22,6 +22,8 @@ id: string;
  */
 email: string }
 
+export type BootstrapDefaultConfigInput = { hostname: string; templateId: string | null }
+
 /**
  * Result of `darwin_build_check` — dry-run build outcome.
  */
@@ -92,6 +94,27 @@ export type CommitResult = {
  * Hash of the commit that was created.
  */
 hash: string }
+
+/**
+ * Application configuration returned by `config_get`.
+ */
+export type Config = { 
+/**
+ * Absolute path to the selected nix-darwin flake/config directory.
+ */
+configDir: string; 
+/**
+ * Selected `darwinConfigurations.<host>` attribute, when configured.
+ */
+hostAttr: string | null }
+
+export type ConfigImportGithubInput = { repoRef: string; dirName: string | null }
+
+export type ConfigImportZipInput = { zipPath: string; dirName: string | null }
+
+export type ConfigSetDirInput = { dir: string }
+
+export type ConfigSetHostAttrInput = { host: string }
 
 /**
  * Evolution lifecycle state.
@@ -230,6 +253,8 @@ export type FileDiffContents = { original: string; modified: string }
 
 export type FinalizeRollbackInput = { storePath: string | null; changesetId: number | null }
 
+export type FlakeExistsAtInput = { dir: string }
+
 export type GenerateHistoryFromInput = { commitHash: string; number: number }
 
 export type GitCommitInput = { message: string }
@@ -323,6 +348,8 @@ expiresIn: number | null;
  * Minimum polling interval, in seconds.
  */
 interval: number | null }
+
+export type GithubImportInput = { owner: string; repo: string; dirName: string | null }
 
 /**
  * A repository the installation can access, returned by `github_list_repos`.
@@ -445,6 +472,10 @@ export type OkResult = {
  */
 ok: boolean }
 
+export type PathExistsInput = { dir: string }
+
+export type PathNormalizeInput = { input: string }
+
 /**
  * State sent to the preview indicator window.
  */
@@ -543,7 +574,33 @@ singles: ChangeWithSummary[];
  */
 unsummarizedHashes: string[] }
 
+/**
+ * Result returned when the config directory is set (typed or picked).
+ * State mirrors (evolve state, git state, hosts) flow through the
+ * `*_changed` events; this only carries genuine command results.
+ */
+export type SetDirResult = { 
+/**
+ * Selected absolute config directory.
+ */
+dir: string; 
+/**
+ * True when the selected directory differs from the previous one.
+ */
+changed: boolean }
+
 export type Procedures = {
+  config: {
+    get: Client<Record<never, never>, void, Config, Error>
+    getThisHostname: Client<Record<never, never>, void, string, Error>
+    importGithub: Client<Record<never, never>, ConfigImportGithubInput, SetDirResult, Error>
+    importZip: Client<Record<never, never>, ConfigImportZipInput, SetDirResult, Error>
+    pickDir: Client<Record<never, never>, void, SetDirResult | null, Error>
+    pickZip: Client<Record<never, never>, void, string | null, Error>
+    prepareNewDir: Client<Record<never, never>, ConfigSetDirInput, SetDirResult, Error>
+    setDir: Client<Record<never, never>, ConfigSetDirInput, SetDirResult, Error>
+    setHostAttr: Client<Record<never, never>, ConfigSetHostAttrInput, OkResult, Error>
+  }
   darwin: {
     abortRestore: Client<Record<never, never>, void, void, Error>
     activateStorePath: Client<Record<never, never>, ActivateStorePathInput, OkResult, Error>
@@ -564,6 +621,11 @@ export type Procedures = {
     clear: Client<Record<never, never>, void, EvolveState, Error>
     get: Client<Record<never, never>, void, EvolveState, Error>
   }
+  flake: {
+    bootstrapDefault: Client<Record<never, never>, BootstrapDefaultConfigInput, void, Error>
+    exists: Client<Record<never, never>, void, boolean, Error>
+    existsAt: Client<Record<never, never>, FlakeExistsAtInput, boolean, Error>
+  }
   git: {
     commit: Client<Record<never, never>, GitCommitInput, CommitResult, Error>
     fileDiffContents: Client<Record<never, never>, GitFileDiffContentsInput, Partial<{ [key in string]: FileDiffContents }>, Error>
@@ -573,12 +635,17 @@ export type Procedures = {
     bootstrapStatus: Client<Record<never, never>, GithubBootstrapStatusInput, GithubBootstrapStatus, Error>
     connectStart: Client<Record<never, never>, void, GithubConnectStart, Error>
     disconnect: Client<Record<never, never>, void, void, Error>
+    import: Client<Record<never, never>, GithubImportInput, SetDirResult, Error>
     listRepos: Client<Record<never, never>, void, GithubRepo[], Error>
     status: Client<Record<never, never>, void, GithubStatus, Error>
   }
   history: {
     generateFrom: Client<Record<never, never>, GenerateHistoryFromInput, void, Error>
     get: Client<Record<never, never>, void, HistoryItem[], Error>
+  }
+  path: {
+    exists: Client<Record<never, never>, PathExistsInput, boolean, Error>
+    normalize: Client<Record<never, never>, PathNormalizeInput, string, Error>
   }
   previewIndicator: {
     getState: Client<Record<never, never>, void, PreviewIndicatorState, Error>

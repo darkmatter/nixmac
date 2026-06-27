@@ -1,7 +1,10 @@
 //! GitHub App connection procedures (server-brokered via `crate::sync`).
 
-use super::OrpcCtx;
-use crate::shared_types::{GithubBootstrapStatus, GithubConnectStart, GithubRepo, GithubStatus};
+use super::{OrpcCtx, helpers::internal_err};
+use crate::commands::config;
+use crate::shared_types::{
+    GithubBootstrapStatus, GithubConnectStart, GithubRepo, GithubStatus, SetDirResult,
+};
 use crate::sync;
 use orpc::*;
 use serde::{Deserialize, Serialize};
@@ -11,6 +14,14 @@ use specta::Type;
 #[serde(rename_all = "camelCase")]
 struct GithubBootstrapStatusInput {
     state: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+struct GithubImportInput {
+    owner: String,
+    repo: String,
+    dir_name: Option<String>,
 }
 
 fn github_err(cmd: &str, error: impl std::fmt::Display) -> ORPCError {
@@ -57,6 +68,12 @@ async fn disconnect(ctx: OrpcCtx, _input: ()) -> Result<(), ORPCError> {
         .map_err(|error| github_err("github.disconnect", error))
 }
 
+async fn import(ctx: OrpcCtx, input: GithubImportInput) -> Result<SetDirResult, ORPCError> {
+    config::github_import(ctx.app, input.owner, input.repo, input.dir_name)
+        .await
+        .map_err(|error| internal_err("github.import", error))
+}
+
 pub fn routes() -> Router<OrpcCtx> {
     router! {
         "github" => {
@@ -78,6 +95,10 @@ pub fn routes() -> Router<OrpcCtx> {
                 .handler(list_repos),
             "disconnect" => os::<OrpcCtx>()
                 .handler(disconnect),
+            "import" => os::<OrpcCtx>()
+                .input(orpc_specta::specta::<GithubImportInput>())
+                .output(orpc_specta::specta::<SetDirResult>())
+                .handler(import),
         },
     }
 }

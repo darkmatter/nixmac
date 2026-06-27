@@ -14,7 +14,7 @@ pub struct Config {
 /// Result returned when the config directory is set (typed or picked).
 /// State mirrors (evolve state, git state, hosts) flow through the
 /// `*_changed` events; this only carries genuine command results.
-#[derive(Debug, Clone, Serialize, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SetDirResult {
     /// Selected absolute config directory.

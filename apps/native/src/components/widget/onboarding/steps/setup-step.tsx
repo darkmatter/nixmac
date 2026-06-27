@@ -25,7 +25,7 @@ import { LocalSource } from "@/components/widget/onboarding/source/local-source"
 import { FlakeRefSource } from "@/components/widget/onboarding/source/flake-ref-source";
 import { CreateSource } from "@/components/widget/onboarding/source/create-source";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
-import { tauriAPI } from "@/ipc/api";
+import { client } from "@/lib/orpc";
 import { useViewModel } from "@nixmac/state";
 
 type Mode = "choose" | "import" | "create";
@@ -146,9 +146,8 @@ export function SetupStep() {
       return;
     }
     setFlakeExists(null);
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    tauriAPI.flake
-      .existsAt(configDir)
+    client.flake
+      .existsAt({ dir: configDir })
       .then((exists) => {
         if (!cancelled) setFlakeExists(exists);
       })
@@ -161,8 +160,7 @@ export function SetupStep() {
   }, [configDir]);
 
   useEffect(() => {
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    tauriAPI.config
+    client.config
       .getThisHostname()
       .then((name) => {
         if (name.trim()) setThisHostname(name.trim());

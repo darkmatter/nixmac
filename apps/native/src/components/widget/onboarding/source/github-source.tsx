@@ -8,10 +8,10 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { client } from "@/lib/orpc";
 import { tauriAPI } from "@/ipc/api";
 import type { GithubRepo } from "@/ipc/types";
 import { auth as authClient } from "@/lib/auth";
-import { client } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 import { signInSocial } from "@daveyplate/better-auth-tauri";
 import { useBetterAuthTauri } from "@daveyplate/better-auth-tauri/react";
@@ -427,8 +427,7 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     setError(null);
     setImportingRef(repoRef);
     try {
-      // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      await tauriAPI.github.import(repo.owner, repo.name, DEFAULT_DIR);
+      await client.github.import({ owner: repo.owner, repo: repo.name, dirName: DEFAULT_DIR });
       onImported?.();
     } catch (e: unknown) {
       resetRejectedSession(e);

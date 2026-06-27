@@ -179,6 +179,79 @@ function removeListener(eventName: string, handler: (event: { payload: unknown }
   }
 }
 
+type OrpcHandler = (input: unknown) => unknown | Promise<unknown>;
+
+/** Storybook oRPC procedure mocks keyed by dotted path (e.g. `config.setDir`). */
+export const orpcHandlers: Record<string, OrpcHandler> = {
+  "config.get": async () => ({
+    configDir: "/Users/demo/.darwin",
+    hostAttr: defaultHosts[0],
+  }),
+  "config.getThisHostname": async () => "demo-mac",
+  "config.setHostAttr": async () => okResult(),
+  "config.setDir": async () => baseSetDirResult(),
+  "config.prepareNewDir": async (input) => {
+    const dir = (input as { dir?: string } | undefined)?.dir ?? "/Users/demo/.darwin";
+    return { dir, changed: true };
+  },
+  "config.pickDir": async () => baseSetDirResult(),
+  "config.pickZip": async () => "/Users/demo/Downloads/nix-darwin.zip",
+  "config.importGithub": async () => baseSetDirResult(),
+  "config.importZip": async () => baseSetDirResult(),
+  "flake.exists": async () => true,
+  "flake.existsAt": async () => true,
+  "flake.bootstrapDefault": async () => undefined,
+  "path.exists": async () => true,
+  "path.normalize": async (input) => (input as { input?: string } | undefined)?.input ?? "",
+  "github.bootstrapStart": async () => ({
+    installUrl: "https://github.com/apps/nixmac/installations/new",
+    state: "demo",
+    userCode: null,
+    verificationUri: null,
+    expiresIn: null,
+    interval: null,
+  }),
+  "github.connectStart": async () => ({
+    installUrl: "https://github.com/apps/nixmac/installations/new",
+    state: "demo",
+    userCode: null,
+    verificationUri: null,
+    expiresIn: null,
+    interval: null,
+  }),
+  "github.status": async () => ({
+    connected: false,
+    login: null,
+    installationId: 0,
+  }),
+  "github.listRepos": async () => [],
+  "github.import": async () => baseSetDirResult(),
+  "github.disconnect": async () => undefined,
+  "evolveState.get": async () => baseEvolveState(),
+  "evolveState.clear": async () => baseEvolveState(),
+};
+
+async function handleOrpcInvoke(args?: Record<string, unknown>) {
+  const request = args?.request as { path?: string; input?: { json?: unknown } } | undefined;
+  const path = request?.path;
+  if (!path) {
+    return { type: "response", status: 400, body: { json: { message: "missing oRPC path" } } };
+  }
+
+  const handler = orpcHandlers[path];
+  if (!handler) {
+    return { type: "response", status: 404, body: { json: { message: `unmocked oRPC path: ${path}` } } };
+  }
+
+  try {
+    const json = await handler(request?.input?.json);
+    return { type: "response", status: 200, body: { json } };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { type: "response", status: 500, body: { json: { message } } };
+  }
+}
+
 const mockNixFiles: Record<string, string> = {
   "flake.nix": `{
   description = "My nix-darwin configuration";
@@ -247,6 +320,8 @@ export async function invoke(command: string, args?: Record<string, unknown>) {
     case "plugin:macos-permissions|check_full_disk_access_permission":
     case "plugin:macos-permissions|request_full_disk_access_permission":
       return true;
+    case "plugin:orpc|handle_rpc":
+      return handleOrpcInvoke(args);
     case "config_get":
     case "plugin:darwin|read_config":
       return {

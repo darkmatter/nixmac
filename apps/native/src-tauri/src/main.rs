@@ -530,20 +530,7 @@ fn run_gui_mode(
             app: app.clone(),
         }))
         .invoke_handler(tauri::generate_handler![
-            // Configuration
-            commands::config::config_get,
-            commands::config::config_set_host_attr,
-            commands::config::config_set_dir,
-            commands::config::config_prepare_new_dir,
-            commands::config::config_pick_dir,
-            commands::config::flake_exists_at,
-            commands::config::get_this_hostname,
-            commands::config::path_exists,
-            commands::config::path_normalize,
-            commands::config::config_pick_zip,
-            commands::config::config_import_github,
-            commands::config::config_import_zip,
-            commands::config::github_import,
+            // Configuration — see `orpc::config`, `orpc::flake`, `orpc::path`, `orpc::github::import`
             // GitHub App connection (server-brokered) — see `orpc::github`
             // nixmac account + non-GitHub sync
             commands::account::account_status,
@@ -602,8 +589,7 @@ fn run_gui_mode(
             commands::apply::nix_install_start,
             commands::apply::darwin_rebuild_prefetch,
             commands::apply::flake_list_hosts,
-            commands::config::flake_exists,
-            commands::config::bootstrap_default_config,
+            // flake_exists, bootstrap_default_config — see `orpc::flake`
             // Summarization
             commands::summarize::get_change_map,
             commands::summarize::find_change_map,

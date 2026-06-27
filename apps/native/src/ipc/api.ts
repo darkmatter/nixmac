@@ -9,7 +9,6 @@ import type {
   CliToolsState,
   ConfigEditApplyResult,
   ConfigurableSchema,
-  Config as DarwinConfig,
   ExportResult,
   FeedbackMetadata,
   FeedbackShareOptions,
@@ -27,7 +26,6 @@ import type {
   Permission,
   PermissionsState,
   RecommendedPrompt,
-  SetDirResult,
   SyncRemoteStatus,
   SyncResult,
   SystemDefault,
@@ -47,26 +45,26 @@ import { getCachedPrefs, setPrefs } from "./preferences";
 /** @deprecated Legacy `invoke` IPC — migrate to oRPC (`client` / `orpc` from `@/lib/orpc`). Regenerate: `cd apps/native && bun run gen:orpc`. */
 export const tauriAPI = {
   config: {
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    get: () => invoke<DarwinConfig>("config_get"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    setDir: (dir: string) => invoke<SetDirResult>("config_set_dir", { dir }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    prepareNewDir: (dir: string) => invoke<SetDirResult>("config_prepare_new_dir", { dir }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    pickDir: () => invoke<SetDirResult | null>("config_pick_dir"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    setHostAttr: (host: string) => invoke<OkResult>("config_set_host_attr", { host }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    pickZip: () => invoke<string | null>("config_pick_zip"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
+    /** @deprecated Use `client.config.get()` or `orpc.config.get` from `@/lib/orpc`. */
+    get: () => client.config.get(),
+    /** @deprecated Use `client.config.setDir()` or `orpc.config.setDir` from `@/lib/orpc`. */
+    setDir: (dir: string) => client.config.setDir({ dir }),
+    /** @deprecated Use `client.config.prepareNewDir()` or `orpc.config.prepareNewDir` from `@/lib/orpc`. */
+    prepareNewDir: (dir: string) => client.config.prepareNewDir({ dir }),
+    /** @deprecated Use `client.config.pickDir()` or `orpc.config.pickDir` from `@/lib/orpc`. */
+    pickDir: () => client.config.pickDir(),
+    /** @deprecated Use `client.config.setHostAttr()` or `orpc.config.setHostAttr` from `@/lib/orpc`. */
+    setHostAttr: (host: string) => client.config.setHostAttr({ host }),
+    /** @deprecated Use `client.config.pickZip()` or `orpc.config.pickZip` from `@/lib/orpc`. */
+    pickZip: () => client.config.pickZip(),
+    /** @deprecated Use `client.config.importGithub()` or `orpc.config.importGithub` from `@/lib/orpc`. */
     importGithub: (repoRef: string, dirName?: string) =>
-      invoke<SetDirResult>("config_import_github", { repoRef, dirName: dirName ?? null }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
+      client.config.importGithub({ repoRef, dirName: dirName ?? null }),
+    /** @deprecated Use `client.config.importZip()` or `orpc.config.importZip` from `@/lib/orpc`. */
     importZip: (zipPath: string, dirName?: string) =>
-      invoke<SetDirResult>("config_import_zip", { zipPath, dirName: dirName ?? null }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    getThisHostname: () => invoke<string>("get_this_hostname"),
+      client.config.importZip({ zipPath, dirName: dirName ?? null }),
+    /** @deprecated Use `client.config.getThisHostname()` or `orpc.config.getThisHostname` from `@/lib/orpc`. */
+    getThisHostname: () => client.config.getThisHostname(),
   },
   github: {
     /** @deprecated Use `client.github.bootstrapStart()` or `orpc.github.bootstrapStart` from `@/lib/orpc`. */
@@ -79,9 +77,9 @@ export const tauriAPI = {
     status: () => client.github.status(),
     /** @deprecated Use `client.github.listRepos()` or `orpc.github.listRepos` from `@/lib/orpc`. */
     listRepos: () => client.github.listRepos(),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
+    /** @deprecated Use `client.github.import()` or `orpc.github.import` from `@/lib/orpc`. */
     import: (owner: string, repo: string, dirName?: string) =>
-      invoke<SetDirResult>("github_import", { owner, repo, dirName: dirName ?? null }),
+      client.github.import({ owner, repo, dirName: dirName ?? null }),
     /** @deprecated Use `client.github.disconnect()` or `orpc.github.disconnect` from `@/lib/orpc`. */
     disconnect: () => client.github.disconnect(),
   },
@@ -172,19 +170,19 @@ export const tauriAPI = {
   flake: {
     /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
     listHosts: () => invoke<string[]>("flake_list_hosts"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    exists: () => invoke<boolean>("flake_exists"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    existsAt: (dir: string) => invoke<boolean>("flake_exists_at", { dir }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
+    /** @deprecated Use `client.flake.exists()` or `orpc.flake.exists` from `@/lib/orpc`. */
+    exists: () => client.flake.exists(),
+    /** @deprecated Use `client.flake.existsAt()` or `orpc.flake.existsAt` from `@/lib/orpc`. */
+    existsAt: (dir: string) => client.flake.existsAt({ dir }),
+    /** @deprecated Use `client.flake.bootstrapDefault()` or `orpc.flake.bootstrapDefault` from `@/lib/orpc`. */
     bootstrapDefault: (hostname: string, templateId?: StarterTemplateId) =>
-      invoke<void>("bootstrap_default_config", { hostname, templateId: templateId ?? null }),
+      client.flake.bootstrapDefault({ hostname, templateId: templateId ?? null }),
   },
   path: {
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    exists: (dir: string) => invoke<boolean>("path_exists", { dir }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    normalize: (input: string) => invoke<string>("path_normalize", { input }),
+    /** @deprecated Use `client.path.exists()` or `orpc.path.exists` from `@/lib/orpc`. */
+    exists: (dir: string) => client.path.exists({ dir }),
+    /** @deprecated Use `client.path.normalize()` or `orpc.path.normalize` from `@/lib/orpc`. */
+    normalize: (input: string) => client.path.normalize({ input }),
   },
   summarizedChanges: {
     /** @deprecated Use `client.summarizedChanges.getChangeMap()` or `orpc.summarizedChanges.getChangeMap` from `@/lib/orpc`. */

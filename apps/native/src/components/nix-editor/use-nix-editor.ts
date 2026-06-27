@@ -4,6 +4,7 @@ import { initNixGrammar } from "@/lib/nix-grammar";
 import { lspClient } from "@/lib/lsp-client";
 import { bridgeMonacoToLsp } from "@/lib/lsp-monaco-bridge";
 import { tauriAPI } from "@/ipc/api";
+import { client } from "@/lib/orpc";
 import { NIXMAC_THEME, NIXMAC_THEME_DATA } from "@/components/widget/summaries/monaco-theme";
 
 interface UseNixEditorOptions {
@@ -59,7 +60,7 @@ export function useNixEditor({
           // deprecated(orpc): replace with client/orpc from @/lib/orpc
           ? [await tauriAPI.editor.readFile(filePath), null as { configDir: string } | null]
           // deprecated(orpc): replace with client/orpc from @/lib/orpc
-          : await Promise.all([tauriAPI.editor.readFile(filePath), tauriAPI.config.get()]);
+          : await Promise.all([tauriAPI.editor.readFile(filePath), client.config.get()]);
         if (disposed) return;
 
         originalContentRef.current = content;

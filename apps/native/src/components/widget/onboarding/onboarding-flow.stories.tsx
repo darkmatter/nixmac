@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { FALLBACK_HOSTED_PAYG_PRODUCT } from "@/components/widget/onboarding/lib/inference";
 import { OnboardingFlow } from "@/components/widget/onboarding/onboarding-flow";
 import { onboardingActions, viewModelActions } from "@nixmac/state";
+import { orpcHandlers } from "#storybook/mocks/tauri-runtime";
 import { tauriAPI } from "@/ipc/api";
 
 /**
@@ -272,6 +273,10 @@ function installBackend(startAt: string) {
     saved.push([obj, key, obj[key]]);
     obj[key] = fn;
   };
+  const patchOrpc = (path: string, fn: (input: unknown) => unknown | Promise<unknown>) => {
+    saved.push([orpcHandlers, path, orpcHandlers[path]]);
+    orpcHandlers[path] = fn;
+  };
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
@@ -332,10 +337,15 @@ function installBackend(startAt: string) {
   // config / flake — importing or picking a dir populates hosts; bootstrap + set-host finishes.
   ensure("config");
   patch(tauriAPI.config, "getThisHostname", async () => "demo-mac");
+  patchOrpc("config.getThisHostname", async () => "demo-mac");
   patch(tauriAPI.config, "pickDir", async () =>
     setConfigWithHosts("/Users/demo/Documents/nix-darwin"),
   );
+  patchOrpc("config.pickDir", async () => setConfigWithHosts("/Users/demo/Documents/nix-darwin"));
   patch(tauriAPI.config, "setDir", async (dir: string) => setConfigWithHosts(dir));
+  patchOrpc("config.setDir", async (input) =>
+    setConfigWithHosts((input as { dir: string }).dir),
+  );
   patch(tauriAPI.config, "prepareNewDir", async (dir: string) => {
     state.configDir = dir;
     state.hosts = [];
@@ -343,11 +353,27 @@ function installBackend(startAt: string) {
     syncVM();
     return { dir, changed: true };
   });
+  patchOrpc("config.prepareNewDir", async (input) => {
+    const dir = (input as { dir: string }).dir;
+    state.configDir = dir;
+    state.hosts = [];
+    state.flakeExists = false;
+    syncVM();
+    return { dir, changed: true };
+  });
   patch(tauriAPI.config, "importGithub", async () => setConfigWithHosts("/Users/demo/.darwin"));
+  patchOrpc("config.importGithub", async () => setConfigWithHosts("/Users/demo/.darwin"));
   patch(tauriAPI.config, "importZip", async () => setConfigWithHosts("/Users/demo/.darwin"));
+  patchOrpc("config.importZip", async () => setConfigWithHosts("/Users/demo/.darwin"));
   patch(tauriAPI.config, "pickZip", async () => "/Users/demo/Downloads/nix-darwin.zip");
+  patchOrpc("config.pickZip", async () => "/Users/demo/Downloads/nix-darwin.zip");
   patch(tauriAPI.config, "setHostAttr", async (host: string) => {
     state.hostAttr = host;
+    syncVM();
+    return { ok: true };
+  });
+  patchOrpc("config.setHostAttr", async (input) => {
+    state.hostAttr = (input as { host: string }).host;
     syncVM();
     return { ok: true };
   });
@@ -356,11 +382,24 @@ function installBackend(startAt: string) {
   patch(tauriAPI.flake, "listHosts", async () => state.hosts);
   patch(tauriAPI.flake, "exists", async () => state.flakeExists);
   patch(tauriAPI.flake, "existsAt", async () => state.flakeExists);
+  patchOrpc("flake.exists", async () => state.flakeExists);
+  patchOrpc("flake.existsAt", async () => state.flakeExists);
   patch(tauriAPI.flake, "bootstrapDefault", async (hostname: string) => {
     state.hosts = [hostname || "demo-mac"];
     state.flakeExists = true;
     syncVM();
   });
+  patchOrpc("flake.bootstrapDefault", async (input) => {
+    const hostname = (input as { hostname?: string }).hostname || "demo-mac";
+    state.hosts = [hostname];
+    state.flakeExists = true;
+    syncVM();
+  });
+  patchOrpc("path.normalize", async (input) => {
+    const value = (input as { input: string }).input;
+    return value.startsWith("~/") ? `/Users/demo/${value.slice(2)}` : value;
+  });
+  patchOrpc("path.exists", async () => true);
 
   // GitHub App connection — connectStart simulates the user finishing the
   // browser install, so the poll then sees `connected`.
@@ -369,13 +408,31 @@ function installBackend(startAt: string) {
     state.githubConnected = true;
     return { installUrl: "https://github.com/apps/nixmac/installations/new", state: "demo" };
   });
+  patchOrpc("github.connectStart", async () => {
+    state.githubConnected = true;
+    return {
+      installUrl: "https://github.com/apps/nixmac/installations/new",
+      state: "demo",
+      userCode: null,
+      verificationUri: null,
+      expiresIn: null,
+      interval: null,
+    };
+  });
   patch(tauriAPI.github, "status", async () => ({
     connected: state.githubConnected,
     login: state.githubConnected ? "you" : null,
     installationId: state.githubConnected ? 1 : null,
   }));
+  patchOrpc("github.status", async () => ({
+    connected: state.githubConnected,
+    login: state.githubConnected ? "you" : null,
+    installationId: state.githubConnected ? 1 : null,
+  }));
   patch(tauriAPI.github, "listRepos", async () => MOCK_GITHUB_REPOS);
+  patchOrpc("github.listRepos", async () => MOCK_GITHUB_REPOS);
   patch(tauriAPI.github, "import", async () => setConfigWithHosts("/Users/demo/.darwin"));
+  patchOrpc("github.import", async () => setConfigWithHosts("/Users/demo/.darwin"));
   patch(tauriAPI.github, "disconnect", async () => {
     state.githubConnected = false;
   });

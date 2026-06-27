@@ -7,7 +7,6 @@ use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
 
 /// Returns the current configuration including the flake directory and host attribute.
-#[tauri::command]
 pub async fn config_get(app: AppHandle) -> Result<types::Config, String> {
     let config_dir = store::get_config_dir(&app).map_err(|e| capture_err("config_get", e))?;
     let host_attr = store::get_host_attr(&app).map_err(|e| capture_err("config_get", e))?;
@@ -22,7 +21,6 @@ pub async fn config_get(app: AppHandle) -> Result<types::Config, String> {
 /// for UI convenience and onboarding defaults.
 /// The name of this function is specifically chosen to NOT get confused
 /// with an actual config read.
-#[tauri::command]
 pub async fn get_this_hostname() -> Result<String, String> {
     let hostname =
         default_config::detect_hostname().map_err(|e| capture_err("get_this_hostname", e))?;
@@ -30,7 +28,6 @@ pub async fn get_this_hostname() -> Result<String, String> {
 }
 
 /// Sets the nix-darwin host attribute (e.g., "Coopers-MacBook-Pro").
-#[tauri::command]
 pub async fn config_set_host_attr(
     app: AppHandle,
     host: String,
@@ -40,7 +37,6 @@ pub async fn config_set_host_attr(
 }
 
 /// Sets the flake configuration directory path.
-#[tauri::command]
 pub async fn config_set_dir(
     app: AppHandle,
     dir: String,
@@ -119,7 +115,6 @@ fn validate_new_dir_location(path: &Path) -> Result<(), String> {
 }
 
 /// Creates and selects an empty directory for a new nix-darwin configuration.
-#[tauri::command]
 pub async fn config_prepare_new_dir(
     app: AppHandle,
     dir: String,
@@ -161,7 +156,6 @@ pub async fn config_prepare_new_dir(
 }
 
 /// Opens a native folder picker dialog to select the flake directory.
-#[tauri::command]
 pub async fn config_pick_dir(app: AppHandle) -> Result<Option<shared_types::SetDirResult>, String> {
     let dialog = app.dialog();
     // Try to open the picker at the currently configured directory
@@ -192,14 +186,12 @@ pub async fn config_pick_dir(app: AppHandle) -> Result<Option<shared_types::SetD
 }
 
 /// Checks if a flake.nix exists in the config directory
-#[tauri::command]
 pub async fn flake_exists(app: AppHandle) -> Result<bool, String> {
     let dir = store::get_config_dir(&app).map_err(|e| capture_err("flake_exists", e))?;
     Ok(Path::new(&dir).join("flake.nix").exists())
 }
 
 /// Checks if a flake.nix exists at the provided directory path
-#[tauri::command]
 pub async fn flake_exists_at(_app: AppHandle, dir: String) -> Result<bool, String> {
     let normalized_dir =
         utils::normalize_path_input(&dir).map_err(|e| capture_err("flake_exists_at", e))?;
@@ -207,8 +199,7 @@ pub async fn flake_exists_at(_app: AppHandle, dir: String) -> Result<bool, Strin
 }
 
 /// Checks whether the provided path exists and is a directory.
-#[tauri::command]
-pub async fn path_exists(_app: AppHandle, dir: String) -> Result<bool, String> {
+pub async fn path_exists(dir: String) -> Result<bool, String> {
     let normalized_dir =
         utils::normalize_path_input(&dir).map_err(|e| capture_err("path_exists", e))?;
     Ok(normalized_dir.exists() && normalized_dir.is_dir())
@@ -220,15 +211,13 @@ pub async fn path_exists(_app: AppHandle, dir: String) -> Result<bool, String> {
 /// - trims surrounding whitespace
 /// - expands a leading `~` or `~/...` to the user's home directory
 /// - resolves relative paths against the current working directory
-#[tauri::command]
-pub async fn path_normalize(_app: AppHandle, input: String) -> Result<String, String> {
+pub async fn path_normalize(input: String) -> Result<String, String> {
     let normalized =
         utils::normalize_path_input(&input).map_err(|e| capture_err("path_normalize", e))?;
     Ok(normalized.to_string_lossy().into_owned())
 }
 
 /// Creates a new nix-darwin configuration from the bundled template.
-#[tauri::command]
 pub async fn bootstrap_default_config(
     app: AppHandle,
     hostname: String,
@@ -316,7 +305,6 @@ fn finalize_imported_dir(
 }
 
 /// Opens a native file picker for a `.zip` archive and returns its path.
-#[tauri::command]
 pub async fn config_pick_zip(app: AppHandle) -> Result<Option<String>, String> {
     let result = app
         .dialog()
@@ -328,7 +316,6 @@ pub async fn config_pick_zip(app: AppHandle) -> Result<Option<String>, String> {
 }
 
 /// Clones a GitHub reference (e.g. `owner/repo`) into a fresh config directory.
-#[tauri::command]
 pub async fn config_import_github(
     app: AppHandle,
     repo_ref: String,
@@ -352,7 +339,6 @@ pub async fn config_import_github(
 /// Imports `owner/repo` from a connected GitHub App installation, cloning with
 /// a short-lived, repo-scoped token minted by the nixmac server. Works for
 /// private repos; the token is used only for the clone and never persisted.
-#[tauri::command]
 pub async fn github_import(
     app: AppHandle,
     owner: String,
@@ -382,7 +368,6 @@ pub async fn github_import(
 }
 
 /// Extracts a local `.zip` archive into a fresh config directory.
-#[tauri::command]
 pub async fn config_import_zip(
     app: AppHandle,
     zip_path: String,

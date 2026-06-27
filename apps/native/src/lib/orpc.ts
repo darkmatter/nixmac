@@ -121,6 +121,7 @@ export type {
   AdoptManualChangesResult,
   BuildCheckResult,
   CommitResult,
+  Config,
   EvolveCancelResult,
   EvolveState,
   EvolveStep,
@@ -137,6 +138,7 @@ export type {
   RebuildStatus,
   RollbackResult,
   SemanticChangeMap,
+  SetDirResult,
 } from "@/ipc/orpc-bindings";
 
 /** Routes RPC calls through Tauri IPC (`plugin:orpc|handle_rpc`), not HTTP. */
