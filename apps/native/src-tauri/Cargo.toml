@@ -6,9 +6,8 @@ authors = ["Darkmatter Labs"]
 license = "MIT"
 edition = "2021"
 
-[lints.rust]
-unused = "deny"
-unexpected_cfgs = "allow"
+[lints]
+workspace = true
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

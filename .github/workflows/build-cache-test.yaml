@@ -1,16 +1,17 @@
-name: Build macOS App
+name: Build macOS App (Cache Test)
+
+# Duplicated from build.yaml to test devenv-hash profile verification.
+# Manual dispatch only — does not replace the production workflow.
 on:
-  push:
-    branches: [main, develop]
-    tags:
-      - "v*"
-  pull_request:
-    branches: [main, develop]
-  merge_group:
   workflow_dispatch:
+    inputs:
+      skip_release_steps:
+        description: "Skip signing/notarization/R2/upload (faster test)"
+        type: boolean
+        default: true
 
 concurrency:
-  group: build-${{ github.event.pull_request.number || github.ref }}
+  group: build-cache-test-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -33,16 +34,42 @@ jobs:
           darkmatter-cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
           setup-rust: true
           rust-cache-workspaces: apps/native/src-tauri
-      # Decide what kind of build this is:
-      #   - tag:     push of refs/tags/v* → ship that exact version
-      #   - release: push to main → patch-bump the latest tag and ship
-      #   - branch:  PR / feature branch / workflow_dispatch → build-only
-      #
-      # Tags are the source of truth for shipped versions, so the bump is
-      # computed from `git describe` rather than root package.json. This
-      # avoids needing to commit back to main (the `main` ruleset blocks
-      # pushes that don't satisfy the "build" check — which we can't
-      # satisfy from the same run that's pushing).
+
+      # Verify the devenv profile restored from cache matches what nix would
+      # build right now. Catches: nixpkgs roll-forward, partial cache
+      # restoration, substituter failures, stale GITHUB_ENV on self-hosted
+      # runners. Exits 0 (fresh), 1 (stale env), 2 (profile miss), 3 (error).
+      # On miss: rebuilds the profile. On stale: re-exports the env.
+      - name: Verify devenv profile
+        id: devenv-verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x scripts/devenv-hash
+          if scripts/devenv-hash; then
+            echo "status=fresh" >> "$GITHUB_OUTPUT"
+            echo "✓ devenv profile is current and shell env matches"
+          else
+            exit_code=$?
+            case $exit_code in
+              1)
+                echo "status=stale" >> "$GITHUB_OUTPUT"
+                echo "::warning::devenv profile is current but shell env is stale (DEVENV_PROFILE mismatch)"
+                echo "Re-exporting devenv environment..."
+                eval "$(devenv shell --no-tui --quiet -- bash -c 'env')"
+                ;;
+              2)
+                echo "status=miss" >> "$GITHUB_OUTPUT"
+                echo "::warning::devenv profile is out of date, rebuilding..."
+                devenv shell --impure -- echo "devenv rebuilt"
+                ;;
+              *)
+                echo "::error::devenv-hash check failed (exit $exit_code)"
+                exit 1
+                ;;
+            esac
+          fi
+
       - name: Compute release version
         id: release-version
         run: bash ops/scripts/release/compute-version.sh
@@ -110,7 +137,7 @@ jobs:
       # The normalizer needs this keychain to re-sign updater archives after
       # install-name rewrites mutate the embedded app bundle.
       - name: Import Apple Developer certificate
-        if: (steps.release-version.outputs.mode == 'tag' ||
+        if: ${{ !inputs.skip_release_steps && (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
           steps.check-secrets.outputs.has_certificate == 'true'
@@ -134,7 +161,7 @@ jobs:
 
       # Sign the app bundle (required for notarization)
       - name: Sign app bundle
-        if: (steps.release-version.outputs.mode == 'tag' ||
+        if: ${{ !inputs.skip_release_steps && (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
           steps.check-secrets.outputs.has_certificate == 'true'
@@ -146,14 +173,14 @@ jobs:
       # Previously this step deleted the DMG and called `hdiutil create`, which
       # shipped a bare DMG without the drag-to-Applications affordance.
       - name: Swap signed app into Tauri DMG
-        if: (steps.release-version.outputs.mode == 'tag' ||
+        if: ${{ !inputs.skip_release_steps && (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
           steps.check-secrets.outputs.has_certificate == 'true'
         run: bash ops/scripts/release/swap-signed-dmg.sh
       # Notarize the app (requires Apple Developer account)
       - name: Notarize app
-        if: (steps.release-version.outputs.mode == 'tag' ||
+        if: ${{ !inputs.skip_release_steps && (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
           steps.check-secrets.outputs.has_notarization == 'true'
@@ -207,7 +234,7 @@ jobs:
       # ref update) can't block us. GITHUB_TOKEN pushes don't retrigger
       # workflows, so tagging here is safe.
       - name: Tag release
-        if: steps.release-version.outputs.mode == 'release'
+        if: ${{ !inputs.skip_release_steps && steps.release-version.outputs.mode == 'release' }}
         env:
           TAG: ${{ steps.release-version.outputs.tag }}
         run: |
@@ -220,7 +247,7 @@ jobs:
       # signing/notarization + DMG swap path on a disposable tag without
       # publishing a public release.
       - name: Create Release
-        if: (steps.release-version.outputs.mode == 'tag' ||
+        if: ${{ !inputs.skip_release_steps && (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'release') &&
           !contains(steps.release-version.outputs.tag, '-test.')
         uses: softprops/action-gh-release@v2
@@ -237,7 +264,7 @@ jobs:
       # signing/notarization + DMG swap path on a disposable tag without
       # overwriting latest.json on the updater CDN.
       - name: Upload to R2
-        if: (steps.release-version.outputs.mode == 'tag' ||
+        if: ${{ !inputs.skip_release_steps && (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
           !contains(steps.release-version.outputs.tag, '-test.')
@@ -254,7 +281,7 @@ jobs:
       # Linear releases track what actually shipped. Skipped for `-test.N` tags
       # to match the GitHub Release / R2 upload skip.
       - name: Sync release to Linear
-        if: (steps.release-version.outputs.mode == 'tag' ||
+        if: ${{ !inputs.skip_release_steps && (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'release') &&
           !contains(steps.release-version.outputs.tag, '-test.')
         uses: linear/linear-release-action@v0
