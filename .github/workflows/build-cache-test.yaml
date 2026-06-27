@@ -28,12 +28,13 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: true
+          clean: false
 
       - uses: ./.github/actions/setup
         with:
           darkmatter-cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
           setup-rust: true
-          rust-cache-workspaces: apps/native/src-tauri
+          rust-cache-workspaces: ""
 
       # tauri-plugin-macos-passkey 0.1.0 ships a Swift package declaring
       # swift-tools-version 6.1, but the self-hosted runner has Swift 6.0.2
@@ -85,6 +86,25 @@ jobs:
       - name: Compute release version
         id: release-version
         run: bash ops/scripts/release/compute-version.sh
+
+      - name: Setup sccache
+        shell: bash
+        run: |
+          if ! command -v sccache &>/dev/null; then
+            brew install sccache 2>/dev/null || cargo install sccache 2>/dev/null || true
+          fi
+          echo "SCCACHE_DIR=$RUNNER_TEMP/sccache" >> "$GITHUB_ENV"
+          echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/sccache"
+
+      - name: Restore sccache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/sccache
+          key: sccache-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            sccache-${{ runner.os }}-${{ runner.arch }}-
+
       # Sync native app version files. Tag + release modes use the computed
       # version directly; branch/PR builds fall back to the max(package.json,
       # latest-git-tag) guard so a stale package.json cannot embed a version
@@ -116,11 +136,16 @@ jobs:
       # Running `security list-keychain -d user -s <keychain>` before the build
       # replaces the keychain search list and breaks DMG bundling on tag runs.
       - name: Build Tauri app
+        id: build
         run: |
-          # unset the certificate and password so the runner can't influence the build
           export APPLE_SIGNING_IDENTITY="-"
           unset APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD KEYCHAIN_PASSWORD
+          echo "::group::Build timing"
+          start=$(date +%s)
           bun run desktop:build
+          end=$(date +%s)
+          echo "::endgroup::"
+          echo "build_seconds=$((end - start))" >> "$GITHUB_OUTPUT"
         shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -133,6 +158,22 @@ jobs:
           SUBMITTED_FEEDBACK_DSN: ${{ secrets.SUBMITTED_FEEDBACK_DSN }}
       - name: Unit Test Tauri app
         run: bun run desktop:test
+
+      - name: Save sccache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/sccache
+          key: sccache-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+
+      - name: Report build timing
+        if: always()
+        shell: bash
+        run: |
+          echo "## Build Timing"
+          echo "Build seconds: ${{ steps.build.outputs.build_seconds }}"
+          echo "Target dir size: $(du -sh target/ 2>/dev/null | cut -f1 || echo 'unknown')"
+          sccache --show-stats 2>/dev/null || true
 
       # Import Apple Developer certificate (only for releases with secrets).
       # Placed AFTER the Tauri build to avoid replacing the keychain search list
