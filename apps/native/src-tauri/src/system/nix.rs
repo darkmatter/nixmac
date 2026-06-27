@@ -146,10 +146,10 @@ pub fn get_nix_system_defaults_for_domain(
     }
 
     let stdout = String::from_utf8(output.stdout)
-        .with_context(|| format!("nix eval for system.defaults returned invalid UTF-8"))?;
+        .with_context(|| "nix eval for system.defaults returned invalid UTF-8".to_string())?;
     let evaluated_items: BTreeMap<String, Option<serde_json::Value>> =
         serde_json::from_str(&stdout)
-            .with_context(|| format!("Failed to parse nix eval JSON for system.defaults"))?;
+            .with_context(|| "Failed to parse nix eval JSON for system.defaults".to_string())?;
 
     let non_null_items = evaluated_items
         .into_iter()

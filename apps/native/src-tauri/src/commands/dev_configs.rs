@@ -31,7 +31,6 @@ fn find_meta(struct_name: &str) -> Option<&'static ConfigurableMeta> {
 #[tauri::command]
 pub async fn dev_configs_schemas(_app: AppHandle) -> Result<Vec<ConfigurableSchema>, String> {
     Ok(inventory::iter::<ConfigurableMeta>()
-        .into_iter()
         .map(|meta| (meta.schema_fn)())
         .collect())
 }
@@ -43,7 +42,6 @@ pub async fn dev_configs_values(
     app: AppHandle,
 ) -> Result<HashMap<String, serde_json::Value>, String> {
     inventory::iter::<ConfigurableMeta>()
-        .into_iter()
         .map(|meta| (meta.load_fn)(&app).map(|v| (meta.name.to_string(), v)))
         .collect::<anyhow::Result<HashMap<_, _>>>()
         .map_err(|e| capture_err("dev_configs_values", e))

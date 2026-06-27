@@ -1,15 +1,13 @@
 import addonA11y from "@storybook/addon-a11y";
 import addonDocs from "@storybook/addon-docs";
-import { DocsContainer } from "@storybook/addon-docs/blocks";
 import type { DocsContainerProps } from "@storybook/addon-docs/blocks";
 import type { Decorator } from "@storybook/react-vite";
 import { definePreview } from "@storybook/react-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { themes, useTheme } from "storybook/theming";
+import "../src/index.css";
 import "./mocks/tauri-runtime";
 import darkTheme from "./theme";
-import "../src/index.css";
 
 import { seedViewModelBypass } from "../src/utils/test-fixtures";
 
@@ -55,15 +53,15 @@ const creeveySkipRegex = import.meta.env.VITE_CREEVEY_SKIP_REGEX as string | und
 
 const creeveyParameters = creeveySkipRegex
   ? {
-      creevey: {
-        captureElement: "#storybook-root",
-        skip: {
-          "capture only failed snapshot stories": {
-            stories: new RegExp(creeveySkipRegex),
-          },
+    creevey: {
+      captureElement: "#storybook-root",
+      skip: {
+        "capture only failed snapshot stories": {
+          stories: new RegExp(creeveySkipRegex),
         },
       },
-    }
+    },
+  }
   : {};
 
 /**

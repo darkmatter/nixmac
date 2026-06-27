@@ -158,8 +158,9 @@ async fn install_version_impl(app: tauri::AppHandle, version: String) -> Result<
         .map_err(|e| format!("download_and_install failed: {e}"))?;
 
     // Persist the pinned version so the silent update check at next launch can be suppressed.
+    let pinned = version.clone();
     crate::state::preferences::write(&app, move |prefs| {
-        prefs.pinned_version = Some(version.clone());
+        prefs.pinned_version = Some(pinned);
     })
     .map_err(|e| format!("failed to persist pinned version: {e}"))?;
 

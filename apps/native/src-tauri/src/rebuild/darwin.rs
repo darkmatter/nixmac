@@ -96,6 +96,7 @@ pub fn dry_run_build_check(
 /// This spawns the rebuild in a background thread and emits events:
 /// - `darwin:apply:data`: Emitted for each line of output with `{"chunk": "..."}`
 /// - `darwin:apply:end`: Emitted on completion with `{"ok": bool, "code": int, "error_type": string, "error": string, "system_untouched": bool | null, "log_file": string}`
+///
 /// Emits the terminal `darwin:apply:end` event and records the outcome in
 /// the rebuild-status cell (which emits `rebuild_status_changed`).
 fn emit_apply_end(app: &AppHandle, payload: serde_json::Value) {

@@ -166,13 +166,9 @@ fn action_name(value: &serde_json::Value) -> Option<&str> {
     }
 
     let obj = value.as_object()?;
-    for key in ["add", "remove", "set", "set_attrs"] {
-        if obj.contains_key(key) {
-            return Some(key);
-        }
-    }
-
-    None
+    ["add", "remove", "set", "set_attrs"]
+        .into_iter()
+        .find(|&key| obj.contains_key(key))
 }
 
 /// Heuristic for correcting `action: "set"` calls that supply an array where

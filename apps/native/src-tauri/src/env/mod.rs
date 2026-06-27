@@ -114,6 +114,7 @@ pub fn disable_updater() -> bool {
     settings(None).disable_updater
 }
 
+#[allow(dead_code)]
 pub fn vite_skip_permissions() -> bool {
     cfg!(debug_assertions) && settings(None).skip_permissions
 }

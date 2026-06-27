@@ -107,8 +107,6 @@ fn normalize_openai_max_output_tokens(model: &str, value: usize) -> u32 {
     capabilities_for_model(model).clamp_max_completion_tokens(normalized)
 }
 
-/// Return short hex prefix for correlation of error messages without risking sensitive content exposure.
-
 impl EvolutionMessage {
     fn permanent(message: Message, iteration: usize, key: Option<String>) -> Self {
         Self {

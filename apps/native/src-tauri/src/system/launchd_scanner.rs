@@ -210,10 +210,12 @@ fn read_brew_launchd_items() -> Result<Vec<BrewManagedLaunchdItem>> {
 /// The approach is:
 /// 1. Get the brew-managed launchd items.
 /// 2. Get the nix-managed launchd items.
-/// 3. Intersect them by comparing a) the brew plist.label and b) the nix launchd item serviceConfig.Label
-///     (which is the only stable identifier we have across versions of the same service) to get the difference.
-/// Note that it's technically possible that this service was added to nix with a different label than the brew one,
-/// but hopefully that's a weird edge case.
+/// 3. Intersect them by comparing a) the brew plist.label and b) the nix launchd item
+///    serviceConfig.Label (which is the only stable identifier we have across versions
+///    of the same service) to get the difference.
+///
+/// Note that it's technically possible that this service was added to nix with a different
+/// label than the brew one, but hopefully that's a weird edge case.
 pub fn scan_launchd_items_for_hostname(
     hostname: &str,
     config_dir: &str,
@@ -222,7 +224,7 @@ pub fn scan_launchd_items_for_hostname(
     let brew_items = read_brew_launchd_items()?;
 
     // 2. Get the nix-managed launchd items.
-    let nix_items = get_nix_launchd_items(&hostname, config_dir)?;
+    let nix_items = get_nix_launchd_items(hostname, config_dir)?;
 
     // 3. Remove the intersection of the two lists by comparing the brew plist.label and the nix launchd item serviceConfig.Label.
     let nix_labels: std::collections::HashSet<String> =

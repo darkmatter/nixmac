@@ -59,7 +59,7 @@ pub(crate) fn ensure_repo_store_dir_for_path(path: impl AsRef<Path>) -> Result<(
     let Some(dir) = path.as_ref().parent() else {
         return Ok(());
     };
-    std::fs::create_dir_all(&dir)?;
+    std::fs::create_dir_all(dir)?;
     let readme = dir.join(REPO_README_FILE);
     if !readme.exists() {
         // Best-effort — failing to write the README must not block settings

@@ -51,18 +51,18 @@ fn map_change_type(delta: git2::Delta) -> ChangeType {
     }
 }
 
-/// Git query layer (SAFE)
-///
-/// This module uses git2 exclusively.
-///
-/// Rules:
-/// - NO filesystem modification
-/// - NO index mutation
-/// - NO working tree changes
-/// - ONLY Git object graph inspection
-///
-/// Basically, only things that don't depend on git porcelain output and/or
-/// git CLI semantics.
+// Git query layer (SAFE)
+//
+// This module uses git2 exclusively.
+//
+// Rules:
+// - NO filesystem modification
+// - NO index mutation
+// - NO working tree changes
+// - ONLY Git object graph inspection
+//
+// Basically, only things that don't depend on git porcelain output and/or
+// git CLI semantics.
 
 /// Gets the git repository root directory for `dir`, or `dir` if not in a repo.
 /// Used for resolving file paths for the benefit of tools and git operations.
@@ -270,8 +270,7 @@ pub fn status(dir: &str) -> Result<GitStatus> {
         .head()
         .ok()
         .and_then(|h| h.peel_to_commit().ok())
-        .map(|c| c.tree().ok())
-        .flatten();
+        .and_then(|c| c.tree().ok());
 
     // ------------------------------------------------------------
     // Get the raw diff object for HEAD vs working directory, including untracked files.
@@ -374,7 +373,7 @@ pub fn commit_diff(dir: &str, parent_hash: &str, commit_hash: &str) -> Result<Ve
         Some(&mut default_diff_opts()),
     )?;
 
-    return run_diff_engine(diff);
+    run_diff_engine(diff)
 }
 
 /// Internal helper function to run the "diff engine" (delta + patch parsing) and produce structured FileDiffs.

@@ -27,7 +27,7 @@
     "noFallthroughCasesInSwitch": true,
     "strictNullChecks": true
   },
-  "include": ["src", "electron"],
+  "include": ["src", "electron", ".storybook"],
   "exclude": [
     "node_modules",
     "src/components/ui/accordion.tsx",
