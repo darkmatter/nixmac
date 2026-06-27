@@ -999,18 +999,35 @@ account: AuthAccount | null;
 fallbackReason: string | null }
 
 /**
- * Result of `github_connect_start`: the GitHub App install URL to open in the
- * browser. `state` is server-tracked CSRF; the client only needs `install_url`.
+ * Result of starting a GitHub connection flow. Authenticated connections use
+ * `install_url` as the GitHub App install URL; unauthenticated bootstrap uses
+ * GitHub device OAuth and includes a user code to display.
  */
 export type GithubConnectStart = { 
 /**
- * GitHub App installation URL to open in the user's browser.
+ * GitHub URL to open in the user's browser.
  */
 installUrl: string; 
 /**
- * Opaque CSRF state bound to the account server-side.
+ * Opaque state bound to the account/server flow.
  */
-state: string }
+state: string; 
+/**
+ * Device OAuth code the user must enter at `verification_uri`.
+ */
+userCode: string | null; 
+/**
+ * Device OAuth verification URL.
+ */
+verificationUri: string | null; 
+/**
+ * Seconds until the device code expires.
+ */
+expiresIn: number | null; 
+/**
+ * Minimum polling interval, in seconds.
+ */
+interval: number | null }
 
 /**
  * A repository the installation can access, returned by `github_list_repos`.

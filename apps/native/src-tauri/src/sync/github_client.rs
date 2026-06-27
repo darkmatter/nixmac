@@ -70,11 +70,11 @@ impl GithubBootstrapClient {
             .await
             .context("github bootstrap/status request failed")?;
         let resp = error_for_status(resp).await?;
-        let body: GithubBootstrapStatusResponse = resp
-            .json()
+        let text = resp
+            .text()
             .await
-            .context("invalid github bootstrap/status response")?;
-        body.into_poll()
+            .context("failed to read github bootstrap/status response")?;
+        parse_bootstrap_status_body(&text)
     }
 }
 
@@ -95,14 +95,23 @@ pub struct GithubClient {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct AuthAccountWire {
+    id: String,
+    email: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct GithubBootstrapStatusResponse {
     #[serde(default)]
-    status: Option<GithubBootstrapState>,
+    status: Option<String>,
+    #[serde(default)]
+    state: Option<String>,
     #[serde(default)]
     connected: bool,
     #[serde(default)]
     login: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_optional_i64")]
     installation_id: Option<i64>,
     #[serde(default)]
     api_key: Option<String>,
@@ -111,22 +120,40 @@ struct GithubBootstrapStatusResponse {
     #[serde(default)]
     email: Option<String>,
     #[serde(default)]
+    account: Option<AuthAccountWire>,
+    #[serde(default)]
     fallback_required: bool,
     #[serde(default)]
     fallback_reason: Option<String>,
+    #[serde(default)]
+    error: Option<String>,
+    #[serde(default)]
+    poll_interval_seconds: Option<u32>,
 }
 
 impl GithubBootstrapStatusResponse {
     fn into_poll(self) -> Result<GithubBootstrapPoll> {
-        let state = if self.connected || self.api_key.is_some() {
+        if let Some(error) = self.error.as_deref() {
+            return Err(anyhow!("github bootstrap/status error: {error}"));
+        }
+
+        let wire_state = self.status.as_deref().or(self.state.as_deref());
+        let state = if self.connected || self.api_key.is_some() || wire_state == Some("complete") {
             GithubBootstrapState::Complete
         } else if self.fallback_required {
             GithubBootstrapState::FallbackRequired
         } else {
-            self.status.unwrap_or(GithubBootstrapState::Pending)
+            bootstrap_state_from_wire(wire_state)?
         };
 
-        let account = match (self.account_id, self.email) {
+        let account_id = self
+            .account_id
+            .or_else(|| self.account.as_ref().map(|account| account.id.clone()));
+        let email = self
+            .email
+            .or_else(|| self.account.as_ref().map(|account| account.email.clone()));
+
+        let account = match (account_id, email) {
             (Some(id), Some(email)) => Some(AuthAccount { id, email }),
             (None, None) => None,
             _ if state == GithubBootstrapState::Complete => {
@@ -137,9 +164,9 @@ impl GithubBootstrapStatusResponse {
             _ => None,
         };
 
-        if state == GithubBootstrapState::Complete && self.api_key.is_none() {
+        if state == GithubBootstrapState::Complete && self.api_key.is_none() && account.is_none() {
             return Err(anyhow!(
-                "server completed github bootstrap without a device api key"
+                "server completed github bootstrap without account metadata or device api key"
             ));
         }
 
@@ -151,9 +178,23 @@ impl GithubBootstrapStatusResponse {
                 installation_id: self.installation_id,
                 account,
                 fallback_reason: self.fallback_reason,
+                poll_interval_seconds: self.poll_interval_seconds,
             },
             api_key: self.api_key,
         })
+    }
+}
+
+fn bootstrap_state_from_wire(value: Option<&str>) -> Result<GithubBootstrapState> {
+    match value.unwrap_or("pending") {
+        "pending" => Ok(GithubBootstrapState::Pending),
+        "complete" => Ok(GithubBootstrapState::Complete),
+        "fallbackRequired" => Ok(GithubBootstrapState::FallbackRequired),
+        "expired" => Ok(GithubBootstrapState::Expired),
+        // GitHub device flow can ask clients to slow down; the server may
+        // choose to surface that as a transient status while keeping the flow alive.
+        "slowDown" => Ok(GithubBootstrapState::Pending),
+        other => Err(anyhow!("unexpected github bootstrap status: {other}")),
     }
 }
 
@@ -279,6 +320,52 @@ fn web_origin(base_url: &str) -> Result<String> {
         .ascii_serialization())
 }
 
+fn truncate_body(body: &str) -> String {
+    const MAX_LEN: usize = 500;
+    let trimmed = body.trim();
+    if trimmed.len() <= MAX_LEN {
+        trimmed.to_string()
+    } else {
+        format!("{}…", &trimmed[..MAX_LEN])
+    }
+}
+
+fn redact_bootstrap_body(body: &str) -> String {
+    let Ok(mut value) = serde_json::from_str::<serde_json::Value>(body) else {
+        return truncate_body(body);
+    };
+    if let Some(obj) = value.as_object_mut() {
+        if obj.contains_key("apiKey") {
+            obj.insert(
+                "apiKey".to_string(),
+                serde_json::Value::String("[redacted]".to_string()),
+            );
+        }
+    }
+    truncate_body(&value.to_string())
+}
+
+fn deserialize_optional_i64<'de, D>(deserializer: D) -> Result<Option<i64>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum WireInt {
+        Int(i64),
+        Str(String),
+    }
+
+    match Option::<WireInt>::deserialize(deserializer)? {
+        None => Ok(None),
+        Some(WireInt::Int(value)) => Ok(Some(value)),
+        Some(WireInt::Str(value)) => value
+            .parse::<i64>()
+            .map(Some)
+            .map_err(serde::de::Error::custom),
+    }
+}
+
 /// Converts a non-2xx response into a readable error, including the body.
 async fn error_for_status(resp: reqwest::Response) -> Result<reqwest::Response> {
     let status = resp.status();
@@ -291,5 +378,94 @@ async fn error_for_status(resp: reqwest::Response) -> Result<reqwest::Response> 
         Err(anyhow!("server returned {status}"))
     } else {
         Err(anyhow!("server returned {status}: {detail}"))
+    }
+}
+
+fn parse_bootstrap_status_body(text: &str) -> Result<GithubBootstrapPoll> {
+    let body: GithubBootstrapStatusResponse = serde_json::from_str(text).with_context(|| {
+        format!(
+            "invalid github bootstrap/status response: {}",
+            redact_bootstrap_body(text)
+        )
+    })?;
+    body.into_poll()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_pending_bootstrap_status() {
+        let poll = parse_bootstrap_status_body(
+            r#"{"status":"pending","state":"pending","connected":false,"pollIntervalSeconds":5}"#,
+        )
+        .expect("pending response");
+        assert_eq!(poll.status.state, GithubBootstrapState::Pending);
+        assert!(!poll.status.connected);
+        assert_eq!(poll.status.poll_interval_seconds, Some(5));
+    }
+
+    #[test]
+    fn parses_complete_bootstrap_status_with_nested_account() {
+        let poll = parse_bootstrap_status_body(
+            r#"{
+                "status":"complete",
+                "state":"complete",
+                "connected":true,
+                "login":"octocat",
+                "installationId":12345,
+                "account":{"id":"user-1","email":"octocat@users.nixmac.dev"},
+                "apiKey":"nixmac_test_key"
+            }"#,
+        )
+        .expect("complete response");
+        assert_eq!(poll.status.state, GithubBootstrapState::Complete);
+        assert_eq!(poll.api_key.as_deref(), Some("nixmac_test_key"));
+        assert_eq!(
+            poll.status
+                .account
+                .as_ref()
+                .map(|account| account.id.as_str()),
+            Some("user-1")
+        );
+    }
+
+    #[test]
+    fn parses_replayed_complete_status_without_api_key() {
+        let poll = parse_bootstrap_status_body(
+            r#"{
+                "status":"complete",
+                "state":"complete",
+                "connected":true,
+                "login":"octocat",
+                "installationId":12345,
+                "account":{"id":"user-1","email":"octocat@users.nixmac.dev"}
+            }"#,
+        )
+        .expect("replayed complete response");
+        assert_eq!(poll.status.state, GithubBootstrapState::Complete);
+        assert!(poll.api_key.is_none());
+        assert!(poll.status.connected);
+    }
+
+    #[test]
+    fn parses_production_complete_status_with_string_installation_id() {
+        let poll = parse_bootstrap_status_body(
+            r#"{
+                "status":"complete",
+                "state":"complete",
+                "connected":true,
+                "login":"czxtm",
+                "installationId":"142858330",
+                "accountId":"SLcSyLT1H4jSvuGpgCG2J8XrMI8a08KV",
+                "email":"cooper@darkmatter.io",
+                "account":{"id":"SLcSyLT1H4jSvuGpgCG2J8XrMI8a08KV","email":"cooper@darkmatter.io"},
+                "apiKey":"nixmac_test_key"
+            }"#,
+        )
+        .expect("production-shaped complete response");
+        assert_eq!(poll.status.state, GithubBootstrapState::Complete);
+        assert_eq!(poll.status.installation_id, Some(142_858_330));
     }
 }

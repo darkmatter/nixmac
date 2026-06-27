@@ -862,6 +862,22 @@ pub async fn generate_evolution<R: Runtime>(
             model,
             max_output_tokens_for_request,
         ))
+    } else if provider_type == crate::ai::providers::NIXMAC_PROVIDER {
+        let api_key = store::get_device_api_key(app)?
+            .ok_or_else(|| anyhow!("Sign in to nixmac hosted inference first."))?;
+        let base_url = crate::ai::providers::nixmac_llm_api_base(&store::get_web_server_url()?);
+        let model = configured_evolve_model
+            .unwrap_or_else(|| crate::ai::providers::DEFAULT_NIXMAC_MODEL.to_string());
+        info!(
+            "Using nixmac hosted provider | Model: {} | Max output tokens: {}",
+            model, max_output_tokens_for_request
+        );
+        Arc::new(OpenAIProvider::new(
+            api_key,
+            base_url,
+            model,
+            max_output_tokens_for_request,
+        ))
     } else if provider_type == "openai" {
         let (api_key, base_url) = store::get_effective_openai_provider_credential(app)?
             .ok_or_else(|| {

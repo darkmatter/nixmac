@@ -13,6 +13,12 @@ use async_trait::async_trait;
 const DEFAULT_SUMMARY_MODEL: &str = "openai/gpt-4o-mini";
 const DEFAULT_OPENAI_SUMMARY_MODEL: &str = "gpt-4o-mini";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
+pub(crate) const NIXMAC_PROVIDER: &str = "nixmac";
+pub(crate) const DEFAULT_NIXMAC_MODEL: &str = "openai/gpt-4o-mini";
+
+pub(crate) fn nixmac_llm_api_base(web_server_url: &str) -> String {
+    format!("{}/api/llm/v1", web_server_url.trim_end_matches('/'))
+}
 
 /// Token consumption reported by a provider for a single completion call.
 #[derive(Debug, Default, Clone)]
@@ -240,6 +246,18 @@ pub fn create_provider<R: Runtime>(
                 .transpose()?
                 .flatten()
                 .unwrap_or_else(|| "none".to_string());
+
+            Ok(Box::new(OpenAIClient::new(&api_key, &base_url, &model)))
+        }
+        NIXMAC_PROVIDER => {
+            let app = app_handle.ok_or_else(|| {
+                anyhow::anyhow!("The nixmac hosted provider requires the desktop app context.")
+            })?;
+            let api_key = crate::storage::store::get_device_api_key(app)?
+                .ok_or_else(|| anyhow::anyhow!("Sign in to nixmac hosted inference first."))?;
+            let base_url = nixmac_llm_api_base(&crate::storage::store::get_web_server_url()?);
+            let model =
+                configured_summary_model.unwrap_or_else(|| DEFAULT_NIXMAC_MODEL.to_string());
 
             Ok(Box::new(OpenAIClient::new(&api_key, &base_url, &model)))
         }

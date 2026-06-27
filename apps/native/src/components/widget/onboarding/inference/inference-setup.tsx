@@ -3,7 +3,9 @@
 import { Button } from "@/components/ui/button";
 import {
   BYOK_PROVIDERS,
+  DEFAULT_NIXMAC_MODEL,
   FALLBACK_HOSTED_PAYG_PRODUCT,
+  NIXMAC_PROVIDER,
   parseHostedPaygProductResponse,
   validateKeyFormat,
   type HostedPaygProduct,
@@ -513,7 +515,13 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
             className="mt-2"
             size="sm"
             variant="secondary"
-            onClick={() => {
+            onClick={async () => {
+              await tauriAPI.ui.setPrefs({
+                evolveProvider: NIXMAC_PROVIDER,
+                evolveModel: DEFAULT_NIXMAC_MODEL,
+                summaryProvider: NIXMAC_PROVIDER,
+                summaryModel: DEFAULT_NIXMAC_MODEL,
+              });
               getTelemetry().captureEvent({
                 name: "inference_configured",
                 props: { mode: "hosted" },

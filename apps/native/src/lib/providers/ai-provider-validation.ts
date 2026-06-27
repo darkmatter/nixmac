@@ -42,6 +42,10 @@ export function getProviderConfigInvalidReason(
     }
   }
 
+  if (provider === "nixmac") {
+    return null;
+  }
+
   if (provider === "openrouter") {
     return prefs.openrouterApiKey?.trim() ? null : "No OpenRouter API key set";
   }

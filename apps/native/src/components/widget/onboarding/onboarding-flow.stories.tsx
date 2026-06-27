@@ -396,16 +396,14 @@ function installBackend(startAt: string) {
 
   // inference
   ensure("account");
-  patch(tauriAPI.account, "signIn", async (email: string) => ({
-    signedIn: true,
-    account: { email },
-    credentialId: "demo",
-  }));
   patch(tauriAPI.account, "sendOtp", async () => undefined);
   patch(tauriAPI.account, "verifyOtp", async (email: string) => ({
     signedIn: true,
-    account: { email },
-    credentialId: "demo",
+    account: { id: "demo-account", email },
+    keyId: null,
+    serverUrl: "https://sync.nixmac.app",
+    githubReady: true,
+    webAccount: { id: "demo-account", email },
   }));
   patch(tauriAPI.account, "createPaygCheckout", async () => "https://polar.sh/demo-checkout");
   ensure("ui");

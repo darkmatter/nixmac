@@ -2,6 +2,9 @@ import { z } from "zod";
 
 export type { InferenceConfig, InferenceMode } from "@nixmac/state";
 
+export const NIXMAC_PROVIDER = "nixmac";
+export const DEFAULT_NIXMAC_MODEL = "openai/gpt-4o-mini";
+
 export interface HostedPaygProduct {
   slug: string;
   productId: string;
