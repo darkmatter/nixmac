@@ -5,7 +5,7 @@
 All options under `services.sftpgo`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.sftpgo.dataDir` | | |
 | `services.sftpgo.enable` | | |
 | `services.sftpgo.extraArgs` | | |

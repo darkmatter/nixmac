@@ -5,7 +5,7 @@
 All options under `programs.thunderbird`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `programs.thunderbird.enable` | | |
 | `programs.thunderbird.package` | | |
 | `programs.thunderbird.policies` | | |

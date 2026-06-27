@@ -5,7 +5,7 @@
 All options under `programs.feedr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `programs.feedr.enable` | | |
 | `programs.feedr.package` | | |
 | `programs.feedr.settings` | | |

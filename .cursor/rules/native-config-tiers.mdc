@@ -1,0 +1,30 @@
+---
+description: Three configuration tiers for the native app
+alwaysApply: true
+---
+
+# Configuration — use one of three tiers
+
+Any new configuration must land in exactly one of these places. Do not invent a fourth config file or hard-code values in components.
+
+## 1. Build profiles (environment variables)
+
+**Files:** `apps/native/env.development.json`, `apps/native/env.release.json` (and `env.e2e.json` for e2e)
+
+We call these **profiles** to distinguish them from runtime user settings. Anything that can be passed as an env var belongs here. Preferred over ad hoc env reads — each file references a generated JSON Schema (`src-tauri/resources/schemas/env.schema.json`) for intellisense.
+
+Read in app code via `apps/native/src/lib/env.ts`.
+
+## 2. User preferences (device-wide)
+
+**Path:** `$XDG_CONFIG_HOME/nixmac/settings.json`
+
+App settings at the **user** level — they apply across every project/config repo the user opens. Rust: `GlobalPreferences` / observable persistence in `src-tauri/src/state/`.
+
+## 3. Project level (repo-scoped)
+
+**Path:** `<config_dir>/.nixmac/settings.json`
+
+Settings that travel with the user's nix/darwin config **repository** (agent limits, per-repo defaults, etc.). Rust: repo-scoped configurable slices via `storage/configurable_scope.rs`.
+
+When unsure which tier: build-time constant → profile; follows the person → user prefs; follows the repo → project level.

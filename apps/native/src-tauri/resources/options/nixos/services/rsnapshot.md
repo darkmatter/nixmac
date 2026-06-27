@@ -5,7 +5,7 @@
 All options under `services.rsnapshot`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.rsnapshot.cronIntervals` | | |
 | `services.rsnapshot.enable` | | |
 | `services.rsnapshot.enableManualRsnapshot` | | |

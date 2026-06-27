@@ -97,10 +97,7 @@ export const ToggleView = meta.story({
     const [open, setOpen] = useState(false);
     return (
       <div className="w-[640px] grid gap-3">
-        <UntrackedBanner
-          candidates={storyManageFiles}
-          onView={() => setOpen((v) => !v)}
-        />
+        <UntrackedBanner candidates={storyManageFiles} onView={() => setOpen((v) => !v)} />
         {open && (
           <div className="rounded-md border border-border bg-card/40 p-3 text-[11.5px] text-muted-foreground">
             (Stand-in) Filesystem view → Untracked tab would render here.

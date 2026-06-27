@@ -5,5 +5,5 @@
 All options under `programs.gdk-pixbuf`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `programs.gdk-pixbuf.modulePackages` | | |

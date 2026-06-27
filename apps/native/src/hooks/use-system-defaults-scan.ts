@@ -12,6 +12,7 @@ export function useSystemDefaultsScan(enabled = true) {
   const refresh = useCallback(async (isCancelled: () => boolean = () => false) => {
     setError(null);
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       const result = await tauriAPI.scanner.scanDefaults();
       if (!isCancelled()) setScan(result);
     } catch (e: unknown) {

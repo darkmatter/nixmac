@@ -5,7 +5,7 @@
 All options under `services.jackett`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.jackett.dataDir` | | |
 | `services.jackett.enable` | | |
 | `services.jackett.group` | | |

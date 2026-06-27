@@ -5,7 +5,7 @@
 All options under `services.stalwart`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.stalwart.credentials` | | |
 | `services.stalwart.dataDir` | | |
 | `services.stalwart.enable` | | |

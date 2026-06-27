@@ -5,7 +5,7 @@
 All options under `services.aerospace`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.aerospace.enable` | `boolean` | Whether to enable AeroSpace window manager. |
 | `services.aerospace.package` | `package` | The aerospace package to use. |
 | `services.aerospace.settings` | `open submodule of (TOML value)` | AeroSpace configuration, see <link xlink:href=“https://nikitabobko.github.io/AeroSpace/guide#configuring-aerospace”/> for supported values. |

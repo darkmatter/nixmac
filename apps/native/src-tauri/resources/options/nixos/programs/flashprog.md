@@ -5,6 +5,6 @@
 All options under `programs.flashprog`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `programs.flashprog.enable` | | |
 | `programs.flashprog.package` | | |

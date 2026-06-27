@@ -5,7 +5,7 @@
 All options under `services.postfix`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.postfix.aliasFiles` | | |
 | `services.postfix.aliasMapType` | | |
 | `services.postfix.canonical` | | |

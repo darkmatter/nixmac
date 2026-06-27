@@ -5,7 +5,7 @@
 All options under `services.udisks2`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.udisks2.enable` | | |
 | `services.udisks2.mountOnMedia` | | |
 | `services.udisks2.package` | | |

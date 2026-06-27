@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "How long the agent will try before giving up.",
+  "properties": {
+    "maxBuildAttempts": {
+      "default": 5,
+      "description": "Failed builds before giving up on a run.",
+      "maximum": 20,
+      "minimum": 1,
+      "title": "Max build attempts",
+      "type": "integer"
+    },
+    "maxIterations": {
+      "default": 25,
+      "description": "Legacy iteration cap. Used only when the provider doesn't report token usage; the token budget is the primary stopping rule.",
+      "maximum": 200,
+      "minimum": 1,
+      "title": "Max iterations (legacy)",
+      "type": "integer"
+    },
+    "maxOutputTokens": {
+      "default": 32768,
+      "description": "Completion tokens requested from the evolution model. Lower if a local model rejects requests for exceeding its context window.",
+      "maximum": 262144,
+      "minimum": 1024,
+      "title": "Max output tokens",
+      "type": "integer"
+    },
+    "maxTokenBudget": {
+      "default": 50000,
+      "description": "Provider-reported tokens before stopping. Lower = faster/cheaper, may not finish complex changes.",
+      "maximum": 1000000,
+      "minimum": 1000,
+      "title": "Token budget",
+      "type": "integer"
+    }
+  },
+  "title": "Evolution",
+  "type": "object"
+}

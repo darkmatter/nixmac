@@ -5,7 +5,7 @@
 All options under `programs.starship`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `programs.starship.enable` | | |
 | `programs.starship.interactiveOnly` | | |
 | `programs.starship.package` | | |

@@ -5,5 +5,5 @@
 All options under `services.illum`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `services.illum.enable` | | |

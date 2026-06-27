@@ -5,7 +5,7 @@
 All options under `services.kea`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.kea.ctrl-agent` | | |
 | `services.kea.dhcp-ddns` | | |
 | `services.kea.dhcp4` | | |

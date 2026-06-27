@@ -1,12 +1,11 @@
 import { tauriAPI, ipcRenderer } from "@/ipc/api";
 import type { GitState, GitStatus } from "@/ipc/types";
-import { useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { uiActions, viewModelActions } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
 import { refreshHistorySnapshot } from "./history";
 
 function mirrorGitState(git: GitStatus | null, externalBuildDetected = false): void {
-  useViewModel.setState((state) => ({
+  viewModelActions.setState((state) => ({
     git,
     build: {
       ...state.build,
@@ -22,6 +21,7 @@ function mirrorGitState(git: GitStatus | null, externalBuildDetected = false): v
  * wait for the watcher's poll interval.
  */
 export async function refreshGitSnapshot(): Promise<void> {
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   const status = await tauriAPI.git.statusAndCache();
   mirrorGitState(status);
 }
@@ -29,6 +29,7 @@ export async function refreshGitSnapshot(): Promise<void> {
 export async function startGitSync(): Promise<() => void> {
   const [stateUnlisten, errorUnlisten] = await Promise.all([
     bindBackendSlice<GitState>({
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       hydrate: () => tauriAPI.git.state(),
       event: "git_state_changed",
       mirror: ({ gitStatus, externalBuildDetected }) =>
@@ -36,7 +37,7 @@ export async function startGitSync(): Promise<() => void> {
       onEvent: () => void refreshHistorySnapshot(),
     }),
     ipcRenderer.on<string>("git_state_error", (event) => {
-      useUiState.getState().setError(event.payload);
+      uiActions.setError(event.payload);
     }),
   ]);
 

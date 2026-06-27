@@ -2,7 +2,7 @@
 // Re-run: cd apps/native/src-tauri && cargo run --example specta_gen_ts
 // Source: src-tauri/src/sqlite_types.rs
 
-export type Change = { id: number; hash: string; filename: string; diff: string; lineCount: number; createdAt: number; ownSummaryId: number | null }
+export type Change = { id: number; hash: string; filename: string; diff: string; lineCount: number; createdAt: number; ownSummaryId: number }
 
 /**
  * Groups Changes for a commit→base_commit pair. `commit_id` is NULL for speculative

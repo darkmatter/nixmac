@@ -5,5 +5,5 @@
 All options under `programs.gphoto2`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `programs.gphoto2.enable` | | |

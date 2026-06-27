@@ -5,7 +5,7 @@
 All options under `services.strichliste`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.strichliste.domain` | | |
 | `services.strichliste.enable` | | |
 | `services.strichliste.environment` | | |

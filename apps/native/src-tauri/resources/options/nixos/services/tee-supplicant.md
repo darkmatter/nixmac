@@ -5,7 +5,7 @@
 All options under `services.tee-supplicant`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.tee-supplicant.enable` | | |
 | `services.tee-supplicant.package` | | |
 | `services.tee-supplicant.pluginPath` | | |

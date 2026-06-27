@@ -5,7 +5,7 @@
 All options under `services.alloy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.alloy.configPath` | | |
 | `services.alloy.enable` | | |
 | `services.alloy.environmentFile` | | |

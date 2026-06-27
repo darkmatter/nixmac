@@ -5,5 +5,5 @@
 All options under `programs.unity3d`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `programs.unity3d.enable` | | |

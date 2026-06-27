@@ -5,5 +5,5 @@
 All options under `meta`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------ | ---- | ----------- |
 | `meta.maintainers` | | |

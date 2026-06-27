@@ -5,7 +5,7 @@
 All options under `services.cachefilesd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.cachefilesd.cacheDir` | | |
 | `services.cachefilesd.enable` | | |
 | `services.cachefilesd.extraConfig` | | |

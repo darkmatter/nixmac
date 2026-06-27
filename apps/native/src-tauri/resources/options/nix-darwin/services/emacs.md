@@ -5,7 +5,7 @@
 All options under `services.emacs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.emacs.additionalPath` | `list of string` | This option specifies additional PATH that the emacs daemon would have. Typically if you have binaries in your home directory that is what you would add your home path here. One caveat is that there won’t be shell variable expansion, so you can’t use $HOME for example |
 | `services.emacs.enable` | `boolean` | Whether to enable the Emacs Daemon. |
 | `services.emacs.exec` | `string` | Emacs command/binary to execute. |

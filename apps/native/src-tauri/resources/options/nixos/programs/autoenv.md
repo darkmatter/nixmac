@@ -5,6 +5,6 @@
 All options under `programs.autoenv`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `programs.autoenv.enable` | | |
 | `programs.autoenv.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.local-content-share`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.local-content-share.enable` | | |
 | `services.local-content-share.listenAddress` | | |
 | `services.local-content-share.openFirewall` | | |

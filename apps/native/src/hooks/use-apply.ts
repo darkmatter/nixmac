@@ -1,6 +1,6 @@
-import { useUiState } from "@/stores/ui-state";
-import { tauriAPI } from "@/ipc/api";
+import { uiActions } from "@nixmac/state";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
+import { client } from "@/lib/orpc";
 
 /**
  * Hook for the apply/rebuild operation.
@@ -12,13 +12,13 @@ export function useApply() {
   const { triggerRebuild } = useRebuildStream();
 
   const handleApply = async () => {
-    useUiState.getState().setProcessing(true, "apply");
+    uiActions.setProcessing(true, "apply");
 
     await triggerRebuild({
       context: "apply",
       onSuccess: async () => {
         try {
-          await tauriAPI.darwin.finalizeApply();
+          await client.darwin.finalizeApply();
         } catch (e) {
           console.error("Failed to finalize apply:", e);
         }
@@ -27,18 +27,18 @@ export function useApply() {
   };
 
   const handleHistoryBuild = async () => {
-    useUiState.getState().setProcessing(true, "apply");
+    uiActions.setProcessing(true, "apply");
     await triggerRebuild({
       context: "apply",
       onSuccess: async () => {
-        await tauriAPI.darwin.finalizeApply();
+        await client.darwin.finalizeApply();
       },
     });
   };
 
   const handleManualBuildConfirm = async () => {
     try {
-      await tauriAPI.darwin.finalizeApply();
+      await client.darwin.finalizeApply();
     } catch (e) {
       console.error("Failed to finalize manual build:", e);
     }

@@ -5,7 +5,7 @@
 All options under `services.shadowsocks`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.shadowsocks.enable` | | |
 | `services.shadowsocks.encryptionMethod` | | |
 | `services.shadowsocks.extraConfig` | | |

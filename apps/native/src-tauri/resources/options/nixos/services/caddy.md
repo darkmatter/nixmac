@@ -5,7 +5,7 @@
 All options under `services.caddy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.caddy.acmeCA` | | |
 | `services.caddy.adapter` | | |
 | `services.caddy.agree` | | |

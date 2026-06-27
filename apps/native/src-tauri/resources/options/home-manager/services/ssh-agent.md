@@ -5,7 +5,7 @@
 All options under `services.ssh-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.ssh-agent.defaultMaximumIdentityLifetime` | `null or (positive integer, meaning >0)` | Set a default value for the maximum lifetime in seconds of identities added to the agent. |
 | `services.ssh-agent.enable` | `boolean` | Whether to enable OpenSSH private key agent. |
 | `services.ssh-agent.enableBashIntegration` | | |

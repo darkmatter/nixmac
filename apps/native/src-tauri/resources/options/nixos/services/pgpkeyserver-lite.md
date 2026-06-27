@@ -5,7 +5,7 @@
 All options under `services.pgpkeyserver-lite`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.pgpkeyserver-lite.enable` | | |
 | `services.pgpkeyserver-lite.hkpAddress` | | |
 | `services.pgpkeyserver-lite.hkpPort` | | |

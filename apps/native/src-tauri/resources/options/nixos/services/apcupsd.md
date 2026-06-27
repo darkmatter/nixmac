@@ -5,7 +5,7 @@
 All options under `services.apcupsd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.apcupsd.configText` | | |
 | `services.apcupsd.enable` | | |
 | `services.apcupsd.hooks` | | |

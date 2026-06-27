@@ -5,7 +5,7 @@
 All options under `services.octoprint`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.octoprint.enable` | | |
 | `services.octoprint.extraConfig` | | |
 | `services.octoprint.group` | | |

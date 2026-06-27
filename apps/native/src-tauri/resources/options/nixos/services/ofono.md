@@ -5,6 +5,6 @@
 All options under `services.ofono`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.ofono.enable` | | |
 | `services.ofono.plugins` | | |

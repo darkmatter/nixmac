@@ -5,7 +5,7 @@
 All options under `services.miniflux`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.miniflux.adminCredentialsFile` | | |
 | `services.miniflux.config` | | |
 | `services.miniflux.createDatabaseLocally` | | |

@@ -5,7 +5,7 @@
 All options under `services.slskd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.slskd.domain` | | |
 | `services.slskd.enable` | | |
 | `services.slskd.environmentFile` | | |

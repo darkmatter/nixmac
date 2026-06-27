@@ -5,7 +5,7 @@
 All options under `services.zenohd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.zenohd.backends` | | |
 | `services.zenohd.enable` | | |
 | `services.zenohd.env` | | |

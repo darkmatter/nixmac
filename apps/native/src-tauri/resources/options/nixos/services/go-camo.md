@@ -5,7 +5,7 @@
 All options under `services.go-camo`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.go-camo.enable` | | |
 | `services.go-camo.extraOptions` | | |
 | `services.go-camo.keyFile` | | |

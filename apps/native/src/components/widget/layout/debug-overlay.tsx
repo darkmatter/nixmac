@@ -1,7 +1,7 @@
 "use client";
 
-import { tauriAPI } from "@/ipc/api";
-import { useViewModel } from "@/stores/view-model";
+import { client } from "@/lib/orpc";
+import { useViewModel } from "@nixmac/state";
 import { useState } from "react";
 import { GitStatusDebug } from "@/components/widget/layout/git-status-debug";
 
@@ -47,7 +47,7 @@ export function DebugOverlay() {
       </div>
       <button
         className="pointer-events-auto rounded bg-black/80 px-2 py-1 font-mono text-xs text-rose-400/60 hover:text-rose-400"
-        onClick={() => void tauriAPI.evolveState.clear()}
+        onClick={() => void client.evolveState.clear()}
         style={{ backdropFilter: "blur(4px)" }}
         type="button"
       >

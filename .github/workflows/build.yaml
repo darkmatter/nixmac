@@ -74,7 +74,7 @@ jobs:
         run: bash ops/scripts/release/sync-version.sh
       - name: Check for code signing secrets
         id: check-secrets
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         run: |
           if [ -n "$APPLE_CERTIFICATE" ]; then
             echo "has_certificate=true" >> $GITHUB_OUTPUT
@@ -96,7 +96,7 @@ jobs:
           export APPLE_SIGNING_IDENTITY="-"
           unset APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD KEYCHAIN_PASSWORD
           bun run desktop:build
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Pass DSNs and build metadata into the tauri action step so build.rs can read them
@@ -106,8 +106,6 @@ jobs:
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
           SUBMITTED_FEEDBACK_DSN: ${{ secrets.SUBMITTED_FEEDBACK_DSN }}
-          VITE_NIXMAC_ENV: prod
-          VITE_NIXMAC_VERSION: ${{ steps.sync-version.outputs.build_version }}
       - name: Unit Test Tauri app
         run: bun run desktop:test
 
@@ -121,10 +119,10 @@ jobs:
           steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
           steps.check-secrets.outputs.has_certificate == 'true'
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         run: bash ops/scripts/release/import-certificate.sh
       - name: Normalize macOS system install names
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         run: |
           set -euo pipefail
 
@@ -164,7 +162,7 @@ jobs:
           steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
           steps.check-secrets.outputs.has_notarization == 'true'
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         run: bash ops/scripts/release/notarize.sh
       - name: Check macOS app portability
         shell: bash
@@ -248,7 +246,7 @@ jobs:
           steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
           !contains(steps.release-version.outputs.tag, '-test.')
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         env:
           AWS_DEFAULT_REGION: auto
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

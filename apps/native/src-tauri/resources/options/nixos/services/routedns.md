@@ -5,7 +5,7 @@
 All options under `services.routedns`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.routedns.configFile` | | |
 | `services.routedns.enable` | | |
 | `services.routedns.package` | | |

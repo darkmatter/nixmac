@@ -5,7 +5,7 @@
 All options under `services.convos`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.convos.enable` | | |
 | `services.convos.listenAddress` | | |
 | `services.convos.listenPort` | | |

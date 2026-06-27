@@ -5,7 +5,7 @@
 All options under `services.acpid`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.acpid.acEventCommands` | | |
 | `services.acpid.enable` | | |
 | `services.acpid.handlers` | | |

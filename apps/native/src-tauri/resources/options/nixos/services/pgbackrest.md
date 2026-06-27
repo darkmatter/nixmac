@@ -5,7 +5,7 @@
 All options under `services.pgbackrest`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.pgbackrest.commands.annotate` | | |
 | `services.pgbackrest.commands.archive-get` | | |
 | `services.pgbackrest.commands.archive-push` | | |

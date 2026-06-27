@@ -5,7 +5,7 @@
 All options under `services.coturn`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.coturn.alt-listening-port` | | |
 | `services.coturn.alt-tls-listening-port` | | |
 | `services.coturn.cert` | | |

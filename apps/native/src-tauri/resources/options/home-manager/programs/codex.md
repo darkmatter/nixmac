@@ -5,7 +5,7 @@
 All options under `programs.codex`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.codex.context` | | |
 | `programs.codex.custom-instructions` | `strings concatenated with “\n”` | Define custom guidance for the agents; this value is written to {file}~/.codex/AGENTS.md |
 | `programs.codex.enable` | `boolean` | Whether to enable Lightweight coding agent that runs in your terminal. |

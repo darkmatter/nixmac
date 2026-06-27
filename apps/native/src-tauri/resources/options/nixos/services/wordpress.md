@@ -5,6 +5,6 @@
 All options under `services.wordpress`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.wordpress.sites` | | |
 | `services.wordpress.webserver` | | |

@@ -5,6 +5,6 @@
 All options under `services.nextdns`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---------------- | ---------------------------------------------------------- |
 | `services.nextdns.arguments` | `list of string` | Additional arguments to be passed to nextdns run. |
 | `services.nextdns.enable` | `boolean` | Whether to enable the NextDNS DNS/53 to DoH Proxy service. |

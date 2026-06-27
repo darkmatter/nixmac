@@ -5,7 +5,7 @@
 All options under `programs.rush`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `programs.rush.enable` | | |
 | `programs.rush.global` | | |
 | `programs.rush.package` | | |

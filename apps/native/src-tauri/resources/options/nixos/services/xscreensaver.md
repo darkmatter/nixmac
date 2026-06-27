@@ -5,7 +5,7 @@
 All options under `services.xscreensaver`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.xscreensaver.enable` | | |
 | `services.xscreensaver.hooks` | | |
 | `services.xscreensaver.package` | | |

@@ -5,7 +5,7 @@
 All options under `programs.dms-shell`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `programs.dms-shell.enable` | | |
 | `programs.dms-shell.enableAudioWavelength` | | |
 | `programs.dms-shell.enableBrightnessControl` | | |

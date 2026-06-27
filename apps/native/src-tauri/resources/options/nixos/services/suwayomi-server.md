@@ -5,7 +5,7 @@
 All options under `services.suwayomi-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.suwayomi-server.dataDir` | | |
 | `services.suwayomi-server.enable` | | |
 | `services.suwayomi-server.group` | | |

@@ -5,5 +5,5 @@
 All options under `programs.droidcam`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `programs.droidcam.enable` | | |

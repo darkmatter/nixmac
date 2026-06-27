@@ -5,6 +5,6 @@
 All options under `services.espanso`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.espanso.enable` | | |
 | `services.espanso.package` | | |

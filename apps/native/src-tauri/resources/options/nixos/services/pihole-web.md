@@ -5,7 +5,7 @@
 All options under `services.pihole-web`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.pihole-web.enable` | | |
 | `services.pihole-web.hostName` | | |
 | `services.pihole-web.package` | | |

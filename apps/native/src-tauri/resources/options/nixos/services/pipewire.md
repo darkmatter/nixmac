@@ -5,7 +5,7 @@
 All options under `services.pipewire`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------------- | ---- | ----------- |
 | `services.pipewire.alsa.enable` | | |
 | `services.pipewire.alsa.support32Bit` | | |
 | `services.pipewire.audio.enable` | | |

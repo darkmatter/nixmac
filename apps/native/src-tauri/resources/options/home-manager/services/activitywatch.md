@@ -5,7 +5,7 @@
 All options under `services.activitywatch`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.activitywatch.enable` | `boolean` | Whether to enable ActivityWatch, an automated time tracker. |
 | `services.activitywatch.extraOptions` | `list of string` | Additional arguments to be passed on to the ActivityWatch server. |
 | `services.activitywatch.package` | `package` | The activitywatch package to use. Specifically, this should be a package containing the Rust implementation of ActivityWatch server . |

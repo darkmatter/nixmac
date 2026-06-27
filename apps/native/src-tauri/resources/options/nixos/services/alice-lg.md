@@ -5,7 +5,7 @@
 All options under `services.alice-lg`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.alice-lg.enable` | | |
 | `services.alice-lg.package` | | |
 | `services.alice-lg.settings` | | |

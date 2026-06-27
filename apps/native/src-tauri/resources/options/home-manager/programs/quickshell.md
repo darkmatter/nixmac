@@ -5,7 +5,7 @@
 All options under `programs.quickshell`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | -------------------------------- | -------------------------------------------------------------------------------------------------- |
 | `programs.quickshell.activeConfig` | `null or string` | The name of the config to use. |
 | `programs.quickshell.configs` | `attribute set of absolute path` | A set of configs to include in the quickshell config directory. The key is the name of the config. |
 | `programs.quickshell.enable` | `boolean` | Whether to enable quickshell, a flexible QtQuick-based desktop shell toolkit… |

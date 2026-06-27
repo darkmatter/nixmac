@@ -5,7 +5,7 @@
 All options under `programs.chromium`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------------- | ---- | ----------- |
 | `programs.chromium.defaultSearchProviderEnabled` | | |
 | `programs.chromium.defaultSearchProviderSearchURL` | | |
 | `programs.chromium.defaultSearchProviderSuggestURL` | | |

@@ -5,7 +5,7 @@
 All options under `programs.notmuch`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.notmuch.enable` | `boolean` | Whether to enable Notmuch mail indexer. |
 | `programs.notmuch.extraConfig` | `attribute set of attribute set of string` | Options that should be appended to the notmuch configuration file. |
 | `programs.notmuch.hooks.postInsert` | `strings concatenated with “\n”` | Bash statements run after a message has been inserted into the database and initial tags have been applied. |

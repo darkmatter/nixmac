@@ -5,7 +5,7 @@
 All options under `programs.earthly`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `programs.earthly.enable` | `boolean` | Whether to enable earthly. |
 | `programs.earthly.package` | `null or package` | The earthly package to use. |
 | `programs.earthly.settings` | `YAML 1.1 value` | Configuration written to ~/.earthly/config.yml file. See https://docs.earthly.dev/docs/earthly-config for supported values. |

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Hammer } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 import { useApply } from "@/hooks/use-apply";
 
 export function ExternalBuildDetected() {
@@ -25,8 +25,7 @@ export function ExternalBuildDetected() {
   return (
     <div className="flex w-full shrink-0 items-center justify-between gap-2 border-teal-300/20 border-b px-2 py-1.5 text-muted-foreground text-xs">
       <span className="flex items-center gap-1.5">
-        <Hammer className="h-3 w-3 shrink-0" />
-        A nix build was detected outside nixmac.
+        <Hammer className="h-3 w-3 shrink-0" />A nix build was detected outside nixmac.
       </span>
       <button
         type="button"

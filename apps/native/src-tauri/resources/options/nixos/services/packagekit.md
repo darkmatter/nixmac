@@ -5,7 +5,7 @@
 All options under `services.packagekit`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.packagekit.backend` | | |
 | `services.packagekit.enable` | | |
 | `services.packagekit.settings` | | |

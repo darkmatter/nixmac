@@ -1,8 +1,20 @@
-{ flake, pkgs, lib, config, ... }:
+{
+  flake,
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 let
   inherit (flake.inputs) self;
-  mapListToAttrs = users: f:
-    lib.listToAttrs (map (name: { inherit name; value = f name; }) users);
+  mapListToAttrs =
+    users: f:
+    lib.listToAttrs (
+      map (name: {
+        inherit name;
+        value = f name;
+      }) users
+    );
 in
 {
   options = {
@@ -21,10 +33,12 @@ in
   };
 
   config = {
-    users.users = mapListToAttrs config.myusers (name:
+    users.users = mapListToAttrs config.myusers (
+      name:
       lib.optionalAttrs pkgs.stdenv.isDarwin {
         home = "/Users/${name}";
-      } // lib.optionalAttrs pkgs.stdenv.isLinux {
+      }
+      // lib.optionalAttrs pkgs.stdenv.isLinux {
         isNormalUser = true;
       }
     );
@@ -35,6 +49,7 @@ in
 
     nix.settings.trusted-users = [
       "root"
-    ] ++ config.myusers;
+    ]
+    ++ config.myusers;
   };
 }

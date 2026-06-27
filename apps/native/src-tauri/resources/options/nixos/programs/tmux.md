@@ -5,7 +5,7 @@
 All options under `programs.tmux`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `programs.tmux.aggressiveResize` | | |
 | `programs.tmux.baseIndex` | | |
 | `programs.tmux.clock24` | | |

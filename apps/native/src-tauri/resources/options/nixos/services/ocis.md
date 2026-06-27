@@ -5,7 +5,7 @@
 All options under `services.ocis`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.ocis.address` | | |
 | `services.ocis.configDir` | | |
 | `services.ocis.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.archisteamfarm`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.archisteamfarm.bots` | | |
 | `services.archisteamfarm.dataDir` | | |
 | `services.archisteamfarm.enable` | | |

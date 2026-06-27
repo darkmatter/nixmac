@@ -5,5 +5,5 @@
 All options under `programs.calls`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `programs.calls.enable` | | |

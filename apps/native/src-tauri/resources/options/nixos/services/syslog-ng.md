@@ -5,7 +5,7 @@
 All options under `services.syslog-ng`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.syslog-ng.configHeader` | | |
 | `services.syslog-ng.enable` | | |
 | `services.syslog-ng.extraConfig` | | |

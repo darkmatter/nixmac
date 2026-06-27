@@ -5,7 +5,7 @@
 All options under `services.subsonic`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.subsonic.contextPath` | | |
 | `services.subsonic.defaultMusicFolder` | | |
 | `services.subsonic.defaultPlaylistFolder` | | |

@@ -5,7 +5,7 @@
 All options under `services.usbguard`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------ | ---- | ----------- |
 | `services.usbguard.IPCAccessControlFiles` | | |
 | `services.usbguard.IPCAllowedGroups` | | |
 | `services.usbguard.IPCAllowedUsers` | | |

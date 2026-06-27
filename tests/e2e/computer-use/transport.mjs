@@ -1,11 +1,11 @@
-import { createDriverDescriptor, driverContractVersion } from './drivers/contract.mjs';
+import { createDriverDescriptor, driverContractVersion } from "./drivers/contract.mjs";
 
 export const codexAppServerDriverDescriptor = createDriverDescriptor({
-  id: 'codex-app-server-computer-use',
-  displayName: 'Codex app-server Computer Use',
+  id: "codex-app-server-computer-use",
+  displayName: "Codex app-server Computer Use",
   contractVersion: driverContractVersion,
-  status: 'production',
-  addressKinds: ['codex-index', 'text-pattern'],
+  status: "production",
+  addressKinds: ["codex-index", "text-pattern"],
   capabilities: {
     connect: true,
     visibleState: true,
@@ -43,7 +43,10 @@ export class AppServerClient {
       else entry.resolve(message);
     };
     await new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error(`Timed out connecting to ${this.url}`)), 10000);
+      const timer = setTimeout(
+        () => reject(new Error(`Timed out connecting to ${this.url}`)),
+        10000,
+      );
       this.ws.onopen = () => {
         clearTimeout(timer);
         resolve();
@@ -53,15 +56,15 @@ export class AppServerClient {
         reject(new Error(`WebSocket error connecting to ${this.url}`));
       };
     });
-    await this.request('initialize', {
-      clientInfo: { name: 'nixmac-remote-computer-use-e2e', version: '1.0.0' },
+    await this.request("initialize", {
+      clientInfo: { name: "nixmac-remote-computer-use-e2e", version: "1.0.0" },
       capabilities: { experimentalApi: true },
     });
-    const thread = await this.request('thread/start', {
-      cwd: '/tmp',
-      model: 'gpt-5.4-mini',
-      approvalPolicy: 'never',
-      sandbox: 'danger-full-access',
+    const thread = await this.request("thread/start", {
+      cwd: "/tmp",
+      model: "gpt-5.4-mini",
+      approvalPolicy: "never",
+      sandbox: "danger-full-access",
       ephemeral: true,
     });
     this.threadId = thread.result.thread.id;
@@ -69,7 +72,7 @@ export class AppServerClient {
 
   request(method, params = {}, timeout = 60000) {
     const id = this.nextId++;
-    this.ws.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
+    this.ws.send(JSON.stringify({ jsonrpc: "2.0", id, method, params }));
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
@@ -90,8 +93,8 @@ export class AppServerClient {
 
   tool(tool, args = {}, timeout = 60000) {
     return this.request(
-      'mcpServer/tool/call',
-      { server: 'computer-use', threadId: this.threadId, tool, arguments: args },
+      "mcpServer/tool/call",
+      { server: "computer-use", threadId: this.threadId, tool, arguments: args },
       timeout,
     );
   }
@@ -102,16 +105,16 @@ export class AppServerClient {
 }
 
 export function contentText(response) {
-  return response?.result?.content?.find((item) => item.type === 'text')?.text ?? '';
+  return response?.result?.content?.find((item) => item.type === "text")?.text ?? "";
 }
 
 export function contentImage(response) {
-  return response?.result?.content?.find((item) => item.type === 'image')?.data ?? '';
+  return response?.result?.content?.find((item) => item.type === "image")?.data ?? "";
 }
 
 export function findElement(text, patterns) {
   const list = Array.isArray(patterns) ? patterns : [patterns];
-  for (const line of text.split('\n')) {
+  for (const line of text.split("\n")) {
     const match = line.match(/^\s*(\d+)\s+(.+)$/);
     if (!match) continue;
     const [, index, label] = match;
@@ -122,7 +125,7 @@ export function findElement(text, patterns) {
 
 export function elementEntries(text) {
   return text
-    .split('\n')
+    .split("\n")
     .map((line, lineNumber) => {
       const match = line.match(/^\s*(\d+)\s+(.+)$/);
       if (!match) return null;

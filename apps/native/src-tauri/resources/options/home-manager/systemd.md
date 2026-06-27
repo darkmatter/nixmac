@@ -5,7 +5,7 @@
 All options under `systemd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `systemd.user.automounts` | `attribute set of (open submodule of systemd automount unit configuration)` | Definition of systemd per-user automount units. Attributes are merged recursively. |
 | `systemd.user.enable` | `boolean` | Whether to enable the user systemd service manager. |
 | `systemd.user.mounts` | `attribute set of (open submodule of systemd mount unit configuration)` | Definition of systemd per-user mount units. Attributes are merged recursively. |

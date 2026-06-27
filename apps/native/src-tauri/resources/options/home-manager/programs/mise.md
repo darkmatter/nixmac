@@ -5,7 +5,7 @@
 All options under `programs.mise`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ----------------- | ----------------------------------------------------- |
 | `programs.mise.enable` | `boolean` | Whether to enable mise. |
 | `programs.mise.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.mise.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |

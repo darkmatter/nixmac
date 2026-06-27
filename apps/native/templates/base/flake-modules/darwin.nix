@@ -9,11 +9,11 @@ in
   flake = {
     # Darwin system configurations
     darwinConfigurations = {
-      "macbook-pro" = inputs.darwin.lib.darwinSystem {
-        system = "aarch64-darwin";
+      "HOSTNAME_PLACEHOLDER" = inputs.darwin.lib.darwinSystem {
+        system = "PLATFORM_PLACEHOLDER";
         specialArgs = {
           inherit inputs self;
-          hostname = "macbook-pro";
+          hostname = "HOSTNAME_PLACEHOLDER";
           user = users.USERNAME_PLACEHOLDER;
         };
         modules = [
@@ -21,7 +21,7 @@ in
           ../modules/darwin
 
           # Host-specific configuration
-          ../hosts/macbook-pro
+          ../hosts/HOSTNAME_PLACEHOLDER
 
           # Determinate Nix
           inputs.determinate.darwinModules.default
@@ -35,45 +35,12 @@ in
               backupFileExtension = "backup";
               extraSpecialArgs = {
                 inherit inputs self;
-                hostname = "macbook-pro";
+                hostname = "HOSTNAME_PLACEHOLDER";
                 user = users.USERNAME_PLACEHOLDER;
               };
               users.${users.USERNAME_PLACEHOLDER.username} = {
                 imports = [
-                  ../hosts/macbook-pro/home.nix
-                  inputs.catppuccin.homeModules.catppuccin
-                ];
-              };
-            };
-          }
-        ];
-      };
-
-      "mac-pro" = inputs.darwin.lib.darwinSystem {
-        system = "aarch64-darwin";
-        specialArgs = {
-          inherit inputs self;
-          hostname = "mac-pro";
-          user = users.USERNAME_PLACEHOLDER;
-        };
-        modules = [
-          ../modules/darwin
-          ../hosts/mac-pro
-          inputs.determinate.darwinModules.default
-          inputs.home-manager.darwinModules.home-manager
-          {
-            home-manager = {
-              useGlobalPkgs = true;
-              useUserPackages = true;
-              backupFileExtension = "backup";
-              extraSpecialArgs = {
-                inherit inputs self;
-                hostname = "mac-pro";
-                user = users.USERNAME_PLACEHOLDER;
-              };
-              users.${users.USERNAME_PLACEHOLDER.username} = {
-                imports = [
-                  ../hosts/mac-pro/home.nix
+                  ../hosts/HOSTNAME_PLACEHOLDER/home.nix
                   inputs.catppuccin.homeModules.catppuccin
                 ];
               };
@@ -84,4 +51,3 @@ in
     };
   };
 }
-

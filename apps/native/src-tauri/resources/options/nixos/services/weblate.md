@@ -5,7 +5,7 @@
 All options under `services.weblate`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.weblate.configurePostgresql` | | |
 | `services.weblate.djangoSecretKeyFile` | | |
 | `services.weblate.enable` | | |

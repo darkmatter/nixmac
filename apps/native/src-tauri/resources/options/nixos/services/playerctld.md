@@ -5,6 +5,6 @@
 All options under `services.playerctld`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.playerctld.enable` | | |
 | `services.playerctld.package` | | |

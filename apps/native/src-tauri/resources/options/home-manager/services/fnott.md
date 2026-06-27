@@ -5,7 +5,7 @@
 All options under `services.fnott`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
 | `services.fnott.configFile` | `string or absolute path` | Path to the configuration file read by fnott. |
 | `services.fnott.enable` | `boolean` | Whether to enable fnott, a lightweight Wayland notification daemon for wlroots-based compositors . |
 | `services.fnott.extraFlags` | `list of string` | Extra arguments to use for executing fnott. |

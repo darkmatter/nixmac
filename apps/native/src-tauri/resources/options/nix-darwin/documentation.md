@@ -5,7 +5,7 @@
 All options under `documentation`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `documentation.doc.enable` | `boolean` | Whether to install documentation distributed in packages’ /share/doc . Usually plain text and/or HTML. This also includes “doc” outputs. |
 | `documentation.enable` | `boolean` | Whether to install documentation of packages from environment.systemPackages into the generated system path. |
 | `documentation.info.enable` | `boolean` | Whether to install info pages and the info command. This also includes “info” outputs. |

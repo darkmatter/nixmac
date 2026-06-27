@@ -5,7 +5,7 @@
 All options under `services.centrifugo`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.centrifugo.credentials` | | |
 | `services.centrifugo.enable` | | |
 | `services.centrifugo.environmentFiles` | | |

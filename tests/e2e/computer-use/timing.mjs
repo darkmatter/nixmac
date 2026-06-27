@@ -1,42 +1,60 @@
 export const timingSchemaVersion = 1;
 
-const knownStatuses = new Set(['success', 'failure', 'skipped', 'in_progress', 'pending', 'unavailable', 'unknown']);
+const knownStatuses = new Set([
+  "success",
+  "failure",
+  "skipped",
+  "in_progress",
+  "pending",
+  "unavailable",
+  "unknown",
+]);
 
 export function nowIso() {
   return new Date().toISOString();
 }
 
 export function durationMsBetween(startedAt, endedAt) {
-  const start = Date.parse(startedAt || '');
-  const end = Date.parse(endedAt || '');
+  const start = Date.parse(startedAt || "");
+  const end = Date.parse(endedAt || "");
   if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return null;
   return end - start;
 }
 
 function normalizeBoolean(value, fallback) {
   if (value === true || value === false) return value;
-  if (value === 'true') return true;
-  if (value === 'false') return false;
+  if (value === "true") return true;
+  if (value === "false") return false;
   return fallback;
 }
 
 export function normalizeTimingPhase(input = {}) {
-  const id = String(input.id || input.key || '').trim();
+  const id = String(input.id || input.key || "").trim();
   if (!id) return null;
   const startedAt = input.startedAt || input.start || null;
   const endedAt = input.endedAt || input.end || null;
   const computedDurationMs = durationMsBetween(startedAt, endedAt);
-  const hasExplicitDuration = input.durationMs !== undefined && input.durationMs !== null && input.durationMs !== '';
+  const hasExplicitDuration =
+    input.durationMs !== undefined && input.durationMs !== null && input.durationMs !== "";
   const numericDuration = Number(input.durationMs);
-  const durationMs = hasExplicitDuration && Number.isFinite(numericDuration) && numericDuration >= 0 ? Math.round(numericDuration) : computedDurationMs;
-  const status = knownStatuses.has(input.status) ? input.status : input.status ? 'unknown' : endedAt ? 'success' : 'unknown';
+  const durationMs =
+    hasExplicitDuration && Number.isFinite(numericDuration) && numericDuration >= 0
+      ? Math.round(numericDuration)
+      : computedDurationMs;
+  const status = knownStatuses.has(input.status)
+    ? input.status
+    : input.status
+      ? "unknown"
+      : endedAt
+        ? "success"
+        : "unknown";
   return {
     id,
     label: String(input.label || id),
-    category: String(input.category || 'e2e'),
+    category: String(input.category || "e2e"),
     status,
-    observable: normalizeBoolean(input.observable, status !== 'unavailable'),
-    source: String(input.source || 'runner'),
+    observable: normalizeBoolean(input.observable, status !== "unavailable"),
+    source: String(input.source || "runner"),
     ...(startedAt ? { startedAt } : {}),
     ...(endedAt ? { endedAt } : {}),
     ...(durationMs !== null ? { durationMs } : {}),
@@ -45,13 +63,15 @@ export function normalizeTimingPhase(input = {}) {
 }
 
 export function normalizeTimingState(input = {}) {
-  const phases = Array.isArray(input.phases) ? input.phases.map(normalizeTimingPhase).filter(Boolean) : [];
+  const phases = Array.isArray(input.phases)
+    ? input.phases.map(normalizeTimingPhase).filter(Boolean)
+    : [];
   return {
     version: Number(input.version) || timingSchemaVersion,
     generatedAt: input.generatedAt || nowIso(),
     note:
       input.note ||
-      'Timing phases are best-effort telemetry from the GitHub workflow and Computer Use runner. Unobservable phases are reported explicitly instead of inferred.',
+      "Timing phases are best-effort telemetry from the GitHub workflow and Computer Use runner. Unobservable phases are reported explicitly instead of inferred.",
     phases,
   };
 }
@@ -72,7 +92,7 @@ export function recordTimingPhase(state, phaseInput) {
   return phase;
 }
 
-export function mergeTimingMetadata(state, metadata, { source = 'workflow' } = {}) {
+export function mergeTimingMetadata(state, metadata, { source = "workflow" } = {}) {
   const timing = ensureTimingState(state);
   const incoming = normalizeTimingState(metadata);
   for (const phase of incoming.phases) {
@@ -84,7 +104,7 @@ export function mergeTimingMetadata(state, metadata, { source = 'workflow' } = {
 }
 
 export function phaseSortKey(phase) {
-  const start = Date.parse(phase.startedAt || '');
+  const start = Date.parse(phase.startedAt || "");
   return Number.isFinite(start) ? start : Number.MAX_SAFE_INTEGER;
 }
 
@@ -93,7 +113,7 @@ export function sortedTimingPhases(timing) {
 }
 
 export function formatDuration(durationMs) {
-  if (!Number.isFinite(Number(durationMs))) return 'not recorded';
+  if (!Number.isFinite(Number(durationMs))) return "not recorded";
   const ms = Math.max(0, Math.round(Number(durationMs)));
   if (ms < 1000) return `${ms}ms`;
   const seconds = ms / 1000;
@@ -113,27 +133,32 @@ export function timingTotals(timing) {
   return {
     phaseCount: phases.length,
     observedCount: observed.length,
-    unavailableCount: phases.filter((phase) => phase.status === 'unavailable' || phase.observable === false).length,
+    unavailableCount: phases.filter(
+      (phase) => phase.status === "unavailable" || phase.observable === false,
+    ).length,
     totalObservedMs,
   };
 }
 
-export function renderTimingMarkdown(timing, { title = 'Timing Breakdown' } = {}) {
+export function renderTimingMarkdown(timing, { title = "Timing Breakdown" } = {}) {
   const phases = sortedTimingPhases(timing);
   const totals = timingTotals(timing);
   const lines = [
     `### ${title}`,
-    '',
+    "",
     `Observed total: \`${formatDuration(totals.totalObservedMs)}\` across \`${totals.observedCount}/${totals.phaseCount}\` phases.`,
-    '',
-    '| Phase | Status | Duration | Source | Note |',
-    '|---|---:|---:|---|---|',
+    "",
+    "| Phase | Status | Duration | Source | Note |",
+    "|---|---:|---:|---|---|",
   ];
   for (const phase of phases) {
     lines.push(
-      `| ${phase.label} | \`${phase.status}\` | \`${formatDuration(phase.durationMs)}\` | ${phase.source || 'unknown'} | ${String(phase.note || '').replaceAll('|', '\\|')} |`,
+      `| ${phase.label} | \`${phase.status}\` | \`${formatDuration(phase.durationMs)}\` | ${phase.source || "unknown"} | ${String(phase.note || "").replaceAll("|", "\\|")} |`,
     );
   }
-  if (!phases.length) lines.push('| No timing phases recorded. | `unavailable` | `not recorded` | unknown | Timing metadata was not present. |');
-  return `${lines.join('\n')}\n`;
+  if (!phases.length)
+    lines.push(
+      "| No timing phases recorded. | `unavailable` | `not recorded` | unknown | Timing metadata was not present. |",
+    );
+  return `${lines.join("\n")}\n`;
 }

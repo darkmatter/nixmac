@@ -5,7 +5,7 @@
 All options under `services.imapnotify`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ----------------- | --------------------------------------------------------------- |
 | `services.imapnotify.enable` | `boolean` | Whether to enable imapnotify. |
 | `services.imapnotify.package` | `package` | The goimapnotify package to use. |
 | `services.imapnotify.path` | `list of package` | List of packages to provide in PATH for the imapnotify service. |

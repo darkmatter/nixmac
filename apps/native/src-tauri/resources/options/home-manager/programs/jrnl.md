@@ -5,7 +5,7 @@
 All options under `programs.jrnl`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.jrnl.enable` | `boolean` | Whether to enable jrnl. |
 | `programs.jrnl.package` | `null or package` | The jrnl package to use. |
 | `programs.jrnl.settings` | `YAML 1.1 value` | Configuration for the jrnl binary. Available configuration options are described in the jrnl documentation: https://jrnl.sh/en/stable/reference-config-file/ . |

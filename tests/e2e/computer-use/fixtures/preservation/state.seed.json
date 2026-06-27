@@ -14,9 +14,7 @@
   },
   "evolvedCaseStrategy": {
     "selectedAt": "2026-05-02T05:46:27.904Z",
-    "defaultCaseIds": [
-      "homebrew-bat"
-    ],
+    "defaultCaseIds": ["homebrew-bat"],
     "extraCaseIds": [],
     "catalog": [
       {
@@ -59,16 +57,9 @@
     "title": "Preservation fixture",
     "headRef": "fixture/preservation",
     "baseRef": "main",
-    "changedFiles": [
-      "tests/e2e/computer-use/preservation-harness.mjs"
-    ],
-    "userVisibleFiles": [
-      "tests/e2e/computer-use/preservation-harness.mjs"
-    ],
-    "scenarioKeys": [
-      "visualProofQuality",
-      "reportInspection"
-    ],
+    "changedFiles": ["tests/e2e/computer-use/preservation-harness.mjs"],
+    "userVisibleFiles": ["tests/e2e/computer-use/preservation-harness.mjs"],
+    "scenarioKeys": ["visualProofQuality", "reportInspection"],
     "configured": true
   },
   "cleanup": {
@@ -947,11 +938,7 @@
       ],
       "evidenceStrength": "operational",
       "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
-      "assertionTypes": [
-        "accessibility_text",
-        "visual_heuristic",
-        "visual_signalstats"
-      ],
+      "assertionTypes": ["accessibility_text", "visual_heuristic", "visual_signalstats"],
       "failureClass": "",
       "failureClassReason": "",
       "accessibilityRisk": "low",
@@ -960,16 +947,10 @@
     "updateBanner": {
       "label": "Update banner does not block the main workflow",
       "status": "pass",
-      "notes": [
-        "No dismissible update banner was visible; no banner blocked the main workflow."
-      ],
+      "notes": ["No dismissible update banner was visible; no banner blocked the main workflow."],
       "evidenceStrength": "visual-supported",
       "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
-      "assertionTypes": [
-        "accessibility_text",
-        "action_result",
-        "visual_heuristic"
-      ],
+      "assertionTypes": ["accessibility_text", "action_result", "visual_heuristic"],
       "failureClass": "",
       "failureClassReason": "",
       "accessibilityRisk": "medium",
@@ -978,9 +959,7 @@
     "settingsGeneral": {
       "label": "Settings General tab visibly renders",
       "status": "pass",
-      "notes": [
-        "Settings opened and General-related content was visible."
-      ],
+      "notes": ["Settings opened and General-related content was visible."],
       "evidenceStrength": "operational",
       "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
       "assertionTypes": [
@@ -997,9 +976,7 @@
     "settingsAIModels": {
       "label": "Settings AI Models tab visibly renders",
       "status": "pass",
-      "notes": [
-        "AI Models settings content was visible with provider/model controls."
-      ],
+      "notes": ["AI Models settings content was visible with provider/model controls."],
       "evidenceStrength": "operational",
       "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
       "assertionTypes": [
@@ -1021,11 +998,7 @@
       ],
       "evidenceStrength": "visual-supported",
       "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
-      "assertionTypes": [
-        "accessibility_text",
-        "sensitive_redaction",
-        "visual_heuristic"
-      ],
+      "assertionTypes": ["accessibility_text", "sensitive_redaction", "visual_heuristic"],
       "failureClass": "",
       "failureClassReason": "",
       "accessibilityRisk": "medium",
@@ -1034,9 +1007,7 @@
     "settingsPreferences": {
       "label": "Settings Preferences tab visibly renders",
       "status": "pass",
-      "notes": [
-        "Preferences settings content was visible with confirmation controls."
-      ],
+      "notes": ["Preferences settings content was visible with confirmation controls."],
       "evidenceStrength": "operational",
       "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
       "assertionTypes": [
@@ -1053,9 +1024,7 @@
     "history": {
       "label": "My History opens and renders",
       "status": "pass",
-      "notes": [
-        "History rendered a visible state."
-      ],
+      "notes": ["History rendered a visible state."],
       "evidenceStrength": "operational",
       "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
       "assertionTypes": [
@@ -1072,15 +1041,10 @@
     "console": {
       "label": "Console opens and renders",
       "status": "pass",
-      "notes": [
-        "Console rendered visible content."
-      ],
+      "notes": ["Console rendered visible content."],
       "evidenceStrength": "weak",
       "evidenceStrengthReason": "Pass relies on redacted accessibility text only, usually because screenshots are intentionally suppressed for a sensitive surface.",
-      "assertionTypes": [
-        "accessibility_text",
-        "sensitive_redaction"
-      ],
+      "assertionTypes": ["accessibility_text", "sensitive_redaction"],
       "failureClass": "",
       "failureClassReason": "",
       "accessibilityRisk": "high",
@@ -1089,9 +1053,7 @@
     "feedback": {
       "label": "Give Feedback opens and can be cancelled",
       "status": "pass",
-      "notes": [
-        "Feedback dialog rendered and no submission was made."
-      ],
+      "notes": ["Feedback dialog rendered and no submission was made."],
       "evidenceStrength": "operational",
       "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
       "assertionTypes": [
@@ -1108,9 +1070,7 @@
     "reportIssue": {
       "label": "Report Issue opens and can be cancelled",
       "status": "pass",
-      "notes": [
-        "Report Issue dialog rendered and no submission was made."
-      ],
+      "notes": ["Report Issue dialog rendered and no submission was made."],
       "evidenceStrength": "operational",
       "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
       "assertionTypes": [
@@ -1127,9 +1087,7 @@
     "suggestionCards": {
       "label": "Home suggestion cards are visible/clickable",
       "status": "pass",
-      "notes": [
-        "A suggestion card was clicked and the UI remained usable."
-      ],
+      "notes": ["A suggestion card was clicked and the UI remained usable."],
       "evidenceStrength": "operational",
       "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
       "assertionTypes": [
@@ -1151,12 +1109,7 @@
       ],
       "evidenceStrength": "strong",
       "evidenceStrengthReason": "Computer Use path is backed by independent disposable git state proof.",
-      "assertionTypes": [
-        "accessibility_text",
-        "action_result",
-        "remote_state",
-        "visual_heuristic"
-      ],
+      "assertionTypes": ["accessibility_text", "action_result", "remote_state", "visual_heuristic"],
       "failureClass": "",
       "failureClassReason": "",
       "accessibilityRisk": "low",
@@ -1170,12 +1123,7 @@
       ],
       "evidenceStrength": "strong",
       "evidenceStrengthReason": "Computer Use path is backed by independent disposable git state proof.",
-      "assertionTypes": [
-        "accessibility_text",
-        "action_result",
-        "remote_state",
-        "visual_heuristic"
-      ],
+      "assertionTypes": ["accessibility_text", "action_result", "remote_state", "visual_heuristic"],
       "failureClass": "",
       "failureClassReason": "",
       "accessibilityRisk": "low",
@@ -1184,9 +1132,7 @@
     "typedIntent": {
       "label": "A typed real intent can be submitted",
       "status": "pass",
-      "notes": [
-        "Computer Use entered the real prompt into the app prompt field."
-      ],
+      "notes": ["Computer Use entered the real prompt into the app prompt field."],
       "evidenceStrength": "operational",
       "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
       "assertionTypes": [
@@ -1203,9 +1149,7 @@
     "review": {
       "label": "Real provider workflow reaches Review",
       "status": "pass",
-      "notes": [
-        "The real provider workflow reached Review or a Review-equivalent state."
-      ],
+      "notes": ["The real provider workflow reached Review or a Review-equivalent state."],
       "evidenceStrength": "operational",
       "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
       "assertionTypes": [
@@ -1223,9 +1167,7 @@
     "summary": {
       "label": "Summary tab renders after intent review",
       "status": "pass",
-      "notes": [
-        "Summary described the requested bat/Homebrew package intent."
-      ],
+      "notes": ["Summary described the requested bat/Homebrew package intent."],
       "evidenceStrength": "visual-supported",
       "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
       "assertionTypes": [
@@ -1242,9 +1184,7 @@
     "diff": {
       "label": "Diff tab renders after intent review",
       "status": "pass",
-      "notes": [
-        "Diff rendered a candidate Homebrew configuration file for the bat change."
-      ],
+      "notes": ["Diff rendered a candidate Homebrew configuration file for the bat change."],
       "evidenceStrength": "visual-supported",
       "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
       "assertionTypes": [
@@ -1261,9 +1201,7 @@
     "buildBoundary": {
       "label": "Build & Test destructive boundary appears before activation",
       "status": "pass",
-      "notes": [
-        "Build & Test presented a visible confirmation/boundary before activation."
-      ],
+      "notes": ["Build & Test presented a visible confirmation/boundary before activation."],
       "evidenceStrength": "operational",
       "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
       "assertionTypes": [
@@ -1345,11 +1283,7 @@
       ],
       "evidenceStrength": "visual-supported",
       "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
-      "assertionTypes": [
-        "artifact_quality",
-        "accessibility_text",
-        "visual_heuristic"
-      ],
+      "assertionTypes": ["artifact_quality", "accessibility_text", "visual_heuristic"],
       "failureClass": "",
       "failureClassReason": "",
       "accessibilityRisk": "medium",
@@ -1363,10 +1297,7 @@
       ],
       "evidenceStrength": "weak",
       "evidenceStrengthReason": "Pass relies on redacted accessibility text only, usually because screenshots are intentionally suppressed for a sensitive surface.",
-      "assertionTypes": [
-        "artifact_quality",
-        "visual_heuristic"
-      ],
+      "assertionTypes": ["artifact_quality", "visual_heuristic"],
       "failureClass": "",
       "failureClassReason": "",
       "accessibilityRisk": "low",
@@ -1380,9 +1311,7 @@
       ],
       "evidenceStrength": "operational",
       "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
-      "assertionTypes": [
-        "coverage_manifest"
-      ],
+      "assertionTypes": ["coverage_manifest"],
       "failureClass": "",
       "failureClassReason": "",
       "accessibilityRisk": "low",
@@ -1396,10 +1325,7 @@
       ],
       "evidenceStrength": "not-proved",
       "evidenceStrengthReason": "The scenario is skipped, inconclusive, or lacks sufficient proof artifacts.",
-      "assertionTypes": [
-        "pr_metadata",
-        "coverage_manifest"
-      ],
+      "assertionTypes": ["pr_metadata", "coverage_manifest"],
       "failureClass": "",
       "failureClassReason": "",
       "accessibilityRisk": "low",
@@ -2029,11 +1955,7 @@
         "legacyEvidenceGrade": "action-confirmed",
         "evidenceStrength": "operational",
         "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
-        "assertionTypes": [
-          "accessibility_text",
-          "visual_heuristic",
-          "visual_signalstats"
-        ],
+        "assertionTypes": ["accessibility_text", "visual_heuristic", "visual_signalstats"],
         "failureClass": "",
         "failureClassReason": "",
         "accessibilityRisk": "low",
@@ -2049,11 +1971,7 @@
         "legacyEvidenceGrade": "text-confirmed",
         "evidenceStrength": "visual-supported",
         "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
-        "assertionTypes": [
-          "accessibility_text",
-          "action_result",
-          "visual_heuristic"
-        ],
+        "assertionTypes": ["accessibility_text", "action_result", "visual_heuristic"],
         "failureClass": "",
         "failureClassReason": "",
         "accessibilityRisk": "medium",
@@ -2111,11 +2029,7 @@
         "legacyEvidenceGrade": "text-confirmed",
         "evidenceStrength": "visual-supported",
         "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
-        "assertionTypes": [
-          "accessibility_text",
-          "sensitive_redaction",
-          "visual_heuristic"
-        ],
+        "assertionTypes": ["accessibility_text", "sensitive_redaction", "visual_heuristic"],
         "failureClass": "",
         "failureClassReason": "",
         "accessibilityRisk": "medium",
@@ -2173,10 +2087,7 @@
         "legacyEvidenceGrade": "text-confirmed",
         "evidenceStrength": "weak",
         "evidenceStrengthReason": "Pass relies on redacted accessibility text only, usually because screenshots are intentionally suppressed for a sensitive surface.",
-        "assertionTypes": [
-          "accessibility_text",
-          "sensitive_redaction"
-        ],
+        "assertionTypes": ["accessibility_text", "sensitive_redaction"],
         "failureClass": "",
         "failureClassReason": "",
         "accessibilityRisk": "high",
@@ -2469,11 +2380,7 @@
         "legacyEvidenceGrade": "text-confirmed",
         "evidenceStrength": "visual-supported",
         "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
-        "assertionTypes": [
-          "artifact_quality",
-          "accessibility_text",
-          "visual_heuristic"
-        ],
+        "assertionTypes": ["artifact_quality", "accessibility_text", "visual_heuristic"],
         "failureClass": "",
         "failureClassReason": "",
         "accessibilityRisk": "medium",
@@ -2489,10 +2396,7 @@
         "legacyEvidenceGrade": "text-confirmed",
         "evidenceStrength": "weak",
         "evidenceStrengthReason": "Pass relies on redacted accessibility text only, usually because screenshots are intentionally suppressed for a sensitive surface.",
-        "assertionTypes": [
-          "artifact_quality",
-          "visual_heuristic"
-        ],
+        "assertionTypes": ["artifact_quality", "visual_heuristic"],
         "failureClass": "",
         "failureClassReason": "",
         "accessibilityRisk": "low",
@@ -2508,9 +2412,7 @@
         "legacyEvidenceGrade": "manifest-confirmed",
         "evidenceStrength": "operational",
         "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
-        "assertionTypes": [
-          "coverage_manifest"
-        ],
+        "assertionTypes": ["coverage_manifest"],
         "failureClass": "",
         "failureClassReason": "",
         "accessibilityRisk": "low",
@@ -2526,10 +2428,7 @@
         "legacyEvidenceGrade": "not-run",
         "evidenceStrength": "not-proved",
         "evidenceStrengthReason": "The scenario is skipped, inconclusive, or lacks sufficient proof artifacts.",
-        "assertionTypes": [
-          "pr_metadata",
-          "coverage_manifest"
-        ],
+        "assertionTypes": ["pr_metadata", "coverage_manifest"],
         "failureClass": "",
         "failureClassReason": "",
         "accessibilityRisk": "low",

@@ -4,14 +4,12 @@
 import { useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { toast } from "sonner";
-import { useUiState } from "@/stores/ui-state";
+import { uiActions } from "@nixmac/state";
 import type { RustPanicEvent } from "@/ipc/types";
 import { FeedbackType } from "@/types/feedback";
 import { getTelemetry } from "@/lib/telemetry/instance";
 
 export function usePanicHandler() {
-  const { setError, openFeedback, setPanicDetails } = useUiState();
-
   useEffect(() => {
     const unlisten = listen<RustPanicEvent>("rust:panic", (event) => {
       const panic = event.payload;
@@ -25,7 +23,7 @@ export function usePanicHandler() {
       });
 
       // Store the full panic details for feedback submission
-      setPanicDetails({
+      uiActions.setPanicDetails({
         message: panic.message,
         location: panic.location ?? undefined,
         backtrace: panic.backtrace ?? undefined,
@@ -41,7 +39,7 @@ export function usePanicHandler() {
           : ""
       }`;
 
-      setError(errorMessage);
+      uiActions.setError(errorMessage);
 
       // Show a toast notification to explain why the dialog is opening.
       // Necessary because the dialog will probably obscure the error message
@@ -53,7 +51,7 @@ export function usePanicHandler() {
 
       // Automatically open the feedback dialog with Error type and pre-filled error details
       // This gives the user an immediate way to report the crash
-      openFeedback(FeedbackType.Error, errorMessage);
+      uiActions.openFeedback(FeedbackType.Error, errorMessage);
     }).catch((error) => {
       if (import.meta.env.PROD) console.error("Panic listener unavailable:", error);
       return () => {};
@@ -63,5 +61,5 @@ export function usePanicHandler() {
     return () => {
       unlisten.then((fn) => fn()).catch(() => {});
     };
-  }, [setError, openFeedback, setPanicDetails]);
+  }, []);
 }

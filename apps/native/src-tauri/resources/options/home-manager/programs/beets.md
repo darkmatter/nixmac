@@ -5,7 +5,7 @@
 All options under `programs.beets`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.beets.enable` | `boolean` | Whether to enable the beets music library manager. This defaults to false for state version ≥ 19.03. For earlier versions beets is enabled if programs.beets.settings is non-empty. |
 | `programs.beets.mpdIntegration.enableStats` | `boolean` | Whether to enable mpdstats plugin and service. |
 | `programs.beets.mpdIntegration.enableUpdate` | `boolean` | Whether to enable mpdupdate plugin. |

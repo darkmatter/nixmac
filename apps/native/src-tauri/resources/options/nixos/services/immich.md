@@ -5,7 +5,7 @@
 All options under `services.immich`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.immich.accelerationDevices` | | |
 | `services.immich.database.createDB` | | |
 | `services.immich.database.enable` | | |

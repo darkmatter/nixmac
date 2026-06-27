@@ -1,6 +1,6 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel, viewModelActions } from "@nixmac/state";
 import type { ChangeWithRichType } from "@/components/widget/utils";
 import type { SemanticChangeMap } from "@/ipc/types";
 import { useEffect } from "react";
@@ -30,30 +30,54 @@ function makeChange(overrides: Partial<ChangeWithRichType> & { diff: string }): 
 }
 
 const changeMap: SemanticChangeMap = {
-  groups: [{
-    summary: { id: 1, title: "Add system packages", description: "", status: "DONE", createdAt: 0 },
-    changes: [{ hash: "with-summary", title: "Add vim and git", description: "", id: 1, filename: "", diff: "", lineCount: 0, createdAt: 0, ownSummaryId: null }],
-  }],
+  groups: [
+    {
+      summary: {
+        id: 1,
+        title: "Add system packages",
+        description: "",
+        status: "DONE",
+        createdAt: 0,
+      },
+      changes: [
+        {
+          hash: "with-summary",
+          title: "Add vim and git",
+          description: "",
+          id: 1,
+          filename: "",
+          diff: "",
+          lineCount: 0,
+          createdAt: 0,
+          ownSummaryId: null,
+        },
+      ],
+    },
+  ],
   singles: [],
   unsummarizedHashes: [],
 };
 
 function WithStore({ change, map }: { change: ChangeWithRichType; map?: SemanticChangeMap }) {
   useEffect(() => {
-    if (map) useViewModel.setState({ changeMap: map });
+    if (map) viewModelActions.setState({ changeMap: map });
   }, []);
   return <HunkPill change={change} onClick={() => {}} />;
 }
 
 export const AdditionsOnly = meta.story({
   render: () => (
-    <WithStore change={makeChange({ diff: "@@ -1,3 +1,6 @@\n context\n+added1\n+added2\n+added3\n" })} />
+    <WithStore
+      change={makeChange({ diff: "@@ -1,3 +1,6 @@\n context\n+added1\n+added2\n+added3\n" })}
+    />
   ),
 });
 
 export const DeletionsOnly = meta.story({
   render: () => (
-    <WithStore change={makeChange({ diff: "@@ -1,6 +1,3 @@\n context\n-removed1\n-removed2\n-removed3\n" })} />
+    <WithStore
+      change={makeChange({ diff: "@@ -1,6 +1,3 @@\n context\n-removed1\n-removed2\n-removed3\n" })}
+    />
   ),
 });
 

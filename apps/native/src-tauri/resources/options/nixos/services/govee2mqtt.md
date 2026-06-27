@@ -5,7 +5,7 @@
 All options under `services.govee2mqtt`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.govee2mqtt.enable` | | |
 | `services.govee2mqtt.environmentFile` | | |
 | `services.govee2mqtt.group` | | |

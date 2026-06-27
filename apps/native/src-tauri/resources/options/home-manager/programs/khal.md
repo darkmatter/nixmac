@@ -5,7 +5,7 @@
 All options under `programs.khal`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
 | `programs.khal.enable` | `boolean` | Whether to enable khal, a CLI calendar application. |
 | `programs.khal.locale` | `submodule` | khal locale settings. |
 | `programs.khal.package` | `null or package` | The khal package to use. |

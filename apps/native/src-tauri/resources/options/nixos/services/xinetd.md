@@ -5,7 +5,7 @@
 All options under `services.xinetd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.xinetd.enable` | | |
 | `services.xinetd.extraDefaults` | | |
 | `services.xinetd.services` | | |

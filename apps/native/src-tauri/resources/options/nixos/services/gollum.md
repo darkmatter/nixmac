@@ -5,7 +5,7 @@
 All options under `services.gollum`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.gollum.address` | | |
 | `services.gollum.allowUploads` | | |
 | `services.gollum.branch` | | |

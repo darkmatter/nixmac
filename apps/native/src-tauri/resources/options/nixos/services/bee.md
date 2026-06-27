@@ -5,7 +5,7 @@
 All options under `services.bee`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.bee.daemonNiceLevel` | | |
 | `services.bee.enable` | | |
 | `services.bee.group` | | |

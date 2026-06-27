@@ -5,7 +5,7 @@
 All options under `services.dawarich`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.dawarich.automaticMigrations` | | |
 | `services.dawarich.configureNginx` | | |
 | `services.dawarich.database.createLocally` | | |

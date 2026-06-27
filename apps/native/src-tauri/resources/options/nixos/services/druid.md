@@ -5,7 +5,7 @@
 All options under `services.druid`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.druid.broker.config` | | |
 | `services.druid.broker.enable` | | |
 | `services.druid.broker.internalConfig` | | |

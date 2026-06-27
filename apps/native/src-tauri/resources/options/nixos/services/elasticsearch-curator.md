@@ -5,7 +5,7 @@
 All options under `services.elasticsearch-curator`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.elasticsearch-curator.actionYAML` | | |
 | `services.elasticsearch-curator.enable` | | |
 | `services.elasticsearch-curator.hosts` | | |

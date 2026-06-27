@@ -5,7 +5,7 @@
 All options under `services.samba-wsdd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.samba-wsdd.discovery` | | |
 | `services.samba-wsdd.domain` | | |
 | `services.samba-wsdd.enable` | | |

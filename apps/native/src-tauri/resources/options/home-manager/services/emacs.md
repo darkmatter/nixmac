@@ -5,7 +5,7 @@
 All options under `services.emacs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.emacs.client.arguments` | `list of string` | Command-line arguments to pass to emacsclient . |
 | `services.emacs.client.enable` | `boolean` | Whether to enable generation of Emacs client desktop file. |
 | `services.emacs.defaultEditor` | `boolean` | Whether to configure emacsclient as the default editor using the EDITOR and VISUAL environment variables. |

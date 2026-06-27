@@ -1,11 +1,11 @@
-import { tauriAPI } from "@/ipc/api";
 import type { SemanticChangeMap } from "@/ipc/types";
-import { useViewModel } from "@/stores/view-model";
+import { client } from "@/lib/orpc";
+import { viewModelActions } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
 import { refreshHistorySnapshot } from "./history";
 
 function mirrorChangeMapState(changeMap: SemanticChangeMap | null): void {
-  useViewModel.setState({ changeMap });
+  viewModelActions.setState({ changeMap });
 }
 
 /** Reset the mirrored change map (debug tooling / e2e reset). */
@@ -15,7 +15,7 @@ export function clearChangeMap(): void {
 
 export function startChangeMapSync(): Promise<() => void> {
   return bindBackendSlice({
-    hydrate: () => tauriAPI.summarizedChanges.getChangeMap(),
+    hydrate: () => client.summarizedChanges.getChangeMap(),
     event: "change_map_changed",
     mirror: mirrorChangeMapState,
     onEvent: () => void refreshHistorySnapshot(),

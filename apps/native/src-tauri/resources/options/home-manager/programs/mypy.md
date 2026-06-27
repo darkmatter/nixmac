@@ -5,7 +5,7 @@
 All options under `programs.mypy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------- |
 | `programs.mypy.enable` | `boolean` | Whether to enable mypy. |
 | `programs.mypy.package` | `null or package` | The mypy package to use. |
 | `programs.mypy.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to $XDG_CONFIG_HOME/mypy/config . |

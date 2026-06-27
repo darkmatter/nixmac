@@ -5,7 +5,7 @@
 All options under `programs.less`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `programs.less.clearDefaultCommands` | | |
 | `programs.less.commands` | | |
 | `programs.less.configFile` | | |

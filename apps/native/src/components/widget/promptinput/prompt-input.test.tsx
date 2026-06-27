@@ -3,9 +3,9 @@ import "@testing-library/jest-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PromptInput } from "@/components/widget/promptinput/prompt-input";
+import { STARTER_PROMPT_CHIPS } from "@/components/widget/promptinput/starter-prompts";
 import type { GitStatus } from "@/ipc/types";
-import { useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { uiActions, viewModelActions } from "@nixmac/state";
 
 const mocks = vi.hoisted(() => ({
   handleEvolve: vi.fn<() => Promise<void>>(),
@@ -44,7 +44,7 @@ vi.mock("@/components/widget/promptinput/system-defaults-cta", () => ({
   SystemDefaultsCTA: () => null,
 }));
 
-vi.mock("@/lib/ai-provider-validation", () => ({
+vi.mock("@/lib/providers/ai-provider-validation", () => ({
   getProviderConfigInvalidReason: () => null,
 }));
 
@@ -71,15 +71,21 @@ const dirtyGitStatus: GitStatus = {
 };
 
 function resetStore() {
-  const ui = useUiState.getState();
-  ui.setEvolvePrompt("");
-  useViewModel.setState({
+  uiActions.setEvolvePrompt("");
+  viewModelActions.setState({
     git: null,
     evolve: null,
     build: { externalBuildDetected: false },
   });
-  ui.setProcessing(false);
-  ui.setSettingsOpen(false);
+  uiActions.setProcessing(false);
+  uiActions.setSettingsOpen(false);
+}
+
+async function settleProviderValidation() {
+  await waitFor(() => {
+    expect(mocks.getPrefs).toHaveBeenCalled();
+    expect(mocks.checkTools).toHaveBeenCalled();
+  });
 }
 
 describe("<PromptInput>", () => {
@@ -98,10 +104,11 @@ describe("<PromptInput>", () => {
   });
 
   it("opens the dirty-tree resolution dialog instead of racing adopt and evolve", async () => {
-    useUiState.getState().setEvolvePrompt("install vim");
-    useViewModel.setState({ git: dirtyGitStatus, evolve: null });
+    uiActions.setEvolvePrompt("install vim");
+    viewModelActions.setState({ git: dirtyGitStatus, evolve: null });
 
     render(<PromptInput />);
+    await settleProviderValidation();
 
     fireEvent.click(screen.getByTestId("evolve-prompt-send"));
 
@@ -110,5 +117,20 @@ describe("<PromptInput>", () => {
       expect(mocks.evolveFromManual).not.toHaveBeenCalled();
       expect(mocks.handleEvolve).not.toHaveBeenCalled();
     });
+  });
+
+  it("seeds a full starter prompt from the curated chips", async () => {
+    const suggestion = STARTER_PROMPT_CHIPS.find(({ id }) => id === "dev-terminal");
+    if (!suggestion) throw new Error("Expected dev-terminal starter prompt");
+
+    render(<PromptInput />);
+    await settleProviderValidation();
+
+    const chip = screen.getByRole("button", { name: suggestion.label });
+    expect(chip.querySelector("svg")).toBeInTheDocument();
+
+    fireEvent.click(chip);
+
+    expect(screen.getByTestId("evolve-prompt-input")).toHaveValue(suggestion.prompt);
   });
 });

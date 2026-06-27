@@ -5,7 +5,7 @@
 All options under `services.atuin`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.atuin.database.createLocally` | | |
 | `services.atuin.database.uri` | | |
 | `services.atuin.enable` | | |

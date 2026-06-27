@@ -5,7 +5,7 @@
 All options under `services.https-dns-proxy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.https-dns-proxy.address` | | |
 | `services.https-dns-proxy.enable` | | |
 | `services.https-dns-proxy.extraArgs` | | |

@@ -5,5 +5,5 @@
 All options under `services.activate-system`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.activate-system.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.gitlab`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------------------- | ---- | ----------- |
 | `services.gitlab.backup.keepTime` | | |
 | `services.gitlab.backup.path` | | |
 | `services.gitlab.backup.skip` | | |

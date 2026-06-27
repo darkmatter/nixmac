@@ -5,7 +5,7 @@
 All options under `services.mautrix-whatsapp`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.mautrix-whatsapp.enable` | | |
 | `services.mautrix-whatsapp.environmentFile` | | |
 | `services.mautrix-whatsapp.package` | | |

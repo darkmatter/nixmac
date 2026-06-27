@@ -5,7 +5,7 @@
 All options under `services.netatalk`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.netatalk.enable` | | |
 | `services.netatalk.extmap` | | |
 | `services.netatalk.extraConfig` | | |

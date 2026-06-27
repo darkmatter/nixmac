@@ -5,7 +5,7 @@
 All options under `programs.pyradio`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.pyradio.enable` | `boolean` | Whether to enable pyradio. |
 | `programs.pyradio.package` | `null or package` | The pyradio package to use. |
 | `programs.pyradio.settings` | `attribute set of (string or signed integer or boolean)` | Options to add to the PyRadio config file. See https://github.com/coderholic/pyradio/blob/master/pyradio/config for available options. |

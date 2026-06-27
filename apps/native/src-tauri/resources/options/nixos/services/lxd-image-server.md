@@ -5,7 +5,7 @@
 All options under `services.lxd-image-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.lxd-image-server.enable` | | |
 | `services.lxd-image-server.group` | | |
 | `services.lxd-image-server.nginx.domain` | | |

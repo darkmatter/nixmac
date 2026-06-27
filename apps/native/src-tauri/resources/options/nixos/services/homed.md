@@ -5,7 +5,7 @@
 All options under `services.homed`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.homed.enable` | | |
 | `services.homed.promptOnFirstBoot` | | |
 | `services.homed.settings.Home` | | |

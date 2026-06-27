@@ -5,7 +5,7 @@
 All options under `services.matrix-synapse`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------------------------ | ---- | ----------- |
 | `services.matrix-synapse.account_threepid_delegates.email` | | |
 | `services.matrix-synapse.account_threepid_delegates.msisdn` | | |
 | `services.matrix-synapse.allow_guest_access` | | |

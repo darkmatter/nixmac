@@ -5,7 +5,7 @@
 All options under `system`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------------- | ---- | ----------- |
 | `system.activatable` | | |
 | `system.activatableSystemBuilderCommands` | | |
 | `system.activationScripts` | | |

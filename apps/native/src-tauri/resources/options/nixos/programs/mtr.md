@@ -5,6 +5,6 @@
 All options under `programs.mtr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------- | ---- | ----------- |
 | `programs.mtr.enable` | | |
 | `programs.mtr.package` | | |

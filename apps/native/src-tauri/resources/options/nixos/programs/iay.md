@@ -5,7 +5,7 @@
 All options under `programs.iay`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `programs.iay.enable` | | |
 | `programs.iay.minimalPrompt` | | |
 | `programs.iay.package` | | |

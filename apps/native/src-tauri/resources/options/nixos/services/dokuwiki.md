@@ -5,6 +5,6 @@
 All options under `services.dokuwiki`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.dokuwiki.sites` | | |
 | `services.dokuwiki.webserver` | | |

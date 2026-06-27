@@ -5,7 +5,7 @@
 All options under `programs.aiac`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.aiac.enable` | `boolean` | Whether to enable aiac. |
 | `programs.aiac.package` | `null or package` | The aiac package to use. |
 | `programs.aiac.settings` | `TOML value` | Configuration settings for aiac. All the available options can be found here: https://github.com/gofireflyio/aiac/?tab=readme-ov-file#configuration . |

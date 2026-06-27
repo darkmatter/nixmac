@@ -5,7 +5,7 @@
 All options under `services.turborepo-remote-cache`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------- | ---- | ----------- |
 | `services.turborepo-remote-cache.enable` | | |
 | `services.turborepo-remote-cache.environment` | | |
 | `services.turborepo-remote-cache.environmentFile` | | |

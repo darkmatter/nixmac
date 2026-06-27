@@ -5,7 +5,7 @@
 All options under `programs.lutris`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.lutris.defaultWinePackage` | `null or package` | The wine/proton package to set as the default for lutris. It must still be set under proton/winePackages. |
 | `programs.lutris.enable` | `boolean` | Whether to enable lutris… |
 | `programs.lutris.extraPackages` | `list of package` | List of packages to pass as extraPkgs to lutris. Please note runners are not detected properly this way, use a proper option for those. |

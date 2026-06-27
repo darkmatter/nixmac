@@ -5,7 +5,7 @@
 All options under `services.imaginary`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.imaginary.address` | | |
 | `services.imaginary.enable` | | |
 | `services.imaginary.port` | | |

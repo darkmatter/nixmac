@@ -5,7 +5,7 @@
 All options under `services.fluent-bit`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.fluent-bit.configurationFile` | | |
 | `services.fluent-bit.enable` | | |
 | `services.fluent-bit.graceLimit` | | |

@@ -5,7 +5,7 @@
 All options under `services.erigon`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.erigon.enable` | | |
 | `services.erigon.extraArgs` | | |
 | `services.erigon.package` | | |

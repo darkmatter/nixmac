@@ -5,7 +5,7 @@
 All options under `services.tandoor-recipes`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------- | ---- | ----------- |
 | `services.tandoor-recipes.address` | | |
 | `services.tandoor-recipes.database.createLocally` | | |
 | `services.tandoor-recipes.enable` | | |

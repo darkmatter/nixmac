@@ -5,7 +5,7 @@
 All options under `programs.atuin`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `programs.atuin.daemon.enable` | `boolean` | Whether to enable Atuin daemon. |
 | `programs.atuin.daemon.logLevel` | `null or one of “trace”, “debug”, “info”, “warn”, “error”` | Verbosity of Atuin daemon logging. |
 | `programs.atuin.enable` | `boolean` | Whether to enable atuin. |

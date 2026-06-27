@@ -5,7 +5,7 @@
 All options under `services.go2rtc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.go2rtc.enable` | | |
 | `services.go2rtc.package` | | |
 | `services.go2rtc.settings` | | |

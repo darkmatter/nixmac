@@ -5,7 +5,7 @@
 All options under `services.eternal-terminal`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.eternal-terminal.enable` | | |
 | `services.eternal-terminal.logSize` | | |
 | `services.eternal-terminal.port` | | |

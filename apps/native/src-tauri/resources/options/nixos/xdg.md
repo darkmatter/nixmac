@@ -5,7 +5,7 @@
 All options under `xdg`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `xdg.autostart.enable` | | |
 | `xdg.icons.enable` | | |
 | `xdg.icons.fallbackCursorThemes` | | |

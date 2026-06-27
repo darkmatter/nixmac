@@ -5,7 +5,7 @@
 All options under `services.monado`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.monado.defaultRuntime` | | |
 | `services.monado.enable` | | |
 | `services.monado.forceDefaultRuntime` | | |

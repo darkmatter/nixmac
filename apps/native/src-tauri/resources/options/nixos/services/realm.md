@@ -5,7 +5,7 @@
 All options under `services.realm`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.realm.config` | | |
 | `services.realm.enable` | | |
 | `services.realm.package` | | |

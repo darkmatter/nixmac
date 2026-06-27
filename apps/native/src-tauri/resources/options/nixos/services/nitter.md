@@ -5,7 +5,7 @@
 All options under `services.nitter`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.nitter.cache.listMinutes` | | |
 | `services.nitter.cache.redisConnections` | | |
 | `services.nitter.cache.redisHost` | | |

@@ -5,7 +5,7 @@
 All options under `programs.cava`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.cava.enable` | `boolean` | Whether to enable Cava audio visualizer. |
 | `programs.cava.package` | `null or package` | The cava package to use. |
 | `programs.cava.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Settings to be written to the Cava configuration file. See https://github.com/karlstav/cava/blob/master/example_files/config for all available options. |

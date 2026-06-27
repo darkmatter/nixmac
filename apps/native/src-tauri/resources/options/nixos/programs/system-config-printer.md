@@ -5,5 +5,5 @@
 All options under `programs.system-config-printer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `programs.system-config-printer.enable` | | |

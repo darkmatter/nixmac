@@ -5,7 +5,7 @@
 All options under `services.gotify`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.gotify.enable` | | |
 | `services.gotify.environment` | | |
 | `services.gotify.environmentFiles` | | |

@@ -5,7 +5,7 @@
 All options under `services.torque`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.torque.mom.enable` | | |
 | `services.torque.mom.serverNode` | | |
 | `services.torque.server.enable` | | |

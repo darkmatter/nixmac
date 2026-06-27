@@ -1,6 +1,5 @@
 import type { SemanticChangeMap } from "@/ipc/types";
-import { initialUiState, useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { initialUiState, uiActions, useUiState, viewModelActions } from "@nixmac/state";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useEvolve } from "./use-evolve";
 
@@ -13,11 +12,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/ipc/api", () => ({
   tauriAPI: {
-    darwin: {
-      evolve: mocks.evolve,
-      evolveFromManual: vi.fn(),
-      buildCheck: vi.fn(),
-    },
     promptHistory: {
       add: mocks.promptHistoryAdd,
       get: mocks.promptHistoryGet,
@@ -28,6 +22,16 @@ vi.mock("@/ipc/api", () => ({
   },
 }));
 
+vi.mock("@/lib/orpc", () => ({
+  client: {
+    darwin: {
+      evolve: mocks.evolve,
+      evolveFromManual: vi.fn<() => Promise<void>>(),
+      buildCheck: vi.fn<() => Promise<unknown>>(),
+    },
+  },
+}));
+
 describe("useEvolve", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -35,8 +39,8 @@ describe("useEvolve", () => {
     mocks.promptHistoryGet.mockResolvedValue([]);
     mocks.on.mockResolvedValue(vi.fn());
 
-    useUiState.setState({ ...initialUiState });
-    useViewModel.setState({
+    uiActions.setState({ ...initialUiState });
+    viewModelActions.setState({
       evolveEvents: [],
       changeMap: null,
       git: null,
@@ -54,13 +58,13 @@ describe("useEvolve", () => {
 
     mocks.evolve.mockResolvedValue(undefined);
 
-    useUiState.getState().setEvolvePrompt("explain the current changes");
-    useViewModel.setState({ changeMap: existingMap });
+    uiActions.setEvolvePrompt("explain the current changes");
+    viewModelActions.setState({ changeMap: existingMap });
 
     await useEvolve().handleEvolve();
 
-    expect(mocks.evolve).toHaveBeenCalledWith("explain the current changes");
-    expect(useViewModel.getState().changeMap).toBe(existingMap);
+    expect(mocks.evolve).toHaveBeenCalledWith({ description: "explain the current changes" });
+    expect(viewModelActions.getState().changeMap).toBe(existingMap);
     // Prompt is cleared on success.
     expect(useUiState.getState().evolvePrompt).toBe("");
   });
@@ -68,7 +72,7 @@ describe("useEvolve", () => {
   it("surfaces failures without clearing the prompt", async () => {
     mocks.evolve.mockRejectedValue(new Error("AI evolution failed: boom"));
 
-    useUiState.getState().setEvolvePrompt("install vim");
+    uiActions.setEvolvePrompt("install vim");
 
     await useEvolve().handleEvolve();
 

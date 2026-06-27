@@ -3,12 +3,7 @@ import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-import {
-  untrackedCandidateItemCount,
-  type FsFile,
-  type Section,
-  type SectionId,
-} from "./data";
+import { untrackedCandidateItemCount, type FsFile, type Section, type SectionId } from "./data";
 
 const SECTION_ICONS: Record<SectionId, LucideIcon> = {
   entry: Cable,
@@ -32,9 +27,7 @@ export function SectionTabs({ sections, active, setActive, files }: SectionTabsP
         const isActive = s.id === active;
         const Icon = SECTION_ICONS[s.id];
         const untrackedCount =
-          s.id === "manage"
-            ? untrackedCandidateItemCount(files[s.id] ?? [])
-            : 0;
+          s.id === "manage" ? untrackedCandidateItemCount(files[s.id] ?? []) : 0;
         return (
           <button
             type="button"

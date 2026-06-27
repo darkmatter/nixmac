@@ -5,7 +5,7 @@
 All options under `programs.lazyworktree`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.lazyworktree.enable` | `boolean` | Whether to enable lazyworktree. |
 | `programs.lazyworktree.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.lazyworktree.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |

@@ -5,5 +5,5 @@
 All options under `services.sdrplayApi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.sdrplayApi.enable` | | |

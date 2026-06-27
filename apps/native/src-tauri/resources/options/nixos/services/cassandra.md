@@ -5,7 +5,7 @@
 All options under `services.cassandra`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.cassandra.allowClients` | | |
 | `services.cassandra.clusterName` | | |
 | `services.cassandra.enable` | | |

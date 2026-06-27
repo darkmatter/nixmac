@@ -9,7 +9,7 @@
 //! had selected an existing flake.
 
 use anyhow::{Context, Result, anyhow, bail};
-use git2::{Cred, FetchOptions, RemoteCallbacks};
+use git2::{Cred, CredentialType, FetchOptions, RemoteCallbacks};
 use std::fs::File;
 use std::path::{Component, Path, PathBuf};
 
@@ -193,6 +193,24 @@ fn validate_subdir(path: &str) -> Result<()> {
 /// sparse checkout would normally require. This allows us to support subdirectory imports
 /// without forcing users to understand git's sparse checkout semantics.
 pub fn materialize_repo(spec: &RepoRef, dest: &Path) -> Result<()> {
+    materialize_repo_with_optional_token(spec, dest, None)
+}
+
+/// Clones the repository specified by `spec` using a short-lived HTTPS access
+/// token, then materializes the configured subdirectory when requested.
+pub fn materialize_repo_with_token(spec: &RepoRef, dest: &Path, token: &str) -> Result<()> {
+    if token.is_empty() {
+        bail!("GitHub clone token is empty");
+    }
+
+    materialize_repo_with_optional_token(spec, dest, Some(token))
+}
+
+fn materialize_repo_with_optional_token(
+    spec: &RepoRef,
+    dest: &Path,
+    access_token: Option<&str>,
+) -> Result<()> {
     // We're going to have issues later if `dest` already exists as a non-empty directory, so check that upfront before doing any cloning.
     if dest.exists() {
         if !dest.is_dir() {
@@ -207,14 +225,14 @@ pub fn materialize_repo(spec: &RepoRef, dest: &Path) -> Result<()> {
 
     // Easy case. No subdirectory means we can clone directly into the destination.
     if spec.subdir.is_none() {
-        return clone_repo(spec, dest);
+        return clone_repo(spec, dest, access_token);
     }
 
     let temp = tempfile::tempdir().context("failed to create temporary clone directory")?;
     let checkout_dir = temp.path().join("repo");
 
     // Perform the actual clone into a temp directory, then copy the specified subdirectory into the final destination.
-    clone_repo(spec, &checkout_dir)?;
+    clone_repo(spec, &checkout_dir, access_token)?;
 
     let subdir = spec.subdir.as_ref().unwrap();
     let source = checkout_dir.join(subdir);
@@ -235,7 +253,7 @@ pub fn materialize_repo(spec: &RepoRef, dest: &Path) -> Result<()> {
 
 /// Clones `spec` into `dest`. `dest` must not already exist as a non-empty
 /// directory (libgit2 requires an empty/absent target).
-fn clone_repo(spec: &RepoRef, dest: &Path) -> Result<()> {
+fn clone_repo(spec: &RepoRef, dest: &Path, access_token: Option<&str>) -> Result<()> {
     log::info!(
         "Cloning {} into {} at {}",
         sanitize_clone_url_for_logs(&spec.clone_url),
@@ -252,7 +270,11 @@ fn clone_repo(spec: &RepoRef, dest: &Path) -> Result<()> {
     // and/or somebody is remapping to always use ssh in their local git config (if they have it).
     // So without these callbacks the clone will fail with an auth error instead of falling back to https.
     let mut callbacks = RemoteCallbacks::new();
-    callbacks.credentials(|_url, username_from_url, allowed| {
+    callbacks.credentials(move |_url, username_from_url, allowed| {
+        if let Some(token) = access_token {
+            return token_credential(token, username_from_url, allowed);
+        }
+
         if allowed.contains(git2::CredentialType::SSH_KEY) {
             return Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"));
         }
@@ -915,4 +937,33 @@ mod tests {
         let sanitized = sanitize_clone_url_for_logs(url);
         assert_eq!(sanitized, "git://github.com/repo.git");
     }
+
+    #[test]
+    fn token_credential_uses_plaintext_userpass_when_allowed() {
+        let credential =
+            token_credential("github-token", None, CredentialType::USER_PASS_PLAINTEXT);
+
+        assert!(credential.is_ok());
+    }
+
+    #[test]
+    fn token_credential_fails_when_plaintext_userpass_not_allowed() {
+        let credential = token_credential("github-token", None, CredentialType::SSH_KEY);
+
+        assert!(credential.is_err());
+    }
+}
+
+fn token_credential(
+    token: &str,
+    username_from_url: Option<&str>,
+    allowed: CredentialType,
+) -> std::result::Result<Cred, git2::Error> {
+    if token.is_empty() || !allowed.contains(CredentialType::USER_PASS_PLAINTEXT) {
+        return Err(git2::Error::from_str(
+            "token authentication requires plaintext username/password credentials",
+        ));
+    }
+
+    Cred::userpass_plaintext(username_from_url.unwrap_or("x-access-token"), token)
 }

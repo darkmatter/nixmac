@@ -5,5 +5,5 @@
 All options under `programs.systemtap`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `programs.systemtap.enable` | | |

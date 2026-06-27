@@ -5,7 +5,7 @@
 All options under `services.ntopng`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.ntopng.configText` | | |
 | `services.ntopng.enable` | | |
 | `services.ntopng.extraConfig` | | |

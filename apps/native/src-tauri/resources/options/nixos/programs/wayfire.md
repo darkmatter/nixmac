@@ -5,7 +5,7 @@
 All options under `programs.wayfire`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `programs.wayfire.enable` | | |
 | `programs.wayfire.package` | | |
 | `programs.wayfire.plugins` | | |

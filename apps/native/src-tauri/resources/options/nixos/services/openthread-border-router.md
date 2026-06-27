@@ -5,7 +5,7 @@
 All options under `services.openthread-border-router`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------------- | ---- | ----------- |
 | `services.openthread-border-router.backboneInterfaces` | | |
 | `services.openthread-border-router.enable` | | |
 | `services.openthread-border-router.extraArgs` | | |

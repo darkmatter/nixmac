@@ -5,7 +5,7 @@
 All options under `services.glances`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.glances.enable` | | |
 | `services.glances.extraArgs` | | |
 | `services.glances.openFirewall` | | |

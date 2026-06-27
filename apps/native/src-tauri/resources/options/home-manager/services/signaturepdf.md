@@ -5,7 +5,7 @@
 All options under `services.signaturepdf`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | `services.signaturepdf.enable` | `boolean` | Whether to enable signaturepdf; signing, organizing, editing metadatas or compressing PDFs. |
 | `services.signaturepdf.extraConfig` | `attribute set of (string or signed integer or boolean or floating point number)` | Additional configuration optional. |
 | `services.signaturepdf.package` | `package` | The signaturepdf package to use. |

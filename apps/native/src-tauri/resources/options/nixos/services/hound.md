@@ -5,7 +5,7 @@
 All options under `services.hound`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.hound.config` | | |
 | `services.hound.enable` | | |
 | `services.hound.extraGroups` | | |

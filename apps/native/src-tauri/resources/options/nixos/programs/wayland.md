@@ -5,5 +5,5 @@
 All options under `programs.wayland`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `programs.wayland.miracle-wm.enable` | | |

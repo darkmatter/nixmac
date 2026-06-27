@@ -5,7 +5,7 @@
 All options under `services.ndppd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.ndppd.configFile` | | |
 | `services.ndppd.enable` | | |
 | `services.ndppd.interface` | | |

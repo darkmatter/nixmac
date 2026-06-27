@@ -5,7 +5,7 @@
 All options under `services.harmonia`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.harmonia.cache.enable` | | |
 | `services.harmonia.cache.settings` | | |
 | `services.harmonia.cache.signKeyPath` | | |

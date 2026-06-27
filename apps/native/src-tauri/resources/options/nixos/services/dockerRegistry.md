@@ -5,7 +5,7 @@
 All options under `services.dockerRegistry`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.dockerRegistry.configFile` | | |
 | `services.dockerRegistry.enable` | | |
 | `services.dockerRegistry.enableDelete` | | |

@@ -5,7 +5,7 @@
 All options under `services.redis`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `services.redis.appendOnly` | `boolean` | By default data is only periodically persisted to disk, enable this option to use an append-only file for improved persistence. |
 | `services.redis.bind` | `null or string` | The IP interface to bind to. |
 | `services.redis.dataDir` | `null or absolute path` | Data directory for the redis database. |

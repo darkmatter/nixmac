@@ -5,7 +5,7 @@
 All options under `services.swaync`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `services.swaync.enable` | `boolean` | Whether to enable Swaync notification daemon. |
 | `services.swaync.package` | `package` | The swaynotificationcenter package to use. |
 | `services.swaync.settings` | `JSON value` | Configuration written to $XDG_CONFIG_HOME/swaync/config.json . See https://github.com/ErikReider/SwayNotificationCenter/blob/main/src/configSchema.json for the documentation. |

@@ -5,7 +5,7 @@
 All options under `services.openldap`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.openldap.configDir` | | |
 | `services.openldap.declarativeContents` | | |
 | `services.openldap.enable` | | |

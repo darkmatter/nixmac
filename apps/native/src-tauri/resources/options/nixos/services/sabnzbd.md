@@ -5,7 +5,7 @@
 All options under `services.sabnzbd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.sabnzbd.allowConfigWrite` | | |
 | `services.sabnzbd.configFile` | | |
 | `services.sabnzbd.enable` | | |

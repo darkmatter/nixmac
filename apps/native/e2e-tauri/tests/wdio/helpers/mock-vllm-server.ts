@@ -1,13 +1,14 @@
-import http from 'node:http';
-import path from 'node:path';
-import { readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
+import http from "node:http";
+import path from "node:path";
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
 // Always resolve fixture data from the source tree so compiled dist-e2e helpers
 // can still load test data without copying fixtures into dist output.
-const TEST_DATA_DIR = process.env['NIXMAC_WDIO_TEST_DATA_DIR']
-  ?? path.resolve(THIS_DIR, '../../../../e2e-tauri/tests/data');
+const TEST_DATA_DIR =
+  process.env["NIXMAC_WDIO_TEST_DATA_DIR"] ??
+  path.resolve(THIS_DIR, "../../../../e2e-tauri/tests/data");
 
 interface MockResponse {
   [key: string]: unknown;
@@ -35,14 +36,14 @@ function resolveMockResponseFilePath(filePath: string, dataDir: string): string 
 }
 
 function parseMockResponseJsonl(content: string, filePath: string): MockResponse[] {
-  const rawLines = content.split('\n');
+  const rawLines = content.split("\n");
   const responses: MockResponse[] = [];
 
   for (let i = 0; i < rawLines.length; i += 1) {
     const raw = rawLines[i];
     const line = raw.trim();
 
-    if (!line || line.startsWith('//')) {
+    if (!line || line.startsWith("//")) {
       continue;
     }
 
@@ -58,7 +59,10 @@ function parseMockResponseJsonl(content: string, filePath: string): MockResponse
   return responses;
 }
 
-async function loadMockResponses(responseFiles: string[], dataDir: string): Promise<MockResponse[]> {
+async function loadMockResponses(
+  responseFiles: string[],
+  dataDir: string,
+): Promise<MockResponse[]> {
   const files = Array.isArray(responseFiles) ? responseFiles : [];
   if (files.length === 0) {
     return [];
@@ -67,25 +71,27 @@ async function loadMockResponses(responseFiles: string[], dataDir: string): Prom
   const responses: MockResponse[] = [];
   for (const file of files) {
     const resolvedPath = resolveMockResponseFilePath(file, dataDir);
-    const raw = await readFile(resolvedPath, 'utf-8');
+    const raw = await readFile(resolvedPath, "utf-8");
     const fileResponses = parseMockResponseJsonl(raw, resolvedPath);
     responses.push(...fileResponses);
   }
 
   if (responses.length === 0) {
-    throw new Error('[wdio:test-env] mockVllm fixture files were loaded but produced zero responses');
+    throw new Error(
+      "[wdio:test-env] mockVllm fixture files were loaded but produced zero responses",
+    );
   }
 
   return responses;
 }
 
 function writeJsonResponse(response: http.ServerResponse, statusCode: number, body: unknown): void {
-  response.writeHead(statusCode, { 'content-type': 'application/json; charset=utf-8' });
+  response.writeHead(statusCode, { "content-type": "application/json; charset=utf-8" });
   response.end(`${JSON.stringify(body)}\n`);
 }
 
 async function readRequestBody(request: http.IncomingMessage): Promise<string> {
-  let rawBody = '';
+  let rawBody = "";
   for await (const chunk of request) {
     rawBody += chunk;
   }
@@ -97,11 +103,13 @@ async function readRequestBody(request: http.IncomingMessage): Promise<string> {
   return `${rawBody.slice(0, 4000)}…[truncated ${rawBody.length - 4000} chars]`;
 }
 
-export async function startMockVllmServer(mockVllmOptions: MockVllmOptions = {}): Promise<MockVllmServerContext> {
+export async function startMockVllmServer(
+  mockVllmOptions: MockVllmOptions = {},
+): Promise<MockVllmServerContext> {
   const {
     responseFiles = [],
-    host = '127.0.0.1',
-    pathnames = ['/v1/chat/completions', '/chat/completions'],
+    host = "127.0.0.1",
+    pathnames = ["/v1/chat/completions", "/chat/completions"],
     dataDir = TEST_DATA_DIR,
   } = mockVllmOptions;
 
@@ -111,15 +119,18 @@ export async function startMockVllmServer(mockVllmOptions: MockVllmOptions = {})
 
   const server = http.createServer(async (request, response) => {
     try {
-      const requestUrl = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);
+      const requestUrl = new URL(
+        request.url ?? "/",
+        `http://${request.headers.host ?? "localhost"}`,
+      );
       const pathname = requestUrl.pathname;
 
-      if (request.method === 'GET' && pathname === '/health') {
-        writeJsonResponse(response, 200, { status: 'ok' });
+      if (request.method === "GET" && pathname === "/health") {
+        writeJsonResponse(response, 200, { status: "ok" });
         return;
       }
 
-      if (request.method === 'POST' && pathname === '/__admin/mock-responses') {
+      if (request.method === "POST" && pathname === "/__admin/mock-responses") {
         const rawBody = await readRequestBody(request);
 
         let parsedBody: { responses?: MockResponse[]; responseFiles?: string[] } = {};
@@ -147,15 +158,15 @@ export async function startMockVllmServer(mockVllmOptions: MockVllmOptions = {})
 
         requestIndex = 0;
         writeJsonResponse(response, 200, {
-          status: 'ok',
+          status: "ok",
           queuedResponses: responses.length,
         });
         return;
       }
 
-      if (request.method !== 'POST' || !allowedPaths.has(pathname)) {
+      if (request.method !== "POST" || !allowedPaths.has(pathname)) {
         writeJsonResponse(response, 404, {
-          error: `Unhandled mock endpoint: ${request.method ?? 'UNKNOWN'} ${pathname}`,
+          error: `Unhandled mock endpoint: ${request.method ?? "UNKNOWN"} ${pathname}`,
         });
         return;
       }
@@ -163,7 +174,7 @@ export async function startMockVllmServer(mockVllmOptions: MockVllmOptions = {})
       const requestBodyPreview = await readRequestBody(request);
 
       if (requestIndex >= responses.length) {
-        console.error('[wdio:test-env] Mock response queue exhausted', {
+        console.error("[wdio:test-env] Mock response queue exhausted", {
           method: request.method,
           path: pathname,
           configuredResponses: responses.length,
@@ -172,8 +183,8 @@ export async function startMockVllmServer(mockVllmOptions: MockVllmOptions = {})
         });
 
         writeJsonResponse(response, 500, {
-          error: 'Mock response queue exhausted',
-          code: 'MOCK_RESPONSE_QUEUE_EXHAUSTED',
+          error: "Mock response queue exhausted",
+          code: "MOCK_RESPONSE_QUEUE_EXHAUSTED",
           configuredResponses: responses.length,
           consumedResponses: requestIndex,
           requestedPath: pathname,
@@ -194,14 +205,14 @@ export async function startMockVllmServer(mockVllmOptions: MockVllmOptions = {})
   });
 
   await new Promise<void>((resolve, reject) => {
-    server.once('error', reject);
+    server.once("error", reject);
     server.listen(0, host, resolve);
   });
 
   const address = server.address();
-  if (!address || typeof address === 'string') {
+  if (!address || typeof address === "string") {
     server.close();
-    throw new Error('[wdio:test-env] Failed to determine mock vLLM server address');
+    throw new Error("[wdio:test-env] Failed to determine mock vLLM server address");
   }
 
   const origin = `http://${host}:${address.port}`;
@@ -217,7 +228,9 @@ export async function startMockVllmServer(mockVllmOptions: MockVllmOptions = {})
   };
 }
 
-export async function stopMockVllmServer(serverContext: MockVllmServerContext | null | undefined): Promise<void> {
+export async function stopMockVllmServer(
+  serverContext: MockVllmServerContext | null | undefined,
+): Promise<void> {
   if (!serverContext?.server) {
     return;
   }

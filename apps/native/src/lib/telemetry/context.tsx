@@ -18,9 +18,7 @@ export function TelemetryContextProvider({
   value: TelemetryProvider;
   children: React.ReactNode;
 }) {
-  return (
-    <TelemetryCtx.Provider value={value}>{children}</TelemetryCtx.Provider>
-  );
+  return <TelemetryCtx.Provider value={value}>{children}</TelemetryCtx.Provider>;
 }
 
 /**

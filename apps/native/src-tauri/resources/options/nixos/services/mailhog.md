@@ -5,7 +5,7 @@
 All options under `services.mailhog`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.mailhog.apiPort` | | |
 | `services.mailhog.enable` | | |
 | `services.mailhog.extraArgs` | | |

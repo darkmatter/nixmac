@@ -5,7 +5,7 @@
 All options under `services.jboss`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.jboss.deployDir` | | |
 | `services.jboss.enable` | | |
 | `services.jboss.libUrl` | | |

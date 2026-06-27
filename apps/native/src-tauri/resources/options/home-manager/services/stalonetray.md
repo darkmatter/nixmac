@@ -5,7 +5,7 @@
 All options under `services.stalonetray`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------- |
 | `services.stalonetray.config` | `attribute set of (null or string or boolean or signed integer)` | Stalonetray configuration as a set of attributes. |
 | `services.stalonetray.enable` | `boolean` | Whether to enable Stalonetray system tray. |
 | `services.stalonetray.extraConfig` | `strings concatenated with “\n”` | Additional configuration lines for stalonetrayrc. |

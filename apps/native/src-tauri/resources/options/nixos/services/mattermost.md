@@ -5,7 +5,7 @@
 All options under `services.mattermost`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------------- | ---- | ----------- |
 | `services.mattermost.configDir` | | |
 | `services.mattermost.dataDir` | | |
 | `services.mattermost.database.create` | | |

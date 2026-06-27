@@ -5,7 +5,7 @@
 All options under `services.murmur`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.murmur.allowHtml` | | |
 | `services.murmur.autobanAttempts` | | |
 | `services.murmur.autobanTime` | | |

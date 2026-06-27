@@ -5,7 +5,7 @@
 All options under `services.lubelogger`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.lubelogger.dataDir` | | |
 | `services.lubelogger.enable` | | |
 | `services.lubelogger.environmentFile` | | |

@@ -5,7 +5,7 @@
 All options under `services.stargazer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.stargazer.allowCgiUser` | | |
 | `services.stargazer.certLifetime` | | |
 | `services.stargazer.certOrg` | | |

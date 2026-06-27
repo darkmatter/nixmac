@@ -5,7 +5,7 @@
 All options under `services.activemq`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.activemq.baseDir` | | |
 | `services.activemq.configurationDir` | | |
 | `services.activemq.configurationURI` | | |

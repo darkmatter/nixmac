@@ -5,6 +5,6 @@
 All options under `programs.evince`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `programs.evince.enable` | | |
 | `programs.evince.package` | | |

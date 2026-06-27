@@ -5,7 +5,7 @@
 All options under `services.ntp`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.ntp.enable` | | |
 | `services.ntp.extraConfig` | | |
 | `services.ntp.extraFlags` | | |

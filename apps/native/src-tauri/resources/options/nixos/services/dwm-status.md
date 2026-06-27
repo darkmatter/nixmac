@@ -5,7 +5,7 @@
 All options under `services.dwm-status`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.dwm-status.enable` | | |
 | `services.dwm-status.extraConfig` | | |
 | `services.dwm-status.order` | | |

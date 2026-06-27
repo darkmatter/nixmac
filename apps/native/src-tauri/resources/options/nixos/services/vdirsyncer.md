@@ -5,7 +5,7 @@
 All options under `services.vdirsyncer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.vdirsyncer.enable` | | |
 | `services.vdirsyncer.jobs` | | |
 | `services.vdirsyncer.package` | | |

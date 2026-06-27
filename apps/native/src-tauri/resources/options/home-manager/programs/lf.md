@@ -5,7 +5,7 @@
 All options under `programs.lf`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.lf.cmdKeybindings` | `attribute set of (null or string)` | Keys to bind to command line commands which can only be one of the builtin commands. Keys set to null or an empty string are deleted. |
 | `programs.lf.commands` | `attribute set of (null or string)` | Commands to declare. Commands set to null or an empty string are deleted. |
 | `programs.lf.enable` | `boolean` | Whether to enable lf. |

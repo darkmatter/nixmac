@@ -5,7 +5,7 @@
 All options under `programs.go`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------- |
 | `programs.go.enable` | `boolean` | Whether to enable Go. |
 | `programs.go.env` | `open submodule of attribute set of string` | Environment variables for Go. All the available options can be found running ‘go env’. |
 | `programs.go.extraGoPaths` | | |

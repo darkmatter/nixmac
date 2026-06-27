@@ -5,7 +5,7 @@
 All options under `services.shoko`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.shoko.enable` | | |
 | `services.shoko.openFirewall` | | |
 | `services.shoko.package` | | |

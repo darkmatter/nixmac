@@ -5,5 +5,5 @@
 All options under `programs.gnome-terminal`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `programs.gnome-terminal.enable` | | |

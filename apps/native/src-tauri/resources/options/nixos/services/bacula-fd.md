@@ -5,7 +5,7 @@
 All options under `services.bacula-fd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.bacula-fd.director` | | |
 | `services.bacula-fd.enable` | | |
 | `services.bacula-fd.extraClientConfig` | | |

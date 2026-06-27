@@ -5,7 +5,7 @@
 All options under `services.mainsail`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.mainsail.enable` | | |
 | `services.mainsail.hostName` | | |
 | `services.mainsail.nginx` | | |

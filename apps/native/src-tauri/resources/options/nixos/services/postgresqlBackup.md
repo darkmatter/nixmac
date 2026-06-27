@@ -5,7 +5,7 @@
 All options under `services.postgresqlBackup`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.postgresqlBackup.backupAll` | | |
 | `services.postgresqlBackup.compression` | | |
 | `services.postgresqlBackup.compressionLevel` | | |

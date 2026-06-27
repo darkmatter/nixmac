@@ -5,7 +5,7 @@
 All options under `services.tldr-update`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | --------- | ------------------------------------------------------------ |
 | `services.tldr-update.enable` | `boolean` | Whether to enable Automatic updates for the tldr CLI . |
 | `services.tldr-update.package` | `package` | The tldr package to use. |
 | `services.tldr-update.period` | `string` | Systemd timer period to create for scheduled tldr --update . |

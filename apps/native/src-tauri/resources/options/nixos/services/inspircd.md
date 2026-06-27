@@ -5,7 +5,7 @@
 All options under `services.inspircd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.inspircd.config` | | |
 | `services.inspircd.enable` | | |
 | `services.inspircd.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.snowflake-proxy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.snowflake-proxy.broker` | | |
 | `services.snowflake-proxy.capacity` | | |
 | `services.snowflake-proxy.enable` | | |

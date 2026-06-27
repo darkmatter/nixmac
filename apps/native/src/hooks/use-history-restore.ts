@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { useUiState } from "@/stores/ui-state";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useHistory } from "@/hooks/use-history";
-import { tauriAPI } from "@/ipc/api";
 import type { HistoryItem } from "@/ipc/types";
-import { useViewModel } from "@/stores/view-model";
+import { uiActions, useViewModel } from "@nixmac/state";
 import { getTelemetry } from "@/lib/telemetry/instance";
+import { client } from "@/lib/orpc";
 
 // Sentinel hash used to identify the frontend-only preview item.
 export const PREVIEW_ITEM_HASH = "n1xm4c0";
@@ -33,9 +32,7 @@ function getDayLabel(unixSeconds: number): string {
   return date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 }
 
-type FlatItem =
-  | { type: "commit"; item: HistoryItem }
-  | { type: "day-label"; label: string };
+type FlatItem = { type: "commit"; item: HistoryItem } | { type: "day-label"; label: string };
 
 function buildFlatList(items: HistoryItem[]): FlatItem[] {
   const result: FlatItem[] = [];
@@ -92,10 +89,7 @@ function buildUndoneSet(items: HistoryItem[], previewHash: string): Set<string> 
  * segments. Day labels look ahead to the next commit to decide which segment they
  * belong to — so labels introducing an undone day land inside the undone wrapper.
  */
-function groupConsecutiveUndone(
-  flatItems: FlatItem[],
-  undoneSet: Set<string>,
-): HistorySegment[] {
+function groupConsecutiveUndone(flatItems: FlatItem[], undoneSet: Set<string>): HistorySegment[] {
   const segments: HistorySegment[] = [];
 
   const kindOf = (fi: FlatItem): "normal" | "undone" =>
@@ -193,7 +187,6 @@ export function useHistoryRestore(
   onUncommittedChanges: () => void,
 ): HistoryRestoreResult {
   const { loadHistory } = useHistory();
-  const setProcessing = useUiState((state) => state.setProcessing);
   const gitStatus = useViewModel((state) => state.git);
   const { triggerRebuild } = useRebuildStream();
 
@@ -240,23 +233,23 @@ export function useHistoryRestore(
 
   const doRestore = async (hash: string) => {
     setRestoringHash(hash);
-    setProcessing(true);
+    uiActions.setProcessing(true);
     try {
-      await tauriAPI.darwin.prepareRestore(hash);
+      await client.darwin.prepareRestore({ targetHash: hash });
       await triggerRebuild({
         context: "rollback",
         onSuccess: async () => {
           // The backend writes the git-state cell; `git_state_changed` mirrors it.
-          await tauriAPI.darwin.finalizeRestore(hash);
+          await client.darwin.finalizeRestore({ targetHash: hash });
           getTelemetry().captureEvent({ name: "history_restored" });
           await loadHistory();
         },
         onFailure: async () => {
-          await tauriAPI.darwin.abortRestore();
+          await client.darwin.abortRestore();
         },
       });
     } catch {
-      setProcessing(false);
+      uiActions.setProcessing(false);
     } finally {
       setRestoringHash(null);
     }

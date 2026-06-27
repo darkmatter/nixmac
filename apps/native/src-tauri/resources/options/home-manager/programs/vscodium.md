@@ -5,7 +5,7 @@
 All options under `programs.vscodium`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `programs.vscodium.argvSettings` | | |
 | `programs.vscodium.enable` | | |
 | `programs.vscodium.mutableExtensionsDir` | | |

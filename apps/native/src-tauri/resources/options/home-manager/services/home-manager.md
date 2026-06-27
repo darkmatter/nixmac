@@ -5,7 +5,7 @@
 All options under `services.home-manager`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.home-manager.autoExpire.enable` | `boolean` | Whether to enable the Home Manager expire service that periodically expire your old Home Manager generations. |
 | `services.home-manager.autoExpire.frequency` | `string` | The interval at which the Home Manager auto expire is run. |
 | `services.home-manager.autoExpire.store.cleanup` | `boolean` | Whether to enable to cleanup Nix store when the Home Manager expire service runs. |

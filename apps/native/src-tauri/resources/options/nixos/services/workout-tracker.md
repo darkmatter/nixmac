@@ -5,7 +5,7 @@
 All options under `services.workout-tracker`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.workout-tracker.address` | | |
 | `services.workout-tracker.enable` | | |
 | `services.workout-tracker.environmentFile` | | |

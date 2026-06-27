@@ -5,7 +5,7 @@
 All options under `services.swayosd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `services.swayosd.display` | | |
 | `services.swayosd.enable` | `boolean` | Whether to enable swayosd, a GTK based on screen display for keyboard shortcuts like caps-lock and volume. |
 | `services.swayosd.package` | `package` | The swayosd package to use. |

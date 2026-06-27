@@ -5,7 +5,7 @@
 All options under `services.xmrig`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.xmrig.enable` | | |
 | `services.xmrig.package` | | |
 | `services.xmrig.settings` | | |

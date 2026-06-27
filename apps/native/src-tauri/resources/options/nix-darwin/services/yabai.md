@@ -5,7 +5,7 @@
 All options under `services.yabai`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------ |
 | `services.yabai.config` | `attribute set` | Key/Value pairs to pass to yabai’s ‘config’ domain, via the configuration file. |
 | `services.yabai.enable` | `boolean` | Whether to enable the yabai window manager. |
 | `services.yabai.enableScriptingAddition` | `boolean` | Whether to enable yabai’s scripting-addition. SIP must be disabled for this to work. |

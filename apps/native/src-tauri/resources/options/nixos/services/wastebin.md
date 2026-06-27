@@ -5,7 +5,7 @@
 All options under `services.wastebin`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.wastebin.enable` | | |
 | `services.wastebin.package` | | |
 | `services.wastebin.secretFile` | | |

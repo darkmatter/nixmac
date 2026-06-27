@@ -5,7 +5,7 @@
 All options under `services.gpsd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.gpsd.debugLevel` | | |
 | `services.gpsd.device` | | |
 | `services.gpsd.devices` | | |

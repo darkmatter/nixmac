@@ -38,7 +38,13 @@ function AiModelsTabFixture() {
         state: { values },
         subscribe: () => ({ unsubscribe: () => {} }),
       },
-      Subscribe: ({ children, selector }: { children: (value: unknown) => JSX.Element; selector: (state: { values: ModelValues }) => unknown }) => children(selector({ values })),
+      Subscribe: ({
+        children,
+        selector,
+      }: {
+        children: (value: unknown) => JSX.Element;
+        selector: (state: { values: ModelValues }) => unknown;
+      }) => children(selector({ values })),
     }),
     [values],
   );

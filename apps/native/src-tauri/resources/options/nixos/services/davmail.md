@@ -5,7 +5,7 @@
 All options under `services.davmail`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.davmail.config` | | |
 | `services.davmail.enable` | | |
 | `services.davmail.url` | | |

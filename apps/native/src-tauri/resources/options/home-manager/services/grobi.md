@@ -5,7 +5,7 @@
 All options under `services.grobi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `services.grobi.enable` | `boolean` | Whether to enable the grobi display setup daemon. |
 | `services.grobi.executeAfter` | `list of string` | Commands to be run after an output configuration was changed. The Nix value declared here will be translated to JSON and written to the execute_after key in $XDG_CONFIG_HOME/grobi.conf . |
 | `services.grobi.package` | `package` | The grobi package to use. |

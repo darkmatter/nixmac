@@ -1,6 +1,19 @@
-import { useUiState } from "@/stores/ui-state";
+import { uiActions, useUiState } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import type { SetDirResult } from "@/ipc/types";
+import type { StarterTemplateId } from "@/components/widget/onboarding/lib/flake-ref";
+
+interface DarwinConfigActions {
+  setDir: (dir: string) => Promise<SetDirResult>;
+  prepareNewDir: (dir: string) => Promise<SetDirResult>;
+  pickDir: () => Promise<SetDirResult | undefined>;
+  saveHost: (host: string) => Promise<void>;
+  bootstrap: (hostname: string, templateId?: StarterTemplateId) => Promise<void>;
+  isBootstrapping: boolean;
+  importGithub: (repoRef: string, dirName?: string) => Promise<SetDirResult>;
+  importZip: (zipPath: string, dirName?: string) => Promise<SetDirResult>;
+  pickZip: () => Promise<string | null>;
+}
 
 // Config dir/host/hosts and the evolve/git mirrors are no longer written
 // locally: the backend emits `*_changed` events after these mutations and the
@@ -8,24 +21,28 @@ import type { SetDirResult } from "@/ipc/types";
 const applyDirResult = async (result: SetDirResult) => {
   if (result.changed) {
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.config.setHostAttr("");
     } catch {}
   }
 };
 
 const setDir = async (dir: string) => {
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   const result = await tauriAPI.config.setDir(dir);
   await applyDirResult(result);
   return result;
 };
 
 const prepareNewDir = async (dir: string) => {
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   const result = await tauriAPI.config.prepareNewDir(dir);
   await applyDirResult(result);
   return result;
 };
 
 const pickDir = async () => {
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   const result = await tauriAPI.config.pickDir();
   if (!result) return;
   await applyDirResult(result);
@@ -33,57 +50,64 @@ const pickDir = async () => {
 };
 
 const importGithub = async (repoRef: string, dirName?: string) => {
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   const result = await tauriAPI.config.importGithub(repoRef, dirName);
   await applyDirResult(result);
   return result;
 };
 
 const importZip = async (zipPath: string, dirName?: string) => {
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   const result = await tauriAPI.config.importZip(zipPath, dirName);
   await applyDirResult(result);
   return result;
 };
 
+// deprecated(orpc): replace with client/orpc from @/lib/orpc
 const pickZip = () => tauriAPI.config.pickZip();
 
 const saveHost = async (host: string) => {
   try {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.config.setHostAttr(host);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    useUiState.getState().setError(`Failed to save host: ${message}`);
+    uiActions.setError(`Failed to save host: ${message}`);
   }
 };
 
-const bootstrap = async (hostname: string) => {
+const bootstrap = async (hostname: string, templateId?: StarterTemplateId) => {
   const commitExisting = !hostname.trim();
-  const ui = useUiState.getState();
-  ui.setError(null);
-  ui.setBootstrapping(true);
+  uiActions.setError(null);
+  uiActions.setBootstrapping(true);
 
   try {
-    await tauriAPI.flake.bootstrapDefault(hostname);
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
+    await tauriAPI.flake.bootstrapDefault(hostname, templateId);
 
     if (commitExisting) {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       const hosts = await tauriAPI.flake.listHosts();
       if (hosts.length === 1) {
+        // deprecated(orpc): replace with client/orpc from @/lib/orpc
         await tauriAPI.config.setHostAttr(hosts[0]);
       }
     } else {
       // Set the host directly from the hostname used for bootstrap.
       // We can't call listHosts() here because Nix may not be installed yet
       // (listHosts requires `nix eval` which needs Nix).
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.config.setHostAttr(hostname);
     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    ui.setError(`Failed to create configuration: ${message}`);
+    uiActions.setError(`Failed to create configuration: ${message}`);
   } finally {
-    ui.setBootstrapping(false);
+    uiActions.setBootstrapping(false);
   }
 };
 
-export function useDarwinConfig() {
+export function useDarwinConfig(): DarwinConfigActions {
   const isBootstrapping = useUiState((state) => state.isBootstrapping);
 
   return {

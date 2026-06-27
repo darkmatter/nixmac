@@ -5,6 +5,6 @@
 All options under `services.borgmatic`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.borgmatic.enable` | `boolean` | Whether to enable Borgmatic service. |
 | `services.borgmatic.frequency` | `string` | How often to run borgmatic when services.borgmatic.enable = true . This value is passed to the systemd timer configuration as the onCalendar option. See systemd.time (7) for more information about the format. |

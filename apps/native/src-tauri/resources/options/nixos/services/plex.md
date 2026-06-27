@@ -5,7 +5,7 @@
 All options under `services.plex`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.plex.accelerationDevices` | | |
 | `services.plex.dataDir` | | |
 | `services.plex.enable` | | |

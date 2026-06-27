@@ -5,7 +5,7 @@
 All options under `services.sharkey`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.sharkey.enable` | | |
 | `services.sharkey.environmentFiles` | | |
 | `services.sharkey.openFirewall` | | |

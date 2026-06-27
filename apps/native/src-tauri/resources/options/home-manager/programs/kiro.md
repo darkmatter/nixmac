@@ -5,7 +5,7 @@
 All options under `programs.kiro`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `programs.kiro.argvSettings` | | |
 | `programs.kiro.enable` | | |
 | `programs.kiro.mutableExtensionsDir` | | |

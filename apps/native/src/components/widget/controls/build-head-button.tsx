@@ -1,7 +1,7 @@
 import { Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 import { useApply } from "@/hooks/use-apply";
 
 interface BuildHeadButtonProps {
@@ -19,8 +19,9 @@ export function BuildHeadButton({ isRestoring = false }: BuildHeadButtonProps) {
       size="sm"
       disabled={isRestoring}
       className={cn(
-        "h-auto whitespace-nowrap border-white/10 bg-white/[0.06] px-[10px] py-1 text-[10px] text-neutral-400 hover:border-white/30",
-        uncommittedChanges && "opacity-40 cursor-default hover:border-white/10 hover:bg-white/[0.06] hover:text-neutral-400",
+        "h-auto whitespace-nowrap border-white/10 bg-white/6 px-[10px] py-1 text-[10px] text-neutral-400 hover:border-white/30",
+        uncommittedChanges &&
+          "opacity-40 cursor-default hover:border-white/10 hover:bg-white/6 hover:text-neutral-400",
       )}
       onClick={(e) => {
         e.stopPropagation();

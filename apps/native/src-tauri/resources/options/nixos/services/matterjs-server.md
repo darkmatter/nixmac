@@ -5,7 +5,7 @@
 All options under `services.matterjs-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.matterjs-server.bluetoothSupport` | | |
 | `services.matterjs-server.enable` | | |
 | `services.matterjs-server.extraArgs` | | |

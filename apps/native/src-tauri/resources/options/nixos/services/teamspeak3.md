@@ -5,7 +5,7 @@
 All options under `services.teamspeak3`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.teamspeak3.dataDir` | | |
 | `services.teamspeak3.defaultVoicePort` | | |
 | `services.teamspeak3.enable` | | |

@@ -1,9 +1,10 @@
 import { tauriAPI } from "@/ipc/api";
+import { isE2eProfile } from "@/lib/env";
 
 const MAX_DETAIL_LENGTH = 1_000;
 const APP_TITLE = "nixmac";
 
-const e2eBootDiagnosticsEnabled = import.meta.env.VITE_NIXMAC_E2E_MODE === "true";
+const e2eBootDiagnosticsEnabled = isE2eProfile;
 let bootStageCleared = false;
 
 function setStorageValue(key: string, value: string) {
@@ -24,7 +25,7 @@ function setBootStageDomMarker(stage: string) {
 }
 
 function markNativeBootStage(stage: string) {
-  void tauriAPI.debug.markBootStage(stage, Date.now()).catch(() => { });
+  void tauriAPI.debug.markBootStage(stage, Date.now()).catch(() => {});
 }
 
 /** E2E-only render-body marker: DOM/title only, no IPC or localStorage. */
@@ -80,5 +81,5 @@ export function bootBreadcrumb(label: string, detail?: unknown) {
   const clientTimestampUnixMs = Date.now();
   const summarized = summarizeDetail(detail);
   console.info(`[nixmac boot] ${label}`, summarized ?? "");
-  void tauriAPI.debug.logBreadcrumb(label, summarized, clientTimestampUnixMs).catch(() => { });
+  void tauriAPI.debug.logBreadcrumb(label, summarized, clientTimestampUnixMs).catch(() => {});
 }

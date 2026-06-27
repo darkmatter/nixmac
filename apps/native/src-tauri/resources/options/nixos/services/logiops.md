@@ -5,7 +5,7 @@
 All options under `services.logiops`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.logiops.config` | | |
 | `services.logiops.enable` | | |
 | `services.logiops.package` | | |

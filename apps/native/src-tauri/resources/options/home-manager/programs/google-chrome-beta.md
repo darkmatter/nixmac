@@ -5,7 +5,7 @@
 All options under `programs.google-chrome-beta`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------- | ---- | ----------- |
 | `programs.google-chrome-beta.commandLineArgs` | | |
 | `programs.google-chrome-beta.dictionaries` | | |
 | `programs.google-chrome-beta.enable` | | |

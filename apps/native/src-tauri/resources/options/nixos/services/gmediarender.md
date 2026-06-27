@@ -5,7 +5,7 @@
 All options under `services.gmediarender`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.gmediarender.audioDevice` | | |
 | `services.gmediarender.audioSink` | | |
 | `services.gmediarender.enable` | | |

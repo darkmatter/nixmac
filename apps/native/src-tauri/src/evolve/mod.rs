@@ -68,13 +68,12 @@ enum MemoryStrategy {
 
 impl MemoryStrategy {
     fn from_env() -> Self {
-        match std::env::var("NIXMAC_EVOLUTION_MEMORY_STRATEGY")
-            .ok()
-            .as_deref()
-            .map(|s| s.trim())
+        match crate::env::settings(None)
+            .evolution_memory_strategy
+            .as_str()
         {
-            None | Some("") | Some("none") => MemoryStrategy::None,
-            Some("retention") => MemoryStrategy::Retention,
+            "" | "none" => MemoryStrategy::None,
+            "retention" => MemoryStrategy::Retention,
             _ => MemoryStrategy::None,
         }
     }
@@ -335,14 +334,13 @@ const BUILD_OUTPUT_TAIL_LINES: usize = 80;
 
 const SYSTEM_PROMPT: &str = include_str!("../../prompts/system.md");
 
-fn configured_model(store_model: Option<String>, env_var: &str) -> Option<String> {
+fn configured_model(
+    store_model: Option<String>,
+    env_model: impl Fn() -> Option<String>,
+) -> Option<String> {
     store_model
         .and_then(global_utils::non_empty_trimmed_string)
-        .or_else(|| {
-            std::env::var(env_var)
-                .ok()
-                .and_then(global_utils::non_empty_trimmed_string)
-        })
+        .or_else(env_model)
 }
 
 fn require_local_model(
@@ -350,7 +348,7 @@ fn require_local_model(
     store_model: Option<String>,
     env_var: &str,
 ) -> Result<String> {
-    configured_model(store_model, env_var).ok_or_else(|| {
+    configured_model(store_model, crate::env::default_evolve_model).ok_or_else(|| {
         anyhow!("No {provider_name} model configured. Please select a model in Settings or set {env_var}.")
     })
 }
@@ -757,10 +755,14 @@ pub async fn generate_evolution<R: Runtime>(
     let repo_root = repo_root(config_dir);
 
     // Determine provider
+    let env_settings = crate::env::settings_from_app(Some(app));
     let store_provider = store::get_evolve_provider(app).ok().flatten();
-    let requested_provider_type = store_provider.or_else(|| std::env::var("EVOLVE_PROVIDER").ok());
+    let requested_provider_type = store_provider
+        .or_else(|| crate::env::optional(env_settings.default_evolve_provider.clone()));
     let store_model = store::get_evolve_model(app).ok().flatten();
-    let configured_evolve_model = configured_model(store_model.clone(), "EVOLVE_MODEL");
+    let configured_evolve_model = configured_model(store_model.clone(), || {
+        crate::env::optional(env_settings.default_evolve_model.clone())
+    });
     let (provider_type, used_legacy_openai_fallback) = if let Some(provider) =
         requested_provider_type
     {
@@ -818,11 +820,11 @@ pub async fn generate_evolution<R: Runtime>(
 
     // Select provider implementation
     let provider: Arc<dyn AiProvider> = if provider_type == "ollama" {
-        let model = require_local_model("Ollama", store_model, "EVOLVE_MODEL")?;
+        let model = require_local_model("Ollama", store_model, crate::env::keys::EVOLVE_MODEL)?;
         let base_url = store::get_ollama_api_base_url(app)
             .ok()
             .flatten()
-            .or_else(|| std::env::var("OLLAMA_API_BASE").ok())
+            .or_else(|| crate::env::optional(env_settings.ollama_api_base.clone()))
             .unwrap_or_else(|| DEFAULT_OLLAMA_API_BASE.to_string());
         info!(
             "Using Ollama provider | Model: {} | URL: {} | Max output tokens: {}",
@@ -843,11 +845,11 @@ pub async fn generate_evolution<R: Runtime>(
         info!("Using CLI provider: {} | Model: {}", provider_type, model);
         Arc::new(CliProvider::new(tool, model))
     } else if provider_type == "vllm" {
-        let model = require_local_model("vLLM", store_model, "EVOLVE_MODEL")?;
+        let model = require_local_model("vLLM", store_model, crate::env::keys::EVOLVE_MODEL)?;
         let base_url = store::get_vllm_api_base_url(app)
             .ok()
             .flatten()
-            .or_else(|| std::env::var("VLLM_API_BASE").ok())
+            .or_else(|| crate::env::optional(env_settings.vllm_api_base.clone()))
             .ok_or_else(|| anyhow!("No vLLM base URL configured. Please set it in Settings."))?;
         let api_key = store::get_effective_vllm_api_key(app)?.unwrap_or_else(|| "none".to_string());
         info!(

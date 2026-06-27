@@ -5,7 +5,7 @@
 All options under `services.pihole-ftl`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.pihole-ftl.configDirectory` | | |
 | `services.pihole-ftl.enable` | | |
 | `services.pihole-ftl.group` | | |

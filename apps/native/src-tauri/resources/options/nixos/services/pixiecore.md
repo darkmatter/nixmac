@@ -5,7 +5,7 @@
 All options under `services.pixiecore`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.pixiecore.apiServer` | | |
 | `services.pixiecore.cmdLine` | | |
 | `services.pixiecore.debug` | | |

@@ -5,7 +5,7 @@
 All options under `services.taler`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.taler.enable` | | |
 | `services.taler.exchange.debug` | | |
 | `services.taler.exchange.denominationConfig` | | |

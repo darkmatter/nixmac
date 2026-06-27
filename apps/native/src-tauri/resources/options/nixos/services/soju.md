@@ -5,7 +5,7 @@
 All options under `services.soju`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.soju.acceptProxyIP` | | |
 | `services.soju.adminSocket.enable` | | |
 | `services.soju.configFile` | | |

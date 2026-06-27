@@ -5,7 +5,7 @@
 All options under `programs.schroot`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `programs.schroot.enable` | | |
 | `programs.schroot.package` | | |
 | `programs.schroot.profiles` | | |

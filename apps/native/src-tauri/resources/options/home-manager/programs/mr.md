@@ -5,7 +5,7 @@
 All options under `programs.mr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `programs.mr.enable` | `boolean` | Whether to enable mr, a tool to manage all your version control repositories. |
 | `programs.mr.package` | `null or package` | The mr package to use. |
 | `programs.mr.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string) or a non-empty list of them)` | Configuration written to $HOME/.mrconfig See https://myrepos.branchable.com/ for an example configuration. |

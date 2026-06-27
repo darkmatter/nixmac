@@ -5,7 +5,7 @@
 All options under `services.flexget`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.flexget.config` | | |
 | `services.flexget.enable` | | |
 | `services.flexget.homeDir` | | |

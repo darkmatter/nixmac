@@ -5,7 +5,7 @@
 All options under `programs.openstackclient`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ------------------------------------ | ------------------------------------------------------ |
 | `programs.openstackclient.clouds` | `open submodule of (YAML 1.1 value)` | Configuration needed to connect to one or more clouds. |
 | `programs.openstackclient.enable` | `boolean` | Whether to enable OpenStack command-line client. |
 | `programs.openstackclient.package` | `null or package` | The openstackclient package to use. |

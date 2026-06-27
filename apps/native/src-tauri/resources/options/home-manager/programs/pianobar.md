@@ -5,7 +5,7 @@
 All options under `programs.pianobar`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------- |
 | `programs.pianobar.enable` | `boolean` | Whether to enable Enable pianobar. |
 | `programs.pianobar.package` | `null or package` | The pianobar package to use. |
 | `programs.pianobar.settings` | `open submodule of attribute set of (atom (null, bool, int, float or string))` | Apply configurations for pianobar via key/value attributes. |

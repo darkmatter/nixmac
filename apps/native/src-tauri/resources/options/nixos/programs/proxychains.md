@@ -5,7 +5,7 @@
 All options under `programs.proxychains`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `programs.proxychains.chain.length` | | |
 | `programs.proxychains.chain.type` | | |
 | `programs.proxychains.enable` | | |

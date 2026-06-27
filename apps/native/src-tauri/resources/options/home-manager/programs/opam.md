@@ -5,7 +5,7 @@
 All options under `programs.opam`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | --------- | ----------------------------------- |
 | `programs.opam.enable` | `boolean` | Whether to enable Opam. |
 | `programs.opam.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.opam.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |

@@ -5,7 +5,7 @@
 All options under `services.linyaps`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.linyaps.boxPackage` | | |
 | `services.linyaps.enable` | | |
 | `services.linyaps.package` | | |

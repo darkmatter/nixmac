@@ -5,14 +5,9 @@ import { useEffect, useState } from "react";
 import { tauriAPI } from "@/ipc/api";
 import { useLaunchdItems } from "@/hooks/use-launchd-items";
 import { useSystemDefaultsScan } from "@/hooks/use-system-defaults-scan";
-import { useUiState } from "@/stores/ui-state";
+import { uiActions, useUiState } from "@nixmac/state";
 
-import type {
-  HomebrewItem,
-  HomebrewState,
-  LaunchdItem,
-  SystemDefault,
-} from "@/ipc/types";
+import type { HomebrewItem, HomebrewState, LaunchdItem, SystemDefault } from "@/ipc/types";
 
 import {
   FILES,
@@ -42,9 +37,7 @@ interface FilesystemStepProps {
 }
 
 export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
-  const setEvolvePrompt = useUiState((s) => s.setEvolvePrompt);
-  const setShowFilesystem = useUiState((s) => s.setShowFilesystem);
-  const targetSection = useUiState((s) => s.filesystemTargetSection);
+      const targetSection = useUiState((s) => s.filesystemTargetSection);
 
   // Honor an upstream "open at section X" intent (e.g. the Untracked
   // banner's View button passes "manage"). Default to System.
@@ -71,12 +64,13 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
   // (which passes no section) returns to the user's last view.
   useEffect(() => {
     if (targetSection) {
-      useUiState.setState({ filesystemTargetSection: null });
+      uiActions.setState({ filesystemTargetSection: null });
     }
   }, [targetSection]);
 
   useEffect(() => {
     let cancelled = false;
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     tauriAPI.homebrew
       .getStateDiff()
       .then((diff) => {
@@ -98,10 +92,7 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
 
   const manageFiles = replaceLaunchdPlaceholder(
     replaceSystemDefaultsPlaceholder(
-      replaceHomebrewPlaceholders(
-        FILES.manage,
-        homebrewFilesFromDiff(homebrewDiff, homebrewError),
-      ),
+      replaceHomebrewPlaceholders(FILES.manage, homebrewFilesFromDiff(homebrewDiff, homebrewError)),
       systemDefaultsFileFromScan(systemDefaultsScan, systemDefaultsError),
     ),
     launchdItemsFileFromScan(launchdItems, launchdError),
@@ -119,21 +110,20 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
       onSeedPrompt(text);
       return;
     }
-    setEvolvePrompt(text);
-    setShowFilesystem(false);
+    uiActions.setEvolvePrompt(text);
+    uiActions.setShowFilesystem(false);
   };
 
   // The managed-edit apply path updates the git/evolve/change-map cells on
   // the backend, which emit their change events; the viewmodel sync modules
   // mirror them. We only invalidate the now-stale recommended prompt.
   const invalidateRecommendation = () => {
-    useUiState.getState().setRecommendedPrompt(undefined);
+    uiActions.setRecommendedPrompt(undefined);
   };
 
   const onEditWithPrompt = (file: FsFile) => seed(seedForFile(file));
   const onTrackHomebrewItems = async (items: CandidateItem[]) => {
-    const store = useUiState.getState();
-    store.setProcessing(true, "apply");
+    uiActions.setProcessing(true, "apply");
     try {
       const homebrewItems: HomebrewItem[] = items.map((item) => {
         if (item.source !== "homebrew" || !item.itemType) {
@@ -145,20 +135,18 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
           itemType: item.itemType,
         };
       });
-      await tauriAPI.homebrew.addItems(
-        homebrewItems,
-      );
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
+      await tauriAPI.homebrew.addItems(homebrewItems);
       invalidateRecommendation();
-      setShowFilesystem(false);
+      uiActions.setShowFilesystem(false);
       setHomebrewDiff(null);
     } finally {
-      store.setProcessing(false);
+      uiActions.setProcessing(false);
     }
   };
 
   const onTrackSystemDefaults = async (items: CandidateItem[]) => {
-    const store = useUiState.getState();
-    store.setProcessing(true, "apply");
+    uiActions.setProcessing(true, "apply");
     try {
       const defaults: SystemDefault[] = items.map((item) => {
         if (item.source !== "system") {
@@ -166,18 +154,18 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
         }
         return item.systemDefault;
       });
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.scanner.applyDefaults(defaults);
       invalidateRecommendation();
       await refreshSystemDefaults();
-      setShowFilesystem(false);
+      uiActions.setShowFilesystem(false);
     } finally {
-      store.setProcessing(false);
+      uiActions.setProcessing(false);
     }
   };
 
   const onTrackLaunchdItems = async (items: CandidateItem[]) => {
-    const store = useUiState.getState();
-    store.setProcessing(true, "apply");
+    uiActions.setProcessing(true, "apply");
     try {
       const launchdItemsToApply: LaunchdItem[] = items.map((item) => {
         if (item.source !== "launchd") {
@@ -185,12 +173,13 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
         }
         return item.launchdItem;
       });
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.launchd.applyLaunchdItems(launchdItemsToApply);
       invalidateRecommendation();
       await refreshLaunchdItems();
-      setShowFilesystem(false);
+      uiActions.setShowFilesystem(false);
     } finally {
-      store.setProcessing(false);
+      uiActions.setProcessing(false);
     }
   };
 
@@ -211,7 +200,8 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
         onTrackLaunchdItems={onTrackLaunchdItems}
       />
       <div className="shrink-0 border-border/50 border-t bg-card/40 px-3 py-1.5 text-[10.5px] text-muted-foreground">
-        Use these as starting points — every change goes through the standard plan → review → save flow.
+        Use these as starting points — every change goes through the standard plan → review → save
+        flow.
       </div>
     </div>
   );

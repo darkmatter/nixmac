@@ -5,6 +5,6 @@
 All options under `services.volnoti`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | --------- | -------------------------------------------- |
 | `services.volnoti.enable` | `boolean` | Whether to enable Volnoti volume HUD daemon. |
 | `services.volnoti.package` | `package` | The volnoti package to use. |

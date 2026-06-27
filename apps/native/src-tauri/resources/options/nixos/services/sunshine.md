@@ -5,7 +5,7 @@
 All options under `services.sunshine`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.sunshine.applications` | | |
 | `services.sunshine.autoStart` | | |
 | `services.sunshine.capSysAdmin` | | |

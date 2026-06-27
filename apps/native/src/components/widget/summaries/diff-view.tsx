@@ -62,14 +62,21 @@ export function DiffView({ contents, filename, onMount, disableRuntime = false }
               diffs
                 .filter((d: editor.ILineChange) => d.modifiedEndLineNumber > 0)
                 .map((d: editor.ILineChange) => ({
-                  range: new monaco.Range(d.modifiedStartLineNumber, 1, d.modifiedEndLineNumber, 10000),
+                  range: new monaco.Range(
+                    d.modifiedStartLineNumber,
+                    1,
+                    d.modifiedEndLineNumber,
+                    10000,
+                  ),
                   options: {
                     inlineClassName: "nixmac-line-added",
                     linesDecorationsClassName: "nixmac-gutter-added",
                   },
                 })),
             );
-          } catch { /* editor disposed */ }
+          } catch {
+            /* editor disposed */
+          }
         };
 
         disposableRef.current = ed.onDidUpdateDiff(decorate);

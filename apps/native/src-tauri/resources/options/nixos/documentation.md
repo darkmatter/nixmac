@@ -5,7 +5,7 @@
 All options under `documentation`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `documentation.dev.enable` | | |
 | `documentation.doc.enable` | | |
 | `documentation.enable` | | |

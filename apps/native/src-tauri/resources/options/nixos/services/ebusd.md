@@ -5,7 +5,7 @@
 All options under `services.ebusd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.ebusd.configpath` | | |
 | `services.ebusd.device` | | |
 | `services.ebusd.enable` | | |

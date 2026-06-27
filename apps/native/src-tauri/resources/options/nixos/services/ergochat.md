@@ -5,7 +5,7 @@
 All options under `services.ergochat`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.ergochat.configFile` | | |
 | `services.ergochat.enable` | | |
 | `services.ergochat.openFilesLimit` | | |

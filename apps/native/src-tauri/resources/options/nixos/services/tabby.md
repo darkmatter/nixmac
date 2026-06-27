@@ -5,7 +5,7 @@
 All options under `services.tabby`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.tabby.acceleration` | | |
 | `services.tabby.enable` | | |
 | `services.tabby.host` | | |

@@ -5,7 +5,7 @@
 All options under `news`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------ | ----------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `news.display` | `one of “silent”, “notify”, “show”` | How unread and relevant news should be presented when running home-manager build and home-manager switch . |
 | `news.entries` | | |
 | `news.json.output` | | |

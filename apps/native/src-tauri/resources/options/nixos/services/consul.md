@@ -5,7 +5,7 @@
 All options under `services.consul`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.consul.alerts.consulAddr` | | |
 | `services.consul.alerts.enable` | | |
 | `services.consul.alerts.listenAddr` | | |

@@ -5,7 +5,7 @@
 All options under `services.ceph`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.ceph.client.enable` | | |
 | `services.ceph.client.extraConfig` | | |
 | `services.ceph.enable` | | |

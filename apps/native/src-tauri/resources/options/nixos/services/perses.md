@@ -5,7 +5,7 @@
 All options under `services.perses`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.perses.enable` | | |
 | `services.perses.extraOptions` | | |
 | `services.perses.listenAddress` | | |

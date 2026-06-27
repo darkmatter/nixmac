@@ -5,7 +5,7 @@
 All options under `programs.dconf`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `programs.dconf.enable` | | |
 | `programs.dconf.packages` | | |
 | `programs.dconf.profiles` | | |

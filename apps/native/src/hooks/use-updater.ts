@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { tauriAPI } from "@/ipc/api";
 import type { UpdateInfo } from "@/ipc/types";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 
 interface UpdateState {
   /** Whether we're currently checking for updates */
@@ -43,6 +43,7 @@ export function useUpdater() {
   const checkForUpdates = useCallback(async () => {
     setState((s) => ({ ...s, checking: true, error: null }));
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       const update = await tauriAPI.updater.checkUpdate();
       if (update) {
         setState((s) => ({
@@ -57,8 +58,8 @@ export function useUpdater() {
       }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      const isPluginMissing = errMsg.includes("plugin updater not found") ||
-                              errMsg.includes("plugin not found");
+      const isPluginMissing =
+        errMsg.includes("plugin updater not found") || errMsg.includes("plugin not found");
 
       if (isDevMode || isPluginMissing) {
         // Suppress errors when the updater plugin isn't registered (NIXMAC_DISABLE_UPDATER=1)
@@ -92,6 +93,7 @@ export function useUpdater() {
     setState((s) => ({ ...s, downloading: true, progress: 0, error: null }));
 
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.updater.installUpdate();
       setState((s) => ({ ...s, progress: 100 }));
 
@@ -99,6 +101,7 @@ export function useUpdater() {
       // custom relaunch_after_update command opens the newly-installed
       // bundle via LaunchServices instead of re-exec-ing the cached
       // (potentially stale) binary path from the old bundle.
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.updater.relaunch();
     } catch (err) {
       if (isDevMode) {
@@ -124,14 +127,17 @@ export function useUpdater() {
   };
 
   const installVersion = useCallback(async (version: string): Promise<void> => {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.updater.installVersion(version);
   }, []);
 
   const relaunch = useCallback(async (): Promise<void> => {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.updater.relaunch();
   }, []);
 
   const clearPinnedVersion = useCallback(async (): Promise<void> => {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.updater.clearPinnedVersion();
   }, []);
 
@@ -155,6 +161,7 @@ export function useUpdater() {
     let cancelled = false;
     (async () => {
       try {
+        // deprecated(orpc): replace with client/orpc from @/lib/orpc
         const prefs = await tauriAPI.ui.getPrefs();
         if (cancelled || checkedRef.current) return;
         if (prefs?.pinnedVersion) {

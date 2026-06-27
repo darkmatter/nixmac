@@ -5,5 +5,5 @@
 All options under `programs.traceroute`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `programs.traceroute.enable` | | |

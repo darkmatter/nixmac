@@ -5,7 +5,7 @@
 All options under `services.syncthing`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.syncthing.allProxy` | `null or string` | Overwrites the all_proxy environment variable for the Syncthing process to the given value. This is normally used to let Syncthing connect through a SOCKS5 proxy server. See https://docs.syncthing.net/users/proxying.html . |
 | `services.syncthing.cert` | `null or string` | Path to the cert.pem file, which will be copied into Syncthing’s config directory. |
 | `services.syncthing.enable` | `boolean` | Whether to enable Syncthing, a self-hosted open-source alternative to Dropbox and Bittorrent Sync. . |

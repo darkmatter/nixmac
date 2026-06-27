@@ -5,7 +5,7 @@
 All options under `services.stubby`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.stubby.authenticationMode` | | |
 | `services.stubby.enable` | | |
 | `services.stubby.fallbackProtocols` | | |

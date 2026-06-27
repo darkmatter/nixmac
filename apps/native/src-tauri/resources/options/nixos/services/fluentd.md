@@ -5,7 +5,7 @@
 All options under `services.fluentd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.fluentd.config` | | |
 | `services.fluentd.enable` | | |
 | `services.fluentd.package` | | |

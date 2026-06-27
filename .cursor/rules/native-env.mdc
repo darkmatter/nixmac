@@ -1,0 +1,22 @@
+---
+description: Environment access — only through env.ts
+globs: apps/native/**/*.ts,apps/native/**/*.tsx
+alwaysApply: false
+---
+
+# Environment variables — `env.ts` only
+
+**Do not use `process.env` or `import.meta.env` anywhere except `apps/native/src/lib/env.ts`.**
+
+All app code reads deployment settings through exports from that module (`settings`, `nixmacEnvironment`, `getProfileValue`, etc.).
+
+Benefits: single validation path, typed profile JSON, no scattered env reads, and build-time profile baking stays consistent with Rust (`build.rs`).
+
+```typescript
+// ❌ BAD
+const key = import.meta.env.VITE_POSTHOG_KEY;
+
+// ✅ GOOD
+import { settings } from "@/lib/env";
+const key = settings.posthogKey;
+```

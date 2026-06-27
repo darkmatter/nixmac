@@ -5,7 +5,7 @@
 All options under `services.osrm`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.osrm.address` | | |
 | `services.osrm.algorithm` | | |
 | `services.osrm.dataFile` | | |

@@ -67,7 +67,7 @@ pub struct UiPrefs {
 
 /// Partial update to UI preferences — every field is optional so the caller
 /// can send only the fields they wish to change.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct UiPrefsUpdate {
     /// OpenRouter API key update.
@@ -177,6 +177,93 @@ impl Default for GlobalPreferences {
             developer_mode: false,
             pinned_version: None,
             update_channel: UpdateChannel::default(),
+        }
+    }
+}
+
+impl GlobalPreferences {
+    /// Applies the subset of a UI partial update that maps to global preferences.
+    pub fn apply_ui_update(&mut self, update: &UiPrefsUpdate) {
+        if let Some(v) = &update.summary_provider {
+            self.summary_provider = Some(v.clone());
+        }
+        if let Some(v) = &update.summary_model {
+            self.summary_model = Some(v.clone());
+        }
+        if let Some(v) = &update.evolve_provider {
+            self.evolve_provider = Some(v.clone());
+        }
+        if let Some(v) = &update.evolve_model {
+            self.evolve_model = Some(v.clone());
+        }
+        if let Some(v) = &update.ollama_api_base_url {
+            self.ollama_api_base_url = Some(v.clone());
+        }
+        if let Some(v) = &update.vllm_api_base_url {
+            self.vllm_api_base_url = Some(v.clone());
+        }
+        if let Some(v) = update.send_diagnostics {
+            self.send_diagnostics = v;
+        }
+        if let Some(v) = update.confirm_build {
+            self.confirm_build = v;
+        }
+        if let Some(v) = update.confirm_clear {
+            self.confirm_clear = v;
+        }
+        if let Some(v) = update.confirm_rollback {
+            self.confirm_rollback = v;
+        }
+        if let Some(v) = update.auto_summarize_on_focus {
+            self.auto_summarize_on_focus = v;
+        }
+        if let Some(v) = update.scan_homebrew_on_startup {
+            self.scan_homebrew_on_startup = v;
+        }
+        if let Some(v) = update.default_to_diff_tab {
+            self.default_to_diff_tab = v;
+        }
+        if let Some(v) = update.experimental_spinning_mascot {
+            self.experimental_spinning_mascot = v;
+        }
+        if let Some(v) = update.developer_mode {
+            self.developer_mode = v;
+        }
+        if let Some(v) = &update.pinned_version {
+            self.pinned_version = v.clone();
+        }
+        if let Some(v) = update.update_channel {
+            self.update_channel = v;
+        }
+    }
+
+    /// Builds the non-secret subset of [`UiPrefs`] from global preferences.
+    pub fn to_ui_prefs_base(&self) -> UiPrefs {
+        UiPrefs {
+            openrouter_api_key: None,
+            openai_api_key: None,
+            ollama_api_base_url: self.ollama_api_base_url.clone(),
+            vllm_api_base_url: self.vllm_api_base_url.clone(),
+            vllm_api_key: None,
+            summary_provider: self.summary_provider.clone(),
+            summary_model: self.summary_model.clone(),
+            evolve_provider: self.evolve_provider.clone(),
+            evolve_model: self.evolve_model.clone(),
+            max_iterations: None,
+            max_token_budget: None,
+            max_build_attempts: None,
+            max_output_tokens: None,
+            send_diagnostics: self.send_diagnostics,
+            confirm_build: self.confirm_build,
+            confirm_clear: self.confirm_clear,
+            confirm_rollback: self.confirm_rollback,
+            auto_summarize_on_focus: self.auto_summarize_on_focus,
+            scan_homebrew_on_startup: self.scan_homebrew_on_startup,
+            default_to_diff_tab: self.default_to_diff_tab,
+            experimental_spinning_mascot: self.experimental_spinning_mascot,
+            developer_mode: self.developer_mode,
+            pinned_version: self.pinned_version.clone(),
+            update_channel: self.update_channel,
         }
     }
 }

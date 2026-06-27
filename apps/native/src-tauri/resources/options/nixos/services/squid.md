@@ -5,7 +5,7 @@
 All options under `services.squid`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.squid.configText` | | |
 | `services.squid.enable` | | |
 | `services.squid.extraConfig` | | |

@@ -5,7 +5,7 @@
 All options under `services.rescrobbled`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.rescrobbled.enable` | `boolean` | Whether to enable rescrobbled, a MPRIS music scrobbler daemon. |
 | `services.rescrobbled.package` | `package` | The rescrobbled package to use. |
 | `services.rescrobbled.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/rescrobbled/config.toml See https://github.com/InputUsername/rescrobbled#configuration for the full list of options. |

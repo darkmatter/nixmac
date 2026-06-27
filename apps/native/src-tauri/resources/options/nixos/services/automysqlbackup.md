@@ -5,7 +5,7 @@
 All options under `services.automysqlbackup`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.automysqlbackup.calendar` | | |
 | `services.automysqlbackup.config` | | |
 | `services.automysqlbackup.enable` | | |

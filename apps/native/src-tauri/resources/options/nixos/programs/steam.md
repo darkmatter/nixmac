@@ -5,7 +5,7 @@
 All options under `programs.steam`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------- | ---- | ----------- |
 | `programs.steam.dedicatedServer.openFirewall` | | |
 | `programs.steam.enable` | | |
 | `programs.steam.extest.enable` | | |

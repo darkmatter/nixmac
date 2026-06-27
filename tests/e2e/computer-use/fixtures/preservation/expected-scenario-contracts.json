@@ -24,10 +24,7 @@
   "console": {
     "accessibilityRisk": "high",
     "accessibilityRiskReason": "The claim depends on accessibility text without a screenshot, usually due sensitive-surface redaction.",
-    "assertionTypes": [
-      "accessibility_text",
-      "sensitive_redaction"
-    ],
+    "assertionTypes": ["accessibility_text", "sensitive_redaction"],
     "evidenceStrength": "weak",
     "evidenceStrengthReason": "Pass relies on redacted accessibility text only, usually because screenshots are intentionally suppressed for a sensitive surface.",
     "failureClass": "",
@@ -43,12 +40,7 @@
   "customizationSaveRollback": {
     "accessibilityRisk": "low",
     "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence.",
-    "assertionTypes": [
-      "accessibility_text",
-      "action_result",
-      "remote_state",
-      "visual_heuristic"
-    ],
+    "assertionTypes": ["accessibility_text", "action_result", "remote_state", "visual_heuristic"],
     "evidenceStrength": "strong",
     "evidenceStrengthReason": "Computer Use path is backed by independent disposable git state proof.",
     "failureClass": "",
@@ -148,12 +140,7 @@
   "homebrewSaveRollback": {
     "accessibilityRisk": "low",
     "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence.",
-    "assertionTypes": [
-      "accessibility_text",
-      "action_result",
-      "remote_state",
-      "visual_heuristic"
-    ],
+    "assertionTypes": ["accessibility_text", "action_result", "remote_state", "visual_heuristic"],
     "evidenceStrength": "strong",
     "evidenceStrengthReason": "Computer Use path is backed by independent disposable git state proof.",
     "failureClass": "",
@@ -169,11 +156,7 @@
   "launch": {
     "accessibilityRisk": "low",
     "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
-    "assertionTypes": [
-      "accessibility_text",
-      "visual_heuristic",
-      "visual_signalstats"
-    ],
+    "assertionTypes": ["accessibility_text", "visual_heuristic", "visual_signalstats"],
     "evidenceStrength": "operational",
     "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
     "failureClass": "",
@@ -328,11 +311,7 @@
   "settingsAPIKeys": {
     "accessibilityRisk": "high",
     "accessibilityRiskReason": "The claim depends on accessibility text without a screenshot, usually due sensitive-surface redaction.",
-    "assertionTypes": [
-      "accessibility_text",
-      "sensitive_redaction",
-      "visual_heuristic"
-    ],
+    "assertionTypes": ["accessibility_text", "sensitive_redaction", "visual_heuristic"],
     "evidenceStrength": "weak",
     "evidenceStrengthReason": "Pass relies on redacted accessibility text only, usually because screenshots are intentionally suppressed for a sensitive surface.",
     "failureClass": "",
@@ -390,10 +369,7 @@
   "storybookPreview": {
     "accessibilityRisk": "low",
     "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence.",
-    "assertionTypes": [
-      "pr_metadata",
-      "coverage_manifest"
-    ],
+    "assertionTypes": ["pr_metadata", "coverage_manifest"],
     "evidenceStrength": "operational",
     "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
     "failureClass": "",
@@ -472,11 +448,7 @@
   "updateBanner": {
     "accessibilityRisk": "medium",
     "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks.",
-    "assertionTypes": [
-      "accessibility_text",
-      "action_result",
-      "visual_heuristic"
-    ],
+    "assertionTypes": ["accessibility_text", "action_result", "visual_heuristic"],
     "evidenceStrength": "visual-supported",
     "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
     "failureClass": "",
@@ -492,11 +464,7 @@
   "visualCoverage": {
     "accessibilityRisk": "medium",
     "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks.",
-    "assertionTypes": [
-      "artifact_quality",
-      "accessibility_text",
-      "visual_heuristic"
-    ],
+    "assertionTypes": ["artifact_quality", "accessibility_text", "visual_heuristic"],
     "evidenceStrength": "visual-supported",
     "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
     "failureClass": "",
@@ -512,10 +480,7 @@
   "visualProofQuality": {
     "accessibilityRisk": "low",
     "accessibilityRiskReason": "The scenario is not primarily an accessibility-text assertion.",
-    "assertionTypes": [
-      "artifact_quality",
-      "visual_heuristic"
-    ],
+    "assertionTypes": ["artifact_quality", "visual_heuristic"],
     "evidenceStrength": "weak",
     "evidenceStrengthReason": "Pass relies on redacted accessibility text only, usually because screenshots are intentionally suppressed for a sensitive surface.",
     "failureClass": "",

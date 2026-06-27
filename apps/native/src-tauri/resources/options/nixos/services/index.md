@@ -5,7 +5,7 @@
 Subcategories of `services`.
 
 | Key | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------------------------------------- | -------- | ----------------------------- |
 | [`SystemdJournal2Gelf`](SystemdJournal2Gelf.md) | category | 4 options |
 | [`_3proxy`](_3proxy.md) | category | 8 options |
 | [`a2boot`](a2boot.md) | category | 1 option |

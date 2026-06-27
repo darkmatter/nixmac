@@ -5,6 +5,6 @@
 All options under `programs.git-worktree-switcher`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `programs.git-worktree-switcher.enable` | | |
 | `programs.git-worktree-switcher.package` | | |

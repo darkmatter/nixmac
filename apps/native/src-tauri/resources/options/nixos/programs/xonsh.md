@@ -5,7 +5,7 @@
 All options under `programs.xonsh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `programs.xonsh.bashCompletion.enable` | | |
 | `programs.xonsh.bashCompletion.package` | | |
 | `programs.xonsh.config` | | |

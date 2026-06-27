@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useHistory } from "@/hooks/use-history";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 import { useHistoryRestore, PREVIEW_ITEM_HASH } from "@/hooks/use-history-restore";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { HistoryDayLabel } from "@/components/widget/history/history-day-label";
@@ -22,9 +22,7 @@ export function HistoryStep() {
   }, [loadHistory]);
 
   const handleUncommittedChanges = () => {
-    const viewport = scrollAreaRef.current?.querySelector(
-      "[data-radix-scroll-area-viewport]",
-    );
+    const viewport = scrollAreaRef.current?.querySelector("[data-radix-scroll-area-viewport]");
     viewport?.scrollTo({ top: 0, behavior: "smooth" });
     setIsFlashing(true);
   };
@@ -48,9 +46,7 @@ export function HistoryStep() {
   // Scroll to top when preview activates so the synthetic commit is visible.
   useEffect(() => {
     if (!previewTargetHash) return;
-    const viewport = scrollAreaRef.current?.querySelector(
-      "[data-radix-scroll-area-viewport]",
-    );
+    const viewport = scrollAreaRef.current?.querySelector("[data-radix-scroll-area-viewport]");
     viewport?.scrollTo({ top: 0, behavior: "smooth" });
   }, [previewTargetHash]);
 
@@ -83,7 +79,9 @@ export function HistoryStep() {
                     isRestoring={fi.item.hash === restoringHash}
                     isPreview={fi.item.hash === PREVIEW_ITEM_HASH}
                     isPreviewActive={!!previewTargetHash}
-                    deactivateCount={fi.item.hash === PREVIEW_ITEM_HASH ? previewDeactivateCount : undefined}
+                    deactivateCount={
+                      fi.item.hash === PREVIEW_ITEM_HASH ? previewDeactivateCount : undefined
+                    }
                     timeline={{
                       isFirst: fi.item.hash === firstCommitHash,
                       isLast: fi.item.hash === lastCommitHash,
@@ -101,10 +99,7 @@ export function HistoryStep() {
           ))}
         </ScrollArea>
       </div>
-      <DiscardUncommittedDialog
-        open={isDiscardDialogOpen}
-        onOpenChange={setIsDiscardDialogOpen}
-      />
+      <DiscardUncommittedDialog open={isDiscardDialogOpen} onOpenChange={setIsDiscardDialogOpen} />
     </>
   );
 }

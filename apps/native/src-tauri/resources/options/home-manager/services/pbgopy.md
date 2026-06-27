@@ -5,7 +5,7 @@
 All options under `services.pbgopy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `services.pbgopy.cache.ttl` | `string` | The TTL for the cache. Use "0s" to disable it. |
 | `services.pbgopy.enable` | `boolean` | Whether to enable pbgopy. |
 | `services.pbgopy.httpAuth` | `null or string` | Basic HTTP authentication’s username and password. Both the username and password are escaped. |

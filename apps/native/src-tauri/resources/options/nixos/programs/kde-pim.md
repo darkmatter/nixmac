@@ -5,7 +5,7 @@
 All options under `programs.kde-pim`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `programs.kde-pim.enable` | | |
 | `programs.kde-pim.kmail` | | |
 | `programs.kde-pim.kontact` | | |

@@ -5,7 +5,7 @@
 All options under `services.ulogd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.ulogd.enable` | | |
 | `services.ulogd.logLevel` | | |
 | `services.ulogd.settings` | | |

@@ -5,7 +5,7 @@
 All options under `services.goeland`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.goeland.enable` | | |
 | `services.goeland.schedule` | | |
 | `services.goeland.settings` | | |

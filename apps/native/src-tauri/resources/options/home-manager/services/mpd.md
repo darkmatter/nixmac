@@ -5,7 +5,7 @@
 All options under `services.mpd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.mpd.dataDir` | `absolute path` | The directory where MPD stores its state, tag cache, playlists etc. |
 | `services.mpd.dbFile` | `null or string` | The path to MPD’s database. If set to null the parameter is omitted from the configuration. |
 | `services.mpd.enable` | `boolean` | Whether to enable MPD, the music player daemon. |

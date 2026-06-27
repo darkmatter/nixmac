@@ -5,7 +5,7 @@
 All options under `services.tzupdate`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.tzupdate.enable` | | |
 | `services.tzupdate.package` | | |
 | `services.tzupdate.timer.enable` | | |

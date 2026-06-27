@@ -5,7 +5,7 @@
 All options under `services.duplicati`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.duplicati.dataDir` | | |
 | `services.duplicati.enable` | | |
 | `services.duplicati.interface` | | |

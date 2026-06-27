@@ -5,7 +5,7 @@
 All options under `services.davfs2`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.davfs2.davGroup` | | |
 | `services.davfs2.davUser` | | |
 | `services.davfs2.enable` | | |

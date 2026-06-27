@@ -5,7 +5,7 @@
 All options under `nixpkgs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------ | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `nixpkgs.config` | `null or (nixpkgs config)` | The configuration of the Nix Packages collection. (For details, see the Nixpkgs documentation.) It allows you to set package configuration options. |
 | `nixpkgs.overlays` | `null or (list of (nixpkgs overlay))` | List of overlays to use with the Nix Packages collection. (For details, see the Nixpkgs documentation.) It allows you to override packages globally. This is a function that takes as an argument the original Nixpkgs. The first argument should be used for finding dependencies, and the second should be used for overriding recipes. |
 | `nixpkgs.system` | | |

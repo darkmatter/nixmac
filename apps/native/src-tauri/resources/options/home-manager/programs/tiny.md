@@ -5,7 +5,7 @@
 All options under `programs.tiny`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.tiny.enable` | `boolean` | Whether to enable tiny, a TUI IRC client written in Rust. |
 | `programs.tiny.package` | `package` | The tiny package to use. |
 | `programs.tiny.settings` | `YAML 1.1 value` | Configuration written to $XDG_CONFIG_HOME/tiny/config.yml . See https://github.com/osa1/tiny/blob/master/crates/tiny/config.yml for the default configuration. |

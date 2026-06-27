@@ -5,7 +5,7 @@
 All options under `services.mqtt2influxdb`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.mqtt2influxdb.enable` | | |
 | `services.mqtt2influxdb.environmentFiles` | | |
 | `services.mqtt2influxdb.influxdb.database` | | |

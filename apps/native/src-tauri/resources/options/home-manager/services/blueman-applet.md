@@ -5,7 +5,7 @@
 All options under `services.blueman-applet`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---------------- | ----------------------------------------------------------------------------- |
 | `services.blueman-applet.enable` | `boolean` | Whether to enable the Blueman applet. |
 | `services.blueman-applet.package` | `package` | The blueman package to use. |
 | `services.blueman-applet.systemdTargets` | `list of string` | The systemd targets that will automatically start the blueman applet service. |

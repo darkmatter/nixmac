@@ -25,4 +25,5 @@ pub mod permissions_state;
 pub mod preferences;
 pub mod rebuild_status;
 pub mod session_log;
+pub mod ui_prefs;
 pub mod watcher;

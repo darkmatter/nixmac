@@ -5,7 +5,7 @@
 All options under `services.handheld-daemon`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------ | ---- | ----------- |
 | `services.handheld-daemon.adjustor.enable` | | |
 | `services.handheld-daemon.adjustor.loadAcpiCallModule` | | |
 | `services.handheld-daemon.adjustor.package` | | |

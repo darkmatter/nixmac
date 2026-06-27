@@ -10,11 +10,7 @@ import {
 
 const MAX_ITEMS = 6;
 
-export function UnsummarizedChangesSection({
-  changes,
-}: {
-  changes: ChangeWithRichType[];
-}) {
+export function UnsummarizedChangesSection({ changes }: { changes: ChangeWithRichType[] }) {
   if (!changes.length) return null;
 
   const changesWithRenamed = summarizeChangesByFile(categorizeRenamed(changes));
@@ -29,12 +25,11 @@ export function UnsummarizedChangesSection({
       {changesWithRenamed.length > 0 && (
         <div className="flex flex-wrap  items-center">
           {displayedChanges.map((item) => (
-            <UnsummarizedChange
-              key={item.hash}
-              {...item}
-            />
+            <UnsummarizedChange key={item.hash} {...item} />
           ))}
-          {showMore && <span className="text-[11px] text-zinc-500  font-mono relative">+{remaining} more</span>}
+          {showMore && (
+            <span className="text-[11px] text-zinc-500  font-mono relative">+{remaining} more</span>
+          )}
         </div>
       )}
     </>

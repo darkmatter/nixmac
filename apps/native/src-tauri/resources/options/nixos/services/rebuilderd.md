@@ -5,7 +5,7 @@
 All options under `services.rebuilderd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.rebuilderd.enable` | | |
 | `services.rebuilderd.package` | | |
 | `services.rebuilderd.settings` | | |

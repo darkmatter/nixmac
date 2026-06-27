@@ -5,7 +5,7 @@
 All options under `services.privatebin`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.privatebin.dataDir` | | |
 | `services.privatebin.enable` | | |
 | `services.privatebin.enableNginx` | | |

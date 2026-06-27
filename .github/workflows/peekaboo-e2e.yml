@@ -215,7 +215,7 @@ jobs:
           git reset --hard "$PR_HEAD_SHA"
           git clean -fdx -e artifacts -e node_modules -e apps/native/node_modules -e target
           if ! command -v bun >/dev/null 2>&1; then
-            curl -fsSL https://bun.sh/install | bash -s -- bun-v1.3.2
+            curl -fsSL https://bun.sh/install | bash -s -- bun-v1.3.13
             export PATH="$HOME/.bun/bin:$PATH"
           fi
           bun --version
@@ -227,7 +227,7 @@ jobs:
           for ((attempt = 1; attempt <= BUILD_ATTEMPTS; attempt += 1)); do
             if bun install --frozen-lockfile && \
               cd apps/native && \
-              VITE_NIXMAC_SKIP_PERMISSIONS=true VITE_NIXMAC_E2E_MODE=true ./node_modules/.bin/tauri build \
+              NIXMAC_ENV=e2e ./node_modules/.bin/tauri build \
                 --debug \
                 --bundles app \
                 --no-sign \

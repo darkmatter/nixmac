@@ -5,7 +5,7 @@
 All options under `services.nbd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.nbd.server.enable` | | |
 | `services.nbd.server.exports` | | |
 | `services.nbd.server.extraOptions` | | |

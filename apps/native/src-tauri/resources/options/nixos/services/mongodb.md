@@ -5,7 +5,7 @@
 All options under `services.mongodb`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.mongodb.bind_ip` | | |
 | `services.mongodb.dbpath` | | |
 | `services.mongodb.enable` | | |

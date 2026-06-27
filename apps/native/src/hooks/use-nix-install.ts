@@ -4,6 +4,7 @@ const checkNix = async () => {
   // nix_check writes the NixInstallState cell and emits
   // nix_install_state_changed; viewmodel/nix-install.ts mirrors it into the
   // ViewModel. External nix setup means there is no in-app install flow.
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   await tauriAPI.nix.check().catch(() => {});
 };
 

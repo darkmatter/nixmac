@@ -5,7 +5,7 @@
 All options under `services.kanshi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | `services.kanshi.enable` | `boolean` | Whether to enable kanshi, a Wayland daemon that automatically configures outputs. |
 | `services.kanshi.extraConfig` | `strings concatenated with “\n”` | Extra configuration lines to append to the kanshi configuration file. |
 | `services.kanshi.package` | `package` | The kanshi package to use. |

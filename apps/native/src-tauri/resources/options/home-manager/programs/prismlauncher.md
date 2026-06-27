@@ -5,7 +5,7 @@
 All options under `programs.prismlauncher`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------- |
 | `programs.prismlauncher.enable` | `boolean` | Whether to enable Prism Launcher. |
 | `programs.prismlauncher.extraPackages` | `list of package` | Additional theme packages to install to the user environment. |
 | `programs.prismlauncher.icons` | `list of absolute path` | List of paths to instance icons. |

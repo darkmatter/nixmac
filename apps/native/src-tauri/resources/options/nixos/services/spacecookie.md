@@ -5,7 +5,7 @@
 All options under `services.spacecookie`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.spacecookie.address` | | |
 | `services.spacecookie.enable` | | |
 | `services.spacecookie.hostname` | | |

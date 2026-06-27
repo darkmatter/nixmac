@@ -5,7 +5,7 @@
 All options under `services.ympd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.ympd.enable` | | |
 | `services.ympd.mpd.host` | | |
 | `services.ympd.mpd.port` | | |

@@ -5,7 +5,7 @@
 All options under `programs.gnome-shell`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | --------------------- | -------------------------------------------- |
 | `programs.gnome-shell.enable` | `boolean` | Whether to enable GNOME Shell customization. |
 | `programs.gnome-shell.extensions` | `list of (submodule)` | List of GNOME Shell extensions. |
 | `programs.gnome-shell.theme` | `null or (submodule)` | Theme to use for GNOME Shell. |

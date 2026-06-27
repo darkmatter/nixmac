@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { tauriAPI } from "@/ipc/api";
+import { client } from "@/lib/orpc";
 import type { EvolveEvent, EvolveEventType } from "@/ipc/types";
 
 // =============================================================================
@@ -86,10 +86,7 @@ function formatTokenProgress(progress: { total: number; budget: number | null })
 // =============================================================================
 
 function getEventIcon(eventType: EvolveEventType, isLatest: boolean) {
-  const iconClassName = cn(
-    "h-4 w-4 flex-shrink-0",
-    isLatest && "animate-pulse",
-  );
+  const iconClassName = cn("h-4 w-4 shrink-0", isLatest && "animate-pulse");
 
   switch (eventType) {
     case "start":
@@ -170,8 +167,7 @@ function getEventColor(eventType: EvolveEventType): string {
 
 function EventItem({ event, isLatest }: EventItemProps) {
   const [expanded, setExpanded] = useState(false);
-  const hasRawContent =
-    event.raw && event.raw !== event.summary && event.raw.length > 0;
+  const hasRawContent = event.raw && event.raw !== event.summary && event.raw.length > 0;
 
   const formatTime = (ms: number): string => {
     const seconds = Math.floor(ms / 1000);
@@ -201,9 +197,7 @@ function EventItem({ event, isLatest }: EventItemProps) {
             <span
               className={cn(
                 "truncate text-sm",
-                isLatest
-                  ? "font-medium text-foreground"
-                  : "text-muted-foreground",
+                isLatest ? "font-medium text-foreground" : "text-muted-foreground",
               )}
             >
               {event.summary}
@@ -280,10 +274,7 @@ function parseQuestionChoices(raw: string): string[] | null {
   if (jsonMatch) {
     try {
       const parsed = JSON.parse(jsonMatch[1]);
-      if (
-        Array.isArray(parsed) &&
-        parsed.every((choice) => typeof choice === "string")
-      ) {
+      if (Array.isArray(parsed) && parsed.every((choice) => typeof choice === "string")) {
         return parsed;
       }
     } catch {
@@ -325,9 +316,7 @@ function QuestionPrompt({
           <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-violet-400" />
           <div className="min-w-0 flex-1">
             <p className="text-sm text-foreground">{event.summary}</p>
-            <p className="mt-1 text-muted-foreground text-xs">
-              Answered: {input}
-            </p>
+            <p className="mt-1 text-muted-foreground text-xs">Answered: {input}</p>
           </div>
         </div>
       </div>
@@ -394,18 +383,13 @@ function QuestionPrompt({
 // Main Component
 // =============================================================================
 
-export function EvolveProgress({
-  events,
-  isGenerating,
-  className,
-  onStop,
-}: EvolveProgressProps) {
+export function EvolveProgress({ events, isGenerating, className, onStop }: EvolveProgressProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const prevEventsLengthRef = useRef(events.length);
 
   const handleQuestionAnswer = (answer: string) => {
-    tauriAPI.darwin.evolveAnswer(answer).catch((e) => {
+    client.darwin.evolveAnswer({ answer }).catch((e) => {
       console.error("Failed to send answer:", e);
     });
   };
@@ -448,7 +432,11 @@ export function EvolveProgress({
             <Check className="h-4 w-4 text-green-400" />
           )}
           <span className="font-medium text-foreground text-sm">
-            {isAnalyzing ? "Analyzing changes..." : isGenerating ? "Evolving..." : "Evolution Complete"}
+            {isAnalyzing
+              ? "Analyzing changes..."
+              : isGenerating
+                ? "Evolving..."
+                : "Evolution Complete"}
           </span>
         </div>
         <div className="flex items-center gap-2">

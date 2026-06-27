@@ -5,7 +5,7 @@
 All options under `services.jitterentropy-rngd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.jitterentropy-rngd.enable` | | |
 | `services.jitterentropy-rngd.flags` | | |
 | `services.jitterentropy-rngd.forceSP800-90B` | | |

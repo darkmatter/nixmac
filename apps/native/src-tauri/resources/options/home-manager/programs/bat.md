@@ -5,7 +5,7 @@
 All options under `programs.bat`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ------------------------------------------------------------------ | ---------------------------------------------- |
 | `programs.bat.config` | `attribute set of (string or list of string or boolean)` | Bat configuration. |
 | `programs.bat.enable` | `boolean` | Whether to enable bat, a cat clone with wings. |
 | `programs.bat.extraPackages` | `list of package` | Additional bat packages to install. |

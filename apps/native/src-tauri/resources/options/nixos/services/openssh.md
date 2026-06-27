@@ -5,7 +5,7 @@
 All options under `services.openssh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------- | ---- | ----------- |
 | `services.openssh.allowSFTP` | | |
 | `services.openssh.authorizedKeysCommand` | | |
 | `services.openssh.authorizedKeysCommandUser` | | |

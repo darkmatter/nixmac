@@ -5,7 +5,7 @@
 All options under `services.technitium-dns-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------- | ---- | ----------- |
 | `services.technitium-dns-server.enable` | | |
 | `services.technitium-dns-server.firewallTCPPorts` | | |
 | `services.technitium-dns-server.firewallUDPPorts` | | |

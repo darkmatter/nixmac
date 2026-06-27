@@ -5,7 +5,7 @@
 All options under `services.invidious`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.invidious.address` | | |
 | `services.invidious.database.createLocally` | | |
 | `services.invidious.database.host` | | |

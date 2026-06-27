@@ -5,7 +5,7 @@
 All options under `services.triggerhappy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.triggerhappy.bindings` | | |
 | `services.triggerhappy.enable` | | |
 | `services.triggerhappy.extraConfig` | | |

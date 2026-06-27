@@ -5,7 +5,7 @@
 All options under `services.hologram-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.hologram-server.awsAccount` | | |
 | `services.hologram-server.awsDefaultRole` | | |
 | `services.hologram-server.cacheTimeoutSeconds` | | |

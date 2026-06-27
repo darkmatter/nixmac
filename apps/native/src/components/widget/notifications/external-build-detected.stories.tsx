@@ -1,7 +1,7 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
 import type { EvolveState } from "@/ipc/types";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel, viewModelActions } from "@nixmac/state";
 import { fn } from "storybook/test";
 import { useEffect } from "react";
 import { ExternalBuildDetected } from "@/components/widget/notifications/external-build-detected";
@@ -47,7 +47,7 @@ function setup({
   evolveState: EvolveState | null;
 }) {
   useEffect(() => {
-    useViewModel.setState((state) => ({
+    viewModelActions.setState((state) => ({
       evolve: evolveState,
       build: {
         ...state.build,
@@ -71,22 +71,19 @@ function setup({
  * Default — banner is visible: external build detected during an active evolution.
  */
 export const Visible = meta.story({
-  render: () =>
-    setup({ externalBuildDetected: true, evolveState: mockEvolveState }),
+  render: () => setup({ externalBuildDetected: true, evolveState: mockEvolveState }),
 });
 
 /**
  * Hidden — no external build detected, component renders nothing.
  */
 export const HiddenNoBuild = meta.story({
-  render: () =>
-    setup({ externalBuildDetected: false, evolveState: mockEvolveState }),
+  render: () => setup({ externalBuildDetected: false, evolveState: mockEvolveState }),
 });
 
 /**
  * Hidden — external build detected but no active evolution, component renders nothing.
  */
 export const HiddenNoEvolution = meta.story({
-  render: () =>
-    setup({ externalBuildDetected: true, evolveState: null }),
+  render: () => setup({ externalBuildDetected: true, evolveState: null }),
 });

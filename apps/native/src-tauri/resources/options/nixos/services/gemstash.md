@@ -5,7 +5,7 @@
 All options under `services.gemstash`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.gemstash.enable` | | |
 | `services.gemstash.openFirewall` | | |
 | `services.gemstash.package` | | |

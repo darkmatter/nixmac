@@ -1,5 +1,13 @@
 # MacBook Pro - Darwin system configuration
-{ config, pkgs, lib, inputs, hostname, user, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  inputs,
+  hostname,
+  user,
+  ...
+}:
 
 {
   # Machine-specific network settings

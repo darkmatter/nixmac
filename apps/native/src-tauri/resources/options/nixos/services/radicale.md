@@ -5,7 +5,7 @@
 All options under `services.radicale`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.radicale.config` | | |
 | `services.radicale.enable` | | |
 | `services.radicale.extraArgs` | | |

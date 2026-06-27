@@ -5,7 +5,7 @@
 All options under `services.nagios`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.nagios.cgiConfigFile` | | |
 | `services.nagios.enable` | | |
 | `services.nagios.enableWebInterface` | | |

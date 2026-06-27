@@ -5,7 +5,7 @@
 All options under `programs.vscode`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `programs.vscode.argvSettings` | `absolute path or JSON value` | Configuration written to Visual Studio Code’s argv.json . This can be a JSON object or a path to a custom JSON file. |
 | `programs.vscode.enable` | `boolean` | Whether to enable Visual Studio Code. |
 | `programs.vscode.enableExtensionUpdateCheck` | | |

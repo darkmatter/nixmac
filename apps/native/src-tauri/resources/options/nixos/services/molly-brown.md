@@ -5,7 +5,7 @@
 All options under `services.molly-brown`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.molly-brown.certPath` | | |
 | `services.molly-brown.docBase` | | |
 | `services.molly-brown.enable` | | |

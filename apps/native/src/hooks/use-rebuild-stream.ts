@@ -1,10 +1,12 @@
-import { useUiState } from "@/stores/ui-state";
-import type { RebuildContext } from "@/types/rebuild";
-import { tauriAPI, ipcRenderer } from "@/ipc/api";
+import { ipcRenderer } from "@/ipc/api";
 import type { DarwinApplyEndEvent } from "@/ipc/types";
-import { setRebuildRawLineEcho } from "@/viewmodel/rebuild";
-import { useGitOperations } from "./use-git-operations";
+import { REBUILD_ERROR_CODES } from "@/lib/errors";
+import { client } from "@/lib/orpc";
 import { getTelemetry } from "@/lib/telemetry/instance";
+import type { RebuildContext } from "@/types/rebuild";
+import { setRebuildRawLineEcho } from "@/viewmodel/rebuild";
+import { uiActions } from "@nixmac/state";
+import { useGitOperations } from "./use-git-operations";
 
 interface RebuildOptions {
   context: RebuildContext;
@@ -27,7 +29,7 @@ export function useRebuildStream() {
   const { refreshGitStatus } = useGitOperations();
 
   const triggerRebuild = async (options: RebuildOptions) => {
-    useUiState.getState().setRebuildContext(options.context);
+    uiActions.setRebuildContext(options.context);
     // Store-path activation has no log summarizer; let the rebuild slice
     // echo raw output into the summary lines.
     setRebuildRawLineEcho(options.storePath != null);
@@ -39,8 +41,8 @@ export function useRebuildStream() {
 
         // Full Disk Access error: the rebuild slice re-probes permissions;
         // dismiss the panel so the UI can route to the permissions step.
-        if (event.payload.error_type === "full_disk_access") {
-          useUiState.getState().setRebuildPanelDismissed(true);
+        if (event.payload.error_type === REBUILD_ERROR_CODES.FULL_DISK_ACCESS) {
+          uiActions.setRebuildPanelDismissed(true);
           await refreshGitStatus();
           return;
         }
@@ -54,11 +56,11 @@ export function useRebuildStream() {
               await options.onSuccess();
             } catch (e: unknown) {
               const msg = (e as Error)?.message || String(e);
-              useUiState.getState().setError(msg);
+              uiActions.setError(msg);
             }
           }
           // Auto-dismiss rebuild panel after success (even if onSuccess failed)
-          useUiState.getState().setRebuildPanelDismissed(true);
+          uiActions.setRebuildPanelDismissed(true);
         } else {
           if (options.context === "apply") {
             getTelemetry().captureEvent({ name: "apply_failed" });
@@ -73,14 +75,14 @@ export function useRebuildStream() {
 
     try {
       if (options.storePath) {
-        await tauriAPI.darwin.activateStorePath(options.storePath);
+        await client.darwin.activateStorePath({ storePath: options.storePath });
       } else {
-        await tauriAPI.darwin.applyStreamStart();
+        await client.darwin.applyStreamStart({ hostOverride: null });
       }
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
-      useUiState.getState().setError(msg);
-      useUiState.getState().setProcessing(false);
+      uiActions.setError(msg);
+      uiActions.setProcessing(false);
       unlistenEnd();
     }
   };

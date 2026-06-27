@@ -128,8 +128,12 @@ pub struct ConfigurableSchema {
 pub struct ConfigurableMeta {
     /// Stable Rust-side name of the configurable state type.
     pub name: &'static str,
+    /// Output filename for generated JSON Schema (e.g. `settings.schema.json`).
+    pub schema_file: &'static str,
     /// Returns the static UI schema. Same value every call; no app needed.
     pub schema_fn: fn() -> ConfigurableSchema,
+    /// Returns JSON Schema for the on-disk settings file.
+    pub json_schema_fn: fn() -> serde_json::Value,
     /// Loads the current state as a JSON object so the dev-settings command
     /// can join it with the static schema by field key.
     pub load_fn: fn(&tauri::AppHandle<tauri::Wry>) -> anyhow::Result<serde_json::Value>,

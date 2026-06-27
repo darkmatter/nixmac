@@ -2,8 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import "@testing-library/jest-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { uiActions, viewModelActions } from "@nixmac/state";
 import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
 import { makeGlobalPreferences as makePrefs } from "@/utils/test-fixtures";
 
@@ -47,8 +46,8 @@ vi.mock("@/ipc/api", () => ({
 // simulate that round-trip.
 
 function resetStore() {
-  useViewModel.setState({ preferences: null, hosts: [] });
-  useUiState.getState().setBootstrapping(false);
+  viewModelActions.setState({ preferences: null, hosts: [] });
+  uiActions.setBootstrapping(false);
 }
 
 function resetMocks() {
@@ -95,7 +94,7 @@ describe("<DirectoryPicker>", () => {
   });
 
   it("renders the label, sublabel, and initial value from the store", () => {
-    useViewModel.setState({ preferences: makePrefs({ configDir: "/Users/me/.darwin" }) });
+    viewModelActions.setState({ preferences: makePrefs({ configDir: "/Users/me/.darwin" }) });
     render(<DirectoryPicker label="Config directory" subLabel="flake root" />);
 
     expect(screen.getByText("Config directory")).toBeInTheDocument();
@@ -180,7 +179,7 @@ describe("<DirectoryPicker>", () => {
 
     expect(await screen.findByText("permission denied")).toBeInTheDocument();
     // The ViewModel should not be updated if setDir threw.
-    expect(useViewModel.getState().preferences?.configDir ?? "").toBe("");
+    expect(viewModelActions.getState().preferences?.configDir ?? "").toBe("");
   });
 
   it("invokes useDarwinConfig().pickDir when the Browse button is clicked", () => {
@@ -197,7 +196,7 @@ describe("<DirectoryPicker>", () => {
     // External ViewModel change (e.g. the preferences event after the
     // native Browse dialog persisted a new dir):
     act(() => {
-      useViewModel.setState({ preferences: makePrefs({ configDir: "/Users/me/.darwin" }) });
+      viewModelActions.setState({ preferences: makePrefs({ configDir: "/Users/me/.darwin" }) });
     });
 
     // Wait for the effect's async chain to resolve. If a validation message appeared,
@@ -216,11 +215,9 @@ describe("<DirectoryPicker>", () => {
     render(<DirectoryPicker label="Config directory" />);
 
     act(() => {
-      useViewModel.setState({ preferences: makePrefs({ configDir: "/Users/me/empty" }) });
+      viewModelActions.setState({ preferences: makePrefs({ configDir: "/Users/me/empty" }) });
     });
 
-    expect(
-      await screen.findByText(/flake\.nix not found in this directory/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/flake\.nix not found in this directory/i)).toBeInTheDocument();
   });
 });

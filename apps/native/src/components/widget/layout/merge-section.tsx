@@ -6,8 +6,8 @@ import { MarkdownDescription } from "@/components/widget/summaries/markdown-desc
 import { commitMessageBody } from "@/components/widget/summaries/markdown-utils";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useSummary } from "@/hooks/use-summary";
-import { useViewModel } from "@/stores/view-model";
-import { useUiState } from "@/stores/ui-state";
+import { uiActions, useViewModel } from "@nixmac/state";
+import { useUiState } from "@nixmac/state";
 import { GitMerge, Loader2 } from "lucide-react";
 import { useEffect } from "react";
 
@@ -26,12 +26,11 @@ export function MergeSection() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const subject =
-      new FormData(e.currentTarget).get("commitMsg")?.toString() ?? "";
+    const subject = new FormData(e.currentTarget).get("commitMsg")?.toString() ?? "";
     const body = commitMessageBody(commitMessageSuggestion ?? "");
     const message = body ? `${subject}\n\n${body}` : subject;
     await handleCommit({ message });
-    useUiState.getState().setEvolvePrompt("");
+    uiActions.setEvolvePrompt("");
   }
 
   const commitSubject = (commitMessageSuggestion ?? "").split(/\r?\n/)[0] ?? "";
@@ -51,14 +50,12 @@ export function MergeSection() {
           <Input
             key={commitMessageSuggestion}
             className="border-border bg-background mb-2"
-            defaultValue={commitSubject || commitMessageSuggestion || ''}
+            defaultValue={commitSubject || commitMessageSuggestion || ""}
             disabled={isProcessing}
             name="commitMsg"
             placeholder="Loading..."
           />
-          {commitBody && (
-            <MarkdownDescription modalTitle={commitSubject} text={commitBody} />
-          )}
+          {commitBody && <MarkdownDescription modalTitle={commitSubject} text={commitBody} />}
         </div>
 
         <Button

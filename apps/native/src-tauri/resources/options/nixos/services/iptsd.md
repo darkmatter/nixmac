@@ -5,6 +5,6 @@
 All options under `services.iptsd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `services.iptsd.config` | | |
 | `services.iptsd.enable` | | |

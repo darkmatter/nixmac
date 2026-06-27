@@ -5,7 +5,7 @@
 All options under `programs.aria2p`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.aria2p.enable` | `boolean` | Whether to enable aria2p a terminal client for aria2c… |
 | `programs.aria2p.package` | `null or package` | The aria2p package to use. |
 | `programs.aria2p.settings` | `TOML value` | Keybinding and color settings for aria2p. Running aria2p generates a default configuration with all the options at ~/.config/aria2p/config.toml |

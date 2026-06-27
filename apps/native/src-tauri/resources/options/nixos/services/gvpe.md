@@ -5,7 +5,7 @@
 All options under `services.gvpe`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.gvpe.configFile` | | |
 | `services.gvpe.configText` | | |
 | `services.gvpe.customIFSetup` | | |

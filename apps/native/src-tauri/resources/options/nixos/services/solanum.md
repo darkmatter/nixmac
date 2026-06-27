@@ -5,7 +5,7 @@
 All options under `services.solanum`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.solanum.config` | | |
 | `services.solanum.enable` | | |
 | `services.solanum.motd` | | |

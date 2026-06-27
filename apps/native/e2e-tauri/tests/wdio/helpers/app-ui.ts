@@ -1,6 +1,6 @@
-import { $, $$, browser } from '@wdio/globals';
-import { expect } from 'chai';
-import { setMockVllmResponses } from './test-env.js';
+import { $, $$, browser } from "@wdio/globals";
+import { expect } from "chai";
+import { setMockVllmResponses } from "./test-env.js";
 
 const ERROR_MESSAGE_SELECTOR = '[data-testid="widget-error-message"]';
 
@@ -50,9 +50,7 @@ async function waitUntilOrFailOnError(condition: () => Promise<boolean>, options
 
   await failIfWidgetErrorPresent();
   const suffix =
-    lastError instanceof Error && lastError.message
-      ? ` Last error: ${lastError.message}`
-      : '';
+    lastError instanceof Error && lastError.message ? ` Last error: ${lastError.message}` : "";
   expect.fail(`${timeoutMsg}.${suffix}`);
 }
 
@@ -98,7 +96,7 @@ export async function answerQuestion(answerText: string) {
 
     const nativeSetter = Object.getOwnPropertyDescriptor(
       window.HTMLInputElement.prototype,
-      'value',
+      "value",
     )?.set;
 
     if (nativeSetter) {
@@ -107,8 +105,8 @@ export async function answerQuestion(answerText: string) {
       (input as HTMLInputElement).value = value;
     }
 
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    input.dispatchEvent(new Event('change', { bubbles: true }));
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
   }, answerText);
 
   await waitUntilOrFailOnError(
@@ -119,7 +117,7 @@ export async function answerQuestion(answerText: string) {
     {
       timeout: 5000,
       interval: 200,
-      timeoutMsg: 'Submit button did not enable after setting question prompt text',
+      timeoutMsg: "Submit button did not enable after setting question prompt text",
     },
   );
 
@@ -157,7 +155,7 @@ async function assertEvolveReviewGone() {
     {
       timeout: 60000,
       interval: 500,
-      timeoutMsg: 'Timed out waiting for evolve review screen to disappear after discard',
+      timeoutMsg: "Timed out waiting for evolve review screen to disappear after discard",
     },
   );
 }
@@ -189,10 +187,7 @@ async function clickWithRetry(selector: string, { attempts = 12, interval = 250 
       await el.click();
       return;
     } catch (error) {
-      if (
-        error instanceof Error
-        && error.message.includes('Widget error surfaced during test:')
-      ) {
+      if (error instanceof Error && error.message.includes("Widget error surfaced during test:")) {
         throw error;
       }
 
@@ -202,9 +197,7 @@ async function clickWithRetry(selector: string, { attempts = 12, interval = 250 
   }
 
   const suffix =
-    lastError instanceof Error && lastError.message
-      ? ` Last error: ${lastError.message}`
-      : '';
+    lastError instanceof Error && lastError.message ? ` Last error: ${lastError.message}` : "";
   expect.fail(`Failed to click selector after retries: ${selector}.${suffix}`);
 }
 
@@ -224,7 +217,7 @@ export async function waitForFirstWindow(options: any = {}) {
     {
       timeout,
       interval,
-      timeoutMsg: 'Timed out waiting for the first app window to appear',
+      timeoutMsg: "Timed out waiting for the first app window to appear",
     },
   );
 
@@ -258,18 +251,18 @@ export async function preparePromptTestCase({ responseFiles = [], responses = nu
   await setMockVllmResponses({ responseFiles, responses });
 }
 
-export function registerPromptSuiteBeforeEach({
-  fixtureByTestTitle,
-}: any = {}) {
+export function registerPromptSuiteBeforeEach({ fixtureByTestTitle }: any = {}) {
   beforeEach(async function () {
     const testTitle = (this as any)?.currentTest?.title;
     if (!testTitle) {
-      throw new Error('[wdio:test-env] registerPromptSuiteBeforeEach could not determine current test title');
+      throw new Error(
+        "[wdio:test-env] registerPromptSuiteBeforeEach could not determine current test title",
+      );
     }
 
     const fixture = fixtureByTestTitle?.[testTitle];
     if (!fixture) {
-      const knownTitles = Object.keys(fixtureByTestTitle ?? {}).join(', ');
+      const knownTitles = Object.keys(fixtureByTestTitle ?? {}).join(", ");
       throw new Error(
         `[wdio:test-env] No prompt fixture configured for test title: "${testTitle}". Known titles: ${knownTitles}`,
       );
@@ -304,26 +297,37 @@ export async function openHistory() {
 }
 
 export async function assertOnboardingVisible() {
-  await waitForSelector('[data-testid="onboarding-welcome-title"]', {
+  // The ported onboarding flow takes over the whole window; its root carries
+  // data-testid="onboarding-flow". With permissions granted + nix available
+  // (the e2e env), it lands on the "Set up your configuration" step, which
+  // offers the "Start from scratch" path.
+  await waitForSelector('[data-testid="onboarding-flow"]', {
     timeout: 60000,
     interval: 500,
   });
 
-  const title = await $('[data-testid="onboarding-welcome-title"]');
-  expect((await title.getText()).trim()).to.equal('Welcome to nixmac');
-
-  await waitForSelector('[data-testid="create-default-config-button"]', {
+  await waitForSelector('[data-testid="onboarding-start-from-scratch"]', {
     timeout: 60000,
     interval: 500,
   });
 }
 
 export async function clickCreateDefaultConfiguration() {
+  // New flow: pick the "Start from scratch" path, then create the starter
+  // configuration (host + dir default to this Mac / ~/.darwin).
+  await waitForSelector('[data-testid="onboarding-start-from-scratch"]', {
+    timeout: 60000,
+    interval: 500,
+  });
+  await clickWithRetry('[data-testid="onboarding-start-from-scratch"]', {
+    attempts: 20,
+    interval: 300,
+  });
+
   await waitForSelector('[data-testid="create-default-config-button"]', {
     timeout: 60000,
     interval: 500,
   });
-
   await clickWithRetry('[data-testid="create-default-config-button"]', {
     attempts: 20,
     interval: 300,
@@ -357,7 +361,7 @@ export async function submitPromptMessage(promptMessage: string) {
     {
       timeout: 5000,
       interval: 200,
-      timeoutMsg: 'Send button did not enable after typing prompt text',
+      timeoutMsg: "Send button did not enable after typing prompt text",
     },
   );
 
@@ -376,7 +380,7 @@ export async function waitForEvolveProcessingCycle({
     {
       timeout: startedTimeout,
       interval: 200,
-      timeoutMsg: 'Timed out waiting for evolve processing to start',
+      timeoutMsg: "Timed out waiting for evolve processing to start",
     },
   );
 
@@ -388,7 +392,7 @@ export async function waitForEvolveProcessingCycle({
     {
       timeout: completedTimeout,
       interval: 500,
-      timeoutMsg: 'Timed out waiting for evolve processing to complete',
+      timeoutMsg: "Timed out waiting for evolve processing to complete",
     },
   );
 }
@@ -470,7 +474,7 @@ export async function assertPromptFlowReachedEvolveReview() {
     {
       timeout: 120000,
       interval: 500,
-      timeoutMsg: 'Timed out waiting for generated git diff content',
+      timeoutMsg: "Timed out waiting for generated git diff content",
     },
   );
 }

@@ -5,7 +5,7 @@
 All options under `services.teeworlds`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------- | ---- | ----------- |
 | `services.teeworlds.enable` | | |
 | `services.teeworlds.environmentFile` | | |
 | `services.teeworlds.extraOptions` | | |

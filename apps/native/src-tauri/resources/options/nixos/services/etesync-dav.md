@@ -5,7 +5,7 @@
 All options under `services.etesync-dav`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.etesync-dav.apiUrl` | | |
 | `services.etesync-dav.enable` | | |
 | `services.etesync-dav.host` | | |

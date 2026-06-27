@@ -5,6 +5,6 @@
 All options under `programs.gpu-screen-recorder`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `programs.gpu-screen-recorder.enable` | | |
 | `programs.gpu-screen-recorder.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.tika`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.tika.configFile` | | |
 | `services.tika.enable` | | |
 | `services.tika.enableOcr` | | |

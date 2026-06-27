@@ -5,7 +5,7 @@
 All options under `services.roon-bridge`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.roon-bridge.enable` | | |
 | `services.roon-bridge.group` | | |
 | `services.roon-bridge.openFirewall` | | |

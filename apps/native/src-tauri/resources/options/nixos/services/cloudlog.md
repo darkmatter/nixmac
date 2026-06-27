@@ -5,7 +5,7 @@
 All options under `services.cloudlog`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.cloudlog.baseUrl` | | |
 | `services.cloudlog.dataDir` | | |
 | `services.cloudlog.database.createLocally` | | |

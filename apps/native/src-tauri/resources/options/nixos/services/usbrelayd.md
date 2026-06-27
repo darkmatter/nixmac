@@ -5,7 +5,7 @@
 All options under `services.usbrelayd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.usbrelayd.broker` | | |
 | `services.usbrelayd.clientName` | | |
 | `services.usbrelayd.enable` | | |

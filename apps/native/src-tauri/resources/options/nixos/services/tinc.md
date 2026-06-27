@@ -5,5 +5,5 @@
 All options under `services.tinc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.tinc.networks` | | |

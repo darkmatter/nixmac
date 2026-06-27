@@ -5,6 +5,6 @@
 All options under `services.munge`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.munge.enable` | | |
 | `services.munge.password` | | |

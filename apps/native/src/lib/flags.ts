@@ -1,23 +1,16 @@
+import { settings } from "@/lib/env";
 /**
- * Feature flags — VITE_-prefixed env vars compiled in at build time.
+ * Feature flags from the committed env profile (plus `import.meta.env.DEV`).
  *
- * Most flags are simple booleans. The filesystem flag additionally supports
- * a bitmask value that enables individual sections of the UI.
- *
- * For filesystem flags:
- *   - "true", "1", or "on" enable all sections
- *   - any other positive integer enables the corresponding section bitmask
- *   - "false", "0", "off", unset, or invalid values disable all sections
- *   - in DEV builds, all sections are enabled by default unless the env var
- *     is explicitly set, in which case its value takes precedence
+ * Each flag has a single named export so it can be tree-shaken independently.
  */
 
 export enum FilesystemSectionFlag {
-  Entry   = 1 << 1,
-  Darwin  = 1 << 2,
-  Home    = 1 << 3,
+  Entry = 1 << 1,
+  Darwin = 1 << 2,
+  Home = 1 << 3,
   Support = 1 << 4,
-  Manage  = 1 << 5,
+  Manage = 1 << 5,
 };
 
 function envBitmask(value: unknown): number {
@@ -32,7 +25,7 @@ function envBitmask(value: unknown): number {
   return Number.parseInt(v, 10);
 }
 
-const filesystemEnv = import.meta.env.VITE_NIXMAC_FILESYSTEM;
+const filesystemEnv = settings.filesystemEnabled;
 
 // In DEV builds if the env var IS set, use it as a bitmask so we
 // can test this behavior without doing a production build.

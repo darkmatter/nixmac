@@ -5,7 +5,7 @@
 All options under `services.nghttpx`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.nghttpx.backend-address-family` | | |
 | `services.nghttpx.backends` | | |
 | `services.nghttpx.backlog` | | |

@@ -5,7 +5,7 @@
 All options under `services.tmate-ssh-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.tmate-ssh-server.advertisedPort` | | |
 | `services.tmate-ssh-server.enable` | | |
 | `services.tmate-ssh-server.host` | | |

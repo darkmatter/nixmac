@@ -5,6 +5,6 @@
 All options under `programs.qdmr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `programs.qdmr.enable` | | |
 | `programs.qdmr.package` | | |

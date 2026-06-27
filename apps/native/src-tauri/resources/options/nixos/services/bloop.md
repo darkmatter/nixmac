@@ -5,6 +5,6 @@
 All options under `services.bloop`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.bloop.extraOptions` | | |
 | `services.bloop.install` | | |

@@ -5,7 +5,7 @@
 All options under `services.agorakit`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.agorakit.appKeyFile` | | |
 | `services.agorakit.appURL` | | |
 | `services.agorakit.config` | | |

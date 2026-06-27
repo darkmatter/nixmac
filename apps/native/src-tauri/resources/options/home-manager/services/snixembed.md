@@ -5,7 +5,7 @@
 All options under `services.snixembed`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---------------- | ------------------------------------------------------------------------------------------ |
 | `services.snixembed.beforeUnits` | `list of string` | List of other units that should be started after snixembed. |
 | `services.snixembed.enable` | `boolean` | Whether to enable snixembed: proxy StatusNotifierItems as XEmbedded systemtray-spec icons. |
 | `services.snixembed.package` | `package` | The snixembed package to use. |

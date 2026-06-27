@@ -5,7 +5,7 @@
 All options under `services.stunnel`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.stunnel.clients` | | |
 | `services.stunnel.enable` | | |
 | `services.stunnel.enableInsecureSSLv3` | | |

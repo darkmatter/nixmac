@@ -5,7 +5,7 @@
 All options under `services.routinator`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.routinator.enable` | | |
 | `services.routinator.extraArgs` | | |
 | `services.routinator.extraServerArgs` | | |

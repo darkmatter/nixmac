@@ -5,6 +5,6 @@
 All options under `services.mptcpd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.mptcpd.enable` | | |
 | `services.mptcpd.package` | | |

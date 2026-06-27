@@ -5,6 +5,6 @@
 All options under `services.elephant`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.elephant.enable` | | |
 | `services.elephant.package` | | |

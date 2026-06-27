@@ -5,7 +5,7 @@
 All options under `services.mediamtx`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.mediamtx.allowVideoAccess` | | |
 | `services.mediamtx.enable` | | |
 | `services.mediamtx.env` | | |

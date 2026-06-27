@@ -5,7 +5,7 @@
 All options under `programs.sherlock`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | -------------------------------- | ------------------------------------------------------------------------- |
 | `programs.sherlock.aliases` | `JSON value` | Defines custom aliases. |
 | `programs.sherlock.enable` | `boolean` | Enable Sherlock, a fast and lightweight application launcher for Wayland. |
 | `programs.sherlock.ignore` | `strings concatenated with “\n”` | A list of desktop entry IDs to ignore. |

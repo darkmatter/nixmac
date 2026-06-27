@@ -5,7 +5,7 @@
 All options under `services.vsmartcard-vpcd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.vsmartcard-vpcd.enable` | | |
 | `services.vsmartcard-vpcd.hostname` | | |
 | `services.vsmartcard-vpcd.port` | | |

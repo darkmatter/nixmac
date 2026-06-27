@@ -5,7 +5,7 @@
 All options under `services.prefect`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.prefect.baseUrl` | | |
 | `services.prefect.dataDir` | | |
 | `services.prefect.database` | | |

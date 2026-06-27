@@ -1,15 +1,23 @@
 #!/usr/bin/env node
-import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
-import process from 'node:process';
-import { fileURLToPath } from 'node:url';
+import assert from "node:assert/strict";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import path from "node:path";
+import process from "node:process";
+import { fileURLToPath } from "node:url";
 
 const THIS_FILE = fileURLToPath(import.meta.url);
 const TOOL_DIR = path.dirname(THIS_FILE);
-const REPO_ROOT = path.resolve(TOOL_DIR, '../../..');
+const REPO_ROOT = path.resolve(TOOL_DIR, "../../..");
 
-export function splitEnvList(value = '') {
+export function splitEnvList(value = "") {
   return String(value)
     .split(/\r?\n|,/)
     .map((item) => item.trim())
@@ -17,7 +25,9 @@ export function splitEnvList(value = '') {
 }
 
 function normalizeRepoPath(filePath) {
-  return String(filePath || '').replaceAll(path.sep, '/').replace(/^\.\//, '');
+  return String(filePath || "")
+    .replaceAll(path.sep, "/")
+    .replace(/^\.\//, "");
 }
 
 function unique(values) {
@@ -26,7 +36,7 @@ function unique(values) {
 
 function normalizeStoryImportPath(importPath) {
   const normalized = normalizeRepoPath(importPath);
-  return normalized.startsWith('src/') ? `apps/native/${normalized}` : normalized;
+  return normalized.startsWith("src/") ? `apps/native/${normalized}` : normalized;
 }
 
 function isStoryFile(filePath) {
@@ -42,7 +52,9 @@ function isUiSourceFile(filePath) {
 }
 
 function isNativeRuntimeFile(filePath) {
-  return /^(apps\/native\/src-tauri\/|apps\/native\/templates\/|Cargo\.|Cargo\.lock|flake\.|nix\/|ops\/|\.github\/workflows\/build\.yaml)/.test(filePath);
+  return /^(apps\/native\/src-tauri\/|apps\/native\/templates\/|Cargo\.|Cargo\.lock|flake\.|nix\/|ops\/|\.github\/workflows\/build\.yaml)/.test(
+    filePath,
+  );
 }
 
 function isReviewOnlyFile(filePath) {
@@ -66,10 +78,11 @@ function isLikelyHelperFile(filePath) {
 
 function isComponentEntryPoint(filePath) {
   const normalized = normalizeRepoPath(filePath);
-  if (!/\.(ts|tsx)$/i.test(normalized) || isStoryFile(normalized) || isLikelyHelperFile(normalized)) return false;
+  if (!/\.(ts|tsx)$/i.test(normalized) || isStoryFile(normalized) || isLikelyHelperFile(normalized))
+    return false;
   const base = path.basename(normalized, path.extname(normalized));
   const dirBase = path.basename(path.dirname(normalized));
-  return base === 'index' || base === dirBase || /^[A-Z]/.test(base);
+  return base === "index" || base === dirBase || /^[A-Z]/.test(base);
 }
 
 function walk(dir) {
@@ -98,7 +111,7 @@ function storyCandidatesFor(filePath, repoRoot = REPO_ROOT) {
     `${withoutExt}.stories.js`,
   ];
   const dir = path.dirname(normalized);
-  if (path.basename(withoutExt) === 'index') {
+  if (path.basename(withoutExt) === "index") {
     candidates.push(
       ...walk(path.join(repoRoot, dir))
         .map((full) => normalizeRepoPath(path.relative(repoRoot, full)))
@@ -109,11 +122,13 @@ function storyCandidatesFor(filePath, repoRoot = REPO_ROOT) {
 }
 
 function loadStoryIndex(staticDir) {
-  const indexPath = path.join(staticDir || '', 'index.json');
+  const indexPath = path.join(staticDir || "", "index.json");
   if (!staticDir || !existsSync(indexPath)) return null;
   try {
-    const parsed = JSON.parse(readFileSync(indexPath, 'utf8'));
-    const entries = Object.values(parsed.entries || {}).filter((entry) => entry?.type === 'story' && entry.id);
+    const parsed = JSON.parse(readFileSync(indexPath, "utf8"));
+    const entries = Object.values(parsed.entries || {}).filter(
+      (entry) => entry?.type === "story" && entry.id,
+    );
     return { indexPath, entries };
   } catch {
     return null;
@@ -121,18 +136,18 @@ function loadStoryIndex(staticDir) {
 }
 
 function storyUrl(baseUrl, id) {
-  if (!baseUrl || !id) return '';
-  const separator = baseUrl.includes('?') ? '&' : '?';
-  return `${baseUrl.replace(/\/?$/, '/')}index.html${separator}path=/story/${encodeURIComponent(id)}`;
+  if (!baseUrl || !id) return "";
+  const separator = baseUrl.includes("?") ? "&" : "?";
+  return `${baseUrl.replace(/\/?$/, "/")}index.html${separator}path=/story/${encodeURIComponent(id)}`;
 }
 
 function compactStoryEntry(entry, baseUrl) {
   return {
     id: entry.id,
-    title: entry.title || '',
-    name: entry.name || '',
-    importPath: normalizeStoryImportPath(entry.importPath || ''),
-    componentPath: normalizeStoryImportPath(entry.componentPath || ''),
+    title: entry.title || "",
+    name: entry.name || "",
+    importPath: normalizeStoryImportPath(entry.importPath || ""),
+    componentPath: normalizeStoryImportPath(entry.componentPath || ""),
     url: storyUrl(baseUrl, entry.id),
   };
 }
@@ -152,46 +167,66 @@ function addStoryMatches(matches, strength, source, entries) {
 }
 
 function coverageStatusFor(file, matches) {
-  if (matches.length) return 'covered';
-  if (isStoryFile(file) || isComponentEntryPoint(file) || /\.css$/i.test(file)) return 'missing_required_story';
-  if (isLikelyHelperFile(file)) return 'missing_advisory_story';
-  return 'missing_required_story';
+  if (matches.length) return "covered";
+  if (isStoryFile(file) || isComponentEntryPoint(file) || /\.css$/i.test(file))
+    return "missing_required_story";
+  if (isLikelyHelperFile(file)) return "missing_advisory_story";
+  return "missing_required_story";
 }
 
-function recommendationFor({ status, uiOnly, missingStoryFiles, advisoryStoryFiles, unknownFiles }) {
-  if (status === 'ready' && uiOnly) return 'UI-only PR: review the Storybook quick links; native Computer Use was skipped by policy because no native/runtime or unknown files changed.';
-  if (status === 'ready_with_advisories' && uiOnly) return 'UI-only PR: Storybook has reviewer links, native Computer Use was skipped, and advisory story gaps are listed for follow-up.';
-  if (status === 'ready') return 'Review affected UI in Storybook, then use native Computer Use for changed runtime/native surfaces.';
-  if (status === 'missing_story') return `Add Storybook coverage for ${missingStoryFiles.length} changed UI file(s) before treating the preview as reviewer-ready.`;
-  if (status === 'build_failed') return 'Storybook build failed, so the UI preview is not reviewer-ready.';
-  if (status === 'index_unavailable') return 'Storybook index.json was unavailable, so direct affected-story links could not be verified.';
-  if (status === 'invalid_metadata') return 'Storybook preview metadata was invalid and cannot be trusted.';
-  if (unknownFiles.length) return 'Native Computer Use remains required because changed files include non-UI or unclassified files.';
-  if (advisoryStoryFiles.length) return 'Storybook has reviewer links, with non-blocking advisory story gaps listed for follow-up.';
-  return 'No Storybook preview is needed for this change set.';
+function recommendationFor({
+  status,
+  uiOnly,
+  missingStoryFiles,
+  advisoryStoryFiles,
+  unknownFiles,
+}) {
+  if (status === "ready" && uiOnly)
+    return "UI-only PR: review the Storybook quick links; native Computer Use was skipped by policy because no native/runtime or unknown files changed.";
+  if (status === "ready_with_advisories" && uiOnly)
+    return "UI-only PR: Storybook has reviewer links, native Computer Use was skipped, and advisory story gaps are listed for follow-up.";
+  if (status === "ready")
+    return "Review affected UI in Storybook, then use native Computer Use for changed runtime/native surfaces.";
+  if (status === "missing_story")
+    return `Add Storybook coverage for ${missingStoryFiles.length} changed UI file(s) before treating the preview as reviewer-ready.`;
+  if (status === "build_failed")
+    return "Storybook build failed, so the UI preview is not reviewer-ready.";
+  if (status === "index_unavailable")
+    return "Storybook index.json was unavailable, so direct affected-story links could not be verified.";
+  if (status === "invalid_metadata")
+    return "Storybook preview metadata was invalid and cannot be trusted.";
+  if (unknownFiles.length)
+    return "Native Computer Use remains required because changed files include non-UI or unclassified files.";
+  if (advisoryStoryFiles.length)
+    return "Storybook has reviewer links, with non-blocking advisory story gaps listed for follow-up.";
+  return "No Storybook preview is needed for this change set.";
 }
 
 export function buildStorybookPreviewPlan({
   env = process.env,
-  changedFiles = splitEnvList(env.NIXMAC_E2E_PR_CHANGED_FILES || ''),
+  changedFiles = splitEnvList(env.NIXMAC_E2E_PR_CHANGED_FILES || ""),
   repoRoot = REPO_ROOT,
-  staticDir = path.join(REPO_ROOT, 'apps/native/storybook-static'),
-  baseUrl = env.NIXMAC_E2E_STORYBOOK_BASE_URL || 'storybook/',
-  buildStatus = env.NIXMAC_E2E_STORYBOOK_BUILD_STATUS || '',
-  workflowUrl = env.NIXMAC_E2E_STORYBOOK_WORKFLOW_URL || '',
+  staticDir = path.join(REPO_ROOT, "apps/native/storybook-static"),
+  baseUrl = env.NIXMAC_E2E_STORYBOOK_BASE_URL || "storybook/",
+  buildStatus = env.NIXMAC_E2E_STORYBOOK_BUILD_STATUS || "",
+  workflowUrl = env.NIXMAC_E2E_STORYBOOK_WORKFLOW_URL || "",
 } = {}) {
   const normalizedChangedFiles = unique(changedFiles.map(normalizeRepoPath));
   const uiFiles = normalizedChangedFiles.filter(isUiSourceFile);
   const nativeRuntimeFiles = normalizedChangedFiles.filter(isNativeRuntimeFile);
-  const reviewOnlyFiles = normalizedChangedFiles.filter((file) => !isUiSourceFile(file) && !isNativeRuntimeFile(file) && isReviewOnlyFile(file));
-  const unknownFiles = normalizedChangedFiles.filter((file) => !isUiSourceFile(file) && !isNativeRuntimeFile(file) && !isReviewOnlyFile(file));
+  const reviewOnlyFiles = normalizedChangedFiles.filter(
+    (file) => !isUiSourceFile(file) && !isNativeRuntimeFile(file) && isReviewOnlyFile(file),
+  );
+  const unknownFiles = normalizedChangedFiles.filter(
+    (file) => !isUiSourceFile(file) && !isNativeRuntimeFile(file) && !isReviewOnlyFile(file),
+  );
   const index = loadStoryIndex(staticDir);
   const entries = index?.entries || [];
   const storiesByImportPath = new Map();
   const storiesByComponentPath = new Map();
   for (const entry of entries) {
-    appendStory(storiesByImportPath, normalizeStoryImportPath(entry.importPath || ''), entry);
-    appendStory(storiesByComponentPath, normalizeStoryImportPath(entry.componentPath || ''), entry);
+    appendStory(storiesByImportPath, normalizeStoryImportPath(entry.importPath || ""), entry);
+    appendStory(storiesByComponentPath, normalizeStoryImportPath(entry.componentPath || ""), entry);
   }
   const affectedStories = [];
   const missingStoryFiles = [];
@@ -201,8 +236,18 @@ export function buildStorybookPreviewPlan({
   for (const file of uiFiles) {
     const rawMatches = [];
     const candidates = storyCandidatesFor(file, repoRoot);
-    addStoryMatches(rawMatches, 'direct', 'changed story file or colocated story candidate', candidates.flatMap((candidate) => storiesByImportPath.get(candidate) || []));
-    addStoryMatches(rawMatches, 'component_path', 'Storybook componentPath', storiesByComponentPath.get(file) || []);
+    addStoryMatches(
+      rawMatches,
+      "direct",
+      "changed story file or colocated story candidate",
+      candidates.flatMap((candidate) => storiesByImportPath.get(candidate) || []),
+    );
+    addStoryMatches(
+      rawMatches,
+      "component_path",
+      "Storybook componentPath",
+      storiesByComponentPath.get(file) || [],
+    );
     const matched = rawMatches.map(({ strength, source, entry }) => ({
       ...compactStoryEntry(entry, baseUrl),
       matchStrength: strength,
@@ -215,9 +260,11 @@ export function buildStorybookPreviewPlan({
       const gap = {
         file,
         status: coverageStatus,
-        expectedStories: candidates.length ? candidates : [`${file.replace(/\.[^.]+$/, '')}.stories.tsx`],
+        expectedStories: candidates.length
+          ? candidates
+          : [`${file.replace(/\.[^.]+$/, "")}.stories.tsx`],
       };
-      if (coverageStatus === 'missing_advisory_story') advisoryStoryFiles.push(gap);
+      if (coverageStatus === "missing_advisory_story") advisoryStoryFiles.push(gap);
       else missingStoryFiles.push(gap);
     }
     coverage.push({
@@ -229,12 +276,12 @@ export function buildStorybookPreviewPlan({
   }
 
   const status = (() => {
-    if (!uiFiles.length) return 'not_applicable';
-    if (buildStatus && buildStatus !== 'success') return 'build_failed';
-    if (!index) return 'index_unavailable';
-    if (missingStoryFiles.length) return 'missing_story';
-    if (advisoryStoryFiles.length) return 'ready_with_advisories';
-    return 'ready';
+    if (!uiFiles.length) return "not_applicable";
+    if (buildStatus && buildStatus !== "success") return "build_failed";
+    if (!index) return "index_unavailable";
+    if (missingStoryFiles.length) return "missing_story";
+    if (advisoryStoryFiles.length) return "ready_with_advisories";
+    return "ready";
   })();
   const uiOnly = uiFiles.length > 0 && nativeRuntimeFiles.length === 0 && unknownFiles.length === 0;
   return {
@@ -259,22 +306,31 @@ export function buildStorybookPreviewPlan({
           storyCount: entries.length,
         }
       : null,
-    recommendation: recommendationFor({ status, uiOnly, missingStoryFiles, advisoryStoryFiles, unknownFiles }),
+    recommendation: recommendationFor({
+      status,
+      uiOnly,
+      missingStoryFiles,
+      advisoryStoryFiles,
+      unknownFiles,
+    }),
   };
 }
 
 function absoluteStoryUrl(url, baseUrl) {
-  if (!url || /^https?:\/\//i.test(url)) return url || '';
-  if (!baseUrl) return '';
-  const root = baseUrl.replace(/index\.html(?:[?#].*)?$/i, '').replace(/\/?$/, '/');
-  return `${root}${url.replace(/^storybook\/(?:index\.html)?/i, 'index.html').replace(/^\/+/, '')}`;
+  if (!url || /^https?:\/\//i.test(url)) return url || "";
+  if (!baseUrl) return "";
+  const root = baseUrl.replace(/index\.html(?:[?#].*)?$/i, "").replace(/\/?$/, "/");
+  return `${root}${url.replace(/^storybook\/(?:index\.html)?/i, "index.html").replace(/^\/+/, "")}`;
 }
 
-export function renderStorybookQuickLinks(plan, { baseUrl = '', maxFiles = 5, maxStories = 2 } = {}) {
+export function renderStorybookQuickLinks(
+  plan,
+  { baseUrl = "", maxFiles = 5, maxStories = 2 } = {},
+) {
   const lines = [];
   const affected = plan.affectedStories || [];
   if (affected.length) {
-    lines.push('- Storybook quick links:');
+    lines.push("- Storybook quick links:");
     for (const item of affected.slice(0, maxFiles)) {
       const links = (item.stories || [])
         .slice(0, maxStories)
@@ -283,24 +339,29 @@ export function renderStorybookQuickLinks(plan, { baseUrl = '', maxFiles = 5, ma
           const href = absoluteStoryUrl(story.url, baseUrl);
           return href ? `[${label}](${href})` : `${label} (hosted URL unavailable)`;
         })
-        .join(', ');
-      lines.push(`  - \`${item.file}\`: ${links || 'no story URL'}`);
+        .join(", ");
+      lines.push(`  - \`${item.file}\`: ${links || "no story URL"}`);
     }
-    if (affected.length > maxFiles) lines.push(`  - ${affected.length - maxFiles} more changed UI file(s) in the hosted report.`);
+    if (affected.length > maxFiles)
+      lines.push(`  - ${affected.length - maxFiles} more changed UI file(s) in the hosted report.`);
   }
   if ((plan.missingStoryFiles || []).length) {
-    lines.push(`- Missing Storybook coverage: ${plan.missingStoryFiles.length} changed UI file(s) need a story before this is reviewer-ready.`);
+    lines.push(
+      `- Missing Storybook coverage: ${plan.missingStoryFiles.length} changed UI file(s) need a story before this is reviewer-ready.`,
+    );
   }
   if ((plan.advisoryStoryFiles || []).length) {
-    lines.push(`- Storybook advisories: ${plan.advisoryStoryFiles.length} helper/style file(s) had no direct story; nearby coverage or follow-up may be needed.`);
+    lines.push(
+      `- Storybook advisories: ${plan.advisoryStoryFiles.length} helper/style file(s) had no direct story; nearby coverage or follow-up may be needed.`,
+    );
   }
-  if (plan.uiOnly) lines.push('- Native Computer Use: skipped by UI-only Storybook policy.');
-  return lines.join('\n');
+  if (plan.uiOnly) lines.push("- Native Computer Use: skipped by UI-only Storybook policy.");
+  return lines.join("\n");
 }
 
-function argValue(args, flag, fallback = '') {
+function argValue(args, flag, fallback = "") {
   const index = args.indexOf(flag);
-  return index === -1 ? fallback : args[index + 1] ?? fallback;
+  return index === -1 ? fallback : (args[index + 1] ?? fallback);
 }
 
 function usage() {
@@ -320,79 +381,94 @@ function writeGithubOutput(plan) {
     [
       `storybook_has_ui=${plan.uiFiles.length > 0}`,
       `storybook_ui_only=${plan.uiOnly}`,
-      `storybook_ready=${plan.status === 'ready' || plan.status === 'ready_with_advisories'}`,
+      `storybook_ready=${plan.status === "ready" || plan.status === "ready_with_advisories"}`,
       `storybook_artifact_ready=${Boolean(plan.storyIndex)}`,
       `storybook_status=${plan.status}`,
-      '',
-    ].join('\n'),
-    { flag: 'a' },
+      "",
+    ].join("\n"),
+    { flag: "a" },
   );
 }
 
 function main() {
   const [command, ...args] = process.argv.slice(2);
-  if (!command || args.includes('--help') || args.includes('-h')) {
+  if (!command || args.includes("--help") || args.includes("-h")) {
     usage();
     process.exit(command ? 0 : 1);
   }
-  if (command === 'self-test') {
+  if (command === "self-test") {
     runSelfTest();
     return;
   }
-  if (command === 'comment') {
-    const planPath = argValue(args, '--plan', '');
-    if (!planPath) throw new Error('comment requires --plan <json>');
-    const plan = JSON.parse(readFileSync(path.resolve(REPO_ROOT, planPath), 'utf8'));
-    console.log(renderStorybookQuickLinks(plan, { baseUrl: argValue(args, '--base-url', '') }));
+  if (command === "comment") {
+    const planPath = argValue(args, "--plan", "");
+    if (!planPath) throw new Error("comment requires --plan <json>");
+    const plan = JSON.parse(readFileSync(path.resolve(REPO_ROOT, planPath), "utf8"));
+    console.log(renderStorybookQuickLinks(plan, { baseUrl: argValue(args, "--base-url", "") }));
     return;
   }
-  if (command !== 'plan') {
+  if (command !== "plan") {
     usage();
     process.exit(1);
   }
-  const changedFilesArg = argValue(args, '--changed-files', '');
+  const changedFilesArg = argValue(args, "--changed-files", "");
   const plan = buildStorybookPreviewPlan({
-    changedFiles: changedFilesArg ? splitEnvList(readFileSync(changedFilesArg, 'utf8')) : undefined,
-    staticDir: path.resolve(REPO_ROOT, argValue(args, '--static-dir', 'apps/native/storybook-static')),
-    baseUrl: argValue(args, '--base-url', process.env.NIXMAC_E2E_STORYBOOK_BASE_URL || 'storybook/'),
-    buildStatus: argValue(args, '--build-status', process.env.NIXMAC_E2E_STORYBOOK_BUILD_STATUS || ''),
-    workflowUrl: argValue(args, '--workflow-url', process.env.NIXMAC_E2E_STORYBOOK_WORKFLOW_URL || ''),
+    changedFiles: changedFilesArg ? splitEnvList(readFileSync(changedFilesArg, "utf8")) : undefined,
+    staticDir: path.resolve(
+      REPO_ROOT,
+      argValue(args, "--static-dir", "apps/native/storybook-static"),
+    ),
+    baseUrl: argValue(
+      args,
+      "--base-url",
+      process.env.NIXMAC_E2E_STORYBOOK_BASE_URL || "storybook/",
+    ),
+    buildStatus: argValue(
+      args,
+      "--build-status",
+      process.env.NIXMAC_E2E_STORYBOOK_BUILD_STATUS || "",
+    ),
+    workflowUrl: argValue(
+      args,
+      "--workflow-url",
+      process.env.NIXMAC_E2E_STORYBOOK_WORKFLOW_URL || "",
+    ),
   });
-  const out = argValue(args, '--out', '');
+  const out = argValue(args, "--out", "");
   if (out) {
     const fullOut = path.resolve(REPO_ROOT, out);
     writeFileSync(fullOut, `${JSON.stringify(plan, null, 2)}\n`);
   }
-  if (args.includes('--github-output')) writeGithubOutput(plan);
+  if (args.includes("--github-output")) writeGithubOutput(plan);
   console.log(JSON.stringify(plan));
 }
 
 function runSelfTest() {
-  const fixtureRoot = path.join(process.cwd(), 'artifacts/computer-use-e2e-storybook-self-test');
-  const staticDir = path.join(fixtureRoot, 'storybook-static');
-  const componentDir = path.join(fixtureRoot, 'apps/native/src/components/widget');
-  const helperDir = path.join(fixtureRoot, 'apps/native/src/components/widget/hooks');
+  const fixtureRoot = path.join(process.cwd(), "artifacts/computer-use-e2e-storybook-self-test");
+  const staticDir = path.join(fixtureRoot, "storybook-static");
+  const componentDir = path.join(fixtureRoot, "apps/native/src/components/widget");
+  const helperDir = path.join(fixtureRoot, "apps/native/src/components/widget/hooks");
   rmSync(fixtureRoot, { recursive: true, force: true });
   mkdirSync(staticDir, { recursive: true });
   mkdirSync(componentDir, { recursive: true });
   mkdirSync(helperDir, { recursive: true });
-  writeFileSync(path.join(componentDir, 'Widget.tsx'), '');
-  writeFileSync(path.join(componentDir, 'Widget.css'), '');
-  writeFileSync(path.join(componentDir, 'Widget.stories.tsx'), '');
-  writeFileSync(path.join(componentDir, 'Detail.tsx'), '');
-  writeFileSync(path.join(componentDir, 'utils.ts'), '');
-  writeFileSync(path.join(helperDir, 'useWidget.ts'), '');
+  writeFileSync(path.join(componentDir, "Widget.tsx"), "");
+  writeFileSync(path.join(componentDir, "Widget.css"), "");
+  writeFileSync(path.join(componentDir, "Widget.stories.tsx"), "");
+  writeFileSync(path.join(componentDir, "Detail.tsx"), "");
+  writeFileSync(path.join(componentDir, "utils.ts"), "");
+  writeFileSync(path.join(helperDir, "useWidget.ts"), "");
   writeFileSync(
-    path.join(staticDir, 'index.json'),
+    path.join(staticDir, "index.json"),
     JSON.stringify({
       entries: {
-        'components-widget--default': {
-          id: 'components-widget--default',
-          type: 'story',
-          title: 'Components/Widget',
-          name: 'Default',
-          importPath: './apps/native/src/components/widget/Widget.stories.tsx',
-          componentPath: './apps/native/src/components/widget/Widget.tsx',
+        "components-widget--default": {
+          id: "components-widget--default",
+          type: "story",
+          title: "Components/Widget",
+          name: "Default",
+          importPath: "./apps/native/src/components/widget/Widget.stories.tsx",
+          componentPath: "./apps/native/src/components/widget/Widget.tsx",
         },
       },
     }),
@@ -400,78 +476,85 @@ function runSelfTest() {
   const ready = buildStorybookPreviewPlan({
     repoRoot: fixtureRoot,
     staticDir,
-    baseUrl: 'storybook/',
-    buildStatus: 'success',
+    baseUrl: "storybook/",
+    buildStatus: "success",
     changedFiles: [
-      'apps/native/src/components/widget/Widget.tsx',
-      'apps/native/src/components/widget/Widget.css',
-      'apps/native/src/components/widget/Widget.stories.tsx',
-      'README.md',
+      "apps/native/src/components/widget/Widget.tsx",
+      "apps/native/src/components/widget/Widget.css",
+      "apps/native/src/components/widget/Widget.stories.tsx",
+      "README.md",
     ],
   });
-  assert.equal(ready.status, 'ready');
+  assert.equal(ready.status, "ready");
   assert.equal(ready.uiOnly, true);
   assert.equal(ready.affectedStories.length, 3);
   assert.equal(ready.unknownFiles.length, 0);
   const advisory = buildStorybookPreviewPlan({
     repoRoot: fixtureRoot,
     staticDir,
-    baseUrl: 'storybook/',
-    buildStatus: 'success',
-    changedFiles: ['apps/native/src/components/widget/hooks/useWidget.ts'],
+    baseUrl: "storybook/",
+    buildStatus: "success",
+    changedFiles: ["apps/native/src/components/widget/hooks/useWidget.ts"],
   });
-  assert.equal(advisory.status, 'ready_with_advisories');
+  assert.equal(advisory.status, "ready_with_advisories");
   assert.equal(advisory.advisoryStoryFiles.length, 1);
   const basenameHelper = buildStorybookPreviewPlan({
     repoRoot: fixtureRoot,
     staticDir,
-    baseUrl: 'storybook/',
-    buildStatus: 'success',
-    changedFiles: ['apps/native/src/components/widget/utils.ts'],
+    baseUrl: "storybook/",
+    buildStatus: "success",
+    changedFiles: ["apps/native/src/components/widget/utils.ts"],
   });
-  assert.equal(basenameHelper.status, 'ready_with_advisories');
+  assert.equal(basenameHelper.status, "ready_with_advisories");
   assert.equal(basenameHelper.advisoryStoryFiles.length, 1);
   const outsideStory = buildStorybookPreviewPlan({
     repoRoot: fixtureRoot,
     staticDir,
-    baseUrl: 'storybook/',
-    buildStatus: 'success',
-    changedFiles: ['artifacts/computer-use-e2e-storybook-self-test/apps/native/src/components/widget/Widget.stories.tsx'],
+    baseUrl: "storybook/",
+    buildStatus: "success",
+    changedFiles: [
+      "artifacts/computer-use-e2e-storybook-self-test/apps/native/src/components/widget/Widget.stories.tsx",
+    ],
   });
   assert.equal(outsideStory.uiFiles.length, 0);
-  assert.equal(outsideStory.status, 'not_applicable');
+  assert.equal(outsideStory.status, "not_applicable");
   const missing = buildStorybookPreviewPlan({
     repoRoot: fixtureRoot,
     staticDir,
-    baseUrl: 'storybook/',
-    buildStatus: 'success',
-    changedFiles: ['apps/native/src/components/widget/Detail.tsx'],
+    baseUrl: "storybook/",
+    buildStatus: "success",
+    changedFiles: ["apps/native/src/components/widget/Detail.tsx"],
   });
-  assert.equal(missing.status, 'missing_story');
+  assert.equal(missing.status, "missing_story");
   assert.equal(missing.uiOnly, true);
   const unknown = buildStorybookPreviewPlan({
     repoRoot: fixtureRoot,
     staticDir,
-    baseUrl: 'storybook/',
-    buildStatus: 'success',
-    changedFiles: ['apps/native/src/components/widget/Widget.tsx', 'package.json'],
+    baseUrl: "storybook/",
+    buildStatus: "success",
+    changedFiles: ["apps/native/src/components/widget/Widget.tsx", "package.json"],
   });
   assert.equal(unknown.uiOnly, false);
   const native = buildStorybookPreviewPlan({
     repoRoot: fixtureRoot,
     staticDir,
-    baseUrl: 'storybook/',
-    buildStatus: 'success',
-    changedFiles: ['apps/native/src/components/widget/Widget.tsx', 'apps/native/src-tauri/src/main.rs'],
+    baseUrl: "storybook/",
+    buildStatus: "success",
+    changedFiles: [
+      "apps/native/src/components/widget/Widget.tsx",
+      "apps/native/src-tauri/src/main.rs",
+    ],
   });
   assert.equal(native.uiOnly, false);
-  const comment = renderStorybookQuickLinks(ready, { baseUrl: 'https://example.test/storybook/index.html' });
+  const comment = renderStorybookQuickLinks(ready, {
+    baseUrl: "https://example.test/storybook/index.html",
+  });
   assert.match(comment, /Storybook quick links/);
   assert.match(comment, /https:\/\/example\.test\/storybook\/index\.html\?path=\/story\//);
-  const relativeComment = renderStorybookQuickLinks(ready, { baseUrl: '' });
+  const relativeComment = renderStorybookQuickLinks(ready, { baseUrl: "" });
   assert.doesNotMatch(relativeComment, /\]\(storybook\//);
   assert.match(relativeComment, /hosted URL unavailable/);
-  console.log('Storybook preview self-test passed.');
+  console.log("Storybook preview self-test passed.");
 }
 
 if (process.argv[1] && statSync(process.argv[1]).ino === statSync(THIS_FILE).ino) {

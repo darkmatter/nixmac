@@ -5,7 +5,7 @@
 All options under `services.immich-kiosk`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.immich-kiosk.enable` | | |
 | `services.immich-kiosk.openFirewall` | | |
 | `services.immich-kiosk.package` | | |

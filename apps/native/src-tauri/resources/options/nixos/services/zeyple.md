@@ -5,7 +5,7 @@
 All options under `services.zeyple`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.zeyple.enable` | | |
 | `services.zeyple.group` | | |
 | `services.zeyple.keys` | | |

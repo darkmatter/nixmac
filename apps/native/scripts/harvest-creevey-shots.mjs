@@ -68,5 +68,5 @@ for (const story of resolved) {
 
 await writeFile(path.join(shotsDir, "manifest.json"), JSON.stringify(manifest, null, 2));
 console.log(
-  `Harvested ${manifest.length} screenshot${manifest.length === 1 ? "" : "s"} to ${path.relative(appRoot, shotsDir)}.`
+  `Harvested ${manifest.length} screenshot${manifest.length === 1 ? "" : "s"} to ${path.relative(appRoot, shotsDir)}.`,
 );

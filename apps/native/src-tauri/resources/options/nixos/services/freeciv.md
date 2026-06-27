@@ -5,7 +5,7 @@
 All options under `services.freeciv`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.freeciv.enable` | | |
 | `services.freeciv.openFirewall` | | |
 | `services.freeciv.settings` | | |

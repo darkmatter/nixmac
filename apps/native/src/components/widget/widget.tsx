@@ -12,17 +12,16 @@ import { ReportIssueButton } from "@/components/widget/feedback/report-issue-but
 import { SettingsDialog } from "@/components/widget/settings/settings-dialog";
 import { StepContentWrapper } from "@/components/widget/layout/step-content-wrapper";
 import { Stepper } from "@/components/widget/layout/stepper";
+import { OnboardingFlow } from "@/components/widget/onboarding/onboarding-flow";
+import { uiActions, useOnboarding } from "@nixmac/state";
 import {
-    BeginStep,
-    CommitStep,
-    EvolveStep,
-    FilesystemStep,
-    HistoryStep,
-    ManualCommitStep,
-    ManualEvolveStep,
-    NixSetupStep,
-    PermissionsStep,
-    SetupStep,
+  BeginStep,
+  CommitStep,
+  EvolveStep,
+  FilesystemStep,
+  HistoryStep,
+  ManualCommitStep,
+  ManualEvolveStep,
 } from "@/components/widget/steps";
 import { surfaceRecoveryReport } from "@/hooks/use-feedback-on-recovery";
 import { useGitOperations } from "@/hooks/use-git-operations";
@@ -32,7 +31,7 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { useTrayEvents } from "@/hooks/use-tray-events";
 import { markBootRenderStage, markBootStage } from "@/lib/boot-diagnostics";
 import { useEvolveMascot } from "@/hooks/use-evolve-mascot";
-import { useUiState } from "@/stores/ui-state";
+import { useUiState } from "@nixmac/state";
 import { useCurrentStep } from "@/hooks/use-current-step";
 import { UpdateBanner } from "@/components/widget/layout/update-banner";
 import { startViewModelSync } from "@/viewmodel";
@@ -79,25 +78,17 @@ export function DarwinWidget() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
-      const {
-        settingsOpen,
-        showHistory,
-        showFilesystem,
-        isProcessing,
-        isGenerating,
-        setSettingsOpen,
-        setShowHistory,
-        setShowFilesystem,
-      } = useUiState.getState();
+      const { settingsOpen, showHistory, showFilesystem, isProcessing, isGenerating } =
+        useUiState.getState();
       if (settingsOpen) {
         e.preventDefault();
-        setSettingsOpen(false);
+        uiActions.setSettingsOpen(false);
       } else if (showHistory && !(isProcessing || isGenerating)) {
         e.preventDefault();
-        setShowHistory(false);
+        uiActions.setShowHistory(false);
       } else if (showFilesystem && !(isProcessing || isGenerating)) {
         e.preventDefault();
-        setShowFilesystem(false);
+        uiActions.setShowFilesystem(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -128,7 +119,7 @@ export function DarwinWidget() {
         await checkNix();
         await getInitialStatus();
       } catch (e: unknown) {
-        useUiState.getState().setError((e as Error)?.message || String(e));
+        uiActions.setError((e as Error)?.message || String(e));
       }
 
       if (cancelled) return;
@@ -141,18 +132,18 @@ export function DarwinWidget() {
     };
   }, []);
 
+  // Onboarding (permissions → nix → flake import → customizations → inference →
+  // first build) takes over the whole window via OnboardingFlow. The first
+  // three gates come from the live backend; the post-setup steps are tracked
+  // by the onboarding store, which keeps the flow on screen until completed.
+  const onboardingActivePost = useOnboarding((s) => s.active);
+  const onboardingCompleted = useOnboarding((s) => s.completed);
+  const isOnboardingGate = step === "permissions" || step === "nix-setup" || step === "setup";
+  const showOnboarding = !onboardingCompleted && (isOnboardingGate || onboardingActivePost);
+
   // Routing mechanism
   const getActiveStepComponent = () => {
     switch (step) {
-      case "permissions":
-        return <PermissionsStep />;
-
-      case "nix-setup":
-        return <NixSetupStep />;
-
-      case "setup":
-        return <SetupStep />;
-
       case "begin":
         return <BeginStep />;
 
@@ -179,6 +170,17 @@ export function DarwinWidget() {
   // Filesystem renders edge-to-edge with its own internal scrollers, so it skips
   // the StepContentWrapper's padding & overflow handling.
   const isEdgeToEdgeStep = step === "filesystem";
+
+  if (showOnboarding) {
+    return (
+      <div className="flex min-h-[600px] min-w-[800px] h-full w-full flex-col bg-background/90 backdrop-blur-xl">
+        <OnboardingFlow />
+        <SettingsDialog />
+        <FeedbackDialog />
+        <Console />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-w-[800px] min-h-[600px]  h-full w-full flex-col bg-background/90 backdrop-blur-xl">

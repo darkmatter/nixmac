@@ -5,7 +5,7 @@
 All options under `programs.ghidra`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `programs.ghidra.enable` | | |
 | `programs.ghidra.gdb` | | |
 | `programs.ghidra.package` | | |

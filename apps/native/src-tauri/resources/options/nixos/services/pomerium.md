@@ -5,7 +5,7 @@
 All options under `services.pomerium`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.pomerium.configFile` | | |
 | `services.pomerium.enable` | | |
 | `services.pomerium.secretsFile` | | |

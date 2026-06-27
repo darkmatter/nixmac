@@ -5,7 +5,7 @@
 All options under `services.buffyboard`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.buffyboard.configFile` | | |
 | `services.buffyboard.enable` | | |
 | `services.buffyboard.extraFlags` | | |

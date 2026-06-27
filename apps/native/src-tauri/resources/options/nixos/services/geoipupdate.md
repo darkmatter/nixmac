@@ -5,7 +5,7 @@
 All options under `services.geoipupdate`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.geoipupdate.enable` | | |
 | `services.geoipupdate.interval` | | |
 | `services.geoipupdate.settings` | | |

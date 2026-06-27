@@ -5,7 +5,7 @@
 All options under `services.owncast`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.owncast.dataDir` | | |
 | `services.owncast.enable` | | |
 | `services.owncast.group` | | |

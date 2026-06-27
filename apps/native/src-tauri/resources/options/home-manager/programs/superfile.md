@@ -5,7 +5,7 @@
 All options under `programs.superfile`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.superfile.enable` | `boolean` | Whether to enable superfile - Pretty fancy and modern terminal file manager. |
 | `programs.superfile.firstUseCheck` | `boolean` | Enables the first time use popup. |
 | `programs.superfile.hotkeys` | `TOML value` | Hotkey configuration written to $XDG_CONFIG_HOME/superfile/hotkeys.toml (linux) or Library/Application Support/superfile/hotkeys.toml (darwin), See https://superfile.netlify.app/configure/custom-hotkeys/ for supported values. |

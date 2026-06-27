@@ -5,6 +5,6 @@
 All options under `services.netclient`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.netclient.enable` | | |
 | `services.netclient.package` | | |

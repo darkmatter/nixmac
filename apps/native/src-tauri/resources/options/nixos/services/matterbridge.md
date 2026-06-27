@@ -5,7 +5,7 @@
 All options under `services.matterbridge`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.matterbridge.configFile` | | |
 | `services.matterbridge.configPath` | | |
 | `services.matterbridge.enable` | | |

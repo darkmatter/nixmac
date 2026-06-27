@@ -1,11 +1,11 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import React, { useEffect } from "react";
 import { RebuildOverlayPanel } from "@/components/widget/overlays/rebuild-overlay-panel";
 import type { RebuildStatus } from "@/ipc/types";
-import { useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { REBUILD_ERROR_CODES } from "@/lib/errors";
 import type { RebuildContext, RebuildLine } from "@/types/rebuild";
 import { makeRebuildStatus } from "@/utils/test-fixtures";
+import { uiActions, viewModelActions } from "@nixmac/state";
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import React, { useEffect } from "react";
 
 type RebuildScenario = Partial<RebuildStatus> & {
   context?: RebuildContext;
@@ -17,20 +17,25 @@ type RebuildScenario = Partial<RebuildStatus> & {
  * Decorator that seeds the ViewModel rebuild slices (and the UiState rebuild
  * context) before rendering.
  */
-const withRebuildState = ({ context = "apply", lines = [], rawLines = [], ...status }: RebuildScenario) => {
+const withRebuildState = ({
+  context = "apply",
+  lines = [],
+  rawLines = [],
+  ...status
+}: RebuildScenario) => {
   return (Story: () => React.ReactNode) => {
     useEffect(() => {
-      useViewModel.setState({
+      viewModelActions.setState({
         rebuildStatus: makeRebuildStatus(status),
         rebuildLog: { lines, rawLines },
       });
-      useUiState.setState({ rebuildContext: context, rebuildPanelDismissed: false });
+      uiActions.setState({ rebuildContext: context, rebuildPanelDismissed: false });
       return () => {
-        useViewModel.setState({
+        viewModelActions.setState({
           rebuildStatus: null,
           rebuildLog: { lines: [], rawLines: [] },
         });
-        useUiState.setState({ rebuildContext: "apply", rebuildPanelDismissed: false });
+        uiActions.setState({ rebuildContext: "apply", rebuildPanelDismissed: false });
       };
     }, []);
 
@@ -59,9 +64,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 // Sample rebuild lines for different states
-const startingLines: RebuildLine[] = [
-  { id: 1, text: "🚀 Starting rebuild...", type: "info" },
-];
+const startingLines: RebuildLine[] = [{ id: 1, text: "🚀 Starting rebuild...", type: "info" }];
 
 const buildingLines: RebuildLine[] = [
   { id: 1, text: "🚀 Starting rebuild...", type: "info" },
@@ -97,36 +100,28 @@ const errorLines: RebuildLine[] = [
  * Initial state when rebuild just started
  */
 export const Starting: Story = {
-  decorators: [
-    withRebuildState({ isRunning: true, lines: startingLines }),
-  ],
+  decorators: [withRebuildState({ isRunning: true, lines: startingLines })],
 };
 
 /**
  * Building state with a few progress lines
  */
 export const Building: Story = {
-  decorators: [
-    withRebuildState({ isRunning: true, lines: buildingLines }),
-  ],
+  decorators: [withRebuildState({ isRunning: true, lines: buildingLines })],
 };
 
 /**
  * Mid-build state with more progress
  */
 export const MidBuild: Story = {
-  decorators: [
-    withRebuildState({ isRunning: true, lines: midBuildLines }),
-  ],
+  decorators: [withRebuildState({ isRunning: true, lines: midBuildLines })],
 };
 
 /**
  * Successfully completed rebuild
  */
 export const Success: Story = {
-  decorators: [
-    withRebuildState({ isRunning: false, lines: completedLines, success: true }),
-  ],
+  decorators: [withRebuildState({ isRunning: false, lines: completedLines, success: true })],
 };
 
 /**
@@ -138,9 +133,8 @@ export const InfiniteRecursionError: Story = {
       isRunning: false,
       lines: errorLines,
       success: false,
-      errorType: "infinite_recursion",
-      errorMessage:
-        "error: infinite recursion encountered at /nix/store/...-source/flake.nix:42",
+      errorType: REBUILD_ERROR_CODES.INFINITE_RECURSION,
+      errorMessage: "error: infinite recursion encountered at /nix/store/...-source/flake.nix:42",
       systemUntouched: true,
     }),
   ],
@@ -155,7 +149,7 @@ export const EvaluationError: Story = {
       isRunning: false,
       lines: errorLines,
       success: false,
-      errorType: "evaluation_error",
+      errorType: REBUILD_ERROR_CODES.EVALUATION_ERROR,
       errorMessage:
         "error: attribute 'missing-package' not found at /nix/store/...-source/configuration.nix:15",
       systemUntouched: true,
@@ -177,9 +171,8 @@ export const BuildError: Story = {
         { id: 4, text: "❌ Package build failed", type: "stderr" },
       ],
       success: false,
-      errorType: "build_error",
-      errorMessage:
-        "builder for '/nix/store/abc123-some-package.drv' failed with exit code 1",
+      errorType: REBUILD_ERROR_CODES.BUILD_ERROR,
+      errorMessage: "builder for '/nix/store/abc123-some-package.drv' failed with exit code 1",
     }),
   ],
 };
@@ -193,7 +186,7 @@ export const GenericError: Story = {
       isRunning: false,
       lines: errorLines,
       success: false,
-      errorType: "generic_error",
+      errorType: REBUILD_ERROR_CODES.GENERIC_ERROR,
       errorMessage: "An unexpected error occurred during the rebuild process",
     }),
   ],

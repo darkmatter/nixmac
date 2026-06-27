@@ -5,7 +5,7 @@
 All options under `services.navidrome`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.navidrome.enable` | | |
 | `services.navidrome.environmentFile` | | |
 | `services.navidrome.finalPackage` | | |

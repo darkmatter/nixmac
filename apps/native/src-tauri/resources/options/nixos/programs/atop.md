@@ -5,7 +5,7 @@
 All options under `programs.atop`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `programs.atop.atopRotateTimer.enable` | | |
 | `programs.atop.atopService.enable` | | |
 | `programs.atop.atopacctService.enable` | | |

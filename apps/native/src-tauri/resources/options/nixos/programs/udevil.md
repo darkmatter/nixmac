@@ -5,5 +5,5 @@
 All options under `programs.udevil`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `programs.udevil.enable` | | |

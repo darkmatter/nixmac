@@ -5,7 +5,7 @@
 All options under `services.undervolt`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.undervolt.analogioOffset` | | |
 | `services.undervolt.coreOffset` | | |
 | `services.undervolt.enable` | | |

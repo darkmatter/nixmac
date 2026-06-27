@@ -5,6 +5,6 @@
 All options under `services.keybase`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | --------- | --------------------------- |
 | `services.keybase.enable` | `boolean` | Whether to enable Keybase. |
 | `services.keybase.package` | `package` | The keybase package to use. |

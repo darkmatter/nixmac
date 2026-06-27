@@ -5,6 +5,6 @@
 All options under `programs.zoom-us`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `programs.zoom-us.enable` | | |
 | `programs.zoom-us.package` | | |

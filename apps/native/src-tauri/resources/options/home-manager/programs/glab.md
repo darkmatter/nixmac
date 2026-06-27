@@ -5,5 +5,5 @@
 All options under `programs.glab`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------- | ---- | ----------- |
 | `programs.glab.enable` | | |

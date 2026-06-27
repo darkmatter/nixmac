@@ -5,7 +5,7 @@
 All options under `programs.ripgrep-all`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.ripgrep-all.custom_adapters` | `list of (submodule)` | Custom adapters that invoke external preprocessing scripts. See <link xlink:href=“https://github.com/phiresky/ripgrep-all/wiki#custom-adapters”/>. |
 | `programs.ripgrep-all.enable` | `boolean` | Whether to enable ripgrep-all (rga). |
 | `programs.ripgrep-all.package` | `null or package` | The ripgrep-all package to use. |

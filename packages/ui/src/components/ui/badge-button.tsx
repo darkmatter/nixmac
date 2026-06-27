@@ -23,12 +23,10 @@ function BadgeButton({
       size="sm"
       className={cn(
         "h-auto rounded-full border px-2 py-1 text-xs font-medium hover:text-foreground",
-        badgeVariant === "default" &&
-          "border-border text-muted-foreground hover:bg-muted ",
+        badgeVariant === "default" && "border-border text-muted-foreground hover:bg-muted ",
         badgeVariant === "muted" &&
           "border-border/50 bg-background text-muted-foreground hover:bg-muted/50 ",
-        badgeVariant === "teal" &&
-          "border-teal-500/20 text-muted-foreground ",
+        badgeVariant === "teal" && "border-teal-500/20 text-muted-foreground ",
         className,
       )}
       {...props}

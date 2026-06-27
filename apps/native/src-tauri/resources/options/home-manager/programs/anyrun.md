@@ -5,7 +5,7 @@
 All options under `programs.anyrun`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | `programs.anyrun.config.closeOnClick` | `boolean` | Close window when a click outside the main box is received. |
 | `programs.anyrun.config.height` | `submodule` | The minimum height of the runner, the runner will expand to fit all the entries. |
 | `programs.anyrun.config.hideIcons` | `boolean` | Hide match and plugin info icons. |

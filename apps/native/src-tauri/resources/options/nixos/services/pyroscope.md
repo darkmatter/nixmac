@@ -5,7 +5,7 @@
 All options under `services.pyroscope`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.pyroscope.configFile` | | |
 | `services.pyroscope.enable` | | |
 | `services.pyroscope.extraFlags` | | |

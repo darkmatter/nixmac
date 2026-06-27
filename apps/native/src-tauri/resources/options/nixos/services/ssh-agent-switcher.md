@@ -5,6 +5,6 @@
 All options under `services.ssh-agent-switcher`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.ssh-agent-switcher.enable` | | |
 | `services.ssh-agent-switcher.package` | | |

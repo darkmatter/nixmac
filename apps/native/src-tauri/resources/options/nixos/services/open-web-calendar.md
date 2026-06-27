@@ -5,7 +5,7 @@
 All options under `services.open-web-calendar`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.open-web-calendar.calendarSettings` | | |
 | `services.open-web-calendar.domain` | | |
 | `services.open-web-calendar.enable` | | |

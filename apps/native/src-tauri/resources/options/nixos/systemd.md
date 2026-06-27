@@ -5,7 +5,7 @@
 All options under `systemd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `systemd.additionalUpstreamSystemUnits` | | |
 | `systemd.additionalUpstreamUserUnits` | | |
 | `systemd.automounts` | | |

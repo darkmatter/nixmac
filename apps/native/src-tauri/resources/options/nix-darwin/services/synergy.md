@@ -5,7 +5,7 @@
 All options under `services.synergy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.synergy.client.autoStart` | `boolean` | Whether the Synergy client should be started automatically. |
 | `services.synergy.client.enable` | `boolean` | Whether to enable the Synergy client (receive keyboard and mouse events from a Synergy server). |
 | `services.synergy.client.screenName` | `string` | Use the given name instead of the hostname to identify ourselves to the server. |

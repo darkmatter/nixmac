@@ -5,7 +5,7 @@
 All options under `services.redsocks`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.redsocks.chroot` | | |
 | `services.redsocks.enable` | | |
 | `services.redsocks.log` | | |

@@ -5,7 +5,7 @@
 All options under `programs.keepassxc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
 | `programs.keepassxc.autostart` | `boolean` | Whether to start KeePassXC automatically on login through the XDG autostart mechanism. |
 | `programs.keepassxc.enable` | `boolean` | Whether to enable KeePassXC. |
 | `programs.keepassxc.package` | `null or package` | The keepassxc package to use. |

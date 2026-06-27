@@ -5,6 +5,6 @@
 All options under `programs.kdeconnect`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `programs.kdeconnect.enable` | | |
 | `programs.kdeconnect.package` | | |

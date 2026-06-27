@@ -5,7 +5,7 @@
 All options under `services.dnscrypt-proxy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.dnscrypt-proxy.configFile` | | |
 | `services.dnscrypt-proxy.enable` | | |
 | `services.dnscrypt-proxy.package` | | |

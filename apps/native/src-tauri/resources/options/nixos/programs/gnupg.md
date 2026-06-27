@@ -5,7 +5,7 @@
 All options under `programs.gnupg`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `programs.gnupg.agent.enable` | | |
 | `programs.gnupg.agent.enableBrowserSocket` | | |
 | `programs.gnupg.agent.enableExtraSocket` | | |

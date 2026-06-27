@@ -5,6 +5,6 @@
 All options under `services.cato-client`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.cato-client.enable` | | |
 | `services.cato-client.package` | | |

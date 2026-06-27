@@ -5,7 +5,7 @@
 All options under `programs.dircolors`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------- |
 | `programs.dircolors.enable` | `boolean` | Whether to manage .dir_colors and set LS_COLORS . |
 | `programs.dircolors.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.dircolors.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |

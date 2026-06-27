@@ -5,7 +5,7 @@
 All options under `services.rshim`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.rshim.backend` | | |
 | `services.rshim.config` | | |
 | `services.rshim.device` | | |

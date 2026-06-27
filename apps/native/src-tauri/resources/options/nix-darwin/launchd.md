@@ -5,7 +5,7 @@
 All options under `launchd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `launchd.agents` | `attribute set of (submodule)` | Definition of per-user launchd agents. |
 | `launchd.daemons` | `attribute set of (submodule)` | Definition of launchd daemons. |
 | `launchd.envVariables` | `attribute set of (string or list of string)` | A set of environment variables to be set on all future processes launched by launchd in the caller’s context. The value of each variable can be either a string or a list of strings. The latter is concatenated, interspersed with colon characters. |

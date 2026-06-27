@@ -5,6 +5,6 @@
 All options under `programs.slock`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `programs.slock.enable` | | |
 | `programs.slock.package` | | |

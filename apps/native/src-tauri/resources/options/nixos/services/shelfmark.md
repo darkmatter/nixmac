@@ -5,7 +5,7 @@
 All options under `services.shelfmark`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.shelfmark.enable` | | |
 | `services.shelfmark.environment` | | |
 | `services.shelfmark.openFirewall` | | |

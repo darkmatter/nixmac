@@ -14,6 +14,11 @@
     "paths": {
       "@/components/ui/*": ["../../packages/ui/src/components/ui/*"],
       "@nixmac/ui/*": ["../../packages/ui/src/*"],
+      "@nixmac/state": ["../../packages/state/src/index.ts"],
+      "@nixmac/state/*": ["../../packages/state/src/*"],
+      "@nixmac/native/ipc/types": ["./src/ipc/types.ts"],
+      "@nixmac/native/types/feedback": ["./src/types/feedback.ts"],
+      "@nixmac/native/types/rebuild": ["./src/types/rebuild.ts"],
       "@/*": ["./src/*"]
     },
     "strict": true,

@@ -5,7 +5,7 @@
 All options under `services.megasync`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | --------- | ---------------------------------- |
 | `services.megasync.enable` | `boolean` | Whether to enable Megasync client. |
 | `services.megasync.forceWayland` | `boolean` | Force Megasync to run on wayland |
 | `services.megasync.package` | `package` | The megasync package to use. |

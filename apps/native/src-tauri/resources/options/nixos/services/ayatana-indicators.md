@@ -5,6 +5,6 @@
 All options under `services.ayatana-indicators`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.ayatana-indicators.enable` | | |
 | `services.ayatana-indicators.packages` | | |

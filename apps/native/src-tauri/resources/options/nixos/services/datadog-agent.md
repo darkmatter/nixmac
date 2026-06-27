@@ -5,7 +5,7 @@
 All options under `services.datadog-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------------- | ---- | ----------- |
 | `services.datadog-agent.apiKeyFile` | | |
 | `services.datadog-agent.checks` | | |
 | `services.datadog-agent.ddUrl` | | |

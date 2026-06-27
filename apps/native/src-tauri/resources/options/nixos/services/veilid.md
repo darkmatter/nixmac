@@ -5,7 +5,7 @@
 All options under `services.veilid`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.veilid.enable` | | |
 | `services.veilid.openFirewall` | | |
 | `services.veilid.settings` | | |

@@ -5,7 +5,7 @@
 All options under `services.resolved`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.resolved.dnsDelegates` | | |
 | `services.resolved.dnsovertls` | | |
 | `services.resolved.dnssec` | | |

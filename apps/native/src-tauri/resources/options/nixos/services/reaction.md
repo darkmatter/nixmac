@@ -5,7 +5,7 @@
 All options under `services.reaction`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.reaction.checkConfig` | | |
 | `services.reaction.enable` | | |
 | `services.reaction.loglevel` | | |

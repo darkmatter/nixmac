@@ -1,6 +1,6 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel, viewModelActions } from "@nixmac/state";
 import type { ChangeWithRichType } from "@/components/widget/utils";
 import type { FileDiffContents } from "@/ipc/types";
 import { useEffect, useState } from "react";
@@ -10,7 +10,10 @@ function ControlledFullFileDiffEditor({
   initialOpen = false,
   initialIncluded = true,
   ...props
-}: Omit<React.ComponentProps<typeof FullFileDiffEditor>, "isOpen" | "onOpenChange" | "included" | "onIncludedChange"> & {
+}: Omit<
+  React.ComponentProps<typeof FullFileDiffEditor>,
+  "isOpen" | "onOpenChange" | "included" | "onIncludedChange"
+> & {
   initialOpen?: boolean;
   initialIncluded?: boolean;
 }) {
@@ -108,17 +111,43 @@ const mockContents: FileDiffContents = {
 };
 
 const changeMap = {
-  groups: [{
-    summary: { id: 1, title: "Add CLI tools", description: "", status: "DONE", createdAt: 0 },
-    changes: [{ hash: "hash1", title: "Add ripgrep, fd, jq", description: "", id: 1, filename: "configuration.nix", diff: "", lineCount: 0, createdAt: 0, ownSummaryId: null }],
-  }],
-  singles: [{ hash: "hash2", title: "Enable flakes", description: "", id: 2, filename: "configuration.nix", diff: "", lineCount: 0, createdAt: 0, ownSummaryId: null }],
+  groups: [
+    {
+      summary: { id: 1, title: "Add CLI tools", description: "", status: "DONE", createdAt: 0 },
+      changes: [
+        {
+          hash: "hash1",
+          title: "Add ripgrep, fd, jq",
+          description: "",
+          id: 1,
+          filename: "configuration.nix",
+          diff: "",
+          lineCount: 0,
+          createdAt: 0,
+          ownSummaryId: null,
+        },
+      ],
+    },
+  ],
+  singles: [
+    {
+      hash: "hash2",
+      title: "Enable flakes",
+      description: "",
+      id: 2,
+      filename: "configuration.nix",
+      diff: "",
+      lineCount: 0,
+      createdAt: 0,
+      ownSummaryId: null,
+    },
+  ],
   unsummarizedHashes: [],
 };
 
 function WithStore({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    useViewModel.setState({ changeMap });
+    viewModelActions.setState({ changeMap });
   }, []);
   return <div className="w-[560px]">{children}</div>;
 }
@@ -187,12 +216,14 @@ export const Removed = meta.story({
     <WithStore>
       <ControlledFullFileDiffEditor
         filename="modules/home/old-shell.nix"
-        changes={[{
-          ...makeChange(99, REMOVED_DIFF),
-          filename: "modules/home/old-shell.nix",
-          shortFilename: "old-shell.nix",
-          changeType: "removed",
-        }]}
+        changes={[
+          {
+            ...makeChange(99, REMOVED_DIFF),
+            filename: "modules/home/old-shell.nix",
+            shortFilename: "old-shell.nix",
+            changeType: "removed",
+          },
+        ]}
         contents={{ original: ORIGINAL, modified: "" }}
         disableEditorRuntime={disableEditorRuntime}
         initialOpen

@@ -5,7 +5,7 @@
 All options under `services.zerobin`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.zerobin.dataDir` | | |
 | `services.zerobin.enable` | | |
 | `services.zerobin.extraConfig` | | |

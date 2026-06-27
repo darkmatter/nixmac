@@ -5,7 +5,7 @@
 All options under `services.connman`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.connman.enable` | | |
 | `services.connman.enableVPN` | | |
 | `services.connman.extraConfig` | | |

@@ -5,7 +5,7 @@
 All options under `programs.tuxclocker`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `programs.tuxclocker.enable` | | |
 | `programs.tuxclocker.enableAMD` | | |
 | `programs.tuxclocker.enabledNVIDIADevices` | | |

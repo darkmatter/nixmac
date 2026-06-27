@@ -5,7 +5,7 @@
 All options under `programs.amoco`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ------------------------- | ------------------------------------------------------- |
 | `programs.amoco.config` | `string or absolute path` | Config file for amoco as a Python configuration module. |
 | `programs.amoco.enable` | `boolean` | Whether to enable amoco. |
 | `programs.amoco.package` | `null or package` | The amoco package to use. |

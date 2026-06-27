@@ -5,7 +5,7 @@
 All options under `programs.bash`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `programs.bash.blesh.enable` | | |
 | `programs.bash.completion.enable` | | |
 | `programs.bash.completion.package` | | |

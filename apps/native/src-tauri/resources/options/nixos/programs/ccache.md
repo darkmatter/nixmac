@@ -5,7 +5,7 @@
 All options under `programs.ccache`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `programs.ccache.cacheDir` | | |
 | `programs.ccache.enable` | | |
 | `programs.ccache.group` | | |

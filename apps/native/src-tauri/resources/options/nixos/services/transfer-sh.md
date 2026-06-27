@@ -5,7 +5,7 @@
 All options under `services.transfer-sh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.transfer-sh.enable` | | |
 | `services.transfer-sh.package` | | |
 | `services.transfer-sh.provider` | | |

@@ -5,7 +5,7 @@
 All options under `services.cadvisor`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.cadvisor.enable` | | |
 | `services.cadvisor.extraOptions` | | |
 | `services.cadvisor.listenAddress` | | |

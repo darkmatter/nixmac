@@ -5,7 +5,7 @@
 All options under `services.esdm`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.esdm.cuseRandomEnable` | | |
 | `services.esdm.cuseUrandomEnable` | | |
 | `services.esdm.enable` | | |

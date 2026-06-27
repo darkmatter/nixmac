@@ -5,7 +5,7 @@
 All options under `programs.zsh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.zsh.antidote.enable` | `boolean` | Whether to enable antidote - a zsh plugin manager. |
 | `programs.zsh.antidote.package` | `null or package` | The antidote package to use. |
 | `programs.zsh.antidote.plugins` | `list of string` | List of antidote plugins. |

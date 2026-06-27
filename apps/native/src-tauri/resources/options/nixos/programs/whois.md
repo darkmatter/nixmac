@@ -5,7 +5,7 @@
 All options under `programs.whois`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `programs.whois.enable` | | |
 | `programs.whois.package` | | |
 | `programs.whois.settings` | | |

@@ -5,7 +5,7 @@
 All options under `services.cross-seed`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.cross-seed.configDir` | | |
 | `services.cross-seed.enable` | | |
 | `services.cross-seed.group` | | |

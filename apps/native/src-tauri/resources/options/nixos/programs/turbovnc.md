@@ -5,5 +5,5 @@
 All options under `programs.turbovnc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------ | ---- | ----------- |
 | `programs.turbovnc.ensureHeadlessSoftwareOpenGL` | | |

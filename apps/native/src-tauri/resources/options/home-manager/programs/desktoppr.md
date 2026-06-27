@@ -5,7 +5,7 @@
 All options under `programs.desktoppr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------- |
 | `programs.desktoppr.enable` | `boolean` | Whether to enable managing the desktop picture/wallpaper on macOS using desktoppr. |
 | `programs.desktoppr.package` | `package` | The desktoppr package to use. |
 | `programs.desktoppr.settings` | `open submodule of attribute set of anything` | The settings to set for desktoppr. |

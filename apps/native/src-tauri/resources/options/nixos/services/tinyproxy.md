@@ -5,7 +5,7 @@
 All options under `services.tinyproxy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.tinyproxy.enable` | | |
 | `services.tinyproxy.package` | | |
 | `services.tinyproxy.settings` | | |

@@ -5,7 +5,7 @@
 All options under `services.jitsi-meet`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------- | ---- | ----------- |
 | `services.jitsi-meet.caddy.enable` | | |
 | `services.jitsi-meet.config` | | |
 | `services.jitsi-meet.enable` | | |

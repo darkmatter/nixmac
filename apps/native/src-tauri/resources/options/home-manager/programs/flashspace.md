@@ -5,7 +5,7 @@
 All options under `programs.flashspace`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `programs.flashspace.enable` | | |
 | `programs.flashspace.package` | | |
 | `programs.flashspace.profiles` | | |

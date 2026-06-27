@@ -5,7 +5,7 @@
 All options under `services.goatcounter`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.goatcounter.address` | | |
 | `services.goatcounter.enable` | | |
 | `services.goatcounter.extraArgs` | | |

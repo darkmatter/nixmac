@@ -11,9 +11,7 @@ export function CommitMessage({ hash, message, originMessage }: CommitMessagePro
         {message ?? `Commit ${hash}`}
       </span>
       {originMessage && (
-        <p className="mt-0.5 text-[11px] leading-snug text-neutral-500">
-          {originMessage}
-        </p>
+        <p className="mt-0.5 text-[11px] leading-snug text-neutral-500">{originMessage}</p>
       )}
     </>
   );

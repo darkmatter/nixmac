@@ -5,7 +5,7 @@
 All options under `programs.aphorme`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.aphorme.enable` | `boolean` | Whether to enable aphorme. |
 | `programs.aphorme.package` | `null or package` | The aphorme package to use. |
 | `programs.aphorme.settings` | `TOML value` | Configuration settings for aphorme. All the available options can be found here: https://github.com/Iaphetes/aphorme_launcher?tab=readme-ov-file#configuration |

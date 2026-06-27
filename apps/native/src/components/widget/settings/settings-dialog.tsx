@@ -1,19 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { useDarwinConfig } from "@/hooks/use-darwin-config";
-import { cn } from "@/lib/utils";
-import { useViewModel } from "@/stores/view-model";
-import { useUiState, type SettingsTab } from "@/stores/ui-state";
-import { tauriAPI } from "@/ipc/api";
-import { refreshHostsSnapshot } from "@/viewmodel/preferences";
-import { useForm } from "@tanstack/react-form";
-import { Bot, FolderOpen, Key, Settings2, SlidersHorizontal, UserCircle2, Wrench } from "lucide-react";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import {
-  type ApiKeyStatus,
-  createVerifiedApiKeyHandler,
-  verifyOpenaiApiKey,
-  verifyOpenrouterApiKey,
-} from "@/lib/api-key-verification";
 import { AccountTab } from "@/components/widget/settings/account-tab";
 import { AiModelsTab } from "@/components/widget/settings/ai-models-tab";
 import { ApiKeysTab } from "@/components/widget/settings/api-keys-tab";
@@ -21,7 +6,29 @@ import { DeveloperTab } from "@/components/widget/settings/developer-tab";
 import { GeneralTab } from "@/components/widget/settings/general-tab";
 import { PreferencesTab } from "@/components/widget/settings/preferences-tab";
 import { TuningTab } from "@/components/widget/settings/tuning-tab";
-import { resolveOpenAiCompatibleProvider } from "@/lib/ai-provider-validation";
+import { useDarwinConfig } from "@/hooks/use-darwin-config";
+import { tauriAPI } from "@/ipc/api";
+import { resolveOpenAiCompatibleProvider } from "@/lib/providers/ai-provider-validation";
+import {
+  createVerifiedApiKeyHandler,
+  verifyOpenaiApiKey,
+  verifyOpenrouterApiKey,
+  type ApiKeyStatus,
+} from "@/lib/providers/api-key-verification";
+import { cn } from "@/lib/utils";
+import { refreshHostsSnapshot } from "@/viewmodel/preferences";
+import { uiActions, useUiState, useViewModel, type SettingsTab } from "@nixmac/state";
+import { useForm } from "@tanstack/react-form";
+import {
+  Bot,
+  FolderOpen,
+  Key,
+  Settings2,
+  SlidersHorizontal,
+  UserCircle2,
+  Wrench,
+} from "lucide-react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -49,11 +56,8 @@ function NavItem({ icon, label, active, onClick }: NavItemProps) {
 }
 
 export function SettingsDialog() {
-  const {
-    settingsOpen: isOpen,
-    settingsActiveTab,
-    setSettingsOpen,
-  } = useUiState();
+  const isOpen = useUiState((s) => s.settingsOpen);
+  const settingsActiveTab = useUiState((s) => s.settingsActiveTab);
   const configDir = useViewModel((s) => s.preferences?.configDir ?? "");
   const hosts = useViewModel((s) => s.hosts);
   const host = useViewModel((s) => s.preferences?.hostAttr ?? "");
@@ -84,6 +88,7 @@ export function SettingsDialog() {
     () =>
       createVerifiedApiKeyHandler({
         saveKey: async (key) => {
+          // deprecated(orpc): replace with client/orpc from @/lib/orpc
           await tauriAPI.ui.setPrefs({ openrouterApiKey: key });
         },
         setStatus: setOpenrouterKeyStatus,
@@ -96,6 +101,7 @@ export function SettingsDialog() {
     () =>
       createVerifiedApiKeyHandler({
         saveKey: async (key) => {
+          // deprecated(orpc): replace with client/orpc from @/lib/orpc
           await tauriAPI.ui.setPrefs({ openaiApiKey: key });
         },
         setStatus: setOpenaiKeyStatus,
@@ -105,16 +111,20 @@ export function SettingsDialog() {
   );
 
   const saveOllamaUrl = async (url: string) => {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.ui.setPrefs({ ollamaApiBaseUrl: url });
     // Clear cached Ollama models when the base URL changes
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.models.clearCached("ollama");
   };
 
   const saveVllmUrl = async (url: string) => {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.ui.setPrefs({ vllmApiBaseUrl: url });
   };
 
   const saveVllmKey = async (key: string) => {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.ui.setPrefs({ vllmApiKey: key });
   };
 
@@ -138,6 +148,7 @@ export function SettingsDialog() {
   useEffect(() => {
     const loadPrefs = async () => {
       try {
+        // deprecated(orpc): replace with client/orpc from @/lib/orpc
         const prefs = await tauriAPI.ui.getPrefs();
         if (prefs) {
           const summaryProvider = resolveOpenAiCompatibleProvider(prefs.summaryProvider, prefs);
@@ -151,12 +162,14 @@ export function SettingsDialog() {
           form.setFieldValue("summaryProvider", summaryProvider);
           form.setFieldValue(
             "summaryModel",
-            prefs.summaryModel ?? (summaryProvider === "openai" ? "gpt-4o-mini" : "openai/gpt-4o-mini"),
+            prefs.summaryModel ??
+            (summaryProvider === "openai" ? "gpt-4o-mini" : "openai/gpt-4o-mini"),
           );
           form.setFieldValue("evolveProvider", evolveProvider);
           form.setFieldValue(
             "evolveModel",
-            prefs.evolveModel ?? (evolveProvider === "openai" ? "gpt-4o" : "anthropic/claude-sonnet-4"),
+            prefs.evolveModel ??
+            (evolveProvider === "openai" ? "gpt-4o" : "anthropic/claude-sonnet-4"),
           );
           form.setFieldValue("sendDiagnostics", prefs.sendDiagnostics ?? false);
 
@@ -182,11 +195,11 @@ export function SettingsDialog() {
 
   return (
     <Suspense fallback={<div>loading...</div>}>
-      <div className="fixed inset-0 z-[40] flex items-center justify-center" data-tauri-no-drag>
+      <div className="fixed inset-0 z-40 flex items-center justify-center" data-tauri-no-drag>
         <button
           aria-label="Close settings"
           className="absolute inset-0 bg-black/40"
-          onClick={() => setSettingsOpen(false)}
+          onClick={() => uiActions.setSettingsOpen(false)}
           type="button"
         />
         <div className="relative z-10 flex h-[460px] w-[620px] max-w-[90vw] overflow-hidden rounded-xl border border-border bg-card/95 shadow-2xl backdrop-blur-xl">
@@ -245,7 +258,7 @@ export function SettingsDialog() {
             <div className="mt-auto">
               <Button
                 className="w-full"
-                onClick={() => setSettingsOpen(false)}
+                onClick={() => uiActions.setSettingsOpen(false)}
                 size="sm"
                 variant="secondary"
               >
@@ -267,7 +280,7 @@ export function SettingsDialog() {
                     hosts={hosts}
                     saveHost={saveHost}
                     sendDiagnosticsField={sendDiagnosticsField}
-                    setSettingsOpen={setSettingsOpen}
+                    setSettingsOpen={uiActions.setSettingsOpen}
                   />
                 )}
               </form.Field>

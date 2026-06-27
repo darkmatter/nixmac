@@ -5,7 +5,7 @@
 All options under `services.temporal`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.temporal.dataDir` | | |
 | `services.temporal.enable` | | |
 | `services.temporal.group` | | |

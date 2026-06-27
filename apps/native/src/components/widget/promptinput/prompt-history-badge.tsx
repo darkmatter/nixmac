@@ -11,28 +11,26 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { uiActions, useUiState, useViewModel } from "@nixmac/state";
 import { ClockIcon } from "lucide-react";
 import { useState } from "react";
 
 export function PromptHistoryBadge() {
   const history = useViewModel((s) => s.promptHistory);
   const evolvePrompt = useUiState((s) => s.evolvePrompt);
-  const setEvolvePrompt = useUiState((s) => s.setEvolvePrompt);
-  const isProcessing = useUiState((s) => s.isProcessing);
+    const isProcessing = useUiState((s) => s.isProcessing);
   const processingAction = useUiState((s) => s.processingAction);
 
   const disabled = isProcessing && processingAction === "evolve";
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
-  if (!(history?.length)) {
+  if (!history?.length) {
     return null;
   }
 
   const handleSelect = (prompt: string) => {
-    setEvolvePrompt(prompt);
+    uiActions.setEvolvePrompt(prompt);
     setOpen(false);
     setSearchValue("");
   };
@@ -73,10 +71,7 @@ export function PromptHistoryBadge() {
                     key={prompt}
                     value={prompt}
                     onSelect={() => handleSelect(prompt)}
-                    className={cn(
-                      "cursor-pointer",
-                      evolvePrompt === prompt && "bg-teal-500/10",
-                    )}
+                    className={cn("cursor-pointer", evolvePrompt === prompt && "bg-teal-500/10")}
                   >
                     <span className="line-clamp-2 text-sm">{prompt}</span>
                   </CommandItem>

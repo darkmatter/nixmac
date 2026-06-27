@@ -5,7 +5,7 @@
 All options under `services.iio-niri`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.iio-niri.enable` | | |
 | `services.iio-niri.extraArgs` | | |
 | `services.iio-niri.niriUnit` | | |

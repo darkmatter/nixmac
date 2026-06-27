@@ -5,7 +5,7 @@
 All options under `services.frr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.frr.babel.config` | | |
 | `services.frr.babel.configFile` | | |
 | `services.frr.babel.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.homer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.homer.enable` | | |
 | `services.homer.package` | | |
 | `services.homer.settings` | | |

@@ -107,4 +107,9 @@ mod tests {
         // silently goes empty.
         assert!(find_meta("EvolutionLimits").is_some());
     }
+
+    #[test]
+    fn nixmac_env_settings_is_registered_via_inventory() {
+        assert!(find_meta("NixmacEnvSettings").is_some());
+    }
 }

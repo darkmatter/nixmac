@@ -5,6 +5,6 @@
 All options under `services.todesk`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.todesk.enable` | | |
 | `services.todesk.package` | | |

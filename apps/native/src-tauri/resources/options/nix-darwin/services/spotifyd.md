@@ -5,7 +5,7 @@
 All options under `services.spotifyd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `services.spotifyd.enable` | `boolean` | Whether to enable the spotifyd service. |
 | `services.spotifyd.package` | `absolute path` | The spotifyd package to use. |
 | `services.spotifyd.settings` | `null or TOML value` | Configuration for spotifyd, see https://spotifyd.github.io/spotifyd/config/File.html for supported values. |

@@ -5,7 +5,7 @@
 All options under `services.lanraragi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.lanraragi.enable` | | |
 | `services.lanraragi.openFirewall` | | |
 | `services.lanraragi.package` | | |

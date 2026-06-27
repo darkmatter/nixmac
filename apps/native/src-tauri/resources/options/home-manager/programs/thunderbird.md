@@ -5,7 +5,7 @@
 All options under `programs.thunderbird`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
 | `programs.thunderbird.darwinSetupWarning` | | |
 | `programs.thunderbird.enable` | `boolean` | Whether to enable Thunderbird. |
 | `programs.thunderbird.finalPackage` | | |

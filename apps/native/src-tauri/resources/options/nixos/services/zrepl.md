@@ -5,7 +5,7 @@
 All options under `services.zrepl`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.zrepl.enable` | | |
 | `services.zrepl.package` | | |
 | `services.zrepl.settings` | | |

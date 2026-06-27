@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-import assert from 'node:assert/strict';
-import { spawn, spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import http from 'node:http';
-import os from 'node:os';
-import path from 'node:path';
-import process from 'node:process';
-import { fileURLToPath } from 'node:url';
-import { scenarioLabels as sharedScenarioLabels } from './scenario-catalog.mjs';
+import assert from "node:assert/strict";
+import { spawn, spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import http from "node:http";
+import os from "node:os";
+import path from "node:path";
+import process from "node:process";
+import { fileURLToPath } from "node:url";
+import { scenarioLabels as sharedScenarioLabels } from "./scenario-catalog.mjs";
 import {
   access,
   cp,
@@ -19,7 +19,7 @@ import {
   rm,
   stat,
   writeFile,
-} from 'node:fs/promises';
+} from "node:fs/promises";
 import {
   DEFAULT_PEEKABOO_SCENARIO,
   applyPeekabooResultToState,
@@ -27,201 +27,201 @@ import {
   isDestructivePeekabooScenario,
   peekabooRunnerSelfTest,
   runPeekabooScenario,
-} from './peekaboo-runner.mjs';
-import { shellQuote } from './remote-stage.mjs';
+} from "./peekaboo-runner.mjs";
+import { shellQuote } from "./remote-stage.mjs";
 
 const THIS_FILE = fileURLToPath(import.meta.url);
 const TOOL_DIR = path.dirname(THIS_FILE);
-const REPO_ROOT = path.resolve(TOOL_DIR, '../../..');
+const REPO_ROOT = path.resolve(TOOL_DIR, "../../..");
 const APP_SUPPORT_DIR = path.join(
   os.homedir(),
-  'Library',
-  'Application Support',
-  'com.darkmatter.nixmac',
+  "Library",
+  "Application Support",
+  "com.darkmatter.nixmac",
 );
-const ARTIFACT_ROOT = path.join(REPO_ROOT, 'artifacts', 'computer-use-local');
-const REAL_ARTIFACT_ROOT = path.join(REPO_ROOT, 'artifacts', 'computer-use-real');
+const ARTIFACT_ROOT = path.join(REPO_ROOT, "artifacts", "computer-use-local");
+const REAL_ARTIFACT_ROOT = path.join(REPO_ROOT, "artifacts", "computer-use-real");
 const BACKUP_ROOT = path.join(
   os.homedir(),
-  'Library',
-  'Caches',
-  'com.darkmatter.nixmac',
-  'computer-use-e2e-backups',
+  "Library",
+  "Caches",
+  "com.darkmatter.nixmac",
+  "computer-use-e2e-backups",
 );
 const REAL_BACKUP_ROOT = path.join(
   os.homedir(),
-  'Library',
-  'Caches',
-  'com.darkmatter.nixmac',
-  'computer-use-real-backups',
+  "Library",
+  "Caches",
+  "com.darkmatter.nixmac",
+  "computer-use-real-backups",
 );
 const PEEKABOO_BACKUP_ROOT = path.join(
   os.homedir(),
-  'Library',
-  'Caches',
-  'com.darkmatter.nixmac-e2e',
-  'peekaboo-e2e-backups',
+  "Library",
+  "Caches",
+  "com.darkmatter.nixmac-e2e",
+  "peekaboo-e2e-backups",
 );
-const TEMPLATE_DIR = path.join(REPO_ROOT, 'apps/native/templates/nix-darwin-determinate');
-const TEST_DATA_DIR = path.join(REPO_ROOT, 'apps/native/e2e-tauri/tests/data');
-const DEFAULT_FIXTURE = 'add-font.jsonl';
+const TEMPLATE_DIR = path.join(REPO_ROOT, "apps/native/templates/nix-darwin-determinate");
+const TEST_DATA_DIR = path.join(REPO_ROOT, "apps/native/e2e-tauri/tests/data");
+const DEFAULT_FIXTURE = "add-font.jsonl";
 const DETERMINISTIC_APP_COMMAND = [
-  'cd apps/native',
-  'VITE_NIXMAC_SKIP_PERMISSIONS=true VITE_NIXMAC_E2E_MODE=true ./node_modules/.bin/tauri build --debug --bundles app --no-sign --config src-tauri/tauri.conf.dev.json',
-  'open -n ../../target/debug/bundle/macos/nixmac.app',
-].join(' && ');
-const REAL_APP_PATH = process.env.NIXMAC_COMPUTER_USE_APP ?? '/Applications/nixmac.app';
+  "cd apps/native",
+  "NIXMAC_ENV=e2e ./node_modules/.bin/tauri build --debug --bundles app --no-sign --config src-tauri/tauri.conf.dev.json",
+  "open -n ../../target/debug/bundle/macos/nixmac.app",
+].join(" && ");
+const REAL_APP_PATH = process.env.NIXMAC_COMPUTER_USE_APP ?? "/Applications/nixmac.app";
 const REAL_APP_COMMAND = `open -n ${REAL_APP_PATH}`;
-const SETTINGS_FILE = path.join(APP_SUPPORT_DIR, 'settings.json');
-const CURRENT_RUN_FILE = path.join(ARTIFACT_ROOT, '.current-run');
-const REAL_CURRENT_RUN_FILE = path.join(REAL_ARTIFACT_ROOT, '.current-run');
-const COVERAGE_MANIFEST_PATH = path.join(TOOL_DIR, 'coverage-manifest.json');
+const SETTINGS_FILE = path.join(APP_SUPPORT_DIR, "settings.json");
+const CURRENT_RUN_FILE = path.join(ARTIFACT_ROOT, ".current-run");
+const REAL_CURRENT_RUN_FILE = path.join(REAL_ARTIFACT_ROOT, ".current-run");
+const COVERAGE_MANIFEST_PATH = path.join(TOOL_DIR, "coverage-manifest.json");
 const PEEKABOO_PR_ENV_KEYS = [
-  'GITHUB_EVENT_NAME',
-  'GITHUB_PR_NUMBER',
-  'GITHUB_HEAD_REF',
-  'GITHUB_BASE_REF',
-  'NIXMAC_E2E_PR_EVENT',
-  'NIXMAC_E2E_PR_NUMBER',
-  'NIXMAC_E2E_PR_TITLE',
-  'NIXMAC_E2E_PR_HEAD_REF',
-  'NIXMAC_E2E_PR_BASE_REF',
-  'NIXMAC_E2E_PR_CHANGED_FILES',
+  "GITHUB_EVENT_NAME",
+  "GITHUB_PR_NUMBER",
+  "GITHUB_HEAD_REF",
+  "GITHUB_BASE_REF",
+  "NIXMAC_E2E_PR_EVENT",
+  "NIXMAC_E2E_PR_NUMBER",
+  "NIXMAC_E2E_PR_TITLE",
+  "NIXMAC_E2E_PR_HEAD_REF",
+  "NIXMAC_E2E_PR_BASE_REF",
+  "NIXMAC_E2E_PR_CHANGED_FILES",
 ];
 
 const scenarioLabels = {
-  launch: 'App launches and first screen is usable',
-  settings: 'Settings safe tabs render: General, AI Models, Preferences',
-  history: 'My History opens and renders',
-  console: 'Console opens and closes',
-  feedback: 'Feedback / report dialogs open and cancel without submission',
-  suggestion: 'Home suggestion card is clickable',
+  launch: "App launches and first screen is usable",
+  settings: "Settings safe tabs render: General, AI Models, Preferences",
+  history: "My History opens and renders",
+  console: "Console opens and closes",
+  feedback: "Feedback / report dialogs open and cancel without submission",
+  suggestion: "Home suggestion card is clickable",
   suggestionCards: sharedScenarioLabels.suggestionCards,
-  descriptor: 'Typed intent reaches review',
-  updateBanner: 'Update banner does not block the main workflow',
-  settingsGeneral: 'Settings General tab visibly renders',
-  settingsAIModels: 'Settings AI Models tab visibly renders',
-  settingsAPIKeys: 'Settings API Keys tab visibly renders',
-  settingsPreferences: 'Settings Preferences tab visibly renders',
-  reportIssue: 'Report Issue opens and can be cancelled',
-  typedIntent: 'A typed real intent can be submitted',
-  review: 'Real provider workflow reaches Review',
-  summary: 'Summary describes the typed intent',
-  diff: 'Diff shows an acceptable config change',
-  buildCheck: 'Build check completes or fails visibly',
-  buildBoundary: 'Build & Test confirmation boundary appears and is cancelled',
+  descriptor: "Typed intent reaches review",
+  updateBanner: "Update banner does not block the main workflow",
+  settingsGeneral: "Settings General tab visibly renders",
+  settingsAIModels: "Settings AI Models tab visibly renders",
+  settingsAPIKeys: "Settings API Keys tab visibly renders",
+  settingsPreferences: "Settings Preferences tab visibly renders",
+  reportIssue: "Report Issue opens and can be cancelled",
+  typedIntent: "A typed real intent can be submitted",
+  review: "Real provider workflow reaches Review",
+  summary: "Summary describes the typed intent",
+  diff: "Diff shows an acceptable config change",
+  buildCheck: "Build check completes or fails visibly",
+  buildBoundary: "Build & Test confirmation boundary appears and is cancelled",
   customizationSaveRollback: sharedScenarioLabels.customizationSaveRollback,
   homebrewSaveRollback: sharedScenarioLabels.homebrewSaveRollback,
-  saveFlow: 'Step 3 Save / Keep changes persists a change',
-  rollbackCleanup: 'Rollback cleanup returns disposable config to clean state',
-  discard: 'Discard confirmation and return-to-start',
-  visualCoverage: 'Core UX/UI surfaces are captured and inspectable',
-  visualProofQuality: 'Scenario results include inspectable visual/text evidence',
+  saveFlow: "Step 3 Save / Keep changes persists a change",
+  rollbackCleanup: "Rollback cleanup returns disposable config to clean state",
+  discard: "Discard confirmation and return-to-start",
+  visualCoverage: "Core UX/UI surfaces are captured and inspectable",
+  visualProofQuality: "Scenario results include inspectable visual/text evidence",
   mainCoverageFreshness: sharedScenarioLabels.mainCoverageFreshness,
   prSpecificCoverage: sharedScenarioLabels.prSpecificCoverage,
   storybookPreview: sharedScenarioLabels.storybookPreview,
   reportInspection: sharedScenarioLabels.reportInspection,
-  peekabooDescriptorPromptSmoke: 'Peekaboo descriptor prompt smoke',
-  peekabooCoreProductProof: 'Peekaboo core Product Proof wrapper',
-  peekabooSupportDialogsSmoke: 'Peekaboo support dialogs smoke',
-  peekabooConsoleSmoke: 'Peekaboo Console smoke',
-  peekabooHomebrewSaveRollbackSmoke: 'Peekaboo Homebrew save/rollback smoke',
-  peekabooCustomizationSaveRollbackSmoke: 'Peekaboo customization save/rollback smoke',
-  peekabooCoreFixture: 'Peekaboo core fixture setup',
-  peekabooCoreLaunch: 'Peekaboo core app shell',
-  peekabooCoreUpdateBanner: 'Peekaboo update banner non-blocking state',
-  peekabooCoreSettingsGeneral: 'Peekaboo Settings General',
-  peekabooCoreSettingsAIModels: 'Peekaboo Settings AI Models',
-  peekabooCoreSettingsAPIKeys: 'Peekaboo Settings API Keys redaction proof',
-  peekabooCoreSettingsPreferences: 'Peekaboo Settings Preferences',
-  peekabooCoreHistory: 'Peekaboo History surface',
-  peekabooCoreConsole: 'Peekaboo Console text surface',
-  peekabooCoreFeedback: 'Peekaboo Feedback dialog',
-  peekabooCoreReportIssue: 'Peekaboo Report Issue classification',
-  peekabooCoreSuggestionCards: 'Peekaboo suggestion card prompt fill',
-  peekabooCoreTypedIntent: 'Peekaboo typed intent',
-  peekabooCoreProviderValidation: 'Peekaboo local provider-validation boundary',
-  peekabooCoreVisualProofQuality: 'Peekaboo core visual/text proof quality',
-  peekabooHomebrewSaveRollback: 'Peekaboo Homebrew save + rollback',
-  peekabooCustomizationSaveRollback: 'Peekaboo customization save + rollback',
-  peekabooProviderEvolveFullSmoke: 'Peekaboo provider-backed evolve smoke',
-  peekabooProviderDiscardSmoke: 'Peekaboo provider discard smoke',
-  peekabooProviderFixture: 'Peekaboo provider fixture setup',
-  peekabooProviderLaunch: 'Peekaboo provider app shell',
-  peekabooProviderTypedIntent: 'Peekaboo provider typed intent',
-  peekabooProviderReview: 'Peekaboo provider Review proof',
-  peekabooProviderBuildBoundary: 'Peekaboo provider Build & Test boundary',
-  peekabooProviderSaveFlow: 'Peekaboo provider Save flow',
-  peekabooProviderRollbackCleanup: 'Peekaboo provider rollback cleanup',
-  peekabooProviderAudit: 'Peekaboo provider request audit',
-  peekabooProviderDiscard: 'Peekaboo provider Discard proof',
-  peekabooReportInspection: 'Peekaboo report inspection',
-  peekabooNixInstall: 'Peekaboo Nix install flow',
+  peekabooDescriptorPromptSmoke: "Peekaboo descriptor prompt smoke",
+  peekabooCoreProductProof: "Peekaboo core Product Proof wrapper",
+  peekabooSupportDialogsSmoke: "Peekaboo support dialogs smoke",
+  peekabooConsoleSmoke: "Peekaboo Console smoke",
+  peekabooHomebrewSaveRollbackSmoke: "Peekaboo Homebrew save/rollback smoke",
+  peekabooCustomizationSaveRollbackSmoke: "Peekaboo customization save/rollback smoke",
+  peekabooCoreFixture: "Peekaboo core fixture setup",
+  peekabooCoreLaunch: "Peekaboo core app shell",
+  peekabooCoreUpdateBanner: "Peekaboo update banner non-blocking state",
+  peekabooCoreSettingsGeneral: "Peekaboo Settings General",
+  peekabooCoreSettingsAIModels: "Peekaboo Settings AI Models",
+  peekabooCoreSettingsAPIKeys: "Peekaboo Settings API Keys redaction proof",
+  peekabooCoreSettingsPreferences: "Peekaboo Settings Preferences",
+  peekabooCoreHistory: "Peekaboo History surface",
+  peekabooCoreConsole: "Peekaboo Console text surface",
+  peekabooCoreFeedback: "Peekaboo Feedback dialog",
+  peekabooCoreReportIssue: "Peekaboo Report Issue classification",
+  peekabooCoreSuggestionCards: "Peekaboo suggestion card prompt fill",
+  peekabooCoreTypedIntent: "Peekaboo typed intent",
+  peekabooCoreProviderValidation: "Peekaboo local provider-validation boundary",
+  peekabooCoreVisualProofQuality: "Peekaboo core visual/text proof quality",
+  peekabooHomebrewSaveRollback: "Peekaboo Homebrew save + rollback",
+  peekabooCustomizationSaveRollback: "Peekaboo customization save + rollback",
+  peekabooProviderEvolveFullSmoke: "Peekaboo provider-backed evolve smoke",
+  peekabooProviderDiscardSmoke: "Peekaboo provider discard smoke",
+  peekabooProviderFixture: "Peekaboo provider fixture setup",
+  peekabooProviderLaunch: "Peekaboo provider app shell",
+  peekabooProviderTypedIntent: "Peekaboo provider typed intent",
+  peekabooProviderReview: "Peekaboo provider Review proof",
+  peekabooProviderBuildBoundary: "Peekaboo provider Build & Test boundary",
+  peekabooProviderSaveFlow: "Peekaboo provider Save flow",
+  peekabooProviderRollbackCleanup: "Peekaboo provider rollback cleanup",
+  peekabooProviderAudit: "Peekaboo provider request audit",
+  peekabooProviderDiscard: "Peekaboo provider Discard proof",
+  peekabooReportInspection: "Peekaboo report inspection",
+  peekabooNixInstall: "Peekaboo Nix install flow",
 };
 const PEEKABOO_SCENARIO_TO_REPORT_KEY = Object.freeze({
-  macos_descriptor_prompt_smoke: 'peekabooDescriptorPromptSmoke',
-  macos_core_product_proof: 'peekabooCoreProductProof',
-  macos_support_dialogs_smoke: 'peekabooSupportDialogsSmoke',
-  macos_console_smoke: 'peekabooConsoleSmoke',
-  macos_homebrew_save_rollback_smoke: 'peekabooHomebrewSaveRollbackSmoke',
-  macos_customization_save_rollback_smoke: 'peekabooCustomizationSaveRollbackSmoke',
-  macos_provider_evolve_full_smoke: 'peekabooProviderEvolveFullSmoke',
-  macos_provider_discard_smoke: 'peekabooProviderDiscardSmoke',
-  'nix-install': 'peekabooNixInstall',
+  macos_descriptor_prompt_smoke: "peekabooDescriptorPromptSmoke",
+  macos_core_product_proof: "peekabooCoreProductProof",
+  macos_support_dialogs_smoke: "peekabooSupportDialogsSmoke",
+  macos_console_smoke: "peekabooConsoleSmoke",
+  macos_homebrew_save_rollback_smoke: "peekabooHomebrewSaveRollbackSmoke",
+  macos_customization_save_rollback_smoke: "peekabooCustomizationSaveRollbackSmoke",
+  macos_provider_evolve_full_smoke: "peekabooProviderEvolveFullSmoke",
+  macos_provider_discard_smoke: "peekabooProviderDiscardSmoke",
+  "nix-install": "peekabooNixInstall",
 });
 const LOCAL_ONLY_SCENARIO_KEYS = new Set([
-  'settings',
-  'suggestion',
-  'descriptor',
-  'buildCheck',
-  'peekabooDescriptorPromptSmoke',
-  'peekabooCoreProductProof',
-  'peekabooSupportDialogsSmoke',
-  'peekabooConsoleSmoke',
-  'peekabooHomebrewSaveRollbackSmoke',
-  'peekabooCustomizationSaveRollbackSmoke',
-  'peekabooCoreFixture',
-  'peekabooCoreLaunch',
-  'peekabooCoreUpdateBanner',
-  'peekabooCoreSettingsGeneral',
-  'peekabooCoreSettingsAIModels',
-  'peekabooCoreSettingsAPIKeys',
-  'peekabooCoreSettingsPreferences',
-  'peekabooCoreHistory',
-  'peekabooCoreConsole',
-  'peekabooCoreFeedback',
-  'peekabooCoreReportIssue',
-  'peekabooCoreSuggestionCards',
-  'peekabooCoreTypedIntent',
-  'peekabooCoreProviderValidation',
-  'peekabooCoreVisualProofQuality',
-  'peekabooHomebrewSaveRollback',
-  'peekabooCustomizationSaveRollback',
-  'peekabooProviderEvolveFullSmoke',
-  'peekabooProviderFixture',
-  'peekabooProviderLaunch',
-  'peekabooProviderTypedIntent',
-  'peekabooProviderReview',
-  'peekabooProviderBuildBoundary',
-  'peekabooProviderSaveFlow',
-  'peekabooProviderRollbackCleanup',
-  'peekabooProviderAudit',
-  'peekabooProviderDiscardSmoke',
-  'peekabooProviderDiscard',
-  'peekabooReportInspection',
-  'peekabooNixInstall',
+  "settings",
+  "suggestion",
+  "descriptor",
+  "buildCheck",
+  "peekabooDescriptorPromptSmoke",
+  "peekabooCoreProductProof",
+  "peekabooSupportDialogsSmoke",
+  "peekabooConsoleSmoke",
+  "peekabooHomebrewSaveRollbackSmoke",
+  "peekabooCustomizationSaveRollbackSmoke",
+  "peekabooCoreFixture",
+  "peekabooCoreLaunch",
+  "peekabooCoreUpdateBanner",
+  "peekabooCoreSettingsGeneral",
+  "peekabooCoreSettingsAIModels",
+  "peekabooCoreSettingsAPIKeys",
+  "peekabooCoreSettingsPreferences",
+  "peekabooCoreHistory",
+  "peekabooCoreConsole",
+  "peekabooCoreFeedback",
+  "peekabooCoreReportIssue",
+  "peekabooCoreSuggestionCards",
+  "peekabooCoreTypedIntent",
+  "peekabooCoreProviderValidation",
+  "peekabooCoreVisualProofQuality",
+  "peekabooHomebrewSaveRollback",
+  "peekabooCustomizationSaveRollback",
+  "peekabooProviderEvolveFullSmoke",
+  "peekabooProviderFixture",
+  "peekabooProviderLaunch",
+  "peekabooProviderTypedIntent",
+  "peekabooProviderReview",
+  "peekabooProviderBuildBoundary",
+  "peekabooProviderSaveFlow",
+  "peekabooProviderRollbackCleanup",
+  "peekabooProviderAudit",
+  "peekabooProviderDiscardSmoke",
+  "peekabooProviderDiscard",
+  "peekabooReportInspection",
+  "peekabooNixInstall",
 ]);
 
-function splitPrEnvList(value = '') {
+function splitPrEnvList(value = "") {
   return String(value)
-    .split('\n')
+    .split("\n")
     .map((entry) => entry.trim())
     .filter(Boolean);
 }
 
 function loadCoverageManifest() {
   try {
-    return JSON.parse(readFileSync(COVERAGE_MANIFEST_PATH, 'utf8'));
+    return JSON.parse(readFileSync(COVERAGE_MANIFEST_PATH, "utf8"));
   } catch (error) {
     return {
       surfaces: [],
@@ -237,14 +237,16 @@ function matchesAnyPattern(value, patterns = []) {
 }
 
 function sourcePrefixMatches(file, sourcePrefix) {
-  const normalizedPrefix = String(sourcePrefix ?? '').replaceAll(path.sep, '/');
+  const normalizedPrefix = String(sourcePrefix ?? "").replaceAll(path.sep, "/");
   if (!normalizedPrefix) return false;
-  if (normalizedPrefix.endsWith('/')) return file.startsWith(normalizedPrefix);
+  if (normalizedPrefix.endsWith("/")) return file.startsWith(normalizedPrefix);
   return file === normalizedPrefix || file.startsWith(`${normalizedPrefix}/`);
 }
 
 function changedFileMatchesSurface(file, surface) {
-  return (surface.sourcePrefixes ?? []).some((sourcePrefix) => sourcePrefixMatches(file, sourcePrefix));
+  return (surface.sourcePrefixes ?? []).some((sourcePrefix) =>
+    sourcePrefixMatches(file, sourcePrefix),
+  );
 }
 
 function isLikelyUserVisiblePrFile(file, manifest) {
@@ -258,7 +260,8 @@ function isLikelyUserVisiblePrFile(file, manifest) {
 
 function scenarioSuggestionForFile(file, matchedSurfaces = []) {
   const waiver = matchedSurfaces.find((surface) => surface.waiver)?.waiver;
-  if (waiver?.exitCriteria) return `Add a dedicated Peekaboo scenario for ${file}: ${waiver.exitCriteria}`;
+  if (waiver?.exitCriteria)
+    return `Add a dedicated Peekaboo scenario for ${file}: ${waiver.exitCriteria}`;
   if (/^tests\/e2e\/|^\.github\/workflows\/peekaboo-e2e\.yml/.test(file)) {
     return `Map ${file} to reportInspection or visualProofQuality and keep the workflow/report contract self-test covering the changed behavior.`;
   }
@@ -267,7 +270,7 @@ function scenarioSuggestionForFile(file, matchedSurfaces = []) {
 
 function buildPeekabooPrFocus(env = process.env) {
   const manifest = loadCoverageManifest();
-  const changedFiles = splitPrEnvList(env.NIXMAC_E2E_PR_CHANGED_FILES || '');
+  const changedFiles = splitPrEnvList(env.NIXMAC_E2E_PR_CHANGED_FILES || "");
   const scenarioKeys = new Set();
   const userVisibleFiles = [];
   const unmappedUserVisibleFiles = [];
@@ -275,16 +278,20 @@ function buildPeekabooPrFocus(env = process.env) {
   const matchedSurfaceRows = [];
 
   for (const file of changedFiles) {
-    const matchedSurfaces = (manifest.surfaces ?? []).filter((surface) => changedFileMatchesSurface(file, surface));
-    const mappedKeys = matchedSurfaces.flatMap((surface) => surface.scenarioKeys ?? []).filter(Boolean);
+    const matchedSurfaces = (manifest.surfaces ?? []).filter((surface) =>
+      changedFileMatchesSurface(file, surface),
+    );
+    const mappedKeys = matchedSurfaces
+      .flatMap((surface) => surface.scenarioKeys ?? [])
+      .filter(Boolean);
     for (const key of mappedKeys) scenarioKeys.add(key);
     if (/^tests\/e2e\/|^\.github\/workflows\/peekaboo-e2e\.yml/.test(file)) {
-      scenarioKeys.add('visualProofQuality');
-      scenarioKeys.add('reportInspection');
+      scenarioKeys.add("visualProofQuality");
+      scenarioKeys.add("reportInspection");
     }
     if (/^apps\/native\/src\/[^/]+\.(?:css|ts|tsx)$/i.test(file)) {
-      scenarioKeys.add('launch');
-      scenarioKeys.add('visualCoverage');
+      scenarioKeys.add("launch");
+      scenarioKeys.add("visualCoverage");
     }
     if (!isLikelyUserVisiblePrFile(file, manifest)) continue;
     userVisibleFiles.push(file);
@@ -301,19 +308,25 @@ function buildPeekabooPrFocus(env = process.env) {
         })),
       );
     }
-    const nonClaimingOnly = matchedSurfaces.some((surface) => surface.coverageDisposition === 'non-claiming');
-    if (!mappedKeys.length && !nonClaimingOnly && !/^tests\/e2e\/|^\.github\/workflows\/peekaboo-e2e\.yml/.test(file)) {
+    const nonClaimingOnly = matchedSurfaces.some(
+      (surface) => surface.coverageDisposition === "non-claiming",
+    );
+    if (
+      !mappedKeys.length &&
+      !nonClaimingOnly &&
+      !/^tests\/e2e\/|^\.github\/workflows\/peekaboo-e2e\.yml/.test(file)
+    ) {
       unmappedUserVisibleFiles.push(file);
       scenarioSuggestions.push(scenarioSuggestionForFile(file, matchedSurfaces));
     }
   }
 
   return {
-    eventName: env.GITHUB_EVENT_NAME || env.NIXMAC_E2E_PR_EVENT || '',
-    number: env.NIXMAC_E2E_PR_NUMBER || env.GITHUB_PR_NUMBER || '',
-    title: env.NIXMAC_E2E_PR_TITLE || '',
-    headRef: env.NIXMAC_E2E_PR_HEAD_REF || env.GITHUB_HEAD_REF || '',
-    baseRef: env.NIXMAC_E2E_PR_BASE_REF || env.GITHUB_BASE_REF || '',
+    eventName: env.GITHUB_EVENT_NAME || env.NIXMAC_E2E_PR_EVENT || "",
+    number: env.NIXMAC_E2E_PR_NUMBER || env.GITHUB_PR_NUMBER || "",
+    title: env.NIXMAC_E2E_PR_TITLE || "",
+    headRef: env.NIXMAC_E2E_PR_HEAD_REF || env.GITHUB_HEAD_REF || "",
+    baseRef: env.NIXMAC_E2E_PR_BASE_REF || env.GITHUB_BASE_REF || "",
     changedFiles,
     userVisibleFiles,
     scenarioKeys: [...scenarioKeys],
@@ -321,64 +334,66 @@ function buildPeekabooPrFocus(env = process.env) {
     unmappedUserVisibleFiles,
     scenarioSuggestions: [...new Set(scenarioSuggestions)],
     manifestLoadError: manifest.loadError ?? null,
-    configured: Boolean(env.NIXMAC_E2E_PR_NUMBER || env.GITHUB_PR_NUMBER || env.GITHUB_EVENT_NAME === 'pull_request'),
+    configured: Boolean(
+      env.NIXMAC_E2E_PR_NUMBER || env.GITHUB_PR_NUMBER || env.GITHUB_EVENT_NAME === "pull_request",
+    ),
   };
 }
 const PR75_COMPUTER_USE_BASELINE = Object.freeze({
-  source: 'artifacts/pr-75-computer-use-baseline/index.html',
+  source: "artifacts/pr-75-computer-use-baseline/index.html",
   rawPassedClaimCount: 27,
   requiredKeys: [
-    'launch',
-    'updateBanner',
-    'settingsGeneral',
-    'settingsAIModels',
-    'settingsAPIKeys',
-    'settingsPreferences',
-    'history',
-    'console',
-    'feedback',
-    'reportIssue',
-    'suggestionCards',
-    'customizationSaveRollback',
-    'homebrewSaveRollback',
-    'typedIntent',
-    'review',
-    'summary',
-    'diff',
-    'buildBoundary',
-    'saveFlow',
-    'rollbackCleanup',
-    'discard',
-    'visualCoverage',
-    'visualProofQuality',
-    'reportInspection',
+    "launch",
+    "updateBanner",
+    "settingsGeneral",
+    "settingsAIModels",
+    "settingsAPIKeys",
+    "settingsPreferences",
+    "history",
+    "console",
+    "feedback",
+    "reportIssue",
+    "suggestionCards",
+    "customizationSaveRollback",
+    "homebrewSaveRollback",
+    "typedIntent",
+    "review",
+    "summary",
+    "diff",
+    "buildBoundary",
+    "saveFlow",
+    "rollbackCleanup",
+    "discard",
+    "visualCoverage",
+    "visualProofQuality",
+    "reportInspection",
   ],
-  metaKeys: ['mainCoverageFreshness', 'prSpecificCoverage', 'storybookPreview'],
+  metaKeys: ["mainCoverageFreshness", "prSpecificCoverage", "storybookPreview"],
   explicitWaivers: [
     {
-      key: 'customizationSaveRollback',
-      label: 'Untracked customizations save + rollback',
-      note: 'Visibility alone is not parity. Peekaboo should only claim this after a deterministic chip add, Save, and rollback scenario proves the disposable repo returns clean.',
+      key: "customizationSaveRollback",
+      label: "Untracked customizations save + rollback",
+      note: "Visibility alone is not parity. Peekaboo should only claim this after a deterministic chip add, Save, and rollback scenario proves the disposable repo returns clean.",
     },
     {
-      key: 'homebrewSaveRollback',
-      label: 'Untracked Homebrew save + rollback',
-      note: 'Visibility alone is not parity. Peekaboo should only claim this after a deterministic Homebrew chip add, Save, and rollback scenario proves the disposable repo returns clean.',
+      key: "homebrewSaveRollback",
+      label: "Untracked Homebrew save + rollback",
+      note: "Visibility alone is not parity. Peekaboo should only claim this after a deterministic Homebrew chip add, Save, and rollback scenario proves the disposable repo returns clean.",
     },
     {
-      key: 'onboardingPermissions',
-      label: 'Clean-profile onboarding permissions',
-      note: 'PR #75 tracks this as a known limit; Peekaboo parity should add a clean-profile scenario before claiming full main coverage.',
+      key: "onboardingPermissions",
+      label: "Clean-profile onboarding permissions",
+      note: "PR #75 tracks this as a known limit; Peekaboo parity should add a clean-profile scenario before claiming full main coverage.",
     },
     {
-      key: 'sudoLocalActivation',
-      label: 'Production sudo_local activation path',
-      note: 'PR #75 uses a CI fixture waiver. Peekaboo should keep this as a separate release/manual proof unless unattended activation is made deterministic.',
+      key: "sudoLocalActivation",
+      label: "Production sudo_local activation path",
+      note: "PR #75 uses a CI fixture waiver. Peekaboo should keep this as a separate release/manual proof unless unattended activation is made deterministic.",
     },
     {
-      key: 'previewIndicator',
-      label: 'Preview indicator commit/revert UI',
-      note: 'Needs deterministic preview-state setup or a real workflow that activates the indicator.',
+      key: "previewIndicator",
+      label: "Preview indicator commit/revert UI",
+      note: "Needs deterministic preview-state setup or a real workflow that activates the indicator.",
     },
   ],
 });
@@ -404,7 +419,7 @@ function usage() {
   node tests/e2e/computer-use/run-local.mjs cleanup`);
 }
 
-function argValue(args, flag, fallback = '') {
+function argValue(args, flag, fallback = "") {
   const index = args.indexOf(flag);
   if (index === -1) return fallback;
   return args[index + 1] ?? fallback;
@@ -422,14 +437,14 @@ async function pathExists(filePath) {
 function assertContainedPath(root, candidate, label) {
   const relative = path.relative(root, candidate);
   assert(
-    relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative)),
+    relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative)),
     `${label} must stay under ${root}`,
   );
 }
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
-    encoding: 'utf8',
+    encoding: "utf8",
     ...options,
   });
   if (result.error) throw result.error;
@@ -437,7 +452,7 @@ function run(command, args, options = {}) {
     const stderr = result.stderr?.trim();
     const stdout = result.stdout?.trim();
     throw new Error(
-      `${command} ${args.join(' ')} failed with ${result.status}${stderr ? `: ${stderr}` : ''}${stdout ? `\n${stdout}` : ''}`,
+      `${command} ${args.join(" ")} failed with ${result.status}${stderr ? `: ${stderr}` : ""}${stdout ? `\n${stdout}` : ""}`,
     );
   }
   return result.stdout.trim();
@@ -445,37 +460,37 @@ function run(command, args, options = {}) {
 
 function tryRun(command, args, options = {}) {
   const result = spawnSync(command, args, {
-    encoding: 'utf8',
+    encoding: "utf8",
     ...options,
   });
   return {
     ok: result.status === 0,
     status: result.status,
-    stdout: result.stdout?.trim() ?? '',
-    stderr: result.stderr?.trim() ?? '',
-    error: result.error ? String(result.error) : '',
+    stdout: result.stdout?.trim() ?? "",
+    stderr: result.stderr?.trim() ?? "",
+    error: result.error ? String(result.error) : "",
   };
 }
 
 function gitMetadata() {
-  const branch = tryRun('git', ['branch', '--show-current'], { cwd: REPO_ROOT });
-  const sha = tryRun('git', ['rev-parse', 'HEAD'], { cwd: REPO_ROOT });
+  const branch = tryRun("git", ["branch", "--show-current"], { cwd: REPO_ROOT });
+  const sha = tryRun("git", ["rev-parse", "HEAD"], { cwd: REPO_ROOT });
   return {
-    branch: branch.ok && branch.stdout ? branch.stdout : 'unknown',
-    sha: sha.ok && sha.stdout ? sha.stdout : 'unknown',
+    branch: branch.ok && branch.stdout ? branch.stdout : "unknown",
+    sha: sha.ok && sha.stdout ? sha.stdout : "unknown",
   };
 }
 
 async function readJson(filePath) {
-  return JSON.parse(await readFile(filePath, 'utf8'));
+  return JSON.parse(await readFile(filePath, "utf8"));
 }
 
 async function writeJson(filePath, value) {
-  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
 function timestampSlug(date = new Date()) {
-  return date.toISOString().replace(/[:.]/g, '-').replace('T', '_').replace('Z', 'Z');
+  return date.toISOString().replace(/[:.]/g, "-").replace("T", "_").replace("Z", "Z");
 }
 
 async function getCurrentRunDir() {
@@ -484,9 +499,9 @@ async function getCurrentRunDir() {
   const candidates = [];
   for (const filePath of [CURRENT_RUN_FILE, REAL_CURRENT_RUN_FILE]) {
     if (await pathExists(filePath)) {
-      const runDir = (await readFile(filePath, 'utf8')).trim();
-      if (runDir && (await pathExists(path.join(runDir, 'state.json')))) {
-        const fileStat = await stat(path.join(runDir, 'state.json'));
+      const runDir = (await readFile(filePath, "utf8")).trim();
+      if (runDir && (await pathExists(path.join(runDir, "state.json")))) {
+        const fileStat = await stat(path.join(runDir, "state.json"));
         candidates.push({ runDir, mtimeMs: fileStat.mtimeMs });
       }
     }
@@ -499,7 +514,7 @@ async function getCurrentRunDir() {
 }
 
 async function statePath(runDir = null) {
-  return path.join(runDir ?? (await getCurrentRunDir()), 'state.json');
+  return path.join(runDir ?? (await getCurrentRunDir()), "state.json");
 }
 
 async function loadState(runDir = null) {
@@ -507,7 +522,7 @@ async function loadState(runDir = null) {
 }
 
 async function saveState(state) {
-  await writeJson(path.join(state.runDir, 'state.json'), state);
+  await writeJson(path.join(state.runDir, "state.json"), state);
 }
 
 async function appendEvent(state, type, detail = {}) {
@@ -516,7 +531,7 @@ async function appendEvent(state, type, detail = {}) {
     type,
     ...detail,
   };
-  const eventsPath = path.join(state.runDir, 'events.json');
+  const eventsPath = path.join(state.runDir, "events.json");
   const events = (await pathExists(eventsPath)) ? await readJson(eventsPath) : [];
   events.push(event);
   await writeJson(eventsPath, events);
@@ -526,8 +541,8 @@ async function assertNoUnrestoredRun() {
   for (const currentFile of [CURRENT_RUN_FILE, REAL_CURRENT_RUN_FILE]) {
     if (!(await pathExists(currentFile))) continue;
 
-    const previousRunDir = (await readFile(currentFile, 'utf8')).trim();
-    if (!previousRunDir || !(await pathExists(path.join(previousRunDir, 'state.json')))) continue;
+    const previousRunDir = (await readFile(currentFile, "utf8")).trim();
+    if (!previousRunDir || !(await pathExists(path.join(previousRunDir, "state.json")))) continue;
 
     const previousState = await loadState(previousRunDir);
     if (previousState.cleanup?.restored === true) continue;
@@ -539,7 +554,7 @@ async function assertNoUnrestoredRun() {
 }
 
 function getPlatformTriple() {
-  const archMap = { arm64: 'aarch64', x64: 'x86_64' };
+  const archMap = { arm64: "aarch64", x64: "x86_64" };
   return `${archMap[process.arch] ?? process.arch}-${process.platform}`;
 }
 
@@ -558,43 +573,43 @@ async function listFiles(dirPath, predicate) {
 }
 
 async function createConfigRepo(runDir) {
-  const configDir = await mkdtemp(path.join(runDir, 'nix-config-'));
+  const configDir = await mkdtemp(path.join(runDir, "nix-config-"));
   await cp(TEMPLATE_DIR, configDir, { recursive: true });
 
-  const hostnameResult = tryRun('scutil', ['--get', 'LocalHostName']);
-  const hostname = hostnameResult.ok && hostnameResult.stdout ? hostnameResult.stdout : 'localhost';
-  const username = os.userInfo().username || process.env.USER || 'nobody';
+  const hostnameResult = tryRun("scutil", ["--get", "LocalHostName"]);
+  const hostname = hostnameResult.ok && hostnameResult.stdout ? hostnameResult.stdout : "localhost";
+  const username = os.userInfo().username || process.env.USER || "nobody";
   const platformTriple = getPlatformTriple();
-  const nixFiles = await listFiles(configDir, (filePath) => filePath.endsWith('.nix'));
+  const nixFiles = await listFiles(configDir, (filePath) => filePath.endsWith(".nix"));
 
   for (const nixFile of nixFiles) {
-    const content = await readFile(nixFile, 'utf8');
+    const content = await readFile(nixFile, "utf8");
     const updated = content
-      .replaceAll('HOSTNAME_PLACEHOLDER', hostname)
-      .replaceAll('USERNAME_PLACEHOLDER', username)
-      .replaceAll('PLATFORM_PLACEHOLDER', platformTriple);
-    if (updated !== content) await writeFile(nixFile, updated, 'utf8');
+      .replaceAll("HOSTNAME_PLACEHOLDER", hostname)
+      .replaceAll("USERNAME_PLACEHOLDER", username)
+      .replaceAll("PLATFORM_PLACEHOLDER", platformTriple);
+    if (updated !== content) await writeFile(nixFile, updated, "utf8");
   }
 
-  await writeFile(path.join(configDir, '.gitignore'), 'flake.lock\n', 'utf8');
-  run('git', ['init'], { cwd: configDir });
-  run('git', ['config', 'user.name', 'eval'], { cwd: configDir });
-  run('git', ['config', 'user.email', 'eval@test'], { cwd: configDir });
-  run('git', ['add', '-A'], { cwd: configDir });
-  run('git', ['commit', '-m', 'initial nix config state', '--author', 'eval <eval@test>'], {
+  await writeFile(path.join(configDir, ".gitignore"), "flake.lock\n", "utf8");
+  run("git", ["init"], { cwd: configDir });
+  run("git", ["config", "user.name", "eval"], { cwd: configDir });
+  run("git", ["config", "user.email", "eval@test"], { cwd: configDir });
+  run("git", ["add", "-A"], { cwd: configDir });
+  run("git", ["commit", "-m", "initial nix config state", "--author", "eval <eval@test>"], {
     cwd: configDir,
   });
-  run('git', ['update-index', '--refresh'], { cwd: configDir });
+  run("git", ["update-index", "--refresh"], { cwd: configDir });
 
   return { configDir, hostname };
 }
 
 async function parseJsonl(filePath) {
-  const raw = await readFile(filePath, 'utf8');
+  const raw = await readFile(filePath, "utf8");
   return raw
-    .split('\n')
+    .split("\n")
     .map((line) => line.trim())
-    .filter((line) => line && !line.startsWith('//'))
+    .filter((line) => line && !line.startsWith("//"))
     .map((line, index) => {
       try {
         return JSON.parse(line);
@@ -605,7 +620,7 @@ async function parseJsonl(filePath) {
 }
 
 function writeResponse(response, statusCode, body) {
-  response.writeHead(statusCode, { 'content-type': 'application/json; charset=utf-8' });
+  response.writeHead(statusCode, { "content-type": "application/json; charset=utf-8" });
   response.end(`${JSON.stringify(body)}\n`);
 }
 
@@ -617,27 +632,30 @@ async function readRequestBody(request) {
     chunks.push(buffer);
     bytes += buffer.length;
   }
-  return { raw: Buffer.concat(chunks).toString('utf8'), bytes };
+  return { raw: Buffer.concat(chunks).toString("utf8"), bytes };
 }
 
 async function serveMock(runDir) {
   const fixturePath = path.join(TEST_DATA_DIR, DEFAULT_FIXTURE);
   let responses = await parseJsonl(fixturePath);
   let requestIndex = 0;
-  const requestsLog = path.join(runDir, 'mock-provider-requests.jsonl');
+  const requestsLog = path.join(runDir, "mock-provider-requests.jsonl");
 
   const server = http.createServer(async (request, response) => {
     try {
-      const requestUrl = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);
+      const requestUrl = new URL(
+        request.url ?? "/",
+        `http://${request.headers.host ?? "localhost"}`,
+      );
 
-      if (request.method === 'GET' && requestUrl.pathname === '/health') {
-        writeResponse(response, 200, { status: 'ok' });
+      if (request.method === "GET" && requestUrl.pathname === "/health") {
+        writeResponse(response, 200, { status: "ok" });
         return;
       }
 
-      if (request.method === 'POST' && requestUrl.pathname === '/__admin/mock-responses') {
+      if (request.method === "POST" && requestUrl.pathname === "/__admin/mock-responses") {
         const requestBody = await readRequestBody(request);
-        const body = JSON.parse(requestBody.raw || '{}');
+        const body = JSON.parse(requestBody.raw || "{}");
         if (Array.isArray(body.responses)) {
           responses = body.responses;
         } else if (Array.isArray(body.responseFiles)) {
@@ -647,19 +665,21 @@ async function serveMock(runDir) {
           }
           responses = loaded;
         } else {
-          writeResponse(response, 400, { error: 'Expected responses or responseFiles' });
+          writeResponse(response, 400, { error: "Expected responses or responseFiles" });
           return;
         }
         requestIndex = 0;
-        writeResponse(response, 200, { status: 'ok', queuedResponses: responses.length });
+        writeResponse(response, 200, { status: "ok", queuedResponses: responses.length });
         return;
       }
 
       if (
-        request.method !== 'POST' ||
-        !['/v1/chat/completions', '/chat/completions'].includes(requestUrl.pathname)
+        request.method !== "POST" ||
+        !["/v1/chat/completions", "/chat/completions"].includes(requestUrl.pathname)
       ) {
-        writeResponse(response, 404, { error: `Unhandled endpoint: ${request.method} ${requestUrl.pathname}` });
+        writeResponse(response, 404, {
+          error: `Unhandled endpoint: ${request.method} ${requestUrl.pathname}`,
+        });
         return;
       }
 
@@ -672,13 +692,13 @@ async function serveMock(runDir) {
           requestIndex,
           requestBodyBytes: requestBody.bytes,
         })}\n`,
-        { flag: 'a' },
+        { flag: "a" },
       );
 
       if (requestIndex >= responses.length) {
         writeResponse(response, 500, {
-          error: 'Mock response queue exhausted',
-          code: 'MOCK_RESPONSE_QUEUE_EXHAUSTED',
+          error: "Mock response queue exhausted",
+          code: "MOCK_RESPONSE_QUEUE_EXHAUSTED",
           configuredResponses: responses.length,
           consumedResponses: requestIndex,
           requestBodyBytes: requestBody.bytes,
@@ -690,18 +710,20 @@ async function serveMock(runDir) {
       requestIndex += 1;
       writeResponse(response, 200, payload);
     } catch (error) {
-      writeResponse(response, 500, { error: error instanceof Error ? error.message : String(error) });
+      writeResponse(response, 500, {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   });
 
   await new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', resolve);
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
   });
 
   const address = server.address();
   const origin = `http://127.0.0.1:${address.port}`;
-  await writeJson(path.join(runDir, 'mock-provider.json'), {
+  await writeJson(path.join(runDir, "mock-provider.json"), {
     pid: process.pid,
     origin,
     baseUrl: `${origin}/v1`,
@@ -709,7 +731,7 @@ async function serveMock(runDir) {
     queuedResponses: responses.length,
   });
 
-  process.on('SIGTERM', () => server.close(() => process.exit(0)));
+  process.on("SIGTERM", () => server.close(() => process.exit(0)));
 }
 
 async function waitForFile(filePath, timeoutMs = 5000) {
@@ -722,8 +744,8 @@ async function waitForFile(filePath, timeoutMs = 5000) {
 }
 
 async function quitNixmac() {
-  const osa = tryRun('osascript', ['-e', 'tell application id "com.darkmatter.nixmac" to quit']);
-  const pkill = tryRun('pkill', ['-x', 'nixmac']);
+  const osa = tryRun("osascript", ["-e", 'tell application id "com.darkmatter.nixmac" to quit']);
+  const pkill = tryRun("pkill", ["-x", "nixmac"]);
   await new Promise((resolve) => setTimeout(resolve, 1000));
   return { osascript: osa, pkill };
 }
@@ -749,7 +771,7 @@ function createInitialState({
     sha,
     macosVersion,
     appCommand,
-    appBundleId: 'com.darkmatter.nixmac',
+    appBundleId: "com.darkmatter.nixmac",
     artifactRoot,
     appSupportDir: APP_SUPPORT_DIR,
     appSupportExisted,
@@ -762,7 +784,7 @@ function createInitialState({
     scenarios: Object.fromEntries(
       Object.entries(scenarioLabels).map(([key, label]) => [
         key,
-        { label, status: 'inconclusive', notes: [] },
+        { label, status: "inconclusive", notes: [] },
       ]),
     ),
     prFocus: buildPeekabooPrFocus(),
@@ -775,13 +797,13 @@ function createInitialState({
     cleanup: {
       attempted: false,
       restored: false,
-      note: 'Cleanup has not run yet.',
+      note: "Cleanup has not run yet.",
     },
   };
 }
 
-async function setup({ mode = 'deterministic' } = {}) {
-  const isReal = mode === 'real';
+async function setup({ mode = "deterministic" } = {}) {
+  const isReal = mode === "real";
   const artifactRoot = isReal ? REAL_ARTIFACT_ROOT : ARTIFACT_ROOT;
   const backupRoot = isReal ? REAL_BACKUP_ROOT : BACKUP_ROOT;
   const appCommand = isReal ? REAL_APP_COMMAND : DETERMINISTIC_APP_COMMAND;
@@ -792,12 +814,12 @@ async function setup({ mode = 'deterministic' } = {}) {
   const startedAt = new Date();
   const runSlug = timestampSlug(startedAt);
   const runDir = path.join(artifactRoot, runSlug);
-  await mkdir(path.join(runDir, 'screenshots'), { recursive: true });
+  await mkdir(path.join(runDir, "screenshots"), { recursive: true });
 
   const { branch, sha } = gitMetadata();
-  const macosVersion = tryRun('sw_vers', ['-productVersion']).stdout || 'unknown';
+  const macosVersion = tryRun("sw_vers", ["-productVersion"]).stdout || "unknown";
   const appSupportExisted = await pathExists(APP_SUPPORT_DIR);
-  const backupPath = path.join(backupRoot, runSlug, 'app-support-backup');
+  const backupPath = path.join(backupRoot, runSlug, "app-support-backup");
 
   const quitResult = await quitNixmac();
   if (appSupportExisted) {
@@ -819,8 +841,8 @@ async function setup({ mode = 'deterministic' } = {}) {
     artifactRoot,
   });
   await saveState(state);
-  await writeFile(isReal ? REAL_CURRENT_RUN_FILE : CURRENT_RUN_FILE, `${runDir}\n`, 'utf8');
-  await appendEvent(state, 'setup.started', { mode });
+  await writeFile(isReal ? REAL_CURRENT_RUN_FILE : CURRENT_RUN_FILE, `${runDir}\n`, "utf8");
+  await appendEvent(state, "setup.started", { mode });
 
   if (!isReal) {
     await rm(APP_SUPPORT_DIR, { recursive: true, force: true });
@@ -840,37 +862,37 @@ async function setup({ mode = 'deterministic' } = {}) {
   if (isReal) {
     state.setup.mockProvider = null;
     state.provider = {
-      kind: 'real-openrouter-compatible',
-      providerSetting: 'openai',
-      keySource: 'existing app keychain/settings/env; not written to report',
+      kind: "real-openrouter-compatible",
+      providerSetting: "openai",
+      keySource: "existing app keychain/settings/env; not written to report",
     };
     await writeJson(SETTINGS_FILE, {
       ...settings,
       hostAttr: hostname,
       configDir,
-      evolveProvider: 'openai',
+      evolveProvider: "openai",
       evolveModel:
         process.env.NIXMAC_COMPUTER_USE_EVOLVE_MODEL ??
         settings.evolveModel ??
-        'anthropic/claude-sonnet-4',
-      summaryProvider: 'openai',
+        "anthropic/claude-sonnet-4",
+      summaryProvider: "openai",
       summaryModel:
         process.env.NIXMAC_COMPUTER_USE_SUMMARY_MODEL ??
         settings.summaryModel ??
-        'openai/gpt-4o-mini',
+        "openai/gpt-4o-mini",
       sendDiagnostics: false,
       confirmBuild: true,
       confirmClear: true,
       confirmRollback: true,
     });
   } else {
-    const mock = spawn(process.execPath, [THIS_FILE, 'serve-mock', runDir], {
+    const mock = spawn(process.execPath, [THIS_FILE, "serve-mock", runDir], {
       detached: true,
-      stdio: 'ignore',
+      stdio: "ignore",
     });
     mock.unref();
 
-    const mockInfoPath = path.join(runDir, 'mock-provider.json');
+    const mockInfoPath = path.join(runDir, "mock-provider.json");
     await waitForFile(mockInfoPath, 5000);
     const mockInfo = await readJson(mockInfoPath);
     state.setup.mockProvider = mockInfo;
@@ -881,10 +903,10 @@ async function setup({ mode = 'deterministic' } = {}) {
       configDir,
       vllmApiBaseUrl: mockInfo.baseUrl,
       vllmApiKey: null,
-      evolveProvider: 'vllm',
-      evolveModel: 'gpt-oss-120b',
-      summaryProvider: 'vllm',
-      summaryModel: 'gpt-oss-120b',
+      evolveProvider: "vllm",
+      evolveModel: "gpt-oss-120b",
+      summaryProvider: "vllm",
+      summaryModel: "gpt-oss-120b",
       sendDiagnostics: false,
       confirmBuild: true,
       confirmClear: true,
@@ -893,7 +915,7 @@ async function setup({ mode = 'deterministic' } = {}) {
   }
 
   await saveState(state);
-  await appendEvent(state, 'setup.completed', { mode, configDir });
+  await appendEvent(state, "setup.completed", { mode, configDir });
   console.log(runDir);
 }
 
@@ -903,10 +925,10 @@ async function createPeekabooRunState({ scenario, noRecord, noCleanup, allowDest
   const startedAt = new Date();
   const runSlug = timestampSlug(startedAt);
   const runDir = path.join(ARTIFACT_ROOT, runSlug);
-  await mkdir(path.join(runDir, 'screenshots'), { recursive: true });
-  await mkdir(path.join(runDir, 'video'), { recursive: true });
+  await mkdir(path.join(runDir, "screenshots"), { recursive: true });
+  await mkdir(path.join(runDir, "video"), { recursive: true });
   const appSupportExisted = await pathExists(APP_SUPPORT_DIR);
-  const backupPath = path.join(PEEKABOO_BACKUP_ROOT, runSlug, 'app-support-backup');
+  const backupPath = path.join(PEEKABOO_BACKUP_ROOT, runSlug, "app-support-backup");
   const quitResult = await quitNixmac();
   if (appSupportExisted) {
     await mkdir(path.dirname(backupPath), { recursive: true });
@@ -914,7 +936,7 @@ async function createPeekabooRunState({ scenario, noRecord, noCleanup, allowDest
   }
 
   const { branch, sha } = gitMetadata();
-  const macosVersion = tryRun('sw_vers', ['-productVersion']).stdout || 'unknown';
+  const macosVersion = tryRun("sw_vers", ["-productVersion"]).stdout || "unknown";
   const state = createInitialState({
     runDir,
     startedAt: startedAt.toISOString(),
@@ -924,32 +946,32 @@ async function createPeekabooRunState({ scenario, noRecord, noCleanup, allowDest
     appSupportExisted,
     backupPath,
     quitResult,
-    mode: 'peekaboo',
+    mode: "peekaboo",
     appCommand: `bash tests/e2e/run.sh ${scenario}`,
     artifactRoot: ARTIFACT_ROOT,
   });
 
   state.provider =
-    scenario === 'macos_provider_evolve_full_smoke'
+    scenario === "macos_provider_evolve_full_smoke"
       ? {
-          kind: 'local-provider-stub',
-          note: 'Scenario owns and verifies a deterministic local OpenAI-compatible provider stub.',
+          kind: "local-provider-stub",
+          note: "Scenario owns and verifies a deterministic local OpenAI-compatible provider stub.",
         }
       : {
-          kind: 'no-llm-provider-required',
-          note: 'This Peekaboo scenario does not require an LLM provider.',
+          kind: "no-llm-provider-required",
+          note: "This Peekaboo scenario does not require an LLM provider.",
         };
   state.setup = {
     configDir: null,
     mockProvider: null,
     note: appSupportExisted
       ? `Backed up nixmac Application Support before running Peekaboo scenario: ${backupPath}.`
-      : 'No existing nixmac Application Support directory was present before the Peekaboo run.',
+      : "No existing nixmac Application Support directory was present before the Peekaboo run.",
   };
   state.cleanup = {
     attempted: false,
     restored: false,
-    note: 'Cleanup has not run yet. Peekaboo scenarios may write nixmac settings and must restore app support after the run.',
+    note: "Cleanup has not run yet. Peekaboo scenarios may write nixmac settings and must restore app support after the run.",
   };
   state.peekaboo = {
     scenario,
@@ -960,8 +982,8 @@ async function createPeekabooRunState({ scenario, noRecord, noCleanup, allowDest
   };
 
   await saveState(state);
-  await writeFile(CURRENT_RUN_FILE, `${runDir}\n`, 'utf8');
-  await appendEvent(state, 'peekaboo.setup.completed', {
+  await writeFile(CURRENT_RUN_FILE, `${runDir}\n`, "utf8");
+  await appendEvent(state, "peekaboo.setup.completed", {
     scenario,
     noRecord,
     noCleanup,
@@ -980,7 +1002,7 @@ async function executePeekabooScenario({ scenario, noRecord, noCleanup, allowDes
     noCleanup,
     allowDestructive,
   });
-  await appendEvent(state, 'peekaboo.run.started', {
+  await appendEvent(state, "peekaboo.run.started", {
     command: plan.command,
     args: plan.args,
     resultsFile: path.relative(state.runDir, plan.resultsFile),
@@ -992,7 +1014,7 @@ async function executePeekabooScenario({ scenario, noRecord, noCleanup, allowDes
     const updatedState = applyPeekabooResultToState(await loadState(state.runDir), peekabooResult);
     updatedState.peekaboo.result = peekabooResult;
     await saveState(updatedState);
-    await appendEvent(updatedState, 'peekaboo.run.completed', {
+    await appendEvent(updatedState, "peekaboo.run.completed", {
       scenario,
       status: peekabooResult.status,
       success: peekabooResult.success,
@@ -1007,8 +1029,10 @@ async function executePeekabooScenario({ scenario, noRecord, noCleanup, allowDes
     }
   }
   if (!peekabooResult?.success) {
-    const outcome = peekabooResult?.infraFailure ? 'infra blocked' : 'failed';
-    const error = new Error(`Peekaboo scenario ${scenario} ${outcome}; report rendered at ${path.join(state.runDir, 'index.html')}`);
+    const outcome = peekabooResult?.infraFailure ? "infra blocked" : "failed";
+    const error = new Error(
+      `Peekaboo scenario ${scenario} ${outcome}; report rendered at ${path.join(state.runDir, "index.html")}`,
+    );
     error.runDir = state.runDir;
     error.scenario = scenario;
     throw error;
@@ -1018,118 +1042,159 @@ async function executePeekabooScenario({ scenario, noRecord, noCleanup, allowDes
 }
 
 async function runPeekaboo(args) {
-  const scenario = args.find((arg) => !arg.startsWith('-')) || DEFAULT_PEEKABOO_SCENARIO;
-  const noRecord = args.includes('--no-record');
-  const noCleanup = args.includes('--no-cleanup') || !args.includes('--allow-cleanup');
-  const allowDestructive = args.includes('--allow-destructive');
+  const scenario = args.find((arg) => !arg.startsWith("-")) || DEFAULT_PEEKABOO_SCENARIO;
+  const noRecord = args.includes("--no-record");
+  const noCleanup = args.includes("--no-cleanup") || !args.includes("--allow-cleanup");
+  const allowDestructive = args.includes("--allow-destructive");
   await executePeekabooScenario({ scenario, noRecord, noCleanup, allowDestructive });
 }
 
 async function runPeekabooSuite(args) {
-  const scenarios = args.filter((arg) => !arg.startsWith('-'));
-  const noRecord = args.includes('--no-record');
-  const noCleanup = args.includes('--no-cleanup') || !args.includes('--allow-cleanup');
-  const allowDestructive = args.includes('--allow-destructive');
+  const scenarios = args.filter((arg) => !arg.startsWith("-"));
+  const noRecord = args.includes("--no-record");
+  const noCleanup = args.includes("--no-cleanup") || !args.includes("--allow-cleanup");
+  const allowDestructive = args.includes("--allow-destructive");
   const suiteScenarios =
     scenarios.length > 0
       ? scenarios
       : [
-          'macos_core_product_proof',
-          'macos_support_dialogs_smoke',
-          'macos_console_smoke',
-          'macos_homebrew_save_rollback_smoke',
-          'macos_customization_save_rollback_smoke',
-          'macos_provider_evolve_full_smoke',
-          'macos_provider_discard_smoke',
+          "macos_core_product_proof",
+          "macos_support_dialogs_smoke",
+          "macos_console_smoke",
+          "macos_homebrew_save_rollback_smoke",
+          "macos_customization_save_rollback_smoke",
+          "macos_provider_evolve_full_smoke",
+          "macos_provider_discard_smoke",
         ];
-  const destructiveScenarios = suiteScenarios.filter((scenario) => isDestructivePeekabooScenario(scenario));
+  const destructiveScenarios = suiteScenarios.filter((scenario) =>
+    isDestructivePeekabooScenario(scenario),
+  );
   if (destructiveScenarios.length) {
     throw new Error(
-      `Peekaboo suite refuses destructive scenario(s) by default: ${destructiveScenarios.join(', ')}. Run those as explicit single-scenario disposable-host tests.`,
+      `Peekaboo suite refuses destructive scenario(s) by default: ${destructiveScenarios.join(", ")}. Run those as explicit single-scenario disposable-host tests.`,
     );
   }
   const results = [];
   const suiteFailures = [];
   for (const scenario of suiteScenarios) {
     try {
-      results.push(await executePeekabooScenario({ scenario, noRecord, noCleanup, allowDestructive }));
+      results.push(
+        await executePeekabooScenario({ scenario, noRecord, noCleanup, allowDestructive }),
+      );
     } catch (error) {
       if (error?.runDir && error?.scenario) {
-        results.push({ scenario: error.scenario, runDir: error.runDir, failed: true, error: error.message });
+        results.push({
+          scenario: error.scenario,
+          runDir: error.runDir,
+          failed: true,
+          error: error.message,
+        });
       }
       suiteFailures.push({ scenario, error });
     }
   }
   if (results.length) {
-    const suiteDir = await renderPeekabooSuiteAggregate({ results, suiteScenarios, noRecord, noCleanup, allowDestructive });
+    const suiteDir = await renderPeekabooSuiteAggregate({
+      results,
+      suiteScenarios,
+      noRecord,
+      noCleanup,
+      allowDestructive,
+    });
     console.log(`peekaboo-suite: ${suiteDir}`);
     if (suiteFailures.length) {
-      const failureSummary = suiteFailures.map((item) => `${item.scenario}: ${item.error.message}`).join('; ');
-      throw new Error(`Peekaboo suite failed after rendering aggregate report at ${path.join(suiteDir, 'index.html')}: ${failureSummary}`);
+      const failureSummary = suiteFailures
+        .map((item) => `${item.scenario}: ${item.error.message}`)
+        .join("; ");
+      throw new Error(
+        `Peekaboo suite failed after rendering aggregate report at ${path.join(suiteDir, "index.html")}: ${failureSummary}`,
+      );
     }
   } else if (suiteFailures.length) {
-    const failureSummary = suiteFailures.map((item) => `${item.scenario}: ${item.error.message}`).join('; ');
-    throw new Error(`Peekaboo suite failed before any scenario report could be aggregated: ${failureSummary}`);
+    const failureSummary = suiteFailures
+      .map((item) => `${item.scenario}: ${item.error.message}`)
+      .join("; ");
+    throw new Error(
+      `Peekaboo suite failed before any scenario report could be aggregated: ${failureSummary}`,
+    );
   }
 }
 
-function optionValue(args, flag, env, envKey, fallback = '') {
-  const explicit = argValue(args, flag, '');
+function optionValue(args, flag, env, envKey, fallback = "") {
+  const explicit = argValue(args, flag, "");
   if (explicit) return explicit;
   return env[envKey] || fallback;
 }
 
 function buildPeekabooMacInCloudCommand(args, env = process.env) {
   const sshDest =
-    optionValue(args, '--ssh-dest', env, 'NIXMAC_E2E_MACINCLOUD_SSH_DEST', '') ||
-    optionValue(args, '--remote-ssh-dest', env, 'NIXMAC_E2E_REMOTE_SSH_DEST', '');
+    optionValue(args, "--ssh-dest", env, "NIXMAC_E2E_MACINCLOUD_SSH_DEST", "") ||
+    optionValue(args, "--remote-ssh-dest", env, "NIXMAC_E2E_REMOTE_SSH_DEST", "");
   if (!sshDest) {
     throw new Error(
-      'run-peekaboo-macincloud requires --ssh-dest, NIXMAC_E2E_MACINCLOUD_SSH_DEST, or NIXMAC_E2E_REMOTE_SSH_DEST.',
+      "run-peekaboo-macincloud requires --ssh-dest, NIXMAC_E2E_MACINCLOUD_SSH_DEST, or NIXMAC_E2E_REMOTE_SSH_DEST.",
     );
   }
 
-  const identityFile = optionValue(args, '--identity-file', env, 'NIXMAC_E2E_MACINCLOUD_SSH_KEY', env.NIXMAC_E2E_SSH_KEY || '');
+  const identityFile = optionValue(
+    args,
+    "--identity-file",
+    env,
+    "NIXMAC_E2E_MACINCLOUD_SSH_KEY",
+    env.NIXMAC_E2E_SSH_KEY || "",
+  );
   const knownHosts = optionValue(
     args,
-    '--known-hosts',
+    "--known-hosts",
     env,
-    'NIXMAC_E2E_MACINCLOUD_KNOWN_HOSTS',
-    env.NIXMAC_E2E_SSH_KNOWN_HOSTS || '',
+    "NIXMAC_E2E_MACINCLOUD_KNOWN_HOSTS",
+    env.NIXMAC_E2E_SSH_KNOWN_HOSTS || "",
   );
   const repoDir = optionValue(
     args,
-    '--repo-dir',
+    "--repo-dir",
     env,
-    'NIXMAC_E2E_MACINCLOUD_REPO_DIR',
-    '/Users/admin/nixmac-peekaboo-local-e2e',
+    "NIXMAC_E2E_MACINCLOUD_REPO_DIR",
+    "/Users/admin/nixmac-peekaboo-local-e2e",
   );
-  const nodeBin = optionValue(args, '--node', env, 'NIXMAC_E2E_MACINCLOUD_NODE', '/opt/homebrew/bin/node');
-  const appPath = optionValue(args, '--app-path', env, 'NIXMAC_E2E_MACINCLOUD_APP_PATH', env.NIXMAC_APP_PATH || '');
-  const scenario = argValue(args, '--scenario', '');
-  const mode = args.includes('--scenario') || scenario ? 'run-peekaboo' : 'run-peekaboo-suite';
+  const nodeBin = optionValue(
+    args,
+    "--node",
+    env,
+    "NIXMAC_E2E_MACINCLOUD_NODE",
+    "/opt/homebrew/bin/node",
+  );
+  const appPath = optionValue(
+    args,
+    "--app-path",
+    env,
+    "NIXMAC_E2E_MACINCLOUD_APP_PATH",
+    env.NIXMAC_APP_PATH || "",
+  );
+  const scenario = argValue(args, "--scenario", "");
+  const mode = args.includes("--scenario") || scenario ? "run-peekaboo" : "run-peekaboo-suite";
   const remoteArgs = [mode];
-  if (args.includes('--no-record')) remoteArgs.push('--no-record');
-  if (args.includes('--allow-cleanup')) remoteArgs.push('--allow-cleanup');
-  if (args.includes('--allow-destructive')) remoteArgs.push('--allow-destructive');
-  if (mode === 'run-peekaboo') remoteArgs.push(scenario || DEFAULT_PEEKABOO_SCENARIO);
+  if (args.includes("--no-record")) remoteArgs.push("--no-record");
+  if (args.includes("--allow-cleanup")) remoteArgs.push("--allow-cleanup");
+  if (args.includes("--allow-destructive")) remoteArgs.push("--allow-destructive");
+  if (mode === "run-peekaboo") remoteArgs.push(scenario || DEFAULT_PEEKABOO_SCENARIO);
 
-  const forwardedPrEnv = PEEKABOO_PR_ENV_KEYS
-    .filter((key) => env[key])
-    .map((key) => `${key}=${shellQuote(env[key])}`);
+  const forwardedPrEnv = PEEKABOO_PR_ENV_KEYS.filter((key) => env[key]).map(
+    (key) => `${key}=${shellQuote(env[key])}`,
+  );
   const remoteEnv = [
-    'PATH=/opt/homebrew/bin:$PATH',
-    appPath ? `NIXMAC_APP_PATH=${shellQuote(appPath)}` : '',
+    "PATH=/opt/homebrew/bin:$PATH",
+    appPath ? `NIXMAC_APP_PATH=${shellQuote(appPath)}` : "",
     ...forwardedPrEnv,
   ].filter(Boolean);
   const remoteCommand = [
     `cd ${shellQuote(repoDir)}`,
-    `${remoteEnv.join(' ')} ${shellQuote(nodeBin)} tests/e2e/computer-use/run-local.mjs ${remoteArgs.map(shellQuote).join(' ')}`,
-  ].join(' && ');
+    `${remoteEnv.join(" ")} ${shellQuote(nodeBin)} tests/e2e/computer-use/run-local.mjs ${remoteArgs.map(shellQuote).join(" ")}`,
+  ].join(" && ");
 
-  const sshArgs = ['-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes'];
-  if (knownHosts) sshArgs.push('-o', `UserKnownHostsFile=${knownHosts}`);
-  if (identityFile) sshArgs.push('-i', identityFile);
+  const sshArgs = ["-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes"];
+  if (knownHosts) sshArgs.push("-o", `UserKnownHostsFile=${knownHosts}`);
+  if (identityFile) sshArgs.push("-i", identityFile);
   sshArgs.push(sshDest, remoteCommand);
   return { sshArgs, remoteCommand, sshDest, repoDir, mode };
 }
@@ -1137,9 +1202,14 @@ function buildPeekabooMacInCloudCommand(args, env = process.env) {
 async function runPeekabooMacInCloud(args) {
   const command = buildPeekabooMacInCloudCommand(args);
   console.log(`Running ${command.mode} on ${command.sshDest}:${command.repoDir}`);
-  const result = spawnSync('ssh', command.sshArgs, { cwd: REPO_ROOT, encoding: 'utf8', stdio: 'inherit' });
+  const result = spawnSync("ssh", command.sshArgs, {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+    stdio: "inherit",
+  });
   if (result.error) throw result.error;
-  if (result.status !== 0) throw new Error(`MacInCloud Peekaboo run failed with status ${result.status ?? 'unknown'}.`);
+  if (result.status !== 0)
+    throw new Error(`MacInCloud Peekaboo run failed with status ${result.status ?? "unknown"}.`);
 }
 
 function scenarioStatusRank(status) {
@@ -1149,10 +1219,11 @@ function scenarioStatusRank(status) {
 function mergeScenarioState(target, key, source, sourceScenario) {
   const current = target.scenarios[key] ?? {
     label: source.label ?? scenarioLabels[key] ?? sharedScenarioLabels[key] ?? key,
-    status: 'inconclusive',
+    status: "inconclusive",
     notes: [],
   };
-  if (scenarioStatusRank(source.status) > scenarioStatusRank(current.status)) current.status = source.status;
+  if (scenarioStatusRank(source.status) > scenarioStatusRank(current.status))
+    current.status = source.status;
   if (source.executedByPeekaboo) current.executedByPeekaboo = true;
   if (source.peekabooEvidence) current.peekabooEvidence = source.peekabooEvidence;
   if (source.peekabooTransitiveCoverage && !current.peekabooTransitiveCoverage) {
@@ -1177,7 +1248,7 @@ function mergeQualityScan(rollup, scan, sourceScenario, kind) {
   rollup.scannedFiles += scan.scannedFiles ?? 0;
   for (const violation of scan.violations ?? []) {
     rollup.violations.push(
-      typeof violation === 'string'
+      typeof violation === "string"
         ? `${sourceScenario}: ${violation}`
         : {
             ...violation,
@@ -1186,11 +1257,11 @@ function mergeQualityScan(rollup, scan, sourceScenario, kind) {
           },
     );
   }
-  if (scan.status !== 'passed') {
+  if (scan.status !== "passed") {
     rollup.violations.push({
       path: null,
       label: sourceScenario,
-      issue: `${kind} scan status was ${scan.status ?? 'missing'}`,
+      issue: `${kind} scan status was ${scan.status ?? "missing"}`,
     });
   }
 }
@@ -1200,35 +1271,41 @@ async function copySuiteArtifact({ sourceState, relativePath, suiteDir, suiteSce
   assert(!path.isAbsolute(relativePath), `Suite artifact path must be relative: ${relativePath}`);
   const normalizedRelativePath = path.normalize(relativePath);
   assert(
-    normalizedRelativePath !== '..' && !normalizedRelativePath.startsWith(`..${path.sep}`),
+    normalizedRelativePath !== ".." && !normalizedRelativePath.startsWith(`..${path.sep}`),
     `Suite artifact path must not escape the source run directory: ${relativePath}`,
   );
   const sourceRoot = await realpath(sourceState.runDir);
   const sourcePath = path.resolve(sourceRoot, normalizedRelativePath);
   if (!(await pathExists(sourcePath))) return null;
   const resolvedSource = await realpath(sourcePath);
-  assertContainedPath(sourceRoot, resolvedSource, 'Suite artifact source');
-  const destinationRoot = path.resolve(suiteDir, 'scenarios', suiteScenarioDir);
+  assertContainedPath(sourceRoot, resolvedSource, "Suite artifact source");
+  const destinationRoot = path.resolve(suiteDir, "scenarios", suiteScenarioDir);
   const destination = path.resolve(destinationRoot, normalizedRelativePath);
-  assertContainedPath(destinationRoot, destination, 'Suite artifact destination');
+  assertContainedPath(destinationRoot, destination, "Suite artifact destination");
   await mkdir(path.dirname(destination), { recursive: true });
   await cp(resolvedSource, destination, { recursive: true, preserveTimestamps: true });
   return path.relative(suiteDir, destination);
 }
 
-async function renderPeekabooSuiteAggregate({ results, suiteScenarios, noRecord, noCleanup, allowDestructive }) {
+async function renderPeekabooSuiteAggregate({
+  results,
+  suiteScenarios,
+  noRecord,
+  noCleanup,
+  allowDestructive,
+}) {
   await mkdir(ARTIFACT_ROOT, { recursive: true });
   const startedAt = new Date();
   const runSlug = `${timestampSlug(startedAt)}-peekaboo-suite`;
   const runDir = path.join(ARTIFACT_ROOT, runSlug);
-  await mkdir(path.join(runDir, 'scenarios'), { recursive: true });
+  await mkdir(path.join(runDir, "scenarios"), { recursive: true });
   const { branch, sha } = gitMetadata();
-  const macosVersion = tryRun('sw_vers', ['-productVersion']).stdout || 'unknown';
+  const macosVersion = tryRun("sw_vers", ["-productVersion"]).stdout || "unknown";
   const suiteCommandArgs = [
-    'run-peekaboo-suite',
-    ...(noRecord ? ['--no-record'] : []),
-    ...(!noCleanup ? ['--allow-cleanup'] : []),
-    ...(allowDestructive ? ['--allow-destructive'] : []),
+    "run-peekaboo-suite",
+    ...(noRecord ? ["--no-record"] : []),
+    ...(!noCleanup ? ["--allow-cleanup"] : []),
+    ...(allowDestructive ? ["--allow-destructive"] : []),
     ...suiteScenarios,
   ];
   const state = createInitialState({
@@ -1239,14 +1316,14 @@ async function renderPeekabooSuiteAggregate({ results, suiteScenarios, noRecord,
     macosVersion,
     appSupportExisted: false,
     backupPath: null,
-    quitResult: { ok: true, status: 0, stdout: '', stderr: '', error: '' },
-    mode: 'peekaboo-suite',
-    appCommand: `node tests/e2e/computer-use/run-local.mjs ${suiteCommandArgs.join(' ')}`,
+    quitResult: { ok: true, status: 0, stdout: "", stderr: "", error: "" },
+    mode: "peekaboo-suite",
+    appCommand: `node tests/e2e/computer-use/run-local.mjs ${suiteCommandArgs.join(" ")}`,
     artifactRoot: ARTIFACT_ROOT,
   });
   state.provider = {
-    kind: 'peekaboo-suite',
-    note: 'Suite combines no-provider core proof with deterministic local provider smoke proof.',
+    kind: "peekaboo-suite",
+    note: "Suite combines no-provider core proof with deterministic local provider smoke proof.",
   };
   state.peekaboo = {
     suite: {
@@ -1258,16 +1335,16 @@ async function renderPeekabooSuiteAggregate({ results, suiteScenarios, noRecord,
     allowDestructive,
     coverageMap: {
       schemaVersion: 1,
-      lane: 'peekaboo-local-suite',
-      scenario: 'peekaboo-suite',
-      note: 'Suite coverage is merged from individual Peekaboo scenario reports. Artifacts are copied into this suite directory for portable file:// viewing.',
+      lane: "peekaboo-local-suite",
+      scenario: "peekaboo-suite",
+      note: "Suite coverage is merged from individual Peekaboo scenario reports. Artifacts are copied into this suite directory for portable file:// viewing.",
       phaseCoverage: [],
     },
   };
   const phaseCoverageByKey = new Map();
   const artifactRowsForSuite = [];
-  const secretScanRollup = { status: 'passed', scannedFiles: 0, violations: [] };
-  const screenshotSignalRollup = { status: 'passed', scannedFiles: 0, violations: [] };
+  const secretScanRollup = { status: "passed", scannedFiles: 0, violations: [] };
+  const screenshotSignalRollup = { status: "passed", scannedFiles: 0, violations: [] };
   const cleanupFailures = [];
   for (const result of results) {
     const sourceState = await loadState(result.runDir);
@@ -1276,26 +1353,40 @@ async function renderPeekabooSuiteAggregate({ results, suiteScenarios, noRecord,
     state.peekaboo.scenarios.push({
       scenario: result.scenario,
       sourceRunDir: result.runDir,
-      copiedArtifactDir: path.join('scenarios', suiteScenarioDir),
+      copiedArtifactDir: path.join("scenarios", suiteScenarioDir),
       failed: Boolean(result.failed),
       error: result.error ?? null,
       verdict: verdictFor(sourceState),
       durationSeconds:
         sourceState.peekaboo?.result?.report?.durationMs > 0
           ? Math.round(sourceState.peekaboo.result.report.durationMs / 1000)
-          : sourceState.peekaboo?.result?.results?.duration_seconds ?? null,
+          : (sourceState.peekaboo?.result?.results?.duration_seconds ?? null),
     });
     for (const [key, item] of Object.entries(sourceState.scenarios ?? {})) {
-      if (item.status === 'inconclusive' && !(item.executedByPeekaboo || item.peekabooTransitiveCoverage)) continue;
+      if (
+        item.status === "inconclusive" &&
+        !(item.executedByPeekaboo || item.peekabooTransitiveCoverage)
+      )
+        continue;
       mergeScenarioState(state, key, item, result.scenario);
     }
     for (const coverage of coverageMap(sourceState)?.phaseCoverage ?? []) {
       phaseCoverageByKey.set(coverage.key, coverage);
     }
-    mergeQualityScan(secretScanRollup, sourceState.peekaboo?.secretScan, result.scenario, 'secret');
-    mergeQualityScan(screenshotSignalRollup, sourceState.peekaboo?.screenshotSignal, result.scenario, 'screenshot signal');
+    mergeQualityScan(secretScanRollup, sourceState.peekaboo?.secretScan, result.scenario, "secret");
+    mergeQualityScan(
+      screenshotSignalRollup,
+      sourceState.peekaboo?.screenshotSignal,
+      result.scenario,
+      "screenshot signal",
+    );
     for (const screenshot of sourceState.screenshots ?? []) {
-      const copied = await copySuiteArtifact({ sourceState, relativePath: screenshot.path, suiteDir: runDir, suiteScenarioDir });
+      const copied = await copySuiteArtifact({
+        sourceState,
+        relativePath: screenshot.path,
+        suiteDir: runDir,
+        suiteScenarioDir,
+      });
       if (copied) {
         state.screenshots.push({
           ...screenshot,
@@ -1305,39 +1396,61 @@ async function renderPeekabooSuiteAggregate({ results, suiteScenarios, noRecord,
       }
     }
     for (const diagnostic of sourceState.diagnostics ?? []) {
-      const copied = await copySuiteArtifact({ sourceState, relativePath: diagnostic.path, suiteDir: runDir, suiteScenarioDir });
-      if (copied) state.diagnostics.push({ ...diagnostic, label: `${result.scenario}: ${diagnostic.label}`, path: copied });
+      const copied = await copySuiteArtifact({
+        sourceState,
+        relativePath: diagnostic.path,
+        suiteDir: runDir,
+        suiteScenarioDir,
+      });
+      if (copied)
+        state.diagnostics.push({
+          ...diagnostic,
+          label: `${result.scenario}: ${diagnostic.label}`,
+          path: copied,
+        });
     }
     const artifacts = sourceState.peekaboo?.result?.artifacts ?? {};
     for (const [label, relativePath] of [
-      ['Preflight', artifacts.preflight],
-      ['Log', artifacts.logFile],
-      ['stdout', artifacts.stdout],
-      ['stderr', artifacts.stderr],
-      ['Legacy JSON', artifacts.resultsFile],
-      ['Structured report', artifacts.reportFile],
-      ['Video', artifacts.videoFile],
-      ['Coverage map', 'peekaboo-coverage-map.json'],
-      ['Secret scan', 'secret-scan.json'],
-      ['Screenshot signal', 'screenshot-signal.json'],
-      ['Scenario state', 'state.json'],
-      ['Scenario HTML report', 'index.html'],
+      ["Preflight", artifacts.preflight],
+      ["Log", artifacts.logFile],
+      ["stdout", artifacts.stdout],
+      ["stderr", artifacts.stderr],
+      ["Legacy JSON", artifacts.resultsFile],
+      ["Structured report", artifacts.reportFile],
+      ["Video", artifacts.videoFile],
+      ["Coverage map", "peekaboo-coverage-map.json"],
+      ["Secret scan", "secret-scan.json"],
+      ["Screenshot signal", "screenshot-signal.json"],
+      ["Scenario state", "state.json"],
+      ["Scenario HTML report", "index.html"],
     ]) {
-      const copied = await copySuiteArtifact({ sourceState, relativePath, suiteDir: runDir, suiteScenarioDir });
+      const copied = await copySuiteArtifact({
+        sourceState,
+        relativePath,
+        suiteDir: runDir,
+        suiteScenarioDir,
+      });
       if (copied) artifactRowsForSuite.push([`${result.scenario}: ${label}`, copied]);
     }
-    state.claims.push(...(sourceState.claims ?? []).map((claim) => ({
-      ...claim,
-      claim: `[${result.scenario}] ${claim.claim}`,
-    })));
+    state.claims.push(
+      ...(sourceState.claims ?? []).map((claim) => ({
+        ...claim,
+        claim: `[${result.scenario}] ${claim.claim}`,
+      })),
+    );
     state.narrative.push(...(sourceState.narrative ?? []));
     if (sourceState.failures?.length) {
-      state.failures.push(...sourceState.failures.map((failure) => `[${result.scenario}] ${failure}`));
+      state.failures.push(
+        ...sourceState.failures.map((failure) => `[${result.scenario}] ${failure}`),
+      );
     }
   }
-  state.peekaboo.coverageMap.phaseCoverage = [...phaseCoverageByKey.values()].sort((a, b) => a.key.localeCompare(b.key));
-  secretScanRollup.status = secretScanRollup.violations.length === 0 ? 'passed' : 'failed';
-  screenshotSignalRollup.status = screenshotSignalRollup.violations.length === 0 ? 'passed' : 'failed';
+  state.peekaboo.coverageMap.phaseCoverage = [...phaseCoverageByKey.values()].sort((a, b) =>
+    a.key.localeCompare(b.key),
+  );
+  secretScanRollup.status = secretScanRollup.violations.length === 0 ? "passed" : "failed";
+  screenshotSignalRollup.status =
+    screenshotSignalRollup.violations.length === 0 ? "passed" : "failed";
   state.peekaboo.secretScan = secretScanRollup;
   state.peekaboo.screenshotSignal = screenshotSignalRollup;
   state.peekaboo.suite.artifactRows = artifactRowsForSuite;
@@ -1345,18 +1458,21 @@ async function renderPeekabooSuiteAggregate({ results, suiteScenarios, noRecord,
     attempted: true,
     restored: cleanupFailures.length === 0,
     note: cleanupFailures.length
-      ? `Scenario cleanup was not confirmed for: ${cleanupFailures.join(', ')}. Inspect copied scenario state artifacts before reusing the host.`
-      : 'Each scenario performed its own app support restore before the suite aggregate was rendered.',
+      ? `Scenario cleanup was not confirmed for: ${cleanupFailures.join(", ")}. Inspect copied scenario state artifacts before reusing the host.`
+      : "Each scenario performed its own app support restore before the suite aggregate was rendered.",
   };
   for (const [key, item] of Object.entries(state.scenarios)) {
-    if (item.status === 'inconclusive') {
-      item.status = 'not_required';
-      item.notes.push(`Not required for Peekaboo suite scenarios: ${suiteScenarios.join(', ')}.`);
+    if (item.status === "inconclusive") {
+      item.status = "not_required";
+      item.notes.push(`Not required for Peekaboo suite scenarios: ${suiteScenarios.join(", ")}.`);
     }
   }
   await saveState(state);
-  await writeFile(CURRENT_RUN_FILE, `${runDir}\n`, 'utf8');
-  await appendEvent(state, 'peekaboo.suite.rendered', { scenarios: suiteScenarios, sourceRuns: results.map((result) => result.runDir) });
+  await writeFile(CURRENT_RUN_FILE, `${runDir}\n`, "utf8");
+  await appendEvent(state, "peekaboo.suite.rendered", {
+    scenarios: suiteScenarios,
+    sourceRuns: results.map((result) => result.runDir),
+  });
   await render();
   return runDir;
 }
@@ -1379,23 +1495,23 @@ tell application "System Events"
     return (windowX as text) & "," & (windowY as text) & "," & (windowWidth as text) & "," & (windowHeight as text) & linefeed & windowTitle
   end tell
 end tell`;
-  const [region, ...titleLines] = run('osascript', ['-e', script]).trim().split(/\r?\n/);
+  const [region, ...titleLines] = run("osascript", ["-e", script]).trim().split(/\r?\n/);
   if (!/^-?\d+,-?\d+,\d+,\d+$/.test(region)) {
-    throw new Error(`Invalid nixmac window region from Accessibility: ${region || '<empty>'}`);
+    throw new Error(`Invalid nixmac window region from Accessibility: ${region || "<empty>"}`);
   }
-  return { region, title: titleLines.join('\n').trim() };
+  return { region, title: titleLines.join("\n").trim() };
 }
 
 async function capture(args) {
   const label = args[0];
-  if (!label) throw new Error('capture requires a label');
-  const note = argValue(args, '--note', '');
+  if (!label) throw new Error("capture requires a label");
+  const note = argValue(args, "--note", "");
   const state = await loadState();
-  const safeLabel = label.replace(/[^a-zA-Z0-9._-]+/g, '-');
-  const fileName = `${String(state.screenshots.length + 1).padStart(2, '0')}-${safeLabel}.png`;
-  const screenshotPath = path.join(state.runDir, 'screenshots', fileName);
+  const safeLabel = label.replace(/[^a-zA-Z0-9._-]+/g, "-");
+  const fileName = `${String(state.screenshots.length + 1).padStart(2, "0")}-${safeLabel}.png`;
+  const screenshotPath = path.join(state.runDir, "screenshots", fileName);
   const windowInfo = getNixmacWindowInfo();
-  run('screencapture', ['-x', '-R', windowInfo.region, screenshotPath]);
+  run("screencapture", ["-x", "-R", windowInfo.region, screenshotPath]);
   const fileStat = await stat(screenshotPath);
   state.screenshots.push({
     label,
@@ -1407,7 +1523,7 @@ async function capture(args) {
   });
   if (note) state.narrative.push({ ts: new Date().toISOString(), text: note });
   await saveState(state);
-  await appendEvent(state, 'screenshot.captured', {
+  await appendEvent(state, "screenshot.captured", {
     label,
     path: path.relative(state.runDir, screenshotPath),
     note,
@@ -1419,17 +1535,17 @@ async function capture(args) {
 async function scenario(args) {
   const [key, statusValue] = args;
   if (!scenarioLabels[key]) throw new Error(`Unknown scenario key: ${key}`);
-  if (!['pass', 'fail', 'inconclusive'].includes(statusValue)) {
-    throw new Error('scenario status must be pass, fail, or inconclusive');
+  if (!["pass", "fail", "inconclusive"].includes(statusValue)) {
+    throw new Error("scenario status must be pass, fail, or inconclusive");
   }
-  const note = argValue(args, '--note', '');
+  const note = argValue(args, "--note", "");
   const state = await loadState();
   state.scenarios[key].status = statusValue;
   if (note) state.scenarios[key].notes.push(note);
   const claim = {
     claim: state.scenarios[key].label,
     status: statusValue,
-    evidence: note || 'See screenshots and narrative.',
+    evidence: note || "See screenshots and narrative.",
   };
   const existingClaim = state.claims.find((item) => item.claim === claim.claim);
   if (existingClaim) {
@@ -1439,34 +1555,34 @@ async function scenario(args) {
     state.claims.push(claim);
   }
   await saveState(state);
-  await appendEvent(state, 'scenario.updated', { key, status: statusValue, note });
+  await appendEvent(state, "scenario.updated", { key, status: statusValue, note });
 }
 
 async function confirmation(args) {
   const [label] = args;
-  if (!label) throw new Error('confirmation requires a label');
-  const note = argValue(args, '--note', '');
+  if (!label) throw new Error("confirmation requires a label");
+  const note = argValue(args, "--note", "");
   const state = await loadState();
   const entry = note ? `${label}: ${note}` : label;
   if (!state.confirmationBoundaries.includes(entry)) {
     state.confirmationBoundaries.push(entry);
   }
   await saveState(state);
-  await appendEvent(state, 'confirmation.recorded', { label, note });
+  await appendEvent(state, "confirmation.recorded", { label, note });
 }
 
 async function narrative(args) {
-  const text = args.join(' ').trim();
-  if (!text) throw new Error('narrative requires text');
+  const text = args.join(" ").trim();
+  if (!text) throw new Error("narrative requires text");
   const state = await loadState();
   state.narrative.push({ ts: new Date().toISOString(), text });
   await saveState(state);
-  await appendEvent(state, 'narrative.added', { text });
+  await appendEvent(state, "narrative.added", { text });
 }
 
 async function appCommand(args) {
-  const text = args.join(' ').trim();
-  if (!text) throw new Error('app-command requires text');
+  const text = args.join(" ").trim();
+  if (!text) throw new Error("app-command requires text");
   const state = await loadState();
   state.appCommand = text;
   await saveState(state);
@@ -1474,23 +1590,27 @@ async function appCommand(args) {
 
 function escapeHtml(value) {
   return String(value)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function verdictFor(state) {
   const statuses = Object.values(state.scenarios).map((scenarioState) => scenarioState.status);
-  if (statuses.includes('fail')) return 'fail';
-  if (statuses.includes('inconclusive')) return 'inconclusive';
-  if ((state.mode === 'peekaboo' || state.mode === 'peekaboo-suite') && requiredComputerUseCoverage(state).missingRequiredKeys.length > 0) return 'inconclusive';
-  return 'pass';
+  if (statuses.includes("fail")) return "fail";
+  if (statuses.includes("inconclusive")) return "inconclusive";
+  if (
+    (state.mode === "peekaboo" || state.mode === "peekaboo-suite") &&
+    requiredComputerUseCoverage(state).missingRequiredKeys.length > 0
+  )
+    return "inconclusive";
+  return "pass";
 }
 
 function linkArtifact(pathValue) {
-  if (!pathValue) return '';
+  if (!pathValue) return "";
   const label = escapeHtml(pathValue);
   return `<a href="${label}"><code>${label}</code></a>`;
 }
@@ -1499,24 +1619,24 @@ function artifactRows(state) {
   if (state.peekaboo?.suite?.artifactRows?.length) {
     const rows = [...state.peekaboo.suite.artifactRows];
     if (state.video?.path && !rows.some(([, artifactPath]) => artifactPath === state.video.path)) {
-      rows.unshift(['Video', state.video.path]);
+      rows.unshift(["Video", state.video.path]);
     }
     return rows;
   }
   const artifacts = state.peekaboo?.result?.artifacts;
   const rows = artifacts
     ? [
-    ['Preflight', artifacts.preflight],
-    ['Log', artifacts.logFile],
-    ['stdout', artifacts.stdout],
-    ['stderr', artifacts.stderr],
-    ['Legacy JSON', artifacts.resultsFile],
-    ['Structured report', artifacts.reportFile],
-    ['Video', artifacts.videoFile],
+        ["Preflight", artifacts.preflight],
+        ["Log", artifacts.logFile],
+        ["stdout", artifacts.stdout],
+        ["stderr", artifacts.stderr],
+        ["Legacy JSON", artifacts.resultsFile],
+        ["Structured report", artifacts.reportFile],
+        ["Video", artifacts.videoFile],
       ]
     : [];
   if (state.video?.path && !rows.some(([, artifactPath]) => artifactPath === state.video.path)) {
-    rows.unshift(['Video', state.video.path]);
+    rows.unshift(["Video", state.video.path]);
   }
   for (const diagnostic of state.diagnostics ?? []) {
     rows.push([diagnostic.label, diagnostic.path]);
@@ -1537,11 +1657,13 @@ function coverageMap(state) {
 }
 
 function coveragePassed(state, coverage) {
-  return state.scenarios?.[coverage.key]?.status === 'pass';
+  return state.scenarios?.[coverage.key]?.status === "pass";
 }
 
 function phaseCoverageByKey(state) {
-  return new Map((coverageMap(state)?.phaseCoverage ?? []).map((coverage) => [coverage.key, coverage]));
+  return new Map(
+    (coverageMap(state)?.phaseCoverage ?? []).map((coverage) => [coverage.key, coverage]),
+  );
 }
 
 function coveredComputerUseKeys(state) {
@@ -1578,7 +1700,7 @@ function scenarioEntries(state) {
 }
 
 function visibleNonPassEntries(state) {
-  return scenarioEntries(state).filter((item) => !['pass', 'not_required'].includes(item.status));
+  return scenarioEntries(state).filter((item) => !["pass", "not_required"].includes(item.status));
 }
 
 function executedPeekabooEntries(state) {
@@ -1586,7 +1708,9 @@ function executedPeekabooEntries(state) {
   const phaseKeys = new Set(coverageByKey.keys());
   const scenarioKey = PEEKABOO_SCENARIO_TO_REPORT_KEY[state.peekaboo?.scenario] ?? null;
   return scenarioEntries(state)
-    .filter((item) => item.key === scenarioKey || item.executedByPeekaboo || phaseKeys.has(item.key))
+    .filter(
+      (item) => item.key === scenarioKey || item.executedByPeekaboo || phaseKeys.has(item.key),
+    )
     .map((item) => {
       const coverage = coverageByKey.get(item.key);
       if (!coverage || item.peekabooEvidence) return item;
@@ -1608,36 +1732,53 @@ function transitiveComputerUseEntries(state) {
 
 function notRequiredEntries(state) {
   const coveredKeys = new Set(coveredComputerUseKeys(state));
-  return scenarioEntries(state).filter((item) => item.status === 'not_required' && !coveredKeys.has(item.key) && !PR75_REQUIRED_COMPUTER_USE_KEYS.has(item.key));
+  return scenarioEntries(state).filter(
+    (item) =>
+      item.status === "not_required" &&
+      !coveredKeys.has(item.key) &&
+      !PR75_REQUIRED_COMPUTER_USE_KEYS.has(item.key),
+  );
 }
 
 function providerLabel(state) {
-  if (state.provider?.kind === 'peekaboo-suite') return 'Suite mixed provider';
-  if (state.provider?.kind === 'local-provider-stub') return 'Local provider stub';
-  if (state.provider?.kind === 'no-llm-provider-required') return 'No LLM provider required';
-  if (state.provider?.kind === 'not-required' && /local provider stub/i.test(state.provider?.note ?? '')) return 'Local provider stub';
+  if (state.provider?.kind === "peekaboo-suite") return "Suite mixed provider";
+  if (state.provider?.kind === "local-provider-stub") return "Local provider stub";
+  if (state.provider?.kind === "no-llm-provider-required") return "No LLM provider required";
+  if (
+    state.provider?.kind === "not-required" &&
+    /local provider stub/i.test(state.provider?.note ?? "")
+  )
+    return "Local provider stub";
   if (state.provider?.kind) return state.provider.kind;
-  return state.setup?.mockProvider?.baseUrl ?? 'Unavailable';
+  return state.setup?.mockProvider?.baseUrl ?? "Unavailable";
 }
 
 function providerSummaryNote(state) {
-  if (state.provider?.kind === 'peekaboo-suite') return 'Core no-provider proof + provider stub proof.';
-  if (state.provider?.kind === 'local-provider-stub') return 'Deterministic OpenAI-compatible stub verified.';
-  if (state.provider?.kind === 'no-llm-provider-required') return 'No provider required for this scenario.';
-  if (state.provider?.kind === 'not-required' && /local provider stub/i.test(state.provider?.note ?? '')) return 'Deterministic provider stub verified.';
-  return state.provider?.note ?? '';
+  if (state.provider?.kind === "peekaboo-suite")
+    return "Core no-provider proof + provider stub proof.";
+  if (state.provider?.kind === "local-provider-stub")
+    return "Deterministic OpenAI-compatible stub verified.";
+  if (state.provider?.kind === "no-llm-provider-required")
+    return "No provider required for this scenario.";
+  if (
+    state.provider?.kind === "not-required" &&
+    /local provider stub/i.test(state.provider?.note ?? "")
+  )
+    return "Deterministic provider stub verified.";
+  return state.provider?.note ?? "";
 }
 
 function scenarioDisplayName(state) {
-  if (state.mode === 'peekaboo-suite') return 'Peekaboo Product Proof suite';
+  if (state.mode === "peekaboo-suite") return "Peekaboo Product Proof suite";
   const scenario = state.peekaboo?.scenario;
   const reportKey = PEEKABOO_SCENARIO_TO_REPORT_KEY[scenario];
-  return scenarioLabels[reportKey] ?? scenario ?? state.mode ?? 'local';
+  return scenarioLabels[reportKey] ?? scenario ?? state.mode ?? "local";
 }
 
 function scenarioSummaryNote(state) {
-  if (state.mode === 'peekaboo-suite') {
-    const scenarios = state.peekaboo?.scenarios?.map((item) => item.scenario).join(', ') || 'No scenarios recorded';
+  if (state.mode === "peekaboo-suite") {
+    const scenarios =
+      state.peekaboo?.scenarios?.map((item) => item.scenario).join(", ") || "No scenarios recorded";
     return `${scenarios} · ${runDuration(state)}`;
   }
   const scenario = state.peekaboo?.scenario;
@@ -1646,8 +1787,10 @@ function scenarioSummaryNote(state) {
 }
 
 function runDuration(state) {
-  if (state.mode === 'peekaboo-suite') {
-    const durations = (state.peekaboo?.scenarios ?? []).map((item) => item.durationSeconds).filter(Number.isFinite);
+  if (state.mode === "peekaboo-suite") {
+    const durations = (state.peekaboo?.scenarios ?? [])
+      .map((item) => item.durationSeconds)
+      .filter(Number.isFinite);
     if (durations.length) return `${durations.reduce((sum, value) => sum + value, 0)}s`;
     return `${state.peekaboo?.scenarios?.length ?? 0} scenario(s)`;
   }
@@ -1655,7 +1798,7 @@ function runDuration(state) {
   const seconds = state.peekaboo?.result?.results?.duration_seconds;
   if (Number.isFinite(ms) && ms > 0) return `${Math.round(ms / 1000)}s`;
   if (Number.isFinite(seconds) && seconds > 0) return `${seconds}s`;
-  return 'Not recorded';
+  return "Not recorded";
 }
 
 function renderStatusPill(status, label = status) {
@@ -1663,22 +1806,24 @@ function renderStatusPill(status, label = status) {
 }
 
 function renderNotes(notes = []) {
-  return notes.length ? notes.map(escapeHtml).join('<br>') : 'No notes recorded.';
+  return notes.length ? notes.map(escapeHtml).join("<br>") : "No notes recorded.";
 }
 
 function renderScenarioNotes(item) {
   let notes = item.notes ?? [];
-  if (item.status !== 'not_required') {
+  if (item.status !== "not_required") {
     notes = notes.filter(
       (note) =>
         !/\bNot required for Peekaboo (?:suite scenarios|macos_[a-z_]+ run)\b/i.test(String(note)),
     );
   }
   if (!notes.length && item.peekabooTransitiveCoverage) {
-    notes = [`Covered transitively by ${item.peekabooTransitiveCoverage.phaseKey ?? 'Peekaboo evidence'}.`];
+    notes = [
+      `Covered transitively by ${item.peekabooTransitiveCoverage.phaseKey ?? "Peekaboo evidence"}.`,
+    ];
   }
   if (!notes.length && item.executedByPeekaboo) {
-    notes = ['Executed by Peekaboo and confirmed in this report.'];
+    notes = ["Executed by Peekaboo and confirmed in this report."];
   }
   return renderNotes(notes);
 }
@@ -1691,12 +1836,12 @@ function renderProofRows(items, { includeCoverage = true } = {}) {
       return `<tr>
         <td><strong>${escapeHtml(item.label)}</strong><br><small><code>${escapeHtml(item.key)}</code></small></td>
         <td>${renderStatusPill(item.status)}</td>
-        <td>${escapeHtml(evidence.grade ?? 'scenario')}</td>
-        <td>${includeCoverage ? escapeHtml((item.peekabooEvidence?.correspondsTo ?? [item.peekabooTransitiveCoverage ? item.key : '']).filter(Boolean).join(', ') || 'none') : ''}</td>
+        <td>${escapeHtml(evidence.grade ?? "scenario")}</td>
+        <td>${includeCoverage ? escapeHtml((item.peekabooEvidence?.correspondsTo ?? [item.peekabooTransitiveCoverage ? item.key : ""]).filter(Boolean).join(", ") || "none") : ""}</td>
         <td>${renderScenarioNotes(item)}</td>
       </tr>`;
     })
-    .join('\n');
+    .join("\n");
 }
 
 function renderStatusRows(items) {
@@ -1709,7 +1854,7 @@ function renderStatusRows(items) {
         <td>${renderScenarioNotes(item)}</td>
       </tr>`,
     )
-    .join('\n');
+    .join("\n");
 }
 
 function transitiveCoverageFor(item) {
@@ -1729,12 +1874,12 @@ function renderTransitiveRows(items) {
       return `<tr>
         <td><strong>${escapeHtml(item.label)}</strong><br><small><code>${escapeHtml(item.key)}</code></small></td>
         <td>${renderStatusPill(item.status)}</td>
-        <td>${escapeHtml(coverage.grade ?? 'scenario')}</td>
-        <td><code>${escapeHtml(coverage.phaseKey ?? 'unknown')}</code></td>
+        <td>${escapeHtml(coverage.grade ?? "scenario")}</td>
+        <td><code>${escapeHtml(coverage.phaseKey ?? "unknown")}</code></td>
         <td>${renderScenarioNotes(item)}</td>
       </tr>`;
     })
-    .join('\n');
+    .join("\n");
 }
 
 function renderParityRows(state) {
@@ -1743,10 +1888,10 @@ function renderParityRows(state) {
   for (const coverage of coverageMap(state)?.phaseCoverage ?? []) {
     if (!coverage.correspondsTo?.length) {
       rows.push({
-        computerUseKey: 'none',
+        computerUseKey: "none",
         phases: [coverage],
-        status: 'pass',
-        note: 'Peekaboo-only fixture or audit evidence; no direct Computer Use key.',
+        status: "pass",
+        note: "Peekaboo-only fixture or audit evidence; no direct Computer Use key.",
       });
       continue;
     }
@@ -1760,17 +1905,19 @@ function renderParityRows(state) {
     }
   }
   for (const row of groupedByComputerUseKey.values()) {
-      const computerUseScenario = state.scenarios?.[row.computerUseKey];
-      const phasePassed = row.phases.some((coverage) => coveragePassed(state, coverage));
-      row.status =
-        computerUseScenario?.peekabooTransitiveCoverage || phasePassed
-          ? 'pass'
-          : computerUseScenario?.status ?? 'not_required';
-      const passedPhaseKeys = row.phases.filter((coverage) => coveragePassed(state, coverage)).map((coverage) => coverage.key);
-      row.note = phasePassed
-        ? `Covered by passed Peekaboo phase(s): ${passedPhaseKeys.join(', ')}.`
-        : computerUseScenario?.notes?.join(' ') || 'Mapped by Peekaboo coverage metadata.';
-      rows.push(row);
+    const computerUseScenario = state.scenarios?.[row.computerUseKey];
+    const phasePassed = row.phases.some((coverage) => coveragePassed(state, coverage));
+    row.status =
+      computerUseScenario?.peekabooTransitiveCoverage || phasePassed
+        ? "pass"
+        : (computerUseScenario?.status ?? "not_required");
+    const passedPhaseKeys = row.phases
+      .filter((coverage) => coveragePassed(state, coverage))
+      .map((coverage) => coverage.key);
+    row.note = phasePassed
+      ? `Covered by passed Peekaboo phase(s): ${passedPhaseKeys.join(", ")}.`
+      : computerUseScenario?.notes?.join(" ") || "Mapped by Peekaboo coverage metadata.";
+    rows.push(row);
   }
   if (!rows.length) return '<tr><td colspan="5">No Peekaboo parity map was produced.</td></tr>';
   return rows
@@ -1778,40 +1925,40 @@ function renderParityRows(state) {
       (row) => `<tr>
         <td><code>${escapeHtml(row.computerUseKey)}</code></td>
         <td>${renderStatusPill(row.status)}</td>
-        <td>${row.phases.map((phase) => `<code>${escapeHtml(phase.key)}</code><br><small>${escapeHtml(phase.label)}</small>`).join('<br>')}</td>
-        <td>${escapeHtml([...new Set(row.phases.map((phase) => phase.grade))].join(', '))}</td>
+        <td>${row.phases.map((phase) => `<code>${escapeHtml(phase.key)}</code><br><small>${escapeHtml(phase.label)}</small>`).join("<br>")}</td>
+        <td>${escapeHtml([...new Set(row.phases.map((phase) => phase.grade))].join(", "))}</td>
         <td>${escapeHtml(row.note)}</td>
       </tr>`,
     )
-    .join('\n');
+    .join("\n");
 }
 
 function renderBaselineCoverageRows(state) {
   const covered = new Set(coveredComputerUseKeys(state));
   return PR75_COMPUTER_USE_BASELINE.requiredKeys
     .map((key) => {
-      const status = covered.has(key) ? 'pass' : 'not_required';
+      const status = covered.has(key) ? "pass" : "not_required";
       const note = covered.has(key)
-        ? 'Covered by passed Peekaboo evidence in this report.'
-        : 'Remaining required breadth gap for Peekaboo parity.';
+        ? "Covered by passed Peekaboo evidence in this report."
+        : "Remaining required breadth gap for Peekaboo parity.";
       return `<tr>
         <td><code>${escapeHtml(key)}</code></td>
-        <td>${renderStatusPill(status, covered.has(key) ? 'covered' : 'gap')}</td>
+        <td>${renderStatusPill(status, covered.has(key) ? "covered" : "gap")}</td>
         <td>${escapeHtml(scenarioLabels[key] ?? sharedScenarioLabels[key] ?? key)}</td>
         <td>${escapeHtml(note)}</td>
       </tr>`;
     })
-    .join('\n');
+    .join("\n");
 }
 
 function renderListItems(items = [], fallback) {
   if (!items.length) return `<li>${escapeHtml(fallback)}</li>`;
-  return items.map((item) => `<li>${escapeHtml(item)}</li>`).join('\n');
+  return items.map((item) => `<li>${escapeHtml(item)}</li>`).join("\n");
 }
 
 function renderCodeListItems(items = [], fallback) {
   if (!items.length) return `<li>${escapeHtml(fallback)}</li>`;
-  return items.map((item) => `<li><code>${escapeHtml(item)}</code></li>`).join('\n');
+  return items.map((item) => `<li><code>${escapeHtml(item)}</code></li>`).join("\n");
 }
 
 function renderPrSurfaceRows(state) {
@@ -1820,71 +1967,87 @@ function renderPrSurfaceRows(state) {
   return rows
     .map((row) => {
       const coverageNote = row.waiver
-        ? escapeHtml(row.waiver.exitCriteria ?? row.waiver.reason ?? 'waived')
+        ? escapeHtml(row.waiver.exitCriteria ?? row.waiver.reason ?? "waived")
         : row.coverageNote
           ? escapeHtml(row.coverageNote)
-          : row.coverageDisposition === 'non-claiming'
-            ? 'Tracked without claiming scenario coverage'
-            : 'Mapped';
+          : row.coverageDisposition === "non-claiming"
+            ? "Tracked without claiming scenario coverage"
+            : "Mapped";
       return `<tr>
         <td><code>${escapeHtml(row.file)}</code></td>
-        <td>${escapeHtml(row.label ?? row.id ?? 'unknown')}</td>
-        <td>${escapeHtml((row.scenarioKeys ?? []).map((key) => scenarioLabels[key] ?? sharedScenarioLabels[key] ?? key).join(', ') || 'explicit waiver / unmapped')}</td>
+        <td>${escapeHtml(row.label ?? row.id ?? "unknown")}</td>
+        <td>${escapeHtml((row.scenarioKeys ?? []).map((key) => scenarioLabels[key] ?? sharedScenarioLabels[key] ?? key).join(", ") || "explicit waiver / unmapped")}</td>
         <td>${coverageNote}</td>
       </tr>`;
     })
-    .join('\n');
+    .join("\n");
 }
 
 function renderPeekabooPrFocus(state) {
-  const pr = state.prFocus ?? { configured: false, changedFiles: [], userVisibleFiles: [], scenarioKeys: [], scenarioSuggestions: [] };
-  const mappedScenarioLabels = (pr.scenarioKeys ?? []).map((key) => scenarioLabels[key] ?? sharedScenarioLabels[key] ?? key);
+  const pr = state.prFocus ?? {
+    configured: false,
+    changedFiles: [],
+    userVisibleFiles: [],
+    scenarioKeys: [],
+    scenarioSuggestions: [],
+  };
+  const mappedScenarioLabels = (pr.scenarioKeys ?? []).map(
+    (key) => scenarioLabels[key] ?? sharedScenarioLabels[key] ?? key,
+  );
   return `<h2 id="pull-request-focus">Pull Request Focus</h2>
   <section class="panel">
-    <p><strong>PR:</strong> ${escapeHtml(pr.number || 'not provided')}${pr.title ? ` - ${escapeHtml(pr.title)}` : ''}</p>
-    <p><strong>Refs:</strong> ${escapeHtml(pr.baseRef || 'base ?')} ← ${escapeHtml(pr.headRef || 'head ?')}</p>
+    <p><strong>PR:</strong> ${escapeHtml(pr.number || "not provided")}${pr.title ? ` - ${escapeHtml(pr.title)}` : ""}</p>
+    <p><strong>Refs:</strong> ${escapeHtml(pr.baseRef || "base ?")} ← ${escapeHtml(pr.headRef || "head ?")}</p>
     <div class="summary">
-      <div class="metric"><strong>Changed files</strong><span>${escapeHtml(String(pr.changedFiles?.length ?? 0))}</span><small>${pr.configured ? 'Forwarded from GitHub PR metadata.' : 'No PR metadata was configured for this run.'}</small></div>
+      <div class="metric"><strong>Changed files</strong><span>${escapeHtml(String(pr.changedFiles?.length ?? 0))}</span><small>${pr.configured ? "Forwarded from GitHub PR metadata." : "No PR metadata was configured for this run."}</small></div>
       <div class="metric"><strong>User-visible files</strong><span>${escapeHtml(String(pr.userVisibleFiles?.length ?? 0))}</span><small>Inferred from coverage-manifest.json plus app/test/workflow heuristics.</small></div>
       <div class="metric"><strong>Mapped scenarios</strong><span>${escapeHtml(String(pr.scenarioKeys?.length ?? 0))}</span><small>Used to focus reviewer attention on changed surfaces.</small></div>
     </div>
-    ${pr.manifestLoadError ? `<p class="warning"><strong>Manifest load error:</strong> ${escapeHtml(pr.manifestLoadError)}</p>` : ''}
+    ${pr.manifestLoadError ? `<p class="warning"><strong>Manifest load error:</strong> ${escapeHtml(pr.manifestLoadError)}</p>` : ""}
     <h3>Mapped PR Surfaces</h3>
     <div class="table-scroll"><table>
       <thead><tr><th>Changed File</th><th>Surface</th><th>Scenario Focus</th><th>Coverage Note</th></tr></thead>
       <tbody>${renderPrSurfaceRows(state)}</tbody>
     </table></div>
     <h3>Scenario Focus</h3>
-    <ul>${renderListItems(mappedScenarioLabels, 'No dedicated scenario mapping inferred from changed files.')}</ul>
+    <ul>${renderListItems(mappedScenarioLabels, "No dedicated scenario mapping inferred from changed files.")}</ul>
     <h3>Suggested Coverage Updates</h3>
-    <ul>${renderListItems(pr.scenarioSuggestions ?? [], 'No unmapped user-visible changed files detected.')}</ul>
+    <ul>${renderListItems(pr.scenarioSuggestions ?? [], "No unmapped user-visible changed files detected.")}</ul>
     <details>
       <summary>Changed files (${escapeHtml(String(pr.changedFiles?.length ?? 0))})</summary>
-      <ul>${renderCodeListItems(pr.changedFiles ?? [], 'No changed-file metadata provided.')}</ul>
+      <ul>${renderCodeListItems(pr.changedFiles ?? [], "No changed-file metadata provided.")}</ul>
     </details>
     <details>
       <summary>Unmapped user-visible files (${escapeHtml(String(pr.unmappedUserVisibleFiles?.length ?? 0))})</summary>
-      <ul>${renderCodeListItems(pr.unmappedUserVisibleFiles ?? [], 'No unmapped user-visible files detected.')}</ul>
+      <ul>${renderCodeListItems(pr.unmappedUserVisibleFiles ?? [], "No unmapped user-visible files detected.")}</ul>
     </details>
   </section>`;
 }
 
 function screenshotFamily(labelOrPath) {
   return path
-    .basename(String(labelOrPath ?? 'screenshot'))
-    .replace(/\.[^.]+$/, '')
-    .replace(/_annotated$/, '');
+    .basename(String(labelOrPath ?? "screenshot"))
+    .replace(/\.[^.]+$/, "")
+    .replace(/_annotated$/, "");
 }
 
 function proofGalleryItems(state) {
   const families = new Map();
   for (const shot of state.screenshots ?? []) {
     const family = screenshotFamily(shot.path ?? shot.label);
-    const current = families.get(family) ?? { family, primary: null, annotated: null, variants: [] };
+    const current = families.get(family) ?? {
+      family,
+      primary: null,
+      annotated: null,
+      variants: [],
+    };
     current.variants.push(shot);
-    if (/_annotated(?:\.[^.]+)?$/.test(path.basename(shot.path ?? shot.label ?? ''))) {
+    if (/_annotated(?:\.[^.]+)?$/.test(path.basename(shot.path ?? shot.label ?? ""))) {
       current.annotated ??= shot;
-    } else if (!current.primary || (shot.path?.startsWith('screenshots/') && !current.primary.path?.startsWith('screenshots/'))) {
+    } else if (
+      !current.primary ||
+      (shot.path?.startsWith("screenshots/") && !current.primary.path?.startsWith("screenshots/"))
+    ) {
       current.primary = shot;
     }
     families.set(family, current);
@@ -1895,7 +2058,7 @@ function proofGalleryItems(state) {
 }
 
 function formatChapterTime(seconds) {
-  if (!Number.isFinite(seconds) || seconds <= 0) return '0ms';
+  if (!Number.isFinite(seconds) || seconds <= 0) return "0ms";
   if (seconds < 60) return `${seconds.toFixed(seconds % 1 === 0 ? 0 : 1)}s`;
   const minutes = Math.floor(seconds / 60);
   const remainder = Math.round(seconds % 60);
@@ -1911,105 +2074,113 @@ function evidenceVideoFrameDurationSeconds(state = {}) {
 
 function proofTimelineItems(state) {
   const items = proofGalleryItems(state).sort((a, b) => {
-    const aTime = Date.parse(a.primary.capturedAt ?? '');
-    const bTime = Date.parse(b.primary.capturedAt ?? '');
+    const aTime = Date.parse(a.primary.capturedAt ?? "");
+    const bTime = Date.parse(b.primary.capturedAt ?? "");
     if (Number.isFinite(aTime) && Number.isFinite(bTime) && aTime !== bTime) return aTime - bTime;
     return a.primary.path.localeCompare(b.primary.path);
   });
-  const firstCapturedAt = Date.parse(items[0]?.primary.capturedAt ?? '');
+  const firstCapturedAt = Date.parse(items[0]?.primary.capturedAt ?? "");
   const videoFrameDurationSeconds = evidenceVideoFrameDurationSeconds(state);
   return items.map((item, index) => {
-    const capturedAt = Date.parse(item.primary.capturedAt ?? '');
+    const capturedAt = Date.parse(item.primary.capturedAt ?? "");
     return {
       ...item,
       frameIndex: index,
-      seconds: Number.isFinite(firstCapturedAt) && Number.isFinite(capturedAt) ? Math.max(0, (capturedAt - firstCapturedAt) / 1000) : 0,
+      seconds:
+        Number.isFinite(firstCapturedAt) && Number.isFinite(capturedAt)
+          ? Math.max(0, (capturedAt - firstCapturedAt) / 1000)
+          : 0,
       videoSeconds: Number((index * videoFrameDurationSeconds).toFixed(3)),
-      chapterLabel: item.primary.label.replace(/^[^:]+:\s*/, '').replace(/[-_]/g, ' '),
+      chapterLabel: item.primary.label.replace(/^[^:]+:\s*/, "").replace(/[-_]/g, " "),
     };
   });
 }
 
 function splitScreenshotLabel(label) {
-  const raw = String(label ?? '');
+  const raw = String(label ?? "");
   const match = raw.match(/^([^:]+):\s*(.+)$/);
   return match ? { scenario: match[1], label: match[2] } : { scenario: null, label: raw };
 }
 
 function humanizeScreenshotLabel(label) {
-  return String(label ?? 'Screenshot proof')
-    .replace(/\.(png|jpg|jpeg|webp)$/i, '')
-    .replace(/-\d{9,}$/, '')
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ')
+  return String(label ?? "Screenshot proof")
+    .replace(/\.(png|jpg|jpeg|webp)$/i, "")
+    .replace(/-\d{9,}$/, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
 function galleryScenarioStatus(state, item) {
   const scenarioName = splitScreenshotLabel(item.primary?.label).scenario;
   if (!scenarioName) return verdictFor(state);
-  const suiteScenario = state.peekaboo?.scenarios?.find((scenario) => scenario.scenario === scenarioName);
-  if (suiteScenario?.failed) return 'fail';
-  if (['pass', 'fail', 'inconclusive'].includes(suiteScenario?.verdict)) return suiteScenario.verdict;
+  const suiteScenario = state.peekaboo?.scenarios?.find(
+    (scenario) => scenario.scenario === scenarioName,
+  );
+  if (suiteScenario?.failed) return "fail";
+  if (["pass", "fail", "inconclusive"].includes(suiteScenario?.verdict))
+    return suiteScenario.verdict;
   return verdictFor(state);
 }
 
 function galleryScenarioLabel(item) {
   const scenarioName = splitScreenshotLabel(item.primary?.label).scenario;
-  return scenarioName ? humanizeScreenshotLabel(scenarioName) : 'Focused run';
+  return scenarioName ? humanizeScreenshotLabel(scenarioName) : "Focused run";
 }
 
 const galleryCalloutRules = [
   {
     pattern: /settings|api-keys|ai-models|preferences/i,
-    callouts: [{ label: 'Settings surface under test', x: 12, y: 14, w: 76, h: 72 }],
+    callouts: [{ label: "Settings surface under test", x: 12, y: 14, w: 76, h: 72 }],
   },
   {
     pattern: /descriptor|typed|prompt/i,
-    callouts: [{ label: 'Typed intent captured', x: 7, y: 34, w: 86, h: 22 }],
+    callouts: [{ label: "Typed intent captured", x: 7, y: 34, w: 86, h: 22 }],
   },
   {
     pattern: /review|provider|summary|diff/i,
-    callouts: [{ label: 'Generated review evidence visible', x: 8, y: 13, w: 84, h: 76 }],
+    callouts: [{ label: "Generated review evidence visible", x: 8, y: 13, w: 84, h: 76 }],
   },
   {
     pattern: /save-step|ready|after-build|commit/i,
-    callouts: [{ label: 'Save boundary evidence', x: 12, y: 20, w: 76, h: 60 }],
+    callouts: [{ label: "Save boundary evidence", x: 12, y: 20, w: 76, h: 60 }],
   },
   {
     pattern: /history|restore|rollback/i,
-    callouts: [{ label: 'History / restore proof', x: 8, y: 13, w: 84, h: 74 }],
+    callouts: [{ label: "History / restore proof", x: 8, y: 13, w: 84, h: 74 }],
   },
   {
     pattern: /discard|confirmation/i,
-    callouts: [{ label: 'Discard confirmation boundary', x: 18, y: 18, w: 64, h: 64 }],
+    callouts: [{ label: "Discard confirmation boundary", x: 18, y: 18, w: 64, h: 64 }],
   },
   {
     pattern: /feedback|report-issue|support/i,
-    callouts: [{ label: 'Support dialog evidence', x: 18, y: 15, w: 64, h: 68 }],
+    callouts: [{ label: "Support dialog evidence", x: 18, y: 15, w: 64, h: 68 }],
   },
   {
     pattern: /console/i,
-    callouts: [{ label: 'Console surface visible', x: 8, y: 12, w: 84, h: 76 }],
+    callouts: [{ label: "Console surface visible", x: 8, y: 12, w: 84, h: 76 }],
   },
   {
     pattern: /popover|customization|homebrew/i,
-    callouts: [{ label: 'Configuration surface proof', x: 12, y: 16, w: 76, h: 68 }],
+    callouts: [{ label: "Configuration surface proof", x: 12, y: 16, w: 76, h: 68 }],
   },
   {
     pattern: /launch|launched|core/i,
     callouts: [
-      { label: 'App shell visible', x: 6, y: 8, w: 88, h: 26 },
-      { label: 'Workflow area ready', x: 7, y: 36, w: 86, h: 38 },
+      { label: "App shell visible", x: 6, y: 8, w: 88, h: 26 },
+      { label: "Workflow area ready", x: 7, y: 36, w: 86, h: 38 },
     ],
   },
 ];
 
 function galleryCallouts(item) {
   const { label } = splitScreenshotLabel(item.primary?.label);
-  const searchTarget = `${item.family} ${label} ${item.primary?.path ?? ''}`;
+  const searchTarget = `${item.family} ${label} ${item.primary?.path ?? ""}`;
   const rule = galleryCalloutRules.find((candidate) => candidate.pattern.test(searchTarget));
-  return rule?.callouts ?? [{ label: 'Screenshot evidence for this check', x: 8, y: 10, w: 84, h: 78 }];
+  return (
+    rule?.callouts ?? [{ label: "Screenshot evidence for this check", x: 8, y: 10, w: 84, h: 78 }]
+  );
 }
 
 function renderGalleryCallouts(callouts) {
@@ -2018,12 +2189,14 @@ function renderGalleryCallouts(callouts) {
       (callout) =>
         `<span class="visual-callout" style="left:${escapeHtml(String(callout.x))}%;top:${escapeHtml(String(callout.y))}%;width:${escapeHtml(String(callout.w))}%;height:${escapeHtml(String(callout.h))}%"><span>${escapeHtml(callout.label)}</span></span>`,
     )
-    .join('\n');
+    .join("\n");
 }
 
 function videoArtifactPath(state, artifactRowsForState = artifactRows(state)) {
   if (state.video?.path) return state.video.path;
-  const row = artifactRowsForState.find(([label, artifactPath]) => /video/i.test(label) && /\.mp4(?:$|\?)/i.test(artifactPath ?? ''));
+  const row = artifactRowsForState.find(
+    ([label, artifactPath]) => /video/i.test(label) && /\.mp4(?:$|\?)/i.test(artifactPath ?? ""),
+  );
   return row?.[1] ?? null;
 }
 
@@ -2042,7 +2215,7 @@ async function usableFile(relativeRunPath, runDir) {
 }
 
 async function maybeGeneratePeekabooEvidenceVideo(state) {
-  if (state.mode !== 'peekaboo' && state.mode !== 'peekaboo-suite') return false;
+  if (state.mode !== "peekaboo" && state.mode !== "peekaboo-suite") return false;
   const runDir = path.resolve(state.runDir);
   if (state.video?.path && (await usableFile(state.video.path, runDir))) return false;
 
@@ -2061,21 +2234,27 @@ async function maybeGeneratePeekabooEvidenceVideo(state) {
 
   if (!frames.length) {
     state.video = {
-      status: 'unavailable',
-      note: 'No screenshot frames were available for the Peekaboo evidence video.',
+      status: "unavailable",
+      note: "No screenshot frames were available for the Peekaboo evidence video.",
     };
     return true;
   }
 
-  const videoDir = path.join(runDir, 'video');
+  const videoDir = path.join(runDir, "video");
   await mkdir(videoDir, { recursive: true });
   const frameDurationSeconds = evidenceVideoFrameDurationSeconds(state);
-  const framesPath = path.join(videoDir, 'peekaboo-evidence-frames.txt');
-  const chaptersPath = path.join(videoDir, 'peekaboo-evidence-chapters.json');
-  const videoPath = path.join(videoDir, 'peekaboo-evidence.mp4');
+  const framesPath = path.join(videoDir, "peekaboo-evidence-frames.txt");
+  const chaptersPath = path.join(videoDir, "peekaboo-evidence-chapters.json");
+  const videoPath = path.join(videoDir, "peekaboo-evidence.mp4");
   const concatFrames = frames.map((framePath) => path.relative(videoDir, framePath));
-  const frameList = concatFrames.flatMap((framePath) => [ffmpegConcatFileLine(framePath), `duration ${frameDurationSeconds}`]).join('\n');
-  await writeFile(framesPath, `${frameList}\n${ffmpegConcatFileLine(concatFrames.at(-1))}\n`, 'utf8');
+  const frameList = concatFrames
+    .flatMap((framePath) => [ffmpegConcatFileLine(framePath), `duration ${frameDurationSeconds}`])
+    .join("\n");
+  await writeFile(
+    framesPath,
+    `${frameList}\n${ffmpegConcatFileLine(concatFrames.at(-1))}\n`,
+    "utf8",
+  );
   await writeJson(
     chaptersPath,
     timeline.map((item) => ({
@@ -2086,38 +2265,38 @@ async function maybeGeneratePeekabooEvidenceVideo(state) {
     })),
   );
 
-  const result = tryRun('ffmpeg', [
-    '-y',
-    '-hide_banner',
-    '-loglevel',
-    'error',
-    '-f',
-    'concat',
-    '-safe',
-    '0',
-    '-i',
+  const result = tryRun("ffmpeg", [
+    "-y",
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-f",
+    "concat",
+    "-safe",
+    "0",
+    "-i",
     framesPath,
-    '-vf',
-    'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p',
-    '-movflags',
-    '+faststart',
+    "-vf",
+    "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p",
+    "-movflags",
+    "+faststart",
     videoPath,
   ]);
 
   const relativeVideoPath = path.relative(runDir, videoPath);
   if (!result.ok || !(await usableFile(relativeVideoPath, runDir))) {
     state.video = {
-      status: 'unavailable',
+      status: "unavailable",
       path: result.ok ? relativeVideoPath : null,
       frames: frames.length,
       frameDurationSeconds,
-      note: `ffmpeg could not generate the Peekaboo screenshot evidence video: ${result.stderr || result.error || 'unknown error'}`,
+      note: `ffmpeg could not generate the Peekaboo screenshot evidence video: ${result.stderr || result.error || "unknown error"}`,
     };
     return true;
   }
 
   state.video = {
-    status: 'available',
+    status: "available",
     path: relativeVideoPath,
     frames: frames.length,
     frameDurationSeconds,
@@ -2127,8 +2306,16 @@ async function maybeGeneratePeekabooEvidenceVideo(state) {
   };
   state.diagnostics ??= [];
   for (const [label, artifactPath, note] of [
-    ['Peekaboo evidence video chapters', state.video.chaptersPath, 'Generated timestamp/chapter metadata for the Peekaboo evidence MP4.'],
-    ['Peekaboo evidence video frame list', state.video.framesPath, 'Generated ffmpeg concat frame list for the Peekaboo evidence MP4.'],
+    [
+      "Peekaboo evidence video chapters",
+      state.video.chaptersPath,
+      "Generated timestamp/chapter metadata for the Peekaboo evidence MP4.",
+    ],
+    [
+      "Peekaboo evidence video frame list",
+      state.video.framesPath,
+      "Generated ffmpeg concat frame list for the Peekaboo evidence MP4.",
+    ],
   ]) {
     if (artifactPath && !state.diagnostics.some((item) => item.path === artifactPath)) {
       state.diagnostics.push({ label, path: artifactPath, note });
@@ -2148,18 +2335,18 @@ function renderEvidenceVideo(state, artifacts) {
         <small>${
           videoPath
             ? `Chapter times use the same persisted ${escapeHtml(String(frameDurationSeconds))}s screenshot frame cadence as the Computer Use evidence video.`
-            : 'Times are derived from screenshot capture metadata; chapter buttons scroll to the matching proof frame.'
+            : "Times are derived from screenshot capture metadata; chapter buttons scroll to the matching proof frame."
         }</small>
         <div class="chapter-list">
           ${chapters
             .map(
               (item) =>
-                `<button type="button" ${videoPath ? `data-video-seek="${escapeHtml(String(item.videoSeconds))}"` : ''} data-screenshot-target="screenshot-${escapeHtml(item.family)}">${escapeHtml(formatChapterTime(videoPath ? item.videoSeconds : item.seconds))} ${escapeHtml(item.chapterLabel)}</button>`,
+                `<button type="button" ${videoPath ? `data-video-seek="${escapeHtml(String(item.videoSeconds))}"` : ""} data-screenshot-target="screenshot-${escapeHtml(item.family)}">${escapeHtml(formatChapterTime(videoPath ? item.videoSeconds : item.seconds))} ${escapeHtml(item.chapterLabel)}</button>`,
             )
-            .join('\n')}
+            .join("\n")}
         </div>
       </div>`
-    : '';
+    : "";
   const storyboard = timeline.length
     ? `<div class="storyboard-strip" aria-label="Screenshot storyboard">
         ${timeline
@@ -2170,13 +2357,13 @@ function renderEvidenceVideo(state, artifacts) {
               <span>${escapeHtml(formatChapterTime(videoPath ? item.videoSeconds : item.seconds))}</span>
             </a>`,
           )
-          .join('\n')}
+          .join("\n")}
       </div>`
-    : '<p>No storyboard frames captured.</p>';
+    : "<p>No storyboard frames captured.</p>";
 
   return `<section id="summary-video" class="summary-video">
     <div class="summary-video-copy">
-      <strong>${videoPath ? 'Evidence video' : 'Evidence storyboard'}</strong>
+      <strong>${videoPath ? "Evidence video" : "Evidence storyboard"}</strong>
       <small>${
         videoPath
           ? `Screenshot-compilation MP4 built from ${state.video?.frames ?? timeline.length} captured frame(s), with ${chapters.length} timestamped chapter marker(s).`
@@ -2197,7 +2384,7 @@ function renderEvidenceVideo(state, artifacts) {
 
 function renderGallery(state) {
   const items = proofGalleryItems(state);
-  if (!items.length) return '<p>No screenshots captured.</p>';
+  if (!items.length) return "<p>No screenshots captured.</p>";
   return `<div class="proof-grid">
     ${items
       .map((item) => {
@@ -2218,28 +2405,28 @@ function renderGallery(state) {
               <strong>${escapeHtml(displayLabel || item.primary.label)}</strong>
               <span class="proof-mode">review highlight</span>
             </span>
-            <span>${escapeHtml(galleryScenarioLabel(item))} - ${escapeHtml(item.primary.note || 'Screenshot proof')}</span>
-            <span class="proof-meta">Captured ${escapeHtml(item.primary.capturedAt || 'time unavailable')} from the raw screenshot; video/storyboard frames remain raw.</span>
+            <span>${escapeHtml(galleryScenarioLabel(item))} - ${escapeHtml(item.primary.note || "Screenshot proof")}</span>
+            <span class="proof-meta">Captured ${escapeHtml(item.primary.capturedAt || "time unavailable")} from the raw screenshot; video/storyboard frames remain raw.</span>
             ${
               item.primary.windowTitle
                 ? `<span class="proof-meta">Window title at capture: ${escapeHtml(item.primary.windowTitle)}</span>`
-                : ''
+                : ""
             }
             <a class="proof-link" href="${escapeHtml(item.primary.path)}" target="_blank" rel="noopener">Open raw screenshot</a>
             ${
               item.annotated && item.annotated.path !== item.primary.path
                 ? `<details><summary>Peekaboo AX overlay</summary><p>Auto-generated accessibility-tree boxes from Peekaboo, kept for debugging but not treated as the curated pass/fail callout layer.</p><img src="${escapeHtml(item.annotated.path)}" alt="${escapeHtml(item.annotated.label)}"></details>`
-                : ''
+                : ""
             }
           </figcaption>
         </figure>`;
       })
-      .join('\n')}
+      .join("\n")}
   </div>`;
 }
 
 function renderArtifactTable(rows) {
-  if (!rows.length) return '<p>No runner artifacts recorded.</p>';
+  if (!rows.length) return "<p>No runner artifacts recorded.</p>";
   return `<div class="table-scroll"><table>
     <thead><tr><th>Artifact</th><th>Path</th></tr></thead>
     <tbody>
@@ -2250,7 +2437,7 @@ function renderArtifactTable(rows) {
             <td>${linkArtifact(artifactPath)}</td>
           </tr>`,
         )
-        .join('\n')}
+        .join("\n")}
     </tbody>
   </table></div>`;
 }
@@ -2270,8 +2457,12 @@ async function render() {
   const notRequired = notRequiredEntries(state);
   const requiredCoverage = requiredComputerUseCoverage(state);
   const artifacts = artifactRows(state);
-  const reportTitle = state.mode === 'peekaboo' ? 'nixmac Peekaboo Local E2E Evidence' : 'nixmac Computer Use Local E2E Evidence';
-  const effectiveReportTitle = state.mode === 'peekaboo-suite' ? 'nixmac Peekaboo Suite E2E Evidence' : reportTitle;
+  const reportTitle =
+    state.mode === "peekaboo"
+      ? "nixmac Peekaboo Local E2E Evidence"
+      : "nixmac Computer Use Local E2E Evidence";
+  const effectiveReportTitle =
+    state.mode === "peekaboo-suite" ? "nixmac Peekaboo Suite E2E Evidence" : reportTitle;
 
   const html = `<!doctype html>
 <html lang="en">
@@ -2389,16 +2580,16 @@ async function render() {
       <div class="metric"><strong>Scenario</strong><span>${escapeHtml(scenarioDisplayName(state))}</span><small>${escapeHtml(scenarioSummaryNote(state))}</small></div>
       <div class="metric"><strong>Executed checks</strong><span>${escapeHtml(String(executed.length))}</span><small>${escapeHtml(`${counts.fail} fail / ${counts.inconclusive} inconclusive`)}</small></div>
       <div class="metric"><strong>CU keys mapped</strong><span>${escapeHtml(String(requiredCoverage.coveredRequiredKeys.length))}/${escapeHtml(String(requiredCoverage.requiredKeys.length))}</span><small>PR #75 also has ${escapeHtml(String(PR75_COMPUTER_USE_BASELINE.metaKeys.length))} meta/PR checks.</small></div>
-      <div class="metric"><strong>Screenshots</strong><span>${escapeHtml(String(proofGalleryItems(state).length))}</span><small>${escapeHtml(state.peekaboo?.screenshotSignal?.status ?? 'not scanned')}</small></div>
-      <div class="metric"><strong>Secret scan</strong><span>${escapeHtml(state.peekaboo?.secretScan?.status ?? 'not scanned')}</span><small>${escapeHtml(String(state.peekaboo?.secretScan?.scannedFiles ?? 0))} text artifacts scanned</small></div>
+      <div class="metric"><strong>Screenshots</strong><span>${escapeHtml(String(proofGalleryItems(state).length))}</span><small>${escapeHtml(state.peekaboo?.screenshotSignal?.status ?? "not scanned")}</small></div>
+      <div class="metric"><strong>Secret scan</strong><span>${escapeHtml(state.peekaboo?.secretScan?.status ?? "not scanned")}</span><small>${escapeHtml(String(state.peekaboo?.secretScan?.scannedFiles ?? 0))} text artifacts scanned</small></div>
       <div class="metric"><strong>Provider</strong><span>${escapeHtml(providerLabel(state))}</span><small>${escapeHtml(providerSummaryNote(state))}</small></div>
     </section>
   </header>
 
   <section class="panel warning">
     <strong>Parity note</strong>
-    ${state.mode === 'peekaboo-suite' ? 'This Peekaboo suite' : 'This single Peekaboo report'} maps ${escapeHtml(String(requiredCoverage.coveredRequiredKeys.length))} of ${escapeHtml(String(requiredCoverage.requiredKeys.length))} required Computer Use Product Proof key(s), leaving ${escapeHtml(String(requiredCoverage.missingRequiredKeys.length))} required breadth gap(s). The PR #75 baseline recorded ${escapeHtml(String(PR75_COMPUTER_USE_BASELINE.rawPassedClaimCount))} raw passing claim(s), including ${escapeHtml(String(PR75_COMPUTER_USE_BASELINE.metaKeys.length))} meta/PR check(s); currently applicable known limits are listed explicitly below.
-    ${state.mode === 'peekaboo' && requiredCoverage.missingRequiredKeys.length > 0 ? '<br><strong>Single-scenario boundary</strong> This report is evidence for one focused Peekaboo scenario, not a full parity claim; use the Peekaboo suite report for Computer Use breadth parity.' : ''}
+    ${state.mode === "peekaboo-suite" ? "This Peekaboo suite" : "This single Peekaboo report"} maps ${escapeHtml(String(requiredCoverage.coveredRequiredKeys.length))} of ${escapeHtml(String(requiredCoverage.requiredKeys.length))} required Computer Use Product Proof key(s), leaving ${escapeHtml(String(requiredCoverage.missingRequiredKeys.length))} required breadth gap(s). The PR #75 baseline recorded ${escapeHtml(String(PR75_COMPUTER_USE_BASELINE.rawPassedClaimCount))} raw passing claim(s), including ${escapeHtml(String(PR75_COMPUTER_USE_BASELINE.metaKeys.length))} meta/PR check(s); currently applicable known limits are listed explicitly below.
+    ${state.mode === "peekaboo" && requiredCoverage.missingRequiredKeys.length > 0 ? "<br><strong>Single-scenario boundary</strong> This report is evidence for one focused Peekaboo scenario, not a full parity claim; use the Peekaboo suite report for Computer Use breadth parity." : ""}
   </section>
 
   ${renderPeekabooPrFocus(state)}
@@ -2412,14 +2603,14 @@ async function render() {
       <div class="metric"><strong>Branch</strong>${escapeHtml(state.branch)}</div>
       <div class="metric"><strong>SHA</strong><code>${escapeHtml(state.sha)}</code></div>
       <div class="metric"><strong>macOS</strong>${escapeHtml(state.macosVersion)}</div>
-      <div class="metric"><strong>Mode</strong>${escapeHtml(state.mode ?? 'deterministic')}</div>
+      <div class="metric"><strong>Mode</strong>${escapeHtml(state.mode ?? "deterministic")}</div>
       <div class="metric"><strong>App command</strong><code>${escapeHtml(state.appCommand)}</code></div>
     </div>
   </section>
 
   <h2 id="executed-proof">Executed Proof</h2>
   <p>These are the checks this run actually exercised. Failures and inconclusive rows stay visible here; skipped scope is collapsed later.</p>
-  ${failures.length ? `<section class="panel warning"><h3>Failures / Inconclusive</h3><div class="table-scroll"><table><thead><tr><th>Scenario</th><th>Status</th><th>Notes</th></tr></thead><tbody>${renderStatusRows(failures)}</tbody></table></div></section>` : ''}
+  ${failures.length ? `<section class="panel warning"><h3>Failures / Inconclusive</h3><div class="table-scroll"><table><thead><tr><th>Scenario</th><th>Status</th><th>Notes</th></tr></thead><tbody>${renderStatusRows(failures)}</tbody></table></div></section>` : ""}
   <div class="table-scroll"><table>
     <thead><tr><th>Proof</th><th>Status</th><th>Grade</th><th>CU keys</th><th>Evidence</th></tr></thead>
     <tbody>${renderProofRows(executed)}</tbody>
@@ -2431,7 +2622,7 @@ async function render() {
     <thead><tr><th>Computer Use Key</th><th>Status</th><th>Peekaboo Evidence</th><th>Grade</th><th>Notes</th></tr></thead>
     <tbody>${renderParityRows(state)}</tbody>
   </table></div>
-  ${transitive.length ? `<details open><summary>Transitive Computer Use coverage (${escapeHtml(String(transitive.length))})</summary><div class="table-scroll"><table><thead><tr><th>CU Scenario</th><th>Status</th><th>Grade</th><th>Peekaboo Phase</th><th>Evidence</th></tr></thead><tbody>${renderTransitiveRows(transitive)}</tbody></table></div></details>` : ''}
+  ${transitive.length ? `<details open><summary>Transitive Computer Use coverage (${escapeHtml(String(transitive.length))})</summary><div class="table-scroll"><table><thead><tr><th>CU Scenario</th><th>Status</th><th>Grade</th><th>Peekaboo Phase</th><th>Evidence</th></tr></thead><tbody>${renderTransitiveRows(transitive)}</tbody></table></div></details>` : ""}
 
   <h2 id="baseline-coverage">PR #75 Baseline Coverage</h2>
   <p>Required parity keys are separated from PR/meta checks and explicit waivers so this report does not inflate or hide the remaining gap.</p>
@@ -2444,8 +2635,13 @@ async function render() {
     <div class="table-scroll"><table>
       <thead><tr><th>Key</th><th>Type</th><th>Notes</th></tr></thead>
       <tbody>
-        ${PR75_COMPUTER_USE_BASELINE.metaKeys.map((key) => `<tr><td><code>${escapeHtml(key)}</code></td><td>PR/meta</td><td>${escapeHtml(scenarioLabels[key] ?? sharedScenarioLabels[key] ?? key)}</td></tr>`).join('\n')}
-        ${currentExplicitWaivers(state).map((waiver) => `<tr><td><code>${escapeHtml(waiver.key)}</code></td><td>known limit</td><td><strong>${escapeHtml(waiver.label)}</strong><br>${escapeHtml(waiver.note)}</td></tr>`).join('\n')}
+        ${PR75_COMPUTER_USE_BASELINE.metaKeys.map((key) => `<tr><td><code>${escapeHtml(key)}</code></td><td>PR/meta</td><td>${escapeHtml(scenarioLabels[key] ?? sharedScenarioLabels[key] ?? key)}</td></tr>`).join("\n")}
+        ${currentExplicitWaivers(state)
+          .map(
+            (waiver) =>
+              `<tr><td><code>${escapeHtml(waiver.key)}</code></td><td>known limit</td><td><strong>${escapeHtml(waiver.label)}</strong><br>${escapeHtml(waiver.note)}</td></tr>`,
+          )
+          .join("\n")}
       </tbody>
     </table></div>
   </details>
@@ -2460,8 +2656,8 @@ async function render() {
   <h2>Human QA Narrative</h2>
   ${
     state.narrative.length
-      ? `<ul>${state.narrative.map((item) => `<li>${escapeHtml(item.ts)} - ${escapeHtml(item.text)}</li>`).join('\n')}</ul>`
-      : '<p>No narrative recorded.</p>'
+      ? `<ul>${state.narrative.map((item) => `<li>${escapeHtml(item.ts)} - ${escapeHtml(item.text)}</li>`).join("\n")}</ul>`
+      : "<p>No narrative recorded.</p>"
   }
 
   <h2>Claims vs Evidence</h2>
@@ -2473,12 +2669,14 @@ async function render() {
       ${
         state.claims.length
           ? state.claims
-              .map((claim) => `<tr>
+              .map(
+                (claim) => `<tr>
                 <td>${escapeHtml(claim.claim)}</td>
                 <td><span class="verdict ${claim.status}">${escapeHtml(claim.status)}</span></td>
                 <td>${escapeHtml(claim.evidence)}</td>
-              </tr>`)
-              .join('\n')
+              </tr>`,
+              )
+              .join("\n")
           : '<tr><td colspan="3">No claims recorded.</td></tr>'
       }
       </tbody>
@@ -2488,8 +2686,8 @@ async function render() {
   <h2>Confirmation Boundaries</h2>
   ${
     state.confirmationBoundaries?.length
-      ? `<ul>${state.confirmationBoundaries.map((boundary) => `<li>${escapeHtml(boundary)}</li>`).join('\n')}</ul>`
-      : '<p>None recorded.</p>'
+      ? `<ul>${state.confirmationBoundaries.map((boundary) => `<li>${escapeHtml(boundary)}</li>`).join("\n")}</ul>`
+      : "<p>None recorded.</p>"
   }
 
   <h2>Cleanup / Restore Status</h2>
@@ -2522,25 +2720,31 @@ async function render() {
 </html>
 `;
 
-  const reportPath = path.join(state.runDir, 'index.html');
-  await writeFile(reportPath, html, 'utf8');
-  await appendEvent(state, 'report.rendered', { path: path.relative(state.runDir, reportPath) });
+  const reportPath = path.join(state.runDir, "index.html");
+  await writeFile(reportPath, html, "utf8");
+  await appendEvent(state, "report.rendered", { path: path.relative(state.runDir, reportPath) });
   console.log(reportPath);
 }
 
-function requireSubstantiveInspectionNotes(notes, method = 'computer-use') {
+function requireSubstantiveInspectionNotes(notes, method = "computer-use") {
   const trimmed = notes.trim();
   if (trimmed.length < 80) {
-    throw new Error('verify-report --notes must be at least 80 characters and describe the inspection performed.');
+    throw new Error(
+      "verify-report --notes must be at least 80 characters and describe the inspection performed.",
+    );
   }
-  if (method === 'computer-use' && !/computer use/i.test(trimmed)) {
-    throw new Error('verify-report --notes must explicitly attest that Computer Use performed the visual inspection.');
+  if (method === "computer-use" && !/computer use/i.test(trimmed)) {
+    throw new Error(
+      "verify-report --notes must explicitly attest that Computer Use performed the visual inspection.",
+    );
   }
-  if (method === 'ci-static' && !/(ci|workflow|static|automated)/i.test(trimmed)) {
-    throw new Error('verify-report --notes must explicitly attest that CI performed the static report inspection.');
+  if (method === "ci-static" && !/(ci|workflow|static|automated)/i.test(trimmed)) {
+    throw new Error(
+      "verify-report --notes must explicitly attest that CI performed the static report inspection.",
+    );
   }
   if (!/(opened|loaded|rendered|inspected|clicked|scrolled|verified|confirmed)/i.test(trimmed)) {
-    throw new Error('verify-report --notes must describe at least one concrete inspection action.');
+    throw new Error("verify-report --notes must describe at least one concrete inspection action.");
   }
   const sectionHits = [
     /first[- ]viewport|summary/i,
@@ -2549,7 +2753,9 @@ function requireSubstantiveInspectionNotes(notes, method = 'computer-use') {
     /artifact|executed proof/i,
   ].filter((pattern) => pattern.test(trimmed));
   if (sectionHits.length < 2) {
-    throw new Error('verify-report --notes must mention at least two inspected sections, such as first-viewport, coverage, baseline, video/storyboard, screenshots, or artifacts.');
+    throw new Error(
+      "verify-report --notes must mention at least two inspected sections, such as first-viewport, coverage, baseline, video/storyboard, screenshots, or artifacts.",
+    );
   }
   return trimmed;
 }
@@ -2564,28 +2770,35 @@ function htmlRowsContainingCode(html, key) {
 function reportStaticChecks({ state, html }) {
   const galleryItems = proofGalleryItems(state);
   const hasScreenshots = galleryItems.length > 0;
-  const hasPeekabooAxOverlays = galleryItems.some((item) => item.annotated && item.annotated.path !== item.primary.path);
+  const hasPeekabooAxOverlays = galleryItems.some(
+    (item) => item.annotated && item.annotated.path !== item.primary.path,
+  );
   const checks = [
-    ['title', /nixmac Peekaboo .*E2E Evidence/i.test(html)],
-    ['verdict', /Verdict:\s*(pass|fail|inconclusive)/i.test(html)],
-    ['coverage metric', /CU keys mapped/i.test(html)],
-    ['baseline table', /PR #75 Baseline Coverage/i.test(html)],
-    ['evidence video/storyboard', /Evidence (video|storyboard)/i.test(html)],
-    ['visual proof', /id="visual-proof"/i.test(html)],
-    ['visual report callouts', !hasScreenshots || /data-visual-annotation="report-callouts"/i.test(html)],
-    ['raw screenshot fallback', !hasScreenshots || /Open raw screenshot/i.test(html)],
-    ['peekaboo ax overlay labeled', !hasPeekabooAxOverlays || /Peekaboo AX overlay/i.test(html)],
+    ["title", /nixmac Peekaboo .*E2E Evidence/i.test(html)],
+    ["verdict", /Verdict:\s*(pass|fail|inconclusive)/i.test(html)],
+    ["coverage metric", /CU keys mapped/i.test(html)],
+    ["baseline table", /PR #75 Baseline Coverage/i.test(html)],
+    ["evidence video/storyboard", /Evidence (video|storyboard)/i.test(html)],
+    ["visual proof", /id="visual-proof"/i.test(html)],
+    [
+      "visual report callouts",
+      !hasScreenshots || /data-visual-annotation="report-callouts"/i.test(html),
+    ],
+    ["raw screenshot fallback", !hasScreenshots || /Open raw screenshot/i.test(html)],
+    ["peekaboo ax overlay labeled", !hasPeekabooAxOverlays || /Peekaboo AX overlay/i.test(html)],
   ];
   const failed = checks.filter(([, ok]) => !ok).map(([name]) => name);
   const requiredCoverage = requiredComputerUseCoverage(state);
   for (const key of requiredCoverage.coveredRequiredKeys) {
     const rows = htmlRowsContainingCode(html, key);
-    if (rows.some((row) => /<span class="verdict not_required">\s*gap\s*<\/span>/i.test(row))) failed.push(`covered key rendered as gap: ${key}`);
-    if (rows.some((row) => /<td>\s*known limit\s*<\/td>/i.test(row))) failed.push(`covered key rendered as known limit: ${key}`);
+    if (rows.some((row) => /<span class="verdict not_required">\s*gap\s*<\/span>/i.test(row)))
+      failed.push(`covered key rendered as gap: ${key}`);
+    if (rows.some((row) => /<td>\s*known limit\s*<\/td>/i.test(row)))
+      failed.push(`covered key rendered as known limit: ${key}`);
   }
   return {
-    status: failed.length ? 'failed' : 'passed',
-    checks: checks.map(([name, ok]) => ({ name, status: ok ? 'passed' : 'failed' })),
+    status: failed.length ? "failed" : "passed",
+    checks: checks.map(([name, ok]) => ({ name, status: ok ? "passed" : "failed" })),
     failed,
     coveredRequiredKeys: requiredCoverage.coveredRequiredKeys,
     missingRequiredKeys: requiredCoverage.missingRequiredKeys,
@@ -2593,35 +2806,37 @@ function reportStaticChecks({ state, html }) {
 }
 
 async function verifyReport(args) {
-  const runDirArg = args.find((arg) => !arg.startsWith('-'));
-  if (!runDirArg) throw new Error('verify-report requires <run-dir>');
+  const runDirArg = args.find((arg) => !arg.startsWith("-"));
+  if (!runDirArg) throw new Error("verify-report requires <run-dir>");
   const runDir = path.resolve(runDirArg);
-  const method = argValue(args, '--method');
-  if (!['computer-use', 'ci-static'].includes(method)) {
-    throw new Error('verify-report records reportInspection coverage only with --method computer-use or --method ci-static.');
+  const method = argValue(args, "--method");
+  if (!["computer-use", "ci-static"].includes(method)) {
+    throw new Error(
+      "verify-report records reportInspection coverage only with --method computer-use or --method ci-static.",
+    );
   }
-  const notes = requireSubstantiveInspectionNotes(argValue(args, '--notes'), method);
-  const reportPath = path.join(runDir, 'index.html');
-  const stateFile = path.join(runDir, 'state.json');
+  const notes = requireSubstantiveInspectionNotes(argValue(args, "--notes"), method);
+  const reportPath = path.join(runDir, "index.html");
+  const stateFile = path.join(runDir, "state.json");
   if (!(await pathExists(reportPath))) throw new Error(`Report not found: ${reportPath}`);
   if (!(await pathExists(stateFile))) throw new Error(`State not found: ${stateFile}`);
 
   const state = await loadState(runDir);
   state.runDir = runDir;
   await mkdir(ARTIFACT_ROOT, { recursive: true });
-  await writeFile(CURRENT_RUN_FILE, `${runDir}\n`, 'utf8');
+  await writeFile(CURRENT_RUN_FILE, `${runDir}\n`, "utf8");
   await render();
-  const html = await readFile(reportPath, 'utf8');
+  const html = await readFile(reportPath, "utf8");
   let staticChecks = reportStaticChecks({ state, html });
-  if (staticChecks.status !== 'passed') {
-    throw new Error(`Report static checks failed: ${staticChecks.failed.join(', ')}`);
+  if (staticChecks.status !== "passed") {
+    throw new Error(`Report static checks failed: ${staticChecks.failed.join(", ")}`);
   }
 
   const inspector =
     process.env.NIXMAC_REPORT_INSPECTOR ||
-    tryRun('git', ['config', 'user.email'], { cwd: REPO_ROOT }).stdout ||
+    tryRun("git", ["config", "user.email"], { cwd: REPO_ROOT }).stdout ||
     process.env.USER ||
-    'unknown';
+    "unknown";
   const inspection = {
     schemaVersion: 1,
     inspectedAt: new Date().toISOString(),
@@ -2631,105 +2846,122 @@ async function verifyReport(args) {
     notes,
     staticChecks,
   };
-  await writeJson(path.join(runDir, 'report-inspection.json'), inspection);
-  const inspectionGrade = method === 'computer-use' ? 'manual-visual-artifact-inspection' : 'automated-report-integrity';
-  const inspectionLabel = method === 'computer-use' ? 'Peekaboo report visual inspection' : 'Peekaboo report CI integrity inspection';
+  await writeJson(path.join(runDir, "report-inspection.json"), inspection);
+  const inspectionGrade =
+    method === "computer-use" ? "manual-visual-artifact-inspection" : "automated-report-integrity";
+  const inspectionLabel =
+    method === "computer-use"
+      ? "Peekaboo report visual inspection"
+      : "Peekaboo report CI integrity inspection";
 
   state.peekaboo ??= {};
   state.peekaboo.coverageMap ??= {
     schemaVersion: 1,
-    lane: state.mode === 'peekaboo-suite' ? 'peekaboo-local-suite' : 'peekaboo-local',
-    scenario: state.mode === 'peekaboo-suite' ? 'peekaboo-suite' : state.peekaboo?.scenario ?? 'peekaboo-report',
-    note: 'Coverage map augmented by explicit report inspection proof.',
+    lane: state.mode === "peekaboo-suite" ? "peekaboo-local-suite" : "peekaboo-local",
+    scenario:
+      state.mode === "peekaboo-suite"
+        ? "peekaboo-suite"
+        : (state.peekaboo?.scenario ?? "peekaboo-report"),
+    note: "Coverage map augmented by explicit report inspection proof.",
     phaseCoverage: [],
   };
-  if (!state.peekaboo.coverageMap.phaseCoverage.some((item) => item.key === 'peekabooReportInspection')) {
+  if (
+    !state.peekaboo.coverageMap.phaseCoverage.some(
+      (item) => item.key === "peekabooReportInspection",
+    )
+  ) {
     state.peekaboo.coverageMap.phaseCoverage.push({
-      key: 'peekabooReportInspection',
+      key: "peekabooReportInspection",
       label: inspectionLabel,
-      correspondsTo: ['reportInspection'],
+      correspondsTo: ["reportInspection"],
       grade: inspectionGrade,
     });
   }
   state.scenarios.peekabooReportInspection = {
     label: scenarioLabels.peekabooReportInspection,
-    status: 'pass',
+    status: "pass",
     executedByPeekaboo: true,
     peekabooEvidence: {
-      phaseKey: 'peekabooReportInspection',
+      phaseKey: "peekabooReportInspection",
       grade: inspectionGrade,
-      correspondsTo: ['reportInspection'],
+      correspondsTo: ["reportInspection"],
     },
     notes: [
       `Report inspected with ${method} by ${inspector}.`,
       notes,
-      `Static checks passed: ${staticChecks.checks.map((check) => check.name).join(', ')}.`,
+      `Static checks passed: ${staticChecks.checks.map((check) => check.name).join(", ")}.`,
     ],
   };
   state.scenarios.reportInspection ??= {
     label: scenarioLabels.reportInspection,
-    status: 'not_required',
+    status: "not_required",
     notes: [],
   };
-  state.scenarios.reportInspection.status = 'pass';
+  state.scenarios.reportInspection.status = "pass";
   state.scenarios.reportInspection.peekabooTransitiveCoverage = {
-    phaseKey: 'peekabooReportInspection',
+    phaseKey: "peekabooReportInspection",
     grade: inspectionGrade,
   };
   state.scenarios.reportInspection.notes = (state.scenarios.reportInspection.notes ?? []).filter(
-    (note) => !note.includes('Covered transitively by peekabooReportInspection') && note !== notes,
+    (note) => !note.includes("Covered transitively by peekabooReportInspection") && note !== notes,
   );
   state.scenarios.reportInspection.notes.push(
     `Covered transitively by peekabooReportInspection; Peekaboo evidence grade: ${inspectionGrade}.`,
     notes,
   );
-  if (!state.diagnostics.some((item) => item.path === 'report-inspection.json')) {
+  if (!state.diagnostics.some((item) => item.path === "report-inspection.json")) {
     state.diagnostics.push({
-      label: 'Report inspection record',
-      path: 'report-inspection.json',
-      note: 'Manual visual inspection notes plus static report checks.',
+      label: "Report inspection record",
+      path: "report-inspection.json",
+      note: "Manual visual inspection notes plus static report checks.",
     });
   }
-  if (!state.claims.some((item) => item.evidence === 'report-inspection.json')) {
+  if (!state.claims.some((item) => item.evidence === "report-inspection.json")) {
     state.claims.push({
-      claim: 'Peekaboo report was inspected and passed static report integrity checks',
-      status: 'pass',
-      evidence: 'report-inspection.json',
+      claim: "Peekaboo report was inspected and passed static report integrity checks",
+      status: "pass",
+      evidence: "report-inspection.json",
     });
   }
-  state.narrative = state.narrative.filter((item) => !item.text.startsWith(`Report inspection recorded via ${method}:`));
+  state.narrative = state.narrative.filter(
+    (item) => !item.text.startsWith(`Report inspection recorded via ${method}:`),
+  );
   state.narrative.push({
     ts: inspection.inspectedAt,
     text: `Report inspection recorded via ${method}: ${notes}`,
   });
 
   await saveState(state);
-  await writeFile(CURRENT_RUN_FILE, `${runDir}\n`, 'utf8');
-  await appendEvent(state, 'report.inspected', { method, inspector, path: 'report-inspection.json' });
+  await writeFile(CURRENT_RUN_FILE, `${runDir}\n`, "utf8");
+  await appendEvent(state, "report.inspected", {
+    method,
+    inspector,
+    path: "report-inspection.json",
+  });
   await render();
   const finalState = await loadState(runDir);
   finalState.runDir = runDir;
-  const finalHtml = await readFile(reportPath, 'utf8');
+  const finalHtml = await readFile(reportPath, "utf8");
   staticChecks = reportStaticChecks({ state: finalState, html: finalHtml });
-  if (staticChecks.status !== 'passed') {
-    throw new Error(`Final report static checks failed: ${staticChecks.failed.join(', ')}`);
+  if (staticChecks.status !== "passed") {
+    throw new Error(`Final report static checks failed: ${staticChecks.failed.join(", ")}`);
   }
   inspection.staticChecks = staticChecks;
-  await writeJson(path.join(runDir, 'report-inspection.json'), inspection);
+  await writeJson(path.join(runDir, "report-inspection.json"), inspection);
 }
 
 async function cleanup() {
   const state = await loadState();
   state.cleanup.attempted = true;
-  state.cleanup.note = 'Cleanup started.';
+  state.cleanup.note = "Cleanup started.";
   await saveState(state);
-  await appendEvent(state, 'cleanup.started');
+  await appendEvent(state, "cleanup.started");
   const quitResult = await quitNixmac();
   state.cleanup.quitResult = quitResult;
   await saveState(state);
 
   let mockProvider = state.setup?.mockProvider;
-  const mockProviderFile = path.join(state.runDir, 'mock-provider.json');
+  const mockProviderFile = path.join(state.runDir, "mock-provider.json");
   if (!mockProvider?.pid && (await pathExists(mockProviderFile))) {
     mockProvider = await readJson(mockProviderFile);
     state.setup = state.setup ?? {};
@@ -2739,11 +2971,11 @@ async function cleanup() {
 
   if (mockProvider?.pid) {
     const pid = mockProvider.pid;
-    const processInfo = tryRun('ps', ['-p', String(pid), '-o', 'args=']);
+    const processInfo = tryRun("ps", ["-p", String(pid), "-o", "args="]);
     const expectedFragment = `run-local.mjs serve-mock ${state.runDir}`;
     if (processInfo.ok && processInfo.stdout.includes(expectedFragment)) {
       try {
-        process.kill(pid, 'SIGTERM');
+        process.kill(pid, "SIGTERM");
         state.cleanup.mockProviderStop = `Sent SIGTERM to mock provider pid ${pid}.`;
       } catch {
         state.cleanup.mockProviderStop = `Mock provider pid ${pid} was already stopped.`;
@@ -2770,7 +3002,8 @@ async function cleanup() {
       state.cleanup.note = `Restored original app support directory from off-repo backup and removed that backup: ${state.appSupportBackupPath}.`;
     } else {
       state.cleanup.restored = true;
-      state.cleanup.note = 'No original app support directory existed; removed disposable app support state.';
+      state.cleanup.note =
+        "No original app support directory existed; removed disposable app support state.";
     }
   } catch (error) {
     state.cleanup.error = error instanceof Error ? error.message : String(error);
@@ -2779,82 +3012,123 @@ async function cleanup() {
     throw error;
   }
   await saveState(state);
-  await appendEvent(state, 'cleanup.completed', { restored: state.cleanup.restored, note: state.cleanup.note });
+  await appendEvent(state, "cleanup.completed", {
+    restored: state.cleanup.restored,
+    note: state.cleanup.note,
+  });
   await render();
 }
 
 async function runPeekabooEvidenceVideoSelfTest() {
-  if (!tryRun('ffmpeg', ['-version']).ok) {
-    console.warn('Skipping Peekaboo evidence video self-test because ffmpeg is unavailable.');
+  if (!tryRun("ffmpeg", ["-version"]).ok) {
+    console.warn("Skipping Peekaboo evidence video self-test because ffmpeg is unavailable.");
     return;
   }
 
-  const runDir = await mkdtemp(path.join(os.tmpdir(), 'nixmac-peekaboo-video-self-test-'));
+  const runDir = await mkdtemp(path.join(os.tmpdir(), "nixmac-peekaboo-video-self-test-"));
   try {
-    await mkdir(path.join(runDir, 'screenshots'), { recursive: true });
-    run('ffmpeg', [
-      '-y',
-      '-hide_banner',
-      '-loglevel',
-      'error',
-      '-f',
-      'lavfi',
-      '-i',
-      'color=c=#0b0d0f:s=16x9',
-      '-frames:v',
-      '1',
-      path.join(runDir, 'screenshots', '01-launch.png'),
+    await mkdir(path.join(runDir, "screenshots"), { recursive: true });
+    run("ffmpeg", [
+      "-y",
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      "color=c=#0b0d0f:s=16x9",
+      "-frames:v",
+      "1",
+      path.join(runDir, "screenshots", "01-launch.png"),
     ]);
-    run('ffmpeg', [
-      '-y',
-      '-hide_banner',
-      '-loglevel',
-      'error',
-      '-f',
-      'lavfi',
-      '-i',
-      'color=c=#111820:s=16x9',
-      '-frames:v',
-      '1',
-      path.join(runDir, 'screenshots', '02-settings.png'),
+    run("ffmpeg", [
+      "-y",
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      "color=c=#111820:s=16x9",
+      "-frames:v",
+      "1",
+      path.join(runDir, "screenshots", "02-settings.png"),
     ]);
 
     const state = {
       runDir,
-      mode: 'peekaboo',
+      mode: "peekaboo",
       scenarios: {},
       diagnostics: [],
       screenshots: [
-        { label: '01 launch', path: 'screenshots/01-launch.png', capturedAt: '2026-05-05T00:00:00.000Z' },
-        { label: '02 settings', path: 'screenshots/02-settings.png', capturedAt: '2026-05-05T00:00:01.100Z' },
+        {
+          label: "01 launch",
+          path: "screenshots/01-launch.png",
+          capturedAt: "2026-05-05T00:00:00.000Z",
+        },
+        {
+          label: "02 settings",
+          path: "screenshots/02-settings.png",
+          capturedAt: "2026-05-05T00:00:01.100Z",
+        },
       ],
       peekaboo: { result: { artifacts: {} } },
     };
 
-    assert.equal(await maybeGeneratePeekabooEvidenceVideo(state), true, 'Peekaboo evidence video self-test should generate an MP4');
-    assert.equal(state.video?.status, 'available', 'Peekaboo evidence video should be marked available');
-    assert.equal(state.video?.frames, 2, 'Peekaboo evidence video should include every fixture screenshot frame');
-    assert.equal(await usableFile(state.video.path, runDir), true, 'Generated Peekaboo evidence MP4 should be usable');
+    assert.equal(
+      await maybeGeneratePeekabooEvidenceVideo(state),
+      true,
+      "Peekaboo evidence video self-test should generate an MP4",
+    );
+    assert.equal(
+      state.video?.status,
+      "available",
+      "Peekaboo evidence video should be marked available",
+    );
+    assert.equal(
+      state.video?.frames,
+      2,
+      "Peekaboo evidence video should include every fixture screenshot frame",
+    );
+    assert.equal(
+      await usableFile(state.video.path, runDir),
+      true,
+      "Generated Peekaboo evidence MP4 should be usable",
+    );
 
     const artifacts = artifactRows(state);
     assert(
-      artifacts.some(([label, artifactPath]) => label === 'Video' && artifactPath === state.video.path),
-      'Generated Peekaboo evidence MP4 should be listed in the artifact table',
+      artifacts.some(
+        ([label, artifactPath]) => label === "Video" && artifactPath === state.video.path,
+      ),
+      "Generated Peekaboo evidence MP4 should be listed in the artifact table",
     );
 
     const html = renderEvidenceVideo(state, artifacts);
-    assert(html.includes('data-video-seek="1.1"'), 'Rendered chapters should include persisted 1.1s seek timestamps');
-    assert.equal((html.match(/data-video-seek=/g) ?? []).length, 2, 'Rendered chapters should cover every video frame');
     assert(
-      html.includes('same persisted 1.1s screenshot frame cadence as the Computer Use evidence video'),
-      'Rendered copy should describe frame-cadence parity precisely',
+      html.includes('data-video-seek="1.1"'),
+      "Rendered chapters should include persisted 1.1s seek timestamps",
+    );
+    assert.equal(
+      (html.match(/data-video-seek=/g) ?? []).length,
+      2,
+      "Rendered chapters should cover every video frame",
+    );
+    assert(
+      html.includes(
+        "same persisted 1.1s screenshot frame cadence as the Computer Use evidence video",
+      ),
+      "Rendered copy should describe frame-cadence parity precisely",
     );
 
-    const frameList = await readFile(path.join(runDir, state.video.framesPath), 'utf8');
-    assert(!frameList.includes(runDir), 'Persisted ffmpeg frame list should be portable, not absolute to the source run directory');
+    const frameList = await readFile(path.join(runDir, state.video.framesPath), "utf8");
+    assert(
+      !frameList.includes(runDir),
+      "Persisted ffmpeg frame list should be portable, not absolute to the source run directory",
+    );
     assert(
       frameList.includes("../screenshots/01-launch.png"),
-      'Persisted ffmpeg frame list should reference local screenshots relatively',
+      "Persisted ffmpeg frame list should reference local screenshots relatively",
     );
   } finally {
     await rm(runDir, { recursive: true, force: true });
@@ -2862,46 +3136,46 @@ async function runPeekabooEvidenceVideoSelfTest() {
 }
 
 async function runSuiteArtifactCopySelfTest() {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'nixmac-suite-copy-self-test-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), "nixmac-suite-copy-self-test-"));
   try {
-    const sourceRunDir = path.join(root, 'source');
-    const suiteDir = path.join(root, 'suite');
-    await mkdir(path.join(sourceRunDir, 'screenshots'), { recursive: true });
-    await writeFile(path.join(sourceRunDir, 'screenshots', 'proof.png'), 'proof', 'utf8');
+    const sourceRunDir = path.join(root, "source");
+    const suiteDir = path.join(root, "suite");
+    await mkdir(path.join(sourceRunDir, "screenshots"), { recursive: true });
+    await writeFile(path.join(sourceRunDir, "screenshots", "proof.png"), "proof", "utf8");
 
     const copied = await copySuiteArtifact({
       sourceState: { runDir: sourceRunDir },
-      relativePath: 'screenshots/proof.png',
+      relativePath: "screenshots/proof.png",
       suiteDir,
-      suiteScenarioDir: 'macos_core_product_proof',
+      suiteScenarioDir: "macos_core_product_proof",
     });
     assert.equal(
       copied,
-      path.join('scenarios', 'macos_core_product_proof', 'screenshots', 'proof.png'),
-      'Suite artifact copy should preserve valid relative paths',
+      path.join("scenarios", "macos_core_product_proof", "screenshots", "proof.png"),
+      "Suite artifact copy should preserve valid relative paths",
     );
 
     await assert.rejects(
       () =>
         copySuiteArtifact({
           sourceState: { runDir: sourceRunDir },
-          relativePath: '../outside.txt',
+          relativePath: "../outside.txt",
           suiteDir,
-          suiteScenarioDir: 'macos_core_product_proof',
+          suiteScenarioDir: "macos_core_product_proof",
         }),
       /must not escape/,
-      'Suite artifact copy should reject source path traversal',
+      "Suite artifact copy should reject source path traversal",
     );
     await assert.rejects(
       () =>
         copySuiteArtifact({
           sourceState: { runDir: sourceRunDir },
-          relativePath: path.join(sourceRunDir, 'screenshots', 'proof.png'),
+          relativePath: path.join(sourceRunDir, "screenshots", "proof.png"),
           suiteDir,
-          suiteScenarioDir: 'macos_core_product_proof',
+          suiteScenarioDir: "macos_core_product_proof",
         }),
       /must be relative/,
-      'Suite artifact copy should reject absolute source paths',
+      "Suite artifact copy should reject absolute source paths",
     );
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -2910,21 +3184,21 @@ async function runSuiteArtifactCopySelfTest() {
 
 function runVisualAnnotationGallerySelfTest() {
   const buildState = (suiteScenario) => ({
-    mode: 'peekaboo-suite',
-    scenarios: { launch: { status: 'pass', notes: [] } },
+    mode: "peekaboo-suite",
+    scenarios: { launch: { status: "pass", notes: [] } },
     diagnostics: [],
     screenshots: [
       {
-        label: 'macos_core_product_proof: 01-core-launch-1234567890',
-        path: 'screenshots/01-core-launch-1234567890.png',
-        capturedAt: '2026-05-05T00:00:00.000Z',
-        note: 'Captured by Peekaboo runner.',
+        label: "macos_core_product_proof: 01-core-launch-1234567890",
+        path: "screenshots/01-core-launch-1234567890.png",
+        capturedAt: "2026-05-05T00:00:00.000Z",
+        note: "Captured by Peekaboo runner.",
       },
       {
-        label: 'macos_core_product_proof: 01-core-launch-1234567890_annotated',
-        path: 'screenshots/01-core-launch-1234567890_annotated.png',
-        capturedAt: '2026-05-05T00:00:00.100Z',
-        note: 'Captured by Peekaboo runner.',
+        label: "macos_core_product_proof: 01-core-launch-1234567890_annotated",
+        path: "screenshots/01-core-launch-1234567890_annotated.png",
+        capturedAt: "2026-05-05T00:00:00.100Z",
+        note: "Captured by Peekaboo runner.",
       },
     ],
     peekaboo: {
@@ -2932,196 +3206,292 @@ function runVisualAnnotationGallerySelfTest() {
       coverageMap: { phaseCoverage: [] },
     },
   });
-  const state = buildState({ scenario: 'macos_core_product_proof', verdict: 'pass' });
+  const state = buildState({ scenario: "macos_core_product_proof", verdict: "pass" });
   const html = renderGallery(state);
-  assert(html.includes('data-visual-annotation="report-callouts"'), 'Visual gallery should render deterministic report callouts');
-  assert(html.includes('visual-status pass'), 'Visual gallery should show the owning scenario status on the screenshot');
-  assert(html.includes('proof-card-pass'), 'Visual gallery should apply pass card styling');
-  assert(html.includes('Workflow area ready'), 'Visual gallery should include a launch-specific curated callout');
-  assert(html.includes('Open raw screenshot'), 'Visual gallery should keep a direct raw screenshot fallback link');
-  assert(html.includes('Peekaboo AX overlay'), 'Visual gallery should label Peekaboo element overlays as AX debug evidence');
   assert(
-    html.indexOf('screenshots/01-core-launch-1234567890.png') < html.indexOf('screenshots/01-core-launch-1234567890_annotated.png'),
-    'Visual gallery should keep the raw screenshot as the primary card image',
+    html.includes('data-visual-annotation="report-callouts"'),
+    "Visual gallery should render deterministic report callouts",
+  );
+  assert(
+    html.includes("visual-status pass"),
+    "Visual gallery should show the owning scenario status on the screenshot",
+  );
+  assert(html.includes("proof-card-pass"), "Visual gallery should apply pass card styling");
+  assert(
+    html.includes("Workflow area ready"),
+    "Visual gallery should include a launch-specific curated callout",
+  );
+  assert(
+    html.includes("Open raw screenshot"),
+    "Visual gallery should keep a direct raw screenshot fallback link",
+  );
+  assert(
+    html.includes("Peekaboo AX overlay"),
+    "Visual gallery should label Peekaboo element overlays as AX debug evidence",
+  );
+  assert(
+    html.indexOf("screenshots/01-core-launch-1234567890.png") <
+      html.indexOf("screenshots/01-core-launch-1234567890_annotated.png"),
+    "Visual gallery should keep the raw screenshot as the primary card image",
   );
 
-  const inconclusiveHtml = renderGallery(buildState({ scenario: 'macos_core_product_proof', verdict: 'inconclusive' }));
-  assert(inconclusiveHtml.includes('visual-status inconclusive'), 'Visual gallery should preserve inconclusive scenario verdicts');
-  assert(inconclusiveHtml.includes('proof-card-inconclusive'), 'Visual gallery should apply inconclusive card styling');
+  const inconclusiveHtml = renderGallery(
+    buildState({ scenario: "macos_core_product_proof", verdict: "inconclusive" }),
+  );
+  assert(
+    inconclusiveHtml.includes("visual-status inconclusive"),
+    "Visual gallery should preserve inconclusive scenario verdicts",
+  );
+  assert(
+    inconclusiveHtml.includes("proof-card-inconclusive"),
+    "Visual gallery should apply inconclusive card styling",
+  );
 
-  const failHtml = renderGallery(buildState({ scenario: 'macos_core_product_proof', verdict: 'pass', failed: true }));
-  assert(failHtml.includes('visual-status fail'), 'Visual gallery should render failed suite scenarios as fail');
-  assert(failHtml.includes('proof-card-fail'), 'Visual gallery should apply fail card styling');
+  const failHtml = renderGallery(
+    buildState({ scenario: "macos_core_product_proof", verdict: "pass", failed: true }),
+  );
+  assert(
+    failHtml.includes("visual-status fail"),
+    "Visual gallery should render failed suite scenarios as fail",
+  );
+  assert(failHtml.includes("proof-card-fail"), "Visual gallery should apply fail card styling");
 
   const videoHtml = renderEvidenceVideo(state, []);
-  assert(!videoHtml.includes('data-visual-annotation="report-callouts"'), 'Evidence video/storyboard should not receive screenshot-card overlays');
-  assert(videoHtml.includes('screenshots/01-core-launch-1234567890.png'), 'Evidence storyboard should use the raw screenshot frame');
-  assert(!videoHtml.includes('screenshots/01-core-launch-1234567890_annotated.png'), 'Evidence storyboard should not use Peekaboo AX overlay frames');
+  assert(
+    !videoHtml.includes('data-visual-annotation="report-callouts"'),
+    "Evidence video/storyboard should not receive screenshot-card overlays",
+  );
+  assert(
+    videoHtml.includes("screenshots/01-core-launch-1234567890.png"),
+    "Evidence storyboard should use the raw screenshot frame",
+  );
+  assert(
+    !videoHtml.includes("screenshots/01-core-launch-1234567890_annotated.png"),
+    "Evidence storyboard should not use Peekaboo AX overlay frames",
+  );
 
   const staticHtml = `<title>nixmac Peekaboo Suite E2E Evidence</title>Verdict: pass CU keys mapped PR #75 Baseline Coverage Evidence video id="visual-proof"${html}`;
   assert.equal(
     reportStaticChecks({ state, html: staticHtml }).status,
-    'passed',
-    'Report static checks should require screenshot callouts, raw fallback links, and labeled AX overlays',
+    "passed",
+    "Report static checks should require screenshot callouts, raw fallback links, and labeled AX overlays",
   );
 }
 
 async function runSelfTest() {
   // This is a one-way drift guard: run-local is a deliberate subset with a few
   // local-only scenario names, so it should not require every shared key.
-  const unexpectedLocalKeys = Object.keys(scenarioLabels).filter((key) => !sharedScenarioLabels[key] && !LOCAL_ONLY_SCENARIO_KEYS.has(key));
+  const unexpectedLocalKeys = Object.keys(scenarioLabels).filter(
+    (key) => !sharedScenarioLabels[key] && !LOCAL_ONLY_SCENARIO_KEYS.has(key),
+  );
   assert.deepEqual(
     unexpectedLocalKeys,
     [],
-    'run-local scenario keys should either exist in shared scenarioLabels or be explicitly listed in LOCAL_ONLY_SCENARIO_KEYS',
+    "run-local scenario keys should either exist in shared scenarioLabels or be explicitly listed in LOCAL_ONLY_SCENARIO_KEYS",
   );
-  const staleLocalOnlyKeys = [...LOCAL_ONLY_SCENARIO_KEYS].filter((key) => sharedScenarioLabels[key]);
-  assert.deepEqual(staleLocalOnlyKeys, [], 'LOCAL_ONLY_SCENARIO_KEYS should not include keys that now exist in shared scenarioLabels');
+  const staleLocalOnlyKeys = [...LOCAL_ONLY_SCENARIO_KEYS].filter(
+    (key) => sharedScenarioLabels[key],
+  );
+  assert.deepEqual(
+    staleLocalOnlyKeys,
+    [],
+    "LOCAL_ONLY_SCENARIO_KEYS should not include keys that now exist in shared scenarioLabels",
+  );
   const missingLocalOnlyKeys = [...LOCAL_ONLY_SCENARIO_KEYS].filter((key) => !scenarioLabels[key]);
-  assert.deepEqual(missingLocalOnlyKeys, [], 'LOCAL_ONLY_SCENARIO_KEYS should all be declared in run-local scenarioLabels');
-  assert.equal(
-    verdictFor({ mode: 'peekaboo', scenarios: { launch: { status: 'pass' } }, peekaboo: { coverageMap: { phaseCoverage: [] } } }),
-    'inconclusive',
-    'Single Peekaboo reports should not render pass when required Computer Use parity keys are missing',
+  assert.deepEqual(
+    missingLocalOnlyKeys,
+    [],
+    "LOCAL_ONLY_SCENARIO_KEYS should all be declared in run-local scenarioLabels",
   );
   assert.equal(
-    verdictFor({ mode: 'peekaboo-suite', scenarios: { launch: { status: 'pass' } }, peekaboo: { coverageMap: { phaseCoverage: [] } } }),
-    'inconclusive',
-    'Peekaboo suite verdict should downgrade when required Computer Use parity keys are missing',
+    verdictFor({
+      mode: "peekaboo",
+      scenarios: { launch: { status: "pass" } },
+      peekaboo: { coverageMap: { phaseCoverage: [] } },
+    }),
+    "inconclusive",
+    "Single Peekaboo reports should not render pass when required Computer Use parity keys are missing",
+  );
+  assert.equal(
+    verdictFor({
+      mode: "peekaboo-suite",
+      scenarios: { launch: { status: "pass" } },
+      peekaboo: { coverageMap: { phaseCoverage: [] } },
+    }),
+    "inconclusive",
+    "Peekaboo suite verdict should downgrade when required Computer Use parity keys are missing",
   );
   {
     const allRequiredCoverageState = {
-      mode: 'peekaboo-suite',
+      mode: "peekaboo-suite",
       scenarios: {},
       peekaboo: { coverageMap: { phaseCoverage: [] } },
     };
     for (const [index, computerUseKey] of PR75_COMPUTER_USE_BASELINE.requiredKeys.entries()) {
       const key = `selfTestPeekabooParity${index}`;
-      allRequiredCoverageState.scenarios[key] = { status: 'pass' };
+      allRequiredCoverageState.scenarios[key] = { status: "pass" };
       allRequiredCoverageState.peekaboo.coverageMap.phaseCoverage.push({
         key,
         correspondsTo: [computerUseKey],
-        grade: 'self-test',
+        grade: "self-test",
       });
     }
     assert.deepEqual(
       requiredComputerUseCoverage(allRequiredCoverageState).missingRequiredKeys,
       [],
-      'Synthetic all-pass Peekaboo suite should cover every required PR #75 Computer Use key',
+      "Synthetic all-pass Peekaboo suite should cover every required PR #75 Computer Use key",
     );
     assert.equal(
       verdictFor(allRequiredCoverageState),
-      'pass',
-      'Peekaboo suite verdict should pass when every required Computer Use parity key is covered by passing Peekaboo evidence',
+      "pass",
+      "Peekaboo suite verdict should pass when every required Computer Use parity key is covered by passing Peekaboo evidence",
     );
   }
   assert.equal(
     reportStaticChecks({
       state: {
-        mode: 'peekaboo-suite',
-        scenarios: { launch: { status: 'pass' } },
-        peekaboo: { coverageMap: { phaseCoverage: [{ key: 'peekabooCoreLaunch', correspondsTo: ['launch'] }] } },
+        mode: "peekaboo-suite",
+        scenarios: { launch: { status: "pass" } },
+        peekaboo: {
+          coverageMap: {
+            phaseCoverage: [{ key: "peekabooCoreLaunch", correspondsTo: ["launch"] }],
+          },
+        },
       },
       html: '<title>nixmac Peekaboo Suite E2E Evidence</title>Verdict: inconclusive CU keys mapped PR #75 Baseline Coverage Evidence video id="visual-proof"',
     }).status,
-    'passed',
-    'Report static checks should accept an honest inconclusive parity report',
+    "passed",
+    "Report static checks should accept an honest inconclusive parity report",
   );
   const prFocus = buildPeekabooPrFocus({
-    GITHUB_EVENT_NAME: 'pull_request',
-    NIXMAC_E2E_PR_NUMBER: '90',
-    NIXMAC_E2E_PR_TITLE: 'Peekaboo proof',
-    NIXMAC_E2E_PR_HEAD_REF: 'fkb/scott-peekaboo-local-e2e',
-    NIXMAC_E2E_PR_BASE_REF: 'fkb/e2e-required-gate-policy',
+    GITHUB_EVENT_NAME: "pull_request",
+    NIXMAC_E2E_PR_NUMBER: "90",
+    NIXMAC_E2E_PR_TITLE: "Peekaboo proof",
+    NIXMAC_E2E_PR_HEAD_REF: "fkb/scott-peekaboo-local-e2e",
+    NIXMAC_E2E_PR_BASE_REF: "fkb/e2e-required-gate-policy",
     NIXMAC_E2E_PR_CHANGED_FILES: [
-      'apps/native/src/components/widget/settings/settings-dialog.tsx',
-      'apps/native/src-tauri/src/main.rs',
-      'apps/native/src-tauri/src/rebuild/darwin.rs',
-      'apps/native/src-tauri/src/storage/store.rs',
-      'apps/native/src-tauri/src/summarize/build_prompt.rs',
-      'apps/native/src/components/widget/new-visible-surface.tsx',
-      'tests/e2e/computer-use/run-local.mjs',
-    ].join('\n'),
+      "apps/native/src/components/widget/settings/settings-dialog.tsx",
+      "apps/native/src-tauri/src/main.rs",
+      "apps/native/src-tauri/src/rebuild/darwin.rs",
+      "apps/native/src-tauri/src/storage/store.rs",
+      "apps/native/src-tauri/src/summarize/build_prompt.rs",
+      "apps/native/src/components/widget/new-visible-surface.tsx",
+      "tests/e2e/computer-use/run-local.mjs",
+    ].join("\n"),
   });
-  assert.equal(prFocus.configured, true, 'Peekaboo PR focus should mark pull_request metadata as configured');
-  assert(prFocus.scenarioKeys.includes('settingsGeneral'), 'Peekaboo PR focus should map manifest files to scenario keys');
-  assert(prFocus.scenarioKeys.includes('summary'), 'Peekaboo PR focus should map summary prompt files to summary coverage');
-  assert(prFocus.scenarioKeys.includes('saveFlow'), 'Peekaboo PR focus should map summary prompt files to Save-flow coverage');
-  assert(prFocus.scenarioKeys.includes('reportInspection'), 'Peekaboo PR focus should map runner/report changes to report inspection');
+  assert.equal(
+    prFocus.configured,
+    true,
+    "Peekaboo PR focus should mark pull_request metadata as configured",
+  );
   assert(
-    prFocus.matchedSurfaces.some((surface) => surface.id === 'e2e-harness-rust' && surface.coverageDisposition === 'non-claiming'),
-    'Peekaboo PR focus should identify E2E-gated harness files without claiming user-facing scenario coverage',
+    prFocus.scenarioKeys.includes("settingsGeneral"),
+    "Peekaboo PR focus should map manifest files to scenario keys",
+  );
+  assert(
+    prFocus.scenarioKeys.includes("summary"),
+    "Peekaboo PR focus should map summary prompt files to summary coverage",
+  );
+  assert(
+    prFocus.scenarioKeys.includes("saveFlow"),
+    "Peekaboo PR focus should map summary prompt files to Save-flow coverage",
+  );
+  assert(
+    prFocus.scenarioKeys.includes("reportInspection"),
+    "Peekaboo PR focus should map runner/report changes to report inspection",
+  );
+  assert(
+    prFocus.matchedSurfaces.some(
+      (surface) =>
+        surface.id === "e2e-harness-rust" && surface.coverageDisposition === "non-claiming",
+    ),
+    "Peekaboo PR focus should identify E2E-gated harness files without claiming user-facing scenario coverage",
   );
   assert.deepEqual(
     prFocus.unmappedUserVisibleFiles,
-    ['apps/native/src/components/widget/new-visible-surface.tsx'],
-    'Peekaboo PR focus should surface unmapped user-visible files for scenario suggestions',
+    ["apps/native/src/components/widget/new-visible-surface.tsx"],
+    "Peekaboo PR focus should surface unmapped user-visible files for scenario suggestions",
   );
   assert(
     renderPeekabooPrFocus({
       prFocus,
-      scenarios: Object.fromEntries(Object.entries(scenarioLabels).map(([key, label]) => [key, { label, status: 'inconclusive', notes: [] }])),
-    }).includes('Suggested Coverage Updates'),
-    'Peekaboo report should render PR-focused scenario suggestions',
+      scenarios: Object.fromEntries(
+        Object.entries(scenarioLabels).map(([key, label]) => [
+          key,
+          { label, status: "inconclusive", notes: [] },
+        ]),
+      ),
+    }).includes("Suggested Coverage Updates"),
+    "Peekaboo report should render PR-focused scenario suggestions",
   );
   const macInCloudCommand = buildPeekabooMacInCloudCommand(
     [
-      '--ssh-dest',
-      'admin@example.test',
-      '--identity-file',
-      '/tmp/key',
-      '--repo-dir',
-      '/Users/admin/nixmac-peekaboo-local-e2e',
-      '--app-path',
-      '/Users/admin/nixmac.app',
-      '--scenario',
-      'macos_core_product_proof',
-      '--no-record',
-      '--allow-cleanup',
+      "--ssh-dest",
+      "admin@example.test",
+      "--identity-file",
+      "/tmp/key",
+      "--repo-dir",
+      "/Users/admin/nixmac-peekaboo-local-e2e",
+      "--app-path",
+      "/Users/admin/nixmac.app",
+      "--scenario",
+      "macos_core_product_proof",
+      "--no-record",
+      "--allow-cleanup",
     ],
     {
-      NIXMAC_E2E_PR_CHANGED_FILES: 'apps/native/src/components/widget/settings/settings-dialog.tsx',
-      NIXMAC_E2E_PR_NUMBER: '90',
+      NIXMAC_E2E_PR_CHANGED_FILES: "apps/native/src/components/widget/settings/settings-dialog.tsx",
+      NIXMAC_E2E_PR_NUMBER: "90",
     },
   );
-  assert.equal(macInCloudCommand.mode, 'run-peekaboo', 'MacInCloud command should support single-scenario dispatch');
-  assert(macInCloudCommand.sshArgs.includes('admin@example.test'), 'MacInCloud command should include the SSH destination');
-  assert(macInCloudCommand.remoteCommand.includes('run-peekaboo'), 'MacInCloud command should run the remote Peekaboo command');
-  assert(
-    macInCloudCommand.remoteCommand.includes('NIXMAC_E2E_PR_CHANGED_FILES='),
-    'MacInCloud command should forward PR changed-file metadata to the remote Peekaboo run',
+  assert.equal(
+    macInCloudCommand.mode,
+    "run-peekaboo",
+    "MacInCloud command should support single-scenario dispatch",
   );
   assert(
-    macInCloudCommand.remoteCommand.includes('macos_core_product_proof'),
-    'MacInCloud command should include the requested scenario',
+    macInCloudCommand.sshArgs.includes("admin@example.test"),
+    "MacInCloud command should include the SSH destination",
+  );
+  assert(
+    macInCloudCommand.remoteCommand.includes("run-peekaboo"),
+    "MacInCloud command should run the remote Peekaboo command",
+  );
+  assert(
+    macInCloudCommand.remoteCommand.includes("NIXMAC_E2E_PR_CHANGED_FILES="),
+    "MacInCloud command should forward PR changed-file metadata to the remote Peekaboo run",
+  );
+  assert(
+    macInCloudCommand.remoteCommand.includes("macos_core_product_proof"),
+    "MacInCloud command should include the requested scenario",
   );
   runVisualAnnotationGallerySelfTest();
   await runSuiteArtifactCopySelfTest();
   await runPeekabooEvidenceVideoSelfTest();
   peekabooRunnerSelfTest({ repoRoot: REPO_ROOT });
-  run('bash', ['tests/e2e/lib/peekaboo.test.sh'], { cwd: REPO_ROOT });
-  console.log('Computer Use local runner self-test passed.');
+  run("bash", ["tests/e2e/lib/peekaboo.test.sh"], { cwd: REPO_ROOT });
+  console.log("Computer Use local runner self-test passed.");
 }
 
 async function main() {
   const [command, ...args] = process.argv.slice(2);
   try {
-    if (command === 'setup') await setup();
-    else if (command === 'setup-deterministic') await setup();
-    else if (command === 'setup-real') await setup({ mode: 'real' });
-    else if (command === 'run-peekaboo') await runPeekaboo(args);
-    else if (command === 'run-peekaboo-suite') await runPeekabooSuite(args);
-    else if (command === 'run-peekaboo-macincloud') await runPeekabooMacInCloud(args);
-    else if (command === 'serve-mock') await serveMock(args[0]);
-    else if (command === 'capture') await capture(args);
-    else if (command === 'scenario') await scenario(args);
-    else if (command === 'confirmation') await confirmation(args);
-    else if (command === 'narrative') await narrative(args);
-    else if (command === 'app-command') await appCommand(args);
-    else if (command === 'render') await render();
-    else if (command === 'verify-report') await verifyReport(args);
-    else if (command === 'self-test') await runSelfTest();
-    else if (command === 'cleanup') await cleanup();
+    if (command === "setup") await setup();
+    else if (command === "setup-deterministic") await setup();
+    else if (command === "setup-real") await setup({ mode: "real" });
+    else if (command === "run-peekaboo") await runPeekaboo(args);
+    else if (command === "run-peekaboo-suite") await runPeekabooSuite(args);
+    else if (command === "run-peekaboo-macincloud") await runPeekabooMacInCloud(args);
+    else if (command === "serve-mock") await serveMock(args[0]);
+    else if (command === "capture") await capture(args);
+    else if (command === "scenario") await scenario(args);
+    else if (command === "confirmation") await confirmation(args);
+    else if (command === "narrative") await narrative(args);
+    else if (command === "app-command") await appCommand(args);
+    else if (command === "render") await render();
+    else if (command === "verify-report") await verifyReport(args);
+    else if (command === "self-test") await runSelfTest();
+    else if (command === "cleanup") await cleanup();
     else {
       usage();
       process.exit(command ? 1 : 0);

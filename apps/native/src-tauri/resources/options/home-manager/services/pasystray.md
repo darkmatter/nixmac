@@ -5,7 +5,7 @@
 All options under `services.pasystray`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---------------- | --------------------------------------------------- |
 | `services.pasystray.enable` | `boolean` | Whether to enable PulseAudio system tray. |
 | `services.pasystray.extraOptions` | `list of string` | Extra command-line arguments to pass to pasystray . |
 | `services.pasystray.package` | `package` | The pasystray package to use. |

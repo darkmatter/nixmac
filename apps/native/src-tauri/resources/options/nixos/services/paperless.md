@@ -5,7 +5,7 @@
 All options under `services.paperless`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.paperless.address` | | |
 | `services.paperless.configureNginx` | | |
 | `services.paperless.configureTika` | | |

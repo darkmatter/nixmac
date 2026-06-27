@@ -346,10 +346,7 @@ fn restore_after_failure(app: &AppHandle, repo_root: &str, backup_branch: &Optio
     // Allow skipping the actual git restore calls for debugging/testing.
     // If `DEBUG_SKIP_RESTORE_ALL` is set to a non-zero value, skip restore operations
     // but keep the same state updates and logging behavior.
-    let skip_restore = match std::env::var("DEBUG_SKIP_RESTORE_ALL") {
-        Ok(val) => val != "0",
-        Err(_) => false,
-    };
+    let skip_restore = crate::env::debug_skip_restore_all();
 
     if skip_restore {
         log::warn!("[evolution] DEBUG_SKIP_RESTORE_ALL set — skipping restore_from_branch_ref");

@@ -5,6 +5,6 @@
 All options under `services.auto-cpufreq`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.auto-cpufreq.enable` | | |
 | `services.auto-cpufreq.settings` | | |

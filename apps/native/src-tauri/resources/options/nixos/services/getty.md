@@ -5,7 +5,7 @@
 All options under `services.getty`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.getty.autologinOnce` | | |
 | `services.getty.autologinUser` | | |
 | `services.getty.extraArgs` | | |

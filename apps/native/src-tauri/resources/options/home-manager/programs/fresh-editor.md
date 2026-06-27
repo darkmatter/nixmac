@@ -5,7 +5,7 @@
 All options under `programs.fresh-editor`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.fresh-editor.defaultEditor` | | |
 | `programs.fresh-editor.enable` | `boolean` | Whether to enable fresh-editor. |
 | `programs.fresh-editor.extraPackages` | | |

@@ -5,7 +5,7 @@
 All options under `nix`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `nix.assumeXdg` | `boolean` | Whether Home Manager should assume that Nix is configured to use XDG base directories. Note that this doesn’t change the behavior of Nix. To do that, set nix.settings.use-xdg-base-directories instead. This option is intended for settings in which use-xdg-base-directories is set globally or nix.conf is unmanaged by Home Manager. |
 | `nix.buildMachines` | `list of (submodule)` | This option lists the machines to be used if distributed builds are enabled (see nix.distributedBuilds ). Nix will perform derivations on those machines via SSH by copying the inputs to the Nix store on the remote machine, starting the build, then copying the output back to the local Nix store. |
 | `nix.channels` | `attribute set of package` | A declarative alternative to Nix channels. Whereas with stock channels, you would register URLs and fetch them into the Nix store with nix-channel (1) , this option allows you to register the store path directly. One particularly useful example is registering flake inputs as channels. |

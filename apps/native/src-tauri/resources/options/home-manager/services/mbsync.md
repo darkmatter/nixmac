@@ -5,7 +5,7 @@
 All options under `services.mbsync`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.mbsync.configFile` | `null or absolute path` | Optional configuration file to link to use instead of the default file ( ~/.mbsyncrc ). |
 | `services.mbsync.enable` | `boolean` | Whether to enable mbsync. |
 | `services.mbsync.frequency` | `string` | How often to run mbsync. This value is passed to the systemd timer configuration as the onCalendar option. See systemd.time (7) for more information about the format. |

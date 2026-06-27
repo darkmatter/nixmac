@@ -5,5 +5,5 @@
 All options under `services.authelia`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.authelia.instances` | | |

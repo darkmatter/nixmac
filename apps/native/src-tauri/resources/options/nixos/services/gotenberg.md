@@ -5,7 +5,7 @@
 All options under `services.gotenberg`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.gotenberg.bindIP` | | |
 | `services.gotenberg.bodyLimit` | | |
 | `services.gotenberg.chromium.autoStart` | | |

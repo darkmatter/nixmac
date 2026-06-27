@@ -1,15 +1,14 @@
 import { tauriAPI } from "@/ipc/api";
 import type { NixInstallState } from "@/ipc/types";
-import { useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { uiActions, viewModelActions } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
 
 function mirrorNixInstallState(next: NixInstallState): void {
-  const prev = useViewModel.getState().nixInstall;
-  useViewModel.setState({ nixInstall: next });
+  const prev = viewModelActions.getState().nixInstall;
+  viewModelActions.setState({ nixInstall: next });
   // Surface a freshly recorded failure (e.g. a future install/prefetch path).
   if (next.lastError && next.lastError !== prev?.lastError) {
-    useUiState.getState().setError(next.lastError);
+    uiActions.setError(next.lastError);
   }
 }
 
@@ -18,6 +17,7 @@ function mirrorNixInstallState(next: NixInstallState): void {
 // ViewModel. There is no install-progress stream to fold.
 export function startNixInstallSync(): Promise<() => void> {
   return bindBackendSlice<NixInstallState>({
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     hydrate: () => tauriAPI.nix.installState(),
     event: "nix_install_state_changed",
     mirror: mirrorNixInstallState,

@@ -5,7 +5,7 @@
 All options under `services.namecoind`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.namecoind.enable` | | |
 | `services.namecoind.extraNodes` | | |
 | `services.namecoind.generate` | | |

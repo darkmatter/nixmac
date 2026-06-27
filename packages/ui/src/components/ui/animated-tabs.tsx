@@ -37,10 +37,10 @@ export function AnimatedTabsList({
   if (hidden) return null;
 
   return (
-    <AnimatedTabsContext.Provider value={{ activeValue, setActiveValue, layoutId: `tab-highlight-${id}` }}>
-      <TabsList className={cn("h-auto p-0.5", className)}>
-        {children}
-      </TabsList>
+    <AnimatedTabsContext.Provider
+      value={{ activeValue, setActiveValue, layoutId: `tab-highlight-${id}` }}
+    >
+      <TabsList className={cn("h-auto p-0.5", className)}>{children}</TabsList>
     </AnimatedTabsContext.Provider>
   );
 }
@@ -51,11 +51,7 @@ interface AnimatedTabsTriggerProps {
   className?: string;
 }
 
-export function AnimatedTabsTrigger({
-  value,
-  children,
-  className,
-}: AnimatedTabsTriggerProps) {
+export function AnimatedTabsTrigger({ value, children, className }: AnimatedTabsTriggerProps) {
   const ctx = useContext(AnimatedTabsContext);
   const isActive = ctx?.activeValue === value;
 
@@ -65,7 +61,7 @@ export function AnimatedTabsTrigger({
       onClick={() => ctx?.setActiveValue(value)}
       className={cn(
         "relative px-3 py-1 text-xs data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=inactive]:hover:text-foreground",
-        className
+        className,
       )}
     >
       {isActive && (

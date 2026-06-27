@@ -5,5 +5,5 @@
 All options under `programs.seahorse`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `programs.seahorse.enable` | | |

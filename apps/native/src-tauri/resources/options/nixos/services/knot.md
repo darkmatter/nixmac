@@ -5,7 +5,7 @@
 All options under `services.knot`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.knot.checkConfig` | | |
 | `services.knot.enable` | | |
 | `services.knot.enableXDP` | | |

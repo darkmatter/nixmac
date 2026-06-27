@@ -5,7 +5,7 @@
 All options under `services.lact`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.lact.enable` | | |
 | `services.lact.package` | | |
 | `services.lact.settings` | | |

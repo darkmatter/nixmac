@@ -5,7 +5,7 @@
 All options under `programs.nix-search-tv`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `programs.nix-search-tv.enable` | `boolean` | Whether to enable nix-search-tv. |
 | `programs.nix-search-tv.enableTelevisionIntegration` | `boolean` | Enables integration with television. Creates a channel through programs.television.channels.nix-search-tv , which are set as defaults and can be overridden. See programs.television.channels for more information |
 | `programs.nix-search-tv.package` | `null or package` | The nix-search-tv package to use. |

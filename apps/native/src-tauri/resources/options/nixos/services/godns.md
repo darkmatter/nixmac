@@ -5,7 +5,7 @@
 All options under `services.godns`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.godns.enable` | | |
 | `services.godns.loadCredential` | | |
 | `services.godns.package` | | |

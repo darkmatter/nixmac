@@ -14,6 +14,31 @@ let
     browser: browser.name == "chromium"
   ) playright-json.browsers) 0;
   playwright-chromium-revision = playwright-chromium-entry.revision;
+  xcodeSwiftPathHook = ''
+    host_xcode_developer_dir="$(env -u DEVELOPER_DIR -u SDKROOT /usr/bin/xcode-select -p 2>/dev/null || true)"
+    if [ -z "$host_xcode_developer_dir" ]; then
+      host_xcode_developer_dir="/Applications/Xcode.app/Contents/Developer"
+    fi
+
+    if [ -x "$host_xcode_developer_dir/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift" ]; then
+      export DEVELOPER_DIR="$host_xcode_developer_dir"
+      swift_toolchain_bin="$host_xcode_developer_dir/Toolchains/XcodeDefault.xctoolchain/usr/bin"
+      SDKROOT="$(env -u SDKROOT DEVELOPER_DIR="$host_xcode_developer_dir" /usr/bin/xcrun --sdk macosx --show-sdk-path 2>/dev/null || true)"
+      if [ -n "$SDKROOT" ]; then
+        export SDKROOT
+      fi
+    elif [ -x /usr/bin/xcode-select ]; then
+      developer_dir="$(/usr/bin/xcode-select -p 2>/dev/null || true)"
+      swift_toolchain_bin="$developer_dir/Toolchains/XcodeDefault.xctoolchain/usr/bin"
+    else
+      swift_toolchain_bin=""
+    fi
+
+    if [ -n "$swift_toolchain_bin" ] && [ -x "$swift_toolchain_bin/swift" ]; then
+      export PATH="$swift_toolchain_bin:$PATH"
+    fi
+    unset NIX_SWIFTFLAGS_COMPILE NIX_SWIFTFLAGS_LINK
+  '';
 in
 lib.mkIf (!config.container.isBuilding) {
   # Dev-only packages (excluded from container builds by conditional import).
@@ -39,7 +64,8 @@ lib.mkIf (!config.container.isBuilding) {
     pkgs.ruff
     pkgs.yq
     pkgs.playwright
-
+    pkgs.oxfmt
+    pkgs.oxlint
     # Python packages used in one-off scripts
     pkgs.python312Packages.requests
     pkgs.python312Packages.beautifulsoup4
@@ -91,6 +117,8 @@ lib.mkIf (!config.container.isBuilding) {
     # eval "$(starship init $SHELL)"
   ''
   + lib.optionalString pkgs.stdenv.isDarwin ''
+    ${xcodeSwiftPathHook}
+
     # For CodeLLDB
     export LLDB_BIN=$(which lldb)
     export DYLD_LIBRARY_PATH=${pkgs.lldb}/lib:$DYLD_LIBRARY_PATH
@@ -156,8 +184,12 @@ lib.mkIf (!config.container.isBuilding) {
 
   processes.tauri = {
     cwd = "${config.git.root}/apps/native";
-    exec = "${pkgs.sops}/bin/sops exec-env ${config.git.root}/ops/secrets/secrets.yaml '${config.git.root}/apps/native/src-tauri/scripts/tauri-dev.sh'";
+    exec = lib.optionalString pkgs.stdenv.isDarwin xcodeSwiftPathHook + ''
+      exec "${config.git.root}/apps/native/src-tauri/scripts/tauri-dev.sh"
+    '';
   };
+
+  # processes.tauri
 
   # processes.server = {
   #   cwd = "${config.git.root}/apps/server";
@@ -175,7 +207,7 @@ lib.mkIf (!config.container.isBuilding) {
 
   processes.test = {
     cwd = "${config.git.root}/apps/native";
-    exec = "sops exec-env ${config.git.root}/ops/secrets/secrets.yaml 'bun run test:watch'";
+    exec = "sops exec-env ${config.git.root}/ops/secrets/secrets.sops.json 'bun run test:watch'";
   };
 
   # Formatting

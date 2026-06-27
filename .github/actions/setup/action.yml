@@ -39,7 +39,19 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Check if Nix is already installed
+      id: nix-check
+      shell: bash
+      run: |
+        if command -v nix &>/dev/null; then
+          echo "installed=true" >> "$GITHUB_OUTPUT"
+          echo "Nix already installed — skipping nix-installer."
+        else
+          echo "installed=false" >> "$GITHUB_OUTPUT"
+        fi
+
     - name: Install Nix
+      if: steps.nix-check.outputs.installed != 'true'
       uses: DeterminateSystems/nix-installer-action@v22
       with:
         extra-conf: ${{ inputs.extra-nix-conf }}

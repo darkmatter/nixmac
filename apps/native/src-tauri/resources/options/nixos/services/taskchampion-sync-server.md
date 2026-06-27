@@ -5,7 +5,7 @@
 All options under `services.taskchampion-sync-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------------- | ---- | ----------- |
 | `services.taskchampion-sync-server.allowClientIds` | | |
 | `services.taskchampion-sync-server.dataDir` | | |
 | `services.taskchampion-sync-server.dynamicUser` | | |

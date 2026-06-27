@@ -14,8 +14,8 @@ import { ConfigDirBadge } from "@/components/widget/badges/config-dir-badge";
 import { useEvolve } from "@/hooks/use-evolve";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useRollback } from "@/hooks/use-rollback";
-import { useViewModel } from "@/stores/view-model";
-import { useUiState } from "@/stores/ui-state";
+import { uiActions, useViewModel, viewModelActions } from "@nixmac/state";
+import { useUiState } from "@nixmac/state";
 import { Loader2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -58,7 +58,7 @@ export function BeginEvolveWarning({ open, onOpenChange, handleEvolve }: BeginEv
 
   const handleDiscard = async () => {
     await handleRollback();
-    const newFiles = useViewModel.getState().git?.files?.length ?? 1;
+    const newFiles = viewModelActions.getState().git?.files?.length ?? 1;
     if (newFiles === 0) {
       toast.success("Changes discarded");
     } else {
@@ -75,14 +75,14 @@ export function BeginEvolveWarning({ open, onOpenChange, handleEvolve }: BeginEv
   const handleContinue = async () => {
     if (adoptOnContinue) {
       onOpenChange(false);
-      useUiState.getState().setGenerating(true);
+      uiActions.setGenerating(true);
       try {
         await evolveFromManual();
         // evolveFromManual persists evolveState on the backend; handleEvolve picks it up
         await handleEvolve();
       } catch {
         toast.error("Failed to adopt changes");
-        useUiState.getState().setGenerating(false);
+        uiActions.setGenerating(false);
       }
     } else {
       onOpenChange(false);
@@ -111,16 +111,16 @@ export function BeginEvolveWarning({ open, onOpenChange, handleEvolve }: BeginEv
                       <span className="shrink-0 opacity-60">({f.changeType})</span>
                     </li>
                   ))}
-                  {files.length > 5 && (
-                    <li className="opacity-60">…and {files.length - 5} more</li>
-                  )}
+                  {files.length > 5 && <li className="opacity-60">…and {files.length - 5} more</li>}
                 </ul>
               )}
             </div>
           </DialogDescription>
         </DialogHeader>
 
-        <p className="px-5 py-3 text-xs font-semibold text-foreground">First, decide how to handle uncommitted changes.</p>
+        <p className="px-5 py-3 text-xs font-semibold text-foreground">
+          First, decide how to handle uncommitted changes.
+        </p>
         <div className="border-t border-border/50 divide-y divide-border/50">
           {/* Option 1: Discard */}
           <div className="px-5 py-4 space-y-1.5">
@@ -131,7 +131,9 @@ export function BeginEvolveWarning({ open, onOpenChange, handleEvolve }: BeginEv
               <p className="text-xs font-semibold text-foreground">Discard changes</p>
             </div>
             <div className="flex items-center gap-3">
-              <p className="text-xs text-muted-foreground flex-1">Permanently remove all uncommitted changes.</p>
+              <p className="text-xs text-muted-foreground flex-1">
+                Permanently remove all uncommitted changes.
+              </p>
               <Button
                 variant="outline"
                 size="sm"
@@ -155,7 +157,13 @@ export function BeginEvolveWarning({ open, onOpenChange, handleEvolve }: BeginEv
           <div className="px-5 py-4 space-y-1.5">
             <div className="flex items-center gap-2">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border text-[10px] font-semibold tabular-nums text-muted-foreground">
-                {buildChecking ? <Loader2 className="h-3 w-3 animate-spin" /> : buildPassed ? 2 : <X className="h-3 w-3" />}
+                {buildChecking ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : buildPassed ? (
+                  2
+                ) : (
+                  <X className="h-3 w-3" />
+                )}
               </span>
               <p className="text-xs font-semibold text-foreground">Commit changes</p>
             </div>
@@ -168,7 +176,9 @@ export function BeginEvolveWarning({ open, onOpenChange, handleEvolve }: BeginEv
                 placeholder="Commit message…"
                 className="h-8 text-xs"
                 disabled={buildChecking || !buildPassed}
-                onKeyDown={(e) => { if (e.key === "Enter") handleCommit(); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCommit();
+                }}
               />
               <Button
                 variant="outline"
@@ -187,11 +197,21 @@ export function BeginEvolveWarning({ open, onOpenChange, handleEvolve }: BeginEv
             <div className="flex-1 space-y-1.5">
               <div className="flex items-center gap-2">
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border text-[10px] font-semibold tabular-nums text-muted-foreground">
-                  {buildChecking ? <Loader2 className="h-3 w-3 animate-spin" /> : buildPassed ? 3 : <X className="h-3 w-3" />}
+                  {buildChecking ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : buildPassed ? (
+                    3
+                  ) : (
+                    <X className="h-3 w-3" />
+                  )}
                 </span>
                 <p className="text-xs font-semibold text-foreground">Include in evolution</p>
               </div>
-              <p className="text-xs text-muted-foreground">{buildChecking ? `checking build…` : `Adopt the changes into your request, and save them together at the end.`}</p>
+              <p className="text-xs text-muted-foreground">
+                {buildChecking
+                  ? `checking build…`
+                  : `Adopt the changes into your request, and save them together at the end.`}
+              </p>
             </div>
             <Checkbox
               checked={adoptOnContinue}
@@ -212,11 +232,7 @@ export function BeginEvolveWarning({ open, onOpenChange, handleEvolve }: BeginEv
               <p className="px-3 py-2 text-xs text-muted-foreground truncate">{evolvePrompt}</p>
             </div>
           )}
-          <Button
-            size="sm"
-            disabled={!continueEnabled}
-            onClick={handleContinue}
-          >
+          <Button size="sm" disabled={!continueEnabled} onClick={handleContinue}>
             Continue
           </Button>
         </div>

@@ -5,7 +5,7 @@
 All options under `services.synapse-auto-compressor`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------------------- | ---- | ----------- |
 | `services.synapse-auto-compressor.enable` | | |
 | `services.synapse-auto-compressor.package` | | |
 | `services.synapse-auto-compressor.postgresUrl` | | |

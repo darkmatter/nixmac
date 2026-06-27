@@ -5,5 +5,5 @@
 All options under `services.autossh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.autossh.sessions` | | |

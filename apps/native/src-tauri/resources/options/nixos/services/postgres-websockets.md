@@ -5,7 +5,7 @@
 All options under `services.postgres-websockets`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.postgres-websockets.enable` | | |
 | `services.postgres-websockets.environment` | | |
 | `services.postgres-websockets.jwtSecretFile` | | |

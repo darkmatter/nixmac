@@ -5,6 +5,6 @@
 All options under `programs.ydotool`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `programs.ydotool.enable` | | |
 | `programs.ydotool.group` | | |

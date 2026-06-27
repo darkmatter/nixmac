@@ -5,7 +5,7 @@
 All options under `xsession`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `xsession.enable` | `boolean` | Whether to enable X Session. |
 | `xsession.importedVariables` | | |
 | `xsession.initExtra` | `strings concatenated with “\n”` | Extra shell commands to run during initialization. |

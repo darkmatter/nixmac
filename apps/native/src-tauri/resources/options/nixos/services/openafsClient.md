@@ -5,7 +5,7 @@
 All options under `services.openafsClient`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.openafsClient.afsdb` | | |
 | `services.openafsClient.cache.blocks` | | |
 | `services.openafsClient.cache.chunksize` | | |

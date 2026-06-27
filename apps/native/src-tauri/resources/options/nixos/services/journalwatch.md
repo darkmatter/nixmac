@@ -5,7 +5,7 @@
 All options under `services.journalwatch`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.journalwatch.accuracy` | | |
 | `services.journalwatch.enable` | | |
 | `services.journalwatch.extraConfig` | | |

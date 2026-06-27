@@ -5,7 +5,7 @@
 All options under `programs.nano`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `programs.nano.enable` | | |
 | `programs.nano.nanorc` | | |
 | `programs.nano.package` | | |

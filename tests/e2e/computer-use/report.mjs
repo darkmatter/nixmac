@@ -1,24 +1,24 @@
-import { readFile, stat } from 'node:fs/promises';
-import path from 'node:path';
-import { curatedProofKeys, scenarioGroups, screenshotAnnotations } from './scenario-catalog.mjs';
-import { failureTaxonomy } from './schemas.mjs';
-import { redact } from './redaction.mjs';
-import { formatDuration, sortedTimingPhases, timingTotals } from './timing.mjs';
+import { readFile, stat } from "node:fs/promises";
+import path from "node:path";
+import { curatedProofKeys, scenarioGroups, screenshotAnnotations } from "./scenario-catalog.mjs";
+import { failureTaxonomy } from "./schemas.mjs";
+import { redact } from "./redaction.mjs";
+import { formatDuration, sortedTimingPhases, timingTotals } from "./timing.mjs";
 
 function escapeHtml(value) {
   return redact(value)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function slugify(value) {
-  return String(value || '')
+  return String(value || "")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 async function pathExists(filePath) {
@@ -58,61 +58,70 @@ function groupedScenarios(state) {
     .filter(([key]) => !seen.has(key))
     .map(([key, item]) => ({ key, ...item }))
     .sort((a, b) => statusRank(a.status) - statusRank(b.status));
-  if (ungrouped.length) groups.push({ name: 'Other', keys: ungrouped.map((item) => item.key), items: ungrouped });
+  if (ungrouped.length)
+    groups.push({ name: "Other", keys: ungrouped.map((item) => item.key), items: ungrouped });
   return groups;
 }
 
 function artifactLinks(state, key, proofForScenario) {
   const proof = proofForScenario(state, key);
-  const screenshotLinks = proof.screenshotArtifacts.map((artifact) => `<a href="#screenshot-${escapeHtml(slugify(artifact.label || artifact.path))}"><code>${escapeHtml(artifact.path)}</code></a>`);
-  const textLinks = proof.textArtifacts.map((artifact) => `<a href="${escapeHtml(artifact.path)}" target="_blank" rel="noopener"><code>${escapeHtml(artifact.path)}</code></a>`);
-  const links = [...screenshotLinks, ...textLinks].join('<br>');
-  return links ? `<div class="artifact-list">${links}</div>` : 'No primary artifact linked.';
+  const screenshotLinks = proof.screenshotArtifacts.map(
+    (artifact) =>
+      `<a href="#screenshot-${escapeHtml(slugify(artifact.label || artifact.path))}"><code>${escapeHtml(artifact.path)}</code></a>`,
+  );
+  const textLinks = proof.textArtifacts.map(
+    (artifact) =>
+      `<a href="${escapeHtml(artifact.path)}" target="_blank" rel="noopener"><code>${escapeHtml(artifact.path)}</code></a>`,
+  );
+  const links = [...screenshotLinks, ...textLinks].join("<br>");
+  return links ? `<div class="artifact-list">${links}</div>` : "No primary artifact linked.";
 }
 
 async function readTextExcerpt(state, artifact, maxLines = 10) {
-  if (!artifact?.path) return '';
+  if (!artifact?.path) return "";
   const fullPath = path.join(state.runDir, artifact.path);
-  if (!(await pathExists(fullPath))) return '';
-  const text = redact(await readFile(fullPath, 'utf8'));
+  if (!(await pathExists(fullPath))) return "";
+  const text = redact(await readFile(fullPath, "utf8"));
   return text
-    .split('\n')
+    .split("\n")
     .filter((line) => line.trim())
     .slice(0, maxLines)
-    .join('\n')
+    .join("\n")
     .slice(0, 1400);
 }
 
 function knownCoverageGaps(state) {
   const gaps = [];
   for (const [key, scenario] of Object.entries(state.scenarios)) {
-    if (scenario.status !== 'pass' && scenario.status !== 'not_required') {
+    if (scenario.status !== "pass" && scenario.status !== "not_required") {
       gaps.push({
         label: scenario.label,
         status: scenario.status,
-        detail: scenario.notes.join(' ') || 'No detail recorded.',
+        detail: scenario.notes.join(" ") || "No detail recorded.",
       });
     }
   }
   if (!state.remoteMachine || !state.remoteApp) {
     gaps.push({
-      label: 'Remote Mac/app metadata',
-      status: 'inconclusive',
-      detail: 'Remote machine identity, OS, hardware, staged app path, bundle version, and signing metadata were not captured.',
+      label: "Remote Mac/app metadata",
+      status: "inconclusive",
+      detail:
+        "Remote machine identity, OS, hardware, staged app path, bundle version, and signing metadata were not captured.",
     });
   }
   if (!state.processEnvVerification) {
     gaps.push({
-      label: 'Credential process-env verification',
-      status: 'inconclusive',
-      detail: 'The nixmac process and GUI launchd credential environment were not checked with redacted values.',
+      label: "Credential process-env verification",
+      status: "inconclusive",
+      detail:
+        "The nixmac process and GUI launchd credential environment were not checked with redacted values.",
     });
   }
   if (!state.safety?.disposableConfig) {
     gaps.push({
-      label: 'Disposable config proof',
-      status: 'inconclusive',
-      detail: 'Remote run has not proven nixmac is pointed at a per-run disposable config.',
+      label: "Disposable config proof",
+      status: "inconclusive",
+      detail: "Remote run has not proven nixmac is pointed at a per-run disposable config.",
     });
   }
   return gaps;
@@ -130,73 +139,77 @@ function prSurfaceSummary(state) {
   const pr = state.prFocus || { configured: false, userVisibleFiles: [], scenarioKeys: [] };
   if (!pr.configured) {
     return {
-      label: 'No PR context',
-      detail: 'No PR metadata was provided, so this run proves baseline product behavior without PR-specific changed-file mapping.',
-      status: 'inconclusive',
+      label: "No PR context",
+      detail:
+        "No PR metadata was provided, so this run proves baseline product behavior without PR-specific changed-file mapping.",
+      status: "inconclusive",
     };
   }
   if (!pr.userVisibleFiles?.length) {
     return {
-      label: 'Docs/infra or unmapped surface',
-      detail: 'Changed-file metadata did not infer a user-visible app surface; baseline regression coverage still ran.',
-      status: 'pass',
+      label: "Docs/infra or unmapped surface",
+      detail:
+        "Changed-file metadata did not infer a user-visible app surface; baseline regression coverage still ran.",
+      status: "pass",
     };
   }
   if (!pr.scenarioKeys?.length) {
     return {
-      label: 'User-visible, unmapped',
+      label: "User-visible, unmapped",
       detail: `${pr.userVisibleFiles.length} user-visible changed file(s) were inferred, but no dedicated Computer Use scenario mapping exists yet.`,
-      status: 'inconclusive',
+      status: "inconclusive",
     };
   }
   return {
-    label: 'Mapped user-visible PR',
+    label: "Mapped user-visible PR",
     detail: `${pr.userVisibleFiles.length} user-visible changed file(s) mapped to ${pr.scenarioKeys.length} scenario(s).`,
-    status: state.scenarios.prSpecificCoverage?.status || 'inconclusive',
+    status: state.scenarios.prSpecificCoverage?.status || "inconclusive",
   };
 }
 
 function mergeConfidence(state, counts) {
   const limits = knownLimitCount(state);
   const prSurface = prSurfaceSummary(state);
-  if (state.verdict === 'fail' || counts.fail > 0) {
+  if (state.verdict === "fail" || counts.fail > 0) {
     return {
-      label: 'Not acceptable for E2E gate',
-      action: 'Inspect failures before approval.',
-      detail: 'At least one scenario or visual assertion failed.',
-      tone: 'fail',
+      label: "Not acceptable for E2E gate",
+      action: "Inspect failures before approval.",
+      detail: "At least one scenario or visual assertion failed.",
+      tone: "fail",
     };
   }
-  if (state.verdict !== 'pass' || counts.inconclusive > 0) {
+  if (state.verdict !== "pass" || counts.inconclusive > 0) {
     return {
-      label: 'Needs human review',
-      action: 'Resolve inconclusive evidence before treating the gate as clean.',
-      detail: 'The run did not produce a clean deterministic pass.',
-      tone: 'inconclusive',
+      label: "Needs human review",
+      action: "Resolve inconclusive evidence before treating the gate as clean.",
+      detail: "The run did not produce a clean deterministic pass.",
+      tone: "inconclusive",
     };
   }
-  if (prSurface.status === 'inconclusive' && state.prFocus?.configured) {
+  if (prSurface.status === "inconclusive" && state.prFocus?.configured) {
     return {
-      label: 'Baseline pass; PR focus needs review',
-      action: 'Review PR focus and known limits before approval.',
+      label: "Baseline pass; PR focus needs review",
+      action: "Review PR focus and known limits before approval.",
       detail: prSurface.detail,
-      tone: 'inconclusive',
+      tone: "inconclusive",
     };
   }
   return {
-    label: 'Acceptable for E2E gate',
-    action: limits ? `Review ${limits} known limit${limits === 1 ? '' : 's'}, then approve if acceptable.` : 'Approve if the linked proof matches the PR intent.',
-    detail: 'The remote run passed every recorded scenario and preserved inspectable evidence.',
-    tone: 'pass',
+    label: "Acceptable for E2E gate",
+    action: limits
+      ? `Review ${limits} known limit${limits === 1 ? "" : "s"}, then approve if acceptable.`
+      : "Approve if the linked proof matches the PR intent.",
+    detail: "The remote run passed every recorded scenario and preserved inspectable evidence.",
+    tone: "pass",
   };
 }
 
 function annotationClass(item) {
-  return ['annotation', item.tone ? `annotation-${item.tone}` : ''].filter(Boolean).join(' ');
+  return ["annotation", item.tone ? `annotation-${item.tone}` : ""].filter(Boolean).join(" ");
 }
 
 function annotationStyle(item) {
-  if (item.tone === 'pin') {
+  if (item.tone === "pin") {
     return `left:${item.x}%;top:${item.y}%;width:16px;height:16px;transform:translate(-50%,-50%)`;
   }
   return `left:${item.x}%;top:${item.y}%;width:${item.w}%;height:${item.h}%`;
@@ -204,12 +217,15 @@ function annotationStyle(item) {
 
 function renderAnnotatedImage(shot) {
   const annotations = screenshotAnnotations[shot.label] || [];
-  const imageSize = shot.imageSize ? `${shot.imageSize.width}x${shot.imageSize.height}` : 'unknown-size';
+  const imageSize = shot.imageSize
+    ? `${shot.imageSize.width}x${shot.imageSize.height}`
+    : "unknown-size";
   const overlays = annotations
     .map(
-      (item) => `<span class="${annotationClass(item)}" style="${annotationStyle(item)}"><span>${escapeHtml(item.label)}</span></span>`,
+      (item) =>
+        `<span class="${annotationClass(item)}" style="${annotationStyle(item)}"><span>${escapeHtml(item.label)}</span></span>`,
     )
-    .join('\n');
+    .join("\n");
   return `<div class="annotated-shot" data-image-size="${escapeHtml(imageSize)}">
   <img src="${escapeHtml(shot.path)}" alt="${escapeHtml(shot.label)}">
   ${overlays}
@@ -225,12 +241,18 @@ async function renderVisualProofCards(state, keys, proofForScenario) {
     if (proof.screenshotArtifacts.length === 0 && proof.textArtifacts.length === 0) continue;
     const screenshots = proof.screenshotArtifacts
       .slice(0, 2)
-      .map((shot) => `<figure>${renderAnnotatedImage(shot)}<figcaption><strong>${escapeHtml(shot.label)}</strong> - ${escapeHtml(shot.note || '')}</figcaption></figure>`)
-      .join('\n');
+      .map(
+        (shot) =>
+          `<figure>${renderAnnotatedImage(shot)}<figcaption><strong>${escapeHtml(shot.label)}</strong> - ${escapeHtml(shot.note || "")}</figcaption></figure>`,
+      )
+      .join("\n");
     const excerpts = [];
     for (const artifact of proof.textArtifacts.slice(0, 2)) {
       const excerpt = await readTextExcerpt(state, artifact);
-      if (excerpt) excerpts.push(`<details><summary>${escapeHtml(artifact.path)}</summary><pre>${escapeHtml(excerpt)}</pre></details>`);
+      if (excerpt)
+        excerpts.push(
+          `<details><summary>${escapeHtml(artifact.path)}</summary><pre>${escapeHtml(excerpt)}</pre></details>`,
+        );
     }
     cards.push(`<section class="proof-card">
   <h3>${escapeHtml(scenario.label)}</h3>
@@ -238,21 +260,23 @@ async function renderVisualProofCards(state, keys, proofForScenario) {
   <p><strong>Assertion:</strong> ${escapeHtml(proof.proof)}</p>
   <p><strong>Not proved:</strong> ${escapeHtml(proof.untested)}</p>
   ${screenshots}
-  ${excerpts.join('\n')}
+  ${excerpts.join("\n")}
 </section>`);
   }
-  return cards.length ? cards.join('\n') : '<p>No visual proof cards generated.</p>';
+  return cards.length ? cards.join("\n") : "<p>No visual proof cards generated.</p>";
 }
 
 async function renderVisualProofBoard(state, proofForScenario) {
   const prKeys = new Set(state.prFocus?.scenarioKeys || []);
   const nonPassKeys = Object.entries(state.scenarios)
-    .filter(([, scenario]) => scenario.status !== 'pass')
+    .filter(([, scenario]) => scenario.status !== "pass")
     .map(([key]) => key);
   const settingsFocused = [...prKeys].some((key) => /^settings/.test(key));
   const defaultKeys = [
     ...nonPassKeys,
-    ...curatedProofKeys.filter((key) => !/^settings/.test(key) || settingsFocused || state.scenarios[key]?.status !== 'pass'),
+    ...curatedProofKeys.filter(
+      (key) => !/^settings/.test(key) || settingsFocused || state.scenarios[key]?.status !== "pass",
+    ),
     ...[...prKeys],
   ];
   const uniqueDefaultKeys = [...new Set(defaultKeys)].filter((key) => state.scenarios[key]);
@@ -273,28 +297,41 @@ function renderCoverageGaps(state) {
   const gaps = [
     ...coverageWaivers(state).map((waiver) => ({
       label: waiver.label || waiver.id,
-      status: waiver.risk === 'high' ? 'fail' : 'inconclusive',
-      detail: `Explicit waiver ${waiver.id || 'unknown'} (${waiver.risk || 'risk unset'}, owner ${waiver.owner || 'unowned'}, review by ${waiver.reviewBy || 'unset'}): ${waiver.reason || 'No reason recorded.'} Exit criteria: ${waiver.exitCriteria || 'No exit criteria recorded.'}`,
+      status: waiver.risk === "high" ? "fail" : "inconclusive",
+      detail: `Explicit waiver ${waiver.id || "unknown"} (${waiver.risk || "risk unset"}, owner ${waiver.owner || "unowned"}, review by ${waiver.reviewBy || "unset"}): ${waiver.reason || "No reason recorded."} Exit criteria: ${waiver.exitCriteria || "No exit criteria recorded."}`,
     })),
     ...knownCoverageGaps(state),
   ];
-  if (!gaps.length) return '<p>No known runtime gaps or explicit waivers recorded.</p>';
+  if (!gaps.length) return "<p>No known runtime gaps or explicit waivers recorded.</p>";
   return `<table>
     <thead><tr><th>Known Limit</th><th>Status</th><th>Detail</th></tr></thead>
     <tbody>
-      ${gaps.map((gap) => `<tr><td>${escapeHtml(gap.label)}</td><td><span class="verdict ${gap.status}">${escapeHtml(gap.status)}</span></td><td>${escapeHtml(gap.detail)}</td></tr>`).join('\n')}
+      ${gaps.map((gap) => `<tr><td>${escapeHtml(gap.label)}</td><td><span class="verdict ${gap.status}">${escapeHtml(gap.status)}</span></td><td>${escapeHtml(gap.detail)}</td></tr>`).join("\n")}
     </tbody>
   </table>`;
 }
 
 function renderPrFocus(state) {
-  const pr = state.prFocus || { configured: false, changedFiles: [], userVisibleFiles: [], scenarioKeys: [] };
-  const changed = pr.changedFiles?.length ? pr.changedFiles.map((file) => `<li><code>${escapeHtml(file)}</code></li>`).join('\n') : '<li>No changed-file metadata provided.</li>';
-  const userVisible = pr.userVisibleFiles?.length ? pr.userVisibleFiles.map((file) => `<li><code>${escapeHtml(file)}</code></li>`).join('\n') : '<li>No user-visible changed files inferred from current metadata.</li>';
-  const scenarios = pr.scenarioKeys?.length ? pr.scenarioKeys.map((key) => `<li>${escapeHtml(state.scenarios?.[key]?.label || key)}</li>`).join('\n') : '<li>No dedicated scenario mapping inferred from changed files.</li>';
+  const pr = state.prFocus || {
+    configured: false,
+    changedFiles: [],
+    userVisibleFiles: [],
+    scenarioKeys: [],
+  };
+  const changed = pr.changedFiles?.length
+    ? pr.changedFiles.map((file) => `<li><code>${escapeHtml(file)}</code></li>`).join("\n")
+    : "<li>No changed-file metadata provided.</li>";
+  const userVisible = pr.userVisibleFiles?.length
+    ? pr.userVisibleFiles.map((file) => `<li><code>${escapeHtml(file)}</code></li>`).join("\n")
+    : "<li>No user-visible changed files inferred from current metadata.</li>";
+  const scenarios = pr.scenarioKeys?.length
+    ? pr.scenarioKeys
+        .map((key) => `<li>${escapeHtml(state.scenarios?.[key]?.label || key)}</li>`)
+        .join("\n")
+    : "<li>No dedicated scenario mapping inferred from changed files.</li>";
   return `<section class="panel">
-    <p><strong>PR:</strong> ${escapeHtml(pr.number || 'not provided')} ${pr.title ? `- ${escapeHtml(pr.title)}` : ''}</p>
-    <p><strong>Refs:</strong> ${escapeHtml(pr.baseRef || 'base ?')} ← ${escapeHtml(pr.headRef || 'head ?')}</p>
+    <p><strong>PR:</strong> ${escapeHtml(pr.number || "not provided")} ${pr.title ? `- ${escapeHtml(pr.title)}` : ""}</p>
+    <p><strong>Refs:</strong> ${escapeHtml(pr.baseRef || "base ?")} ← ${escapeHtml(pr.headRef || "head ?")}</p>
     <h3>User-Visible Focus Candidates</h3>
     <ul>${userVisible}</ul>
     <h3>Mapped Scenario Focus</h3>
@@ -312,9 +349,9 @@ function scenarioRows(state, items, proofForScenario) {
     .map((item) => {
       const proof = proofForScenario(state, item.key);
       const contract = state.v2?.scenarioContracts?.[item.key] || {};
-      return `<tr><td class="scenario-cell">${escapeHtml(item.label)}<br><small>${item.notes.map(escapeHtml).join('<br>') || 'No notes recorded.'}</small></td><td class="status-cell"><span class="verdict ${item.status}">${escapeHtml(item.status)}</span></td><td class="grade-cell"><span class="grade">${escapeHtml(proof.grade)}</span><br><span class="strength strength-${escapeHtml(contract.evidenceStrength || 'not-proved')}">${escapeHtml(contract.evidenceStrength || 'not-proved')}</span></td><td class="artifact-cell">${artifactLinks(state, item.key, proofForScenario)}</td><td class="proof-cell">${escapeHtml(proof.proof)}${contract.failureClass ? `<br><small>Failure class: ${escapeHtml(contract.failureClass)}</small>` : ''}</td></tr>`;
+      return `<tr><td class="scenario-cell">${escapeHtml(item.label)}<br><small>${item.notes.map(escapeHtml).join("<br>") || "No notes recorded."}</small></td><td class="status-cell"><span class="verdict ${item.status}">${escapeHtml(item.status)}</span></td><td class="grade-cell"><span class="grade">${escapeHtml(proof.grade)}</span><br><span class="strength strength-${escapeHtml(contract.evidenceStrength || "not-proved")}">${escapeHtml(contract.evidenceStrength || "not-proved")}</span></td><td class="artifact-cell">${artifactLinks(state, item.key, proofForScenario)}</td><td class="proof-cell">${escapeHtml(proof.proof)}${contract.failureClass ? `<br><small>Failure class: ${escapeHtml(contract.failureClass)}</small>` : ""}</td></tr>`;
     })
-    .join('\n');
+    .join("\n");
 }
 
 function scenariosWithStatus(state, status) {
@@ -324,9 +361,9 @@ function scenariosWithStatus(state, status) {
 }
 
 function renderPriorityTriage(state, proofForScenario) {
-  const failed = scenariosWithStatus(state, 'fail');
-  const inconclusive = scenariosWithStatus(state, 'inconclusive');
-  const passed = scenariosWithStatus(state, 'pass');
+  const failed = scenariosWithStatus(state, "fail");
+  const inconclusive = scenariosWithStatus(state, "inconclusive");
+  const passed = scenariosWithStatus(state, "pass");
   const table = (items) => `<div class="table-scroll"><table class="scenario-table">
     <thead><tr><th class="scenario-col">Scenario</th><th class="status-col">Status</th><th class="grade-col">Evidence Grade</th><th class="artifacts-col">Primary Artifacts</th><th class="proof-col">What Proved It / Why It Matters</th></tr></thead>
     <tbody>${scenarioRows(state, items, proofForScenario)}</tbody>
@@ -345,8 +382,9 @@ function renderPriorityTriage(state, proofForScenario) {
 
 function renderPrPriority(state, proofForScenario) {
   const pr = state.prFocus || { configured: false, scenarioKeys: [] };
-  if (!pr.configured) return `<h2 id="pull-request-focus">Pull Request Focus</h2>${renderPrFocus(state)}`;
-  const keys = pr.scenarioKeys?.length ? pr.scenarioKeys : ['prSpecificCoverage'];
+  if (!pr.configured)
+    return `<h2 id="pull-request-focus">Pull Request Focus</h2>${renderPrFocus(state)}`;
+  const keys = pr.scenarioKeys?.length ? pr.scenarioKeys : ["prSpecificCoverage"];
   const evidenceRows = keys
     .filter((key) => state.scenarios[key])
     .map((key) => ({ key, ...state.scenarios[key] }))
@@ -366,22 +404,57 @@ function verificationQueueItems(state) {
   const prKeys = new Set(state.prFocus?.scenarioKeys || []);
   const items = [];
   for (const [key, scenario] of Object.entries(state.scenarios || {})) {
-    if (scenario.status === 'fail') items.push({ key, priority: 10, reason: 'Blocking failure', action: 'Inspect expected vs actual evidence.' });
-    else if (scenario.status === 'inconclusive') items.push({ key, priority: 20, reason: 'Inconclusive proof', action: 'Decide whether this evidence gap blocks approval.' });
-    else if (scenario.status !== 'not_required' && prKeys.has(key)) items.push({ key, priority: 30, reason: 'PR-focused scenario', action: 'Verify this proof covers the changed user-visible surface.' });
-  }
-  for (const key of ['saveFlow', 'rollbackCleanup', 'visualProofQuality', 'mainCoverageFreshness', 'reportInspection']) {
-    if (state.scenarios?.[key] && state.scenarios[key].status !== 'not_required' && !items.some((item) => item.key === key)) {
+    if (scenario.status === "fail")
       items.push({
         key,
-        priority: key === 'rollbackCleanup' ? 40 : 50,
-        reason: key === 'rollbackCleanup' ? 'Cleanup proof' : 'Trust-critical proof',
-        action: key === 'mainCoverageFreshness' ? 'Review explicit waivers and drift.' : 'Spot-check the linked primary artifacts.',
+        priority: 10,
+        reason: "Blocking failure",
+        action: "Inspect expected vs actual evidence.",
+      });
+    else if (scenario.status === "inconclusive")
+      items.push({
+        key,
+        priority: 20,
+        reason: "Inconclusive proof",
+        action: "Decide whether this evidence gap blocks approval.",
+      });
+    else if (scenario.status !== "not_required" && prKeys.has(key))
+      items.push({
+        key,
+        priority: 30,
+        reason: "PR-focused scenario",
+        action: "Verify this proof covers the changed user-visible surface.",
+      });
+  }
+  for (const key of [
+    "saveFlow",
+    "rollbackCleanup",
+    "visualProofQuality",
+    "mainCoverageFreshness",
+    "reportInspection",
+  ]) {
+    if (
+      state.scenarios?.[key] &&
+      state.scenarios[key].status !== "not_required" &&
+      !items.some((item) => item.key === key)
+    ) {
+      items.push({
+        key,
+        priority: key === "rollbackCleanup" ? 40 : 50,
+        reason: key === "rollbackCleanup" ? "Cleanup proof" : "Trust-critical proof",
+        action:
+          key === "mainCoverageFreshness"
+            ? "Review explicit waivers and drift."
+            : "Spot-check the linked primary artifacts.",
       });
     }
   }
   return items
-    .sort((a, b) => a.priority - b.priority || statusRank(state.scenarios[a.key]?.status) - statusRank(state.scenarios[b.key]?.status))
+    .sort(
+      (a, b) =>
+        a.priority - b.priority ||
+        statusRank(state.scenarios[a.key]?.status) - statusRank(state.scenarios[b.key]?.status),
+    )
     .slice(0, 8);
 }
 
@@ -394,24 +467,24 @@ function renderVerificationQueue(state, proofForScenario) {
           const proof = proofForScenario(state, item.key);
           return `<tr id="verify-${escapeHtml(slugify(item.key))}">
             <td>${escapeHtml(item.reason)}<br><small>${escapeHtml(item.action)}</small></td>
-            <td>${escapeHtml(scenario.label)}<br><small>${escapeHtml(scenario.notes.join(' ') || 'No notes recorded.')}</small></td>
+            <td>${escapeHtml(scenario.label)}<br><small>${escapeHtml(scenario.notes.join(" ") || "No notes recorded.")}</small></td>
             <td><span class="verdict ${escapeHtml(scenario.status)}">${escapeHtml(scenario.status)}</span></td>
             <td>${artifactLinks(state, item.key, proofForScenario)}</td>
             <td>${escapeHtml(proof.proof)}<br><a class="back-link" href="#summary">Return to decision</a></td>
           </tr>`;
         })
-        .join('\n')
+        .join("\n")
     : '<tr><td colspan="5">No prioritized verification rows generated.</td></tr>';
   const limitRows = coverageWaivers(state)
     .map(
       (waiver) => `<tr>
-        <td><span class="risk risk-${escapeHtml(waiver.risk || 'medium')}">${escapeHtml(waiver.risk || 'unset')}</span></td>
-        <td>${escapeHtml(waiver.label || waiver.id)}<br><small><code>${escapeHtml(waiver.id || '')}</code></small></td>
-        <td>${escapeHtml(waiver.reason || 'No reason recorded.')}</td>
-        <td>${escapeHtml(waiver.exitCriteria || 'No exit criteria recorded.')}</td>
+        <td><span class="risk risk-${escapeHtml(waiver.risk || "medium")}">${escapeHtml(waiver.risk || "unset")}</span></td>
+        <td>${escapeHtml(waiver.label || waiver.id)}<br><small><code>${escapeHtml(waiver.id || "")}</code></small></td>
+        <td>${escapeHtml(waiver.reason || "No reason recorded.")}</td>
+        <td>${escapeHtml(waiver.exitCriteria || "No exit criteria recorded.")}</td>
       </tr>`,
     )
-    .join('\n');
+    .join("\n");
   return `<h2 id="verification-queue">Verification Queue</h2>
   <section class="panel">
     <p>Review these rows first. They prioritize blockers, inconclusive checks, PR-focused scenarios, cleanup proof, known limits, and sampled core passes before the raw evidence dump.</p>
@@ -419,7 +492,7 @@ function renderVerificationQueue(state, proofForScenario) {
       <thead><tr><th>Why First</th><th>Scenario</th><th>Status</th><th>Primary Artifacts</th><th>What To Verify</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
-    <details ${coverageWaivers(state).length ? 'open' : ''}>
+    <details ${coverageWaivers(state).length ? "open" : ""}>
       <summary>Explicit waivers and known limits (${escapeHtml(String(coverageWaivers(state).length))})</summary>
       <div class="table-scroll"><table>
         <thead><tr><th>Risk</th><th>Limit</th><th>Reason</th><th>Exit Criteria</th></tr></thead>
@@ -431,12 +504,22 @@ function renderVerificationQueue(state, proofForScenario) {
 
 function renderCoverageFreshness(state) {
   const coverage = state.coverageFreshness;
-  if (!coverage) return '';
+  if (!coverage) return "";
   const driftRows = coverage.drift?.length
-    ? coverage.drift.map((item) => `<tr><td><span class="verdict fail">drift</span></td><td>${escapeHtml(item)}</td></tr>`).join('\n')
+    ? coverage.drift
+        .map(
+          (item) =>
+            `<tr><td><span class="verdict fail">drift</span></td><td>${escapeHtml(item)}</td></tr>`,
+        )
+        .join("\n")
     : '<tr><td><span class="verdict pass">clean</span></td><td>No unmapped user-visible candidate files or manifest mapping errors detected.</td></tr>';
   const waiverRows = coverage.waivers?.length
-    ? coverage.waivers.map((item) => `<tr><td>${escapeHtml(item.id)}</td><td>${escapeHtml(item.label)}</td><td>${escapeHtml(item.owner || 'unowned')}</td><td>${escapeHtml(item.risk || 'unset')}</td><td>${escapeHtml(item.reviewBy || 'unset')}</td><td>${escapeHtml(item.reason)}</td><td>${escapeHtml(item.exitCriteria || 'No exit criteria recorded.')}${item.validationErrors?.length ? `<br><strong>Validation:</strong> ${escapeHtml(item.validationErrors.join('; '))}` : ''}</td></tr>`).join('\n')
+    ? coverage.waivers
+        .map(
+          (item) =>
+            `<tr><td>${escapeHtml(item.id)}</td><td>${escapeHtml(item.label)}</td><td>${escapeHtml(item.owner || "unowned")}</td><td>${escapeHtml(item.risk || "unset")}</td><td>${escapeHtml(item.reviewBy || "unset")}</td><td>${escapeHtml(item.reason)}</td><td>${escapeHtml(item.exitCriteria || "No exit criteria recorded.")}${item.validationErrors?.length ? `<br><strong>Validation:</strong> ${escapeHtml(item.validationErrors.join("; "))}` : ""}</td></tr>`,
+        )
+        .join("\n")
     : '<tr><td colspan="7">No waivers recorded.</td></tr>';
   return `<h2 id="main-coverage">Main Coverage Freshness</h2>
   <section class="panel">
@@ -449,37 +532,41 @@ function renderCoverageFreshness(state) {
 }
 
 function detailRows(object = {}) {
-  const entries = Object.entries(object).filter(([, value]) => value !== undefined && value !== null && value !== '');
+  const entries = Object.entries(object).filter(
+    ([, value]) => value !== undefined && value !== null && value !== "",
+  );
   if (!entries.length) return '<tr><td colspan="2">No metadata recorded.</td></tr>';
   return entries
     .map(([key, value]) => {
-      const rendered = Array.isArray(value) ? value.join(', ') : String(value);
+      const rendered = Array.isArray(value) ? value.join(", ") : String(value);
       return `<tr><th>${escapeHtml(key)}</th><td>${escapeHtml(rendered)}</td></tr>`;
     })
-    .join('\n');
+    .join("\n");
 }
 
 function renderRemoteMetadata(state) {
   const env = state.processEnvVerification || {};
   const machineSummary = [
-    state.remoteMachine?.hostname || state.remoteMachine?.localHostName || 'unknown host',
-    state.remoteMachine?.macosProductVersion ? `macOS ${state.remoteMachine.macosProductVersion}` : null,
+    state.remoteMachine?.hostname || state.remoteMachine?.localHostName || "unknown host",
+    state.remoteMachine?.macosProductVersion
+      ? `macOS ${state.remoteMachine.macosProductVersion}`
+      : null,
     state.remoteMachine?.architecture,
   ]
     .filter(Boolean)
-    .join(' · ');
+    .join(" · ");
   const appSummary = [
-    state.remoteApp?.bundleName || 'nixmac',
+    state.remoteApp?.bundleName || "nixmac",
     state.remoteApp?.shortVersion || state.remoteApp?.bundleVersion,
-    state.remoteApp?.codesignVerified === true ? 'codesign verified' : 'codesign not verified',
+    state.remoteApp?.codesignVerified === true ? "codesign verified" : "codesign not verified",
   ]
     .filter(Boolean)
-    .join(' · ');
+    .join(" · ");
   const envSummary = [
-    env.processFound === true ? `process ${env.pid || 'found'}` : 'process not found',
-    `OpenRouter key ${env.openrouterApiKeyInProcess || 'unknown'}`,
-    env.secretValuesRecorded === false ? 'secrets not recorded' : 'secret recording unknown',
-  ].join(' · ');
+    env.processFound === true ? `process ${env.pid || "found"}` : "process not found",
+    `OpenRouter key ${env.openrouterApiKeyInProcess || "unknown"}`,
+    env.secretValuesRecorded === false ? "secrets not recorded" : "secret recording unknown",
+  ].join(" · ");
   return `<h2 id="remote-metadata">Remote Mac / App Metadata</h2>
   <section class="summary metadata-summary" aria-label="Remote metadata summary">
     <div class="metric"><strong>Machine</strong>${escapeHtml(machineSummary)}</div>
@@ -511,11 +598,16 @@ function renderRemoteMetadata(state) {
     </div>
     </section>
   </details>
-  ${state.remoteMetadataError ? `<p class="warning"><strong>Metadata capture error:</strong> ${escapeHtml(state.remoteMetadataError)}</p>` : ''}`;
+  ${state.remoteMetadataError ? `<p class="warning"><strong>Metadata capture error:</strong> ${escapeHtml(state.remoteMetadataError)}</p>` : ""}`;
 }
 
 function renderEvolvedCaseStrategy(state) {
-  const strategy = state.evolvedCaseStrategy || { catalog: [], defaultCaseIds: [], extraCaseIds: [], reviewDecision: '' };
+  const strategy = state.evolvedCaseStrategy || {
+    catalog: [],
+    defaultCaseIds: [],
+    extraCaseIds: [],
+    reviewDecision: "",
+  };
   const runs = state.evolvedCaseRuns || [];
   const catalogRows = (strategy.catalog || [])
     .map(
@@ -527,24 +619,24 @@ function renderEvolvedCaseStrategy(state) {
         <td>${escapeHtml(item.note)}</td>
       </tr>`,
     )
-    .join('\n');
+    .join("\n");
   const runRows = runs.length
     ? runs
         .map(
           (run) => `<tr>
-            <td><code>${escapeHtml(run.id)}</code><br><small>${escapeHtml(run.label || '')}</small></td>
-            <td>${escapeHtml(run.mode || '')}</td>
-            <td><span class="verdict ${escapeHtml(run.status || 'inconclusive')}">${escapeHtml(run.status || 'inconclusive')}</span></td>
-            <td>${escapeHtml((run.notes || []).join(' '))}</td>
+            <td><code>${escapeHtml(run.id)}</code><br><small>${escapeHtml(run.label || "")}</small></td>
+            <td>${escapeHtml(run.mode || "")}</td>
+            <td><span class="verdict ${escapeHtml(run.status || "inconclusive")}">${escapeHtml(run.status || "inconclusive")}</span></td>
+            <td>${escapeHtml((run.notes || []).join(" "))}</td>
           </tr>`,
         )
-        .join('\n')
+        .join("\n")
     : '<tr><td colspan="4">No optional evolved review-only cases were enabled for this run.</td></tr>';
   return `<section>
     <h3>Evolved Flow Case Strategy</h3>
-    <p>${escapeHtml(strategy.reviewDecision || '')}</p>
-    <p><strong>Default case:</strong> ${escapeHtml((strategy.defaultCaseIds || []).join(', ') || 'none')}<br>
-    <strong>Enabled extra cases:</strong> ${escapeHtml((strategy.extraCaseIds || []).join(', ') || 'none')}</p>
+    <p>${escapeHtml(strategy.reviewDecision || "")}</p>
+    <p><strong>Default case:</strong> ${escapeHtml((strategy.defaultCaseIds || []).join(", ") || "none")}<br>
+    <strong>Enabled extra cases:</strong> ${escapeHtml((strategy.extraCaseIds || []).join(", ") || "none")}</p>
     <h3>Case Catalog</h3>
     <div class="table-scroll"><table class="scenario-table">
       <thead><tr><th>Case</th><th>Mode</th><th>PR Lane</th><th>Source</th><th>Notes</th></tr></thead>
@@ -559,21 +651,21 @@ function renderEvolvedCaseStrategy(state) {
 }
 
 function derivedVideoChapters(state) {
-  if (state.video?.status !== 'available' || !state.screenshots?.length) return [];
+  if (state.video?.status !== "available" || !state.screenshots?.length) return [];
   const frameDuration = 1.1;
   const candidates = [
-    ['launch', 'Launch'],
-    ['settings-general', 'Settings'],
-    ['typed-intent', 'Prompt'],
-    ['provider-progress-01', 'Provider'],
-    ['review-summary', 'Review summary'],
-    ['review-diff', 'Diff'],
-    ['build-boundary', 'Build boundary'],
-    ['step-3-ready', 'Step 3'],
-    ['after-commit', 'Save'],
-    ['history-restore-preview', 'Rollback'],
-    ['after-history-restore', 'Cleanup'],
-    ['HTML report inspection', 'Report inspection'],
+    ["launch", "Launch"],
+    ["settings-general", "Settings"],
+    ["typed-intent", "Prompt"],
+    ["provider-progress-01", "Provider"],
+    ["review-summary", "Review summary"],
+    ["review-diff", "Diff"],
+    ["build-boundary", "Build boundary"],
+    ["step-3-ready", "Step 3"],
+    ["after-commit", "Save"],
+    ["history-restore-preview", "Rollback"],
+    ["after-history-restore", "Cleanup"],
+    ["HTML report inspection", "Report inspection"],
   ];
   return candidates
     .map(([label, title]) => {
@@ -586,12 +678,12 @@ function derivedVideoChapters(state) {
 
 function renderVideoChapters(state) {
   const chapters = derivedVideoChapters(state);
-  if (!chapters.length) return '';
+  if (!chapters.length) return "";
   return `<div class="video-chapters" aria-label="Derived video chapters">
     <strong>Derived chapters</strong>
     <small>Chapter times are derived from the screenshot slideshow frame order, not exact user-action timestamps.</small>
     <div class="chapter-list">
-      ${chapters.map((chapter) => `<button type="button" data-video-seek="${escapeHtml(String(chapter.seconds))}">${escapeHtml(formatDuration(chapter.seconds * 1000))} ${escapeHtml(chapter.title)}</button>`).join('\n')}
+      ${chapters.map((chapter) => `<button type="button" data-video-seek="${escapeHtml(String(chapter.seconds))}">${escapeHtml(formatDuration(chapter.seconds * 1000))} ${escapeHtml(chapter.title)}</button>`).join("\n")}
     </div>
   </div>`;
 }
@@ -612,7 +704,7 @@ function renderSummaryVideo(state) {
       <a href="#remote-metadata"><strong>DXU</strong><span>Remote state</span><small>Machine, app, process, and git metadata.</small></a>
     </div>
   </div>`;
-  if (state.video?.status === 'available' && state.video.path) {
+  if (state.video?.status === "available" && state.video.path) {
     return `<div id="summary-video" class="summary-video">
       <div class="summary-video-copy">
         <strong>Evidence video</strong>
@@ -626,7 +718,7 @@ function renderSummaryVideo(state) {
   return `<div id="summary-video" class="summary-video summary-video-unavailable">
     <div class="summary-video-copy">
       <strong>Evidence video unavailable</strong>
-      <small>${escapeHtml(state.video?.note || 'No screenshot compilation video was generated for this run.')}</small>
+      <small>${escapeHtml(state.video?.note || "No screenshot compilation video was generated for this run.")}</small>
     </div>
   </div>
   ${evidencePack}`;
@@ -637,20 +729,43 @@ function renderExecutiveSummary(state, counts, evidenceSummary) {
   const prSurface = prSurfaceSummary(state);
   const confidence = mergeConfidence(state, counts);
   const limits = knownLimitCount(state);
-  const videoStatus = state.video?.status === 'available' ? 'pass' : 'inconclusive';
-  const evidenceStatus = state.scenarios.visualProofQuality?.status || 'inconclusive';
-  const prLabel = pr.configured ? `PR ${pr.number || '?'}${pr.title ? ` - ${pr.title}` : ''}` : 'No pull request metadata provided';
-  const prStatus = state.scenarios.prSpecificCoverage?.status || 'inconclusive';
-  const coverageStatus = state.scenarios.mainCoverageFreshness?.status || 'inconclusive';
-  const saveStatus = state.scenarios.saveFlow?.status || 'inconclusive';
-  const rollbackStatus = state.scenarios.rollbackCleanup?.status || 'inconclusive';
-  const remoteRestoreStatus = state.cleanup?.restored ? 'pass' : state.cleanup?.attempted ? 'fail' : 'inconclusive';
-  const metadataStatus = state.remoteMachine && state.remoteApp ? 'pass' : 'inconclusive';
-  const storybook = state.storybookPreview || { status: 'not_applicable', uiFiles: [], affectedStories: [], missingStoryFiles: [] };
-  const storybookStatus = storybook.status === 'ready' || storybook.status === 'ready_with_advisories' ? 'pass' : storybook.status === 'not_applicable' ? 'pass' : storybook.status === 'missing_story' || storybook.status === 'build_failed' || storybook.status === 'index_unavailable' || storybook.status === 'invalid_metadata' ? 'fail' : 'inconclusive';
-  const nativeSkip = state.nativeComputerUse?.skipped ? 'Native Computer Use skipped by UI-only Storybook policy.' : 'Native Computer Use required for this change set or not skipped.';
-  const scenarioHealth = counts.fail ? 'fail' : counts.inconclusive ? 'inconclusive' : 'pass';
-  const scenarioHealthNote = `${counts.pass} passed, ${counts.fail} failed, ${counts.inconclusive} inconclusive${counts.not_required ? `, ${counts.not_required} not required` : ''}.`;
+  const videoStatus = state.video?.status === "available" ? "pass" : "inconclusive";
+  const evidenceStatus = state.scenarios.visualProofQuality?.status || "inconclusive";
+  const prLabel = pr.configured
+    ? `PR ${pr.number || "?"}${pr.title ? ` - ${pr.title}` : ""}`
+    : "No pull request metadata provided";
+  const prStatus = state.scenarios.prSpecificCoverage?.status || "inconclusive";
+  const coverageStatus = state.scenarios.mainCoverageFreshness?.status || "inconclusive";
+  const saveStatus = state.scenarios.saveFlow?.status || "inconclusive";
+  const rollbackStatus = state.scenarios.rollbackCleanup?.status || "inconclusive";
+  const remoteRestoreStatus = state.cleanup?.restored
+    ? "pass"
+    : state.cleanup?.attempted
+      ? "fail"
+      : "inconclusive";
+  const metadataStatus = state.remoteMachine && state.remoteApp ? "pass" : "inconclusive";
+  const storybook = state.storybookPreview || {
+    status: "not_applicable",
+    uiFiles: [],
+    affectedStories: [],
+    missingStoryFiles: [],
+  };
+  const storybookStatus =
+    storybook.status === "ready" || storybook.status === "ready_with_advisories"
+      ? "pass"
+      : storybook.status === "not_applicable"
+        ? "pass"
+        : storybook.status === "missing_story" ||
+            storybook.status === "build_failed" ||
+            storybook.status === "index_unavailable" ||
+            storybook.status === "invalid_metadata"
+          ? "fail"
+          : "inconclusive";
+  const nativeSkip = state.nativeComputerUse?.skipped
+    ? "Native Computer Use skipped by UI-only Storybook policy."
+    : "Native Computer Use required for this change set or not skipped.";
+  const scenarioHealth = counts.fail ? "fail" : counts.inconclusive ? "inconclusive" : "pass";
+  const scenarioHealthNote = `${counts.pass} passed, ${counts.fail} failed, ${counts.inconclusive} inconclusive${counts.not_required ? `, ${counts.not_required} not required` : ""}.`;
   const signal = (label, status, note) => `<div class="signal signal-${escapeHtml(status)}">
     <span class="verdict ${escapeHtml(status)}">${escapeHtml(status)}</span>
     <strong>${escapeHtml(label)}</strong>
@@ -663,7 +778,7 @@ function renderExecutiveSummary(state, counts, evidenceSummary) {
         <p><span class="verdict ${escapeHtml(confidence.tone)}">${escapeHtml(state.verdict)}</span></p>
         <h3>${escapeHtml(confidence.label)}</h3>
         <p>${escapeHtml(confidence.detail)}</p>
-        <p><strong>${escapeHtml(prLabel)}</strong><br><small>Head: <code>${escapeHtml(state.github?.headSha || state.sha || 'unknown')}</code></small></p>
+        <p><strong>${escapeHtml(prLabel)}</strong><br><small>Head: <code>${escapeHtml(state.github?.headSha || state.sha || "unknown")}</code></small></p>
       </div>
       <aside class="next-action">
         <strong>Next action</strong>
@@ -680,17 +795,17 @@ function renderExecutiveSummary(state, counts, evidenceSummary) {
     </div>
     ${renderSummaryVideo(state)}
     <div class="signal-grid">
-      ${signal('PR focus', prSurface.status || prStatus, `${prSurface.label}: ${prSurface.detail}`)}
-      ${signal('Storybook preview', storybookStatus, storybook.uiFiles?.length ? `${storybook.status}: ${storybook.affectedStories?.length || 0} changed file(s) have story links; ${storybook.missingStoryFiles?.length || 0} missing story mapping(s).` : 'No changed UI source files require a Storybook preview.')}
-      ${signal('Native lane', state.nativeComputerUse?.skipped ? 'pass' : metadataStatus, nativeSkip)}
-      ${signal('Scenario health', scenarioHealth, scenarioHealthNote)}
-      ${signal('Evidence health', evidenceStatus, state.scenarios.visualProofQuality?.notes?.join(' ') || 'Visual/text proof quality not recorded.')}
-      ${signal('Video', videoStatus, state.video?.status === 'available' ? `${state.video.frames || state.screenshots.length} safe-to-store frames with derived chapters.` : state.video?.note || 'No video generated.')}
-      ${signal('Known limits', limits ? 'inconclusive' : 'pass', limits ? `${limits} runtime gap(s) or explicit waiver(s) need human acceptance.` : 'No runtime gaps or explicit waivers recorded.')}
-      ${signal('Remote restore', remoteRestoreStatus, state.cleanup?.note || 'Remote app-support restore status was not recorded.')}
-      ${signal('Step 3 save', saveStatus, 'Disposable config change persisted through the save path.')}
-      ${signal('Rollback cleanup', rollbackStatus, 'History rollback returned the disposable config to baseline.')}
-      ${signal('Remote metadata', metadataStatus, 'DXU machine, app, and process metadata were captured.')}
+      ${signal("PR focus", prSurface.status || prStatus, `${prSurface.label}: ${prSurface.detail}`)}
+      ${signal("Storybook preview", storybookStatus, storybook.uiFiles?.length ? `${storybook.status}: ${storybook.affectedStories?.length || 0} changed file(s) have story links; ${storybook.missingStoryFiles?.length || 0} missing story mapping(s).` : "No changed UI source files require a Storybook preview.")}
+      ${signal("Native lane", state.nativeComputerUse?.skipped ? "pass" : metadataStatus, nativeSkip)}
+      ${signal("Scenario health", scenarioHealth, scenarioHealthNote)}
+      ${signal("Evidence health", evidenceStatus, state.scenarios.visualProofQuality?.notes?.join(" ") || "Visual/text proof quality not recorded.")}
+      ${signal("Video", videoStatus, state.video?.status === "available" ? `${state.video.frames || state.screenshots.length} safe-to-store frames with derived chapters.` : state.video?.note || "No video generated.")}
+      ${signal("Known limits", limits ? "inconclusive" : "pass", limits ? `${limits} runtime gap(s) or explicit waiver(s) need human acceptance.` : "No runtime gaps or explicit waivers recorded.")}
+      ${signal("Remote restore", remoteRestoreStatus, state.cleanup?.note || "Remote app-support restore status was not recorded.")}
+      ${signal("Step 3 save", saveStatus, "Disposable config change persisted through the save path.")}
+      ${signal("Rollback cleanup", rollbackStatus, "History rollback returned the disposable config to baseline.")}
+      ${signal("Remote metadata", metadataStatus, "DXU machine, app, and process metadata were captured.")}
     </div>
     <p class="summary-links">
       <a href="#pull-request-focus">Review PR Focus</a>
@@ -704,29 +819,47 @@ function renderExecutiveSummary(state, counts, evidenceSummary) {
   </section>`;
 }
 
-function navBadge(label, value, tone = '') {
-  if (value === undefined || value === null || value === '') return '';
+function navBadge(label, value, tone = "") {
+  if (value === undefined || value === null || value === "") return "";
   return `<span class="nav-badge ${escapeHtml(tone)}">${escapeHtml(String(value))}</span>`;
 }
 
 function renderReportNav(state, counts) {
-  const riskCount = Object.values(state.v2?.scenarioContracts || {}).filter((item) => item.status !== 'not_required' && (item.accessibilityRisk === 'high' || item.accessibilityRisk === 'medium')).length;
-  const storybook = state.storybookPreview || { status: 'not_applicable', affectedStories: [], missingStoryFiles: [] };
-  const storybookTone = storybook.status === 'ready' || storybook.status === 'ready_with_advisories' ? 'pass' : storybook.status === 'not_applicable' ? '' : storybook.status === 'missing_story' || storybook.status === 'build_failed' || storybook.status === 'index_unavailable' || storybook.status === 'invalid_metadata' ? 'fail' : 'inconclusive';
+  const riskCount = Object.values(state.v2?.scenarioContracts || {}).filter(
+    (item) =>
+      item.status !== "not_required" &&
+      (item.accessibilityRisk === "high" || item.accessibilityRisk === "medium"),
+  ).length;
+  const storybook = state.storybookPreview || {
+    status: "not_applicable",
+    affectedStories: [],
+    missingStoryFiles: [],
+  };
+  const storybookTone =
+    storybook.status === "ready" || storybook.status === "ready_with_advisories"
+      ? "pass"
+      : storybook.status === "not_applicable"
+        ? ""
+        : storybook.status === "missing_story" ||
+            storybook.status === "build_failed" ||
+            storybook.status === "index_unavailable" ||
+            storybook.status === "invalid_metadata"
+          ? "fail"
+          : "inconclusive";
   return `<aside class="report-nav" aria-label="Report navigation">
     <a href="#summary">Summary</a>
-    <a href="#verification-queue">Verify ${navBadge('', knownLimitCount(state), knownLimitCount(state) ? 'inconclusive' : 'pass')}</a>
-    <a href="#timing-breakdown">Timing ${navBadge('', state.timing?.phases?.length || 0)}</a>
-    <a href="#storybook-preview">Storybook ${navBadge('', storybook.status === 'ready' ? storybook.affectedStories?.length || 0 : storybook.status, storybookTone)}</a>
-    <a href="#pull-request-focus">PR Focus ${navBadge('', state.prFocus?.scenarioKeys?.length || 0)}</a>
-    <a href="#findings-first">Findings ${navBadge('', counts.fail + counts.inconclusive, counts.fail ? 'fail' : counts.inconclusive ? 'inconclusive' : 'pass')}</a>
-    <a href="#evidence-quality">Evidence Quality ${navBadge('', riskCount)}</a>
-    <a href="#visual-assertions">Visual Assertions ${navBadge('', state.visualAssertions?.length || 0)}</a>
-    <a href="#summary-video">Evidence Video ${navBadge('', state.video?.status === 'available' ? 'available' : 'off')}</a>
-    <a href="#visual-proof">Visual Proof ${navBadge('', state.screenshots.length)}</a>
+    <a href="#verification-queue">Verify ${navBadge("", knownLimitCount(state), knownLimitCount(state) ? "inconclusive" : "pass")}</a>
+    <a href="#timing-breakdown">Timing ${navBadge("", state.timing?.phases?.length || 0)}</a>
+    <a href="#storybook-preview">Storybook ${navBadge("", storybook.status === "ready" ? storybook.affectedStories?.length || 0 : storybook.status, storybookTone)}</a>
+    <a href="#pull-request-focus">PR Focus ${navBadge("", state.prFocus?.scenarioKeys?.length || 0)}</a>
+    <a href="#findings-first">Findings ${navBadge("", counts.fail + counts.inconclusive, counts.fail ? "fail" : counts.inconclusive ? "inconclusive" : "pass")}</a>
+    <a href="#evidence-quality">Evidence Quality ${navBadge("", riskCount)}</a>
+    <a href="#visual-assertions">Visual Assertions ${navBadge("", state.visualAssertions?.length || 0)}</a>
+    <a href="#summary-video">Evidence Video ${navBadge("", state.video?.status === "available" ? "available" : "off")}</a>
+    <a href="#visual-proof">Visual Proof ${navBadge("", state.screenshots.length)}</a>
     <a href="#scenario-checklist">Scenario Checklist</a>
     <a href="#main-coverage">Coverage</a>
-    <a href="#coverage-gaps">Known Limits ${navBadge('', knownLimitCount(state), knownLimitCount(state) ? 'inconclusive' : '')}</a>
+    <a href="#coverage-gaps">Known Limits ${navBadge("", knownLimitCount(state), knownLimitCount(state) ? "inconclusive" : "")}</a>
     <a href="#remote-metadata">Remote Metadata</a>
     <a href="#raw-evidence">Raw Evidence</a>
     <a href="#cleanup">Cleanup</a>
@@ -735,50 +868,71 @@ function renderReportNav(state, counts) {
 
 function renderStorybookPreview(state) {
   const preview = state.storybookPreview || {
-    status: 'not_applicable',
-    baseUrl: '',
-    workflowUrl: '',
+    status: "not_applicable",
+    baseUrl: "",
+    workflowUrl: "",
     uiFiles: [],
     nativeRuntimeFiles: [],
     affectedStories: [],
     missingStoryFiles: [],
-    recommendation: 'No Storybook preview metadata was recorded.',
+    recommendation: "No Storybook preview metadata was recorded.",
   };
-  const statusTone = preview.status === 'ready' || preview.status === 'ready_with_advisories' ? 'pass' : preview.status === 'not_applicable' ? 'inconclusive' : preview.status === 'missing_story' || preview.status === 'build_failed' || preview.status === 'index_unavailable' || preview.status === 'invalid_metadata' ? 'fail' : 'inconclusive';
+  const statusTone =
+    preview.status === "ready" || preview.status === "ready_with_advisories"
+      ? "pass"
+      : preview.status === "not_applicable"
+        ? "inconclusive"
+        : preview.status === "missing_story" ||
+            preview.status === "build_failed" ||
+            preview.status === "index_unavailable" ||
+            preview.status === "invalid_metadata"
+          ? "fail"
+          : "inconclusive";
   const affectedRows = preview.affectedStories?.length
     ? preview.affectedStories
         .map((item) => {
           const visibleStories = item.stories.slice(0, 8);
           const hiddenCount = Math.max(0, item.stories.length - visibleStories.length);
           const links = visibleStories
-            .map((story) => `<a href="${escapeHtml(story.url || preview.baseUrl || '#')}" target="_blank" rel="noopener">${escapeHtml(story.title || story.id)} - ${escapeHtml(story.name || story.id)}</a>`)
-            .join('<br>');
-          return `<tr><td><code>${escapeHtml(item.file)}</code></td><td>${links}${hiddenCount ? `<br><small>${escapeHtml(String(hiddenCount))} more story state(s) in Storybook.</small>` : ''}</td></tr>`;
+            .map(
+              (story) =>
+                `<a href="${escapeHtml(story.url || preview.baseUrl || "#")}" target="_blank" rel="noopener">${escapeHtml(story.title || story.id)} - ${escapeHtml(story.name || story.id)}</a>`,
+            )
+            .join("<br>");
+          return `<tr><td><code>${escapeHtml(item.file)}</code></td><td>${links}${hiddenCount ? `<br><small>${escapeHtml(String(hiddenCount))} more story state(s) in Storybook.</small>` : ""}</td></tr>`;
         })
-        .join('\n')
+        .join("\n")
     : '<tr><td colspan="2">No affected Storybook story links were resolved.</td></tr>';
   const missingRows = preview.missingStoryFiles?.length
     ? preview.missingStoryFiles
-        .map((item) => `<tr><td><code>${escapeHtml(item.file)}</code></td><td>${escapeHtml((item.expectedStories || []).join(', '))}</td></tr>`)
-        .join('\n')
+        .map(
+          (item) =>
+            `<tr><td><code>${escapeHtml(item.file)}</code></td><td>${escapeHtml((item.expectedStories || []).join(", "))}</td></tr>`,
+        )
+        .join("\n")
     : '<tr><td colspan="2">No missing story mappings recorded.</td></tr>';
   const advisoryRows = preview.advisoryStoryFiles?.length
     ? preview.advisoryStoryFiles
-        .map((item) => `<tr><td><code>${escapeHtml(item.file)}</code></td><td>${escapeHtml((item.expectedStories || []).join(', '))}</td></tr>`)
-        .join('\n')
+        .map(
+          (item) =>
+            `<tr><td><code>${escapeHtml(item.file)}</code></td><td>${escapeHtml((item.expectedStories || []).join(", "))}</td></tr>`,
+        )
+        .join("\n")
     : '<tr><td colspan="2">No advisory story gaps recorded.</td></tr>';
   const uiFileRows = preview.uiFiles?.length
-    ? preview.uiFiles.map((file) => `<li><code>${escapeHtml(file)}</code></li>`).join('\n')
-    : '<li>No changed frontend UI source files detected.</li>';
+    ? preview.uiFiles.map((file) => `<li><code>${escapeHtml(file)}</code></li>`).join("\n")
+    : "<li>No changed frontend UI source files detected.</li>";
   const nativeRows = preview.nativeRuntimeFiles?.length
-    ? preview.nativeRuntimeFiles.map((file) => `<li><code>${escapeHtml(file)}</code></li>`).join('\n')
-    : '<li>No native/runtime files detected in the changed-file set.</li>';
+    ? preview.nativeRuntimeFiles
+        .map((file) => `<li><code>${escapeHtml(file)}</code></li>`)
+        .join("\n")
+    : "<li>No native/runtime files detected in the changed-file set.</li>";
   return `<h2 id="storybook-preview">Storybook Preview</h2>
   <section class="panel">
-    <p><span class="verdict ${statusTone}">${escapeHtml(preview.status || 'unknown')}</span></p>
-    <p>${escapeHtml(preview.recommendation || '')}</p>
-    ${state.nativeComputerUse?.skipped ? `<p><strong>Native Computer Use:</strong> ${escapeHtml(state.nativeComputerUse.reason || 'Skipped by UI-only Storybook policy.')}</p>` : ''}
-    <p><strong>Preview base:</strong> ${preview.baseUrl ? `<a href="${escapeHtml(preview.baseUrl)}" target="_blank" rel="noopener">${escapeHtml(preview.baseUrl)}</a>` : 'not recorded'}${preview.workflowUrl ? `<br><strong>Workflow:</strong> <a href="${escapeHtml(preview.workflowUrl)}" target="_blank" rel="noopener">${escapeHtml(preview.workflowUrl)}</a>` : ''}</p>
+    <p><span class="verdict ${statusTone}">${escapeHtml(preview.status || "unknown")}</span></p>
+    <p>${escapeHtml(preview.recommendation || "")}</p>
+    ${state.nativeComputerUse?.skipped ? `<p><strong>Native Computer Use:</strong> ${escapeHtml(state.nativeComputerUse.reason || "Skipped by UI-only Storybook policy.")}</p>` : ""}
+    <p><strong>Preview base:</strong> ${preview.baseUrl ? `<a href="${escapeHtml(preview.baseUrl)}" target="_blank" rel="noopener">${escapeHtml(preview.baseUrl)}</a>` : "not recorded"}${preview.workflowUrl ? `<br><strong>Workflow:</strong> <a href="${escapeHtml(preview.workflowUrl)}" target="_blank" rel="noopener">${escapeHtml(preview.workflowUrl)}</a>` : ""}</p>
     <div class="quality-grid">
       <div>
         <h3>Affected Story URLs</h3>
@@ -806,19 +960,24 @@ function renderStorybookPreview(state) {
 
 function renderVisualAssertionResults(state) {
   const assertions = state.visualAssertions || [];
-  if (!assertions.length) return '<p>No binding screenshot visual assertions were evaluated for this run.</p>';
+  if (!assertions.length)
+    return "<p>No binding screenshot visual assertions were evaluated for this run.</p>";
   const rows = assertions
     .map((assertion) => {
-      const failed = assertion.screenshots.flatMap((shot) => shot.checks.filter((check) => check.status === 'fail').map((check) => `${shot.label}: ${check.name} - ${check.detail}`));
+      const failed = assertion.screenshots.flatMap((shot) =>
+        shot.checks
+          .filter((check) => check.status === "fail")
+          .map((check) => `${shot.label}: ${check.name} - ${check.detail}`),
+      );
       const checked = assertion.screenshots.reduce((count, shot) => count + shot.checks.length, 0);
       return `<tr>
         <td>${escapeHtml(assertion.label)}<br><small><code>${escapeHtml(assertion.scenarioKey)}</code></small></td>
         <td><span class="verdict ${escapeHtml(assertion.status)}">${escapeHtml(assertion.status)}</span></td>
         <td>${escapeHtml(String(checked))}</td>
-        <td>${failed.length ? escapeHtml(failed.join('; ')) : 'Required screenshots decoded and broad visual regions contained visible signal.'}</td>
+        <td>${failed.length ? escapeHtml(failed.join("; ")) : "Required screenshots decoded and broad visual regions contained visible signal."}</td>
       </tr>`;
     })
-    .join('\n');
+    .join("\n");
   return `<div class="table-scroll"><table>
     <thead><tr><th>Scenario</th><th>Visual Status</th><th>Checks</th><th>Result</th></tr></thead>
     <tbody>${rows}</tbody>
@@ -826,49 +985,64 @@ function renderVisualAssertionResults(state) {
 }
 
 function renderEvidenceQuality(state) {
-  const contracts = Object.values(state.v2?.scenarioContracts || {}).filter((item) => item.status !== 'not_required');
+  const contracts = Object.values(state.v2?.scenarioContracts || {}).filter(
+    (item) => item.status !== "not_required",
+  );
   const strengthCounts = contracts.reduce((counts, item) => {
     counts[item.evidenceStrength] = (counts[item.evidenceStrength] || 0) + 1;
     return counts;
   }, {});
-  const strengthRows = ['strong', 'operational', 'visual-supported', 'weak', 'not-proved']
-    .map((strength) => `<tr><td><span class="strength strength-${escapeHtml(strength)}">${escapeHtml(strength)}</span></td><td>${escapeHtml(String(strengthCounts[strength] || 0))}</td></tr>`)
-    .join('\n');
+  const strengthRows = ["strong", "operational", "visual-supported", "weak", "not-proved"]
+    .map(
+      (strength) =>
+        `<tr><td><span class="strength strength-${escapeHtml(strength)}">${escapeHtml(strength)}</span></td><td>${escapeHtml(String(strengthCounts[strength] || 0))}</td></tr>`,
+    )
+    .join("\n");
   const mappingRows = Object.entries(state.v2?.evidenceGradeMapping || {})
-    .map(([legacy, strength]) => `<tr><td><code>${escapeHtml(legacy)}</code></td><td><span class="strength strength-${escapeHtml(strength)}">${escapeHtml(strength)}</span></td></tr>`)
-    .join('\n');
+    .map(
+      ([legacy, strength]) =>
+        `<tr><td><code>${escapeHtml(legacy)}</code></td><td><span class="strength strength-${escapeHtml(strength)}">${escapeHtml(strength)}</span></td></tr>`,
+    )
+    .join("\n");
   const risky = contracts
-    .filter((item) => item.accessibilityRisk === 'high' || item.accessibilityRisk === 'medium')
-    .sort((a, b) => ({ high: 0, medium: 1, low: 2 }[a.accessibilityRisk] ?? 3) - ({ high: 0, medium: 1, low: 2 }[b.accessibilityRisk] ?? 3));
+    .filter((item) => item.accessibilityRisk === "high" || item.accessibilityRisk === "medium")
+    .sort(
+      (a, b) =>
+        (({ high: 0, medium: 1, low: 2 })[a.accessibilityRisk] ?? 3) -
+        ({ high: 0, medium: 1, low: 2 }[b.accessibilityRisk] ?? 3),
+    );
   const riskRows = (items) =>
     items.length
       ? items
           .map(
             (item) => `<tr>
-              <td>${escapeHtml(item.label)}<br><small>${escapeHtml(item.assertionTypes.join(', '))}</small></td>
+              <td>${escapeHtml(item.label)}<br><small>${escapeHtml(item.assertionTypes.join(", "))}</small></td>
               <td><span class="risk risk-${escapeHtml(item.accessibilityRisk)}">${escapeHtml(item.accessibilityRisk)}</span></td>
               <td>${escapeHtml(item.accessibilityRiskReason)}</td>
             </tr>`,
           )
-          .join('\n')
+          .join("\n")
       : '<tr><td colspan="3">No elevated assertion-risk scenarios.</td></tr>';
   const nonPassRows = contracts
-    .filter((item) => item.status !== 'pass')
+    .filter((item) => item.status !== "pass")
     .map(
       (item) => `<tr>
         <td>${escapeHtml(item.label)}</td>
         <td><span class="verdict ${escapeHtml(item.status)}">${escapeHtml(item.status)}</span></td>
-        <td><span class="failure-class">${escapeHtml(item.failureClass || 'unclassified')}</span></td>
-        <td>${escapeHtml(failureTaxonomy[item.failureClass] || item.failureClassReason || 'No classification recorded.')}</td>
+        <td><span class="failure-class">${escapeHtml(item.failureClass || "unclassified")}</span></td>
+        <td>${escapeHtml(failureTaxonomy[item.failureClass] || item.failureClassReason || "No classification recorded.")}</td>
       </tr>`,
     )
-    .join('\n');
+    .join("\n");
   const taxonomyRows = Object.entries(failureTaxonomy)
-    .map(([key, description]) => `<tr><td><code>${escapeHtml(key)}</code></td><td>${escapeHtml(description)}</td></tr>`)
-    .join('\n');
+    .map(
+      ([key, description]) =>
+        `<tr><td><code>${escapeHtml(key)}</code></td><td>${escapeHtml(description)}</td></tr>`,
+    )
+    .join("\n");
   const boundaryRows = state.confirmationBoundaries.length
-    ? state.confirmationBoundaries.map((boundary) => `<li>${escapeHtml(boundary)}</li>`).join('\n')
-    : '<li>No confirmation boundaries recorded.</li>';
+    ? state.confirmationBoundaries.map((boundary) => `<li>${escapeHtml(boundary)}</li>`).join("\n")
+    : "<li>No confirmation boundaries recorded.</li>";
   return `<h2 id="evidence-quality">Evidence Quality</h2>
   <section class="panel">
     <span id="v2-evidence-model" class="anchor-alias"></span>
@@ -892,7 +1066,7 @@ function renderEvidenceQuality(state) {
     ${
       nonPassRows
         ? `<div class="table-scroll"><table><thead><tr><th>Scenario</th><th>Status</th><th>Class</th><th>Meaning</th></tr></thead><tbody>${nonPassRows}</tbody></table></div>`
-        : '<p>No non-pass scenarios require failure classification.</p>'
+        : "<p>No non-pass scenarios require failure classification.</p>"
     }
     <details>
       <summary>Confirmation boundaries</summary>
@@ -924,11 +1098,13 @@ function renderRunMetadata(state, evidenceSummary) {
   const buildGateSummary = buildGate.status
     ? [
         buildGate.status,
-        buildGate.requiredHeadSha ? `head ${buildGate.requiredHeadSha}` : '',
-        buildGate.buildRunId ? `run ${buildGate.buildRunId}` : '',
-        buildGate.reason || '',
-      ].filter(Boolean).join(' - ')
-    : 'not recorded';
+        buildGate.requiredHeadSha ? `head ${buildGate.requiredHeadSha}` : "",
+        buildGate.buildRunId ? `run ${buildGate.buildRunId}` : "",
+        buildGate.reason || "",
+      ]
+        .filter(Boolean)
+        .join(" - ")
+    : "not recorded";
   return `<section class="meta run-metadata">
     <div class="panel"><strong>Timestamp</strong><br>${escapeHtml(state.startedAt)}</div>
     <div class="panel"><strong>Branch</strong><br>${escapeHtml(state.branch)}</div>
@@ -948,19 +1124,21 @@ function renderTimingBreakdown(state) {
   const totals = timingTotals(timing);
   const rows = phases.length
     ? phases
-        .map((phase) => `<tr>
+        .map(
+          (phase) => `<tr>
       <td>${escapeHtml(phase.label)}<br><small><code>${escapeHtml(phase.id)}</code></small></td>
       <td><span class="timing-status timing-${escapeHtml(phase.status)}">${escapeHtml(phase.status)}</span></td>
       <td>${escapeHtml(formatDuration(phase.durationMs))}</td>
-      <td>${escapeHtml(phase.source || 'unknown')}</td>
-      <td>${escapeHtml(phase.note || (phase.observable === false ? 'Not observable in this run.' : ''))}</td>
-    </tr>`)
-        .join('\n')
+      <td>${escapeHtml(phase.source || "unknown")}</td>
+      <td>${escapeHtml(phase.note || (phase.observable === false ? "Not observable in this run." : ""))}</td>
+    </tr>`,
+        )
+        .join("\n")
     : '<tr><td colspan="5">No phase timing metadata was recorded for this run.</td></tr>';
   return `<h2 id="timing-breakdown">Timing Breakdown</h2>
   <section class="panel">
-    <p><strong>Observed total:</strong> ${escapeHtml(formatDuration(totals.totalObservedMs))} across ${escapeHtml(String(totals.observedCount))}/${escapeHtml(String(totals.phaseCount))} phases. ${escapeHtml(totals.unavailableCount ? `${totals.unavailableCount} phases were unavailable or not observable.` : 'All recorded phases had observable status.')}</p>
-    <p><small>${escapeHtml(timing.note || '')}</small></p>
+    <p><strong>Observed total:</strong> ${escapeHtml(formatDuration(totals.totalObservedMs))} across ${escapeHtml(String(totals.observedCount))}/${escapeHtml(String(totals.phaseCount))} phases. ${escapeHtml(totals.unavailableCount ? `${totals.unavailableCount} phases were unavailable or not observable.` : "All recorded phases had observable status.")}</p>
+    <p><small>${escapeHtml(timing.note || "")}</small></p>
     <div class="table-scroll"><table class="timing-table">
       <thead><tr><th>Phase</th><th>Status</th><th>Duration</th><th>Source</th><th>Note</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -983,8 +1161,8 @@ function renderRawEvidence(state, screenshotHtml) {
       <summary>Human QA narrative (${escapeHtml(String(state.narrative.length))})</summary>
       ${
         state.narrative.length
-          ? `<ul>${state.narrative.map((item) => `<li>${escapeHtml(item.ts)} - ${escapeHtml(item.text)}</li>`).join('\n')}</ul>`
-          : '<p>No narrative recorded.</p>'
+          ? `<ul>${state.narrative.map((item) => `<li>${escapeHtml(item.ts)} - ${escapeHtml(item.text)}</li>`).join("\n")}</ul>`
+          : "<p>No narrative recorded.</p>"
       }
     </details>
     <details>
@@ -995,8 +1173,11 @@ function renderRawEvidence(state, screenshotHtml) {
           ${
             state.claims.length
               ? state.claims
-                  .map((claim) => `<tr><td>${escapeHtml(claim.claim)}</td><td><span class="verdict ${claim.status}">${escapeHtml(claim.status)}</span></td><td>${escapeHtml(claim.evidence)}</td></tr>`)
-                  .join('\n')
+                  .map(
+                    (claim) =>
+                      `<tr><td>${escapeHtml(claim.claim)}</td><td><span class="verdict ${claim.status}">${escapeHtml(claim.status)}</span></td><td>${escapeHtml(claim.evidence)}</td></tr>`,
+                  )
+                  .join("\n")
               : '<tr><td colspan="3">No claims recorded.</td></tr>'
           }
         </tbody>
@@ -1014,42 +1195,45 @@ function renderRawEvidence(state, screenshotHtml) {
 }
 
 function renderCleanupStatus(state) {
-  const rollback = state.scenarios.rollbackCleanup || { status: 'inconclusive', notes: [] };
-  const discard = state.scenarios.discard || { status: 'inconclusive', notes: [] };
-  const remoteRestoreStatus = state.cleanup?.restored ? 'pass' : state.cleanup?.attempted ? 'fail' : 'inconclusive';
+  const rollback = state.scenarios.rollbackCleanup || { status: "inconclusive", notes: [] };
+  const discard = state.scenarios.discard || { status: "inconclusive", notes: [] };
+  const remoteRestoreStatus = state.cleanup?.restored
+    ? "pass"
+    : state.cleanup?.attempted
+      ? "fail"
+      : "inconclusive";
   return `<h2 id="cleanup">Cleanup / Restore Status</h2>
   <section class="panel cleanup-grid">
     <div class="cleanup-card">
       <h3>Disposable Config Rollback</h3>
       <p><span class="verdict ${escapeHtml(rollback.status)}">${escapeHtml(rollback.status)}</span></p>
-      <p>${escapeHtml(rollback.notes.join(' ') || 'No disposable rollback note recorded.')}</p>
+      <p>${escapeHtml(rollback.notes.join(" ") || "No disposable rollback note recorded.")}</p>
       <p><a class="back-link" href="#verification-queue">Review cleanup proof</a></p>
     </div>
     <div class="cleanup-card">
       <h3>Discard Boundary</h3>
       <p><span class="verdict ${escapeHtml(discard.status)}">${escapeHtml(discard.status)}</span></p>
-      <p>${escapeHtml(discard.notes.join(' ') || 'No discard-boundary note recorded.')}</p>
+      <p>${escapeHtml(discard.notes.join(" ") || "No discard-boundary note recorded.")}</p>
     </div>
     <div class="cleanup-card">
       <h3>Remote App-Support Restore</h3>
       <p><span class="verdict ${escapeHtml(remoteRestoreStatus)}">${escapeHtml(remoteRestoreStatus)}</span></p>
-      <p>${escapeHtml(state.cleanup?.note || 'No remote cleanup status recorded.')}</p>
+      <p>${escapeHtml(state.cleanup?.note || "No remote cleanup status recorded.")}</p>
     </div>
   </section>`;
 }
 
 function renderGroupedScenarioHtml(state, proofForScenario) {
   return groupedScenarios(state)
-    .map(
-      (group) => {
-        const groupCounts = {
-          pass: group.items.filter((item) => item.status === 'pass').length,
-          fail: group.items.filter((item) => item.status === 'fail').length,
-          inconclusive: group.items.filter((item) => item.status === 'inconclusive').length,
-          notRequired: group.items.filter((item) => item.status === 'not_required').length,
-        };
-        return `<details class="group">
-  <summary>${escapeHtml(group.name)} <span class="nav-badge pass">${groupCounts.pass} pass</span>${groupCounts.fail ? ` <span class="nav-badge fail">${groupCounts.fail} fail</span>` : ''}${groupCounts.inconclusive ? ` <span class="nav-badge inconclusive">${groupCounts.inconclusive} inconclusive</span>` : ''}${groupCounts.notRequired ? ` <span class="nav-badge not_required">${groupCounts.notRequired} not required</span>` : ''}</summary>
+    .map((group) => {
+      const groupCounts = {
+        pass: group.items.filter((item) => item.status === "pass").length,
+        fail: group.items.filter((item) => item.status === "fail").length,
+        inconclusive: group.items.filter((item) => item.status === "inconclusive").length,
+        notRequired: group.items.filter((item) => item.status === "not_required").length,
+      };
+      return `<details class="group">
+  <summary>${escapeHtml(group.name)} <span class="nav-badge pass">${groupCounts.pass} pass</span>${groupCounts.fail ? ` <span class="nav-badge fail">${groupCounts.fail} fail</span>` : ""}${groupCounts.inconclusive ? ` <span class="nav-badge inconclusive">${groupCounts.inconclusive} inconclusive</span>` : ""}${groupCounts.notRequired ? ` <span class="nav-badge not_required">${groupCounts.notRequired} not required</span>` : ""}</summary>
   <div class="table-scroll"><table class="scenario-table">
     <thead><tr><th class="scenario-col">Scenario</th><th class="status-col">Status</th><th class="grade-col">Evidence Grade</th><th class="artifacts-col">Primary Artifacts</th><th class="proof-col">What Proved It</th><th class="untested-col">Still Untested</th></tr></thead>
     <tbody>
@@ -1057,15 +1241,14 @@ function renderGroupedScenarioHtml(state, proofForScenario) {
         .map((item) => {
           const proof = proofForScenario(state, item.key);
           const contract = state.v2?.scenarioContracts?.[item.key] || {};
-          return `<tr><td class="scenario-cell">${escapeHtml(item.label)}<br><small>${item.notes.map(escapeHtml).join('<br>') || 'No notes recorded.'}</small></td><td class="status-cell"><span class="verdict ${item.status}">${escapeHtml(item.status)}</span></td><td class="grade-cell"><span class="grade">${escapeHtml(proof.grade)}</span><br><span class="strength strength-${escapeHtml(contract.evidenceStrength || 'not-proved')}">${escapeHtml(contract.evidenceStrength || 'not-proved')}</span></td><td class="artifact-cell">${artifactLinks(state, item.key, proofForScenario)}</td><td class="proof-cell">${escapeHtml(proof.proof)}${contract.failureClass ? `<br><small>Failure class: ${escapeHtml(contract.failureClass)}</small>` : ''}</td><td>${escapeHtml(proof.untested)}</td></tr>`;
+          return `<tr><td class="scenario-cell">${escapeHtml(item.label)}<br><small>${item.notes.map(escapeHtml).join("<br>") || "No notes recorded."}</small></td><td class="status-cell"><span class="verdict ${item.status}">${escapeHtml(item.status)}</span></td><td class="grade-cell"><span class="grade">${escapeHtml(proof.grade)}</span><br><span class="strength strength-${escapeHtml(contract.evidenceStrength || "not-proved")}">${escapeHtml(contract.evidenceStrength || "not-proved")}</span></td><td class="artifact-cell">${artifactLinks(state, item.key, proofForScenario)}</td><td class="proof-cell">${escapeHtml(proof.proof)}${contract.failureClass ? `<br><small>Failure class: ${escapeHtml(contract.failureClass)}</small>` : ""}</td><td>${escapeHtml(proof.untested)}</td></tr>`;
         })
-        .join('\n')}
+        .join("\n")}
     </tbody>
   </table></div>
   </details>`;
-      },
-    )
-    .join('\n');
+    })
+    .join("\n");
 }
 
 export async function renderReportHtml(state, { proofForScenario }) {
@@ -1076,11 +1259,11 @@ export async function renderReportHtml(state, { proofForScenario }) {
         .map(
           (shot) => `<figure id="screenshot-${escapeHtml(slugify(shot.label || shot.path))}">
   <img src="${escapeHtml(shot.path)}" alt="${escapeHtml(shot.label)}">
-  <figcaption><strong>${escapeHtml(shot.label)}</strong> - ${escapeHtml(shot.note || 'No note')} (${escapeHtml(shot.capturedAt)})</figcaption>
+  <figcaption><strong>${escapeHtml(shot.label)}</strong> - ${escapeHtml(shot.note || "No note")} (${escapeHtml(shot.capturedAt)})</figcaption>
 </figure>`,
         )
-        .join('\n')
-    : '<p>No screenshots captured.</p>';
+        .join("\n")
+    : "<p>No screenshots captured.</p>";
   const counts = statusCounts(state);
   const groupedScenarioHtml = renderGroupedScenarioHtml(state, proofForScenario);
   let evidenceSummary = `${state.screenshots.length} screenshots, ${state.textSnapshots.length} redacted text snapshots`;
@@ -1088,7 +1271,7 @@ export async function renderReportHtml(state, { proofForScenario }) {
   const prPriorityHtml = renderPrPriority(state, proofForScenario);
   const priorityTriageHtml = renderPriorityTriage(state, proofForScenario);
   const verificationQueueHtml = renderVerificationQueue(state, proofForScenario);
-  if (state.video?.status === 'available') evidenceSummary += ', 1 screenshot video';
+  if (state.video?.status === "available") evidenceSummary += ", 1 screenshot video";
   const executiveSummaryHtml = renderExecutiveSummary(state, counts, evidenceSummary);
   const reportNavHtml = renderReportNav(state, counts);
   const storybookPreviewHtml = renderStorybookPreview(state);

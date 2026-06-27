@@ -1,4 +1,4 @@
-import { useViewModel } from "@/stores/view-model";
+import { viewModelActions } from "@nixmac/state";
 import type {
   GlobalPreferences,
   NixInstallState,
@@ -48,9 +48,7 @@ export function makeGrantedPermissions(): PermissionsState {
 }
 
 /** Fully installed nix/darwin-rebuild snapshot for tests and stories. */
-export function makeNixInstallState(
-  overrides: Partial<NixInstallState> = {},
-): NixInstallState {
+export function makeNixInstallState(overrides: Partial<NixInstallState> = {}): NixInstallState {
   return {
     installed: true,
     darwinRebuildAvailable: true,
@@ -83,8 +81,8 @@ export function makeRebuildStatus(overrides: Partial<RebuildStatus> = {}): Rebui
  * this) can still override any field.
  */
 export function seedViewModelBypass(): void {
-  const current = useViewModel.getState();
-  useViewModel.setState({
+  const current = viewModelActions.getState();
+  viewModelActions.setState({
     permissions: makeGrantedPermissions(),
     permissionsHydrated: true,
     nixInstall: makeNixInstallState(),

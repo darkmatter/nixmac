@@ -5,5 +5,5 @@
 All options under `services.bamf`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------- | ---- | ----------- |
 | `services.bamf.enable` | | |

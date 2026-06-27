@@ -5,7 +5,7 @@
 All options under `services.atalkd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.atalkd.configFile` | | |
 | `services.atalkd.enable` | | |
 | `services.atalkd.interfaces` | | |

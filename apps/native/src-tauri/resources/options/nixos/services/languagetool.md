@@ -5,7 +5,7 @@
 All options under `services.languagetool`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.languagetool.allowOrigin` | | |
 | `services.languagetool.enable` | | |
 | `services.languagetool.jrePackage` | | |

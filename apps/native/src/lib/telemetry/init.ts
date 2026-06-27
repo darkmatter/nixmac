@@ -1,10 +1,11 @@
 import { tauriAPI } from "@/ipc/api";
+import { isE2eProfile, nixmacEnvironment, nixmacVersion, settings } from "@/lib/env";
 import { createTelemetryProvider } from "./provider";
 import { setTelemetryProvider } from "./instance";
 import { noopProvider } from "./noop";
 import type { TelemetryProvider } from "./types";
 
-const E2E_MODE = import.meta.env.VITE_NIXMAC_E2E_MODE === "true";
+const E2E_MODE = isE2eProfile;
 
 /**
  * Bootstrap the unified telemetry provider for this session.
@@ -15,7 +16,7 @@ const E2E_MODE = import.meta.env.VITE_NIXMAC_E2E_MODE === "true";
  *
  * Behavior:
  * - E2E mode → noop (no telemetry, no PostHog).
- * - Build-time config (key/host/release/environment) read from Vite env.
+ * - Build-time config from committed env profiles; PostHog key/host overridable via process env at build.
  * - Gated on the sendDiagnostics pref, fail-closed if prefs can't be read.
  * - Installs the provider via setTelemetryProvider() for non-React callers.
  */
@@ -25,12 +26,8 @@ export async function initTelemetry(): Promise<TelemetryProvider> {
     return noopProvider;
   }
 
-  const key = (import.meta.env.VITE_POSTHOG_KEY || "").toString().trim();
-  const host = (
-    import.meta.env.VITE_POSTHOG_HOST || "https://us.i.posthog.com"
-  )
-    .toString()
-    .trim();
+  const key = (settings.posthogKey || "").trim();
+  const host = settings.posthogHost.trim();
 
   if (key.length === 0) {
     setTelemetryProvider(noopProvider);
@@ -39,6 +36,7 @@ export async function initTelemetry(): Promise<TelemetryProvider> {
 
   let sendDiagnostics = false;
   try {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     const prefs = await tauriAPI.ui.getPrefs();
     sendDiagnostics = prefs?.sendDiagnostics ?? false;
   } catch {
@@ -49,12 +47,8 @@ export async function initTelemetry(): Promise<TelemetryProvider> {
     {
       key,
       host,
-      release: (import.meta.env.VITE_NIXMAC_VERSION || "unknown").toString(),
-      environment: (
-        import.meta.env.VITE_NIXMAC_ENV ||
-        import.meta.env.MODE ||
-        "prod"
-      ).toString(),
+      release: nixmacVersion,
+      environment: nixmacEnvironment,
     },
     sendDiagnostics,
   );

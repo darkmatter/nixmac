@@ -5,7 +5,7 @@
 All options under `services.tayga`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.tayga.dataDir` | | |
 | `services.tayga.enable` | | |
 | `services.tayga.ipv4` | | |

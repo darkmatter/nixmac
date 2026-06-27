@@ -152,17 +152,19 @@ function emit(eventName: string, payload: unknown) {
 
 function addListener<T>(eventName: string, handler: (event: { payload: T }) => void, once = false) {
   const wrapped = once
-    ? ((event: { payload: T }) => {
-        handler(event);
-        removeListener(eventName, wrapped as (event: { payload: unknown }) => void);
-      })
+    ? (event: { payload: T }) => {
+      handler(event);
+      removeListener(eventName, wrapped as (event: { payload: unknown }) => void);
+    }
     : (handler as (event: { payload: unknown }) => void);
 
   const eventListeners = listeners.get(eventName) ?? new Set();
   eventListeners.add(wrapped as (event: { payload: unknown }) => void);
   listeners.set(eventName, eventListeners);
 
-  return Promise.resolve(() => removeListener(eventName, wrapped as (event: { payload: unknown }) => void));
+  return Promise.resolve(() =>
+    removeListener(eventName, wrapped as (event: { payload: unknown }) => void),
+  );
 }
 
 function removeListener(eventName: string, handler: (event: { payload: unknown }) => void) {
@@ -234,7 +236,7 @@ export async function invoke(command: string, args?: Record<string, unknown>) {
   // mounting the widget would clobber the state a story/its controls just
   // applied (or crash on a `null` payload the mirrors don't expect). This
   // mirrors the unidirectional-sync contract: hydrate = read the latest cell.
-  const { useViewModel } = await import("../../src/stores/view-model");
+  const { useViewModel } = await import("@nixmac/state");
   const vm = useViewModel.getState();
 
   switch (command) {
@@ -310,7 +312,8 @@ export async function invoke(command: string, args?: Record<string, unknown>) {
 
 export const tauriEvent = {
   listen: addListener,
-  once: <T>(eventName: string, handler: (event: { payload: T }) => void) => addListener(eventName, handler, true),
+  once: <T>(eventName: string, handler: (event: { payload: T }) => void) =>
+    addListener(eventName, handler, true),
   emit,
 };
 
@@ -324,8 +327,8 @@ export const storybookTauriAPI = {
   git: {
     status: async () => baseGitStatus(),
     statusAndCache: async () => {
-      const { useViewModel } = await import("../../src/stores/view-model");
-      return useViewModel.getState().git ?? baseGitStatus();
+      const { useViewModel } = await import("@nixmac/state");
+      return viewModelActions.getState().git ?? baseGitStatus();
     },
     cached: async () => baseGitStatus(),
     commit: async () => ({ hash: "mock123", evolveState: baseEvolveState() }),
@@ -344,7 +347,16 @@ export const storybookTauriAPI = {
       gitStatus: baseGitStatus(),
       evolveState: baseEvolveState(),
       conversationalResponse: null,
-      telemetry: { state: "generated" as const, iterations: 1, buildAttempts: 1, totalTokens: 500, editsCount: 1, thinkingCount: 1, toolCallsCount: 3, durationMs: 5000 },
+      telemetry: {
+        state: "generated" as const,
+        iterations: 1,
+        buildAttempts: 1,
+        totalTokens: 500,
+        editsCount: 1,
+        thinkingCount: 1,
+        toolCallsCount: 3,
+        durationMs: 5000,
+      },
     }),
     evolveAnswer: async () => okResult(),
     evolveCancel: async () => ({ ok: true, message: "Cancelled" }),
@@ -393,12 +405,12 @@ export const storybookTauriAPI = {
   },
   summarizedChanges: {
     findChangeMap: async () => {
-      const { useViewModel } = await import("../../src/stores/view-model");
-      return useViewModel.getState().changeMap ?? baseSemanticChangeMap();
+      const { useViewModel } = await import("@nixmac/state");
+      return viewModelActions.getState().changeMap ?? baseSemanticChangeMap();
     },
     summarizeCurrent: async () => baseSemanticChangeMap(),
     generateCommitMessage: async () => {
-      const { useUiState } = await import("../../src/stores/ui-state");
+      const { useUiState } = await import("@nixmac/state");
       return useUiState.getState().commitMessageSuggestion ?? "chore: mock commit message";
     },
   },
@@ -455,15 +467,21 @@ export const storybookTauriAPI = {
   scanner: {
     getRecommendedPrompt: async () => null,
     scanDefaults: async () => ({ defaults: [], totalScanned: 0 }),
-    applyDefaults: async () => ({ ok: true, count: 0, changeMap: baseSemanticChangeMap(), gitStatus: baseGitStatus(), evolveState: baseEvolveState() }),
+    applyDefaults: async () => ({
+      ok: true,
+      count: 0,
+      changeMap: baseSemanticChangeMap(),
+      gitStatus: baseGitStatus(),
+      evolveState: baseEvolveState(),
+    }),
   },
   evolveState: {
     get: async () => {
       // Return the store's current evolve state so init doesn't overwrite story state.
       // Dynamic import avoids circular dep at module-evaluation time; by the time
       // this async method is called the store module is fully initialized.
-      const { useViewModel } = await import("../../src/stores/view-model");
-      return useViewModel.getState().evolve ?? baseEvolveState();
+      const { useViewModel } = await import("@nixmac/state");
+      return viewModelActions.getState().evolve ?? baseEvolveState();
     },
     clear: async () => baseEvolveState(),
   },
@@ -484,16 +502,26 @@ export const storybookTauriAPI = {
   permissions: {
     checkAll: async () => ({
       permissions: permissions.map((permission) => ({ ...permission })),
-      allRequiredGranted: permissions.filter((permission) => permission.required).every((permission) => permission.status === "granted"),
+      allRequiredGranted: permissions
+        .filter((permission) => permission.required)
+        .every((permission) => permission.status === "granted"),
       checkedAt: Date.now(),
     }),
     request: async (permissionId: string) => {
       permissions = permissions.map((permission) =>
         permission.id === permissionId ? { ...permission, status: "granted" } : permission,
       );
-      return permissions.find((permission) => permission.id === permissionId) ?? { id: permissionId, status: "granted" };
+      return (
+        permissions.find((permission) => permission.id === permissionId) ?? {
+          id: permissionId,
+          status: "granted",
+        }
+      );
     },
-    allRequiredGranted: async () => permissions.filter((permission) => permission.required).every((permission) => permission.status === "granted"),
+    allRequiredGranted: async () =>
+      permissions
+        .filter((permission) => permission.required)
+        .every((permission) => permission.status === "granted"),
     checkFullDiskAccess: async () => true,
     requestFullDiskAccess: async () => {
       permissions = permissions.map((permission) =>
@@ -515,7 +543,13 @@ export const storybookTauriAPI = {
       source: null,
       lastChecked: Date.now(),
     }),
-    applyDiff: async () => ({ ok: true, count: 0, changeMap: baseSemanticChangeMap(), gitStatus: baseGitStatus(), evolveState: baseEvolveState() }),
+    applyDiff: async () => ({
+      ok: true,
+      count: 0,
+      changeMap: baseSemanticChangeMap(),
+      gitStatus: baseGitStatus(),
+      evolveState: baseEvolveState(),
+    }),
   },
   debug: {
     logBreadcrumb: async () => okResult(),

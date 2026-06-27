@@ -5,7 +5,7 @@
 All options under `programs._1password-gui`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `programs._1password-gui.enable` | | |
 | `programs._1password-gui.gid` | | |
 | `programs._1password-gui.package` | | |

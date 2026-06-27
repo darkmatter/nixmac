@@ -5,7 +5,7 @@
 All options under `services.pgadmin`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.pgadmin.emailServer.address` | | |
 | `services.pgadmin.emailServer.enable` | | |
 | `services.pgadmin.emailServer.passwordFile` | | |

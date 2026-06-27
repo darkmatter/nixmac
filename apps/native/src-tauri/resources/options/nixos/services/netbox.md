@@ -5,7 +5,7 @@
 All options under `services.netbox`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.netbox.apiTokenPeppersFile` | | |
 | `services.netbox.dataDir` | | |
 | `services.netbox.enable` | | |

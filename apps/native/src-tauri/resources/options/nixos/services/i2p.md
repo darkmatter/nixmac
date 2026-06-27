@@ -5,5 +5,5 @@
 All options under `services.i2p`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------- | ---- | ----------- |
 | `services.i2p.enable` | | |

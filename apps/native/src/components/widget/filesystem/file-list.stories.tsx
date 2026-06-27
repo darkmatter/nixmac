@@ -81,10 +81,7 @@ export const SystemSection = meta.story({
     <SeedDisplay>
       {(push) => (
         <div className="h-[520px] w-[640px]">
-          <FileList
-            files={FILES.darwin}
-            onEditWithPrompt={(f) => push(seedForFile(f))}
-          />
+          <FileList files={FILES.darwin} onEditWithPrompt={(f) => push(seedForFile(f))} />
         </div>
       )}
     </SeedDisplay>
@@ -96,10 +93,7 @@ export const PersonalSection = meta.story({
     <SeedDisplay>
       {(push) => (
         <div className="h-[520px] w-[640px]">
-          <FileList
-            files={FILES.home}
-            onEditWithPrompt={(f) => push(seedForFile(f))}
-          />
+          <FileList files={FILES.home} onEditWithPrompt={(f) => push(seedForFile(f))} />
         </div>
       )}
     </SeedDisplay>
@@ -129,10 +123,7 @@ export const SetupSection = meta.story({
     <SeedDisplay>
       {(push) => (
         <div className="h-[520px] w-[640px]">
-          <FileList
-            files={FILES.entry}
-            onEditWithPrompt={(f) => push(seedForFile(f))}
-          />
+          <FileList files={FILES.entry} onEditWithPrompt={(f) => push(seedForFile(f))} />
         </div>
       )}
     </SeedDisplay>

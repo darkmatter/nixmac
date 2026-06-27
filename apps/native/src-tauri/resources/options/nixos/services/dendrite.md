@@ -5,7 +5,7 @@
 All options under `services.dendrite`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.dendrite.enable` | | |
 | `services.dendrite.environmentFile` | | |
 | `services.dendrite.httpPort` | | |

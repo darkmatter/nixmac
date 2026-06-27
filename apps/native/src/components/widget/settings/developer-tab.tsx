@@ -1,8 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { useViewModel } from "@/stores/view-model";
-import { useUiState } from "@/stores/ui-state";
+import { uiActions, useViewModel } from "@nixmac/state";
 import { clearChangeMap } from "@/viewmodel/change-map";
 import { clearEvolveEvents } from "@/viewmodel/evolution";
 import { clearRebuildLog } from "@/viewmodel/rebuild";
@@ -43,7 +42,9 @@ export function DeveloperTab() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    getVersion().then(setCurrentVersion).catch(() => setCurrentVersion("unknown"));
+    getVersion()
+      .then(setCurrentVersion)
+      .catch(() => setCurrentVersion("unknown"));
   }, []);
 
   const handleInstall = async () => {
@@ -77,7 +78,9 @@ export function DeveloperTab() {
     setErrorMessage(null);
     try {
       await clearPinnedVersion();
-      setStatusMessage("Cleared pinned version. The auto-updater will check for the latest on next launch.");
+      setStatusMessage(
+        "Cleared pinned version. The auto-updater will check for the latest on next launch.",
+      );
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : String(err));
     }
@@ -87,11 +90,12 @@ export function DeveloperTab() {
     setErrorMessage(null);
     try {
       // The `global_preferences_changed` round-trip updates the ViewModel.
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.ui.setPrefs({ updateChannel: channel });
       setStatusMessage(
         channel === "stable"
           ? "Using stable updates from main."
-          : "Using develop updates. The next auto-update check will read the develop channel."
+          : "Using develop updates. The next auto-update check will read the develop channel.",
       );
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : String(err));
@@ -100,7 +104,9 @@ export function DeveloperTab() {
 
   const handleClearTauriState = async () => {
     if (
-      !window.confirm("Clear Tauri stores? This resets saved settings, routing state, build state, and caches.")
+      !window.confirm(
+        "Clear Tauri stores? This resets saved settings, routing state, build state, and caches.",
+      )
     ) {
       return;
     }
@@ -124,14 +130,13 @@ export function DeveloperTab() {
   };
 
   const handleClearUiBuffers = () => {
-    const ui = useUiState.getState();
-    ui.clearLogs();
+    uiActions.clearLogs();
     clearEvolveEvents();
     clearChangeMap();
     clearRebuildLog();
-    ui.setRebuildPanelDismissed(true);
-    ui.setConversationalResponse(null);
-    ui.setCommitMessageSuggestion(null);
+    uiActions.setRebuildPanelDismissed(true);
+    uiActions.setConversationalResponse(null);
+    uiActions.setCommitMessageSuggestion(null);
     setStatusMessage("Cleared local UI debug buffers.");
     setErrorMessage(null);
   };
@@ -146,9 +151,9 @@ export function DeveloperTab() {
     }
   };
 
-
   const handleDisableDeveloper = async () => {
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.ui.setPrefs({ developerMode: false });
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : String(err));
@@ -160,7 +165,8 @@ export function DeveloperTab() {
       <div>
         <h2 className="mb-1 font-semibold text-base">Developer</h2>
         <p className="text-muted-foreground text-xs">
-          Hidden tools for debugging and bisecting regressions. Don't use these unless you know what you're doing.
+          Hidden tools for debugging and bisecting regressions. Don't use these unless you know what
+          you're doing.
         </p>
       </div>
 
@@ -170,10 +176,11 @@ export function DeveloperTab() {
           <div className="space-y-1">
             <div className="font-medium text-foreground">Heads up</div>
             <div className="text-muted-foreground">
-              Installing a past version replaces your current <code className="rounded bg-muted px-1">.app</code>{" "}
-              bundle on disk. The version number you enter must match an existing release at{" "}
-              <code className="rounded bg-muted px-1">releases.nixmac.com</code>. Bisecting only works in release
-              builds — the dev binary doesn't ship the updater plugin.
+              Installing a past version replaces your current{" "}
+              <code className="rounded bg-muted px-1">.app</code> bundle on disk. The version number
+              you enter must match an existing release at{" "}
+              <code className="rounded bg-muted px-1">releases.nixmac.com</code>. Bisecting only
+              works in release builds — the dev binary doesn't ship the updater plugin.
             </div>
           </div>
         </div>
@@ -208,8 +215,9 @@ export function DeveloperTab() {
         </div>
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Stable follows releases from <code className="rounded bg-muted px-1">main</code>. Develop follows signed
-            release-mode builds from <code className="rounded bg-muted px-1">develop</code>. Version pins override the
+            Stable follows releases from <code className="rounded bg-muted px-1">main</code>.
+            Develop follows signed release-mode builds from{" "}
+            <code className="rounded bg-muted px-1">develop</code>. Version pins override the
             selected channel until you resume auto-update.
           </p>
           <div className="grid grid-cols-2 gap-2">
@@ -229,7 +237,8 @@ export function DeveloperTab() {
             })}
           </div>
           <div className="text-xs text-muted-foreground">
-            Current channel: <code className="rounded bg-muted px-1 font-mono">{updateChannel}</code>
+            Current channel:{" "}
+            <code className="rounded bg-muted px-1 font-mono">{updateChannel}</code>
           </div>
         </div>
       </div>
@@ -243,8 +252,8 @@ export function DeveloperTab() {
         {pinnedVersion ? (
           <div className="space-y-2">
             <div className="text-xs text-muted-foreground">
-              Pinned to <code className="rounded bg-muted px-1 font-mono">v{pinnedVersion}</code>. The silent
-              update check on launch is suppressed while pinned.
+              Pinned to <code className="rounded bg-muted px-1 font-mono">v{pinnedVersion}</code>.
+              The silent update check on launch is suppressed while pinned.
             </div>
             <Button onClick={handleClearPin} size="sm" variant="outline">
               <RotateCcw className="mr-2 h-3.5 w-3.5" />
@@ -266,10 +275,13 @@ export function DeveloperTab() {
         </div>
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
-            Enter a version that exists in the release bucket (look at <code className="rounded bg-muted px-1">git tag</code>{" "}
-            for valid values). The signed bundle is downloaded from{" "}
-            <code className="rounded bg-muted px-1 font-mono">releases.nixmac.com/&lt;version&gt;/</code>, verified, and
-            installed.
+            Enter a version that exists in the release bucket (look at{" "}
+            <code className="rounded bg-muted px-1">git tag</code> for valid values). The signed
+            bundle is downloaded from{" "}
+            <code className="rounded bg-muted px-1 font-mono">
+              releases.nixmac.com/&lt;version&gt;/
+            </code>
+            , verified, and installed.
           </p>
           <div className="flex items-center gap-2">
             <Input
@@ -295,11 +307,17 @@ export function DeveloperTab() {
         </div>
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Reset saved Tauri plugin-store data when the widget gets stuck in the wrong step or cached data looks stale.
-            This clears saved settings, routing state, build state, prompt history, and model caches.
+            Reset saved Tauri plugin-store data when the widget gets stuck in the wrong step or
+            cached data looks stale. This clears saved settings, routing state, build state, prompt
+            history, and model caches.
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={handleClearTauriState} disabled={clearingState} size="sm" variant="outline">
+            <Button
+              onClick={handleClearTauriState}
+              disabled={clearingState}
+              size="sm"
+              variant="outline"
+            >
               <DatabaseZap className="mr-2 h-3.5 w-3.5" />
               {clearingState ? "Clearing…" : "Clear Tauri state"}
             </Button>

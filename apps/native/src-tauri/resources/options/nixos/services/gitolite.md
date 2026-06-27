@@ -5,7 +5,7 @@
 All options under `services.gitolite`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.gitolite.adminPubkey` | | |
 | `services.gitolite.commonHooks` | | |
 | `services.gitolite.dataDir` | | |

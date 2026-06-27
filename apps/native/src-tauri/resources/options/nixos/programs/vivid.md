@@ -5,7 +5,7 @@
 All options under `programs.vivid`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `programs.vivid.enable` | | |
 | `programs.vivid.package` | | |
 | `programs.vivid.theme` | | |

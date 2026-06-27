@@ -5,6 +5,6 @@
 All options under `services.bpftune`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.bpftune.enable` | | |
 | `services.bpftune.package` | | |

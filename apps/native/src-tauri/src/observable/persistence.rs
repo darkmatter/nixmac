@@ -107,7 +107,7 @@ impl Persistence for RepoScopedJson {
 /// Repo-scoped JSON persistence that follows the app's explicitly configured
 /// config directory.
 ///
-/// This intentionally ignores the onboarding default (`~/.darwin`) until the
+/// This intentionally ignores the onboarding default (`/etc/nix-darwin`) until the
 /// user has confirmed a directory. That keeps first-launch reads and accidental
 /// pre-setup writes from making a clone/import target non-empty, which is disallowed
 /// later in the UI and therefore bad.

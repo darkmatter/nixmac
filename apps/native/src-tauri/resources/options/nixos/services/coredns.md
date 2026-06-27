@@ -5,7 +5,7 @@
 All options under `services.coredns`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.coredns.config` | | |
 | `services.coredns.enable` | | |
 | `services.coredns.extraArgs` | | |

@@ -5,7 +5,7 @@
 All options under `programs.wleave`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `programs.wleave.enable` | `boolean` | Whether to enable wleave. |
 | `programs.wleave.package` | `null or package` | The wleave package to use. |
 | `programs.wleave.settings` | `JSON value` | Configuration for wleave. See https://github.com/AMNatty/wleave#configuration for supported values. |

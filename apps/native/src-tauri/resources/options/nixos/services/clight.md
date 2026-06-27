@@ -5,7 +5,7 @@
 All options under `services.clight`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.clight.enable` | | |
 | `services.clight.settings` | | |
 | `services.clight.temperature.day` | | |

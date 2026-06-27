@@ -5,7 +5,7 @@
 All options under `services.suricata`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.suricata.configFile` | | |
 | `services.suricata.disabledRules` | | |
 | `services.suricata.enable` | | |

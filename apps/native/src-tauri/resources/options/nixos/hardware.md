@@ -5,7 +5,7 @@
 All options under `hardware`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------------------------------- | ---- | ----------- |
 | `hardware.acpilight.enable` | | |
 | `hardware.alsa.cardAliases` | | |
 | `hardware.alsa.config` | | |

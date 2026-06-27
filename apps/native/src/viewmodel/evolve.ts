@@ -1,10 +1,10 @@
-import { tauriAPI } from "@/ipc/api";
 import type { EvolveState } from "@/ipc/types";
-import { useViewModel } from "@/stores/view-model";
+import { client } from "@/lib/orpc";
+import { viewModelActions } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
 
 function mirrorEvolveState(evolve: EvolveState | null): void {
-  useViewModel.setState({ evolve });
+  viewModelActions.setState({ evolve });
 }
 
 /**
@@ -14,12 +14,12 @@ function mirrorEvolveState(evolve: EvolveState | null): void {
  * deterministic.
  */
 export async function refreshEvolveSnapshot(): Promise<void> {
-  mirrorEvolveState(await tauriAPI.evolveState.get());
+  mirrorEvolveState(await client.evolveState.get());
 }
 
 export function startEvolveSync(): Promise<() => void> {
   return bindBackendSlice({
-    hydrate: () => tauriAPI.evolveState.get(),
+    hydrate: () => client.evolveState.get(),
     event: "evolve_state_changed",
     mirror: mirrorEvolveState,
   });

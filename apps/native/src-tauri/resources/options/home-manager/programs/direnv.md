@@ -5,7 +5,7 @@
 All options under `programs.direnv`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------ |
 | `programs.direnv.config` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/direnv/direnv.toml . |
 | `programs.direnv.enable` | `boolean` | Whether to enable direnv, the environment switcher. |
 | `programs.direnv.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |

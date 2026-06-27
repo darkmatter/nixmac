@@ -5,7 +5,7 @@
 All options under `services.corerad`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.corerad.configFile` | | |
 | `services.corerad.enable` | | |
 | `services.corerad.package` | | |

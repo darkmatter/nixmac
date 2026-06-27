@@ -5,7 +5,7 @@
 All options under `services.libeufin`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.libeufin.bank.createLocalDatabase` | | |
 | `services.libeufin.bank.debug` | | |
 | `services.libeufin.bank.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.anubis`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.anubis.defaultOptions` | | |
 | `services.anubis.instances` | | |
 | `services.anubis.package` | | |

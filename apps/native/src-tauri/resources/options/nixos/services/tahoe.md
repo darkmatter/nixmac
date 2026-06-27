@@ -5,6 +5,6 @@
 All options under `services.tahoe`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.tahoe.introducers` | | |
 | `services.tahoe.nodes` | | |

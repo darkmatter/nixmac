@@ -9,17 +9,17 @@ export type TelemetryEvent =
   | { name: "app_launched"; props?: { environment: string } }
   | { name: "app_ready"; props?: { boot_ms?: number } }
   | {
-    name: "evolve_started";
-    props?: { provider: string; has_custom_model: boolean };
-  }
+      name: "evolve_started";
+      props?: { provider: string; has_custom_model: boolean };
+    }
   | {
-    name: "evolve_completed";
-    props: { step: string };
-  }
+      name: "evolve_completed";
+      props: { step: string };
+    }
   | {
-    name: "evolve_failed";
-    props?: { stage: "build" | "agent" | "apply" };
-  }
+      name: "evolve_failed";
+      props?: { stage: "build" | "agent" | "apply" };
+    }
   | { name: "rollback_performed" }
   | { name: "settings_changed"; props: { setting: string } }
   | { name: "diagnostics_opt_in" }
@@ -27,9 +27,9 @@ export type TelemetryEvent =
   | { name: "onboarding_completed" }
   | { name: "onboarding_restarted" }
   | {
-    name: "inference_configured";
-    props: { mode: "hosted" | "byok"; provider?: string };
-  }
+      name: "inference_configured";
+      props: { mode: "hosted" | "byok"; provider?: string };
+    }
   | { name: "inference_skipped" }
   | { name: "account_signed_in" }
   | { name: "first_build_started" }
@@ -39,9 +39,9 @@ export type TelemetryEvent =
   | { name: "apply_failed" }
   | { name: "customizations_scanned" }
   | {
-    name: "customizations_tracked";
-    props: { count: number };
-  }
+      name: "customizations_tracked";
+      props: { count: number };
+    }
   | { name: "history_restored" }
   | { name: "feedback_submitted"; props: { type: string } };
 

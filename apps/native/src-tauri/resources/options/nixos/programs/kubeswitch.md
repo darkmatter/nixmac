@@ -5,7 +5,7 @@
 All options under `programs.kubeswitch`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `programs.kubeswitch.commandName` | | |
 | `programs.kubeswitch.enable` | | |
 | `programs.kubeswitch.package` | | |

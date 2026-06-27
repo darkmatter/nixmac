@@ -5,7 +5,7 @@
 All options under `programs.pet`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | --------------------- | ------------------------------------------------------------------------ |
 | `programs.pet.enable` | `boolean` | Whether to enable pet. |
 | `programs.pet.package` | `null or package` | The pet package to use. |
 | `programs.pet.selectcmdPackage` | `null or package` | The fzf package to use. The package needed for the settings.selectcmd . |

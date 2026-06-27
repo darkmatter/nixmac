@@ -5,7 +5,7 @@
 All options under `services.pleroma`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.pleroma.configs` | | |
 | `services.pleroma.enable` | | |
 | `services.pleroma.group` | | |

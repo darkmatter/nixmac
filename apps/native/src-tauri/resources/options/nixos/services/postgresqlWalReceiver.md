@@ -5,5 +5,5 @@
 All options under `services.postgresqlWalReceiver`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.postgresqlWalReceiver.receivers` | | |

@@ -5,7 +5,7 @@
 All options under `services.torrentstream`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.torrentstream.address` | | |
 | `services.torrentstream.enable` | | |
 | `services.torrentstream.openFirewall` | | |

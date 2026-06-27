@@ -5,7 +5,7 @@
 All options under `programs.nushell`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.nushell.configDir` | `string or absolute path` | Location of the nushell config directory. This directory contains the config.nu , env.nu , and login.nu files, as well as history and plugin files. |
 | `programs.nushell.configFile` | `null or (submodule)` | The configuration file to be used for nushell. |
 | `programs.nushell.enable` | `boolean` | Whether to enable nushell. |

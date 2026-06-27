@@ -5,6 +5,6 @@
 All options under `services.mautrix-meta`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.mautrix-meta.instances` | | |
 | `services.mautrix-meta.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.riemann`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.riemann.config` | | |
 | `services.riemann.configFile` | | |
 | `services.riemann.configFiles` | | |

@@ -5,7 +5,7 @@
 All options under `services.cloudflare-dyndns`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.cloudflare-dyndns.apiTokenFile` | | |
 | `services.cloudflare-dyndns.deleteMissing` | | |
 | `services.cloudflare-dyndns.domains` | | |

@@ -5,7 +5,7 @@
 All options under `services.screen-locker`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.screen-locker.enable` | `boolean` | Whether to enable screen locker for X session. |
 | `services.screen-locker.enableDetectSleep` | | |
 | `services.screen-locker.inactiveInterval` | `signed integer` | Inactive time interval in minutes after which session will be locked. The minimum is 1 minute, and the maximum is 1 hour. If xautolock.enable is true, it will use this setting. See https://linux.die.net/man/1/xautolock . Otherwise, this will be used with xset to configure the X server’s screensaver timeout. |

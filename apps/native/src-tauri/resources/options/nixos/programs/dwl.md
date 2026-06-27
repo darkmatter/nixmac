@@ -5,7 +5,7 @@
 All options under `programs.dwl`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `programs.dwl.enable` | | |
 | `programs.dwl.extraSessionCommands` | | |
 | `programs.dwl.package` | | |

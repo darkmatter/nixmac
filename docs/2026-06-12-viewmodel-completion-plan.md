@@ -57,7 +57,7 @@ Three findings drive the design:
   append-only payloads (evolve agent events, apply log lines) stay plain
   event streams — putting growing buffers in an Observable that re-emits the
   whole value per line is O(n²) IPC. Every stream is paired with an
-  Observable *status* slice so remounts are still correct.
+  Observable _status_ slice so remounts are still correct.
 - **Mirror cells of derived state are not persisted and have one writer.**
   Per the 2026-05-29 locked decision, git status, change maps, and similar
   values are owned by their real source (git, the DB). Their Observables are
@@ -84,7 +84,7 @@ Three findings drive the design:
 ## State taxonomy
 
 | Category | Definition | Home | Examples |
-| --- | --- | --- | --- |
+| ---------------------- | ---------------------------------------------------------- | --------------------------------- | -------------------------------------------------------------------------------------- |
 | Mirrored backend state | Observable cell with `get_*` + `*_changed` | ViewModel, via sync module | evolve, git, change map, preferences, config, permissions, nix install, rebuild status |
 | Backend streams | Append-only event flows, folded client-side | ViewModel, via sync module (fold) | evolve agent events, apply log lines |
 | Query results | On-demand command results, caller-owned, not authoritative | UiState or component state | `fileDiffContents`, `recommendedPrompt`, `commitMessageSuggestion` |
@@ -97,7 +97,7 @@ action-free) and every placeholder field until its sync module lands.
 ## Per-slice homogenization map
 
 | Slice | Today | After Stage 1 | Persisted? |
-| --- | --- | --- | --- |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
 | `EvolveState` | Observable + `routing_state_get` + `evolve_state_changed` | rename command to `get_evolve_state` | yes (AppDataJson) |
 | `GitState` (status + external build flag) | watcher emit + persisted cache + `git_status` shells out | `Observable<GitState>`, watcher sole writer, `get_git_state` reads cell, delete `store::cached_git_status` | no |
 | `SemanticChangeMap` | watcher/pipeline emits; `find_change_map` queries DB | Observable cell seeded from DB at startup; both writers go through it; `get_change_map` | no (DB is source) |
@@ -237,7 +237,7 @@ and Stage 3 (slices live). Stage 5 needs everything.
 
 - **Event-ordering changes.** Replacing return-value mirroring with events
   means formerly synchronous updates become asynchronous. The Stage 1 rule
-  that mutating commands write the cell *before* returning keeps the window
+  that mutating commands write the cell _before_ returning keeps the window
   small, but UI flows that read the ViewModel immediately after `await invoke(...)` must tolerate one render of old state. Audit during Stage 4.
 - **Preferences write latency.** Dropping optimistic updates means toggles
   render after the `global_preferences_changed` round-trip. Local IPC makes

@@ -5,7 +5,7 @@
 All options under `services.smokeping`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.smokeping.alertConfig` | | |
 | `services.smokeping.cgiUrl` | | |
 | `services.smokeping.config` | | |

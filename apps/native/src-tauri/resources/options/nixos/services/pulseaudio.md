@@ -5,7 +5,7 @@
 All options under `services.pulseaudio`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------------------- | ---- | ----------- |
 | `services.pulseaudio.configFile` | | |
 | `services.pulseaudio.daemon.config` | | |
 | `services.pulseaudio.daemon.logLevel` | | |

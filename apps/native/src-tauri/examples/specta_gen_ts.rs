@@ -121,7 +121,12 @@ fn main() {
         .register::<shared_types::AuthAccount>()
         .register::<shared_types::AuthStatus>()
         .register::<shared_types::SyncRemoteStatus>()
-        .register::<shared_types::SyncResult>();
+        .register::<shared_types::SyncResult>()
+        .register::<shared_types::GithubBootstrapState>()
+        .register::<shared_types::GithubBootstrapStatus>()
+        .register::<shared_types::GithubConnectStart>()
+        .register::<shared_types::GithubStatus>()
+        .register::<shared_types::GithubRepo>();
 
     let shared_output_path = "../src/ipc/types.ts";
 

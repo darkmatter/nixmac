@@ -1,7 +1,7 @@
 "use client";
 
 import { tauriAPI } from "@/ipc/api";
-import { useUiState } from "@/stores/ui-state";
+import { uiActions } from "@nixmac/state";
 import type { HomebrewState } from "@/ipc/types";
 import { useCallback, useEffect, useState } from "react";
 
@@ -29,6 +29,7 @@ export function useHomebrewDiff(enabled = true) {
   const refresh = useCallback(() => {
     setIsLoading(true);
     setError(null);
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     tauriAPI.homebrew
       .getStateDiff()
       .then(setDiff)
@@ -51,19 +52,20 @@ export function useHomebrewDiff(enabled = true) {
   const applyDiff = useCallback(async () => {
     if (!diff || !hasDiffItems(diff)) return;
     setIsApplying(true);
-    useUiState.getState().setProcessing(true, "apply");
+    uiActions.setProcessing(true, "apply");
     try {
       // The backend records the resulting evolve/change-map/git state in the
       // cells; the `*_changed` events mirror it into the ViewModel.
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.homebrew.applyDiff(diff);
-      useUiState.getState().setRecommendedPrompt(undefined);
+      uiActions.setRecommendedPrompt(undefined);
       // Clear so we re-fetch on next render (the watcher will also advance the step).
       setDiff(null);
     } catch (e: unknown) {
       setError(String(e));
     } finally {
       setIsApplying(false);
-      useUiState.getState().setProcessing(false);
+      uiActions.setProcessing(false);
     }
   }, [diff]);
 

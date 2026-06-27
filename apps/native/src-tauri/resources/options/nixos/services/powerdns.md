@@ -5,7 +5,7 @@
 All options under `services.powerdns`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.powerdns.enable` | | |
 | `services.powerdns.extraConfig` | | |
 | `services.powerdns.secretFile` | | |

@@ -5,6 +5,6 @@
 All options under `services.joycond`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.joycond.enable` | | |
 | `services.joycond.package` | | |

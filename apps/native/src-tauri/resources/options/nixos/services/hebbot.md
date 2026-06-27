@@ -5,7 +5,7 @@
 All options under `services.hebbot`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.hebbot.botPasswordFile` | | |
 | `services.hebbot.enable` | | |
 | `services.hebbot.package` | | |

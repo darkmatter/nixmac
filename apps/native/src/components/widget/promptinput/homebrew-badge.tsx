@@ -2,14 +2,9 @@
 
 import { BadgeButton } from "@/components/ui/badge-button";
 import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { countDiffItems, useHomebrewDiff } from "@/hooks/use-homebrew-diff";
-import { useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { uiActions, useViewModel } from "@nixmac/state";
 import { Package } from "lucide-react";
 
 /**
@@ -22,8 +17,7 @@ export function HomebrewBadge() {
   const prefsLoaded = useViewModel((s) => s.preferences !== null);
   const scanHomebrewOnStartup = useViewModel((s) => s.preferences?.scanHomebrewOnStartup ?? true);
   const shouldScan = prefsLoaded && scanHomebrewOnStartup;
-  const setConversationalResponse = useUiState((s) => s.setConversationalResponse);
-  const { diff, hasDiff, isApplying, applyDiff } = useHomebrewDiff(shouldScan);
+    const { diff, hasDiff, isApplying, applyDiff } = useHomebrewDiff(shouldScan);
 
   // Only show on the begin step (clean tree, no in-progress evolution).
   if (!shouldScan || evolveState?.step !== "begin" || !diff || !diff.isInstalled) return null;
@@ -41,31 +35,17 @@ export function HomebrewBadge() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <BadgeButton
-          icon={Package}
-          badgeVariant="muted"
-          data-testid="managed-homebrew-badge"
-        >
+        <BadgeButton icon={Package} badgeVariant="muted" data-testid="managed-homebrew-badge">
           {total} untracked Homebrew {total === 1 ? "item" : "items"}
         </BadgeButton>
       </PopoverTrigger>
 
-      <PopoverContent
-        className="w-72 p-3"
-        align="start"
-        data-testid="managed-homebrew-popover"
-      >
+      <PopoverContent className="w-72 p-3" align="start" data-testid="managed-homebrew-popover">
         <div className="flex flex-col text-sm">
           <div className="max-h-56 overflow-y-auto pr-2">
-            {diff.taps.length > 0 && (
-              <HomebrewGroup label="Taps" items={diff.taps} />
-            )}
-            {diff.brews.length > 0 && (
-              <HomebrewGroup label="Brews" items={diff.brews} />
-            )}
-            {diff.casks.length > 0 && (
-              <HomebrewGroup label="Casks" items={diff.casks} />
-            )}
+            {diff.taps.length > 0 && <HomebrewGroup label="Taps" items={diff.taps} />}
+            {diff.brews.length > 0 && <HomebrewGroup label="Brews" items={diff.brews} />}
+            {diff.casks.length > 0 && <HomebrewGroup label="Casks" items={diff.casks} />}
           </div>
 
           <Button
@@ -75,7 +55,7 @@ export function HomebrewBadge() {
             disabled={isApplying}
             onClick={() => {
               applyDiff();
-              setConversationalResponse(null);
+              uiActions.setConversationalResponse(null);
             }}
           >
             {isApplying ? "Adding…" : "Add to config"}

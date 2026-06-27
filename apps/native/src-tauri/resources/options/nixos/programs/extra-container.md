@@ -5,5 +5,5 @@
 All options under `programs.extra-container`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `programs.extra-container.enable` | | |

@@ -1,16 +1,31 @@
 #!/usr/bin/env node
-import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, truncateSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
-import process from 'node:process';
-import { fileURLToPath } from 'node:url';
+import { spawnSync } from "node:child_process";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  truncateSync,
+  writeFileSync,
+} from "node:fs";
+import path from "node:path";
+import process from "node:process";
+import { fileURLToPath } from "node:url";
 
 const THIS_FILE = fileURLToPath(import.meta.url);
 const TOOL_DIR = path.dirname(THIS_FILE);
-const REPO_ROOT = path.resolve(TOOL_DIR, '../../..');
-const DEFAULT_BASE_ROOT = path.resolve(REPO_ROOT, process.env.NIXMAC_E2E_ADVERSARIAL_BASE_ROOT || 'artifacts/computer-use-remote');
-const OUT_ROOT = path.resolve(REPO_ROOT, process.env.NIXMAC_E2E_ADVERSARIAL_OUT_ROOT || 'artifacts/computer-use-adversarial');
-const RUNNER = path.join(TOOL_DIR, 'run-remote-cua.mjs');
+const REPO_ROOT = path.resolve(TOOL_DIR, "../../..");
+const DEFAULT_BASE_ROOT = path.resolve(
+  REPO_ROOT,
+  process.env.NIXMAC_E2E_ADVERSARIAL_BASE_ROOT || "artifacts/computer-use-remote",
+);
+const OUT_ROOT = path.resolve(
+  REPO_ROOT,
+  process.env.NIXMAC_E2E_ADVERSARIAL_OUT_ROOT || "artifacts/computer-use-adversarial",
+);
+const RUNNER = path.join(TOOL_DIR, "run-remote-cua.mjs");
 
 function usage() {
   console.log(`Usage:
@@ -21,23 +36,24 @@ artifacts/computer-use-remote/<timestamp> directory that contains state.json.
 `);
 }
 
-function argValue(args, flag, fallback = '') {
+function argValue(args, flag, fallback = "") {
   const index = args.indexOf(flag);
-  return index === -1 ? fallback : args[index + 1] ?? fallback;
+  return index === -1 ? fallback : (args[index + 1] ?? fallback);
 }
 
 function timestampSlug() {
-  return new Date().toISOString().replace(/[:.]/g, '').replace('Z', 'Z');
+  return new Date().toISOString().replace(/[:.]/g, "").replace("Z", "Z");
 }
 
 function run(command, args, options = {}) {
-  const result = spawnSync(command, args, { encoding: 'utf8', cwd: REPO_ROOT, ...options });
-  if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} failed: ${result.stderr || result.stdout}`);
+  const result = spawnSync(command, args, { encoding: "utf8", cwd: REPO_ROOT, ...options });
+  if (result.status !== 0)
+    throw new Error(`${command} ${args.join(" ")} failed: ${result.stderr || result.stdout}`);
   return result.stdout.trim();
 }
 
 function readJson(file) {
-  return JSON.parse(readFileSync(file, 'utf8'));
+  return JSON.parse(readFileSync(file, "utf8"));
 }
 
 function writeJson(file, value) {
@@ -45,32 +61,35 @@ function writeJson(file, value) {
 }
 
 function discoverLatestBaseRun() {
-  if (!existsSync(DEFAULT_BASE_ROOT)) return '';
+  if (!existsSync(DEFAULT_BASE_ROOT)) return "";
   const candidates = readdirSync(DEFAULT_BASE_ROOT, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => path.join(DEFAULT_BASE_ROOT, entry.name))
-    .filter((candidate) => existsSync(path.join(candidate, 'state.json')))
+    .filter((candidate) => existsSync(path.join(candidate, "state.json")))
     .sort((a, b) => path.basename(b).localeCompare(path.basename(a)));
-  return candidates[0] ?? '';
+  return candidates[0] ?? "";
 }
 
 function resolveBaseRun(args) {
-  const explicitBaseRun = argValue(args, '--base-run');
+  const explicitBaseRun = argValue(args, "--base-run");
   if (explicitBaseRun) return path.resolve(REPO_ROOT, explicitBaseRun);
   const discovered = discoverLatestBaseRun();
   if (discovered) return discovered;
   throw new Error(
     `No baseline remote E2E artifact found under ${DEFAULT_BASE_ROOT}. ` +
-      'Run/download a baseline report first or pass --base-run artifacts/computer-use-remote/<timestamp>.',
+      "Run/download a baseline report first or pass --base-run artifacts/computer-use-remote/<timestamp>.",
   );
 }
 
 function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+  return String(value ?? "").replace(
+    /[&<>"']/g,
+    (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char],
+  );
 }
 
 function mutateScenario(state, key, status, note) {
-  state.scenarios[key] ||= { label: key, status: 'inconclusive', notes: [] };
+  state.scenarios[key] ||= { label: key, status: "inconclusive", notes: [] };
   state.scenarios[key].status = status;
   state.scenarios[key].notes = [note];
 }
@@ -82,23 +101,23 @@ function resetDerivedState(state) {
 }
 
 function renderExisting(runDir) {
-  run('node', [RUNNER, 'render-existing', '--run-dir', runDir]);
-  return readJson(path.join(runDir, 'state.regenerated.json'));
+  run("node", [RUNNER, "render-existing", "--run-dir", runDir]);
+  return readJson(path.join(runDir, "state.regenerated.json"));
 }
 
 function reportPositionChecks(runDir) {
-  const html = readFileSync(path.join(runDir, 'index.html'), 'utf8');
+  const html = readFileSync(path.join(runDir, "index.html"), "utf8");
   const headingIndex = (id, text) => {
     const anchored = html.indexOf(`id="${id}"`);
     if (anchored >= 0) return anchored;
     return html.indexOf(text);
   };
   const positions = {
-    prFocus: headingIndex('pull-request-focus', 'Pull Request Focus'),
-    findings: headingIndex('findings-first', 'Findings First'),
-    failures: html.indexOf('<h3>Failures</h3>'),
-    inconclusive: html.indexOf('<h3>Inconclusive</h3>'),
-    passes: html.indexOf('<summary>Passing Checks'),
+    prFocus: headingIndex("pull-request-focus", "Pull Request Focus"),
+    findings: headingIndex("findings-first", "Findings First"),
+    failures: html.indexOf("<h3>Failures</h3>"),
+    inconclusive: html.indexOf("<h3>Inconclusive</h3>"),
+    passes: html.indexOf("<summary>Passing Checks"),
   };
   return {
     positions,
@@ -112,28 +131,28 @@ function reportPositionChecks(runDir) {
 }
 
 function createBlackPng(file) {
-  run('ffmpeg', ['-f', 'lavfi', '-i', 'color=black:s=768x768', '-frames:v', '1', file, '-y']);
+  run("ffmpeg", ["-f", "lavfi", "-i", "color=black:s=768x768", "-frames:v", "1", file, "-y"]);
 }
 
 function addSensitiveScreenshot(state) {
-  const source = state.screenshots.find((shot) => shot.label === 'launch')?.path;
-  if (!source) throw new Error('launch screenshot missing from base state');
-  const dest = 'screenshots/adversarial-console.png';
+  const source = state.screenshots.find((shot) => shot.label === "launch")?.path;
+  if (!source) throw new Error("launch screenshot missing from base state");
+  const dest = "screenshots/adversarial-console.png";
   state.screenshots.push({
-    label: 'console',
+    label: "console",
     path: dest,
-    note: 'Adversarial fixture: Console screenshot should not be allowed.',
+    note: "Adversarial fixture: Console screenshot should not be allowed.",
     capturedAt: new Date().toISOString(),
   });
   return { source, dest };
 }
 
 function prepareCase(root, baseRun, id, slug) {
-  const runDir = path.join(root, `${String(id).padStart(2, '0')}-${slug}`);
+  const runDir = path.join(root, `${String(id).padStart(2, "0")}-${slug}`);
   rmSync(runDir, { recursive: true, force: true });
   cpSync(baseRun, runDir, { recursive: true });
-  rmSync(path.join(runDir, 'state.regenerated.json'), { force: true });
-  const statePath = path.join(runDir, 'state.json');
+  rmSync(path.join(runDir, "state.regenerated.json"), { force: true });
+  const statePath = path.join(runDir, "state.json");
   const state = readJson(statePath);
   resetDerivedState(state);
   return { runDir, statePath, state };
@@ -142,189 +161,304 @@ function prepareCase(root, baseRun, id, slug) {
 const caseDefinitions = [
   {
     id: 1,
-    slug: 'api-keys-blank-render',
-    name: 'API Keys blank-screen/render crash',
-    expected: 'settingsAPIKeys fails and the report verdict is fail.',
+    slug: "api-keys-blank-render",
+    name: "API Keys blank-screen/render crash",
+    expected: "settingsAPIKeys fails and the report verdict is fail.",
     mutate({ state }) {
-      mutateScenario(state, 'settingsAPIKeys', 'fail', 'Adversarial fixture: API Keys collapsed to a blank WebView/accessibility tree.');
+      mutateScenario(
+        state,
+        "settingsAPIKeys",
+        "fail",
+        "Adversarial fixture: API Keys collapsed to a blank WebView/accessibility tree.",
+      );
     },
     evaluate(state) {
-      return state.scenarios.settingsAPIKeys.status === 'fail' && state.verdict === 'fail';
+      return state.scenarios.settingsAPIKeys.status === "fail" && state.verdict === "fail";
     },
   },
   {
     id: 2,
-    slug: 'settings-content-mismatch',
-    name: 'Settings tab content mismatch',
-    expected: 'settingsAIModels fails when provider/model controls are absent or replaced.',
+    slug: "settings-content-mismatch",
+    name: "Settings tab content mismatch",
+    expected: "settingsAIModels fails when provider/model controls are absent or replaced.",
     mutate({ state }) {
-      mutateScenario(state, 'settingsAIModels', 'fail', 'Adversarial fixture: AI Models tab rendered Preferences content instead of provider/model controls.');
+      mutateScenario(
+        state,
+        "settingsAIModels",
+        "fail",
+        "Adversarial fixture: AI Models tab rendered Preferences content instead of provider/model controls.",
+      );
     },
     evaluate(state) {
-      return state.scenarios.settingsAIModels.status === 'fail';
+      return state.scenarios.settingsAIModels.status === "fail";
     },
   },
   {
     id: 3,
-    slug: 'missing-provider-credential',
-    name: 'Missing provider credential / invalid OpenRouter key',
-    expected: 'review fails with a credential-classified note.',
+    slug: "missing-provider-credential",
+    name: "Missing provider credential / invalid OpenRouter key",
+    expected: "review fails with a credential-classified note.",
     mutate({ state }) {
-      mutateScenario(state, 'review', 'fail', 'The real provider call failed because nixmac could not access an API key.');
-      for (const key of ['summary', 'diff', 'buildBoundary', 'saveFlow', 'rollbackCleanup', 'discard']) {
-        mutateScenario(state, key, 'inconclusive', 'Not exercised because provider credential failure prevented Review.');
+      mutateScenario(
+        state,
+        "review",
+        "fail",
+        "The real provider call failed because nixmac could not access an API key.",
+      );
+      for (const key of [
+        "summary",
+        "diff",
+        "buildBoundary",
+        "saveFlow",
+        "rollbackCleanup",
+        "discard",
+      ]) {
+        mutateScenario(
+          state,
+          key,
+          "inconclusive",
+          "Not exercised because provider credential failure prevented Review.",
+        );
       }
     },
     evaluate(state) {
-      return state.scenarios.review.status === 'fail' && /API key|credential/i.test(state.scenarios.review.notes.join(' '));
+      return (
+        state.scenarios.review.status === "fail" &&
+        /API key|credential/i.test(state.scenarios.review.notes.join(" "))
+      );
     },
   },
   {
     id: 4,
-    slug: 'provider-timeout',
-    name: 'Provider workflow stuck before Review',
-    expected: 'review is inconclusive and downstream provider scenarios are not claimed as pass.',
+    slug: "provider-timeout",
+    name: "Provider workflow stuck before Review",
+    expected: "review is inconclusive and downstream provider scenarios are not claimed as pass.",
     mutate({ state }) {
-      mutateScenario(state, 'review', 'inconclusive', 'The prompt was submitted, but Review did not appear before the polling window ended.');
-      for (const key of ['summary', 'diff', 'buildBoundary', 'saveFlow', 'rollbackCleanup', 'discard']) {
-        mutateScenario(state, key, 'inconclusive', 'Not exercised because Review did not appear before timeout.');
+      mutateScenario(
+        state,
+        "review",
+        "inconclusive",
+        "The prompt was submitted, but Review did not appear before the polling window ended.",
+      );
+      for (const key of [
+        "summary",
+        "diff",
+        "buildBoundary",
+        "saveFlow",
+        "rollbackCleanup",
+        "discard",
+      ]) {
+        mutateScenario(
+          state,
+          key,
+          "inconclusive",
+          "Not exercised because Review did not appear before timeout.",
+        );
       }
     },
     evaluate(state) {
-      return state.scenarios.review.status === 'inconclusive' && state.verdict !== 'pass';
+      return state.scenarios.review.status === "inconclusive" && state.verdict !== "pass";
     },
   },
   {
     id: 5,
-    slug: 'build-boundary-missing',
-    name: 'Build & Test confirmation missing or bypassed',
-    expected: 'buildBoundary fails and Save is not counted as pass.',
+    slug: "build-boundary-missing",
+    name: "Build & Test confirmation missing or bypassed",
+    expected: "buildBoundary fails and Save is not counted as pass.",
     mutate({ state }) {
-      mutateScenario(state, 'buildBoundary', 'fail', 'Adversarial fixture: Build & Test did not present an obvious confirmation boundary.');
-      mutateScenario(state, 'saveFlow', 'inconclusive', 'Step 3 not exercised because the destructive boundary was missing.');
+      mutateScenario(
+        state,
+        "buildBoundary",
+        "fail",
+        "Adversarial fixture: Build & Test did not present an obvious confirmation boundary.",
+      );
+      mutateScenario(
+        state,
+        "saveFlow",
+        "inconclusive",
+        "Step 3 not exercised because the destructive boundary was missing.",
+      );
     },
     evaluate(state) {
-      return state.scenarios.buildBoundary.status === 'fail' && state.scenarios.saveFlow.status !== 'pass';
+      return (
+        state.scenarios.buildBoundary.status === "fail" &&
+        state.scenarios.saveFlow.status !== "pass"
+      );
     },
   },
   {
     id: 6,
-    slug: 'commit-noop',
-    name: 'Build succeeds visually but Step 3 Commit no-ops',
-    expected: 'saveFlow fails when git proof does not show a committed change.',
+    slug: "commit-noop",
+    name: "Build succeeds visually but Step 3 Commit no-ops",
+    expected: "saveFlow fails when git proof does not show a committed change.",
     mutate({ state }) {
-      mutateScenario(state, 'saveFlow', 'fail', 'Step 3 Commit was clicked, but the disposable repo did not show a clean committed bat/Homebrew change.');
+      mutateScenario(
+        state,
+        "saveFlow",
+        "fail",
+        "Step 3 Commit was clicked, but the disposable repo did not show a clean committed bat/Homebrew change.",
+      );
     },
     evaluate(state) {
-      return state.scenarios.saveFlow.status === 'fail';
+      return state.scenarios.saveFlow.status === "fail";
     },
   },
   {
     id: 7,
-    slug: 'rollback-noop',
-    name: 'Rollback/History restore no-op or wrong target',
-    expected: 'rollbackCleanup fails when baseline content is not restored.',
+    slug: "rollback-noop",
+    name: "Rollback/History restore no-op or wrong target",
+    expected: "rollbackCleanup fails when baseline content is not restored.",
     mutate({ state }) {
-      mutateScenario(state, 'rollbackCleanup', 'fail', 'History restore did not return the disposable config tree to the baseline content.');
+      mutateScenario(
+        state,
+        "rollbackCleanup",
+        "fail",
+        "History restore did not return the disposable config tree to the baseline content.",
+      );
     },
     evaluate(state) {
-      return state.scenarios.rollbackCleanup.status === 'fail';
+      return state.scenarios.rollbackCleanup.status === "fail";
     },
   },
   {
     id: 8,
-    slug: 'corrupt-evidence',
-    name: 'Report evidence artifact corruption',
-    expected: 'visualProofQuality and the owning scenario fail when a required screenshot artifact is missing.',
+    slug: "corrupt-evidence",
+    name: "Report evidence artifact corruption",
+    expected:
+      "visualProofQuality and the owning scenario fail when a required screenshot artifact is missing.",
     mutate({ runDir }) {
-      rmSync(path.join(runDir, 'screenshots/01-launch.png'), { force: true });
+      rmSync(path.join(runDir, "screenshots/01-launch.png"), { force: true });
     },
     evaluate(state) {
-      return state.scenarios.visualProofQuality.status === 'fail' && state.scenarios.launch.status === 'fail' && /Screenshot visual assertion/i.test(state.scenarios.launch.notes.join(' '));
+      return (
+        state.scenarios.visualProofQuality.status === "fail" &&
+        state.scenarios.launch.status === "fail" &&
+        /Screenshot visual assertion/i.test(state.scenarios.launch.notes.join(" "))
+      );
     },
   },
   {
     id: 9,
-    slug: 'blank-screenshot',
-    name: 'Visual UI regression: blank/occluded screenshot',
-    expected: 'visualProofQuality and the owning scenario fail when a required screenshot is visually blank.',
+    slug: "blank-screenshot",
+    name: "Visual UI regression: blank/occluded screenshot",
+    expected:
+      "visualProofQuality and the owning scenario fail when a required screenshot is visually blank.",
     mutate({ runDir }) {
-      createBlackPng(path.join(runDir, 'screenshots/01-launch.png'));
+      createBlackPng(path.join(runDir, "screenshots/01-launch.png"));
     },
     evaluate(state) {
-      return state.scenarios.visualProofQuality.status === 'fail' && state.scenarios.launch.status === 'fail' && /visual assertion|brightness|contrast|blank|occluded/i.test(state.scenarios.launch.notes.join(' '));
+      return (
+        state.scenarios.visualProofQuality.status === "fail" &&
+        state.scenarios.launch.status === "fail" &&
+        /visual assertion|brightness|contrast|blank|occluded/i.test(
+          state.scenarios.launch.notes.join(" "),
+        )
+      );
     },
   },
   {
     id: 10,
-    slug: 'pr-priority',
-    name: 'PR focus/report prioritization regression',
-    expected: 'PR focus is above findings and failures precede inconclusive/pass checks.',
+    slug: "pr-priority",
+    name: "PR focus/report prioritization regression",
+    expected: "PR focus is above findings and failures precede inconclusive/pass checks.",
     mutate({ state }) {
       state.prFocus = {
         configured: true,
-        eventName: 'pull_request',
-        number: '999',
-        title: 'Adversarial settings regression fixture',
-        headRef: 'adversarial/settings-regression',
-        baseRef: 'main',
-        changedFiles: ['apps/native/src/components/widget/settings/settings-dialog.tsx'],
-        userVisibleFiles: ['apps/native/src/components/widget/settings/settings-dialog.tsx'],
-        scenarioKeys: ['settingsGeneral', 'settingsAIModels', 'settingsAPIKeys', 'settingsPreferences'],
+        eventName: "pull_request",
+        number: "999",
+        title: "Adversarial settings regression fixture",
+        headRef: "adversarial/settings-regression",
+        baseRef: "main",
+        changedFiles: ["apps/native/src/components/widget/settings/settings-dialog.tsx"],
+        userVisibleFiles: ["apps/native/src/components/widget/settings/settings-dialog.tsx"],
+        scenarioKeys: [
+          "settingsGeneral",
+          "settingsAIModels",
+          "settingsAPIKeys",
+          "settingsPreferences",
+        ],
       };
-      mutateScenario(state, 'settingsAIModels', 'fail', 'Adversarial fixture: AI Models tab rendered the wrong content.');
+      mutateScenario(
+        state,
+        "settingsAIModels",
+        "fail",
+        "Adversarial fixture: AI Models tab rendered the wrong content.",
+      );
     },
     evaluate(state, runDir) {
       const checks = reportPositionChecks(runDir);
-      return checks.prFirst && checks.ordered && state.scenarios.settingsAIModels.status === 'fail';
+      return checks.prFirst && checks.ordered && state.scenarios.settingsAIModels.status === "fail";
     },
   },
   {
     id: 11,
-    slug: 'main-coverage-drift',
-    name: 'Main coverage freshness drift',
-    expected: 'mainCoverageFreshness fails when a new user-visible component appears without manifest mapping.',
+    slug: "main-coverage-drift",
+    name: "Main coverage freshness drift",
+    expected:
+      "mainCoverageFreshness fails when a new user-visible component appears without manifest mapping.",
     before() {
-      const file = path.join(REPO_ROOT, 'apps/native/src/components/widget/adversarial-new-visible-surface.tsx');
-      writeFileSync(file, 'export function AdversarialNewVisibleSurface() { return <button>New Visible Surface</button>; }\n');
+      const file = path.join(
+        REPO_ROOT,
+        "apps/native/src/components/widget/adversarial-new-visible-surface.tsx",
+      );
+      writeFileSync(
+        file,
+        "export function AdversarialNewVisibleSurface() { return <button>New Visible Surface</button>; }\n",
+      );
       return () => rmSync(file, { force: true });
     },
     evaluate(state) {
-      return state.scenarios.mainCoverageFreshness.status === 'fail' && /adversarial-new-visible-surface/i.test(state.scenarios.mainCoverageFreshness.notes.join(' '));
+      return (
+        state.scenarios.mainCoverageFreshness.status === "fail" &&
+        /adversarial-new-visible-surface/i.test(
+          state.scenarios.mainCoverageFreshness.notes.join(" "),
+        )
+      );
     },
   },
   {
     id: 12,
-    slug: 'zero-byte-screenshot',
-    name: 'Zero-byte screenshot artifact',
-    expected: 'visualProofQuality fails when a linked screenshot file is empty.',
+    slug: "zero-byte-screenshot",
+    name: "Zero-byte screenshot artifact",
+    expected: "visualProofQuality fails when a linked screenshot file is empty.",
     mutate({ runDir }) {
-      truncateSync(path.join(runDir, 'screenshots/01-launch.png'), 0);
+      truncateSync(path.join(runDir, "screenshots/01-launch.png"), 0);
     },
     evaluate(state) {
-      return state.scenarios.visualProofQuality.status === 'fail' && /empty/i.test(state.scenarios.visualProofQuality.notes.join(' '));
+      return (
+        state.scenarios.visualProofQuality.status === "fail" &&
+        /empty/i.test(state.scenarios.visualProofQuality.notes.join(" "))
+      );
     },
   },
   {
     id: 13,
-    slug: 'zero-byte-text',
-    name: 'Zero-byte redacted text artifact',
-    expected: 'visualProofQuality fails when a linked text proof file is empty.',
+    slug: "zero-byte-text",
+    name: "Zero-byte redacted text artifact",
+    expected: "visualProofQuality fails when a linked text proof file is empty.",
     mutate({ runDir }) {
-      truncateSync(path.join(runDir, 'texts/01-launch.txt'), 0);
+      truncateSync(path.join(runDir, "texts/01-launch.txt"), 0);
     },
     evaluate(state) {
-      return state.scenarios.visualProofQuality.status === 'fail' && /empty/i.test(state.scenarios.visualProofQuality.notes.join(' '));
+      return (
+        state.scenarios.visualProofQuality.status === "fail" &&
+        /empty/i.test(state.scenarios.visualProofQuality.notes.join(" "))
+      );
     },
   },
   {
     id: 14,
-    slug: 'findings-order',
-    name: 'Findings ordering with mixed statuses',
-    expected: 'report keeps failures first, inconclusive second, passing checks last.',
+    slug: "findings-order",
+    name: "Findings ordering with mixed statuses",
+    expected: "report keeps failures first, inconclusive second, passing checks last.",
     mutate({ state }) {
-      mutateScenario(state, 'feedback', 'fail', 'Adversarial fixture: feedback dialog failed.');
-      mutateScenario(state, 'reportIssue', 'inconclusive', 'Adversarial fixture: report issue dialog was not exercised.');
+      mutateScenario(state, "feedback", "fail", "Adversarial fixture: feedback dialog failed.");
+      mutateScenario(
+        state,
+        "reportIssue",
+        "inconclusive",
+        "Adversarial fixture: report issue dialog was not exercised.",
+      );
     },
     evaluate(_state, runDir) {
       return reportPositionChecks(runDir).ordered;
@@ -332,212 +466,311 @@ const caseDefinitions = [
   },
   {
     id: 15,
-    slug: 'sensitive-screenshot',
-    name: 'Sensitive screenshot leak',
-    expected: 'visualProofQuality fails if Console screenshots are attached.',
+    slug: "sensitive-screenshot",
+    name: "Sensitive screenshot leak",
+    expected: "visualProofQuality fails if Console screenshots are attached.",
     mutate({ runDir, state }) {
       const { source, dest } = addSensitiveScreenshot(state);
       cpSync(path.join(runDir, source), path.join(runDir, dest));
     },
     evaluate(state) {
-      return state.scenarios.visualProofQuality.status === 'fail' && /Sensitive surface/i.test(state.scenarios.visualProofQuality.notes.join(' '));
+      return (
+        state.scenarios.visualProofQuality.status === "fail" &&
+        /Sensitive surface/i.test(state.scenarios.visualProofQuality.notes.join(" "))
+      );
     },
   },
   {
     id: 16,
-    slug: 'stale-verdict',
-    name: 'Stale green verdict in state.json',
-    expected: 'render recalculates verdict as fail when any scenario fails.',
+    slug: "stale-verdict",
+    name: "Stale green verdict in state.json",
+    expected: "render recalculates verdict as fail when any scenario fails.",
     mutate({ state }) {
-      state.verdict = 'pass';
-      mutateScenario(state, 'history', 'fail', 'Adversarial fixture: stale state claimed pass but History failed.');
+      state.verdict = "pass";
+      mutateScenario(
+        state,
+        "history",
+        "fail",
+        "Adversarial fixture: stale state claimed pass but History failed.",
+      );
     },
     evaluate(state) {
-      return state.verdict === 'fail' && state.scenarios.history.status === 'fail';
+      return state.verdict === "fail" && state.scenarios.history.status === "fail";
     },
   },
   {
     id: 17,
-    slug: 'missing-report-inspection-proof',
-    name: 'Missing report-inspection proof artifact',
-    expected: 'visualProofQuality fails when a passing reportInspection scenario lacks its proof screenshot/text.',
+    slug: "missing-report-inspection-proof",
+    name: "Missing report-inspection proof artifact",
+    expected:
+      "visualProofQuality fails when a passing reportInspection scenario lacks its proof screenshot/text.",
     mutate({ runDir, state }) {
       const removedProofPaths = state.screenshots
         .concat(state.textSnapshots)
-        .filter((artifact) => artifact.label === 'HTML report inspection')
+        .filter((artifact) => artifact.label === "HTML report inspection")
         .map((artifact) => artifact.path);
-      state.screenshots = state.screenshots.filter((shot) => shot.label !== 'HTML report inspection');
-      state.textSnapshots = state.textSnapshots.filter((shot) => shot.label !== 'HTML report inspection');
+      state.screenshots = state.screenshots.filter(
+        (shot) => shot.label !== "HTML report inspection",
+      );
+      state.textSnapshots = state.textSnapshots.filter(
+        (shot) => shot.label !== "HTML report inspection",
+      );
       for (const artifactPath of removedProofPaths) {
         rmSync(path.join(runDir, artifactPath), { force: true });
       }
-      mutateScenario(state, 'reportInspection', 'pass', 'Adversarial fixture: report inspection was marked pass without proof.');
+      mutateScenario(
+        state,
+        "reportInspection",
+        "pass",
+        "Adversarial fixture: report inspection was marked pass without proof.",
+      );
     },
     evaluate(state) {
-      return state.scenarios.visualProofQuality.status === 'fail' && /Generated HTML report is inspected/i.test(state.scenarios.visualProofQuality.notes.join(' '));
+      return (
+        state.scenarios.visualProofQuality.status === "fail" &&
+        /Generated HTML report is inspected/i.test(
+          state.scenarios.visualProofQuality.notes.join(" "),
+        )
+      );
     },
   },
   {
     id: 18,
-    slug: 'pr-unmapped-user-visible',
-    name: 'PR user-visible change without mapped scenario',
-    expected: 'prSpecificCoverage is inconclusive when user-visible PR files have no scenario mapping.',
+    slug: "pr-unmapped-user-visible",
+    name: "PR user-visible change without mapped scenario",
+    expected:
+      "prSpecificCoverage is inconclusive when user-visible PR files have no scenario mapping.",
     mutate({ state }) {
       state.prFocus = {
         configured: true,
-        eventName: 'pull_request',
-        number: '1000',
-        title: 'Unmapped visible change fixture',
-        headRef: 'adversarial/unmapped-visible',
-        baseRef: 'main',
-        changedFiles: ['apps/native/src/components/widget/adversarial-new-visible-surface.tsx'],
-        userVisibleFiles: ['apps/native/src/components/widget/adversarial-new-visible-surface.tsx'],
+        eventName: "pull_request",
+        number: "1000",
+        title: "Unmapped visible change fixture",
+        headRef: "adversarial/unmapped-visible",
+        baseRef: "main",
+        changedFiles: ["apps/native/src/components/widget/adversarial-new-visible-surface.tsx"],
+        userVisibleFiles: ["apps/native/src/components/widget/adversarial-new-visible-surface.tsx"],
         scenarioKeys: [],
       };
-      mutateScenario(state, 'prSpecificCoverage', 'pass', 'Adversarial fixture: stale pass should be downgraded.');
+      mutateScenario(
+        state,
+        "prSpecificCoverage",
+        "pass",
+        "Adversarial fixture: stale pass should be downgraded.",
+      );
     },
     evaluate(state) {
-      return state.scenarios.prSpecificCoverage.status === 'inconclusive' && /no dedicated PR-specific/i.test(state.scenarios.prSpecificCoverage.notes.join(' '));
+      return (
+        state.scenarios.prSpecificCoverage.status === "inconclusive" &&
+        /no dedicated PR-specific/i.test(state.scenarios.prSpecificCoverage.notes.join(" "))
+      );
     },
   },
   {
     id: 19,
-    slug: 'missing-remote-metadata',
-    name: 'Missing remote Mac/app/process metadata',
-    expected: 'coverage gaps call out missing remote machine/app metadata and process-env verification.',
+    slug: "missing-remote-metadata",
+    name: "Missing remote Mac/app/process metadata",
+    expected:
+      "coverage gaps call out missing remote machine/app metadata and process-env verification.",
     mutate({ state }) {
       delete state.remoteMachine;
       delete state.remoteApp;
       delete state.processEnvVerification;
     },
     evaluate(_state, runDir) {
-      const html = readFileSync(path.join(runDir, 'index.html'), 'utf8');
+      const html = readFileSync(path.join(runDir, "index.html"), "utf8");
       return /Remote Mac\/app metadata|Credential process-env verification/i.test(html);
     },
   },
   {
     id: 20,
-    slug: 'rollback-proof-missing',
-    name: 'Rollback cleanup pass without restore proof',
-    expected: 'visualProofQuality fails when rollbackCleanup is pass but restore proof artifacts are absent.',
+    slug: "rollback-proof-missing",
+    name: "Rollback cleanup pass without restore proof",
+    expected:
+      "visualProofQuality fails when rollbackCleanup is pass but restore proof artifacts are absent.",
     mutate({ state }) {
-      mutateScenario(state, 'rollbackCleanup', 'pass', 'Adversarial fixture: rollback cleanup marked pass without restore proof.');
-      state.screenshots = state.screenshots.filter((shot) => !/history-(before-restore|restore-preview)|after-history-restore/.test(shot.label));
-      state.textSnapshots = state.textSnapshots.filter((shot) => !/history-(before-restore|restore-preview)|after-history-restore/.test(shot.label));
+      mutateScenario(
+        state,
+        "rollbackCleanup",
+        "pass",
+        "Adversarial fixture: rollback cleanup marked pass without restore proof.",
+      );
+      state.screenshots = state.screenshots.filter(
+        (shot) =>
+          !/history-(before-restore|restore-preview)|after-history-restore/.test(shot.label),
+      );
+      state.textSnapshots = state.textSnapshots.filter(
+        (shot) =>
+          !/history-(before-restore|restore-preview)|after-history-restore/.test(shot.label),
+      );
     },
     evaluate(state) {
-      return state.scenarios.visualProofQuality.status === 'fail' && /Rollback cleanup/i.test(state.scenarios.visualProofQuality.notes.join(' '));
+      return (
+        state.scenarios.visualProofQuality.status === "fail" &&
+        /Rollback cleanup/i.test(state.scenarios.visualProofQuality.notes.join(" "))
+      );
     },
   },
   {
     id: 21,
-    slug: 'activation-admin-auth-blocker',
-    name: 'Activation waits for macOS administrator authentication',
-    expected: 'saveFlow fails with an administrator-authentication blocker instead of timing out as a generic slow build.',
+    slug: "activation-admin-auth-blocker",
+    name: "Activation waits for macOS administrator authentication",
+    expected:
+      "saveFlow fails with an administrator-authentication blocker instead of timing out as a generic slow build.",
     mutate({ state }) {
-      mutateScenario(state, 'saveFlow', 'fail', 'Build & Test reached macOS activation, but the remote lane requires an interactive administrator authentication prompt before Step 3 can appear.');
-      mutateScenario(state, 'rollbackCleanup', 'inconclusive', 'Rollback cleanup was not attempted because activation was blocked by macOS administrator authentication.');
-      mutateScenario(state, 'discard', 'inconclusive', 'Discard was not exercised because activation was blocked by macOS administrator authentication; external disposable-state restore handles cleanup.');
+      mutateScenario(
+        state,
+        "saveFlow",
+        "fail",
+        "Build & Test reached macOS activation, but the remote lane requires an interactive administrator authentication prompt before Step 3 can appear.",
+      );
+      mutateScenario(
+        state,
+        "rollbackCleanup",
+        "inconclusive",
+        "Rollback cleanup was not attempted because activation was blocked by macOS administrator authentication.",
+      );
+      mutateScenario(
+        state,
+        "discard",
+        "inconclusive",
+        "Discard was not exercised because activation was blocked by macOS administrator authentication; external disposable-state restore handles cleanup.",
+      );
     },
     evaluate(state) {
       return (
-        state.scenarios.saveFlow.status === 'fail' &&
-        /administrator authentication|admin/i.test(state.scenarios.saveFlow.notes.join(' ')) &&
-        state.scenarios.rollbackCleanup.status === 'inconclusive'
+        state.scenarios.saveFlow.status === "fail" &&
+        /administrator authentication|admin/i.test(state.scenarios.saveFlow.notes.join(" ")) &&
+        state.scenarios.rollbackCleanup.status === "inconclusive"
       );
     },
   },
   {
     id: 22,
-    slug: 'v2-weak-evidence-not-strong',
-    name: 'V2 evidence strength does not overstate API Keys proof',
-    expected: 'settingsAPIKeys is weak for historical text-only evidence or visual-supported when a masked screenshot is present, but not strong.',
+    slug: "v2-weak-evidence-not-strong",
+    name: "V2 evidence strength does not overstate API Keys proof",
+    expected:
+      "settingsAPIKeys is weak for historical text-only evidence or visual-supported when a masked screenshot is present, but not strong.",
     evaluate(state) {
       const contract = state.v2?.scenarioContracts?.settingsAPIKeys;
-      return contract?.legacyEvidenceGrade === 'text-confirmed' && ['weak', 'visual-supported'].includes(contract?.evidenceStrength);
+      return (
+        contract?.legacyEvidenceGrade === "text-confirmed" &&
+        ["weak", "visual-supported"].includes(contract?.evidenceStrength)
+      );
     },
   },
   {
     id: 23,
-    slug: 'v2-failure-taxonomy-provider',
-    name: 'V2 provider failure taxonomy',
-    expected: 'review failure is classified as provider when notes indicate OpenRouter billing/credits.',
+    slug: "v2-failure-taxonomy-provider",
+    name: "V2 provider failure taxonomy",
+    expected:
+      "review failure is classified as provider when notes indicate OpenRouter billing/credits.",
     mutate({ state }) {
-      mutateScenario(state, 'review', 'fail', 'OpenRouter provider billing limit prevented Review.');
+      mutateScenario(
+        state,
+        "review",
+        "fail",
+        "OpenRouter provider billing limit prevented Review.",
+      );
     },
     evaluate(state) {
-      return state.v2?.scenarioContracts?.review?.failureClass === 'provider';
+      return state.v2?.scenarioContracts?.review?.failureClass === "provider";
     },
   },
   {
     id: 24,
-    slug: 'v2-failure-taxonomy-credential',
-    name: 'V2 credential failure taxonomy',
-    expected: 'review failure is classified as credential when notes indicate missing/invalid API key.',
+    slug: "v2-failure-taxonomy-credential",
+    name: "V2 credential failure taxonomy",
+    expected:
+      "review failure is classified as credential when notes indicate missing/invalid API key.",
     mutate({ state }) {
-      mutateScenario(state, 'review', 'fail', 'The real provider call failed because nixmac could not access an invalid API key.');
+      mutateScenario(
+        state,
+        "review",
+        "fail",
+        "The real provider call failed because nixmac could not access an invalid API key.",
+      );
     },
     evaluate(state) {
-      return state.v2?.scenarioContracts?.review?.failureClass === 'credential';
+      return state.v2?.scenarioContracts?.review?.failureClass === "credential";
     },
   },
   {
     id: 25,
-    slug: 'v2-accessibility-risk',
-    name: 'V2 accessibility dependency audit flags API Keys as elevated risk',
-    expected: 'API Keys has high risk for historical text-only evidence or medium risk when masked screenshot evidence is present.',
+    slug: "v2-accessibility-risk",
+    name: "V2 accessibility dependency audit flags API Keys as elevated risk",
+    expected:
+      "API Keys has high risk for historical text-only evidence or medium risk when masked screenshot evidence is present.",
     evaluate(state, runDir) {
-      const html = readFileSync(path.join(runDir, 'index.html'), 'utf8');
-      return ['high', 'medium'].includes(state.v2?.scenarioContracts?.settingsAPIKeys?.accessibilityRisk) && /Evidence Quality/i.test(html) && /id="accessibility-risk"/i.test(html);
+      const html = readFileSync(path.join(runDir, "index.html"), "utf8");
+      return (
+        ["high", "medium"].includes(
+          state.v2?.scenarioContracts?.settingsAPIKeys?.accessibilityRisk,
+        ) &&
+        /Evidence Quality/i.test(html) &&
+        /id="accessibility-risk"/i.test(html)
+      );
     },
   },
   {
     id: 26,
-    slug: 'v2-annotation-geometry',
-    name: 'V2 annotation geometry guard',
-    expected: 'visualProofQuality fails if a screenshot overlay annotation is outside image bounds.',
+    slug: "v2-annotation-geometry",
+    name: "V2 annotation geometry guard",
+    expected:
+      "visualProofQuality fails if a screenshot overlay annotation is outside image bounds.",
     mutate({ state }) {
       state.screenshots.push({
-        label: 'adversarial-out-of-bounds-annotation',
-        path: state.screenshots.find((shot) => shot.label === 'launch')?.path || 'screenshots/01-launch.png',
-        note: 'Adversarial fixture: annotation geometry should be bounded.',
+        label: "adversarial-out-of-bounds-annotation",
+        path:
+          state.screenshots.find((shot) => shot.label === "launch")?.path ||
+          "screenshots/01-launch.png",
+        note: "Adversarial fixture: annotation geometry should be bounded.",
         capturedAt: new Date().toISOString(),
       });
       state.scenarios.adversarialOutOfBounds = {
-        label: 'Adversarial out-of-bounds annotation',
-        status: 'pass',
-        notes: ['Adversarial fixture: this scenario uses a bad annotation.'],
+        label: "Adversarial out-of-bounds annotation",
+        status: "pass",
+        notes: ["Adversarial fixture: this scenario uses a bad annotation."],
       };
     },
     evaluate(state) {
-      return state.scenarios.visualProofQuality.status === 'fail' && /outside image bounds/i.test(state.scenarios.visualProofQuality.notes.join(' '));
+      return (
+        state.scenarios.visualProofQuality.status === "fail" &&
+        /outside image bounds/i.test(state.scenarios.visualProofQuality.notes.join(" "))
+      );
     },
   },
   {
     id: 27,
-    slug: 'visual-assertion-baseline-calibration',
-    name: 'Visual assertion baseline calibration stays green',
-    expected: 'known-good baseline artifacts pass all binding screenshot visual assertions.',
+    slug: "visual-assertion-baseline-calibration",
+    name: "Visual assertion baseline calibration stays green",
+    expected: "known-good baseline artifacts pass all binding screenshot visual assertions.",
     evaluate(state) {
       return (
-        state.verdict === 'pass' &&
+        state.verdict === "pass" &&
         Array.isArray(state.visualAssertions) &&
         state.visualAssertions.length > 0 &&
-        state.visualAssertions.every((assertion) => assertion.status === 'pass') &&
-        state.scenarios.visualProofQuality.status === 'pass'
+        state.visualAssertions.every((assertion) => assertion.status === "pass") &&
+        state.scenarios.visualProofQuality.status === "pass"
       );
     },
   },
   {
     id: 28,
-    slug: 'secret-masking-violation',
-    name: 'Secret masking violation fails visual proof quality',
-    expected: 'visualProofQuality fails if an API Keys masking violation is recorded.',
+    slug: "secret-masking-violation",
+    name: "Secret masking violation fails visual proof quality",
+    expected: "visualProofQuality fails if an API Keys masking violation is recorded.",
     mutate({ state }) {
-      state.secretMaskingViolations = ['adversarial fixture: API Keys raw accessibility text contained an unmasked key-like secret.'];
+      state.secretMaskingViolations = [
+        "adversarial fixture: API Keys raw accessibility text contained an unmasked key-like secret.",
+      ];
     },
     evaluate(state) {
-      return state.verdict === 'fail' && state.scenarios.visualProofQuality.status === 'fail' && /Secret masking violation/i.test(state.scenarios.visualProofQuality.notes.join(' '));
+      return (
+        state.verdict === "fail" &&
+        state.scenarios.visualProofQuality.status === "fail" &&
+        /Secret masking violation/i.test(state.scenarios.visualProofQuality.notes.join(" "))
+      );
     },
   },
 ];
@@ -556,11 +789,15 @@ function runCase(root, baseRun, definition) {
       name: definition.name,
       slug: definition.slug,
       expected: definition.expected,
-      verdict: caught ? 'caught' : 'missed',
-      scenarioStatuses: Object.fromEntries(Object.entries(renderedState.scenarios).map(([key, value]) => [key, value.status])),
-      report: path.relative(REPO_ROOT, path.join(runDir, 'index.html')),
-      state: path.relative(REPO_ROOT, path.join(runDir, 'state.regenerated.json')),
-      notes: caught ? 'Expected failure was surfaced by the E2E/reporting suite.' : 'Expected failure was not surfaced correctly.',
+      verdict: caught ? "caught" : "missed",
+      scenarioStatuses: Object.fromEntries(
+        Object.entries(renderedState.scenarios).map(([key, value]) => [key, value.status]),
+      ),
+      report: path.relative(REPO_ROOT, path.join(runDir, "index.html")),
+      state: path.relative(REPO_ROOT, path.join(runDir, "state.regenerated.json")),
+      notes: caught
+        ? "Expected failure was surfaced by the E2E/reporting suite."
+        : "Expected failure was not surfaced correctly.",
     };
   } catch (error) {
     return {
@@ -568,8 +805,8 @@ function runCase(root, baseRun, definition) {
       name: definition.name,
       slug: definition.slug,
       expected: definition.expected,
-      verdict: 'blocked',
-      report: path.relative(REPO_ROOT, path.join(runDir, 'index.html')),
+      verdict: "blocked",
+      report: path.relative(REPO_ROOT, path.join(runDir, "index.html")),
       notes: error instanceof Error ? error.message : String(error),
     };
   } finally {
@@ -578,14 +815,15 @@ function runCase(root, baseRun, definition) {
 }
 
 function renderAggregate(root, results, baseRun) {
-  const caught = results.filter((item) => item.verdict === 'caught').length;
-  const missed = results.filter((item) => item.verdict === 'missed').length;
-  const blocked = results.filter((item) => item.verdict === 'blocked').length;
+  const caught = results.filter((item) => item.verdict === "caught").length;
+  const missed = results.filter((item) => item.verdict === "missed").length;
+  const blocked = results.filter((item) => item.verdict === "blocked").length;
   const rows = results
     .map(
-      (item) => `<tr><td>${item.id}</td><td>${escapeHtml(item.name)}</td><td><span class="verdict ${escapeHtml(item.verdict)}">${escapeHtml(item.verdict)}</span></td><td>${escapeHtml(item.expected)}</td><td>${escapeHtml(item.notes)}</td><td><a href="${escapeHtml(path.relative(root, path.join(REPO_ROOT, item.report)).replaceAll(path.sep, '/'))}">case report</a></td></tr>`,
+      (item) =>
+        `<tr><td>${item.id}</td><td>${escapeHtml(item.name)}</td><td><span class="verdict ${escapeHtml(item.verdict)}">${escapeHtml(item.verdict)}</span></td><td>${escapeHtml(item.expected)}</td><td>${escapeHtml(item.notes)}</td><td><a href="${escapeHtml(path.relative(root, path.join(REPO_ROOT, item.report)).replaceAll(path.sep, "/"))}">case report</a></td></tr>`,
     )
-    .join('\n');
+    .join("\n");
   const html = `<!doctype html>
 <html>
 <head>
@@ -632,8 +870,8 @@ function renderAggregate(root, results, baseRun) {
 </main>
 </body>
 </html>`;
-  writeFileSync(path.join(root, 'index.html'), html);
-  writeJson(path.join(root, 'summary.json'), {
+  writeFileSync(path.join(root, "index.html"), html);
+  writeJson(path.join(root, "summary.json"), {
     generatedAt: new Date().toISOString(),
     baseRun: path.relative(REPO_ROOT, baseRun),
     counts: { caught, missed, blocked, total: results.length },
@@ -643,26 +881,27 @@ function renderAggregate(root, results, baseRun) {
 
 async function main() {
   const args = process.argv.slice(2);
-  if (args.includes('--help') || args.includes('-h')) {
+  if (args.includes("--help") || args.includes("-h")) {
     usage();
     return;
   }
   const baseRun = resolveBaseRun(args);
-  if (!existsSync(path.join(baseRun, 'state.json'))) throw new Error(`Base run is missing state.json: ${baseRun}`);
+  if (!existsSync(path.join(baseRun, "state.json")))
+    throw new Error(`Base run is missing state.json: ${baseRun}`);
   const root = path.join(OUT_ROOT, timestampSlug());
   mkdirSync(root, { recursive: true });
   const results = caseDefinitions.map((definition) => runCase(root, baseRun, definition));
   renderAggregate(root, results, baseRun);
-  const uncaught = results.filter((result) => result.verdict !== 'caught');
+  const uncaught = results.filter((result) => result.verdict !== "caught");
   if (uncaught.length > 0) {
     console.error(
       `Adversarial validation did not catch all cases: ${uncaught
         .map((result) => `${result.id}:${result.verdict}`)
-        .join(', ')}. Check the aggregate report for details.`,
+        .join(", ")}. Check the aggregate report for details.`,
     );
     process.exitCode = 1;
   }
-  console.log(path.join(root, 'index.html'));
+  console.log(path.join(root, "index.html"));
 }
 
 main().catch((error) => {

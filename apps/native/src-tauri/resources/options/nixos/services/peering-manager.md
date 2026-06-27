@@ -5,7 +5,7 @@
 All options under `services.peering-manager`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.peering-manager.enable` | | |
 | `services.peering-manager.enableLdap` | | |
 | `services.peering-manager.enableOidc` | | |

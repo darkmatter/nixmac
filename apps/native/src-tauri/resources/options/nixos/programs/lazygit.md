@@ -5,7 +5,7 @@
 All options under `programs.lazygit`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `programs.lazygit.enable` | | |
 | `programs.lazygit.package` | | |
 | `programs.lazygit.settings` | | |

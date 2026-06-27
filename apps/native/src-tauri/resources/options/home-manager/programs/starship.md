@@ -5,7 +5,7 @@
 All options under `programs.starship`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.starship.configPath` | `string` | Relative path to the user’s home directory where the Starship config should be stored. |
 | `programs.starship.enable` | `boolean` | Whether to enable starship. |
 | `programs.starship.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |

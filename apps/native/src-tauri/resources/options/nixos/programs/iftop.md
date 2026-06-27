@@ -5,5 +5,5 @@
 All options under `programs.iftop`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `programs.iftop.enable` | | |

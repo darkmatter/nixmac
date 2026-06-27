@@ -5,7 +5,7 @@
 All options under `services.nominatim`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------------- | ---- | ----------- |
 | `services.nominatim.database.apiUser` | | |
 | `services.nominatim.database.dbname` | | |
 | `services.nominatim.database.extraConnectionParams` | | |

@@ -1,7 +1,8 @@
 import { EVOLUTION_CANCELLED_MSG } from "@/lib/constants";
-import { useUiState } from "@/stores/ui-state";
+import { uiActions, useUiState } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import { getTelemetry } from "@/lib/telemetry/instance";
+import { client } from "@/lib/orpc";
 
 /**
  * Hook for the evolution operation.
@@ -14,16 +15,17 @@ import { getTelemetry } from "@/lib/telemetry/instance";
  * `darwin:evolve:event` payload, handled by `viewmodel/evolution.ts`.
  */
 const evolveFromManual = async () => {
-  await tauriAPI.darwin.evolveFromManual();
+  await client.darwin.evolveFromManual();
 };
 
 const buildCheck = async () => {
-  return await tauriAPI.darwin.buildCheck();
+  return await client.darwin.buildCheck();
 };
 
 const refreshPromptHistory = async (prompt: string) => {
   // The backend mutation emits `prompt_history_changed`; the sync module
   // mirrors the payload into the ViewModel.
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   await tauriAPI.promptHistory.add(prompt).catch(console.error);
 };
 
@@ -36,13 +38,13 @@ const handleEvolve = async () => {
 
   await refreshPromptHistory(ui.evolvePrompt.trim());
 
-  ui.setProcessing(true, "evolve");
-  ui.setGenerating(true);
-  ui.setError(null);
-  ui.clearLogs();
-  ui.setConversationalResponse(null);
-  ui.setEvolutionTelemetry(null);
-  ui.appendLog(`\n> Evolving: "${ui.evolvePrompt}"\n`);
+  uiActions.setProcessing(true, "evolve");
+  uiActions.setGenerating(true);
+  uiActions.setError(null);
+  uiActions.clearLogs();
+  uiActions.setConversationalResponse(null);
+  uiActions.setEvolutionTelemetry(null);
+  uiActions.appendLog(`\n> Evolving: "${ui.evolvePrompt}"\n`);
 
   // Track evolution start. The evolve event stream itself is folded into
   // the ViewModel by `viewmodel/evolution.ts` (and reset on the run's
@@ -54,9 +56,9 @@ const handleEvolve = async () => {
     // git/evolve/change-map cells and emits the terminal `complete` event
     // (with telemetry and any conversational response) before this resolves;
     // the viewmodel sync modules mirror everything.
-    await tauriAPI.darwin.evolve(ui.evolvePrompt);
+    await client.darwin.evolve({ description: ui.evolvePrompt });
 
-    ui.setEvolvePrompt("");
+    uiActions.setEvolvePrompt("");
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
     // User-initiated cancellation isn't an error — backup still ran (and the
@@ -64,7 +66,7 @@ const handleEvolve = async () => {
     const isCancelled = msg.includes(EVOLUTION_CANCELLED_MSG);
 
     if (isCancelled) {
-      useUiState.getState().appendLog("✗ Evolution cancelled\n");
+      uiActions.appendLog("✗ Evolution cancelled\n");
     } else {
       console.error("[useEvolve] Evolution failed:", {
         error: e,
@@ -72,16 +74,23 @@ const handleEvolve = async () => {
         stack: (e as Error)?.stack,
         timestamp: new Date().toISOString(),
       });
-      useUiState.getState().setError(msg);
-      useUiState.getState().appendLog(`✗ Error: ${msg}\n`);
+      uiActions.setError(msg);
+      uiActions.appendLog(`✗ Error: ${msg}\n`);
 
       // Track evolution failure
-      const stage = msg.toLowerCase().includes("build") ? "build" : msg.toLowerCase().includes("apply") ? "apply" : "agent";
-      getTelemetry().captureEvent({ name: "evolve_failed", props: { stage: stage as "build" | "agent" | "apply" } });
+      const stage = msg.toLowerCase().includes("build")
+        ? "build"
+        : msg.toLowerCase().includes("apply")
+          ? "apply"
+          : "agent";
+      getTelemetry().captureEvent({
+        name: "evolve_failed",
+        props: { stage: stage as "build" | "agent" | "apply" },
+      });
     }
   } finally {
-    useUiState.getState().setGenerating(false);
-    useUiState.getState().setProcessing(false, "evolve");
+    uiActions.setGenerating(false);
+    uiActions.setProcessing(false, "evolve");
   }
 };
 

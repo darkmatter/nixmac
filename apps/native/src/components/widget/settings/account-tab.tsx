@@ -2,7 +2,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { tauriAPI } from "@/ipc/api";
 import type { AuthStatus, SyncRemoteStatus } from "@/ipc/types";
-import { CheckCircle2, CloudDownload, CloudUpload, LogOut, RefreshCw, UserCircle2 } from "lucide-react";
+import {
+  CheckCircle2,
+  CloudDownload,
+  CloudUpload,
+  LogOut,
+  RefreshCw,
+  UserCircle2,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 type Busy = "idle" | "signing-in" | "signing-out" | "saving-url" | "pushing" | "pulling" | "status";
@@ -18,6 +25,7 @@ export function AccountTab() {
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     tauriAPI.account
       .status()
       .then((status) => {
@@ -42,6 +50,7 @@ export function AccountTab() {
 
   const onSignIn = () =>
     run("signing-in", async () => {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       const status = await tauriAPI.account.signIn(email.trim(), password);
       setAuth(status);
       setPassword("");
@@ -50,6 +59,7 @@ export function AccountTab() {
 
   const onSignOut = () =>
     run("signing-out", async () => {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       const status = await tauriAPI.account.signOut();
       setAuth(status);
       setRemote(null);
@@ -57,6 +67,7 @@ export function AccountTab() {
 
   const onSaveServerUrl = () =>
     run("saving-url", async () => {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       const status = await tauriAPI.account.setServerUrl(serverUrl.trim());
       setAuth(status);
       // Reflect the backend-normalized URL (e.g. trailing slash trimmed) so the
@@ -67,17 +78,20 @@ export function AccountTab() {
 
   const onRefreshStatus = () =>
     run("status", async () => {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       setRemote(await tauriAPI.sync.status());
     });
 
   const onPush = () =>
     run("pushing", async () => {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       const result = await tauriAPI.sync.push();
       setNotice(result.message);
     });
 
   const onPull = () =>
     run("pulling", async () => {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       const result = await tauriAPI.sync.pull();
       setNotice(result.message);
     });

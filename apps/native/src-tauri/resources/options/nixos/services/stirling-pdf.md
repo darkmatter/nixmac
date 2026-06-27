@@ -5,7 +5,7 @@
 All options under `services.stirling-pdf`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.stirling-pdf.enable` | | |
 | `services.stirling-pdf.environment` | | |
 | `services.stirling-pdf.environmentFiles` | | |

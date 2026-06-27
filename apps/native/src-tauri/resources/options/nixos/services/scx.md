@@ -5,7 +5,7 @@
 All options under `services.scx`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.scx.enable` | | |
 | `services.scx.extraArgs` | | |
 | `services.scx.package` | | |

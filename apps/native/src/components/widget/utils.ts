@@ -30,8 +30,8 @@ export function computeCurrentStep(state: CurrentStepState): WidgetStep {
   }
 
   if (
-    (state.nixInstalled !== true || state.darwinRebuildAvailable !== true)
-    && settings.NIX_INSTALLED_OVERRIDE !== true // bypass used for testing
+    (state.nixInstalled !== true || state.darwinRebuildAvailable !== true) &&
+    settings.nixInstalledOverride !== true // bypass used for testing
   ) {
     return "nix-setup";
   }
@@ -67,7 +67,6 @@ export function getDirectory(path: string): string {
   return parts.slice(0, -1).join("/");
 }
 
-
 // =============================================================================
 // SUMMARY CATEGORY COLORS
 // =============================================================================
@@ -81,31 +80,31 @@ export type CategoryStyle = {
 
 const EMERALD: CategoryStyle = {
   text: "text-emerald-500",
-  bg: "bg-emerald-500/[0.08]",
+  bg: "bg-emerald-500/8",
   dot: "bg-emerald-500",
   border: "border-emerald-500/40",
 };
 const BLUE: CategoryStyle = {
   text: "text-blue-500",
-  bg: "bg-blue-500/[0.08]",
+  bg: "bg-blue-500/8",
   dot: "bg-blue-500",
   border: "border-blue-500/40",
 };
 const AMBER: CategoryStyle = {
   text: "text-amber-500",
-  bg: "bg-amber-500/[0.08]",
+  bg: "bg-amber-500/8",
   dot: "bg-amber-500",
   border: "border-amber-500/40",
 };
 const VIOLET: CategoryStyle = {
   text: "text-violet-500",
-  bg: "bg-violet-500/[0.08]",
+  bg: "bg-violet-500/8",
   dot: "bg-violet-500",
   border: "border-violet-500/40",
 };
 const GRAY: CategoryStyle = {
   text: "text-gray-500",
-  bg: "bg-gray-500/[0.08]",
+  bg: "bg-gray-500/8",
   dot: "bg-gray-500",
   border: "border-gray-500/40",
 };
@@ -114,15 +113,7 @@ const CATEGORY_PALETTE: CategoryStyle[] = [EMERALD, BLUE, AMBER, VIOLET, GRAY];
 
 const KEYWORD_STYLES: Array<{ keywords: string[]; style: CategoryStyle }> = [
   {
-    keywords: [
-      "config",
-      "settings",
-      "option",
-      "nix",
-      "darwin",
-      "home",
-      "profile",
-    ],
+    keywords: ["config", "settings", "option", "nix", "darwin", "home", "profile"],
     style: EMERALD,
   },
   {
@@ -160,9 +151,7 @@ export function buildColorMap(changeMap: SemanticChangeMap): ColorMap {
   const assign = (key: string, title: string, forceColor: boolean) => {
     const lower = title.toLowerCase();
     const preferred =
-      KEYWORD_STYLES.find(({ keywords }) =>
-        keywords.some((k) => lower.includes(k)),
-      )?.style ?? null;
+      KEYWORD_STYLES.find(({ keywords }) => keywords.some((k) => lower.includes(k)))?.style ?? null;
 
     if (preferred && !used.has(preferred)) {
       map.set(key, preferred);
@@ -178,8 +167,7 @@ export function buildColorMap(changeMap: SemanticChangeMap): ColorMap {
     }
   };
 
-  for (const g of changeMap.groups)
-    assign(String(g.summary.id), g.summary.title, true);
+  for (const g of changeMap.groups) assign(String(g.summary.id), g.summary.title, true);
   for (const s of changeMap.singles) assign(s.hash, s.title, false);
 
   return map;
@@ -205,9 +193,9 @@ type ChangeTypeStyle = {
 
 export const CHANGE_TYPE_STYLES: Record<ChangeType, ChangeTypeStyle> = {
   new: { icon: FilePlus, bg: "bg-emerald-300/[0.07]", iconColor: "text-emerald-400" },
-  edited: { icon: FilePen, bg: "bg-white/[0.06]", iconColor: "text-neutral-400" },
+  edited: { icon: FilePen, bg: "bg-white/6", iconColor: "text-neutral-400" },
   removed: { icon: FileX, bg: "bg-red-500/[0.07]", iconColor: "text-red-400" },
-  renamed: { icon: FileCode, bg: "bg-white/[0.06]", iconColor: "text-neutral-400" },
+  renamed: { icon: FileCode, bg: "bg-white/6", iconColor: "text-neutral-400" },
 };
 
 export type ChangeWithRichType = Change & {
@@ -237,8 +225,7 @@ function findRenamePairs(changes: ChangeWithRichType[]): RenamePair[] {
   const newFiles = changes.filter((c) => c.changeType === "new");
   for (const newFile of newFiles) {
     const removedFiles = changes.filter(
-      (c) =>
-        c.shortFilename === newFile.shortFilename && c.changeType === "removed",
+      (c) => c.shortFilename === newFile.shortFilename && c.changeType === "removed",
     );
     if (removedFiles.length === 1) {
       pairs.push({ oldChange: removedFiles[0], newChange: newFile });
@@ -247,9 +234,7 @@ function findRenamePairs(changes: ChangeWithRichType[]): RenamePair[] {
   return pairs;
 }
 
-export function categorizeRenamed(
-  changes: ChangeWithRichType[],
-): ChangeWithRichType[] {
+export function categorizeRenamed(changes: ChangeWithRichType[]): ChangeWithRichType[] {
   const pairs = findRenamePairs(changes);
   const consumedRemovals = new Set<string>();
   const renamedChanges: ChangeWithRichType[] = [];
@@ -277,9 +262,7 @@ function combineChangeTypes(a: ChangeType, b: ChangeType): ChangeType {
   return "edited";
 }
 
-export function summarizeChangesByFile(
-  changes: ChangeWithRichType[],
-): ChangeFileSummary[] {
+export function summarizeChangesByFile(changes: ChangeWithRichType[]): ChangeFileSummary[] {
   const byFile = new Map<string, ChangeFileSummary>();
 
   for (const change of changes) {
@@ -293,10 +276,7 @@ export function summarizeChangesByFile(
 
     existing.hunkCount += 1;
     existing.lineCount += change.lineCount;
-    existing.changeType = combineChangeTypes(
-      existing.changeType,
-      change.changeType,
-    );
+    existing.changeType = combineChangeTypes(existing.changeType, change.changeType);
   }
 
   return Array.from(byFile.values());

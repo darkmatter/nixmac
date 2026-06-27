@@ -5,5 +5,5 @@
 All options under `services.stratis`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.stratis.enable` | | |

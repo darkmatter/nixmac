@@ -5,7 +5,7 @@
 All options under `services.minetest-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.minetest-server.config` | | |
 | `services.minetest-server.configPath` | | |
 | `services.minetest-server.enable` | | |

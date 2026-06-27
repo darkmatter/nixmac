@@ -5,7 +5,7 @@
 All options under `services.taskserver`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------ | ---- | ----------- |
 | `services.taskserver.allowedClientIDs` | | |
 | `services.taskserver.ciphers` | | |
 | `services.taskserver.config` | | |

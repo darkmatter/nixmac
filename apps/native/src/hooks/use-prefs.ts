@@ -6,6 +6,7 @@ export function usePrefs() {
   // and the preferences sync module mirrors it into the ViewModel.
   const setPref = async (key: BoolPrefKey, value: boolean) => {
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.ui.setPrefs({ [key]: value });
     } catch (error) {
       console.error(`[prefs] failed to set ${key}:`, error);

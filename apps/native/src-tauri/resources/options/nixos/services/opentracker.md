@@ -5,7 +5,7 @@
 All options under `services.opentracker`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.opentracker.enable` | | |
 | `services.opentracker.extraOptions` | | |
 | `services.opentracker.package` | | |

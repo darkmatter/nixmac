@@ -5,7 +5,7 @@
 All options under `services.btrfs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.btrfs.autoScrub.enable` | | |
 | `services.btrfs.autoScrub.fileSystems` | | |
 | `services.btrfs.autoScrub.interval` | | |

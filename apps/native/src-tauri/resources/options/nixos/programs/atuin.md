@@ -5,7 +5,7 @@
 All options under `programs.atuin`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `programs.atuin.daemon.enable` | | |
 | `programs.atuin.daemon.logLevel` | | |
 | `programs.atuin.enable` | | |

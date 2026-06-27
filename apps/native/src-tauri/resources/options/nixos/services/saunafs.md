@@ -5,7 +5,7 @@
 All options under `services.saunafs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.saunafs.chunkserver.enable` | | |
 | `services.saunafs.chunkserver.hdds` | | |
 | `services.saunafs.chunkserver.openFirewall` | | |

@@ -1,5 +1,6 @@
-import { useUiState } from "@/stores/ui-state";
-import { tauriAPI } from "@/ipc/api";
+import { uiActions } from "@nixmac/state";
+import type { FileDiffContents } from "@/ipc/types";
+import { client } from "@/lib/orpc";
 import { refreshGitSnapshot } from "@/viewmodel/git";
 import { refreshHostsSnapshot } from "@/viewmodel/preferences";
 import { toast } from "sonner";
@@ -8,8 +9,10 @@ import { toast } from "sonner";
  * Hook for git operations.
  * Provides functions for refreshing git status changes.
  */
-export const prefetchFileDiffContents = async (status: { changes: { filename: string }[] } | null) => {
-  const setFileDiffContents = useUiState.getState().setFileDiffContents;
+export const prefetchFileDiffContents = async (
+  status: { changes: { filename: string }[] } | null,
+) => {
+  const setFileDiffContents = uiActions.setFileDiffContents;
   if (!status) {
     setFileDiffContents({});
     return;
@@ -20,19 +23,27 @@ export const prefetchFileDiffContents = async (status: { changes: { filename: st
     return;
   }
   try {
-    const result = await tauriAPI.git.fileDiffContents(filenames);
-    setFileDiffContents(result ?? {});
+    const result = await client.git.fileDiffContents({ filenames });
+    setFileDiffContents(compactFileDiffContents(result));
   } catch {
     setFileDiffContents({});
   }
 };
+
+function compactFileDiffContents(
+  contents: Partial<Record<string, FileDiffContents>>,
+): Record<string, FileDiffContents> {
+  return Object.fromEntries(
+    Object.entries(contents).filter((entry): entry is [string, FileDiffContents] => entry[1] != null),
+  );
+}
 
 export const refreshGitStatus = async () => {
   try {
     await refreshGitSnapshot();
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
-    useUiState.getState().setError(msg);
+    uiActions.setError(msg);
     await refreshHostsSnapshot();
   }
 };
@@ -43,23 +54,22 @@ const getInitialStatus = async () => {
 };
 
 const handleCommit = async ({ message }: { message: string }) => {
-  const ui = useUiState.getState();
-  ui.setProcessing(true, "merge");
-  ui.appendLog(`\n> Committing changes...\n`);
+  uiActions.setProcessing(true, "merge");
+  uiActions.appendLog(`\n> Committing changes...\n`);
 
   try {
     // The backend clears the evolve state, refreshes the git-state cell, and
     // resets the change-map cell; the `*_changed` events mirror everything.
-    await tauriAPI.git.commit(message);
-    useUiState.getState().appendLog("✓ Committed successfully\n");
-    useUiState.getState().setError(null);
+    await client.git.commit({ message });
+    uiActions.appendLog("✓ Committed successfully\n");
+    uiActions.setError(null);
     toast.success("Committed successfully");
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
-    useUiState.getState().setError(msg);
-    useUiState.getState().appendLog(`✗ Error: ${msg}\n`);
+    uiActions.setError(msg);
+    uiActions.appendLog(`✗ Error: ${msg}\n`);
   } finally {
-    useUiState.getState().setProcessing(false);
+    uiActions.setProcessing(false);
   }
 };
 

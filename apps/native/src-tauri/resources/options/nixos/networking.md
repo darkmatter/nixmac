@@ -5,7 +5,7 @@
 All options under `networking`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------------------- | ---- | ----------- |
 | `networking.bonds` | | |
 | `networking.bridges` | | |
 | `networking.connman` | | |

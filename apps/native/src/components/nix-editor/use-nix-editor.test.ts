@@ -38,28 +38,30 @@ const h = vi.hoisted(() => {
     editorValue: "",
   };
 
-  const monacoCreate = vi.fn((_container: HTMLElement, options: { value: string, language?: string }) => {
-    state.editorValue = options.value;
-    state.changeHandler = null;
-    state.saveCommandHandler = null;
+  const monacoCreate = vi.fn(
+    (_container: HTMLElement, options: { value: string; language?: string }) => {
+      state.editorValue = options.value;
+      state.changeHandler = null;
+      state.saveCommandHandler = null;
 
-    const editor: FakeEditor = {
-      getValue: vi.fn(() => state.editorValue),
-      onDidChangeModelContent: vi.fn((fn: () => void) => {
-        state.changeHandler = fn;
-        return { dispose: vi.fn() };
-      }),
-      addCommand: vi.fn((_keybinding: number, fn: () => void | Promise<void>) => {
-        state.saveCommandHandler = fn;
-      }),
-      dispose: vi.fn(),
-      getModel: vi.fn(() => ({})),
-      _triggerChange: () => state.changeHandler?.(),
-      _triggerSaveCommand: () => state.saveCommandHandler?.(),
-    };
-    state.lastEditor = editor;
-    return editor;
-  });
+      const editor: FakeEditor = {
+        getValue: vi.fn(() => state.editorValue),
+        onDidChangeModelContent: vi.fn((fn: () => void) => {
+          state.changeHandler = fn;
+          return { dispose: vi.fn() };
+        }),
+        addCommand: vi.fn((_keybinding: number, fn: () => void | Promise<void>) => {
+          state.saveCommandHandler = fn;
+        }),
+        dispose: vi.fn(),
+        getModel: vi.fn(() => ({})),
+        _triggerChange: () => state.changeHandler?.(),
+        _triggerSaveCommand: () => state.saveCommandHandler?.(),
+      };
+      state.lastEditor = editor;
+      return editor;
+    },
+  );
 
   const initNixGrammar = vi.fn(async () => {});
   const bridgeMonacoToLsp = vi.fn(() => vi.fn());
@@ -107,7 +109,8 @@ vi.mock("monaco-editor", () => ({
 }));
 
 vi.mock("@/lib/nix-grammar", () => ({
-  initNixGrammar: (...args: unknown[]) => h.initNixGrammar.apply(null, args as Parameters<typeof h.initNixGrammar>),
+  initNixGrammar: (...args: unknown[]) =>
+    h.initNixGrammar.apply(null, args as Parameters<typeof h.initNixGrammar>),
 }));
 
 vi.mock("@/lib/lsp-client", () => ({
@@ -115,7 +118,8 @@ vi.mock("@/lib/lsp-client", () => ({
 }));
 
 vi.mock("@/lib/lsp-monaco-bridge", () => ({
-  bridgeMonacoToLsp: (...args: unknown[]) => h.bridgeMonacoToLsp(...(args as Parameters<typeof h.bridgeMonacoToLsp>)),
+  bridgeMonacoToLsp: (...args: unknown[]) =>
+    h.bridgeMonacoToLsp(...(args as Parameters<typeof h.bridgeMonacoToLsp>)),
 }));
 
 vi.mock("@/ipc/api", () => ({
@@ -225,9 +229,7 @@ describe("useNixEditor", () => {
   it("skips LSP startup for non-Nix files and infers language from the extension", async () => {
     const { ref } = makeContainerRef();
 
-    const { result } = renderHook(() =>
-      useNixEditor({ filePath: "README.md", containerRef: ref }),
-    );
+    const { result } = renderHook(() => useNixEditor({ filePath: "README.md", containerRef: ref }));
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -340,9 +342,7 @@ describe("useNixEditor", () => {
     const onSave = vi.fn();
     const { ref } = makeContainerRef();
 
-    renderHook(() =>
-      useNixEditor({ filePath: "configuration.nix", containerRef: ref, onSave }),
-    );
+    renderHook(() => useNixEditor({ filePath: "configuration.nix", containerRef: ref, onSave }));
 
     await waitFor(() => expect(h.state.lastEditor).not.toBeNull());
     await waitFor(() => expect(h.state.saveCommandHandler).not.toBeNull());

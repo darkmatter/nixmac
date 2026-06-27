@@ -5,7 +5,7 @@
 All options under `services.haste-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.haste-server.enable` | | |
 | `services.haste-server.openFirewall` | | |
 | `services.haste-server.settings` | | |

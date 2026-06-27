@@ -5,7 +5,7 @@
 All options under `programs.nh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | `programs.nh.clean.dates` | `(optionally newline-terminated) single-line string` | How often cleanup is performed. |
 | `programs.nh.clean.enable` | `boolean` | Whether to enable periodic garbage collection for user profile and nix store with nh clean user. |
 | `programs.nh.clean.extraArgs` | `(optionally newline-terminated) single-line string` | Options given to nh clean when the service is run automatically. |

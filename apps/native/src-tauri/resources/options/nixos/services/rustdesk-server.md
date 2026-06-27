@@ -5,7 +5,7 @@
 All options under `services.rustdesk-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.rustdesk-server.enable` | | |
 | `services.rustdesk-server.extraRelayArgs` | | |
 | `services.rustdesk-server.extraSignalArgs` | | |

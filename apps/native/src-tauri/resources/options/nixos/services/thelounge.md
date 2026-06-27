@@ -5,7 +5,7 @@
 All options under `services.thelounge`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.thelounge.enable` | | |
 | `services.thelounge.extraConfig` | | |
 | `services.thelounge.package` | | |

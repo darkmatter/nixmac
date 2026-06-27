@@ -5,6 +5,6 @@
 All options under `services.go-shadowsocks2`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.go-shadowsocks2.server.enable` | | |
 | `services.go-shadowsocks2.server.listenAddress` | | |

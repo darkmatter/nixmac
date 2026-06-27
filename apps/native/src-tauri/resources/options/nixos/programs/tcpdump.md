@@ -5,5 +5,5 @@
 All options under `programs.tcpdump`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `programs.tcpdump.enable` | | |

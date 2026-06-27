@@ -5,7 +5,7 @@
 All options under `services.dspam`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.dspam.domainSocket` | | |
 | `services.dspam.enable` | | |
 | `services.dspam.extraConfig` | | |

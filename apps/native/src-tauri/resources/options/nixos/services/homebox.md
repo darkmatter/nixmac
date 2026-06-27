@@ -5,7 +5,7 @@
 All options under `services.homebox`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.homebox.database.createLocally` | | |
 | `services.homebox.enable` | | |
 | `services.homebox.group` | | |

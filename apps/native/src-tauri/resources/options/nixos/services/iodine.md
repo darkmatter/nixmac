@@ -5,7 +5,7 @@
 All options under `services.iodine`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.iodine.clients` | | |
 | `services.iodine.server.domain` | | |
 | `services.iodine.server.enable` | | |

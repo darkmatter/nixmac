@@ -182,13 +182,13 @@ The workflow (`.github/workflows/e2e-nix-install.yml`) triggers on PRs modifying
 Only one GitHub Secret needed:
 
 | Secret | Description |
-|--------|-------------|
-| `SOPS_AGE_KEY` | age private key to decrypt `ops/secrets/e2e.enc.yaml` |
+| -------------- | ----------------------------------------------------- |
+| `SOPS_AGE_KEY` | age private key to decrypt `ops/secrets/e2e.sops.json` |
 
 ### Outputs
 
 | Artifact | Path |
-|----------|------|
+| ---------------- | ---------------------------- |
 | Screen recording | `/tmp/e2e-recording.mp4` |
 | Screenshots | `/tmp/e2e-screenshots/` |
 | Test log | `/tmp/e2e-test.log` |

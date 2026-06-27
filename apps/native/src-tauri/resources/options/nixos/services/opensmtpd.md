@@ -5,7 +5,7 @@
 All options under `services.opensmtpd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.opensmtpd.addSendmailToSystemPath` | | |
 | `services.opensmtpd.enable` | | |
 | `services.opensmtpd.extraServerArgs` | | |

@@ -5,7 +5,7 @@
 All options under `programs.acd-cli`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.acd-cli.cacheSettings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Cache configuration settings for acd-cli. All the available options can be found here: https://acd-cli.readthedocs.io/en/latest/configuration.html#cache-ini . |
 | `programs.acd-cli.cliSettings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | CLI configuration settings for acd-cli. All the available options can be found here: https://acd-cli.readthedocs.io/en/latest/configuration.html#acd-cli-ini . |
 | `programs.acd-cli.clientSettings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Client configuration settings for acd-cli. All the available options can be found here: https://acd-cli.readthedocs.io/en/latest/configuration.html#acd-client-ini . |

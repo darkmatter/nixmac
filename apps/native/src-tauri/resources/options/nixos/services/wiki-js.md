@@ -5,7 +5,7 @@
 All options under `services.wiki-js`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.wiki-js.enable` | | |
 | `services.wiki-js.environmentFile` | | |
 | `services.wiki-js.settings` | | |

@@ -5,5 +5,5 @@
 All options under `programs.niriswitcher`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | --------- | ----------------------------------------------------------------- |
 | `programs.niriswitcher.enable` | `boolean` | Whether to enable niriswitcher, an application switcher for niri. |

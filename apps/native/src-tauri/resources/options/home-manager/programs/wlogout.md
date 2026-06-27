@@ -5,7 +5,7 @@
 All options under `programs.wlogout`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `programs.wlogout.enable` | `boolean` | Whether to enable wlogout. |
 | `programs.wlogout.layout` | `list of (open submodule of (JSON value))` | Layout configuration for wlogout, see https://github.com/ArtsyMacaw/wlogout#config for supported values. |
 | `programs.wlogout.package` | `null or package` | The wlogout package to use. |

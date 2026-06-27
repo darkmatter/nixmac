@@ -5,7 +5,7 @@
 All options under `services.public-inbox`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.public-inbox.enable` | | |
 | `services.public-inbox.http.args` | | |
 | `services.public-inbox.http.enable` | | |

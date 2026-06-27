@@ -35,7 +35,16 @@ keyId: string | null;
 /**
  * Base URL of the sync server this device is configured to talk to.
  */
-serverUrl: string }
+serverUrl: string; 
+/**
+ * Whether this device can call server-brokered GitHub endpoints (has a
+ * minted Better Auth api-key for the web origin).
+ */
+githubReady: boolean; 
+/**
+ * The web-origin account used for GitHub, when `github_ready` is true.
+ */
+webAccount: AuthAccount | null }
 
 /**
  * Result of `darwin_build_check` — dry-run build outcome.
@@ -937,6 +946,118 @@ cleanHead: boolean;
  * Raw change rows associated with the current diff.
  */
 changes: Change[] }
+
+/**
+ * Current state of a GitHub-first desktop bootstrap flow.
+ */
+export type GithubBootstrapState = 
+/**
+ * The browser OAuth/install flow has not finished yet.
+ */
+"pending" | 
+/**
+ * The server created/bound the Better Auth user and returned a device key.
+ */
+"complete" | 
+/**
+ * The server could not create an account from GitHub identity; use email OTP.
+ */
+"fallbackRequired" | 
+/**
+ * The state token expired or is no longer usable.
+ */
+"expired"
+
+/**
+ * Public bootstrap status returned to the frontend. Secret material returned by
+ * the server is persisted natively and intentionally omitted from this type.
+ */
+export type GithubBootstrapStatus = { 
+/**
+ * Bootstrap lifecycle state for this browser flow.
+ */
+state: GithubBootstrapState; 
+/**
+ * True once the account is linked to a GitHub App installation.
+ */
+connected: boolean; 
+/**
+ * The connected GitHub login (for display), when known.
+ */
+login: string | null; 
+/**
+ * The linked installation id, when connected.
+ */
+installationId: number; 
+/**
+ * The Better Auth account created or bound by the server, when complete.
+ */
+account: AuthAccount | null; 
+/**
+ * Human-readable reason to show when email OTP fallback is needed.
+ */
+fallbackReason: string | null }
+
+/**
+ * Result of `github_connect_start`: the GitHub App install URL to open in the
+ * browser. `state` is server-tracked CSRF; the client only needs `install_url`.
+ */
+export type GithubConnectStart = { 
+/**
+ * GitHub App installation URL to open in the user's browser.
+ */
+installUrl: string; 
+/**
+ * Opaque CSRF state bound to the account server-side.
+ */
+state: string }
+
+/**
+ * A repository the installation can access, returned by `github_list_repos`.
+ */
+export type GithubRepo = { 
+/**
+ * Repository owner login.
+ */
+owner: string; 
+/**
+ * Repository name.
+ */
+name: string; 
+/**
+ * Whether the repository is private.
+ */
+private: boolean; 
+/**
+ * ISO-8601 timestamp of the last update.
+ */
+updatedAt: string; 
+/**
+ * Default branch name (where `flake.nix` is checked).
+ */
+defaultBranch: string; 
+/**
+ * Whether a `flake.nix` exists at the default branch root.
+ */
+hasFlake: boolean }
+
+/**
+ * Whether this account has a linked GitHub App installation, returned by
+ * `github_status` (polled while the browser install completes).
+ */
+export type GithubStatus = { 
+/**
+ * True once the account is linked to a GitHub App installation.
+ */
+connected: boolean; 
+/**
+ * The connected GitHub login (for display), when known.
+ */
+login: string | null; 
+/**
+ * The linked installation id, when connected.
+ */
+installationId: number }
 
 /**
  * Preferences local to this app installation.

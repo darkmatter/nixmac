@@ -5,5 +5,5 @@
 All options under `programs.xfconf`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `programs.xfconf.enable` | | |

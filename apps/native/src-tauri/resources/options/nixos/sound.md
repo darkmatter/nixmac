@@ -5,7 +5,7 @@
 All options under `sound`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `sound.enable` | | |
 | `sound.enableOSSEmulation` | | |
 | `sound.extraConfig` | | |

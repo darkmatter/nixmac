@@ -5,6 +5,6 @@
 All options under `services.e-imzo`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.e-imzo.enable` | | |
 | `services.e-imzo.package` | | |

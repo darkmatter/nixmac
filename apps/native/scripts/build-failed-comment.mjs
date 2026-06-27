@@ -57,10 +57,10 @@ if (manifest.length > 0) {
   lines.push(
     "---",
     "",
-    `### ❌ Failed snapshots (${manifest.length})`,
+    `### ⚠️ Detected UI changes (${manifest.length})`,
     "",
-    "These stories' HTML snapshots changed. [Update snapshots ↗](https://github.com/darkmatter/nixmac/actions/workflows/update-snapshots.yaml) to regenerate baselines and open a PR:",
-    ""
+    "These stories' HTML snapshots changed. I've added screenshots + links to the changed stories below. Review them carefully then accept the changes to regenerate baselines and include them in this PR:",
+    "",
   );
   for (const story of manifest) {
     const label = `${story.title} › ${story.name}`;
@@ -73,9 +73,11 @@ if (manifest.length > 0) {
   lines.push(
     "---",
     "",
-    "### Accept changes",
+    "### Accept UI changes",
     "",
     "- [ ] Click here to accept these changes",
+    "",
+    "Alternatively, you can run `bun run test:update-snapshots` locally to re-generate the baselines and then push the changes to this PR.",
     "",
     "<details>",
     "<summary>What does this do?</summary>",
@@ -97,7 +99,7 @@ if (manifest.length > 0) {
     "place on this branch.",
     "",
     "</details>",
-    ""
+    "",
   );
 }
 

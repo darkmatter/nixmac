@@ -5,7 +5,7 @@
 All options under `services.omnom`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.omnom.dataDir` | | |
 | `services.omnom.enable` | | |
 | `services.omnom.group` | | |

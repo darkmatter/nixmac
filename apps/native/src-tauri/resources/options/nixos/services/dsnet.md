@@ -5,7 +5,7 @@
 All options under `services.dsnet`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.dsnet.enable` | | |
 | `services.dsnet.package` | | |
 | `services.dsnet.settings` | | |

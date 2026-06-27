@@ -5,6 +5,6 @@
 All options under `programs.evolution`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `programs.evolution.enable` | | |
 | `programs.evolution.plugins` | | |

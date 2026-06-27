@@ -5,7 +5,7 @@
 All options under `services.legit`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.legit.enable` | | |
 | `services.legit.group` | | |
 | `services.legit.package` | | |

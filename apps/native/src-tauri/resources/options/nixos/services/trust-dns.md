@@ -5,7 +5,7 @@
 All options under `services.trust-dns`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.trust-dns.debug` | | |
 | `services.trust-dns.enable` | | |
 | `services.trust-dns.package` | | |

@@ -5,6 +5,6 @@
 All options under `services.go-autoconfig`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.go-autoconfig.enable` | | |
 | `services.go-autoconfig.settings` | | |

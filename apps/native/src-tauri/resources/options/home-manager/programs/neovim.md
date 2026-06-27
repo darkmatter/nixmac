@@ -5,7 +5,7 @@
 All options under `programs.neovim`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `programs.neovim.autowrapRuntimeDeps` | `boolean` | Whether to automatically wrap the binary with the runtime dependencies of the plugins. |
 | `programs.neovim.coc.enable` | `boolean` | Whether to enable Coc. |
 | `programs.neovim.coc.package` | `package` | The coc-nvim package to use. |

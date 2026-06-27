@@ -5,7 +5,7 @@
 All options under `programs.emacs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.emacs.enable` | `boolean` | Whether to enable Emacs. |
 | `programs.emacs.extraConfig` | `strings concatenated with “\n”` | Configuration to include in the Emacs default init file. See https://www.gnu.org/software/emacs/manual/html_node/elisp/Init-File.html for more. |
 | `programs.emacs.extraPackages` | `Function that takes an attribute set and returns a list containing a selection of the values of the input set` | Extra packages available to Emacs. To get a list of available packages run: nix-env -f '<nixpkgs>' -qaP -A emacsPackages . |

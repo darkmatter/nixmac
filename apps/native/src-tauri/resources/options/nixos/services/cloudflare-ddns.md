@@ -5,7 +5,7 @@
 All options under `services.cloudflare-ddns`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.cloudflare-ddns.cacheExpiration` | | |
 | `services.cloudflare-ddns.credentialsFile` | | |
 | `services.cloudflare-ddns.deleteOnStop` | | |

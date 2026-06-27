@@ -5,7 +5,7 @@
 All options under `programs.freetube`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ----------------- | -------------------------------------------------------------------- |
 | `programs.freetube.enable` | `boolean` | Whether to enable FreeTube, a YT client for Windows, Mac, and Linux. |
 | `programs.freetube.package` | `null or package` | The freetube package to use. |
 | `programs.freetube.settings` | `attribute set` | Configuration settings for FreeTube. |

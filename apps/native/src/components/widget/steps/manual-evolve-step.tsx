@@ -1,6 +1,6 @@
 "use client";
 
-import { NoiseBackground } from "@/components/ui/noise-background";
+import { GlowFrame } from "@/components/button-glow";
 import { ConfirmButton } from "@/components/widget/controls/confirm-button";
 import { ExternalBuildDetected } from "@/components/widget/notifications/external-build-detected";
 import { PromptInputSection } from "@/components/widget/promptinput/prompt-input-section";
@@ -9,22 +9,10 @@ import { SummaryOrDiff } from "@/components/widget/summaries/summary-or-diff";
 import { useApply } from "@/hooks/use-apply";
 import { useEvolve } from "@/hooks/use-evolve";
 import { cn } from "@/lib/utils";
-import { useViewModel } from "@/stores/view-model";
-import { useUiState } from "@/stores/ui-state";
+import { useViewModel } from "@nixmac/state";
+import { useUiState } from "@nixmac/state";
 import { Loader2, Wrench } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-
-const ACTIVE_GRADIENT = [
-  "rgb(45, 212, 191)",
-  "rgb(20, 184, 166)",
-  "rgb(13, 148, 136)",
-] as const;
-
-const INACTIVE_GRADIENT = [
-  "rgb(115, 115, 115)",
-  "rgb(82, 82, 82)",
-  "rgb(64, 64, 64)",
-] as const;
 
 type BuildCheckStatus = "checking" | "passed" | "failed";
 
@@ -36,9 +24,7 @@ export function ManualEvolveStep() {
   const { handleApply } = useApply();
   const { buildCheck } = useEvolve();
   const gitStatus = useViewModel((s) => s.git);
-  const isApplyBusy = useUiState(
-    (s) => s.isProcessing && s.processingAction === "apply",
-  );
+  const isApplyBusy = useUiState((s) => s.isProcessing && s.processingAction === "apply");
   const rebuildRunning = useViewModel((s) => s.rebuildStatus?.isRunning ?? false);
   const [buildStatus, setBuildStatus] = useState<BuildCheckStatus>("checking");
 
@@ -68,27 +54,14 @@ export function ManualEvolveStep() {
     };
   }, [buildCheck, changeFingerprint]);
 
-  const buildReady =
-    buildStatus === "passed" && !isApplyBusy && !rebuildRunning;
+  const buildReady = buildStatus === "passed" && !isApplyBusy && !rebuildRunning;
   const buildChecking = buildStatus === "checking";
 
   return (
     <>
       <ExternalBuildDetected />
       <StepActionsHeader label="Uncommitted changes">
-        <NoiseBackground
-          animating={buildReady}
-          shimmer={buildReady}
-          speed={buildReady ? 0.35 : 0.1}
-          containerClassName={cn(
-            "w-fit rounded-full p-0.5 transition-opacity duration-300",
-            !buildReady && "opacity-70 saturate-50",
-          )}
-          gradientColors={
-            buildReady ? [...ACTIVE_GRADIENT] : [...INACTIVE_GRADIENT]
-          }
-          noiseIntensity={buildReady ? 0.2 : 0.08}
-        >
+        <GlowFrame active={buildReady}>
           <ConfirmButton
             size="sm"
             disabled={!buildReady}
@@ -110,7 +83,7 @@ export function ManualEvolveStep() {
             )}
             Build & Test
           </ConfirmButton>
-        </NoiseBackground>
+        </GlowFrame>
       </StepActionsHeader>
       <SummaryOrDiff />
       <PromptInputSection />

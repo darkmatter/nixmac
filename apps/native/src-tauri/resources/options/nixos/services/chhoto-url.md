@@ -5,7 +5,7 @@
 All options under `services.chhoto-url`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.chhoto-url.enable` | | |
 | `services.chhoto-url.environmentFiles` | | |
 | `services.chhoto-url.package` | | |

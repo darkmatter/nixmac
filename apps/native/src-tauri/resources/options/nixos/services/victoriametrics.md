@@ -5,7 +5,7 @@
 All options under `services.victoriametrics`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------ | ---- | ----------- |
 | `services.victoriametrics.basicAuthPasswordFile` | | |
 | `services.victoriametrics.basicAuthUsername` | | |
 | `services.victoriametrics.checkConfig` | | |

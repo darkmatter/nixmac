@@ -5,7 +5,7 @@
 All options under `programs.singularity`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------- | ---- | ----------- |
 | `programs.singularity.enable` | | |
 | `programs.singularity.enableExternalLocalStateDir` | | |
 | `programs.singularity.enableFakeroot` | | |

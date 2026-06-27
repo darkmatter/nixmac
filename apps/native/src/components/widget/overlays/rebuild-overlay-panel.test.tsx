@@ -1,13 +1,13 @@
-import { act, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RebuildOverlayPanel } from "@/components/widget/overlays/rebuild-overlay-panel";
 import type { RebuildStatus } from "@/ipc/types";
-import { initialUiState, useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { REBUILD_ERROR_CODES } from "@/lib/errors";
 import type { RebuildContext } from "@/types/rebuild";
 import { makeRebuildStatus } from "@/utils/test-fixtures";
+import { initialUiState, uiActions, viewModelActions } from "@nixmac/state";
 
 vi.mock("motion/react", async () => {
   const React = await import("react");
@@ -45,11 +45,11 @@ const safetyMessage = "No changes were made to your system.";
 
 function resetStores() {
   act(() => {
-    useViewModel.setState({
+    viewModelActions.setState({
       rebuildStatus: null,
       rebuildLog: { lines: [], rawLines: [] },
     });
-    useUiState.setState({ ...initialUiState });
+    uiActions.setState({ ...initialUiState });
   });
 }
 
@@ -58,11 +58,11 @@ async function renderWithRebuildState(
   context: RebuildContext = "apply",
 ) {
   act(() => {
-    useViewModel.setState({
+    viewModelActions.setState({
       rebuildStatus: makeRebuildStatus({
         isRunning: false,
         success: false,
-        errorType: "build_error",
+        errorType: REBUILD_ERROR_CODES.BUILD_ERROR,
         errorMessage: "darwin-rebuild build failed",
         ...status,
       }),
@@ -71,11 +71,11 @@ async function renderWithRebuildState(
         rawLines: [],
       },
     });
-    useUiState.setState({ rebuildContext: context, rebuildPanelDismissed: false });
+    uiActions.setState({ rebuildContext: context, rebuildPanelDismissed: false });
   });
 
   const result = render(<RebuildOverlayPanel />);
-  await act(async () => {});
+  await act(async () => { });
   return result;
 }
 
@@ -92,7 +92,7 @@ describe("<RebuildOverlayPanel>", () => {
 
   it("does not reassure when the backend cannot prove the system was untouched", async () => {
     await renderWithRebuildState({
-      errorType: "generic_error",
+      errorType: REBUILD_ERROR_CODES.GENERIC_ERROR,
       errorMessage: "Activation failed",
       systemUntouched: false,
     });
@@ -103,7 +103,7 @@ describe("<RebuildOverlayPanel>", () => {
   it("does not show apply reassurance while rollback is failing", async () => {
     await renderWithRebuildState(
       {
-        errorType: "user_cancelled",
+        errorType: REBUILD_ERROR_CODES.USER_CANCELLED,
         errorMessage: "Activation cancelled by user",
         systemUntouched: true,
       },
@@ -117,7 +117,7 @@ describe("<RebuildOverlayPanel>", () => {
     await renderWithRebuildState({ systemUntouched: true });
 
     act(() => {
-      useUiState.getState().setRebuildPanelDismissed(true);
+      uiActions.setRebuildPanelDismissed(true);
     });
 
     expect(screen.queryByText(safetyMessage)).not.toBeInTheDocument();

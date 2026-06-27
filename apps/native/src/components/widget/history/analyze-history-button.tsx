@@ -1,16 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { AnalyzeButton } from "@/components/widget/summaries/analyze-button";
 import { useHistory } from "@/hooks/use-history";
-import { useViewModel } from "@/stores/view-model";
-import { useUiState } from "@/stores/ui-state";
+import { useViewModel } from "@nixmac/state";
+import { useUiState } from "@nixmac/state";
 import { Dna, Square } from "lucide-react";
 
 // Generates commit (if need be) and summary metadata for history items that are missing it.
 export function AnalyzeHistoryButton() {
   const history = useViewModel((state) => state.history);
-  const analyzingSize = useUiState(
-    (state) => state.analyzingHistoryForHashes.size,
-  );
+  const analyzingSize = useUiState((state) => state.analyzingHistoryForHashes.size);
   const { analyzeMany, stopAnalyzing } = useHistory();
 
   const recentUnsummarizedHashes = history
@@ -26,7 +24,7 @@ export function AnalyzeHistoryButton() {
         type="button"
         variant="outline"
         size="sm"
-        className="h-auto whitespace-nowrap px-[10px] py-1 text-[10px] border border-red-500/30 bg-red-500/[0.08] text-neutral-400 hover:border-red-500/60"
+        className="h-auto whitespace-nowrap px-[10px] py-1 text-[10px] border border-red-500/30 bg-red-500/8 text-neutral-400 hover:border-red-500/60"
         onClick={stopAnalyzing}
       >
         <Square className="h-[10px] w-[10px] fill-current" />

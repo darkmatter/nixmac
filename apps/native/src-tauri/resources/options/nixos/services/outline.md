@@ -5,7 +5,7 @@
 All options under `services.outline`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.outline.azureAuthentication` | | |
 | `services.outline.cdnUrl` | | |
 | `services.outline.concurrency` | | |

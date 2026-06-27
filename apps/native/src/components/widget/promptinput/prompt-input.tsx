@@ -8,36 +8,90 @@ import {
   InputGroupText,
   InputGroupTextarea,
 } from "@/components/ui/input-group";
+import { Separator } from "@/components/ui/separator";
 import { BeginEvolveWarning } from "@/components/widget/promptinput/begin-evolve-warning";
-import { MacRecommendationChip } from "@/components/widget/promptinput/mac-recommendation-chip";
 import { HomebrewBadge } from "@/components/widget/promptinput/homebrew-badge";
+import { MacRecommendationChip } from "@/components/widget/promptinput/mac-recommendation-chip";
 import { PromptHistoryBadge } from "@/components/widget/promptinput/prompt-history-badge";
+import { STARTER_PROMPT_CHIPS } from "@/components/widget/promptinput/starter-prompts";
+import type { StarterPromptIconName } from "@/components/widget/promptinput/starter-prompts";
 import { SystemDefaultsCTA } from "@/components/widget/promptinput/system-defaults-cta";
 import { useEvolve } from "@/hooks/use-evolve";
-import { getProviderConfigInvalidReason } from "@/lib/ai-provider-validation";
-import { useViewModel } from "@/stores/view-model";
-import { useUiState } from "@/stores/ui-state";
 import { tauriAPI } from "@/ipc/api";
-import { ArrowUpIcon } from "lucide-react";
+import { getProviderConfigInvalidReason } from "@/lib/providers/ai-provider-validation";
+import { uiActions, useUiState, useViewModel } from "@nixmac/state";
+import {
+  ArrowUpIcon,
+  BookOpen,
+  Brush,
+  Cable,
+  Code2,
+  FileKey,
+  Focus,
+  Gamepad2,
+  Joystick,
+  Keyboard,
+  KeyRound,
+  Network,
+  NotebookText,
+  Palette,
+  PanelsTopLeft,
+  Plane,
+  Presentation,
+  Radio,
+  RefreshCcw,
+  Server,
+  ShieldCheck,
+  Terminal,
+  Video,
+  Wifi,
+  Wrench,
+  type LucideIcon,
+} from "lucide-react";
 import { useEffect, useState } from "react";
-import { Separator } from "@/components/ui/separator";
 
 const MAX_CONTEXT_LENGTH = 1000;
 
-const STATIC_SUGGESTIONS = ["Install vim", "Add Rectangle app"];
+const STARTER_PROMPT_ICON_COMPONENTS: Record<StarterPromptIconName, LucideIcon> = {
+  "book-open": BookOpen,
+  brush: Brush,
+  cable: Cable,
+  "code-2": Code2,
+  "file-key": FileKey,
+  focus: Focus,
+  "gamepad-2": Gamepad2,
+  joystick: Joystick,
+  keyboard: Keyboard,
+  "key-round": KeyRound,
+  network: Network,
+  "notebook-text": NotebookText,
+  palette: Palette,
+  "panels-top-left": PanelsTopLeft,
+  plane: Plane,
+  presentation: Presentation,
+  radio: Radio,
+  "refresh-ccw": RefreshCcw,
+  server: Server,
+  "shield-check": ShieldCheck,
+  terminal: Terminal,
+  video: Video,
+  wifi: Wifi,
+  wrench: Wrench,
+};
 
 export function PromptInput() {
   const evolvePrompt = useUiState((s) => s.evolvePrompt);
-  const setEvolvePrompt = useUiState((s) => s.setEvolvePrompt);
   const isProcessing = useUiState((s) => s.isProcessing);
   const processingAction = useUiState((s) => s.processingAction);
   const evolveState = useViewModel((s) => s.evolve);
   const gitStatus = useViewModel((s) => s.git);
   const settingsOpen = useUiState((s) => s.settingsOpen);
-  const setSettingsOpen = useUiState((s) => s.setSettingsOpen);
   const { handleEvolve } = useEvolve();
   const [warningOpen, setWarningOpen] = useState(false);
-  const [providerErrors, setProviderErrors] = useState<{ evolve: string | null; summary: string | null }>({
+  const [providerErrors, setProviderErrors] = useState<{
+    evolve: string | null;
+    summary: string | null;
+  }>({
     evolve: null,
     summary: null,
   });
@@ -48,7 +102,9 @@ export function PromptInput() {
     const refreshProviderValidation = async () => {
       try {
         const [prefs, cliStatus] = await Promise.all([
+          // deprecated(orpc): replace with client/orpc from @/lib/orpc
           tauriAPI.ui.getPrefs(),
+          // deprecated(orpc): replace with client/orpc from @/lib/orpc
           tauriAPI.cli.checkTools(),
         ]);
 
@@ -137,14 +193,18 @@ export function PromptInput() {
 
   return (
     <div className="space-y-3 flex-col min-h-24">
-      <BeginEvolveWarning open={warningOpen} onOpenChange={setWarningOpen} handleEvolve={handleEvolve} />
+      <BeginEvolveWarning
+        open={warningOpen}
+        onOpenChange={setWarningOpen}
+        handleEvolve={handleEvolve}
+      />
       <InputGroup className="bg-background flex-col min-h-24">
         <InputGroupTextarea
           id="evolve-prompt-input"
           data-testid="evolve-prompt-input"
           disabled={isLoading}
-          onChange={(e: { target: { value: string; }; }) => setEvolvePrompt(e.target.value)}
-          onKeyDown={(e: { key: string; }) => {
+          onChange={(e: { target: { value: string } }) => uiActions.setEvolvePrompt(e.target.value)}
+          onKeyDown={(e: { key: string }) => {
             if (e.key === "Enter" && evolvePrompt.trim() && !sendDisabled) {
               handleSubmit();
             }
@@ -153,15 +213,15 @@ export function PromptInput() {
           value={evolvePrompt}
           className="outline-none"
         />
-          <InputGroupAddon align="block-end">
-            {/* <InputGroupButton
+        <InputGroupAddon align="block-end">
+          {/* <InputGroupButton
               className="rounded-full size-6 p-0.5"
               size="icon-xs"
               variant="outline"
             >
               <Plus />
             </InputGroupButton> */}
-             {/* <DropdownMenu>
+          {/* <DropdownMenu>
                <DropdownMenuTrigger asChild>
                  <InputGroupButton variant="ghost">Auto</InputGroupButton>
                </DropdownMenuTrigger>
@@ -175,22 +235,22 @@ export function PromptInput() {
                  <DropdownMenuItem>Manual</DropdownMenuItem>
                </DropdownMenuContent>
              </DropdownMenu> */}
-             <InputGroupText className="ml-auto">{contextUsage}</InputGroupText>
-             <Separator className="!h-4" orientation="vertical" />
-             <Separator className="!h-4" orientation="vertical" />
-             <InputGroupButton
-               className="rounded-full size-6 p-0.5"
-               size="icon-xs"
+          <InputGroupText className="ml-auto">{contextUsage}</InputGroupText>
+          <Separator className="h-4!" orientation="vertical" />
+          <Separator className="h-4!" orientation="vertical" />
+          <InputGroupButton
+            className="rounded-full size-6 p-0.5"
+            size="icon-xs"
             variant="default"
             id="evolve-prompt-send"
             data-testid="evolve-prompt-send"
             disabled={sendDisabled}
             onClick={handleSubmit}
-             >
-               <ArrowUpIcon />
-               <span className="sr-only">Send</span>
-             </InputGroupButton>
-           </InputGroupAddon>
+          >
+            <ArrowUpIcon />
+            <span className="sr-only">Send</span>
+          </InputGroupButton>
+        </InputGroupAddon>
       </InputGroup>
 
       {promptValidationError && (
@@ -198,7 +258,7 @@ export function PromptInput() {
           {promptValidationError}{" "}
           <button
             className="underline underline-offset-2"
-            onClick={() => setSettingsOpen(true, "ai-models")}
+            onClick={() => uiActions.setSettingsOpen(true, "ai-models")}
             type="button"
           >
             Open AI Models settings
@@ -209,12 +269,13 @@ export function PromptInput() {
 
       <div className="flex items-start gap-1">
         <div className="flex flex-wrap items-center gap-1">
-          {STATIC_SUGGESTIONS.map((suggestion) => (
+          {STARTER_PROMPT_CHIPS.map((suggestion) => (
             <BadgeButton
-              key={suggestion}
-              onClick={() => setEvolvePrompt(suggestion)}
+              key={suggestion.id}
+              icon={STARTER_PROMPT_ICON_COMPONENTS[suggestion.icon]}
+              onClick={() => uiActions.setEvolvePrompt(suggestion.prompt)}
             >
-              {suggestion}
+              {suggestion.label}
             </BadgeButton>
           ))}
           <MacRecommendationChip />

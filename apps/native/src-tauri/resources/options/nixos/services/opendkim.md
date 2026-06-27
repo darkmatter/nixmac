@@ -5,7 +5,7 @@
 All options under `services.opendkim`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.opendkim.configFile` | | |
 | `services.opendkim.domains` | | |
 | `services.opendkim.enable` | | |

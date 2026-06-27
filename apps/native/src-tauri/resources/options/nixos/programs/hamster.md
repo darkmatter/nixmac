@@ -5,5 +5,5 @@
 All options under `programs.hamster`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `programs.hamster.enable` | | |

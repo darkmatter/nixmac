@@ -5,7 +5,7 @@
 All options under `services.karma`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.karma.configFile` | | |
 | `services.karma.enable` | | |
 | `services.karma.environment` | | |

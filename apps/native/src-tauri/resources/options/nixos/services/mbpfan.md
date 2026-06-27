@@ -5,7 +5,7 @@
 All options under `services.mbpfan`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.mbpfan.aggressive` | | |
 | `services.mbpfan.enable` | | |
 | `services.mbpfan.highTemp` | | |

@@ -5,7 +5,7 @@
 All options under `services.cage`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.cage.enable` | | |
 | `services.cage.environment` | | |
 | `services.cage.extraArguments` | | |

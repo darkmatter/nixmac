@@ -5,7 +5,7 @@
 All options under `services.zigbee2mqtt`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.zigbee2mqtt.config` | | |
 | `services.zigbee2mqtt.dataDir` | | |
 | `services.zigbee2mqtt.enable` | | |

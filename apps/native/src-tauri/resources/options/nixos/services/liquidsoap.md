@@ -5,5 +5,5 @@
 All options under `services.liquidsoap`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.liquidsoap.streams` | | |

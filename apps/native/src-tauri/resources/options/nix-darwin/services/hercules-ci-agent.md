@@ -5,7 +5,7 @@
 All options under `services.hercules-ci-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | -------------------------------- | -------------------------------------------------------- |
 | `services.hercules-ci-agent.baseDirectory` | | |
 | `services.hercules-ci-agent.concurrentTasks` | | |
 | `services.hercules-ci-agent.enable` | `boolean` | Enable to run Hercules CI Agent as a system service. |

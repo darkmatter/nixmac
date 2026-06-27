@@ -5,7 +5,7 @@
 All options under `programs.idescriptor`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `programs.idescriptor.enable` | | |
 | `programs.idescriptor.package` | | |
 | `programs.idescriptor.users` | | |

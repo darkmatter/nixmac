@@ -5,7 +5,7 @@
 All options under `services.monero`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.monero.banlist` | | |
 | `services.monero.dataDir` | | |
 | `services.monero.enable` | | |

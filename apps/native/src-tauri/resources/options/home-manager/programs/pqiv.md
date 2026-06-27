@@ -5,7 +5,7 @@
 All options under `programs.pqiv`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
 | `programs.pqiv.enable` | `boolean` | Whether to enable pqiv image viewer. |
 | `programs.pqiv.extraConfig` | `strings concatenated with “\n”` | Extra lines to be added to $XDG_CONFIG_HOME/pqivrc . See pqiv (1) for a list of available options. |
 | `programs.pqiv.package` | `package` | The pqiv package to use. |

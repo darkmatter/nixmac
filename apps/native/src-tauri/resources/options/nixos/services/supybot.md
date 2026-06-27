@@ -5,7 +5,7 @@
 All options under `services.supybot`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.supybot.configFile` | | |
 | `services.supybot.enable` | | |
 | `services.supybot.extraPackages` | | |

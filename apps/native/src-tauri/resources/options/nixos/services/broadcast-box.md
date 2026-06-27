@@ -5,7 +5,7 @@
 All options under `services.broadcast-box`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.broadcast-box.enable` | | |
 | `services.broadcast-box.openFirewall` | | |
 | `services.broadcast-box.package` | | |

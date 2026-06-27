@@ -5,7 +5,7 @@
 All options under `services.angrr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.angrr.configFile` | | |
 | `services.angrr.enable` | | |
 | `services.angrr.enableNixGcIntegration` | | |

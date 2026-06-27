@@ -5,7 +5,7 @@
 All options under `services.mackerel-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.mackerel-agent.apiKeyFile` | | |
 | `services.mackerel-agent.autoRetirement` | | |
 | `services.mackerel-agent.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.glance`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.glance.enable` | | |
 | `services.glance.environmentFile` | | |
 | `services.glance.openFirewall` | | |

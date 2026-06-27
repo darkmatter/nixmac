@@ -5,7 +5,7 @@
 All options under `programs.mu`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------- | --------------- | ----------------------------------------------------- |
 | `programs.mu.enable` | `boolean` | Whether to enable mu, a maildir indexer and searcher. |
 | `programs.mu.home` | `absolute path` | Directory to store Mu’s database. |
 | `programs.mu.package` | `package` | The mu package to use. |

@@ -5,7 +5,7 @@
 All options under `services.jmusicbot`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.jmusicbot.enable` | | |
 | `services.jmusicbot.package` | | |
 | `services.jmusicbot.stateDir` | | |

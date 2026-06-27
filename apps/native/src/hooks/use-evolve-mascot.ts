@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { tauriAPI } from "@/ipc/api";
-import { useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { useUiState } from "@nixmac/state";
+import { useViewModel } from "@nixmac/state";
 
 /**
  * Experimental: drives the spinning-mascot corner-indicator window.
@@ -21,6 +21,7 @@ export function useEvolveMascot() {
   const shouldShow = enabled && (isGenerating || rebuildRunning);
 
   useEffect(() => {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     const toggle = shouldShow ? tauriAPI.evolveMascot.show : tauriAPI.evolveMascot.hide;
     toggle().catch((err) => {
       console.error("[evolve-mascot] failed to toggle indicator:", err);
@@ -30,6 +31,7 @@ export function useEvolveMascot() {
   // Safety net: hide the indicator on teardown so it can't linger on screen.
   useEffect(() => {
     return () => {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       tauriAPI.evolveMascot.hide().catch(() => {
         // Ignore — the window may not have been created.
       });

@@ -5,7 +5,7 @@
 All options under `services.jotta-cli`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.jotta-cli.enable` | | |
 | `services.jotta-cli.options` | | |
 | `services.jotta-cli.package` | | |

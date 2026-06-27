@@ -5,7 +5,7 @@
 All options under `programs.keychain`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------ |
 | `programs.keychain.agents` | `list of string` | Agents to add. |
 | `programs.keychain.enable` | `boolean` | Whether to enable keychain. |
 | `programs.keychain.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |

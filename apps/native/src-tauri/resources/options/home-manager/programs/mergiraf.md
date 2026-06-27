@@ -5,7 +5,7 @@
 All options under `programs.mergiraf`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | --------- | --------------------------------------------------- |
 | `programs.mergiraf.enable` | `boolean` | Whether to enable mergiraf. |
 | `programs.mergiraf.enableGitIntegration` | `boolean` | Whether to enable git integration for mergiraf. |
 | `programs.mergiraf.enableJujutsuIntegration` | `boolean` | Whether to enable jujutsu integration for mergiraf. |

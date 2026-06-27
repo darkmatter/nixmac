@@ -5,7 +5,7 @@
 All options under `services.movim`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.movim.dataDir` | | |
 | `services.movim.database.createLocally` | | |
 | `services.movim.database.name` | | |

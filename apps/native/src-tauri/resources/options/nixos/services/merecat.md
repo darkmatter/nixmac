@@ -5,6 +5,6 @@
 All options under `services.merecat`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.merecat.enable` | | |
 | `services.merecat.settings` | | |

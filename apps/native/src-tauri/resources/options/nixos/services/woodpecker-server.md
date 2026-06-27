@@ -5,7 +5,7 @@
 All options under `services.woodpecker-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.woodpecker-server.enable` | | |
 | `services.woodpecker-server.environment` | | |
 | `services.woodpecker-server.environmentFile` | | |

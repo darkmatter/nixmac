@@ -65,9 +65,7 @@ export function MarkdownDescription({
               <DialogTitle className="text-base leading-snug">
                 {modalTitle ?? "Commit message"}
               </DialogTitle>
-              <DialogDescription className="sr-only">
-                Full commit message body
-              </DialogDescription>
+              <DialogDescription className="sr-only">Full commit message body</DialogDescription>
             </DialogHeader>
             <MarkdownContent>{trimmed}</MarkdownContent>
           </DialogContent>

@@ -5,7 +5,7 @@
 All options under `services.timekpr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.timekpr.adminUsers` | | |
 | `services.timekpr.enable` | | |
 | `services.timekpr.package` | | |

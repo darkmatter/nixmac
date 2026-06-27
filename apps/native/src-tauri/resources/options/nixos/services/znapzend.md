@@ -5,7 +5,7 @@
 All options under `services.znapzend`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.znapzend.autoCreation` | | |
 | `services.znapzend.enable` | | |
 | `services.znapzend.features.compressed` | | |

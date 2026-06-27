@@ -5,7 +5,7 @@
 All options under `services.udiskie`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---------------------------------- | -------------------------------------------------------------- |
 | `services.udiskie.automount` | `boolean` | Whether to automatically mount new devices. |
 | `services.udiskie.enable` | `boolean` | Whether to enable the udiskie mount daemon. |
 | `services.udiskie.notify` | `boolean` | Whether to show pop-up notifications. |

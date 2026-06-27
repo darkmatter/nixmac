@@ -26,24 +26,34 @@ use syn::DeriveInput;
 pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
     let name = &input.ident;
     let name_str = name.to_string();
-    let struct_config = parse_struct_config(&input.attrs)?;
+    let struct_config = parse_struct_config(&input.attrs, &name_str)?;
     let display_name = struct_config
         .display_name
         .clone()
         .unwrap_or_else(|| name_str.clone());
-    let fields = generate_fields(named_fields(&input)?)?;
+    let schema_file = struct_config
+        .schema_file
+        .clone()
+        .unwrap_or_else(|| crate::attrs::default_schema_file(struct_config.scope, &name_str));
+    let fields = generate_fields(named_fields(&input)?, struct_config.scope)?;
     let methods = build_scope_methods(
         name,
         &name_str,
         &display_name,
         description_expr(struct_config.description.as_ref()),
         struct_config.scope,
-        fields,
+        &fields,
+    );
+    let json_schema_method = build_json_schema_method(
+        &display_name,
+        description_expr(struct_config.description.as_ref()),
+        &fields,
     );
 
     Ok(quote! {
         impl #name {
             #methods
+            #json_schema_method
 
             // Wry-specialized shims for the type-erased compile-time registry.
             // Generic functions can't be cast to fn pointers; these monomorphic
@@ -51,6 +61,11 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
             #[doc(hidden)]
             pub fn __configurable_schema_wry() -> ::configurable::ConfigurableSchema {
                 Self::schema()
+            }
+
+            #[doc(hidden)]
+            pub fn __configurable_json_schema_wry() -> ::serde_json::Value {
+                Self::json_schema()
             }
 
             #[doc(hidden)]
@@ -75,12 +90,55 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
         ::configurable::inventory::submit! {
             ::configurable::ConfigurableMeta {
                 name: #name_str,
+                schema_file: #schema_file,
                 schema_fn: #name::__configurable_schema_wry,
+                json_schema_fn: #name::__configurable_json_schema_wry,
                 load_fn: #name::__configurable_load_wry,
                 set_fn: #name::__configurable_set_wry,
             }
         }
     })
+}
+
+fn build_json_schema_method(
+    display_name: &str,
+    description_expr: TokenStream2,
+    fields: &GeneratedFields,
+) -> TokenStream2 {
+    let json_schema_properties = &fields.json_schema_properties;
+
+    quote! {
+        /// JSON Schema (draft 2020-12) for the on-disk settings file.
+        pub fn json_schema() -> ::serde_json::Value {
+            let mut __props = ::serde_json::Map::new();
+            #(#json_schema_properties)*
+            let mut __schema = ::serde_json::Map::new();
+            __schema.insert(
+                "$schema".into(),
+                ::serde_json::Value::String("https://json-schema.org/draft/2020-12/schema".into()),
+            );
+            __schema.insert(
+                "title".into(),
+                ::serde_json::Value::String(#display_name.to_string()),
+            );
+            if let ::std::option::Option::Some(__description) = #description_expr {
+                __schema.insert(
+                    "description".into(),
+                    ::serde_json::Value::String(__description),
+                );
+            }
+            __schema.insert("type".into(), ::serde_json::Value::String("object".into()));
+            __schema.insert(
+                "properties".into(),
+                ::serde_json::Value::Object(__props),
+            );
+            __schema.insert(
+                "additionalProperties".into(),
+                ::serde_json::Value::Bool(true),
+            );
+            ::serde_json::Value::Object(__schema)
+        }
+    }
 }
 
 /// Converts the optional struct description into generated code.
@@ -110,14 +168,72 @@ fn build_scope_methods(
     display_name: &str,
     description_expr: TokenStream2,
     scope: StoreScope,
-    fields: GeneratedFields,
+    fields: &GeneratedFields,
 ) -> TokenStream2 {
     let scope_name = match scope {
         StoreScope::Global => "global",
         StoreScope::Repo => "repo",
+        StoreScope::Env => "env",
     };
-    let default_inits = fields.default_inits;
-    let schema_fields = fields.schema_fields;
+    let default_inits = &fields.default_inits;
+    let schema_fields = &fields.schema_fields;
+    let resolve_inits = &fields.resolve_inits;
+
+    let resolve_methods = if resolve_inits.is_empty() {
+        TokenStream2::new()
+    } else {
+        quote! {
+            pub fn resolve(_config_dir: Option<&str>) -> Self {
+                let __build_profile = crate::env::sources::build_profile();
+                Self {
+                    #(#resolve_inits)*
+                }
+            }
+
+            fn __resolve_string(
+                profile: Option<&serde_json::Value>,
+                key: &str,
+                env_var: &str,
+                build_embed: bool,
+                default: &str,
+            ) -> String {
+                if let Some(value) = crate::env::sources::trimmed_env(env_var) {
+                    return value;
+                }
+                if build_embed {
+                    if let Some(value) = crate::env::sources::build_embed(env_var) {
+                        return value;
+                    }
+                }
+                if let Some(profile) = profile {
+                    if let Some(value) = profile.get(key).and_then(|value| value.as_str()) {
+                        let value = value.trim();
+                        if !value.is_empty() {
+                            return value.to_string();
+                        }
+                    }
+                }
+                default.to_string()
+            }
+
+            fn __resolve_bool(
+                profile: Option<&serde_json::Value>,
+                key: &str,
+                env_var: &str,
+                default: bool,
+            ) -> bool {
+                if let Some(value) = crate::env::sources::trimmed_env(env_var) {
+                    return crate::env::sources::env_is_truthy(&value);
+                }
+                if let Some(profile) = profile {
+                    if let Some(value) = profile.get(key).and_then(|value| value.as_bool()) {
+                        return value;
+                    }
+                }
+                default
+            }
+        }
+    };
 
     // The derive is observable-only: reads mirror the managed observable, and
     // writes go through the observable guard so persistence and change events
@@ -168,5 +284,7 @@ fn build_scope_methods(
             *__state = __next;
             ::std::result::Result::Ok(())
         }
+
+        #resolve_methods
     }
 }

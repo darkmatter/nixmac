@@ -5,7 +5,7 @@
 All options under `services.trickster`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.trickster.configFile` | | |
 | `services.trickster.enable` | | |
 | `services.trickster.instance-id` | | |

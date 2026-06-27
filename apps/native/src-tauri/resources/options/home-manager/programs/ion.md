@@ -5,7 +5,7 @@
 All options under `programs.ion`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.ion.enable` | `boolean` | Whether to enable the Ion Shell. Compatible with Redox and Linux. |
 | `programs.ion.initExtra` | `strings concatenated with “\n”` | Ion script which is called during ion initialization. |
 | `programs.ion.package` | `package` | The ion package to use. |

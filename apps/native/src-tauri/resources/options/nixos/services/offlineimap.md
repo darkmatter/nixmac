@@ -5,7 +5,7 @@
 All options under `services.offlineimap`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.offlineimap.enable` | | |
 | `services.offlineimap.install` | | |
 | `services.offlineimap.onCalendar` | | |

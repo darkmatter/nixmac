@@ -5,7 +5,7 @@
 All options under `services.h2o`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.h2o.defaultHTTPListenPort` | | |
 | `services.h2o.defaultTLSListenPort` | | |
 | `services.h2o.defaultTLSRecommendations` | | |

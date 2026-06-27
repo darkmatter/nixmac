@@ -5,7 +5,7 @@
 All options under `services.keynav`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | --------- | -------------------------- |
 | `services.keynav.enable` | `boolean` | Whether to enable keynav. |
 | `services.keynav.package` | `package` | The keynav package to use. |
 | `services.keynav.settings` | | |

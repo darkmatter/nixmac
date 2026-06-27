@@ -5,7 +5,7 @@
 All options under `services.trafficserver`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.trafficserver.cache` | | |
 | `services.trafficserver.enable` | | |
 | `services.trafficserver.hosting` | | |

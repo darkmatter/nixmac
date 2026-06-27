@@ -5,7 +5,7 @@
 All options under `services.chrony`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.chrony.autotrimThreshold` | | |
 | `services.chrony.directory` | | |
 | `services.chrony.dispatcherScript` | | |

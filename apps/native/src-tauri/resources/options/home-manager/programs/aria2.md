@@ -5,7 +5,7 @@
 All options under `programs.aria2`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------- |
 | `programs.aria2.enable` | `boolean` | Whether to enable aria2. |
 | `programs.aria2.extraConfig` | | |
 | `programs.aria2.package` | `null or package` | The aria2 package to use. |

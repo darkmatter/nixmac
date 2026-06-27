@@ -5,7 +5,7 @@
 All options under `services.webdav-server-rs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.webdav-server-rs.configFile` | | |
 | `services.webdav-server-rs.debug` | | |
 | `services.webdav-server-rs.enable` | | |

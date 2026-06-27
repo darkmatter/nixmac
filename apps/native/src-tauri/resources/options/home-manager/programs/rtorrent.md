@@ -5,7 +5,7 @@
 All options under `programs.rtorrent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `programs.rtorrent.enable` | `boolean` | Whether to enable rTorrent. |
 | `programs.rtorrent.extraConfig` | `strings concatenated with “\n”` | Configuration written to $XDG_CONFIG_HOME/rtorrent/rtorrent.rc . See https://github.com/rakshasa/rtorrent/wiki/Config-Guide for explanation about possible values. |
 | `programs.rtorrent.package` | `null or package` | The rtorrent package to use. |

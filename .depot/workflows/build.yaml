@@ -1,0 +1,263 @@
+# Depot CI Migration
+# Source: .github/workflows/build.yaml
+#
+# Changes made:
+# - Rewrote .github/ path references to .depot/
+# - Changed runs-on from "self-hosted" to "depot-ubuntu-latest" throughout
+# - Changed runs-on from "linux" to "depot-ubuntu-latest" in job "optimize_ci"
+# - Changed runs-on from "macOS" to "depot-ubuntu-latest" in job "build"
+
+name: Build macOS App
+on:
+  push:
+    branches: [main, develop]
+    tags:
+      - "v*"
+  pull_request:
+    branches: [main, develop]
+  merge_group:
+  workflow_dispatch:
+concurrency:
+  group: build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+env:
+  CARGO_TERM_COLOR: always
+  SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+jobs:
+  # The Graphite check is a plain API call — run it on a linux runner so it
+  # doesn't queue on (or hold) one of the scarce macOS runner slots.
+  optimize_ci:
+    runs-on: [
+        depot-ubuntu-latest, # was: self-hosted. Nonstandard GitHub runner label detected, changed to default Depot runner.
+        depot-ubuntu-latest, # was: linux. Nonstandard GitHub runner label detected, changed to default Depot runner.
+      ]
+    outputs:
+      skip: ${{ steps.check_skip.outputs.skip }}
+    steps:
+      - name: Optimize CI
+        id: check_skip
+        uses: withgraphite/graphite-ci-action@main
+        with:
+          graphite_token: ${{ secrets.GRAPHITE_TOKEN }}
+  build:
+    runs-on: [
+        depot-ubuntu-latest, # was: self-hosted. Nonstandard GitHub runner label detected, changed to default Depot runner.
+        depot-ubuntu-latest, # was: macOS. Nonstandard GitHub runner label detected, changed to default Depot runner.
+      ]
+    needs: optimize_ci
+    if: needs.optimize_ci.outputs.skip == 'false'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: ./.depot/actions/setup
+        with:
+          darkmatter-cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          setup-rust: true
+          rust-cache-workspaces: apps/native/src-tauri
+      # Decide what kind of build this is:
+      #   - tag:     push of refs/tags/v* → ship that exact version
+      #   - release: push to main → patch-bump the latest tag and ship
+      #   - branch:  PR / feature branch / workflow_dispatch → build-only
+      #
+      # Tags are the source of truth for shipped versions, so the bump is
+      # computed from `git describe` rather than root package.json. This
+      # avoids needing to commit back to main (the `main` ruleset blocks
+      # pushes that don't satisfy the "build" check — which we can't
+      # satisfy from the same run that's pushing).
+      - name: Compute release version
+        id: release-version
+        run: bash ops/scripts/release/compute-version.sh
+      # Sync native app version files. Tag + release modes use the computed
+      # version directly; branch/PR builds fall back to the max(package.json,
+      # latest-git-tag) guard so a stale package.json cannot embed a version
+      # lower than what has already shipped (which would trigger a
+      # false-positive update banner, e.g. embedding 0.5.0 when latest.json is
+      # 0.16.2).
+      - name: Sync native app version
+        id: sync-version
+        env:
+          RELEASE_MODE: ${{ steps.release-version.outputs.mode }}
+          RELEASE_VERSION: ${{ steps.release-version.outputs.version }}
+        run: bash ops/scripts/release/sync-version.sh
+      - name: Check for code signing secrets
+        id: check-secrets
+        shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
+        run: |
+          if [ -n "$APPLE_CERTIFICATE" ]; then
+            echo "has_certificate=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_certificate=false" >> $GITHUB_OUTPUT
+          fi
+          if [ -n "$APPLE_API_KEY_CONTENT" ]; then
+            echo "has_notarization=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_notarization=false" >> $GITHUB_OUTPUT
+          fi
+      # Build the Tauri app (TAURI_SIGNING_PRIVATE_KEY + PASSWORD come from sops)
+      # NOTE: Certificate import is intentionally deferred until after this step.
+      # Running `security list-keychain -d user -s <keychain>` before the build
+      # replaces the keychain search list and breaks DMG bundling on tag runs.
+      - name: Build Tauri app
+        run: |
+          # unset the certificate and password so the runner can't influence the build
+          export APPLE_SIGNING_IDENTITY="-"
+          unset APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD KEYCHAIN_PASSWORD
+          bun run desktop:build
+        shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Pass DSNs and build metadata into the tauri action step so build.rs can read them
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          NIXMAC_ENV: prod
+          NIXMAC_VERSION: ${{ steps.sync-version.outputs.build_version }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
+          SUBMITTED_FEEDBACK_DSN: ${{ secrets.SUBMITTED_FEEDBACK_DSN }}
+      - name: Unit Test Tauri app
+        run: bun run desktop:test
+      # Import Apple Developer certificate (only for releases with secrets).
+      # Placed AFTER the Tauri build to avoid replacing the keychain search list
+      # before `bun run desktop:build`, which caused DMG bundling failures on tags.
+      # The normalizer needs this keychain to re-sign updater archives after
+      # install-name rewrites mutate the embedded app bundle.
+      - name: Import Apple Developer certificate
+        if: (steps.release-version.outputs.mode == 'tag' || steps.release-version.outputs.mode == 'release' || steps.release-version.outputs.mode == 'develop') && steps.check-secrets.outputs.has_certificate == 'true'
+        shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
+        run: bash ops/scripts/release/import-certificate.sh
+      - name: Normalize macOS system install names
+        shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
+        run: |
+          set -euo pipefail
+
+          APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d 2>/dev/null | sed -n '1p' || true)
+          DMG_PATH=$(find target/release/bundle/dmg -name "*.dmg" -type f 2>/dev/null | sed -n '1p' || true)
+          TAR_GZ_PATH=$(find target/release/bundle -name "*.app.tar.gz" -not -name "*.sig" -type f 2>/dev/null | sed -n '1p' || true)
+
+          if [ -z "$APP_PATH" ] || [ -z "$DMG_PATH" ] || [ -z "$TAR_GZ_PATH" ]; then
+            echo "ERROR: missing app, DMG, or updater archive for install-name normalization (APP_PATH=$APP_PATH DMG_PATH=$DMG_PATH TAR_GZ_PATH=$TAR_GZ_PATH)"
+            exit 1
+          fi
+
+          bash ops/scripts/release/normalize-macos-install-names.sh "$APP_PATH" "$DMG_PATH" "$TAR_GZ_PATH"
+      # Sign the app bundle (required for notarization)
+      - name: Sign app bundle
+        if: (steps.release-version.outputs.mode == 'tag' || steps.release-version.outputs.mode == 'release' || steps.release-version.outputs.mode == 'develop') && steps.check-secrets.outputs.has_certificate == 'true'
+        run: bash ops/scripts/release/sign-app.sh
+      # Replace unsigned app inside the Tauri-built DMG with the signed one.
+      # We mount the DMG read-write, swap the .app in place, and re-compress so
+      # the Finder window layout (background image, /Applications alias, icon
+      # positions) defined in tauri.conf.json's bundle.macOS.dmg is preserved.
+      # Previously this step deleted the DMG and called `hdiutil create`, which
+      # shipped a bare DMG without the drag-to-Applications affordance.
+      - name: Swap signed app into Tauri DMG
+        if: (steps.release-version.outputs.mode == 'tag' || steps.release-version.outputs.mode == 'release' || steps.release-version.outputs.mode == 'develop') && steps.check-secrets.outputs.has_certificate == 'true'
+        run: bash ops/scripts/release/swap-signed-dmg.sh
+      # Notarize the app (requires Apple Developer account)
+      - name: Notarize app
+        if: (steps.release-version.outputs.mode == 'tag' || steps.release-version.outputs.mode == 'release' || steps.release-version.outputs.mode == 'develop') && steps.check-secrets.outputs.has_notarization == 'true'
+        shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
+        run: bash ops/scripts/release/notarize.sh
+      - name: Check macOS app portability
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d 2>/dev/null | sed -n '1p' || true)
+          DMG_PATH=$(find target/release/bundle/dmg -name "*.dmg" -type f 2>/dev/null | sed -n '1p' || true)
+          TAR_GZ_PATH=$(find target/release/bundle -name "*.app.tar.gz" -not -name "*.sig" -type f 2>/dev/null | sed -n '1p' || true)
+
+          if [ -z "$APP_PATH" ] || [ -z "$DMG_PATH" ] || [ -z "$TAR_GZ_PATH" ]; then
+            echo "ERROR: missing app, DMG, or updater archive for portability check (APP_PATH=$APP_PATH DMG_PATH=$DMG_PATH TAR_GZ_PATH=$TAR_GZ_PATH)"
+            exit 1
+          fi
+
+          bash ops/scripts/release/check-portable-macos-app.sh "$APP_PATH" "$DMG_PATH" "$TAR_GZ_PATH"
+      - name: Get artifact paths
+        id: artifacts
+        run: |
+          DMG_PATH=$(find target/release/bundle/dmg -name "*.dmg" -type f 2>/dev/null | head -1 || echo "")
+          APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d 2>/dev/null | head -1 || echo "")
+
+          {
+            echo "dmg_path=$DMG_PATH"
+            echo "app_path=$APP_PATH"
+          } >> "$GITHUB_OUTPUT"
+
+          if [ -n "$DMG_PATH" ]; then
+            echo "dmg_name=$(basename "$DMG_PATH")" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: nixmac-macos-dmg
+          path: target/release/bundle/dmg/*.dmg
+          if-no-files-found: warn
+      - name: Upload app bundle artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: nixmac-macos-app
+          path: target/release/bundle/macos/*.app
+          if-no-files-found: warn
+          include-hidden-files: true
+      # On push-to-main releases: tag HEAD and push the tag. Tags are the
+      # source of truth for shipped versions — no commit is pushed to main,
+      # so the repo ruleset (which requires the `build` check on any branch
+      # ref update) can't block us. GITHUB_TOKEN pushes don't retrigger
+      # workflows, so tagging here is safe.
+      - name: Tag release
+        if: steps.release-version.outputs.mode == 'release'
+        env:
+          TAG: ${{ steps.release-version.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "${TAG}"
+          git push origin "${TAG}"
+      # Create GitHub Release for tag and release modes.
+      # Skipped for test tags matching `-test.N` so we can exercise the full
+      # signing/notarization + DMG swap path on a disposable tag without
+      # publishing a public release.
+      - name: Create Release
+        if: (steps.release-version.outputs.mode == 'tag' || steps.release-version.outputs.mode == 'release') && !contains(steps.release-version.outputs.tag, '-test.')
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          generate_release_notes: true
+          tag_name: ${{ steps.release-version.outputs.tag }}
+          files: |
+            target/release/bundle/dmg/*.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Upload to R2 for auto-updater (R2 creds come from sops).
+      # Skipped for test tags matching `-test.N` so we can exercise the full
+      # signing/notarization + DMG swap path on a disposable tag without
+      # overwriting latest.json on the updater CDN.
+      - name: Upload to R2
+        if: (steps.release-version.outputs.mode == 'tag' || steps.release-version.outputs.mode == 'release' || steps.release-version.outputs.mode == 'develop') && !contains(steps.release-version.outputs.tag, '-test.')
+        shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
+        env:
+          AWS_DEFAULT_REGION: auto
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ steps.release-version.outputs.version }}
+          RELEASE_TAG: ${{ steps.release-version.outputs.tag }}
+          UPDATE_CHANNEL: ${{ steps.release-version.outputs.mode == 'develop' && 'develop' || 'stable' }}
+        run: bash ops/scripts/release/upload-r2.sh
+      # Sync the shipped release to Linear so issues referenced in commits since
+      # the previous release get linked. Runs only after R2 upload succeeds, so
+      # Linear releases track what actually shipped. Skipped for `-test.N` tags
+      # to match the GitHub Release / R2 upload skip.
+      - name: Sync release to Linear
+        if: (steps.release-version.outputs.mode == 'tag' || steps.release-version.outputs.mode == 'release') && !contains(steps.release-version.outputs.tag, '-test.')
+        uses: linear/linear-release-action@v0
+        with:
+          access_key: ${{ secrets.LINEAR_ACCESS_KEY }}
+          version: ${{ steps.release-version.outputs.version }}
+          name: nixmac v${{ steps.release-version.outputs.version }}
+      - name: Cleanup keychain
+        if: always()
+        run: bash ops/scripts/release/cleanup-keychain.sh

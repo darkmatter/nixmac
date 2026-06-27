@@ -5,7 +5,7 @@
 All options under `services.yandex-disk`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.yandex-disk.directory` | | |
 | `services.yandex-disk.enable` | | |
 | `services.yandex-disk.excludes` | | |

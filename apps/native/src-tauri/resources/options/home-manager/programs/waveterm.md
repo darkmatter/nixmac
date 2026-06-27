@@ -5,7 +5,7 @@
 All options under `programs.waveterm`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `programs.waveterm.bookmarks` | `JSON value` | Bookmark definitions for WaveTerm. Details about the format and the options can be found here: https://docs.waveterm.dev/config#webbookmarks-configuration . |
 | `programs.waveterm.enable` | `boolean` | Whether to enable waveterm. |
 | `programs.waveterm.package` | `null or package` | The waveterm package to use. |

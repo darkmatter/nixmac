@@ -5,7 +5,7 @@
 All options under `services.zipline`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.zipline.database.createLocally` | | |
 | `services.zipline.enable` | | |
 | `services.zipline.environmentFiles` | | |

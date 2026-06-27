@@ -5,7 +5,7 @@
 All options under `programs.bash`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.bash.bashrcExtra` | `strings concatenated with “\n”` | Extra commands that should be placed in ~/.bashrc . Note that these commands will be run even in non-interactive shells. |
 | `programs.bash.enable` | `boolean` | Whether to enable GNU Bourne-Again SHell. |
 | `programs.bash.enableAutojump` | | |

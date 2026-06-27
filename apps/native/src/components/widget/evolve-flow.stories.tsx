@@ -1,7 +1,7 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
-import { useUiState } from "@/stores/ui-state";
-import { useViewModel } from "@/stores/view-model";
+import { uiActions, useUiState, viewModelActions } from "@nixmac/state";
+import { useViewModel } from "@nixmac/state";
 import type { EvolveEvent } from "@/ipc/types";
 import type { SemanticChangeMap, EvolveState, GitStatus, Change } from "@/ipc/types";
 import { useEffect, useRef } from "react";
@@ -141,16 +141,76 @@ const evolveStateMerge: EvolveState = {
 };
 
 const mockEvolveEvents: EvolveEvent[] = [
-  { raw: "Starting evolution...", summary: "Starting evolution", eventType: "start", iteration: null, timestampMs: 0 },
-  { raw: "Iteration 1 of 25", summary: "Iteration 1", eventType: "iteration", iteration: 1, timestampMs: 1200 },
-  { raw: "Analyzing current configuration to understand package structure...", summary: "Thinking about changes", eventType: "thinking", iteration: 1, timestampMs: 2400 },
-  { raw: "read_file: configuration.nix", summary: "Reading configuration.nix", eventType: "reading", iteration: 1, timestampMs: 3100 },
-  { raw: "edit_file: configuration.nix — adding htop and btop", summary: "Editing configuration.nix", eventType: "editing", iteration: 1, timestampMs: 4500 },
-  { raw: "Creating modules/monitoring.nix with monitoring tools", summary: "Creating modules/monitoring.nix", eventType: "editing", iteration: 1, timestampMs: 5800 },
-  { raw: "Running nix eval to verify syntax...", summary: "Checking build", eventType: "buildCheck", iteration: 1, timestampMs: 7200 },
-  { raw: "Build check passed", summary: "Build passed", eventType: "buildPass", iteration: 1, timestampMs: 9500 },
-  { raw: "Summarizing changes...", summary: "Analyzing changes", eventType: "summarizing", iteration: null, timestampMs: 10200 },
-  { raw: "Evolution complete: 2 files changed, 14 additions", summary: "Evolution complete", eventType: "complete", iteration: null, timestampMs: 11800 },
+  {
+    raw: "Starting evolution...",
+    summary: "Starting evolution",
+    eventType: "start",
+    iteration: null,
+    timestampMs: 0,
+  },
+  {
+    raw: "Iteration 1 of 25",
+    summary: "Iteration 1",
+    eventType: "iteration",
+    iteration: 1,
+    timestampMs: 1200,
+  },
+  {
+    raw: "Analyzing current configuration to understand package structure...",
+    summary: "Thinking about changes",
+    eventType: "thinking",
+    iteration: 1,
+    timestampMs: 2400,
+  },
+  {
+    raw: "read_file: configuration.nix",
+    summary: "Reading configuration.nix",
+    eventType: "reading",
+    iteration: 1,
+    timestampMs: 3100,
+  },
+  {
+    raw: "edit_file: configuration.nix — adding htop and btop",
+    summary: "Editing configuration.nix",
+    eventType: "editing",
+    iteration: 1,
+    timestampMs: 4500,
+  },
+  {
+    raw: "Creating modules/monitoring.nix with monitoring tools",
+    summary: "Creating modules/monitoring.nix",
+    eventType: "editing",
+    iteration: 1,
+    timestampMs: 5800,
+  },
+  {
+    raw: "Running nix eval to verify syntax...",
+    summary: "Checking build",
+    eventType: "buildCheck",
+    iteration: 1,
+    timestampMs: 7200,
+  },
+  {
+    raw: "Build check passed",
+    summary: "Build passed",
+    eventType: "buildPass",
+    iteration: 1,
+    timestampMs: 9500,
+  },
+  {
+    raw: "Summarizing changes...",
+    summary: "Analyzing changes",
+    eventType: "summarizing",
+    iteration: null,
+    timestampMs: 10200,
+  },
+  {
+    raw: "Evolution complete: 2 files changed, 14 additions",
+    summary: "Evolution complete",
+    eventType: "complete",
+    iteration: null,
+    timestampMs: 11800,
+  },
 ];
 
 // =============================================================================
@@ -168,14 +228,14 @@ function WidgetWithState({ storeState }: { storeState: Record<string, unknown> }
       commitMessageSuggestion,
       evolveEvents,
     } = storeState;
-    useUiState.setState({
+    uiActions.setState({
       ...(isGenerating !== undefined && { isGenerating: isGenerating as boolean }),
       ...(evolvePrompt !== undefined && { evolvePrompt: evolvePrompt as string }),
       ...(commitMessageSuggestion !== undefined && {
         commitMessageSuggestion: commitMessageSuggestion as string | null,
       }),
     });
-    useViewModel.setState({
+    viewModelActions.setState({
       evolve: (evolveState as EvolveState | undefined) ?? null,
       git: (gitStatus as GitStatus | undefined) ?? null,
       changeMap: (changeMap as SemanticChangeMap | undefined) ?? null,
@@ -190,15 +250,15 @@ function AnimatedEvolveFlow() {
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
-    useViewModel.setState({ evolve: evolveStateBegin });
-    useUiState.setState({
+    viewModelActions.setState({ evolve: evolveStateBegin });
+    uiActions.setState({
       evolvePrompt: "Add system monitoring tools like htop and btop",
     });
 
     // Phase 1: Start generating (show overlay with streaming events)
     const t1 = setTimeout(() => {
-      useUiState.setState({ isGenerating: true });
-      useViewModel.setState({
+      uiActions.setState({ isGenerating: true });
+      viewModelActions.setState({
         evolveEvents: [mockEvolveEvents[0]],
       });
     }, 800);
@@ -207,7 +267,7 @@ function AnimatedEvolveFlow() {
     // Stream events one by one
     for (let i = 1; i < mockEvolveEvents.length; i++) {
       const t = setTimeout(() => {
-        useViewModel.setState((state) => ({
+        viewModelActions.setState((state) => ({
           evolveEvents: [...state.evolveEvents, mockEvolveEvents[i]],
         }));
       }, 800 + mockEvolveEvents[i].timestampMs);
@@ -217,12 +277,12 @@ function AnimatedEvolveFlow() {
     // Phase 2: Evolution complete -> show review step with changes
     const completionTime = 800 + mockEvolveEvents[mockEvolveEvents.length - 1].timestampMs + 1500;
     const t2 = setTimeout(() => {
-      useViewModel.setState({
+      viewModelActions.setState({
         evolve: evolveStateEvolve,
         git: mockGitStatus,
         changeMap: mockChangeMap,
       });
-      useUiState.setState({
+      uiActions.setState({
         isGenerating: false,
       });
     }, completionTime);
@@ -230,9 +290,10 @@ function AnimatedEvolveFlow() {
 
     // Phase 3: Transition to merge step
     const t3 = setTimeout(() => {
-      useViewModel.setState({ evolve: evolveStateMerge });
-      useUiState.setState({
-        commitMessageSuggestion: "feat: add system monitoring tools (htop, btop, bottom, bandwhich, procs)",
+      viewModelActions.setState({ evolve: evolveStateMerge });
+      uiActions.setState({
+        commitMessageSuggestion:
+          "feat: add system monitoring tools (htop, btop, bottom, bandwhich, procs)",
       });
     }, completionTime + 5000);
     timeoutsRef.current.push(t3);
@@ -275,7 +336,15 @@ export const Begin = meta.story({
     <WidgetWithState
       storeState={{
         evolveState: evolveStateBegin,
-        gitStatus: { ...mockGitStatus, files: [], changes: [], diff: "", additions: 0, deletions: 0, cleanHead: true },
+        gitStatus: {
+          ...mockGitStatus,
+          files: [],
+          changes: [],
+          diff: "",
+          additions: 0,
+          deletions: 0,
+          cleanHead: true,
+        },
       }}
     />
   ),
@@ -320,7 +389,8 @@ export const Merge = meta.story({
         evolveState: evolveStateMerge,
         gitStatus: mockGitStatus,
         changeMap: mockChangeMap,
-        commitMessageSuggestion: "feat: add system monitoring tools (htop, btop, bottom, bandwhich, procs)",
+        commitMessageSuggestion:
+          "feat: add system monitoring tools (htop, btop, bottom, bandwhich, procs)",
       }}
     />
   ),

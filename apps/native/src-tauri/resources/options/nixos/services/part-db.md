@@ -5,7 +5,7 @@
 All options under `services.part-db`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.part-db.enable` | | |
 | `services.part-db.enableNginx` | | |
 | `services.part-db.enablePostgresql` | | |

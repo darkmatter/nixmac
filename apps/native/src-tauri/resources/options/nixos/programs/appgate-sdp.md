@@ -5,5 +5,5 @@
 All options under `programs.appgate-sdp`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `programs.appgate-sdp.enable` | | |

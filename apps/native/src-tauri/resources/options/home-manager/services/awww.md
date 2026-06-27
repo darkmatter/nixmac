@@ -5,7 +5,7 @@
 All options under `services.awww`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---------------- | ----------------------------------------------------------------- |
 | `services.awww.enable` | `boolean` | Whether to enable awww, An Answer to your Wayland Wallpaper Woes. |
 | `services.awww.extraArgs` | `list of string` | Options given to awww-daemon when the service is run. |
 | `services.awww.package` | `package` | The awww package to use. |

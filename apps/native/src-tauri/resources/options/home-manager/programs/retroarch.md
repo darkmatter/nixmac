@@ -5,7 +5,7 @@
 All options under `programs.retroarch`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ------------------------------ | ---------------------------------------------------------------- |
 | `programs.retroarch.cores` | `attribute set of (submodule)` | RetroArch cores to enable. You can provide custom core packages. |
 | `programs.retroarch.enable` | `boolean` | Whether to enable RetroArch. |
 | `programs.retroarch.finalPackage` | `package (read only)` | Resulting RetroArch package. |

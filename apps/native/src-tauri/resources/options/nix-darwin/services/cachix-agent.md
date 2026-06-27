@@ -5,7 +5,7 @@
 All options under `services.cachix-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ----------------------- | ----------------------------------------------- |
 | `services.cachix-agent.credentialsFile` | `absolute path` | Required file that needs to contain: |
 | `services.cachix-agent.enable` | `boolean` | Enable to run Cachix Agent as a system service. |
 | `services.cachix-agent.logFile` | `null or absolute path` | Absolute path to log all stderr and stdout |

@@ -60,8 +60,7 @@ pub async fn trigger_test_panic() -> Result<(), String> {
 /// Exercises the same code path as the watcher's drift notifications.
 #[tauri::command]
 pub async fn developer_send_test_notification(app: AppHandle) -> Result<(), String> {
-    let developer_mode =
-        store::get_bool_pref(&app, store::DEVELOPER_MODE_KEY, false).map_err(|e| e.to_string())?;
+    let developer_mode = crate::state::ui_prefs::developer_mode(&app);
     if !developer_mode {
         return Err("Developer mode is required to send test notifications".to_string());
     }
@@ -73,8 +72,7 @@ pub async fn developer_send_test_notification(app: AppHandle) -> Result<(), Stri
 /// Clears the app's Tauri plugin-store files.
 #[tauri::command]
 pub async fn developer_clear_tauri_state(app: AppHandle) -> Result<(), String> {
-    let developer_mode =
-        store::get_bool_pref(&app, store::DEVELOPER_MODE_KEY, false).map_err(|e| e.to_string())?;
+    let developer_mode = crate::state::ui_prefs::developer_mode(&app);
     if !developer_mode {
         return Err("Developer mode is required to clear Tauri state".to_string());
     }

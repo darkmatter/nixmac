@@ -5,7 +5,7 @@
 All options under `programs.man`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.man.enable` | `boolean` | Whether to enable manual pages and the man command. This also includes “man” outputs of all home.packages . |
 | `programs.man.extraConfig` | `strings concatenated with “\n”` | Additional fields to be added to the end of the user manpath config file. |
 | `programs.man.generateCaches` | `boolean` | Whether to generate the manual page index caches using mandb (8) . This allows searching for a page or keyword using utilities like apropos (1) . |

@@ -5,5 +5,5 @@
 All options under `nixops`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `nixops.enableDeprecatedAutoLuks` | | |

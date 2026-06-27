@@ -41,6 +41,7 @@ export class NixdLspClient {
   async start(configDir: string): Promise<void> {
     if (this._running) return;
 
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.lsp.start();
 
     // Listen for messages from nixd via Tauri events
@@ -87,6 +88,7 @@ export class NixdLspClient {
     }
 
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.lsp.stop();
     } catch {
       // Best effort
@@ -108,6 +110,7 @@ export class NixdLspClient {
       this.pending.set(id, { resolve, reject });
     });
 
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.lsp.send(JSON.stringify(request)).catch((e) => {
       this.pending.delete(id);
       if (String(e).includes("Broken pipe")) this.markDead();
@@ -118,6 +121,7 @@ export class NixdLspClient {
 
   sendNotification(method: string, params: unknown): void {
     const notification: JsonRpcNotification = { jsonrpc: "2.0", method, params };
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     tauriAPI.lsp.send(JSON.stringify(notification)).catch((e: unknown) => {
       console.warn("[lsp-client] Failed to send notification:", e);
       if (String(e).includes("Broken pipe")) this.markDead();

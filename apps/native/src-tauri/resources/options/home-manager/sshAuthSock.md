@@ -5,5 +5,5 @@
 All options under `sshAuthSock`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `sshAuthSock.initialization` | | |

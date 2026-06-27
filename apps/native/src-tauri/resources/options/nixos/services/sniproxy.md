@@ -5,7 +5,7 @@
 All options under `services.sniproxy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.sniproxy.config` | | |
 | `services.sniproxy.enable` | | |
 | `services.sniproxy.group` | | |

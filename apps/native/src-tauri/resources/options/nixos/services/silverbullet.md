@@ -5,7 +5,7 @@
 All options under `services.silverbullet`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.silverbullet.enable` | | |
 | `services.silverbullet.envFile` | | |
 | `services.silverbullet.extraArgs` | | |

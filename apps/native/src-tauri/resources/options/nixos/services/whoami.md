@@ -5,7 +5,7 @@
 All options under `services.whoami`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.whoami.enable` | | |
 | `services.whoami.extraArgs` | | |
 | `services.whoami.package` | | |
