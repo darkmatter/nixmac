@@ -8,7 +8,7 @@
 //! `~/.darwin`) so the rest of onboarding can proceed exactly as if the user
 //! had selected an existing flake.
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use git2::{Cred, CredentialType, FetchOptions, RemoteCallbacks};
 use std::fs::File;
 use std::path::{Component, Path, PathBuf};
@@ -65,8 +65,11 @@ fn is_github_clone_url(clone_url: &str) -> bool {
 
     url::Url::parse(clone_url)
         .ok()
-        .and_then(|url| url.host_str().map(str::to_owned))
-        .is_some_and(|host| host.eq_ignore_ascii_case("github.com"))
+        .and_then(|url| url.host_str())
+        .is_some_and(|host| {
+            let host = host.to_ascii_lowercase();
+            host == "github.com" || host == "www.github.com"
+        })
 }
 
 /// Parses one of our repository locator forms into an owner/repo pair, stripping any `.git` suffix and optional `github.com/` prefix.
@@ -344,7 +347,11 @@ fn clone_repo(spec: &RepoRef, dest: &Path, token: Option<&str>) -> Result<()> {
     let mut credential_helper_attempted = false;
     let mut callbacks = RemoteCallbacks::new();
     callbacks.credentials(move |url, username_from_url, allowed| {
-        if allowed.contains(git2::CredentialType::USERNAME) {
+        if allowed.contains(git2::CredentialType::USERNAME)
+            && !allowed.contains(git2::CredentialType::USER_PASS_PLAINTEXT)
+            && !allowed.contains(git2::CredentialType::SSH_KEY)
+            && !allowed.contains(git2::CredentialType::DEFAULT)
+        {
             return Cred::username(username_from_url.unwrap_or("git"));
         }
 
@@ -1047,31 +1054,9 @@ mod tests {
     }
 
     #[test]
-    fn token_credential_uses_plaintext_userpass_when_allowed() {
-        let credential =
-            token_credential("github-token", None, CredentialType::USER_PASS_PLAINTEXT);
-
-        assert!(credential.is_ok());
+    fn test_is_github_clone_url() {
+        assert!(is_github_clone_url("https://github.com/repo.git"));
+        assert!(is_github_clone_url("https://www.github.com/repo.git"));
+        assert!(!is_github_clone_url("https://gitlab.com/repo.git"));
     }
-
-    #[test]
-    fn token_credential_fails_when_plaintext_userpass_not_allowed() {
-        let credential = token_credential("github-token", None, CredentialType::SSH_KEY);
-
-        assert!(credential.is_err());
-    }
-}
-
-fn token_credential(
-    token: &str,
-    username_from_url: Option<&str>,
-    allowed: CredentialType,
-) -> std::result::Result<Cred, git2::Error> {
-    if token.is_empty() || !allowed.contains(CredentialType::USER_PASS_PLAINTEXT) {
-        return Err(git2::Error::from_str(
-            "token authentication requires plaintext username/password credentials",
-        ));
-    }
-
-    Cred::userpass_plaintext(username_from_url.unwrap_or("x-access-token"), token)
 }
