@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 import { tauriAPI } from "@/ipc/api";
 import { useLaunchdItems } from "@/hooks/use-launchd-items";
 import { useSystemDefaultsScan } from "@/hooks/use-system-defaults-scan";
+import { useHomebrewDiff } from "@/hooks/use-homebrew-diff";
 import { uiActions, useUiState } from "@nixmac/state";
 
-import type { HomebrewItem, HomebrewState, LaunchdItem, SystemDefault } from "@/ipc/types";
+import type { HomebrewItem, LaunchdItem, SystemDefault } from "@/ipc/types";
 
 import {
   FILES,
@@ -47,8 +48,11 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
       : "darwin";
 
   const [activeSection, setActiveSection] = useState<SectionId>(initialSection);
-  const [homebrewDiff, setHomebrewDiff] = useState<HomebrewState | null>(null);
-  const [homebrewError, setHomebrewError] = useState<string | null>(null);
+  const {
+    diff: homebrewDiff,
+    error: homebrewError,
+    refresh: refreshHomebrew,
+  } = useHomebrewDiff();
   const {
     scan: systemDefaultsScan,
     error: systemDefaultsError,
@@ -67,28 +71,6 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
       uiActions.setState({ filesystemTargetSection: null });
     }
   }, [targetSection]);
-
-  useEffect(() => {
-    let cancelled = false;
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    tauriAPI.homebrew
-      .getStateDiff()
-      .then((diff) => {
-        if (!cancelled) {
-          setHomebrewDiff(diff);
-          setHomebrewError(null);
-        }
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setHomebrewError(String(error));
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const manageFiles = replaceLaunchdPlaceholder(
     replaceSystemDefaultsPlaceholder(
@@ -139,7 +121,7 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
       await tauriAPI.homebrew.addItems(homebrewItems);
       invalidateRecommendation();
       uiActions.setShowFilesystem(false);
-      setHomebrewDiff(null);
+      await refreshHomebrew();
     } finally {
       uiActions.setProcessing(false);
     }

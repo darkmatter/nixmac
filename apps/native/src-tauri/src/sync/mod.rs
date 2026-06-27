@@ -18,12 +18,12 @@ pub mod signing;
 use anyhow::{Result, anyhow};
 use reqwest::header::ORIGIN;
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use tauri::{AppHandle, Runtime};
 
 use crate::shared_types::{
-    AccountBilling, AuthAccount, AuthStatus, CreditBalance, GithubBootstrapState,
-    GithubBootstrapStatus, GithubConnectStart, GithubRepo, GithubStatus, SyncRemoteStatus,
-    SyncResult,
+    AccountBilling, AuthAccount, AuthStatus, GithubBootstrapState, GithubBootstrapStatus,
+    GithubConnectStart, GithubRepo, GithubStatus, SyncRemoteStatus, SyncResult,
 };
 use crate::storage::store::{self, SyncAccountMeta, WebAccountMeta};
 use account_client::AccountClient;
@@ -59,66 +59,109 @@ fn require_credentials<R: Runtime>(app: &AppHandle<R>) -> Result<SyncCredentials
     current_credentials(app)?.ok_or_else(|| anyhow!("Not signed in to a nixmac account"))
 }
 
-#[derive(Serialize)]
-struct OrpcRequest<T> {
-    json: T,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct SubscriptionCheckoutInput {
-    slug: String,
-}
-
-#[derive(Deserialize)]
-struct CheckoutResponse {
-    url: String,
-}
-
-#[derive(Deserialize)]
-struct OrpcResponse<T> {
-    json: T,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct MeResponse {
-    billing: AccountBilling,
-}
-
-async fn fetch_me<R: Runtime>(app: &AppHandle<R>) -> Result<AccountBilling> {
-    let api_key = store::get_device_api_key(app)?
-        .ok_or_else(|| anyhow!("Sign in before loading account billing"))?;
+/// Builds an authed request to a web `/api/billing/*` endpoint. Billing
+/// procedures are served by oRPC's OpenAPI handler, so request and response
+/// bodies are plain JSON (no `{ json }` RPC envelope).
+fn billing_request<R: Runtime>(
+    app: &AppHandle<R>,
+    method: reqwest::Method,
+    path: &str,
+) -> Result<reqwest::RequestBuilder> {
+    let api_key =
+        store::get_device_api_key(app)?.ok_or_else(|| anyhow!("Sign in before using billing"))?;
     let base = store::get_web_server_url()?;
     let origin = account_client::web_origin(&base)?;
-    let url = format!("{}/api/me", base.trim_end_matches('/'));
-    let response = reqwest::Client::new()
-        .get(url)
+    let url = format!("{}/api/billing/{}", base.trim_end_matches('/'), path);
+    Ok(reqwest::Client::new()
+        .request(method, url)
         .header("x-api-key", api_key)
         .header(ORIGIN, origin)
-        .header("accept", "application/json")
-        .send()
-        .await?;
+        .header("accept", "application/json"))
+}
 
+/// Reads a plain-JSON billing response, surfacing the server's `message` field
+/// (oRPC error shape) on non-2xx responses.
+async fn read_billing_json<T: serde::de::DeserializeOwned>(
+    response: reqwest::Response,
+    context: &str,
+) -> Result<T> {
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
     if !status.is_success() {
-        return Err(anyhow!("Account profile request failed ({status}): {body}"));
+        if let Ok(payload) = serde_json::from_str::<serde_json::Value>(&body) {
+            if let Some(message) = payload.get("message").and_then(|value| value.as_str()) {
+                return Err(anyhow!("{context} failed ({status}): {message}"));
+            }
+        }
+        return Err(anyhow!("{context} failed ({status}): {body}"));
     }
-
-    let payload: OrpcResponse<MeResponse> = serde_json::from_str(&body)
-        .map_err(|error| anyhow!("Failed to decode /api/me response: {error}: {body}"))?;
-    Ok(payload.json.billing)
+    serde_json::from_str::<T>(&body)
+        .map_err(|error| anyhow!("Failed to decode {context} response: {error}: {body}"))
 }
 
-/// Fetches the signed-in account's billing snapshot via `/api/me`.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CheckoutInput {
+    product: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    amount_usd: Option<f64>,
+}
+
+#[derive(Deserialize)]
+struct CheckoutUrlResponse {
+    url: String,
+}
+
+/// Fetches the signed-in account's billing snapshot via `/api/billing/state`.
 pub async fn account_billing<R: Runtime>(app: &AppHandle<R>) -> Result<AccountBilling> {
-    fetch_me(app).await
+    let response = billing_request(app, reqwest::Method::GET, "state")?
+        .send()
+        .await?;
+    read_billing_json(response, "Account billing request").await
 }
 
-/// Fetches the signed-in account's hosted inference usage balance via `/api/me`.
-pub async fn credit_balance<R: Runtime>(app: &AppHandle<R>) -> Result<CreditBalance> {
-    Ok(fetch_me(app).await?.usage)
+/// A billing product offered to customers, mirrored from `/api/billing/products`.
+#[derive(Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct BillingProductInfo {
+    pub product: String,
+    pub name: String,
+    pub currency: String,
+    #[serde(rename = "type")]
+    pub kind: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub price_usd: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub recurring_interval: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minimum_amount_usd: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub maximum_amount_usd: Option<f64>,
+}
+
+#[derive(Deserialize)]
+struct BillingProductsResponse {
+    products: Vec<BillingProductInfo>,
+}
+
+/// Lists the available billing products (with pricing) from `/api/billing/products`.
+/// This endpoint is public; the device api-key is forwarded when available but
+/// not required.
+pub async fn billing_products<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<BillingProductInfo>> {
+    let base = store::get_web_server_url()?;
+    let origin = account_client::web_origin(&base)?;
+    let url = format!("{}/api/billing/products", base.trim_end_matches('/'));
+    let mut request = reqwest::Client::new()
+        .get(url)
+        .header(ORIGIN, origin)
+        .header("accept", "application/json");
+    if let Ok(Some(api_key)) = store::get_device_api_key(app) {
+        request = request.header("x-api-key", api_key);
+    }
+    let response = request.send().await?;
+    let parsed: BillingProductsResponse =
+        read_billing_json(response, "Billing products request").await?;
+    Ok(parsed.products)
 }
 
 /// Builds the current [`AuthStatus`] snapshot for the frontend.
@@ -300,51 +343,39 @@ pub async fn verify_web_sign_in_otp<R: Runtime>(
     status(app)
 }
 
-/// Creates a Polar subscription checkout for the signed-in web-origin account.
-pub async fn create_subscription_checkout<R: Runtime>(
+/// Creates a Polar checkout for the signed-in account and returns the URL to
+/// open. `product` is `pro` (subscription) or `credits` (pay-what-you-want
+/// top-up); `amount_usd` pre-sets the credits amount when provided.
+pub async fn create_checkout<R: Runtime>(
     app: &AppHandle<R>,
-    slug: &str,
+    product: &str,
+    amount_usd: Option<f64>,
 ) -> Result<String> {
-    let slug = slug.trim();
-    if slug != "payg-tokens" && slug != "pro" {
-        return Err(anyhow!("Subscription slug must be payg-tokens or pro"));
+    let product = product.trim();
+    if product != "pro" && product != "credits" {
+        return Err(anyhow!("Checkout product must be pro or credits"));
     }
 
-    let api_key = store::get_device_api_key(app)?
-        .ok_or_else(|| anyhow!("Sign in before starting checkout"))?;
-    let base = store::get_web_server_url()?;
-    let origin = account_client::web_origin(&base)?;
-    let url = format!(
-        "{}/api/billing/subscription-checkout",
-        base.trim_end_matches('/')
-    );
-    let response = reqwest::Client::new()
-        .post(url)
-        .header("x-api-key", api_key)
-        .header(ORIGIN, origin)
-        .header("accept", "application/json")
-        .json(&OrpcRequest {
-            json: SubscriptionCheckoutInput {
-                slug: slug.to_string(),
-            },
+    let response = billing_request(app, reqwest::Method::POST, "checkout")?
+        .json(&CheckoutInput {
+            product: product.to_string(),
+            amount_usd,
         })
         .send()
         .await?;
 
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-    if !status.is_success() {
-        if let Ok(payload) = serde_json::from_str::<serde_json::Value>(&body) {
-            if let Some(message) = payload.get("message").and_then(|value| value.as_str()) {
-                return Err(anyhow!("Checkout request failed ({status}): {message}"));
-            }
-        }
-        return Err(anyhow!("Checkout request failed ({status}): {body}"));
-    }
+    let checkout: CheckoutUrlResponse = read_billing_json(response, "Checkout request").await?;
+    Ok(checkout.url)
+}
 
-    let checkout: OrpcResponse<CheckoutResponse> = serde_json::from_str(&body)
-        .map_err(|error| anyhow!("Failed to decode checkout response: {error}: {body}"))?;
-    Ok(checkout.json.url)
+/// Creates a Polar customer portal session for self-service billing management
+/// and returns the URL to open.
+pub async fn create_billing_portal<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
+    let response = billing_request(app, reqwest::Method::POST, "portal")?
+        .send()
+        .await?;
+    let portal: CheckoutUrlResponse = read_billing_json(response, "Billing portal request").await?;
+    Ok(portal.url)
 }
 
 fn persist_web_session<R: Runtime>(

@@ -1,9 +1,10 @@
 import "@testing-library/jest-dom";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { InferenceSetup } from "@/components/widget/onboarding/inference/inference-setup";
-import type { AccountBilling } from "@/ipc/types";
+import type { AccountBilling, BillingProductInfo } from "@/lib/orpc";
 
 type AuthStatus = {
   signedIn: boolean;
@@ -28,12 +29,33 @@ const emptyBilling: AccountBilling = {
   canUseDeviceSync: false,
 };
 
+const demoProducts: BillingProductInfo[] = [
+  {
+    product: "credits",
+    name: "Hosted inference credits",
+    currency: "usd",
+    type: "topup",
+    minimumAmountUsd: 5,
+  },
+  {
+    product: "pro",
+    name: "Pro",
+    currency: "usd",
+    type: "subscription",
+    priceUsd: 5,
+    recurringInterval: "month",
+  },
+];
+
+type CheckoutInput = { product: string; amountUsd: number | null };
+
 const mocks = vi.hoisted(() => ({
   status: vi.fn<() => Promise<AccountStatus>>(),
   sendOtp: vi.fn<(email: string) => Promise<void>>(),
   verifyOtp: vi.fn<(email: string, otp: string, name: string) => Promise<AuthStatus>>(),
-  billing: vi.fn<() => Promise<AccountBilling>>(),
-  createSubscriptionCheckout: vi.fn<(slug: "payg-tokens" | "pro") => Promise<string>>(),
+  billingState: vi.fn<() => Promise<AccountBilling>>(),
+  billingProducts: vi.fn<() => Promise<BillingProductInfo[]>>(),
+  billingCheckout: vi.fn<(input: CheckoutInput) => Promise<{ url: string }>>(),
   captureEvent: vi.fn<(event: unknown) => void>(),
   identify: vi.fn<(id: string, properties: Record<string, unknown>) => void>(),
 }));
@@ -44,12 +66,39 @@ vi.mock("@/ipc/api", () => ({
       status: () => mocks.status(),
       sendOtp: (email: string) => mocks.sendOtp(email),
       verifyOtp: (email: string, otp: string, name: string) => mocks.verifyOtp(email, otp, name),
-      billing: () => mocks.billing(),
-      createSubscriptionCheckout: (slug: "payg-tokens" | "pro") =>
-        mocks.createSubscriptionCheckout(slug),
     },
     ui: {
       setPrefs: vi.fn<() => Promise<{ ok: boolean }>>().mockResolvedValue({ ok: true }),
+    },
+  },
+}));
+
+// Hand-built oRPC mock that mirrors the `queryOptions` / client shapes the
+// component consumes, so React Query drives the mocked billing fns. Building a
+// real `createTanstackQueryUtils` here would require importing it inside this
+// hoisted mock factory, which a static top-level import cannot reach.
+vi.mock("@/lib/orpc", () => ({
+  orpc: {
+    billing: {
+      state: {
+        queryOptions: (options?: Record<string, unknown>) => ({
+          queryKey: ["billing", "state"],
+          queryFn: () => mocks.billingState(),
+          ...options,
+        }),
+      },
+      products: {
+        queryOptions: (options?: Record<string, unknown>) => ({
+          queryKey: ["billing", "products"],
+          queryFn: () => mocks.billingProducts(),
+          ...options,
+        }),
+      },
+    },
+  },
+  client: {
+    billing: {
+      checkout: (input: CheckoutInput) => mocks.billingCheckout(input),
     },
   },
 }));
@@ -65,6 +114,17 @@ vi.mock("posthog-js", () => ({
     identify: mocks.identify,
   },
 }));
+
+function renderSetup(): void {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  render(
+    <QueryClientProvider client={queryClient}>
+      <InferenceSetup onConfigured={vi.fn<(config: unknown) => void>()} />
+    </QueryClientProvider>,
+  );
+}
 
 describe("InferenceSetup", () => {
   beforeEach(() => {
@@ -83,12 +143,13 @@ describe("InferenceSetup", () => {
       account: { email: "ada@example.com" },
       credentialId: "credential-1",
     });
-    mocks.billing.mockResolvedValue(emptyBilling);
-    mocks.createSubscriptionCheckout.mockResolvedValue("https://polar.sh/demo-checkout");
+    mocks.billingState.mockResolvedValue(emptyBilling);
+    mocks.billingProducts.mockResolvedValue(demoProducts);
+    mocks.billingCheckout.mockResolvedValue({ url: "https://polar.sh/demo-checkout" });
   });
 
   it("signs in to hosted inference with an email one-time code", async () => {
-    render(<InferenceSetup onConfigured={vi.fn<(config: unknown) => void>()} />);
+    renderSetup();
 
     expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument();
 
@@ -111,8 +172,8 @@ describe("InferenceSetup", () => {
     expect(screen.getByText(/signed in as/i)).toBeInTheDocument();
   });
 
-  it("shows subscription plan selection after sign in", async () => {
-    render(<InferenceSetup onConfigured={vi.fn<(config: unknown) => void>()} />);
+  it("shows subscription plan selection with product pricing after sign in", async () => {
+    renderSetup();
 
     fireEvent.change(screen.getByLabelText("Email"), {
       target: { value: "ada@example.com" },
@@ -127,6 +188,10 @@ describe("InferenceSetup", () => {
     expect(await screen.findByText(/choose a plan/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /subscribe to pay as you go/i })).toBeInTheDocument();
     expect(screen.getByText(/device sync across macs/i)).toBeInTheDocument();
+    // Prices come from `orpc.billing.products`.
+    // Pro shows its subscription price; pay-as-you-go has no subscription fee.
+    expect(await screen.findByText("$5/mo")).toBeInTheDocument();
+    expect(screen.getByText("Free")).toBeInTheDocument();
   });
 
   it("resumes at payment when a web account is already persisted", async () => {
@@ -139,7 +204,7 @@ describe("InferenceSetup", () => {
       webAccount: { id: "acct_1", email: "ada@example.com" },
     });
 
-    render(<InferenceSetup onConfigured={vi.fn<(config: unknown) => void>()} />);
+    renderSetup();
 
     expect(await screen.findByText(/signed in as/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /send sign-in code/i })).not.toBeInTheDocument();
@@ -155,7 +220,7 @@ describe("InferenceSetup", () => {
       githubReady: true,
       webAccount: { id: "acct_1", email: "ada@example.com" },
     });
-    mocks.billing.mockResolvedValue({
+    mocks.billingState.mockResolvedValue({
       ...emptyBilling,
       subscriptions: [
         {
@@ -169,7 +234,7 @@ describe("InferenceSetup", () => {
       canUseHostedInference: true,
     });
 
-    render(<InferenceSetup onConfigured={vi.fn<(config: unknown) => void>()} />);
+    renderSetup();
 
     expect(
       await screen.findByRole("button", { name: /continue with active subscription/i }),

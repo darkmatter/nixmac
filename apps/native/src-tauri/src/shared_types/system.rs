@@ -18,6 +18,7 @@ pub struct HomebrewState {
     /// Source used to collect the state, when known.
     pub source: Option<String>,
     /// Unix timestamp when this state was last collected.
+    #[specta(type = f64)]
     pub last_checked: i64,
 }
 
@@ -180,6 +181,7 @@ pub struct SystemDefaultsScan {
     /// Defaults that differ from known factory values.
     pub defaults: Vec<SystemDefault>,
     /// Number of defaults keys scanned.
+    #[specta(type = f64)]
     pub total_scanned: usize,
 }
 

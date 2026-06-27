@@ -3,7 +3,8 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
-import { client } from "@/lib/orpc";
+import { useFlakeExists } from "@/hooks/use-flake-exists";
+import { useThisHostname } from "@/hooks/use-this-hostname";
 import { useViewModel } from "@nixmac/state";
 import { useUiState } from "@nixmac/state";
 import { AlertCircle, GitCommit, Sparkles } from "lucide-react";
@@ -25,53 +26,29 @@ export function BootstrapConfig({
   forceNeedsInitialCommit = false,
 }: BootstrapConfigProps) {
   const [hostname, setHostname] = useState(DEFAULT_HOSTNAME);
-  const [hostnamePlaceholder, setHostnamePlaceholder] = useState(DEFAULT_HOSTNAME);
   const [localError, setLocalError] = useState<string | null>(null);
   const { bootstrap, isBootstrapping } = useDarwinConfig();
   const configDir = useViewModel((state) => state.preferences?.configDir ?? "");
   const gitStatus = useViewModel((state) => state.git);
-  const [flakeExists, setFlakeExists] = useState(false);
+  const flakeExists = useFlakeExists(configDir);
 
+  const fetchedHost = useThisHostname();
+  const hostnamePlaceholder = fetchedHost || DEFAULT_HOSTNAME;
+
+  // Seed the editable host field from this Mac's hostname, unless the user
+  // already changed it.
   useEffect(() => {
-    let cancelled = false;
+    setHostname((current) => (current === DEFAULT_HOSTNAME ? hostnamePlaceholder : current));
+  }, [hostnamePlaceholder]);
 
-    const loadThisHostname = async () => {
-      let nextHostname = DEFAULT_HOSTNAME;
-
-      try {
-        nextHostname = (await client.config.getThisHostname()).trim() || DEFAULT_HOSTNAME;
-      } catch {}
-
-      if (cancelled) return;
-
-      setHostnamePlaceholder(nextHostname);
-      setHostname((currentHostname) =>
-        currentHostname === DEFAULT_HOSTNAME ? nextHostname : currentHostname,
-      );
-    };
-
-    void loadThisHostname();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
+  // Clear any prior bootstrap error when the target directory changes.
   useEffect(() => {
     setLocalError(null);
-    if (!configDir) {
-      setFlakeExists(false);
-      return;
-    }
-    client.flake
-      .existsAt({ dir: configDir })
-      .then(setFlakeExists)
-      .catch(() => setFlakeExists(false));
   }, [configDir]);
 
   const needsInitialCommit =
     forceNeedsInitialCommit ||
-    (flakeExists && (gitStatus === null || gitStatus.headCommitHash === ""));
+    (flakeExists === true && (gitStatus === null || gitStatus.headCommitHash === ""));
 
   const message = needsInitialCommit
     ? "flake.nix found but not committed — Nix needs a git commit to evaluate your flake"

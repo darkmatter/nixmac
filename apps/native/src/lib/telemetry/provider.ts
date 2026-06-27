@@ -122,6 +122,18 @@ export function createTelemetryProvider(
       span.end();
     },
 
+    getFeatureFlag(key: string) {
+      if (!enabled || !posthogStarted) return undefined;
+      return posthog.getFeatureFlag(key);
+    },
+
+    onFeatureFlags(callback: () => void) {
+      if (!posthogStarted) return () => {};
+      // posthog-js passes (flags, variants) to the callback; we only need the
+      // signal that flags changed, so adapt to a zero-arg callback.
+      return posthog.onFeatureFlags(() => callback());
+    },
+
     setEnabled(next: boolean) {
       enabled = next;
       if (!posthogStarted) return;

@@ -118,10 +118,15 @@ import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 import { QueryClient } from "@tanstack/react-query";
 
 export type {
+  AccountBilling,
   AdoptManualChangesResult,
+  BillingProductInfo,
+  BillingSubscription,
   BuildCheckResult,
+  CheckoutUrl,
   CommitResult,
   Config,
+  CreditBalance,
   EvolveCancelResult,
   EvolveState,
   EvolveStep,
@@ -152,12 +157,15 @@ export const orpc = createTanstackQueryUtils(client);
 
 /**
  * Shared query cache for the app. Pass to `QueryClientProvider` at the root.
- * `staleTime` avoids refetching unchanged data on every mount.
+ * `staleTime` avoids refetching unchanged data on every mount; `gcTime` matches
+ * the on-disk persist `maxAge` (see `query-persist.ts`) so persisted entries are
+ * not garbage-collected before they can be restored after a restart.
  */
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60,
+      gcTime: 1000 * 60 * 60 * 24, // 24h — keep in sync with QUERY_PERSIST_MAX_AGE
     },
   },
 });

@@ -3,6 +3,7 @@
 //! Add procedures here and regenerate bindings with:
 //! `cd apps/native && bun run gen:orpc`
 
+mod billing;
 mod config;
 mod darwin;
 mod evolve_state;
@@ -11,8 +12,11 @@ mod git;
 mod github;
 mod helpers;
 mod history;
+mod homebrew;
+mod launchd;
 mod path;
 mod preview_indicator;
+mod scanner;
 mod summarized_changes;
 
 use orpc::*;
@@ -34,4 +38,8 @@ pub fn build_router() -> Router<OrpcCtx> {
         .nest("history", history::routes())
         .nest("git", git::routes())
         .nest("previewIndicator", preview_indicator::routes())
+        .nest("homebrew", homebrew::routes())
+        .nest("launchd", launchd::routes())
+        .nest("scanner", scanner::routes())
+        .nest("billing", billing::routes())
 }

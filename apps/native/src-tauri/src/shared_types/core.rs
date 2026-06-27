@@ -77,6 +77,7 @@ pub struct ConfigEditApplyResult {
     /// Whether the config edit was applied.
     pub ok: bool,
     /// Number of items applied.
+    #[specta(type = f64)]
     pub count: usize,
 }
 

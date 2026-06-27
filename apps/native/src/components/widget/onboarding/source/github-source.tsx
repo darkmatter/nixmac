@@ -8,7 +8,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { client } from "@/lib/orpc";
+import { client, orpc } from "@/lib/orpc";
 import { tauriAPI } from "@/ipc/api";
 import type { GithubRepo } from "@/ipc/types";
 import { auth as authClient } from "@/lib/auth";
@@ -20,6 +20,7 @@ import { open } from "@tauri-apps/plugin-shell";
 import { Check, FileWarning, Globe, Loader2, Lock, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 interface GitHubSourceProps {
   onImported?: () => void;
 }
@@ -139,10 +140,9 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
   const [bootstrapPollIntervalMs, setBootstrapPollIntervalMs] = useState(DEFAULT_BOOTSTRAP_POLL_MS);
   const [accountWorking, setAccountWorking] = useState(false);
   const [login, setLogin] = useState<string | null>(null);
-  const [repos, setRepos] = useState<GithubRepo[] | null>(null);
+  const queryClient = useQueryClient();
   const [repoQuery, setRepoQuery] = useState("");
   const [repoPage, setRepoPage] = useState(0);
-  const [loadingRepos, setLoadingRepos] = useState(false);
   const [importingRef, setImportingRef] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const cancelled = useRef(false);
@@ -168,7 +168,7 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     setGithubReady(false);
     setAuth("disconnected");
     setLogin(null);
-    setRepos(null);
+    queryClient.removeQueries({ queryKey: orpc.github.key() });
     setConnectMode(null);
     setBootstrapUserCode(null);
     setBootstrapVerificationUri(null);
@@ -176,7 +176,7 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     bootstrapStateRef.current = null;
     bootstrapResolved.current = false;
     return true;
-  }, []);
+  }, [queryClient]);
 
   const requireEmailFallback = useCallback((message?: string | null) => {
     setShowEmailFallback(true);
@@ -294,24 +294,19 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     return () => clearInterval(id);
   }, [auth, bootstrapPollIntervalMs, connectMode, pollGitHubConnection]);
 
-  // Load repos once connected.
+  // Repos shown after connecting; cached + deduped via React Query.
+  const reposQuery = useQuery(
+    orpc.github.listRepos.queryOptions({ enabled: auth === "connected" }),
+  );
+  const repos = reposQuery.data ?? null;
+  const loadingRepos = reposQuery.isLoading;
+
   useEffect(() => {
-    if (auth !== "connected" || repos !== null) return;
-    setLoadingRepos(true);
-    client.github
-      .listRepos()
-      .then((r) => {
-        if (!cancelled.current) setRepos(r);
-      })
-      .catch((e: unknown) => {
-        if (cancelled.current) return;
-        resetRejectedSession(e);
-        setError(errorMessage(e));
-      })
-      .finally(() => {
-        if (!cancelled.current) setLoadingRepos(false);
-      });
-  }, [auth, repos, resetRejectedSession]);
+    const err = reposQuery.error;
+    if (!err) return;
+    resetRejectedSession(err);
+    setError(errorMessage(err));
+  }, [reposQuery.error, resetRejectedSession]);
 
   useEffect(() => {
     setRepoPage(0);

@@ -4,7 +4,8 @@ import { DocsContainer } from "@storybook/addon-docs/blocks";
 import type { DocsContainerProps } from "@storybook/addon-docs/blocks";
 import type { Decorator } from "@storybook/react-vite";
 import { definePreview } from "@storybook/react-vite";
-import { useEffect } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { themes, useTheme } from "storybook/theming";
 import "./mocks/tauri-runtime";
 import darkTheme from "./theme";
@@ -65,6 +66,21 @@ const creeveyParameters = creeveySkipRegex
     }
   : {};
 
+/**
+ * Provides a React Query client so stories that use oRPC query hooks
+ * (e.g. SetupStep, GitHubSource) render outside the app shell.
+ */
+const withQueryClient: Decorator = (Story) => {
+  const [client] = useState(
+    () => new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+  );
+  return (
+    <QueryClientProvider client={client}>
+      <Story />
+    </QueryClientProvider>
+  );
+};
+
 const preview = definePreview({
   addons: [addonA11y(), addonDocs()],
   tags: ["autodocs", "test"],
@@ -102,7 +118,7 @@ const preview = definePreview({
     // 👇 Set the initial background color
     backgrounds: { value: "dark" },
   },
-  decorators: [withViewModelBypass, withDarkTheme],
+  decorators: [withViewModelBypass, withQueryClient, withDarkTheme],
 });
 
 export default preview;

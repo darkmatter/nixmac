@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GitHubSource } from "@/components/widget/onboarding/source/github-source";
@@ -38,8 +39,9 @@ vi.mock("@/lib/auth", () => ({
   auth: mockAuthClient,
 }));
 
-vi.mock("@/lib/orpc", () => ({
-  client: {
+vi.mock("@/lib/orpc", async () => {
+  const { createTanstackQueryUtils } = await import("@orpc/tanstack-query");
+  const client = {
     github: {
       bootstrapStart: () => mockBootstrapStart(),
       bootstrapStatus: (input: { state: string }) => mockBootstrapStatus(input),
@@ -47,8 +49,9 @@ vi.mock("@/lib/orpc", () => ({
       status: () => mockGitHubStatus(),
       listRepos: () => mockListRepos(),
     },
-  },
-}));
+  };
+  return { client, orpc: createTanstackQueryUtils(client) };
+});
 
 vi.mock("@daveyplate/better-auth-tauri", () => ({
   signInSocial: (input: SignInSocialInput) => mockSignInSocial(input),
@@ -61,6 +64,17 @@ vi.mock("@daveyplate/better-auth-tauri/react", () => ({
 vi.mock("@tauri-apps/plugin-shell", () => ({
   open: (url: string) => mockOpen(url),
 }));
+
+function renderGitHubSource() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <GitHubSource />
+    </QueryClientProvider>,
+  );
+}
 
 describe("GitHubSource", () => {
   beforeEach(() => {
@@ -83,7 +97,7 @@ describe("GitHubSource", () => {
   });
 
   it("starts GitHub auth through Better Auth Tauri social sign-in", async () => {
-    render(<GitHubSource />);
+    renderGitHubSource();
 
     const connectButton = await screen.findByTestId("github-connect-button");
     await act(async () => {

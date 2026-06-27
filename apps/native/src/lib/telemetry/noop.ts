@@ -14,5 +14,11 @@ export const noopProvider: TelemetryProvider = {
   captureEvent() {},
   captureError() {},
   setEnabled() {},
+  getFeatureFlag() {
+    return undefined;
+  },
+  onFeatureFlags() {
+    return () => {};
+  },
   reset() {},
 };

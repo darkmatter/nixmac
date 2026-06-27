@@ -1828,13 +1828,25 @@
     url = "https://registry.npmjs.org/@tanstack/pacer-lite/-/pacer-lite-0.1.1.tgz";
     hash = "sha512-y/xtNPNt/YeyoVxE/JCx+T7yjEzpezmbb+toK8DDD1P4m7Kzs5YR956+7OKexG3f8aXgC3rLZl7b1V+yNUSy5w==";
   };
+  "@tanstack/query-async-storage-persister@5.101.1" = fetchurl {
+    url = "https://registry.npmjs.org/@tanstack/query-async-storage-persister/-/query-async-storage-persister-5.101.1.tgz";
+    hash = "sha512-QuHhCTLyQjiVFUYRW5xtgeuiP1NEmqL5wnuFgPGeO6SjTLKeN9VnAhAKsKzde3AcEZEe4PL7FehfKbVhM/9kLA==";
+  };
   "@tanstack/query-core@5.101.1" = fetchurl {
     url = "https://registry.npmjs.org/@tanstack/query-core/-/query-core-5.101.1.tgz";
     hash = "sha512-Y6Y92dkXtNqx67m2pMSxUsA3zOCwv862JexZRP8/EPwvKXMPu9m8rv43spiXWzOUIggQ3SQApttALStzhA8B4g==";
   };
+  "@tanstack/query-persist-client-core@5.101.1" = fetchurl {
+    url = "https://registry.npmjs.org/@tanstack/query-persist-client-core/-/query-persist-client-core-5.101.1.tgz";
+    hash = "sha512-rR5Er6jmdI3Oo8o6Wc0ceM6glDU4umgePu2IxM3Gy2UvPqcQONduxxxSzU1+F17mpS09XHqHKmj0Irhfb2cGYg==";
+  };
   "@tanstack/react-form@1.29.1" = fetchurl {
     url = "https://registry.npmjs.org/@tanstack/react-form/-/react-form-1.29.1.tgz";
     hash = "sha512-hVHk4g0phd0HxRsv2ry6Xt8BqmalT55Q3cokhJBCC1St0hcGZhgwJJbohm9atao45BPG9e55DGvtbwExqZe35g==";
+  };
+  "@tanstack/react-query-persist-client@5.101.1" = fetchurl {
+    url = "https://registry.npmjs.org/@tanstack/react-query-persist-client/-/react-query-persist-client-5.101.1.tgz";
+    hash = "sha512-bBSne+3+28EZ/Ch5a06J0YQi6d5yaT2G+vyHAyhzwzYA1FAEAFe6Ou6TsNVQaT6ef6pFShU73FL/NB4guTWNng==";
   };
   "@tanstack/react-query@5.101.1" = fetchurl {
     url = "https://registry.npmjs.org/@tanstack/react-query/-/react-query-5.101.1.tgz";
@@ -1923,6 +1935,10 @@
   "@tauri-apps/plugin-shell@2.3.5" = fetchurl {
     url = "https://registry.npmjs.org/@tauri-apps/plugin-shell/-/plugin-shell-2.3.5.tgz";
     hash = "sha512-jewtULhiQ7lI7+owCKAjc8tYLJr92U16bPOeAa472LHJdgaibLP83NcfAF2e+wkEcA53FxKQAZ7byDzs2eeizg==";
+  };
+  "@tauri-apps/plugin-store@2.4.3" = fetchurl {
+    url = "https://registry.npmjs.org/@tauri-apps/plugin-store/-/plugin-store-2.4.3.tgz";
+    hash = "sha512-9LWPj9yMphRi9czEtUv87XHbl1b6xgd9EXpPrUnq6nG7+nbtoF84d4Kwz9xhAv/Hf30sr58pq7EOlyI936y8qw==";
   };
   "@tauri-apps/plugin-updater@2.10.1" = fetchurl {
     url = "https://registry.npmjs.org/@tauri-apps/plugin-updater/-/plugin-updater-2.10.1.tgz";

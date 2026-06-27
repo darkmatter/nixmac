@@ -1,44 +1,10 @@
-import { z } from "zod";
-
 export type { InferenceConfig, InferenceMode } from "@nixmac/state";
 
 export const NIXMAC_PROVIDER = "nixmac";
 export const DEFAULT_NIXMAC_MODEL = "openai/gpt-4o-mini";
 
-export interface HostedPaygProduct {
-  slug: string;
-  productId: string;
-  name: string;
-  currency: string;
-  minimumAmountUsd: number;
-  maximumAmountUsd?: number;
-}
-
-export const FALLBACK_HOSTED_PAYG_PRODUCT: HostedPaygProduct = {
-  slug: "payg-tokens",
-  productId: "payg-tokens",
-  name: "Hosted inference credits",
-  currency: "usd",
-  minimumAmountUsd: 5,
-  maximumAmountUsd: 500,
-};
-
-const HostedPaygProductSchema = z.object({
-  slug: z.string().min(1),
-  productId: z.string().min(1),
-  name: z.string().min(1),
-  currency: z.string().min(1),
-  minimumAmountUsd: z.number().positive(),
-  maximumAmountUsd: z.number().positive().optional(),
-});
-
-const HostedPaygProductResponseSchema = z.object({
-  paygProduct: HostedPaygProductSchema,
-});
-
-export function parseHostedPaygProductResponse(response: unknown): HostedPaygProduct {
-  return HostedPaygProductResponseSchema.parse(response).paygProduct;
-}
+/** Checkout product identifiers exposed by the billing API. */
+export type CheckoutProduct = "pro" | "credits";
 
 /** API-key fields on the app's UiPrefs that an onboarding provider maps to. */
 export type PrefsKeyField = "openrouterApiKey" | "openaiApiKey";

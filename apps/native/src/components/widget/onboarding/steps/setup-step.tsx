@@ -25,7 +25,8 @@ import { LocalSource } from "@/components/widget/onboarding/source/local-source"
 import { FlakeRefSource } from "@/components/widget/onboarding/source/flake-ref-source";
 import { CreateSource } from "@/components/widget/onboarding/source/create-source";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
-import { client } from "@/lib/orpc";
+import { useFlakeExists } from "@/hooks/use-flake-exists";
+import { useThisHostname } from "@/hooks/use-this-hostname";
 import { onboardingActions, useViewModel } from "@nixmac/state";
 
 type Mode = "choose" | "import" | "create";
@@ -127,8 +128,8 @@ export function SetupStep() {
   const [mode, setMode] = useState<Mode>("choose");
   const [method, setMethod] = useState<Method>("github");
   const [selectedHost, setSelectedHost] = useState("");
-  const [flakeExists, setFlakeExists] = useState<boolean | null>(null);
-  const [thisHostname, setThisHostname] = useState("this-mac");
+  const flakeExists = useFlakeExists(configDir);
+  const thisHostname = useThisHostname() || "this-mac";
 
   const hasConfigDir = Boolean(configDir);
   const showSources = !hasConfigDir || changing;
@@ -137,36 +138,6 @@ export function SetupStep() {
   useEffect(() => {
     if (configDir) setChanging(false);
   }, [configDir]);
-
-  // Does the chosen directory already contain a flake.nix?
-  useEffect(() => {
-    let cancelled = false;
-    if (!configDir) {
-      setFlakeExists(false);
-      return;
-    }
-    setFlakeExists(null);
-    client.flake
-      .existsAt({ dir: configDir })
-      .then((exists) => {
-        if (!cancelled) setFlakeExists(exists);
-      })
-      .catch(() => {
-        if (!cancelled) setFlakeExists(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [configDir]);
-
-  useEffect(() => {
-    client.config
-      .getThisHostname()
-      .then((name) => {
-        if (name.trim()) setThisHostname(name.trim());
-      })
-      .catch(() => {});
-  }, []);
 
   async function confirmHost() {
     await saveHost(effectiveHost);

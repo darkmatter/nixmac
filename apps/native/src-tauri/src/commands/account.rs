@@ -5,9 +5,7 @@
 //! via [`capture_err`].
 
 use super::helpers::capture_err;
-use crate::shared_types::{
-    AccountBilling, AuthStatus, CreditBalance, SyncRemoteStatus, SyncResult,
-};
+use crate::shared_types::{AuthStatus, SyncRemoteStatus, SyncResult};
 use crate::sync;
 use tauri::AppHandle;
 
@@ -74,33 +72,6 @@ pub async fn account_verify_otp(
     sync::verify_web_sign_in_otp(&app, &email, &otp, &name)
         .await
         .map_err(|e| capture_err("account_verify_otp", e))
-}
-
-/// Creates a Polar subscription checkout and returns the URL to open.
-#[tauri::command]
-pub async fn account_create_subscription_checkout(
-    app: AppHandle,
-    slug: String,
-) -> Result<String, String> {
-    sync::create_subscription_checkout(&app, &slug)
-        .await
-        .map_err(|e| capture_err("account_create_subscription_checkout", e))
-}
-
-/// Returns the signed-in account's billing snapshot from the web `/api/me` endpoint.
-#[tauri::command]
-pub async fn account_billing(app: AppHandle) -> Result<AccountBilling, String> {
-    sync::account_billing(&app)
-        .await
-        .map_err(|e| capture_err("account_billing", e))
-}
-
-/// Returns the signed-in account's credit balance from the web `/api/me` endpoint.
-#[tauri::command]
-pub async fn account_credit_balance(app: AppHandle) -> Result<CreditBalance, String> {
-    sync::credit_balance(&app)
-        .await
-        .map_err(|e| capture_err("account_credit_balance", e))
 }
 
 /// Signs out, removing the stored account metadata and device secret.

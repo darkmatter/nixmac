@@ -1,39 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
-import { tauriAPI } from "@/ipc/api";
-import type { LaunchdItem } from "@/ipc/types";
+import { orpc } from "@/lib/orpc";
 
 export function useLaunchdItems(enabled = true) {
-  const [items, setItems] = useState<LaunchdItem[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { data, error, refetch } = useQuery(orpc.launchd.scanItems.queryOptions({ enabled }));
 
-  const refresh = useCallback(async (isCancelled: () => boolean = () => false) => {
-    setError(null);
-    try {
-      // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      const result = await tauriAPI.launchd.scanLaunchdItems();
-      if (!isCancelled()) setItems(result);
-    } catch (e: unknown) {
-      if (!isCancelled()) setError(String(e));
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!enabled) {
-      setItems(null);
-      setError(null);
-      return;
-    }
-
-    let cancelled = false;
-    void refresh(() => cancelled);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [enabled, refresh]);
-
-  return { items, error, refresh };
+  return {
+    items: enabled ? (data ?? null) : null,
+    error: error ? String(error) : null,
+    refresh: refetch,
+  };
 }

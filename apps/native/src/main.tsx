@@ -7,6 +7,8 @@ import { getTelemetry, setTelemetryProvider } from "@/lib/telemetry/instance";
 import { queryClient } from "@/lib/orpc";
 import type { TelemetryProvider } from "@/lib/telemetry/types";
 import { AppErrorBoundary } from "@/components/widget/layout/AppErrorBoundary";
+import { queryPersistOptions } from "@/lib/query-persist";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import ReactDOM from "react-dom/client";
@@ -37,11 +39,19 @@ const renderApp = (telemetry: TelemetryProvider) => {
   root.render(
     <React.StrictMode>
       <AppErrorBoundary fallback={(error) => <AppFatalFallback error={error} />}>
-        <QueryClientProvider client={queryClient}>
-          <TelemetryContextProvider value={telemetry}>
-            <App />
-          </TelemetryContextProvider>
-        </QueryClientProvider>
+        {queryPersistOptions ? (
+          <PersistQueryClientProvider client={queryClient} persistOptions={queryPersistOptions}>
+            <TelemetryContextProvider value={telemetry}>
+              <App />
+            </TelemetryContextProvider>
+          </PersistQueryClientProvider>
+        ) : (
+          <QueryClientProvider client={queryClient}>
+            <TelemetryContextProvider value={telemetry}>
+              <App />
+            </TelemetryContextProvider>
+          </QueryClientProvider>
+        )}
       </AppErrorBoundary>
     </React.StrictMode>,
   );

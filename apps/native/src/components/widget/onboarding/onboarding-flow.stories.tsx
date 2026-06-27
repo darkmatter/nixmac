@@ -165,14 +165,6 @@ const BUILD_LINES = [
   "✓ switched to configuration 'macbook-pro'.",
 ];
 
-const DEMO_ACCOUNT_BILLING = {
-  usage: { currency: "USD", remainingUsd: 0, spentUsd: 0, totalUsd: 0 },
-  subscriptions: [],
-  hasPaymentMethod: false,
-  canUseHostedInference: false,
-  canUseDeviceSync: false,
-};
-
 /**
  * Patches the Storybook tauriAPI singleton so onboarding actions drive the
  * real ViewModel/onboarding stores. Returns a restore fn to undo the patches
@@ -456,12 +448,6 @@ function installBackend(startAt: string) {
     githubReady: true,
     webAccount: { id: "demo-account", email },
   }));
-  patch(tauriAPI.account, "billing", async () => DEMO_ACCOUNT_BILLING);
-  patch(
-    tauriAPI.account,
-    "createSubscriptionCheckout",
-    async () => "https://polar.sh/demo-checkout",
-  );
   ensure("ui");
   patch(tauriAPI.ui, "setPrefs", async () => ({ ok: true }));
   patch(tauriAPI.ui, "getPrefs", async () => ({}));

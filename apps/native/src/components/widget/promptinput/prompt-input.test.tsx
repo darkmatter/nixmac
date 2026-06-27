@@ -44,6 +44,12 @@ vi.mock("@/components/widget/promptinput/system-defaults-cta", () => ({
   SystemDefaultsCTA: () => null,
 }));
 
+// The animated placeholder isn't under test here; stub it so its timers don't
+// fire state updates outside act() after the assertions.
+vi.mock("@/components/widget/promptinput/use-typewriter-placeholder", () => ({
+  useTypewriterPlaceholder: () => ({ text: "", isTyping: false }),
+}));
+
 vi.mock("@/lib/providers/ai-provider-validation", () => ({
   getProviderConfigInvalidReason: () => null,
 }));

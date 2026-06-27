@@ -9,6 +9,7 @@ import {
   type StarterTemplateId,
 } from "@/components/widget/onboarding/lib/flake-ref";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
+import { useThisHostname } from "@/hooks/use-this-hostname";
 import { client } from "@/lib/orpc";
 import { useUiState } from "@nixmac/state";
 import { cn } from "@/lib/utils";
@@ -29,19 +30,12 @@ export function CreateSource({ onCreated }: CreateSourceProps) {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchedHost = useThisHostname();
+
   // Suggest this Mac's hostname as the default config name.
   useEffect(() => {
-    let cancelled = false;
-    client.config
-      .getThisHostname()
-      .then((name) => {
-        if (!cancelled && name.trim()) setHostName((current) => current || name.trim());
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (fetchedHost) setHostName((current) => current || fetchedHost);
+  }, [fetchedHost]);
 
   const host = (hostName.trim() || "this-mac").replace(/[^\w-]/g, "-");
 

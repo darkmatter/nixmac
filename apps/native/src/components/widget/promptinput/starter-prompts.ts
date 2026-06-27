@@ -64,3 +64,25 @@ export const STARTER_PROMPT_ARCHETYPES =
 export const STARTER_PROMPT_CHIPS = STARTER_PROMPT_ARCHETYPES.flatMap((archetype) =>
   archetype.prompts.filter((prompt) => prompt.featured),
 );
+
+/**
+ * Reduce a full starter prompt to a short leading phrase suitable for an
+ * animated placeholder hint (e.g. the part before the first `:` or `,`),
+ * capped at a word boundary so the typewriter stays snappy.
+ */
+function toPlaceholderPhrase(prompt: string, maxLength = 64): string {
+  const lead = prompt.split(/[:,]/, 1)[0]?.trim() ?? prompt.trim();
+  if (lead.length <= maxLength) return lead;
+  const truncated = lead.slice(0, maxLength);
+  const lastSpace = truncated.lastIndexOf(" ");
+  return (lastSpace > 0 ? truncated.slice(0, lastSpace) : truncated).trim();
+}
+
+/**
+ * Short example phrases cycled through the animated typewriter placeholder on
+ * the evolve prompt input. Derived from the featured starter prompts so the
+ * hint and the quick chips stay in sync.
+ */
+export const PLACEHOLDER_EXAMPLES: string[] = STARTER_PROMPT_CHIPS.map((prompt) =>
+  toPlaceholderPhrase(prompt.prompt),
+);

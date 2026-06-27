@@ -229,6 +229,44 @@ export const orpcHandlers: Record<string, OrpcHandler> = {
   "github.disconnect": async () => undefined,
   "evolveState.get": async () => baseEvolveState(),
   "evolveState.clear": async () => baseEvolveState(),
+  "homebrew.getStateDiff": async () => ({
+    isInstalled: true,
+    casks: [],
+    brews: [],
+    taps: [],
+    source: null,
+    lastChecked: Date.now(),
+  }),
+  "homebrew.applyDiff": async () => ({ ok: true, count: 0 }),
+  "launchd.scanItems": async () => [],
+  "scanner.scanDefaults": async () => ({ defaults: [], totalScanned: 0 }),
+  "billing.state": async () => ({
+    usage: { currency: "USD", remainingUsd: 0, spentUsd: 0, totalUsd: 0 },
+    subscriptions: [],
+    hasPaymentMethod: false,
+    canUseHostedInference: false,
+    canUseDeviceSync: false,
+  }),
+  "billing.products": async () => [
+    {
+      product: "credits",
+      name: "Hosted inference credits",
+      currency: "usd",
+      type: "topup",
+      minimumAmountUsd: 5,
+      maximumAmountUsd: 500,
+    },
+    {
+      product: "pro",
+      name: "Pro",
+      currency: "usd",
+      type: "subscription",
+      priceUsd: 5,
+      recurringInterval: "month",
+    },
+  ],
+  "billing.checkout": async () => ({ url: "https://polar.sh/demo-checkout" }),
+  "billing.portal": async () => ({ url: "https://polar.sh/demo-portal" }),
 };
 
 async function handleOrpcInvoke(args?: Record<string, unknown>) {

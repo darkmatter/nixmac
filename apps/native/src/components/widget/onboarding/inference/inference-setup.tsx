@@ -1,17 +1,27 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
 import {
   BYOK_PROVIDERS,
   DEFAULT_NIXMAC_MODEL,
   NIXMAC_PROVIDER,
   validateKeyFormat,
+  type CheckoutProduct,
   type InferenceConfig,
   type InferenceMode,
 } from "@/components/widget/onboarding/lib/inference";
 import { tauriAPI } from "@/ipc/api";
-import type { AccountBilling } from "@/ipc/types";
+import { client, orpc } from "@/lib/orpc";
+import type { AccountBilling, BillingProductInfo } from "@/lib/orpc";
+import { useQuery } from "@tanstack/react-query";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import { cn } from "@/lib/utils";
 import NixmacIcon from "@nixmac/ui/components/icon";
@@ -115,7 +125,6 @@ function ModeCard({
 /* ----------------------------- Hosted account ---------------------------- */
 
 type HostedStage = "account" | "payment";
-type SubscriptionPlan = "payg-tokens" | "pro";
 
 const PAYG_HIGHLIGHTS = [
   "Pay only for the model usage you consume",
@@ -164,23 +173,63 @@ function planLabel(slug: string): string {
   return slug === "pro" ? "Pro" : "Pay as you go";
 }
 
+function priceLabelFor(product: BillingProductInfo | undefined, fallback: string): string {
+  if (!product) {
+    return fallback;
+  }
+  // Pay-as-you-go has no subscription fee — usage is billed via metered credits.
+  if (product.type === "topup") {
+    return "Free";
+  }
+  if (product.type === "subscription" && typeof product.priceUsd === "number") {
+    const interval = product.recurringInterval === "year" ? "/yr" : "/mo";
+    const amount = Number.isInteger(product.priceUsd)
+      ? `${product.priceUsd}`
+      : formatUsd(product.priceUsd);
+    return `$${amount}${interval}`;
+  }
+  return fallback;
+}
+
+function hasBillingActivity(billing: AccountBilling): boolean {
+  return (
+    billing.canUseHostedInference ||
+    billing.subscriptions.length > 0 ||
+    billing.usage.totalUsd > 0 ||
+    billing.usage.spentUsd > 0
+  );
+}
+
 function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) => void }) {
   const [stage, setStage] = useState<HostedStage>("account");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
-  const [billing, setBilling] = useState<AccountBilling | null>(null);
-  const [billingLoading, setBillingLoading] = useState(false);
-  const [billingError, setBillingError] = useState<string | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>("payg-tokens");
+  const [selectedPlan, setSelectedPlan] = useState<CheckoutProduct>("credits");
   const [checkoutStarted, setCheckoutStarted] = useState(false);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const billingQuery = useQuery(
+    orpc.billing.state.queryOptions({ enabled: stage === "payment" }),
+  );
+  const billing = billingQuery.data ?? null;
+  const billingLoading = billingQuery.isLoading;
+  const billingError = billingQuery.error ? errorMessage(billingQuery.error) : null;
+
+  // Public, stable catalog — safe to cache to disk so prices show instantly on
+  // next launch. (billing.state is account-specific and intentionally not persisted.)
+  const productsQuery = useQuery(
+    orpc.billing.products.queryOptions({ meta: { persist: true } }),
+  );
+  const products = productsQuery.data ?? null;
 
   const normalizedEmail = email.trim();
   const emailValid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalizedEmail);
   const accountReady = emailValid && (!otpSent || otp.trim().length > 0);
   const canSkipPayment = billing?.canUseHostedInference ?? false;
+  const proPlan = products?.find((plan) => plan.product === "pro");
+  const creditsPlan = products?.find((plan) => plan.product === "credits");
 
   async function finishHostedSetup(planSuffix: string) {
     await tauriAPI.ui.setPrefs({
@@ -212,27 +261,6 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
       cancelled = true;
     };
   }, []);
-
-  useEffect(() => {
-    if (stage !== "payment") return;
-    let cancelled = false;
-    setBillingLoading(true);
-    setBillingError(null);
-    tauriAPI.account
-      .billing()
-      .then((snapshot) => {
-        if (!cancelled) setBilling(snapshot);
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) setBillingError(errorMessage(e));
-      })
-      .finally(() => {
-        if (!cancelled) setBillingLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [stage]);
 
   async function sendSignInCode() {
     if (!emailValid) return;
@@ -297,8 +325,8 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
     setWorking(true);
     setError(null);
     try {
-      const checkoutUrl = await tauriAPI.account.createSubscriptionCheckout(selectedPlan);
-      await openExternal(checkoutUrl);
+      const { url } = await client.billing.checkout({ product: selectedPlan, amountUsd: null });
+      await openExternal(url);
       setCheckoutStarted(true);
     } catch (e: unknown) {
       setError(errorMessage(e));
@@ -311,9 +339,8 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
     setWorking(true);
     setError(null);
     try {
-      const snapshot = await tauriAPI.account.billing();
-      setBilling(snapshot);
-      if (snapshot.canUseHostedInference) {
+      const { data: snapshot } = await billingQuery.refetch();
+      if (snapshot?.canUseHostedInference) {
         await finishHostedSetup(selectedPlan);
         return;
       }
@@ -428,13 +455,15 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
         </p>
       ) : billingError ? (
         <p className="text-destructive text-xs">{billingError}</p>
-      ) : billing ? (
+      ) : billing && hasBillingActivity(billing) ? (
         <div className="rounded-lg border border-border bg-muted/30 p-3">
-          <p className="font-medium text-sm">Usage this period</p>
+          <p className="font-medium text-sm">Inference credits</p>
           <p className="mt-1 font-mono text-lg">${formatUsd(billing.usage.remainingUsd)} remaining</p>
-          <p className="mt-1 text-muted-foreground text-xs">
-            ${formatUsd(billing.usage.spentUsd)} spent of ${formatUsd(billing.usage.totalUsd)} credited
-          </p>
+          {billing.usage.totalUsd > 0 ? (
+            <p className="mt-1 text-muted-foreground text-xs">
+              ${formatUsd(billing.usage.spentUsd)} spent of ${formatUsd(billing.usage.totalUsd)} credited
+            </p>
+          ) : null}
           {billing.subscriptions.length > 0 ? (
             <p className="mt-2 text-muted-foreground text-xs">
               Active plan:{" "}
@@ -464,14 +493,16 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
             </p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <PlanCard
-                active={selectedPlan === "payg-tokens"}
+                active={selectedPlan === "credits"}
                 title="Pay as you go"
+                priceLabel={priceLabelFor(creditsPlan, "Free")}
                 highlights={PAYG_HIGHLIGHTS}
-                onClick={() => setSelectedPlan("payg-tokens")}
+                onClick={() => setSelectedPlan("credits")}
               />
               <PlanCard
                 active={selectedPlan === "pro"}
                 title="Pro"
+                priceLabel={priceLabelFor(proPlan, "Monthly")}
                 badge="Device sync"
                 highlights={PRO_HIGHLIGHTS}
                 onClick={() => setSelectedPlan("pro")}
@@ -522,12 +553,14 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
 function PlanCard({
   active,
   title,
+  priceLabel,
   badge,
   highlights,
   onClick,
 }: {
   active: boolean;
   title: string;
+  priceLabel: string;
   badge?: string;
   highlights: string[];
   onClick: () => void;
@@ -541,13 +574,16 @@ function PlanCard({
         active ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-accent",
       )}
     >
-      <span className="flex items-center gap-2">
-        <span className="font-medium text-sm">{title}</span>
-        {badge ? (
-          <span className="rounded-full bg-success/15 px-1.5 py-0.5 font-semibold text-[10px] text-success">
-            {badge}
-          </span>
-        ) : null}
+      <span className="flex items-start justify-between gap-2">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="font-medium text-sm">{title}</span>
+          {badge ? (
+            <span className="rounded-full bg-success/15 px-1.5 py-0.5 font-semibold text-[10px] text-success">
+              {badge}
+            </span>
+          ) : null}
+        </span>
+        <span className="shrink-0 font-bold text-lg">{priceLabel}</span>
       </span>
       <ul className="flex flex-col gap-1 text-muted-foreground text-xs">
         {highlights.map((highlight) => (
@@ -579,8 +615,9 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
   const format = useMemo(() => validateKeyFormat(provider, key), [provider, key]);
   const touched = key.trim().length > 0;
 
-  function changeProvider(id: string) {
+  async function changeProvider(id: string) {
     const next = BYOK_PROVIDERS.find((p) => p.id === id) ?? BYOK_PROVIDERS[0];
+    await tauriAPI.models.clearCached(next.id);
     setProviderId(next.id);
     setModel(next.defaultModel);
     setKey("");
@@ -632,18 +669,18 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
           <label htmlFor="byok-provider" className="font-medium text-sm">
             Provider
           </label>
-          <select
-            id="byok-provider"
-            value={providerId}
-            onChange={(e) => changeProvider(e.target.value)}
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {BYOK_PROVIDERS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+          <Select value={providerId} onValueChange={(id) => void changeProvider(id)}>
+            <SelectTrigger id="byok-provider" className="w-full font-normal">
+              <SelectValue placeholder="Select provider" />
+            </SelectTrigger>
+            <SelectContent>
+              {BYOK_PROVIDERS.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex flex-col gap-1.5">
           <span className="font-medium text-sm">Model</span>

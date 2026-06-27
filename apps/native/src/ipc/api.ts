@@ -6,12 +6,10 @@
  */
 import type { StarterTemplateId } from "@/components/widget/onboarding/lib/flake-ref";
 import type {
-  AccountBilling,
   AuthStatus,
   CliToolsState,
   ConfigEditApplyResult,
   ConfigurableSchema,
-  CreditBalance,
   ExportResult,
   FeedbackMetadata,
   FeedbackShareOptions,
@@ -102,13 +100,6 @@ export const tauriAPI = {
     /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
     verifyOtp: (email: string, otp: string, name: string) =>
       invoke<AuthStatus>("account_verify_otp", { email, otp, name }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    createSubscriptionCheckout: (slug: "payg-tokens" | "pro") =>
-      invoke<string>("account_create_subscription_checkout", { slug }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    billing: () => invoke<AccountBilling>("account_billing"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    creditBalance: () => invoke<CreditBalance>("account_credit_balance"),
     /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
     signOut: () => invoke<AuthStatus>("account_sign_out"),
     /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */

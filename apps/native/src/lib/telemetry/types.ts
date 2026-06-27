@@ -54,6 +54,18 @@ export interface TelemetryProvider {
   setEnabled(enabled: boolean): void;
   /** Whether telemetry is currently active. */
   readonly enabled: boolean;
+  /**
+   * Read a PostHog feature flag. Returns the variant key for multivariate
+   * flags, a boolean for boolean flags, or `undefined` while flags are still
+   * loading (or telemetry is disabled). Prefer the reactive `useFeatureFlag`
+   * hook in components so the value updates when flags arrive.
+   */
+  getFeatureFlag(key: string): boolean | string | undefined;
+  /**
+   * Subscribe to feature-flag changes (initial load + refreshes). Returns an
+   * unsubscribe function. The callback fires after flags become available.
+   */
+  onFeatureFlags(callback: () => void): () => void;
   /** Clear identity / queued state. */
   reset(): void;
 }
