@@ -29,11 +29,18 @@ pub fn ensure_canonical_config_link(repo_dir: &Path) -> Result<(), String> {
         .unwrap_or_else(|_| repo_dir.to_path_buf());
 
     if is_canonical_config_path(&repo) {
+        if canonical_directory_is_ready() {
+            return Ok(());
+        }
         return ensure_canonical_directory_owned();
     }
 
     if let Some(message) = symlink_blocked_reason(&repo)? {
         return Err(message);
+    }
+
+    if canonical_symlink_is_current(&repo)? {
+        return Ok(());
     }
 
     ensure_symlink_to(&repo)
@@ -77,6 +84,40 @@ fn symlink_blocked_reason(target: &Path) -> Result<Option<String>, String> {
     }
 
     Ok(None)
+}
+
+/// Returns true when `/etc/nix-darwin` already exists and the current user can
+/// write to it. Avoids invoking `osascript` on every apply once setup is done.
+#[cfg(unix)]
+fn canonical_directory_is_ready() -> bool {
+    use std::os::unix::fs::PermissionsExt;
+
+    let path = canonical_path();
+    path.is_dir()
+        && path
+            .metadata()
+            .map(|meta| meta.permissions().mode() & 0o200 != 0)
+            .unwrap_or(false)
+}
+
+#[cfg(not(unix))]
+fn canonical_directory_is_ready() -> bool {
+    canonical_path().is_dir()
+}
+
+fn canonical_symlink_is_current(target: &Path) -> Result<bool, String> {
+    symlink_points_to(&canonical_path(), target)
+}
+
+fn symlink_points_to(link: &Path, target: &Path) -> Result<bool, String> {
+    if !link.is_symlink() {
+        return Ok(false);
+    }
+
+    let link_target = std::fs::read_link(link)
+        .map_err(|e| format!("Failed to read symlink {}: {e}", link.display()))?;
+
+    Ok(paths_equivalent(&link_target, target))
 }
 
 fn directory_has_entries(path: &Path) -> Result<bool, String> {
@@ -161,5 +202,17 @@ mod tests {
         fs::write(temp.path().join(".DS_Store"), "").expect("write metadata");
 
         assert!(!directory_has_entries(temp.path()).expect("check directory"));
+    }
+
+    #[test]
+    fn symlink_points_to_matches_equivalent_target() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let target = temp.path().join("config");
+        fs::create_dir_all(&target).expect("create target");
+
+        let link = temp.path().join("nix-darwin");
+        std::os::unix::fs::symlink(&target, &link).expect("create symlink");
+
+        assert!(symlink_points_to(&link, &target).expect("check symlink"));
     }
 }
