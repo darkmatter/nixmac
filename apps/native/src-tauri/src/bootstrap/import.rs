@@ -9,7 +9,7 @@
 //! had selected an existing flake.
 
 use anyhow::{Context, Result, anyhow, bail};
-use git2::{Cred, CredentialType, FetchOptions, RemoteCallbacks};
+use git2::{Cred, FetchOptions, RemoteCallbacks};
 use std::fs::File;
 use std::path::{Component, Path, PathBuf};
 use tauri::AppHandle;
@@ -65,11 +65,8 @@ fn is_github_clone_url(clone_url: &str) -> bool {
 
     url::Url::parse(clone_url)
         .ok()
-        .and_then(|url| url.host_str())
-        .is_some_and(|host| {
-            let host = host.to_ascii_lowercase();
-            host == "github.com" || host == "www.github.com"
-        })
+        .and_then(|url| url.host_str().map(|h| h.to_ascii_lowercase()))
+        .is_some_and(|host| host == "github.com" || host == "www.github.com")
 }
 
 /// Parses one of our repository locator forms into an owner/repo pair, stripping any `.git` suffix and optional `github.com/` prefix.
