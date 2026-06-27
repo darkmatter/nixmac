@@ -22,7 +22,7 @@ function change(
     diff: `@@ -${id},1 +${id},1 @@`,
     lineCount,
     createdAt: 0,
-    ownSummaryId: null,
+    ownSummaryId: 3,
     changeType,
     oldFilename,
     shortFilename: filename.split("/").pop() ?? filename,
@@ -102,7 +102,7 @@ describe("categorizeRenamed", () => {
       diff,
       lineCount: 1,
       createdAt: 0,
-      ownSummaryId: null,
+      ownSummaryId: 3,
       changeType,
       shortFilename: filename.split("/").pop() ?? filename,
     };

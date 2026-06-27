@@ -34,7 +34,7 @@ function makeSingle(id: number): ChangeWithSummary {
     diff: "",
     lineCount: 1,
     createdAt: 0,
-    ownSummaryId: null,
+    ownSummaryId: 1,
     title: `Change ${id}`,
     description: `Desc ${id}`,
   };
@@ -115,7 +115,7 @@ describe("SummaryItems", () => {
         diff: "",
         lineCount: 1,
         createdAt: 0,
-        ownSummaryId: null,
+        ownSummaryId: 2,
         changeType: "edited",
         shortFilename: "u.nix",
       },
