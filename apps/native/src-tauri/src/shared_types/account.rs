@@ -83,7 +83,7 @@ pub struct BillingSubscription {
     pub status: String,
 }
 
-/// Billing snapshot returned by `/rpc/me` for onboarding and account UI.
+/// Billing snapshot returned by `/api/me` for onboarding and account UI.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct AccountBilling {

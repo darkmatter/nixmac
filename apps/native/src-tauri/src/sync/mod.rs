@@ -91,7 +91,7 @@ async fn fetch_me<R: Runtime>(app: &AppHandle<R>) -> Result<AccountBilling> {
         .ok_or_else(|| anyhow!("Sign in before loading account billing"))?;
     let base = store::get_web_server_url()?;
     let origin = account_client::web_origin(&base)?;
-    let url = format!("{}/rpc/me", base.trim_end_matches('/'));
+    let url = format!("{}/api/me", base.trim_end_matches('/'));
     let response = reqwest::Client::new()
         .get(url)
         .header("x-api-key", api_key)
@@ -107,16 +107,16 @@ async fn fetch_me<R: Runtime>(app: &AppHandle<R>) -> Result<AccountBilling> {
     }
 
     let payload: OrpcResponse<MeResponse> = serde_json::from_str(&body)
-        .map_err(|error| anyhow!("Failed to decode /rpc/me response: {error}: {body}"))?;
+        .map_err(|error| anyhow!("Failed to decode /api/me response: {error}: {body}"))?;
     Ok(payload.json.billing)
 }
 
-/// Fetches the signed-in account's billing snapshot via `/rpc/me`.
+/// Fetches the signed-in account's billing snapshot via `/api/me`.
 pub async fn account_billing<R: Runtime>(app: &AppHandle<R>) -> Result<AccountBilling> {
     fetch_me(app).await
 }
 
-/// Fetches the signed-in account's hosted inference usage balance via `/rpc/me`.
+/// Fetches the signed-in account's hosted inference usage balance via `/api/me`.
 pub async fn credit_balance<R: Runtime>(app: &AppHandle<R>) -> Result<CreditBalance> {
     Ok(fetch_me(app).await?.usage)
 }
@@ -315,7 +315,7 @@ pub async fn create_subscription_checkout<R: Runtime>(
     let base = store::get_web_server_url()?;
     let origin = account_client::web_origin(&base)?;
     let url = format!(
-        "{}/rpc/billing/subscription-checkout",
+        "{}/api/billing/subscription-checkout",
         base.trim_end_matches('/')
     );
     let response = reqwest::Client::new()

@@ -87,7 +87,7 @@ pub async fn account_create_subscription_checkout(
         .map_err(|e| capture_err("account_create_subscription_checkout", e))
 }
 
-/// Returns the signed-in account's billing snapshot from the web `/rpc/me` endpoint.
+/// Returns the signed-in account's billing snapshot from the web `/api/me` endpoint.
 #[tauri::command]
 pub async fn account_billing(app: AppHandle) -> Result<AccountBilling, String> {
     sync::account_billing(&app)
@@ -95,7 +95,7 @@ pub async fn account_billing(app: AppHandle) -> Result<AccountBilling, String> {
         .map_err(|e| capture_err("account_billing", e))
 }
 
-/// Returns the signed-in account's credit balance from the web `/rpc/me` endpoint.
+/// Returns the signed-in account's credit balance from the web `/api/me` endpoint.
 #[tauri::command]
 pub async fn account_credit_balance(app: AppHandle) -> Result<CreditBalance, String> {
     sync::credit_balance(&app)
