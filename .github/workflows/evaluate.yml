@@ -22,6 +22,10 @@ concurrency:
 permissions:
   contents: read
   id-token: write
+  packages: read
+
+env:
+  CI_IMAGE: ghcr.io/darkmatter/nixmac-ci:latest
 
 jobs:
   rust-check:
@@ -63,19 +67,16 @@ jobs:
 
   typescript:
     name: TypeScript
-    # PR/merge-queue only — the develop push tripwire is cargo check alone.
     if: github.event_name != 'push'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
+    container:
+      image: ${{ env.CI_IMAGE }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-
-      # tsc only needs bun + node_modules — skip the nix/devenv setup, which
-      # costs ~10 minutes on GitHub-hosted runners.
-      - name: Install bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
 
       - name: Install frontend dependencies
         # Non-frozen: CI ubuntu resolves 2 fewer platform-specific packages
@@ -91,17 +92,19 @@ jobs:
 
   treefmt:
     name: Treefmt
-    # PR/merge-queue only — the develop push tripwire is cargo check alone.
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
+    container:
+      image: ${{ env.CI_IMAGE }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      # `nix fmt` only evaluates the flake's formatter — the devenv profile
-      # is not needed, and skipping it saves ~10 minutes on hosted runners.
       - uses: ./.github/actions/setup
         with:
           darkmatter-cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
