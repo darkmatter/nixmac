@@ -1,9 +1,9 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { viewModelActions } from "@nixmac/state";
 import { RepoImport } from "@/components/widget/controls/repo-import";
+import { viewModelActions } from "@nixmac/state";
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -16,13 +16,15 @@ const mockImportZip = vi.fn<(zip: string, dir?: string) => Promise<SetDirResult>
 const mockPickZip = vi.fn<() => Promise<string | null>>();
 const mockSetHostAttr = vi.fn<(h: string) => Promise<void>>();
 
-vi.mock("@/ipc/api", () => ({
-  tauriAPI: {
+vi.mock("@/lib/orpc", () => ({
+  client: {
     config: {
-      importGithub: (ref: string, dir?: string) => mockImportGithub(ref, dir),
-      importZip: (zip: string, dir?: string) => mockImportZip(zip, dir),
+      importGithub: ({ repoRef, dirName }: { repoRef: string; dirName: string | null }) =>
+        mockImportGithub(repoRef, dirName ?? undefined),
+      importZip: ({ zipPath, dirName }: { zipPath: string; dirName: string | null }) =>
+        mockImportZip(zipPath, dirName ?? undefined),
       pickZip: () => mockPickZip(),
-      setHostAttr: (h: string) => mockSetHostAttr(h),
+      setHostAttr: ({ host }: { host: string }) => mockSetHostAttr(host),
     },
   },
 }));

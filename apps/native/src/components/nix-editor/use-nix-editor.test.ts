@@ -63,9 +63,9 @@ const h = vi.hoisted(() => {
     },
   );
 
-  const initNixGrammar = vi.fn(async () => {});
+  const initNixGrammar = vi.fn(async () => { });
   const bridgeMonacoToLsp = vi.fn(() => vi.fn());
-  const mockLspStart = vi.fn(async () => {});
+  const mockLspStart = vi.fn(async () => { });
   const mockLspClient = {
     _running: false,
     get running() {
@@ -128,6 +128,11 @@ vi.mock("@/ipc/api", () => ({
       readFile: (p: string) => h.mockReadFile(p),
       writeFile: (p: string, c: string) => h.mockWriteFile(p, c),
     },
+  },
+}));
+
+vi.mock("@/lib/orpc", () => ({
+  client: {
     config: {
       get: () => h.mockConfigGet(),
     },
@@ -244,7 +249,7 @@ describe("useNixEditor", () => {
 
   it("sets lspStatus='error' when lspClient.start throws, but keeps the editor usable", async () => {
     h.mockLspStart.mockRejectedValueOnce(new Error("nixd crashed"));
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => { });
     const { ref } = makeContainerRef();
 
     const { result } = renderHook(() =>
