@@ -90,7 +90,7 @@ jobs:
   treefmt:
     name: Treefmt
     if: github.event_name != 'push'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     container:
       image: ghcr.io/darkmatter/nixmac-ci:latest
       credentials:
@@ -108,6 +108,7 @@ jobs:
           install-bun-deps: false
           install-devenv: false
       - name: Check changed Nix and shell files
+        shell: bash
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
