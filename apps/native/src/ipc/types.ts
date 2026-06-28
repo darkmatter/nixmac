@@ -1101,7 +1101,7 @@ installationId: number }
  * Hydrated via `get_global_preferences`; every mutation emits
  * `global_preferences_changed` with the full struct as payload.
  */
-export type GlobalPreferences = { hostAttr: string | null; configDir: string | null; repoRoot: string | null; sendDiagnostics: boolean; evolveProvider: string | null; evolveModel: string | null; summaryProvider: string | null; summaryModel: string | null; ollamaApiBaseUrl: string | null; vllmApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel }
+export type GlobalPreferences = { hostAttr: string | null; configDir: string | null; repoRoot: string | null; sendDiagnostics: boolean; evolveProvider: string | null; evolveModel: string | null; summaryProvider: string | null; summaryModel: string | null; ollamaApiBaseUrl: string | null; vllmApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null }
 
 /**
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
@@ -1905,7 +1905,12 @@ pinnedVersion: string | null;
 /**
  * Auto-update channel used when no explicit version pin is active.
  */
-updateChannel: UpdateChannel }
+updateChannel: UpdateChannel; 
+/**
+ * Developer-only feature flag overrides (flag key → variant string).
+ * `None` or missing key = use PostHog default.
+ */
+featureFlagOverrides: Partial<{ [key in string]: string }> | null }
 
 /**
  * Partial update to UI preferences — every field is optional so the caller
@@ -2007,7 +2012,12 @@ pinnedVersion?: string | null;
 /**
  * Auto-update channel preference update.
  */
-updateChannel: UpdateChannel | null }
+updateChannel: UpdateChannel | null; 
+/**
+ * `None` -> field not sent; `Some(None)` -> clear all overrides;
+ * `Some(Some(map))` -> replace overrides with `map`.
+ */
+featureFlagOverrides?: Partial<{ [key in string]: string }> | null }
 
 /**
  * Auto-update channel selected for release-mode builds.

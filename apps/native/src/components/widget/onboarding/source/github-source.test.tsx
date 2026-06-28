@@ -1,6 +1,6 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import "@testing-library/jest-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import "@testing-library/jest-dom";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GitHubSource } from "@/components/widget/onboarding/source/github-source";
@@ -55,10 +55,6 @@ vi.mock("@/lib/orpc", async () => {
 
 vi.mock("@daveyplate/better-auth-tauri", () => ({
   signInSocial: (input: SignInSocialInput) => mockSignInSocial(input),
-}));
-
-vi.mock("@daveyplate/better-auth-tauri/react", () => ({
-  useBetterAuthTauri: vi.fn<(input: unknown) => void>(),
 }));
 
 vi.mock("@tauri-apps/plugin-shell", () => ({

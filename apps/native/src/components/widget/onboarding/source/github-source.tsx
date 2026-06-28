@@ -8,19 +8,23 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { client, orpc } from "@/lib/orpc";
 import { tauriAPI } from "@/ipc/api";
 import type { GithubRepo } from "@/ipc/types";
 import { auth as authClient } from "@/lib/auth";
+import {
+  AUTH_DEEP_LINK_ERROR_EVENT,
+  AUTH_DEEP_LINK_SUCCESS_EVENT,
+  type AuthDeepLinkErrorDetail,
+} from "@/lib/auth-deep-link";
+import { client, orpc } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 import { signInSocial } from "@daveyplate/better-auth-tauri";
-import { useBetterAuthTauri } from "@daveyplate/better-auth-tauri/react";
 import { GitHubLogoIcon } from "@radix-ui/react-icons";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-shell";
 import { Check, FileWarning, Globe, Loader2, Lock, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 interface GitHubSourceProps {
   onImported?: () => void;
 }
@@ -148,20 +152,6 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
   const cancelled = useRef(false);
   const bootstrapResolved = useRef(false);
   const bootstrapStateRef = useRef<string | null>(null);
-  useBetterAuthTauri({
-    authClient,
-    scheme: "nixmac",
-    debugLogs: import.meta.env.DEV,
-    onSuccess: () => {
-      setGithubReady(true);
-      setShowEmailFallback(false);
-      void pollGitHubConnection();
-    },
-    onError: (error) => {
-      console.error("Auth error:", error);
-      setError(error.message ?? error.statusText ?? "GitHub sign-in failed.");
-    },
-  });
 
   const resetRejectedSession = useCallback((error: unknown): boolean => {
     if (!isUnauthorizedSession(error)) return false;
@@ -280,6 +270,25 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
       }
     }
   }, [connectMode, markBootstrapConnected, requireEmailFallback, resetRejectedSession]);
+
+  useEffect(() => {
+    const onAuthDeepLinkSuccess = () => {
+      setGithubReady(true);
+      setShowEmailFallback(false);
+      void pollGitHubConnection();
+    };
+    const onAuthDeepLinkError = (event: Event) => {
+      const detail = (event as CustomEvent<AuthDeepLinkErrorDetail>).detail;
+      setError(detail.message ?? detail.statusText ?? "GitHub sign-in failed.");
+    };
+
+    window.addEventListener(AUTH_DEEP_LINK_SUCCESS_EVENT, onAuthDeepLinkSuccess);
+    window.addEventListener(AUTH_DEEP_LINK_ERROR_EVENT, onAuthDeepLinkError);
+    return () => {
+      window.removeEventListener(AUTH_DEEP_LINK_SUCCESS_EVENT, onAuthDeepLinkSuccess);
+      window.removeEventListener(AUTH_DEEP_LINK_ERROR_EVENT, onAuthDeepLinkError);
+    };
+  }, [pollGitHubConnection]);
 
   useEffect(() => {
     if (auth !== "connecting") return;

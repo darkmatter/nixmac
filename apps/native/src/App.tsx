@@ -1,10 +1,12 @@
 import { DarwinWidget } from "@/components/widget/widget";
+import { useAuthDeepLink } from "@/lib/auth-deep-link";
 import { bootBreadcrumb, clearBootStage, markBootStage } from "@/lib/boot-diagnostics";
 import { useTelemetry } from "@/lib/telemetry/context";
 import { useEffect } from "react";
 import { Toaster } from "sonner";
 
 export default function App() {
+  useAuthDeepLink();
   const telemetry = useTelemetry();
 
   useEffect(() => {
