@@ -52,7 +52,7 @@ export function InferenceSetup({ onConfigured }: InferenceSetupProps) {
           active={mode === "hosted"}
           icon={<NixmacIcon className="size-6 bg-none" />}
           title="nixmac hosted"
-          blurb="We run the models. Sign in and activate PAYG billing."
+          blurb="We run the models. Sign in and choose hosted billing."
           badge="Recommended"
           onClick={() => setMode("hosted")}
         />
@@ -133,7 +133,7 @@ const PAYG_HIGHLIGHTS = [
 ];
 
 const PRO_HIGHLIGHTS = [
-  "Requires Pay as you go plus Pro",
+  "Pay only for the model usage you consume",
   "Device sync for keeping configurations in step",
   "Built for users managing more than one Mac",
 ];
@@ -190,10 +190,6 @@ function priceLabelFor(product: BillingProductInfo | undefined, fallback: string
   return fallback;
 }
 
-function hasBillingActivity(billing: AccountBilling): boolean {
-  return billing.subscriptions.length > 0 || billing.usage.spentUsd > 0;
-}
-
 function hasSubscription(billing: AccountBilling | null | undefined, slug: string): boolean {
   return billing?.subscriptions.some((subscription) => subscription.slug === slug) ?? false;
 }
@@ -211,33 +207,24 @@ function hasRequiredSubscriptions(
   selectedPlan: CheckoutProduct,
 ): boolean {
   if (selectedPlan === "credits") {
-    return hasPaygSubscription(billing);
+    return hasPaygSubscription(billing) || hasProSubscription(billing);
   }
-  return hasPaygSubscription(billing) && hasProSubscription(billing);
+  return hasProSubscription(billing);
 }
 
 function nextCheckoutProduct(
   billing: AccountBilling | null | undefined,
   selectedPlan: CheckoutProduct,
 ): CheckoutProduct | null {
-  if (!hasPaygSubscription(billing)) {
-    return "credits";
+  if (selectedPlan === "pro") {
+    return hasProSubscription(billing) ? null : "pro";
   }
-  if (selectedPlan === "pro" && !hasProSubscription(billing)) {
-    return "pro";
-  }
-  return null;
+  return hasPaygSubscription(billing) || hasProSubscription(billing) ? null : "credits";
 }
 
-function checkoutButtonLabel(
-  product: CheckoutProduct | null,
-  selectedPlan: CheckoutProduct,
-): string {
+function checkoutButtonLabel(product: CheckoutProduct | null): string {
   if (!product) {
     return "Subscription active";
-  }
-  if (selectedPlan === "pro" && product === "credits") {
-    return "Subscribe to Pay as you go first";
   }
   return `Subscribe to ${planLabel(product)}`;
 }
@@ -245,10 +232,20 @@ function checkoutButtonLabel(
 function configuredPlanSuffix(
   billing: AccountBilling | null | undefined,
 ): string {
-  if (hasPaygSubscription(billing) && hasProSubscription(billing)) {
+  if (hasProSubscription(billing)) {
     return PRO_SUBSCRIPTION_SLUG;
   }
   return hasPaygSubscription(billing) ? PAYG_SUBSCRIPTION_SLUG : "subscribed";
+}
+
+function activeBillingLabel(billing: AccountBilling | null | undefined): string | null {
+  if (hasProSubscription(billing)) {
+    return "Pro";
+  }
+  if (hasPaygSubscription(billing)) {
+    return "Pay as you go";
+  }
+  return null;
 }
 
 function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) => void }) {
@@ -258,6 +255,7 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
   const [otpSent, setOtpSent] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<CheckoutProduct>("credits");
   const [checkoutStarted, setCheckoutStarted] = useState(false);
+  const [planChooserExpanded, setPlanChooserExpanded] = useState(false);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -282,6 +280,14 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
   const checkoutProduct = nextCheckoutProduct(billing, selectedPlan);
   const proPlan = products?.find((plan) => plan.product === "pro");
   const creditsPlan = products?.find((plan) => plan.product === "credits");
+  const activePlanLabel = activeBillingLabel(billing);
+  const showPlanChooser = !activePlanLabel || planChooserExpanded;
+
+  function selectPlan(plan: CheckoutProduct) {
+    setSelectedPlan(plan);
+    setCheckoutStarted(false);
+    setError(null);
+  }
 
   async function finishHostedSetup(planSuffix: string) {
     await tauriAPI.ui.setPrefs({
@@ -399,7 +405,7 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
       const nextProduct = nextCheckoutProduct(snapshot, selectedPlan);
       setError(
         nextProduct === "pro"
-          ? "Pay as you go is active. Subscribe to Pro to finish Pro setup."
+          ? "Pro subscription not active yet. Finish checkout in Polar, then try again."
           : "Subscription not active yet. Finish checkout in Polar, then try again.",
       );
     } catch (e: unknown) {
@@ -512,63 +518,68 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
         </p>
       ) : billingError ? (
         <p className="text-destructive text-xs">{billingError}</p>
-      ) : billing && hasBillingActivity(billing) ? (
-        <div className="rounded-lg border border-border bg-muted/30 p-3">
-          <p className="font-medium text-sm">Inference usage</p>
-          <p className="mt-1 font-mono text-lg">
-            ${formatUsd(billing.usage.spentUsd)} spent this period
-          </p>
-          {billing.subscriptions.length > 0 ? (
-            <p className="mt-2 text-muted-foreground text-xs">
-              Active plan:{" "}
-              {billing.subscriptions.map((subscription) => planLabel(subscription.slug)).join(", ")}
+      ) : null}
+      {activePlanLabel ? (
+        <>
+          <div className="rounded-lg border border-success/30 bg-success/5 px-3 py-2 text-xs">
+            <p className="text-success">
+              Active billing: <span className="font-medium">{activePlanLabel}</span>
             </p>
+          </div>
+          {!showPlanChooser ? (
+            <button
+              type="button"
+              onClick={() => setPlanChooserExpanded(true)}
+              className="mt-0 font-medium text-primary hover:underline text-xs text-left underline"
+            >
+              Change plan
+            </button>
           ) : null}
-        </div>
+        </>
+      ) : null}
+
+      {showPlanChooser ? (
+        <fieldset>
+          <legend className="mb-2 font-medium text-sm">Choose a plan</legend>
+          <p className="mb-3 text-muted-foreground text-xs">
+            Pay as you go enables metered hosted inference. Pro includes hosted inference and
+            adds device sync across Macs.
+          </p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <PlanCard
+              active={selectedPlan === "credits"}
+              title="Pay as you go"
+              priceLabel={priceLabelFor(creditsPlan, "Metered")}
+              status={hasPaygSubscription(billing) ? "Active" : undefined}
+              highlights={PAYG_HIGHLIGHTS}
+              onClick={() => selectPlan("credits")}
+            />
+            <PlanCard
+              active={selectedPlan === "pro"}
+              title="Pro"
+              priceLabel={priceLabelFor(proPlan, "Monthly")}
+              badge="Device sync"
+              status={hasProSubscription(billing) ? "Active" : undefined}
+              highlights={PRO_HIGHLIGHTS}
+              onClick={() => selectPlan("pro")}
+            />
+          </div>
+        </fieldset>
       ) : null}
 
       {canContinueWithPlan ? (
-        <Button
-          variant="secondary"
-          onClick={() => void continueWithSubscription()}
-          disabled={working}
-        >
+        <Button variant="secondary" onClick={() => void continueWithSubscription()} disabled={working}>
           {working ? (
             <>
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
               Continuing…
             </>
           ) : (
-            "Continue with active billing"
+            `Continue with ${planLabel(configuredPlanSuffix(billing))}`
           )}
         </Button>
       ) : (
         <>
-          <fieldset>
-            <legend className="mb-2 font-medium text-sm">Choose a plan</legend>
-            <p className="mb-3 text-muted-foreground text-xs">
-              Pay as you go enables hosted inference. Pro requires Pay as you go and adds device
-              sync across Macs.
-            </p>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <PlanCard
-                active={selectedPlan === "credits"}
-                title="Pay as you go"
-                priceLabel={priceLabelFor(creditsPlan, "Metered")}
-                highlights={PAYG_HIGHLIGHTS}
-                onClick={() => setSelectedPlan("credits")}
-              />
-              <PlanCard
-                active={selectedPlan === "pro"}
-                title="Pro"
-                priceLabel={priceLabelFor(proPlan, "Monthly")}
-                badge="Device sync"
-                highlights={PRO_HIGHLIGHTS}
-                onClick={() => setSelectedPlan("pro")}
-              />
-            </div>
-          </fieldset>
-
           <Button
             onClick={() => void startCheckout()}
             disabled={working || billingLoading || !checkoutProduct}
@@ -581,7 +592,7 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
             ) : (
               <>
                 <Lock className="size-4" aria-hidden="true" />
-                {checkoutButtonLabel(checkoutProduct, selectedPlan)}
+                {checkoutButtonLabel(checkoutProduct)}
               </>
             )}
           </Button>
@@ -617,6 +628,7 @@ function PlanCard({
   title,
   priceLabel,
   badge,
+  status,
   highlights,
   onClick,
 }: {
@@ -624,6 +636,7 @@ function PlanCard({
   title: string;
   priceLabel: string;
   badge?: string;
+  status?: string;
   highlights: string[];
   onClick: () => void;
 }) {
@@ -642,6 +655,11 @@ function PlanCard({
           {badge ? (
             <span className="rounded-full bg-success/15 px-1.5 py-0.5 font-semibold text-[10px] text-success">
               {badge}
+            </span>
+          ) : null}
+          {status ? (
+            <span className="rounded-full bg-primary/15 px-1.5 py-0.5 font-semibold text-[10px] text-primary">
+              {status}
             </span>
           ) : null}
         </span>

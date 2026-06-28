@@ -57,6 +57,7 @@ const mocks = vi.hoisted(() => ({
   billingCheckout: vi.fn<(input: CheckoutInput) => Promise<{ url: string }>>(),
   captureEvent: vi.fn<(event: unknown) => void>(),
   identify: vi.fn<(id: string, properties: Record<string, unknown>) => void>(),
+  openExternal: vi.fn<(url: string) => Promise<void>>(),
 }));
 
 vi.mock("@/ipc/api", () => ({
@@ -114,6 +115,10 @@ vi.mock("posthog-js", () => ({
   },
 }));
 
+vi.mock("@tauri-apps/plugin-shell", () => ({
+  open: (url: string) => mocks.openExternal(url),
+}));
+
 function renderSetup(onConfigured = vi.fn<(config: unknown) => void>()): void {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -145,6 +150,7 @@ describe("InferenceSetup", () => {
     mocks.billingState.mockResolvedValue(emptyBilling);
     mocks.billingProducts.mockResolvedValue(demoProducts);
     mocks.billingCheckout.mockResolvedValue({ url: "https://polar.sh/demo-checkout" });
+    mocks.openExternal.mockResolvedValue(undefined);
   });
 
   it("signs in to hosted inference with an email one-time code", async () => {
@@ -188,9 +194,28 @@ describe("InferenceSetup", () => {
     expect(screen.getByRole("button", { name: /subscribe to pay as you go/i })).toBeInTheDocument();
     expect(screen.getByText(/device sync across macs/i)).toBeInTheDocument();
     // Prices come from `orpc.billing.products`.
-    // Pro shows its subscription price; pay-as-you-go has no subscription fee.
+    // Pro shows its subscription price; pay-as-you-go is metered.
     expect(await screen.findByText("$5/mo")).toBeInTheDocument();
     expect(screen.getByText("Metered")).toBeInTheDocument();
+  });
+
+  it("opens Pro checkout directly when Pro is selected", async () => {
+    renderSetup();
+
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "ada@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /send sign-in code/i }));
+    await screen.findByLabelText(/verification code/i);
+    fireEvent.change(screen.getByLabelText(/verification code/i), {
+      target: { value: "123456" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /verify code and continue/i }));
+
+    fireEvent.click(await screen.findByRole("button", { name: /pro.*device sync/i }));
+    fireEvent.click(screen.getByRole("button", { name: /subscribe to pro/i }));
+
+    await waitFor(() => expect(mocks.billingCheckout).toHaveBeenCalledWith({ product: "pro" }));
   });
 
   it("resumes at payment when a web account is already persisted", async () => {
@@ -210,7 +235,7 @@ describe("InferenceSetup", () => {
     expect(screen.getByText("ada@example.com")).toBeInTheDocument();
   });
 
-  it("skips checkout when the account already has active PAYG billing", async () => {
+  it("hides plan selection behind Change plan when the account already has active PAYG billing", async () => {
     mocks.status.mockResolvedValue({
       signedIn: false,
       account: null,
@@ -236,12 +261,56 @@ describe("InferenceSetup", () => {
     renderSetup();
 
     expect(
-      await screen.findByRole("button", { name: /continue with active billing/i }),
+      await screen.findByRole("button", { name: /continue with pay as you go/i }),
     ).toBeInTheDocument();
+    expect(screen.getByText(/active billing:/i)).toHaveTextContent(/pay as you go/i);
     expect(screen.queryByText(/choose a plan/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /change plan/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /change plan/i }));
+
+    expect(screen.getByText(/choose a plan/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /pay as you go.*active/i })).toBeInTheDocument();
   });
 
-  it("requires PAYG billing before treating Pro as hosted-ready", async () => {
+  it("allows an active PAYG account to switch to Pro checkout", async () => {
+    mocks.status.mockResolvedValue({
+      signedIn: false,
+      account: null,
+      keyId: null,
+      serverUrl: "https://sync.nixmac.app",
+      githubReady: true,
+      webAccount: { id: "acct_1", email: "ada@example.com" },
+    });
+    mocks.billingState.mockResolvedValue({
+      ...emptyBilling,
+      subscriptions: [
+        {
+          id: "sub_1",
+          slug: "payg-tokens",
+          productId: "prod_payg",
+          status: "active",
+        },
+      ],
+      hasPaymentMethod: true,
+      canUseHostedInference: true,
+    });
+
+    renderSetup();
+
+    expect(
+      await screen.findByRole("button", { name: /continue with pay as you go/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /change plan/i }));
+    fireEvent.click(screen.getByRole("button", { name: /pro.*device sync/i }));
+    fireEvent.click(screen.getByRole("button", { name: /subscribe to pro/i }));
+
+    await waitFor(() => expect(mocks.billingCheckout).toHaveBeenCalledWith({ product: "pro" }));
+  });
+
+  it("continues as Pro when only Pro subscription is active", async () => {
+    const onConfigured = vi.fn<(config: unknown) => void>();
     mocks.status.mockResolvedValue({
       signedIn: false,
       account: null,
@@ -265,15 +334,18 @@ describe("InferenceSetup", () => {
       canUseDeviceSync: true,
     });
 
-    renderSetup();
+    renderSetup(onConfigured);
 
-    expect(await screen.findByText(/choose a plan/i)).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /continue with active billing/i }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /subscribe to pay as you go/i }),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/active billing:/i)).toHaveTextContent(/pro/i);
+    expect(screen.queryByText(/choose a plan/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /change plan/i })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: /continue with pro/i }));
+
+    await waitFor(() =>
+      expect(onConfigured).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: "hosted", plan: "pro" }),
+      ),
+    );
   });
 
   it("continues as Pro when both PAYG and Pro subscriptions are active", async () => {
@@ -309,7 +381,7 @@ describe("InferenceSetup", () => {
 
     renderSetup(onConfigured);
 
-    fireEvent.click(await screen.findByRole("button", { name: /continue with active billing/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /continue with pro/i }));
 
     await waitFor(() =>
       expect(onConfigured).toHaveBeenCalledWith(
