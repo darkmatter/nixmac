@@ -147,6 +147,12 @@ runs:
           ok=false
         fi
 
+        if [ "$ok" = "true" ]; then
+          mkdir -p "$HOME/.local/state/nix/gcroots"
+          ln -sfn "$profile_path" "$HOME/.local/state/nix/gcroots/devenv-profile"
+          echo "Pinned devenv profile to GC roots: $profile_path"
+        fi
+
         # Realise store paths referenced only by exported env vars (e.g.
         # PLAYWRIGHT_BROWSERS_PATH) that may live outside the profile closure.
         if [ "$ok" = "true" ] && [ -s .devenv-ci/extra-paths ]; then
@@ -179,6 +185,10 @@ runs:
       run: |
         set -euo pipefail
         "${RUNNER_TEMP}/devenv-cli/bin/devenv" shell --impure -- echo ready
+        profile_path="$(readlink -f .devenv/profile)"
+        mkdir -p "$HOME/.local/state/nix/gcroots"
+        ln -sfn "$profile_path" "$HOME/.local/state/nix/gcroots/devenv-profile"
+        echo "Pinned devenv profile to GC roots: $profile_path"
 
     - name: Record devenv profile pointer
       if: ${{ inputs.install-devenv == 'true' && steps.devenv-existing.outputs.ok != 'true' && steps.devenv-realise.outputs.ok != 'true' }}
