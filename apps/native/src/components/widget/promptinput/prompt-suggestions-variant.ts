@@ -15,10 +15,14 @@ export const EVOLVE_PROMPT_SUGGESTIONS_FLAG = "evolve-prompt-suggestions";
 
 export type PromptSuggestionsVariant = "chips" | "spotlight" | "trending";
 
-const VARIANTS: readonly PromptSuggestionsVariant[] = ["chips", "spotlight", "trending"];
+export const PROMPT_SUGGESTIONS_VARIANTS: readonly PromptSuggestionsVariant[] = [
+  "chips",
+  "spotlight",
+  "trending",
+];
 
 /** Control variant used when the flag is unset, loading, or unrecognized. */
-export const DEFAULT_PROMPT_SUGGESTIONS_VARIANT: PromptSuggestionsVariant = "chips";
+export const DEFAULT_PROMPT_SUGGESTIONS_VARIANT: PromptSuggestionsVariant = "spotlight";
 
 /**
  * Map a raw PostHog flag value to a known variant, falling back to the control
@@ -28,7 +32,7 @@ export const DEFAULT_PROMPT_SUGGESTIONS_VARIANT: PromptSuggestionsVariant = "chi
 export function resolvePromptSuggestionsVariant(
   flag: boolean | string | undefined,
 ): PromptSuggestionsVariant {
-  return typeof flag === "string" && (VARIANTS as readonly string[]).includes(flag)
+  return typeof flag === "string" && (PROMPT_SUGGESTIONS_VARIANTS as readonly string[]).includes(flag)
     ? (flag as PromptSuggestionsVariant)
     : DEFAULT_PROMPT_SUGGESTIONS_VARIANT;
 }

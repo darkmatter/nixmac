@@ -9,9 +9,7 @@ import { clearRebuildLog } from "@/viewmodel/rebuild";
 import { tauriAPI } from "@/ipc/api";
 import type { UpdateChannel } from "@/ipc/types";
 import { usePrefs } from "@/hooks/use-prefs";
-import {
-  EVOLVE_PROMPT_SUGGESTIONS_FLAG,
-} from "@/components/widget/promptinput/prompt-suggestions-variant";
+import { OVERRIDABLE_FLAGS } from "@/components/widget/settings/overridable-flags";
 import { useUpdater } from "@/hooks/use-updater";
 import { getVersion } from "@tauri-apps/api/app";
 import {
@@ -34,9 +32,7 @@ const VERSION_PATTERN = /^[0-9]+(?:\.[0-9]+){0,2}(?:-[a-zA-Z0-9.-]+)?$/;
 export function DeveloperTab() {
   const { installVersion, relaunch, clearPinnedVersion } = useUpdater();
   const { setPref, setFeatureFlagOverride } = usePrefs();
-  const evolvePromptSuggestionsOverride = useViewModel(
-    (s) => s.preferences?.featureFlagOverrides?.[EVOLVE_PROMPT_SUGGESTIONS_FLAG] ?? null,
-  );
+  const featureFlagOverrides = useViewModel((s) => s.preferences?.featureFlagOverrides ?? null);
   const experimentalSpinningMascot = useViewModel(
     (s) => s.preferences?.experimentalSpinningMascot ?? false,
   );
@@ -159,9 +155,9 @@ export function DeveloperTab() {
     }
   };
 
-  const handleSetFlagOverride = async (variant: string | null) => {
+  const handleSetFlagOverride = async (key: string, variant: string | null) => {
     try {
-      await setFeatureFlagOverride(EVOLVE_PROMPT_SUGGESTIONS_FLAG, variant);
+      await setFeatureFlagOverride(key, variant);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : String(err));
     }
@@ -235,32 +231,35 @@ export function DeveloperTab() {
             default" uses the server-side value; choosing a variant forces it
             even when diagnostics are disabled.
           </p>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-mono">
-              {EVOLVE_PROMPT_SUGGESTIONS_FLAG}
-            </Label>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant={evolvePromptSuggestionsOverride === null ? "default" : "outline"}
-                onClick={() => handleSetFlagOverride(null)}
-              >
-                PostHog default
-              </Button>
-              {(["chips", "spotlight", "trending"] as const).map((variant) => (
-                <Button
-                  key={variant}
-                  type="button"
-                  size="sm"
-                  variant={evolvePromptSuggestionsOverride === variant ? "default" : "outline"}
-                  onClick={() => handleSetFlagOverride(variant)}
-                >
-                  {variant}
-                </Button>
-              ))}
-            </div>
-          </div>
+          {OVERRIDABLE_FLAGS.map((flag) => {
+            const active = featureFlagOverrides?.[flag.key] ?? null;
+            return (
+              <div key={flag.key} className="space-y-1.5">
+                <Label className="text-xs font-mono">{flag.label ?? flag.key}</Label>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={active === null ? "default" : "outline"}
+                    onClick={() => handleSetFlagOverride(flag.key, null)}
+                  >
+                    PostHog default
+                  </Button>
+                  {flag.options.map((option) => (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      size="sm"
+                      variant={active === option.value ? "default" : "outline"}
+                      onClick={() => handleSetFlagOverride(flag.key, option.value)}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
