@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { uiActions, useViewModel } from "@nixmac/state";
 import { clearChangeMap } from "@/viewmodel/change-map";
@@ -8,6 +9,9 @@ import { clearRebuildLog } from "@/viewmodel/rebuild";
 import { tauriAPI } from "@/ipc/api";
 import type { UpdateChannel } from "@/ipc/types";
 import { usePrefs } from "@/hooks/use-prefs";
+import {
+  EVOLVE_PROMPT_SUGGESTIONS_FLAG,
+} from "@/components/widget/promptinput/prompt-suggestions-variant";
 import { useUpdater } from "@/hooks/use-updater";
 import { getVersion } from "@tauri-apps/api/app";
 import {
@@ -18,6 +22,7 @@ import {
   Bell,
   Eraser,
   History,
+  Flag,
   Pin,
   RotateCcw,
   Sparkles,
@@ -28,7 +33,10 @@ const VERSION_PATTERN = /^[0-9]+(?:\.[0-9]+){0,2}(?:-[a-zA-Z0-9.-]+)?$/;
 
 export function DeveloperTab() {
   const { installVersion, relaunch, clearPinnedVersion } = useUpdater();
-  const { setPref } = usePrefs();
+  const { setPref, setFeatureFlagOverride } = usePrefs();
+  const evolvePromptSuggestionsOverride = useViewModel(
+    (s) => s.preferences?.featureFlagOverrides?.[EVOLVE_PROMPT_SUGGESTIONS_FLAG] ?? null,
+  );
   const experimentalSpinningMascot = useViewModel(
     (s) => s.preferences?.experimentalSpinningMascot ?? false,
   );
@@ -151,6 +159,14 @@ export function DeveloperTab() {
     }
   };
 
+  const handleSetFlagOverride = async (variant: string | null) => {
+    try {
+      await setFeatureFlagOverride(EVOLVE_PROMPT_SUGGESTIONS_FLAG, variant);
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   const handleDisableDeveloper = async () => {
     try {
       // deprecated(orpc): replace with client/orpc from @/lib/orpc
@@ -204,6 +220,47 @@ export function DeveloperTab() {
             checked={experimentalSpinningMascot}
             onCheckedChange={(checked) => setPref("experimentalSpinningMascot", checked)}
           />
+        </div>
+      </div>
+
+      {/* Feature flag overrides */}
+      <div className="rounded-lg border border-border p-3">
+        <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+          <Flag className="h-3.5 w-3.5" />
+          Feature flags
+        </div>
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Override PostHog feature flag variants locally for testing. "PostHog
+            default" uses the server-side value; choosing a variant forces it
+            even when diagnostics are disabled.
+          </p>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-mono">
+              {EVOLVE_PROMPT_SUGGESTIONS_FLAG}
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={evolvePromptSuggestionsOverride === null ? "default" : "outline"}
+                onClick={() => handleSetFlagOverride(null)}
+              >
+                PostHog default
+              </Button>
+              {(["chips", "spotlight", "trending"] as const).map((variant) => (
+                <Button
+                  key={variant}
+                  type="button"
+                  size="sm"
+                  variant={evolvePromptSuggestionsOverride === variant ? "default" : "outline"}
+                  onClick={() => handleSetFlagOverride(variant)}
+                >
+                  {variant}
+                </Button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 

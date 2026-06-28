@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
+use std::collections::BTreeMap;
 
 /// Auto-update channel selected for release-mode builds.
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, Type)]
@@ -63,6 +64,9 @@ pub struct UiPrefs {
     pub pinned_version: Option<String>,
     /// Auto-update channel used when no explicit version pin is active.
     pub update_channel: UpdateChannel,
+    /// Developer-only feature flag overrides (flag key → variant string).
+    /// `None` or missing key = use PostHog default.
+    pub feature_flag_overrides: Option<BTreeMap<String, String>>,
 }
 
 /// Partial update to UI preferences — every field is optional so the caller
@@ -123,6 +127,14 @@ pub struct UiPrefsUpdate {
     pub pinned_version: Option<Option<String>>,
     /// Auto-update channel preference update.
     pub update_channel: Option<UpdateChannel>,
+    /// `None` -> field not sent; `Some(None)` -> clear all overrides;
+    /// `Some(Some(map))` -> replace overrides with `map`.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "double_option"
+    )]
+    pub feature_flag_overrides: Option<Option<BTreeMap<String, String>>>,
 }
 
 /// Preferences local to this app installation.
@@ -152,6 +164,7 @@ pub struct GlobalPreferences {
     pub developer_mode: bool,
     pub pinned_version: Option<String>,
     pub update_channel: UpdateChannel,
+    pub feature_flag_overrides: Option<BTreeMap<String, String>>,
 }
 
 impl Default for GlobalPreferences {
@@ -177,6 +190,7 @@ impl Default for GlobalPreferences {
             developer_mode: false,
             pinned_version: None,
             update_channel: UpdateChannel::default(),
+            feature_flag_overrides: None,
         }
     }
 }
@@ -235,6 +249,9 @@ impl GlobalPreferences {
         if let Some(v) = update.update_channel {
             self.update_channel = v;
         }
+        if let Some(v) = &update.feature_flag_overrides {
+            self.feature_flag_overrides = v.clone();
+        }
     }
 
     /// Builds the non-secret subset of [`UiPrefs`] from global preferences.
@@ -264,6 +281,7 @@ impl GlobalPreferences {
             developer_mode: self.developer_mode,
             pinned_version: self.pinned_version.clone(),
             update_channel: self.update_channel,
+            feature_flag_overrides: self.feature_flag_overrides.clone(),
         }
     }
 }
