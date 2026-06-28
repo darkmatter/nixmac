@@ -107,7 +107,7 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        gcroot="${GITHUB_WORKSPACE}/../.devenv-gcroot"
+        gcroot="$(dirname "$(dirname "$GITHUB_WORKSPACE")")/.devenv-gcroot"
         if [[ -L "$gcroot" ]]; then
           profile_path="$(readlink -f "$gcroot")"
           if nix path-info "$profile_path" >/dev/null 2>&1; then
@@ -151,7 +151,7 @@ runs:
         fi
 
         if [ "$ok" = "true" ]; then
-          gcroot="${GITHUB_WORKSPACE}/../.devenv-gcroot"
+          gcroot="$(dirname "$(dirname "$GITHUB_WORKSPACE")")/.devenv-gcroot"
           ln -sfn "$profile_path" "$gcroot"
           echo "Pinned devenv profile to GC roots: $profile_path"
         fi
@@ -189,7 +189,7 @@ runs:
         set -euo pipefail
         "${RUNNER_TEMP}/devenv-cli/bin/devenv" shell --impure -- echo ready
         profile_path="$(readlink -f .devenv/profile)"
-        gcroot="${GITHUB_WORKSPACE}/../.devenv-gcroot"
+        gcroot="$(dirname "$(dirname "$GITHUB_WORKSPACE")")/.devenv-gcroot"
         ln -sfn "$profile_path" "$gcroot"
         echo "Pinned devenv profile to GC roots: $profile_path"
 
