@@ -13,7 +13,8 @@ import { SettingsDialog } from "@/components/widget/settings/settings-dialog";
 import { StepContentWrapper } from "@/components/widget/layout/step-content-wrapper";
 import { Stepper } from "@/components/widget/layout/stepper";
 import { OnboardingFlow } from "@/components/widget/onboarding/onboarding-flow";
-import { uiActions, useOnboarding } from "@nixmac/state";
+import { useOnboardingFlow } from "@/components/widget/onboarding/use-onboarding-flow";
+import { uiActions } from "@nixmac/state";
 import {
   BeginStep,
   CommitStep,
@@ -133,13 +134,11 @@ export function DarwinWidget() {
   }, []);
 
   // Onboarding (permissions → nix → flake import → customizations → inference →
-  // first build) takes over the whole window via OnboardingFlow. The first
-  // three gates come from the live backend; the post-setup steps are tracked
-  // by the onboarding store, which keeps the flow on screen until completed.
-  const onboardingActivePost = useOnboarding((s) => s.active);
-  const onboardingCompleted = useOnboarding((s) => s.completed);
-  const isOnboardingGate = step === "permissions" || step === "nix-setup" || step === "setup";
-  const showOnboarding = !onboardingCompleted && (isOnboardingGate || onboardingActivePost);
+  // first build) takes over the whole window via OnboardingFlow. Whether to show
+  // it is derived entirely from durable facts (live backend gates + persisted
+  // preferences) by useOnboardingFlow, so a finished user never re-enters it
+  // across restarts.
+  const { showFlow: showOnboarding } = useOnboardingFlow();
 
   // Routing mechanism
   const getActiveStepComponent = () => {
@@ -173,7 +172,7 @@ export function DarwinWidget() {
 
   if (showOnboarding) {
     return (
-      <div className="flex min-h-[600px] min-w-[800px] h-full w-full flex-col bg-background/90 backdrop-blur-xl">
+      <div className="flex min-h-[600px] min-w-[800px] h-full w-full flex-col bg-background/60">
         <OnboardingFlow />
         <SettingsDialog />
         <FeedbackDialog />
@@ -183,7 +182,7 @@ export function DarwinWidget() {
   }
 
   return (
-    <div className="flex min-w-[800px] min-h-[600px]  h-full w-full flex-col bg-background/90 backdrop-blur-xl">
+    <div className="flex min-w-[800px] min-h-[600px]  h-full w-full flex-col bg-background/60">
       <Header />
       <Stepper />
       <UpdateBanner />

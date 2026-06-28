@@ -33,6 +33,15 @@ pub async fn finalize_apply(app: &AppHandle) -> Result<()> {
     }
 
     build_state::record_build(app, &final_status).context("Failed to record build state")?;
+    // Mark onboarding's "first build/evolution" gate as satisfied. Best-effort:
+    // a bookkeeping failure must not turn a successful build into a failed apply.
+    if crate::state::preferences::try_read(app).is_some() {
+        if let Err(error) = crate::state::preferences::write(app, |prefs| {
+            prefs.onboarding_last_build_at = Some(crate::utils::unix_now());
+        }) {
+            log::warn!("Failed to record onboarding build timestamp: {error:#}");
+        }
+    }
     evolve_state::set_session(app, current_evolve, &final_status.changes)?;
     Ok(())
 }

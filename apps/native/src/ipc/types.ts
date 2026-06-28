@@ -1101,7 +1101,19 @@ installationId: number }
  * Hydrated via `get_global_preferences`; every mutation emits
  * `global_preferences_changed` with the full struct as payload.
  */
-export type GlobalPreferences = { hostAttr: string | null; configDir: string | null; repoRoot: string | null; sendDiagnostics: boolean; evolveProvider: string | null; evolveModel: string | null; summaryProvider: string | null; summaryModel: string | null; ollamaApiBaseUrl: string | null; vllmApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null }
+export type GlobalPreferences = { hostAttr: string | null; configDir: string | null; repoRoot: string | null; sendDiagnostics: boolean; evolveProvider: string | null; evolveModel: string | null; summaryProvider: string | null; summaryModel: string | null; ollamaApiBaseUrl: string | null; vllmApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
+/**
+ * Timestamp (unix secs) of the last onboarding "scan this Mac" / customizations review.
+ */
+onboardingMacScannedAt: number | null; 
+/**
+ * True once the user logged in or explicitly chose bring-your-own-key during onboarding.
+ */
+onboardingLoginDecided: boolean; 
+/**
+ * Timestamp (unix secs) of the last successful build/evolution apply. Set by `finalize_apply`.
+ */
+onboardingLastBuildAt: number | null }
 
 /**
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
@@ -2017,7 +2029,15 @@ updateChannel: UpdateChannel | null;
  * `None` -> field not sent; `Some(None)` -> clear all overrides;
  * `Some(Some(map))` -> replace overrides with `map`.
  */
-featureFlagOverrides?: Partial<{ [key in string]: string }> | null }
+featureFlagOverrides?: Partial<{ [key in string]: string }> | null; 
+/**
+ * Timestamp (unix secs) of the last onboarding "scan this Mac" / customizations review.
+ */
+onboardingMacScannedAt: number | null; 
+/**
+ * Set true once the user logged in or explicitly chose bring-your-own-key.
+ */
+onboardingLoginDecided: boolean | null }
 
 /**
  * Auto-update channel selected for release-mode builds.

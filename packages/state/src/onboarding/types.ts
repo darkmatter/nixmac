@@ -1,5 +1,3 @@
-import type { InferenceConfig } from "../onboarding-types";
-
 export type OnboardingStepId =
   | "permissions"
   | "nix-setup"
@@ -8,21 +6,19 @@ export type OnboardingStepId =
   | "inference"
   | "build";
 
+/**
+ * Transient, session-only onboarding UI state. Completion and per-step progress
+ * are NOT stored here — they are derived from durable facts (permissions, nix,
+ * flake/host, and persisted `GlobalPreferences`). This store only holds intent
+ * and view state that legitimately resets each launch.
+ */
 export type OnboardingStateValues = {
-  /** IDs of detected customizations the user chose to track into their config. */
+  /** IDs of detected customizations the user toggled while reviewing the scan. */
   trackedCustomizations: string[];
-  /** User has finished (or skipped) the import-customizations step. */
-  customizationsReviewed: boolean;
-  /** Resolved AI inference choice — hosted account or bring-your-own-key. */
-  inference: InferenceConfig | null;
-  /** User chose to defer inference setup until the build runs. */
-  inferenceSkipped: boolean;
-  /** First build finished successfully. */
-  buildComplete: boolean;
-  /** Post-setup onboarding is in progress this session. */
-  active: boolean;
-  /** User finished onboarding — the widget may route into the app. */
-  completed: boolean;
-  /** When set, the user is reviewing a completed step instead of the furthest gate. */
+  /** User chose to defer inference setup until the first build runs. */
+  inferenceDeferred: boolean;
+  /** Keep the success celebration mounted after the build gate is satisfied. */
+  celebrating: boolean;
+  /** When set, the user is reviewing an earlier step instead of the furthest gate. */
   viewingStep: OnboardingStepId | null;
 };

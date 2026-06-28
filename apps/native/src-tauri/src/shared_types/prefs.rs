@@ -135,6 +135,10 @@ pub struct UiPrefsUpdate {
         with = "double_option"
     )]
     pub feature_flag_overrides: Option<Option<BTreeMap<String, String>>>,
+    /// Timestamp (unix secs) of the last onboarding "scan this Mac" / customizations review.
+    pub onboarding_mac_scanned_at: Option<i64>,
+    /// Set true once the user logged in or explicitly chose bring-your-own-key.
+    pub onboarding_login_decided: Option<bool>,
 }
 
 /// Preferences local to this app installation.
@@ -165,6 +169,12 @@ pub struct GlobalPreferences {
     pub pinned_version: Option<String>,
     pub update_channel: UpdateChannel,
     pub feature_flag_overrides: Option<BTreeMap<String, String>>,
+    /// Timestamp (unix secs) of the last onboarding "scan this Mac" / customizations review.
+    pub onboarding_mac_scanned_at: Option<i64>,
+    /// True once the user logged in or explicitly chose bring-your-own-key during onboarding.
+    pub onboarding_login_decided: bool,
+    /// Timestamp (unix secs) of the last successful build/evolution apply. Set by `finalize_apply`.
+    pub onboarding_last_build_at: Option<i64>,
 }
 
 impl Default for GlobalPreferences {
@@ -191,6 +201,9 @@ impl Default for GlobalPreferences {
             pinned_version: None,
             update_channel: UpdateChannel::default(),
             feature_flag_overrides: None,
+            onboarding_mac_scanned_at: None,
+            onboarding_login_decided: false,
+            onboarding_last_build_at: None,
         }
     }
 }
@@ -251,6 +264,12 @@ impl GlobalPreferences {
         }
         if let Some(v) = &update.feature_flag_overrides {
             self.feature_flag_overrides = v.clone();
+        }
+        if let Some(v) = update.onboarding_mac_scanned_at {
+            self.onboarding_mac_scanned_at = Some(v);
+        }
+        if let Some(v) = update.onboarding_login_decided {
+            self.onboarding_login_decided = v;
         }
     }
 

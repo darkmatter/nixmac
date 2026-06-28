@@ -35,6 +35,9 @@ export function makeGlobalPreferences(
     pinnedVersion: null,
     updateChannel: "stable",
     featureFlagOverrides: null,
+    onboardingMacScannedAt: null,
+    onboardingLoginDecided: false,
+    onboardingLastBuildAt: null,
     ...overrides,
   };
 }

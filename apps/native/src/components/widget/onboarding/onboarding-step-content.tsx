@@ -5,8 +5,8 @@ import { InferenceStep } from "@/components/widget/onboarding/steps/inference-st
 import { NixSetupStep } from "@/components/widget/onboarding/steps/nix-setup-step";
 import { PermissionsStep } from "@/components/widget/onboarding/steps/permissions-step";
 import { SetupStep } from "@/components/widget/onboarding/steps/setup-step";
-import { getTelemetry } from "@/lib/telemetry/instance";
-import { onboardingActions, useOnboarding } from "@nixmac/state";
+import { useOnboardingProgress } from "@/hooks/use-onboarding-progress";
+import { onboardingActions, useOnboarding, useViewModel } from "@nixmac/state";
 
 interface OnboardingStepContentProps {
   currentStep: StepId;
@@ -15,7 +15,13 @@ interface OnboardingStepContentProps {
 
 export function OnboardingStepContent({ currentStep, title }: OnboardingStepContentProps) {
   const trackedCustomizations = useOnboarding((s) => s.trackedCustomizations);
-  const inference = useOnboarding((s) => s.inference);
+  // Inference readiness is a durable fact: provider + model are persisted to
+  // GlobalPreferences by InferenceSetup, and the login decision is recorded
+  // separately. The build step only needs to know inference is configured.
+  const evolveProvider = useViewModel((s) => s.preferences?.evolveProvider ?? null);
+  const evolveModel = useViewModel((s) => s.preferences?.evolveModel ?? null);
+  const hasInference = Boolean(evolveProvider) && Boolean(evolveModel);
+  const { markMacScanned, markLoginDecided } = useOnboardingProgress();
 
   return (
     <main className="min-w-0">
@@ -28,24 +34,17 @@ export function OnboardingStepContent({ currentStep, title }: OnboardingStepCont
           <CustomizationsStep
             tracked={trackedCustomizations}
             onSetTracked={onboardingActions.setTrackedCustomizations}
-            onContinue={onboardingActions.reviewCustomizations}
+            onContinue={markMacScanned}
           />
         )}
         {currentStep === "inference" && (
           <InferenceStep
-            onConfigured={onboardingActions.configureInference}
-            onSkip={onboardingActions.skipInference}
+            onConfigured={markLoginDecided}
+            onSkip={onboardingActions.deferInference}
           />
         )}
         {currentStep === "build" && (
-          <BuildStep
-            hasInference={Boolean(inference)}
-            onConfigureInference={onboardingActions.configureInference}
-            onComplete={() => {
-              getTelemetry().captureEvent({ name: "onboarding_completed" });
-              onboardingActions.complete();
-            }}
-          />
+          <BuildStep hasInference={hasInference} onConfigureInference={markLoginDecided} />
         )}
       </div>
     </main>

@@ -1,7 +1,12 @@
-import type { InferenceConfig } from "../onboarding-types";
 import type { OnboardingStepId } from "./types";
 import { initialOnboardingState, onboardingStore } from "./store";
 
+/**
+ * Actions over the transient onboarding UI store. Durable per-step progress
+ * (mac scan, login decision, build completion) is persisted to
+ * `GlobalPreferences` from the components instead — `packages/state` must not
+ * import the oRPC client.
+ */
 export const onboardingActions = {
   getState: onboardingStore.getState,
   setState: onboardingStore.setState,
@@ -10,14 +15,10 @@ export const onboardingActions = {
 
   setTrackedCustomizations: (trackedCustomizations: string[]) =>
     onboardingStore.setState({ trackedCustomizations }),
-  reviewCustomizations: () => onboardingStore.setState({ customizationsReviewed: true }),
-  configureInference: (inference: InferenceConfig) =>
-    onboardingStore.setState({ inference, inferenceSkipped: false }),
-  skipInference: () => onboardingStore.setState({ inferenceSkipped: true }),
-  setBuildComplete: (buildComplete: boolean) => onboardingStore.setState({ buildComplete }),
-  /** Called when the flake-import step is satisfied, opening the new steps. */
-  beginPostSetup: () => onboardingStore.setState({ active: true }),
-  complete: () => onboardingStore.setState({ completed: true, active: false }),
+  /** Defer inference to the build step (inline setup runs alongside the build). */
+  deferInference: () => onboardingStore.setState({ inferenceDeferred: true }),
+  /** Keep the success celebration mounted after the build gate is satisfied. */
+  setCelebrating: (celebrating: boolean) => onboardingStore.setState({ celebrating }),
   setViewingStep: (viewingStep: OnboardingStepId | null) =>
     onboardingStore.setState({ viewingStep }),
 };

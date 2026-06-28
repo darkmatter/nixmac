@@ -14,6 +14,7 @@ import { StepShell } from "@/components/widget/onboarding/step-shell";
 import { tauriAPI } from "@/ipc/api";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import { cn } from "@/lib/utils";
+import { Checkbox } from "@nixmac/ui/components/ui/checkbox.js";
 import {
   ArrowRight,
   Braces,
@@ -23,8 +24,6 @@ import {
   Plus,
   Radar,
   SkipForward,
-  SlidersHorizontal,
-  TriangleAlert,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -365,19 +364,11 @@ function GroupCard({
         onClick={() => setExpanded((v) => !v)}
         className="flex w-full items-start gap-3 p-4 text-left"
       >
-        <span
-          className={cn(
-            "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg",
-            isWarning ? "bg-warning/15 text-warning" : "bg-primary/15 text-primary",
-          )}
-          aria-hidden="true"
-        >
-          {isWarning ? (
-            <TriangleAlert className="size-4" />
-          ) : (
-            <SlidersHorizontal className="size-4" />
-          )}
-        </span>
+        <Checkbox
+          checked={allTracked}
+          onCheckedChange={() => onTrack(ids)}
+          className={cn("size-4 border-none", allTracked ? "bg-white" : "bg-zinc-700")}
+        />
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2 font-semibold text-sm">
             {group.items.length} {group.title}

@@ -24,18 +24,16 @@ const CelebrationOverlay = lazy(() =>
     default: m.CelebrationOverlay,
   })),
 );
-import type { InferenceConfig } from "@/components/widget/onboarding/lib/inference";
+import { onboardingActions, useOnboarding, useViewModel } from "@nixmac/state";
 import { useApply } from "@/hooks/use-apply";
-import { useViewModel } from "@nixmac/state";
 import { cn } from "@/lib/utils";
 import { getTelemetry } from "@/lib/telemetry/instance";
+import type { InferenceConfig } from "@/components/widget/onboarding/lib/inference";
 
 interface BuildStepProps {
   /** Whether AI inference is already configured. */
   hasInference: boolean;
   onConfigureInference: (config: InferenceConfig) => void;
-  /** Called when the user finishes onboarding from the success screen. */
-  onComplete: () => void;
 }
 
 type BuildStatus = "idle" | "running" | "error" | "success";
@@ -57,15 +55,15 @@ const FIXES = [
   },
 ];
 
-export function BuildStep({ hasInference, onConfigureInference, onComplete }: BuildStepProps) {
+export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps) {
   const { handleApply } = useApply();
   const rebuildStatus = useViewModel((s) => s.rebuildStatus);
   const rawLines = useViewModel((s) => s.rebuildLog.rawLines);
   const configDir = useViewModel((s) => s.preferences?.configDir ?? "");
   const host = useViewModel((s) => s.preferences?.hostAttr ?? "this-mac");
+  const celebrating = useOnboarding((s) => s.celebrating);
 
   const [started, setStarted] = useState(false);
-  const [celebrate, setCelebrate] = useState(false);
   const [dismissedCelebration, setDismissedCelebration] = useState(false);
   const [trackedOutcome, setTrackedOutcome] = useState<"success" | "error" | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
@@ -99,12 +97,15 @@ export function BuildStep({ hasInference, onConfigureInference, onComplete }: Bu
     }
   }, [status, trackedOutcome]);
 
-  // Fire the celebration once the build succeeds AND inference is configured.
+  // Raise the session celebration flag once the build succeeds AND inference is
+  // configured. This keeps the onboarding flow mounted (showFlow) through the
+  // celebration even as the durable build timestamp lands and completion
+  // derives true. Dismissing it lowers the flag and routes into the app.
   useEffect(() => {
-    if (status === "success" && hasInference && !dismissedCelebration) {
-      setCelebrate(true);
+    if (status === "success" && hasInference && !dismissedCelebration && !celebrating) {
+      onboardingActions.setCelebrating(true);
     }
-  }, [status, hasInference, dismissedCelebration]);
+  }, [status, hasInference, dismissedCelebration, celebrating]);
 
   function runBuild() {
     setStarted(true);
@@ -261,21 +262,24 @@ export function BuildStep({ hasInference, onConfigureInference, onComplete }: Bu
               </p>
             </div>
           </div>
-          <Button className="shrink-0" disabled={!hasInference} onClick={() => setCelebrate(true)}>
+          <Button
+            className="shrink-0"
+            disabled={!hasInference}
+            onClick={() => onboardingActions.setCelebrating(true)}
+          >
             Open nixmac
             <ArrowRight className="size-4" aria-hidden="true" />
           </Button>
         </div>
       ) : null}
 
-      {celebrate ? (
+      {celebrating ? (
         <Suspense fallback={null}>
           <CelebrationOverlay
             host={host}
             onDismiss={() => {
-              setCelebrate(false);
               setDismissedCelebration(true);
-              onComplete();
+              onboardingActions.setCelebrating(false);
             }}
           />
         </Suspense>

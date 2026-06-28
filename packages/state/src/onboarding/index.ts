@@ -1,12 +1,8 @@
 export { onboardingActions } from "./actions";
 export { initialOnboardingState, onboardingStore } from "./store";
 export {
-  selectBuildComplete,
-  selectCustomizationsReviewed,
-  selectInference,
-  selectInferenceSkipped,
-  selectOnboardingActive,
-  selectOnboardingCompleted,
+  selectCelebrating,
+  selectInferenceDeferred,
   selectTrackedCustomizations,
   selectViewingStep,
   useOnboarding,

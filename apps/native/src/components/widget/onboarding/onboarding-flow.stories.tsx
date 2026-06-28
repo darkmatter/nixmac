@@ -182,6 +182,11 @@ function installBackend(startAt: string) {
     hosts: startIdx >= 3 ? SAMPLE_HOSTS : [],
     hostAttr: startIdx >= 3 ? SAMPLE_HOSTS[0] : "",
     flakeExists: startIdx >= 3,
+    macScannedAt: (startIdx >= 4 ? 1_700_000_000 : null) as number | null,
+    evolveProvider: (startIdx >= 5 ? "openrouter" : null) as string | null,
+    evolveModel: (startIdx >= 5 ? "anthropic/claude-sonnet-4" : null) as string | null,
+    loginDecided: startIdx >= 5,
+    lastBuildAt: null as number | null,
     githubConnected: false,
   };
 
@@ -210,8 +215,8 @@ function installBackend(startAt: string) {
         hostAttr: state.hostAttr || null,
         repoRoot: null,
         sendDiagnostics: false,
-        evolveProvider: null,
-        evolveModel: null,
+        evolveProvider: state.evolveProvider,
+        evolveModel: state.evolveModel,
         summaryProvider: null,
         summaryModel: null,
         ollamaApiBaseUrl: null,
@@ -226,11 +231,12 @@ function installBackend(startAt: string) {
         developerMode: false,
         pinnedVersion: null,
         updateChannel: "stable",
+        onboardingMacScannedAt: state.macScannedAt,
+        onboardingLoginDecided: state.loginDecided,
+        onboardingLastBuildAt: state.lastBuildAt,
       },
       hosts: state.hosts,
       git: { headCommitHash: "abc1234", files: [], changes: [] } as any,
-      rebuildStatus: { isRunning: false, success: null, exitCode: null } as any,
-      rebuildLog: { lines: [], rawLines: [] },
     });
   }
 
@@ -238,20 +244,9 @@ function installBackend(startAt: string) {
   syncVM();
   onboardingActions.setState({
     trackedCustomizations: [],
-    customizationsReviewed: startIdx >= 4,
-    inference:
-      startIdx >= 5
-        ? {
-          mode: "byok",
-          providerId: "openrouter",
-          providerName: "OpenRouter",
-          model: "anthropic/claude-sonnet-4",
-        }
-        : null,
-    inferenceSkipped: false,
-    buildComplete: false,
-    active: startIdx >= 3,
-    completed: false,
+    inferenceDeferred: false,
+    celebrating: false,
+    viewingStep: null,
   });
 
   // ---- Patch tauriAPI methods, remembering originals for restore ----
@@ -449,7 +444,16 @@ function installBackend(startAt: string) {
     webAccount: { id: "demo-account", email },
   }));
   ensure("ui");
-  patch(tauriAPI.ui, "setPrefs", async () => ({ ok: true }));
+  patch(tauriAPI.ui, "setPrefs", async (update: Record<string, unknown>) => {
+    if (typeof update.onboardingMacScannedAt === "number") {
+      state.macScannedAt = update.onboardingMacScannedAt;
+    }
+    if (update.onboardingLoginDecided === true) state.loginDecided = true;
+    if (typeof update.evolveProvider === "string") state.evolveProvider = update.evolveProvider;
+    if (typeof update.evolveModel === "string") state.evolveModel = update.evolveModel;
+    syncVM();
+    return { ok: true };
+  });
   patch(tauriAPI.ui, "getPrefs", async () => ({}));
 
   // first build — stream a mocked log to success.
@@ -479,7 +483,11 @@ function installBackend(startAt: string) {
     });
     return { ok: true };
   });
-  patch(tauriAPI.darwin, "finalizeApply", async () => ({}));
+  patch(tauriAPI.darwin, "finalizeApply", async () => {
+    state.lastBuildAt = 1_700_000_100;
+    syncVM();
+    return {};
+  });
   patch(tauriAPI.darwin, "rebuildStatus", async () => viewModelActions.getState().rebuildStatus);
 
   return () => {
