@@ -6,7 +6,7 @@ import type { Client } from "@orpc/client"
 /**
  * Billing snapshot returned by `/api/billing/state` for onboarding and account UI.
  */
-export type AccountBilling = { usage: CreditBalance; subscriptions: BillingSubscription[]; hasPaymentMethod: boolean; canUseHostedInference: boolean; canUseDeviceSync: boolean }
+export type AccountBilling = { usage: BillingUsage; subscriptions: BillingSubscription[]; hasPaymentMethod: boolean; canUseHostedInference: boolean; canUseDeviceSync: boolean }
 
 export type ActivateStorePathInput = { storePath: string }
 
@@ -38,6 +38,11 @@ export type BillingProductInfo = { product: string; name: string; currency: stri
  * Active Polar subscription mapped to a known nixmac product slug.
  */
 export type BillingSubscription = { id: string; slug: string; productId: string; status: string }
+
+/**
+ * Hosted inference usage for the signed-in web account.
+ */
+export type BillingUsage = { currency: string; spentUsd: number }
 
 export type BootstrapDefaultConfigInput = { hostname: string; templateId: string | null }
 
@@ -100,7 +105,7 @@ title: string;
  */
 description: string }
 
-export type CheckoutInput = { product: string; amountUsd: number | null }
+export type CheckoutInput = { product: string }
 
 export type CheckoutUrl = { url: string }
 
@@ -149,11 +154,6 @@ export type ConfigImportZipInput = { zipPath: string; dirName: string | null }
 export type ConfigSetDirInput = { dir: string }
 
 export type ConfigSetHostAttrInput = { host: string }
-
-/**
- * Hosted inference credit balance for the signed-in web account.
- */
-export type CreditBalance = { currency: string; remainingUsd: number; spentUsd: number; totalUsd: number }
 
 /**
  * Evolution lifecycle state.

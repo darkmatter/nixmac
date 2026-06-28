@@ -19,12 +19,12 @@ import {
   type InferenceMode,
 } from "@/components/widget/onboarding/lib/inference";
 import { tauriAPI } from "@/ipc/api";
-import { client, orpc } from "@/lib/orpc";
 import type { AccountBilling, BillingProductInfo } from "@/lib/orpc";
-import { useQuery } from "@tanstack/react-query";
+import { client, orpc } from "@/lib/orpc";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import { cn } from "@/lib/utils";
 import NixmacIcon from "@nixmac/ui/components/icon";
+import { useQuery } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-shell";
 import {
   Check,
@@ -52,7 +52,7 @@ export function InferenceSetup({ onConfigured }: InferenceSetupProps) {
           active={mode === "hosted"}
           icon={<NixmacIcon className="size-6 bg-none" />}
           title="nixmac hosted"
-          blurb="We run the models. Sign in and add a payment method."
+          blurb="We run the models. Sign in and activate PAYG billing."
           badge="Recommended"
           onClick={() => setMode("hosted")}
         />
@@ -128,15 +128,18 @@ type HostedStage = "account" | "payment";
 
 const PAYG_HIGHLIGHTS = [
   "Pay only for the model usage you consume",
-  "Usage-based billing through Polar",
-  "Use credits across supported models",
+  "Monthly metered billing through Polar",
+  "Use hosted inference across supported models",
 ];
 
 const PRO_HIGHLIGHTS = [
-  "Everything in Pay as you go",
+  "Requires Pay as you go plus Pro",
   "Device sync for keeping configurations in step",
   "Built for users managing more than one Mac",
 ];
+
+const PAYG_SUBSCRIPTION_SLUG = "payg-tokens";
+const PRO_SUBSCRIPTION_SLUG = "pro";
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -177,10 +180,6 @@ function priceLabelFor(product: BillingProductInfo | undefined, fallback: string
   if (!product) {
     return fallback;
   }
-  // Pay-as-you-go has no subscription fee — usage is billed via metered credits.
-  if (product.type === "topup") {
-    return "Free";
-  }
   if (product.type === "subscription" && typeof product.priceUsd === "number") {
     const interval = product.recurringInterval === "year" ? "/yr" : "/mo";
     const amount = Number.isInteger(product.priceUsd)
@@ -192,12 +191,64 @@ function priceLabelFor(product: BillingProductInfo | undefined, fallback: string
 }
 
 function hasBillingActivity(billing: AccountBilling): boolean {
-  return (
-    billing.canUseHostedInference ||
-    billing.subscriptions.length > 0 ||
-    billing.usage.totalUsd > 0 ||
-    billing.usage.spentUsd > 0
-  );
+  return billing.subscriptions.length > 0 || billing.usage.spentUsd > 0;
+}
+
+function hasSubscription(billing: AccountBilling | null | undefined, slug: string): boolean {
+  return billing?.subscriptions.some((subscription) => subscription.slug === slug) ?? false;
+}
+
+function hasPaygSubscription(billing: AccountBilling | null | undefined): boolean {
+  return hasSubscription(billing, PAYG_SUBSCRIPTION_SLUG);
+}
+
+function hasProSubscription(billing: AccountBilling | null | undefined): boolean {
+  return hasSubscription(billing, PRO_SUBSCRIPTION_SLUG);
+}
+
+function hasRequiredSubscriptions(
+  billing: AccountBilling | null | undefined,
+  selectedPlan: CheckoutProduct,
+): boolean {
+  if (selectedPlan === "credits") {
+    return hasPaygSubscription(billing);
+  }
+  return hasPaygSubscription(billing) && hasProSubscription(billing);
+}
+
+function nextCheckoutProduct(
+  billing: AccountBilling | null | undefined,
+  selectedPlan: CheckoutProduct,
+): CheckoutProduct | null {
+  if (!hasPaygSubscription(billing)) {
+    return "credits";
+  }
+  if (selectedPlan === "pro" && !hasProSubscription(billing)) {
+    return "pro";
+  }
+  return null;
+}
+
+function checkoutButtonLabel(
+  product: CheckoutProduct | null,
+  selectedPlan: CheckoutProduct,
+): string {
+  if (!product) {
+    return "Subscription active";
+  }
+  if (selectedPlan === "pro" && product === "credits") {
+    return "Subscribe to Pay as you go first";
+  }
+  return `Subscribe to ${planLabel(product)}`;
+}
+
+function configuredPlanSuffix(
+  billing: AccountBilling | null | undefined,
+): string {
+  if (hasPaygSubscription(billing) && hasProSubscription(billing)) {
+    return PRO_SUBSCRIPTION_SLUG;
+  }
+  return hasPaygSubscription(billing) ? PAYG_SUBSCRIPTION_SLUG : "subscribed";
 }
 
 function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) => void }) {
@@ -227,7 +278,8 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
   const normalizedEmail = email.trim();
   const emailValid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalizedEmail);
   const accountReady = emailValid && (!otpSent || otp.trim().length > 0);
-  const canSkipPayment = billing?.canUseHostedInference ?? false;
+  const canContinueWithPlan = hasRequiredSubscriptions(billing, selectedPlan);
+  const checkoutProduct = nextCheckoutProduct(billing, selectedPlan);
   const proPlan = products?.find((plan) => plan.product === "pro");
   const creditsPlan = products?.find((plan) => plan.product === "credits");
 
@@ -308,12 +360,11 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
   }
 
   async function continueWithSubscription() {
-    if (!canSkipPayment) return;
+    if (!canContinueWithPlan) return;
     setWorking(true);
     setError(null);
     try {
-      const activePlan = billing?.subscriptions[0]?.slug ?? "subscribed";
-      await finishHostedSetup(activePlan);
+      await finishHostedSetup(configuredPlanSuffix(billing));
     } catch (e: unknown) {
       setError(errorMessage(e));
     } finally {
@@ -322,10 +373,11 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
   }
 
   async function startCheckout() {
+    if (!checkoutProduct) return;
     setWorking(true);
     setError(null);
     try {
-      const { url } = await client.billing.checkout({ product: selectedPlan, amountUsd: null });
+      const { url } = await client.billing.checkout({ product: checkoutProduct });
       await openExternal(url);
       setCheckoutStarted(true);
     } catch (e: unknown) {
@@ -340,11 +392,16 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
     setError(null);
     try {
       const { data: snapshot } = await billingQuery.refetch();
-      if (snapshot?.canUseHostedInference) {
-        await finishHostedSetup(selectedPlan);
+      if (hasRequiredSubscriptions(snapshot, selectedPlan)) {
+        await finishHostedSetup(configuredPlanSuffix(snapshot));
         return;
       }
-      setError("Subscription not active yet. Finish checkout in Polar, then try again.");
+      const nextProduct = nextCheckoutProduct(snapshot, selectedPlan);
+      setError(
+        nextProduct === "pro"
+          ? "Pay as you go is active. Subscribe to Pro to finish Pro setup."
+          : "Subscription not active yet. Finish checkout in Polar, then try again.",
+      );
     } catch (e: unknown) {
       setError(errorMessage(e));
     } finally {
@@ -457,13 +514,10 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
         <p className="text-destructive text-xs">{billingError}</p>
       ) : billing && hasBillingActivity(billing) ? (
         <div className="rounded-lg border border-border bg-muted/30 p-3">
-          <p className="font-medium text-sm">Inference credits</p>
-          <p className="mt-1 font-mono text-lg">${formatUsd(billing.usage.remainingUsd)} remaining</p>
-          {billing.usage.totalUsd > 0 ? (
-            <p className="mt-1 text-muted-foreground text-xs">
-              ${formatUsd(billing.usage.spentUsd)} spent of ${formatUsd(billing.usage.totalUsd)} credited
-            </p>
-          ) : null}
+          <p className="font-medium text-sm">Inference usage</p>
+          <p className="mt-1 font-mono text-lg">
+            ${formatUsd(billing.usage.spentUsd)} spent this period
+          </p>
           {billing.subscriptions.length > 0 ? (
             <p className="mt-2 text-muted-foreground text-xs">
               Active plan:{" "}
@@ -473,15 +527,19 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
         </div>
       ) : null}
 
-      {canSkipPayment ? (
-        <Button variant="secondary" onClick={() => void continueWithSubscription()} disabled={working}>
+      {canContinueWithPlan ? (
+        <Button
+          variant="secondary"
+          onClick={() => void continueWithSubscription()}
+          disabled={working}
+        >
           {working ? (
             <>
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
               Continuing…
             </>
           ) : (
-            "Continue with active subscription"
+            "Continue with active billing"
           )}
         </Button>
       ) : (
@@ -489,13 +547,14 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
           <fieldset>
             <legend className="mb-2 font-medium text-sm">Choose a plan</legend>
             <p className="mb-3 text-muted-foreground text-xs">
-              Both plans bill for model usage through Polar. Pro adds device sync across Macs.
+              Pay as you go enables hosted inference. Pro requires Pay as you go and adds device
+              sync across Macs.
             </p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <PlanCard
                 active={selectedPlan === "credits"}
                 title="Pay as you go"
-                priceLabel={priceLabelFor(creditsPlan, "Free")}
+                priceLabel={priceLabelFor(creditsPlan, "Metered")}
                 highlights={PAYG_HIGHLIGHTS}
                 onClick={() => setSelectedPlan("credits")}
               />
@@ -510,7 +569,10 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
             </div>
           </fieldset>
 
-          <Button onClick={() => void startCheckout()} disabled={working || billingLoading}>
+          <Button
+            onClick={() => void startCheckout()}
+            disabled={working || billingLoading || !checkoutProduct}
+          >
             {working ? (
               <>
                 <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -519,7 +581,7 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
             ) : (
               <>
                 <Lock className="size-4" aria-hidden="true" />
-                Subscribe to {planLabel(selectedPlan)}
+                {checkoutButtonLabel(checkoutProduct, selectedPlan)}
               </>
             )}
           </Button>
@@ -530,7 +592,7 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
           {checkoutStarted ? (
             <div className="rounded-lg border border-success/30 bg-success/5 p-3">
               <p className="text-muted-foreground text-xs">
-                Finish checkout in Polar, then continue once your subscription is active.
+                Finish checkout in Polar, then continue once the required subscription is active.
               </p>
               <Button
                 className="mt-2"

@@ -103,8 +103,6 @@ async fn read_billing_json<T: serde::de::DeserializeOwned>(
 #[serde(rename_all = "camelCase")]
 struct CheckoutInput {
     product: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    amount_usd: Option<f64>,
 }
 
 #[derive(Deserialize)]
@@ -344,13 +342,8 @@ pub async fn verify_web_sign_in_otp<R: Runtime>(
 }
 
 /// Creates a Polar checkout for the signed-in account and returns the URL to
-/// open. `product` is `pro` (subscription) or `credits` (pay-what-you-want
-/// top-up); `amount_usd` pre-sets the credits amount when provided.
-pub async fn create_checkout<R: Runtime>(
-    app: &AppHandle<R>,
-    product: &str,
-    amount_usd: Option<f64>,
-) -> Result<String> {
+/// open. `product` is `pro` or `credits` (the PAYG metered subscription).
+pub async fn create_checkout<R: Runtime>(app: &AppHandle<R>, product: &str) -> Result<String> {
     let product = product.trim();
     if product != "pro" && product != "credits" {
         return Err(anyhow!("Checkout product must be pro or credits"));
@@ -359,7 +352,6 @@ pub async fn create_checkout<R: Runtime>(
     let response = billing_request(app, reqwest::Method::POST, "checkout")?
         .json(&CheckoutInput {
             product: product.to_string(),
-            amount_usd,
         })
         .send()
         .await?;

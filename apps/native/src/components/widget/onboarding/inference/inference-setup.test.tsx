@@ -1,6 +1,6 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "@testing-library/jest-dom";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { InferenceSetup } from "@/components/widget/onboarding/inference/inference-setup";
@@ -22,7 +22,7 @@ type AccountStatus = {
 };
 
 const emptyBilling: AccountBilling = {
-  usage: { currency: "USD", remainingUsd: 0, spentUsd: 0, totalUsd: 0 },
+  usage: { currency: "USD", spentUsd: 0 },
   subscriptions: [],
   hasPaymentMethod: false,
   canUseHostedInference: false,
@@ -34,8 +34,7 @@ const demoProducts: BillingProductInfo[] = [
     product: "credits",
     name: "Hosted inference credits",
     currency: "usd",
-    type: "topup",
-    minimumAmountUsd: 5,
+    type: "subscription",
   },
   {
     product: "pro",
@@ -47,7 +46,7 @@ const demoProducts: BillingProductInfo[] = [
   },
 ];
 
-type CheckoutInput = { product: string; amountUsd: number | null };
+type CheckoutInput = { product: string };
 
 const mocks = vi.hoisted(() => ({
   status: vi.fn<() => Promise<AccountStatus>>(),
@@ -115,13 +114,13 @@ vi.mock("posthog-js", () => ({
   },
 }));
 
-function renderSetup(): void {
+function renderSetup(onConfigured = vi.fn<(config: unknown) => void>()): void {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   render(
     <QueryClientProvider client={queryClient}>
-      <InferenceSetup onConfigured={vi.fn<(config: unknown) => void>()} />
+      <InferenceSetup onConfigured={onConfigured} />
     </QueryClientProvider>,
   );
 }
@@ -191,7 +190,7 @@ describe("InferenceSetup", () => {
     // Prices come from `orpc.billing.products`.
     // Pro shows its subscription price; pay-as-you-go has no subscription fee.
     expect(await screen.findByText("$5/mo")).toBeInTheDocument();
-    expect(screen.getByText("Free")).toBeInTheDocument();
+    expect(screen.getByText("Metered")).toBeInTheDocument();
   });
 
   it("resumes at payment when a web account is already persisted", async () => {
@@ -211,7 +210,7 @@ describe("InferenceSetup", () => {
     expect(screen.getByText("ada@example.com")).toBeInTheDocument();
   });
 
-  it("skips checkout when the account already has an active subscription", async () => {
+  it("skips checkout when the account already has active PAYG billing", async () => {
     mocks.status.mockResolvedValue({
       signedIn: false,
       account: null,
@@ -237,8 +236,85 @@ describe("InferenceSetup", () => {
     renderSetup();
 
     expect(
-      await screen.findByRole("button", { name: /continue with active subscription/i }),
+      await screen.findByRole("button", { name: /continue with active billing/i }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/choose a plan/i)).not.toBeInTheDocument();
+  });
+
+  it("requires PAYG billing before treating Pro as hosted-ready", async () => {
+    mocks.status.mockResolvedValue({
+      signedIn: false,
+      account: null,
+      keyId: null,
+      serverUrl: "https://sync.nixmac.app",
+      githubReady: true,
+      webAccount: { id: "acct_1", email: "ada@example.com" },
+    });
+    mocks.billingState.mockResolvedValue({
+      ...emptyBilling,
+      subscriptions: [
+        {
+          id: "sub_pro",
+          slug: "pro",
+          productId: "prod_pro",
+          status: "active",
+        },
+      ],
+      hasPaymentMethod: true,
+      canUseHostedInference: true,
+      canUseDeviceSync: true,
+    });
+
+    renderSetup();
+
+    expect(await screen.findByText(/choose a plan/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /continue with active billing/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /subscribe to pay as you go/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("continues as Pro when both PAYG and Pro subscriptions are active", async () => {
+    const onConfigured = vi.fn<(config: unknown) => void>();
+    mocks.status.mockResolvedValue({
+      signedIn: false,
+      account: null,
+      keyId: null,
+      serverUrl: "https://sync.nixmac.app",
+      githubReady: true,
+      webAccount: { id: "acct_1", email: "ada@example.com" },
+    });
+    mocks.billingState.mockResolvedValue({
+      ...emptyBilling,
+      subscriptions: [
+        {
+          id: "sub_payg",
+          slug: "payg-tokens",
+          productId: "prod_payg",
+          status: "active",
+        },
+        {
+          id: "sub_pro",
+          slug: "pro",
+          productId: "prod_pro",
+          status: "active",
+        },
+      ],
+      hasPaymentMethod: true,
+      canUseHostedInference: true,
+      canUseDeviceSync: true,
+    });
+
+    renderSetup(onConfigured);
+
+    fireEvent.click(await screen.findByRole("button", { name: /continue with active billing/i }));
+
+    await waitFor(() =>
+      expect(onConfigured).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: "hosted", plan: "pro" }),
+      ),
+    );
   });
 });

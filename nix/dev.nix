@@ -230,6 +230,7 @@ lib.mkIf (!config.container.isBuilding) {
     # Pinned git-hooks.nix forces treefmt pass_filenames=true; override until
     # the pinned upstream default is false.
     hooks.treefmt.pass_filenames = lib.mkForce false;
+    hooks.treefmt.packageOverrides.treefmt = config.treefmt.config.build.wrapper;
 
     hooks.shellcheck.enable = true;
     excludes = [

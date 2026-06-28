@@ -122,15 +122,15 @@ export type {
   AdoptManualChangesResult,
   BillingProductInfo,
   BillingSubscription,
+  BillingUsage,
   BuildCheckResult,
   CheckoutUrl,
   CommitResult,
   Config,
-  CreditBalance,
+  EvolutionState,
   EvolveCancelResult,
   EvolveState,
   EvolveStep,
-  EvolutionState,
   FileDiffContents,
   GithubBootstrapState,
   GithubBootstrapStatus,
@@ -143,7 +143,7 @@ export type {
   RebuildStatus,
   RollbackResult,
   SemanticChangeMap,
-  SetDirResult,
+  SetDirResult
 } from "@/ipc/orpc-bindings";
 
 /** Routes RPC calls through Tauri IPC (`plugin:orpc|handle_rpc`), not HTTP. */

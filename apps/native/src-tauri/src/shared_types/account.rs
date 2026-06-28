@@ -63,14 +63,12 @@ pub struct SyncResult {
     pub message: String,
 }
 
-/// Hosted inference credit balance for the signed-in web account.
+/// Hosted inference usage for the signed-in web account.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct CreditBalance {
+pub struct BillingUsage {
     pub currency: String,
-    pub remaining_usd: f64,
     pub spent_usd: f64,
-    pub total_usd: f64,
 }
 
 /// Active Polar subscription mapped to a known nixmac product slug.
@@ -87,7 +85,7 @@ pub struct BillingSubscription {
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct AccountBilling {
-    pub usage: CreditBalance,
+    pub usage: BillingUsage,
     pub subscriptions: Vec<BillingSubscription>,
     pub has_payment_method: bool,
     pub can_use_hosted_inference: bool,

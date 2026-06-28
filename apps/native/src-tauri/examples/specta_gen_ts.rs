@@ -122,7 +122,7 @@ fn main() {
         .register::<shared_types::AuthStatus>()
         .register::<shared_types::SyncRemoteStatus>()
         .register::<shared_types::SyncResult>()
-        .register::<shared_types::CreditBalance>()
+        .register::<shared_types::BillingUsage>()
         .register::<shared_types::BillingSubscription>()
         .register::<shared_types::AccountBilling>()
         .register::<shared_types::GithubBootstrapState>()

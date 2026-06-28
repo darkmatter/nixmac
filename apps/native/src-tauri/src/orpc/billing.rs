@@ -11,7 +11,6 @@ use specta::Type;
 #[serde(rename_all = "camelCase")]
 struct CheckoutInput {
     product: String,
-    amount_usd: Option<f64>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Type)]
@@ -33,7 +32,7 @@ async fn products(ctx: OrpcCtx, _input: ()) -> Result<Vec<BillingProductInfo>, O
 }
 
 async fn checkout(ctx: OrpcCtx, input: CheckoutInput) -> Result<CheckoutUrl, ORPCError> {
-    let url = sync::create_checkout(&ctx.app, &input.product, input.amount_usd)
+    let url = sync::create_checkout(&ctx.app, &input.product)
         .await
         .map_err(|error| internal_err("billing.checkout", error))?;
     Ok(CheckoutUrl { url })
