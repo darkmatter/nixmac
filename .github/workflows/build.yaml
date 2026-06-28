@@ -27,12 +27,13 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: true
+          clean: false
 
       - uses: ./.github/actions/setup
         with:
           darkmatter-cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
           setup-rust: true
-          rust-cache-workspaces: apps/native/src-tauri
+          rust-cache-workspaces: ""
       # tauri-plugin-macos-passkey 0.1.0 ships a Swift package declaring
       # swift-tools-version 6.1, but the self-hosted runner has Swift 6.0.2
       # (Xcode 16.1). Fetch crates and lower the declared tools version before
@@ -57,6 +58,24 @@ jobs:
       - name: Compute release version
         id: release-version
         run: bash ops/scripts/release/compute-version.sh
+
+      - name: Setup sccache
+        shell: bash
+        run: |
+          if ! command -v sccache &>/dev/null; then
+            brew install sccache 2>/dev/null || cargo install sccache 2>/dev/null || true
+          fi
+          echo "SCCACHE_DIR=$RUNNER_TEMP/sccache" >> "$GITHUB_ENV"
+          echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/sccache"
+
+      - name: Restore sccache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/sccache
+          key: sccache-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            sccache-${{ runner.os }}-${{ runner.arch }}-
       # Sync native app version files. Tag + release modes use the computed
       # version directly; branch/PR builds fall back to the max(package.json,
       # latest-git-tag) guard so a stale package.json cannot embed a version
@@ -105,6 +124,13 @@ jobs:
           SUBMITTED_FEEDBACK_DSN: ${{ secrets.SUBMITTED_FEEDBACK_DSN }}
       - name: Unit Test Tauri app
         run: bun run desktop:test
+
+      - name: Save sccache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/sccache
+          key: sccache-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
 
       # Import Apple Developer certificate (only for releases with secrets).
       # Placed AFTER the Tauri build to avoid replacing the keychain search list
