@@ -27,6 +27,7 @@ const PREFS: UiPrefs = {
   experimentalSpinningMascot: false,
   pinnedVersion: null,
   updateChannel: "stable",
+  featureFlagOverrides: null,
 };
 
 describe("migrateLegacyOpenaiProviderPrefs", () => {

@@ -34,6 +34,7 @@ export function makeGlobalPreferences(
     developerMode: false,
     pinnedVersion: null,
     updateChannel: "stable",
+    featureFlagOverrides: null,
     ...overrides,
   };
 }

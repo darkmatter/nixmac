@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Lottie from "lottie-react";
-import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Lottie, { type LottieRefCurrentProps } from "lottie-react";
+import { ArrowRight } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
+const CELEBRATION_ANIMATION_SPEED = 0.8;
 
 interface CelebrationOverlayProps {
   host: string;
@@ -19,10 +21,17 @@ export function CelebrationOverlay({ host, onDismiss }: CelebrationOverlayProps)
   const [trophy, setTrophy] = useState<unknown>(null);
   const [confetti, setConfetti] = useState<unknown>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const trophyRef = useRef<LottieRefCurrentProps>(null);
+  const confettiRef = useRef<LottieRefCurrentProps>(null);
 
   useEffect(() => {
     setReducedMotion(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
   }, []);
+
+  useEffect(() => {
+    trophyRef.current?.setSpeed(CELEBRATION_ANIMATION_SPEED);
+    confettiRef.current?.setSpeed(CELEBRATION_ANIMATION_SPEED);
+  }, [trophy, confetti]);
 
   useEffect(() => {
     let active = true;
@@ -62,14 +71,23 @@ export function CelebrationOverlay({ host, onDismiss }: CelebrationOverlayProps)
       {/* Confetti layer */}
       {confetti && !reducedMotion ? (
         <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-          <Lottie animationData={confetti} loop className="h-full w-full object-cover" />
+          <Lottie
+            lottieRef={confettiRef}
+            animationData={confetti}
+            loop
+            className="h-full w-full object-cover"
+          />
         </div>
       ) : null}
 
       <div className="relative flex flex-col items-center px-6 text-center">
         {trophy ? (
           <div className="size-44 sm:size-52" aria-hidden="true">
-            <Lottie animationData={trophy} loop={!reducedMotion} />
+            <Lottie
+              lottieRef={trophyRef}
+              animationData={trophy}
+              loop={!reducedMotion}
+            />
           </div>
         ) : null}
 
