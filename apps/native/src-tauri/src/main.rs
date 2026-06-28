@@ -189,6 +189,7 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
           background-color: ${captureBackground} !important;
         }
         html[data-nixmac-e2e-capture="${captureMode}"] .bg-background\\/80,
+        html[data-nixmac-e2e-capture="${captureMode}"] .bg-background\\/60,
         html[data-nixmac-e2e-capture="${captureMode}"] .bg-background\\/90,
         html[data-nixmac-e2e-capture="${captureMode}"] .bg-background\\/95,
         html[data-nixmac-e2e-capture="${captureMode}"] .bg-card\\/50,
@@ -881,6 +882,30 @@ fn run_gui_mode(
                 msg
             })?;
             log::debug!("Main nixmac window created");
+
+            // Frosted-glass window background via native AppKit vibrancy
+            // (NSVisualEffectView). The main webview is transparent and the CSS
+            // only paints a translucent tint; without a native backing layer,
+            // macOS recomposites the CSS `backdrop-filter` blur between two
+            // states on every repaint (the idle typewriter caret repaints
+            // continuously), which reads as the window transparency flickering.
+            // Vibrancy gives WKWebView an opaque NSVisualEffectView backing and
+            // fixes the flicker. State is pinned to Active so the material does
+            // not switch appearance with window focus — the crate's default
+            // (FollowsWindowActiveState) would reintroduce a two-value flip.
+            // Skipped in e2e capture modes, which rely on a solid/opaque backing.
+            #[cfg(target_os = "macos")]
+            if !e2e_css_capture {
+                use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectState};
+                if let Err(error) = apply_vibrancy(
+                    &main_window,
+                    NSVisualEffectMaterial::HudWindow,
+                    Some(NSVisualEffectState::Active),
+                    None,
+                ) {
+                    log::warn!("Failed to apply window vibrancy to main window: {}", error);
+                }
+            }
 
             #[cfg(target_os = "macos")]
             if e2e_opaque_window {

@@ -3643,6 +3643,7 @@ dependencies = [
  "uuid",
  "walkdir",
  "whoami 2.1.2",
+ "window-vibrancy",
  "zip 2.4.2",
 ]
 
