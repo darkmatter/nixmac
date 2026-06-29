@@ -82,6 +82,26 @@ function makeIncompletePermissions(): PermissionsState {
   };
 }
 
+// Build DB-style change rows from a preset's file list. The widget routes on
+// `git.changes` (the same rows the backend's `has_changes` is computed from), so
+// every "dirty" preset needs real change rows, not just `files`/`diff`.
+function changesFromFiles(
+  files: Array<{ path: string; changeType: string }>,
+): GitStatus["changes"] {
+  return files.map((file, i) => ({
+    id: i + 1,
+    hash: `mock-change-${i}-${file.path}`,
+    filename: file.path,
+    diff:
+      file.changeType === "new"
+        ? "@@ -0,0 +1,3 @@\n+{ pkgs, ... }:\n+{\n+}"
+        : "@@ -1,3 +1,4 @@\n { pkgs, ... }:\n-  old = false;\n+  new = true;\n+  extra = 1;",
+    lineCount: 4,
+    createdAt: 0,
+    ownSummaryId: null,
+  }));
+}
+
 const GIT_PRESETS: Record<string, GitStatus | null> = {
   none: null,
   clean: {
@@ -143,6 +163,15 @@ const GIT_PRESETS: Record<string, GitStatus | null> = {
     changes: [],
   },
 };
+
+// Backfill change rows for every dirty preset so the evolve/commit/manual steps
+// route correctly (a preset with files but no changes would now resolve to the
+// prompt step, since there's no diff to act on).
+for (const preset of Object.values(GIT_PRESETS)) {
+  if (preset && preset.changes.length === 0 && preset.files.length > 0) {
+    preset.changes = changesFromFiles(preset.files);
+  }
+}
 
 const SAMPLE_CHANGE_MAP: SemanticChangeMap = {
   groups: [

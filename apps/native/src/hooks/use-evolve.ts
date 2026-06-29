@@ -44,6 +44,10 @@ const handleEvolve = async () => {
   uiActions.clearLogs();
   uiActions.setConversationalResponse(null);
   uiActions.setEvolutionTelemetry(null);
+  // A new evolution means "follow the live backend step" — drop any manual
+  // step-override (e.g. the user clicked Back to refine) so the result lands
+  // on the live Review step instead of staying behind on Describe.
+  uiActions.setActiveStepOverride(null);
   uiActions.appendLog(`\n> Evolving: "${ui.evolvePrompt}"\n`);
 
   // Track evolution start. The evolve event stream itself is folded into

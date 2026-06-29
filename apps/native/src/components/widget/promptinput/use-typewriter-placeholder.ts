@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from "react";
 export function useTypewriterPlaceholder(
   examples: string[],
   {
-    charMs = 45,
+    charMs = 75,
     holdMs = 3200,
     paused = false,
   }: { charMs?: number; holdMs?: number; paused?: boolean } = {},

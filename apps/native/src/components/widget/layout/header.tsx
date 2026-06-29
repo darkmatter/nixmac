@@ -31,6 +31,8 @@ export function Header() {
         showHistory: state.showHistory,
         showFilesystem: state.showFilesystem,
         isBootstrapping: state.isBootstrapping,
+        activeStepOverride: state.activeStepOverride,
+        hasChanges: (viewModel.git?.changes.length ?? 0) > 0,
       });
       if (step !== "setup" && state.error && state.error !== prevState.error) {
         setIsPulsing(true);

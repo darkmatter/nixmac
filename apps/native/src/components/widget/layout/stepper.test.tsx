@@ -1,5 +1,5 @@
 import { Stepper } from "@/components/widget/layout/stepper";
-import type { EvolveState } from "@/ipc/types";
+import type { EvolveState, GitStatus } from "@/ipc/types";
 import {
   makeGlobalPreferences,
   makeGrantedPermissions,
@@ -24,6 +24,23 @@ function makeEvolveState(overrides: Partial<EvolveState> = {}): EvolveState {
   };
 }
 
+// A git status carrying one change, so the stepper sees a real diff (without it
+// the stepper collapses progress to "begin" — there's nothing to review/save).
+function gitWithChanges(): GitStatus {
+  return {
+    files: [],
+    branch: "main",
+    diff: "",
+    additions: 1,
+    deletions: 0,
+    headCommitHash: null,
+    cleanHead: false,
+    changes: [
+      { id: 1, hash: "h1", filename: "configuration.nix", diff: "", lineCount: 1, createdAt: 0, ownSummaryId: 0 },
+    ],
+  };
+}
+
 describe("Stepper", () => {
   beforeEach(() => {
     act(() => {
@@ -43,7 +60,10 @@ describe("Stepper", () => {
   });
 
   it("lets the user click back to a previous step, setting an override", () => {
-    viewModelActions.setState({ evolve: makeEvolveState({ step: "commit" }) });
+    viewModelActions.setState({
+      evolve: makeEvolveState({ step: "commit" }),
+      git: gitWithChanges(),
+    });
 
     render(<Stepper />);
 
@@ -53,7 +73,10 @@ describe("Stepper", () => {
   });
 
   it("clears the override when clicking the live backend step", () => {
-    viewModelActions.setState({ evolve: makeEvolveState({ step: "commit" }) });
+    viewModelActions.setState({
+      evolve: makeEvolveState({ step: "commit" }),
+      git: gitWithChanges(),
+    });
 
     render(<Stepper />);
 
@@ -71,6 +94,20 @@ describe("Stepper", () => {
 
   it("does not allow selecting a step ahead of the backend", () => {
     viewModelActions.setState({ evolve: makeEvolveState({ step: "begin" }) });
+
+    render(<Stepper />);
+
+    expect(screen.getByRole("button", { name: "Go to Save step" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Go to Review step" })).toBeDisabled();
+  });
+
+  it("collapses progress to the prompt step when there is no diff", () => {
+    // An active, committable session but an empty working tree: there is nothing
+    // to review or save, so Review and Save must stay locked.
+    viewModelActions.setState({
+      evolve: makeEvolveState({ step: "commit", committable: true }),
+      git: null,
+    });
 
     render(<Stepper />);
 

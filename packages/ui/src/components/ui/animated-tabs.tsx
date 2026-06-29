@@ -3,8 +3,8 @@
 import { TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
-import { createContext, useContext, useId, useState } from "react";
 import type React from "react";
+import { createContext, useContext, useId, useState } from "react";
 
 interface AnimatedTabsContext {
   activeValue: string;
@@ -32,7 +32,7 @@ export function AnimatedTabsList({
   const id = useId();
   const [internalValue, setInternalValue] = useState(defaultValue);
   const activeValue = controlledValue ?? internalValue;
-  const setActiveValue = controlledValue !== undefined ? () => {} : setInternalValue;
+  const setActiveValue = controlledValue !== undefined ? () => { } : setInternalValue;
 
   if (hidden) return null;
 
@@ -71,7 +71,7 @@ export function AnimatedTabsTrigger({ value, children, className }: AnimatedTabs
           transition={{ type: "spring", stiffness: 400, damping: 35 }}
         />
       )}
-      <span className="relative z-10">{children}</span>
+      <span className="relative z-10 flex flex-row gap-2 items-center">{children}</span>
     </TabsTrigger>
   );
 }

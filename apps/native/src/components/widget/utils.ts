@@ -16,6 +16,8 @@ type CurrentStepState = {
   showFilesystem: boolean;
   evolveState: EvolveState | null;
   activeStepOverride: EvolveStep | null;
+  /** Whether the working tree currently has any tracked changes (a diff). */
+  hasChanges: boolean;
 };
 
 const orderByStep: { [key in EvolveStep]: number } = {
@@ -59,6 +61,15 @@ export function computeCurrentStep(state: CurrentStepState): WidgetStep {
 
   if (state.showFilesystem && filesystemViewEnabled) {
     return "filesystem";
+  }
+
+  // The review/commit steps only make sense when there's an actual diff to act
+  // on. Without changes there is nothing to review, build, or save, so route to
+  // the prompt step even if an evolve session is still active (e.g. all changes
+  // were discarded, or a session persisted across restart). The prompt step
+  // still surfaces any conversational response, so nothing is lost.
+  if (!state.hasChanges) {
+    return "begin";
   }
 
   // The override only sends the user *back* to an earlier step; the backend

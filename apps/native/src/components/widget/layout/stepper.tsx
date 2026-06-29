@@ -28,8 +28,14 @@ const stepIndexByEvolveStep: Record<EvolveStep, number> = {
 export function Stepper() {
   const step = useCurrentStep();
   const isGenerating = useUiState((s) => s.isGenerating);
-  const backendStep = useViewModel((s) => s.evolve?.step ?? "begin");
+  const rawBackendStep = useViewModel((s) => s.evolve?.step ?? "begin");
+  const hasChanges = useViewModel((s) => (s.git?.changes.length ?? 0) > 0);
   const isRebuilding = useViewModel((s) => s.rebuildStatus?.isRunning ?? false);
+
+  // Review/Save are only real destinations when there's a diff. Without changes
+  // the user belongs at the prompt step, so progress collapses to "begin" and
+  // the later steps stay locked — matching computeCurrentStep.
+  const backendStep = hasChanges ? rawBackendStep : "begin";
 
   if (
     step === "setup" ||

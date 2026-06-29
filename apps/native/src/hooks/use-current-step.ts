@@ -24,6 +24,7 @@ export function useCurrentStep(): WidgetStep {
   const showFilesystem = useUiState((state) => state.showFilesystem);
   const isBootstrapping = useUiState((state) => state.isBootstrapping);
   const activeStepOverride = useUiState((state) => state.activeStepOverride);
+  const hasChanges = useViewModel((state) => (state.git?.changes.length ?? 0) > 0);
   return computeCurrentStep({
     nixInstalled,
     darwinRebuildAvailable,
@@ -37,5 +38,6 @@ export function useCurrentStep(): WidgetStep {
     showFilesystem,
     isBootstrapping,
     activeStepOverride,
+    hasChanges,
   });
 }

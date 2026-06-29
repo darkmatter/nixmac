@@ -17,11 +17,10 @@ import { uiActions } from "@nixmac/state";
 import {
   BeginStep,
   CommitStep,
-  EvolveStep,
   FilesystemStep,
   HistoryStep,
   ManualCommitStep,
-  ManualEvolveStep,
+  ReviewStep,
 } from "@/components/widget/steps";
 import { surfaceRecoveryReport } from "@/hooks/use-feedback-on-recovery";
 import { useGitOperations } from "@/hooks/use-git-operations";
@@ -152,14 +151,13 @@ export function DarwinWidget() {
       case "begin":
         return <BeginStep />;
 
+      // The AI evolve step and the manual-drift step share one review surface.
       case "evolve":
-        return <EvolveStep />;
+      case "manualEvolve":
+        return <ReviewStep />;
 
       case "commit":
         return <CommitStep />;
-
-      case "manualEvolve":
-        return <ManualEvolveStep />;
 
       case "manualCommit":
         return <ManualCommitStep />;
