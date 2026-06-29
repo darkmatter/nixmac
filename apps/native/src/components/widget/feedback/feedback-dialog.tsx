@@ -52,10 +52,6 @@ const ISSUE_SHARE_OPTIONS: ShareOptions = {
   appLogs: true,
 };
 
-const FEEDBACK_DIALOG_BODY_CLASS = "space-y-6 flex-1 overflow-y-auto pl-1 py-1 pr-3";
-const FEEDBACK_SHARE_OPTIONS_CLASS =
-  "space-y-2 max-h-[28vh] overflow-y-auto pl-1 py-1 pr-2";
-
 // Visibility helper functions for share options checkboxes
 // Each function returns a boolean indicating whether the checkbox should be visible
 // Parameters: feedbackType, step, mainWindowError
@@ -490,7 +486,7 @@ export function FeedbackDialog() {
           <DialogDescription>{dialogDescription}</DialogDescription>
         </DialogHeader>
 
-        <div className={FEEDBACK_DIALOG_BODY_CLASS}>
+        <div className="space-y-6 flex-1 overflow-y-auto pl-1 py-1 pr-3">
           {isPreviewingReport ? (
             <div className="space-y-3">
               <Label htmlFor="feedback-preview" className="text-foreground">
@@ -629,7 +625,7 @@ export function FeedbackDialog() {
               {/* Share with team */}
               <div className="space-y-2">
                 <Label className="text-foreground">SHARE WITH THE TEAM</Label>
-                <div className={FEEDBACK_SHARE_OPTIONS_CLASS}>
+                <div className="space-y-2 max-h-[28vh] overflow-y-auto pl-1 py-1 pr-2">
                   {shouldShowCurrentAppState(feedbackType, step, mainWindowError) && (
                     <div className="flex items-center gap-2">
                       <Checkbox
