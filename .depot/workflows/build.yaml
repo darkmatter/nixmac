@@ -115,7 +115,6 @@ jobs:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           NIXMAC_ENV: prod
           NIXMAC_VERSION: ${{ steps.sync-version.outputs.build_version }}
-          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
           SUBMITTED_FEEDBACK_DSN: ${{ secrets.SUBMITTED_FEEDBACK_DSN }}
       - name: Unit Test Tauri app
