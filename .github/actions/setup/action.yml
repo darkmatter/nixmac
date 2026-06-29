@@ -317,6 +317,21 @@ runs:
       with:
         workspaces: ${{ inputs.rust-cache-workspaces }}
 
+    # Self-hosted runners check out with `clean: false` to persist the .devenv
+    # profile cache between runs (see "Check existing devenv profile" above).
+    # actions/checkout does NOT reset tracked files a previous job left modified
+    # in the working tree, so a stale, locally-mutated bun.lock (e.g. rewritten
+    # by another branch's `bun install` under a different Bun version) can
+    # survive into this checkout and make the frozen install below fail with
+    # "lockfile had changes, but lockfile is frozen" even though the committed
+    # lockfile is correct. Reset tracked files to HEAD to clear that drift.
+    # No `git clean`: the untracked .devenv / .devenv-ci caches are deliberately
+    # persisted across runs and must survive.
+    - name: Reset tracked files to HEAD (stale self-hosted workspace guard)
+      if: inputs.install-bun-deps == 'true'
+      shell: bash
+      run: git reset --hard HEAD
+
     - name: Install frontend dependencies
       if: inputs.install-bun-deps == 'true'
       shell: bash
