@@ -25,10 +25,21 @@ fi
 
 echo "Using identity: $IDENTITY"
 
+MACOS_DIR="$APP_PATH/Contents/MacOS"
+for helper in nixmac-helper nixmac-sync-agent; do
+	helper_path="$MACOS_DIR/$helper"
+	if [ -f "$helper_path" ]; then
+		echo "Signing nested helper: $helper_path"
+		codesign --force --options runtime \
+			--sign "$IDENTITY" \
+			"$helper_path"
+	fi
+done
+
 codesign --force --deep --options runtime \
 	--entitlements apps/native/src-tauri/entitlements.plist \
 	--sign "$IDENTITY" \
 	"$APP_PATH"
 
 echo "Verifying signature..."
-codesign --verify --verbose "$APP_PATH"
+codesign --verify --deep --strict --verbose=4 "$APP_PATH"
