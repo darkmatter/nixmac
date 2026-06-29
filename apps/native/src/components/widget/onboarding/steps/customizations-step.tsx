@@ -8,6 +8,8 @@ import {
   MOCK_CUSTOMIZATION_GROUPS,
   totalCustomizations,
   type CustomizationGroup,
+  type CustomizationItem,
+  type CustomizationSource,
 } from "@/components/widget/onboarding/lib/customizations";
 import { stepEyebrow } from "@/components/widget/onboarding/lib/onboarding";
 import { StepShell } from "@/components/widget/onboarding/step-shell";
@@ -39,7 +41,8 @@ const SCAN_TARGETS = [
 
 interface CustomizationsStepProps {
   tracked: string[];
-  onSetTracked: (ids: string[]) => void;
+  trackedSources: Record<string, CustomizationSource>;
+  onSetTracked: (ids: string[], sources: Record<string, CustomizationSource>) => void;
   onContinue: () => void;
 }
 
@@ -63,19 +66,35 @@ async function runScan(): Promise<CustomizationGroup[]> {
   return buildCustomizationGroups({ defaults, homebrew, launchd });
 }
 
-export function CustomizationsStep({ tracked, onSetTracked, onContinue }: CustomizationsStepProps) {
+export function CustomizationsStep({
+  tracked,
+  trackedSources,
+  onSetTracked,
+  onContinue,
+}: CustomizationsStepProps) {
   const [scanState, setScanState] = useState<ScanState>("idle");
   const [groups, setGroups] = useState<CustomizationGroup[] | null>(null);
   const [animationDone, setAnimationDone] = useState(false);
   const trackedSet = new Set(tracked);
 
-  function track(ids: string[]) {
-    onSetTracked([...new Set([...tracked, ...ids])]);
+  function sourceMapForItems(items: CustomizationItem[]): Record<string, CustomizationSource> {
+    return Object.fromEntries(items.map((item) => [item.id, item.source]));
+  }
+
+  function track(items: CustomizationItem[]) {
+    const ids = items.map((item) => item.id);
+    const nextSources = { ...trackedSources, ...sourceMapForItems(items) };
+    const nextTracked = [...new Set([...tracked, ...ids])];
+    onSetTracked(nextTracked, nextSources);
   }
 
   function untrack(ids: string[]) {
     const remove = new Set(ids);
-    onSetTracked(tracked.filter((id) => !remove.has(id)));
+    const nextTracked = tracked.filter((id) => !remove.has(id));
+    const nextSources = Object.fromEntries(
+      Object.entries(trackedSources).filter(([id]) => !remove.has(id)),
+    );
+    onSetTracked(nextTracked, nextSources);
   }
 
   const trackedCount = tracked.length;
@@ -106,6 +125,7 @@ export function CustomizationsStep({ tracked, onSetTracked, onContinue }: Custom
   function startScan() {
     setGroups(null);
     setAnimationDone(false);
+    onSetTracked([], {});
     getTelemetry().captureEvent({ name: "customizations_scanned" });
     setScanState("scanning");
   }
@@ -340,7 +360,7 @@ function GroupCard({
 }: {
   group: CustomizationGroup;
   trackedSet: Set<string>;
-  onTrack: (ids: string[]) => void;
+  onTrack: (items: CustomizationItem[]) => void;
   onUntrack: (ids: string[]) => void;
 }) {
   const [expanded, setExpanded] = useState(group.severity === "info");
@@ -366,7 +386,7 @@ function GroupCard({
       >
         <Checkbox
           checked={allTracked}
-          onCheckedChange={() => onTrack(ids)}
+          onCheckedChange={() => onTrack(group.items)}
           className={cn("size-4 border-none", allTracked ? "bg-white" : "bg-zinc-700")}
         />
         <span className="min-w-0 flex-1">
@@ -401,7 +421,7 @@ function GroupCard({
                 Tracking all {ids.length}
               </Button>
             ) : (
-              <Button size="sm" onClick={() => onTrack(ids)}>
+              <Button size="sm" onClick={() => onTrack(group.items)}>
                 <Plus className="size-4" aria-hidden="true" />
                 Track{" "}
                 {someTracked
@@ -445,7 +465,7 @@ function GroupCard({
                     ) : (
                       <button
                         type="button"
-                        onClick={() => onTrack([item.id])}
+                        onClick={() => onTrack([item])}
                         className="font-medium text-primary text-xs hover:underline"
                       >
                         Track

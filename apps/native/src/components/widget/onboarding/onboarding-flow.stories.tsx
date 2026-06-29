@@ -29,7 +29,7 @@ const meta = preview.meta({
   parameters: { layout: "centered" },
   decorators: [
     (Story: React.ComponentType) => (
-      <div className="dark relative min-h-[600px] min-w-[800px] overflow-hidden rounded-xl border border-border bg-background shadow-2xl">
+      <div className="dark relative min-h-150 min-w-200 overflow-hidden rounded-xl border border-border bg-background shadow-2xl">
         <Story />
       </div>
     ),
@@ -244,6 +244,7 @@ function installBackend(startAt: string) {
   syncVM();
   onboardingActions.setState({
     trackedCustomizations: [],
+    trackedCustomizationSources: {},
     inferenceDeferred: false,
     celebrating: false,
     viewingStep: null,

@@ -11,6 +11,7 @@ import type { OnboardingStateValues, OnboardingStepId } from "./types";
 
 export const initialOnboardingState: OnboardingStateValues = {
   trackedCustomizations: [],
+  trackedCustomizationSources: {},
   inferenceDeferred: false,
   celebrating: false,
   viewingStep: null,

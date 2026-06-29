@@ -15,6 +15,7 @@ interface OnboardingStepContentProps {
 
 export function OnboardingStepContent({ currentStep, title }: OnboardingStepContentProps) {
   const trackedCustomizations = useOnboarding((s) => s.trackedCustomizations);
+  const trackedCustomizationSources = useOnboarding((s) => s.trackedCustomizationSources);
   // Inference readiness is a durable fact: provider + model are persisted to
   // GlobalPreferences by InferenceSetup, and the login decision is recorded
   // separately. The build step only needs to know inference is configured.
@@ -33,6 +34,7 @@ export function OnboardingStepContent({ currentStep, title }: OnboardingStepCont
         {currentStep === "customizations" && (
           <CustomizationsStep
             tracked={trackedCustomizations}
+            trackedSources={trackedCustomizationSources}
             onSetTracked={onboardingActions.setTrackedCustomizations}
             onContinue={markMacScanned}
           />

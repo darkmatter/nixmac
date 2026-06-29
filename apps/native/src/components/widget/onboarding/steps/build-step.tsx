@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { StepShell } from "@/components/widget/onboarding/step-shell";
 import { InferenceSetup } from "@/components/widget/onboarding/inference/inference-setup";
+import { collectTrackedCustomizationSources } from "@/components/widget/onboarding/lib/customizations";
 import { stepEyebrow } from "@/components/widget/onboarding/lib/onboarding";
 
 // Lazy so lottie-web (and its canvas usage) stays out of the main bundle and
@@ -26,6 +27,7 @@ const CelebrationOverlay = lazy(() =>
 );
 import { onboardingActions, useOnboarding, useViewModel } from "@nixmac/state";
 import { useApply } from "@/hooks/use-apply";
+import { tauriAPI } from "@/ipc/api";
 import { cn } from "@/lib/utils";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import type { InferenceConfig } from "@/components/widget/onboarding/lib/inference";
@@ -107,8 +109,45 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
     }
   }, [status, hasInference, dismissedCelebration, celebrating]);
 
-  function runBuild() {
+  async function applyTrackedCustomizations() {
+    // Keep this outside handleApply, which is also used for ordinary rebuilds
+    // after onboarding and has no customization scan context.
+    const { trackedCustomizations, trackedCustomizationSources } = useOnboarding.getState();
+    const trackedSources = collectTrackedCustomizationSources(
+      trackedCustomizations,
+      trackedCustomizationSources,
+    );
+
+    if (trackedSources.homebrew.length > 0) {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
+      await tauriAPI.homebrew.addItems(trackedSources.homebrew);
+    }
+    if (trackedSources.launchd.length > 0) {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
+      await tauriAPI.launchd.applyLaunchdItems(trackedSources.launchd);
+    }
+    if (trackedSources.systemDefaults.length > 0) {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
+      await tauriAPI.scanner.applyDefaults(trackedSources.systemDefaults);
+    }
+  }
+
+  // Runs the "first" build as part of onboarding. Before it can do that, it needs
+  // to apply any selected "tracking" customizations.
+  async function runFirstBuild() {
     setStarted(true);
+
+    // Keep this outside handleApply, which is also used for ordinary rebuilds
+    // after onboarding and has no customization scan context.
+    try {
+      await applyTrackedCustomizations();
+    } catch (error) {
+      console.error("Failed to apply tracked customizations before first build:", error);
+      setStarted(false);
+      setTrackedOutcome("error");
+      return;
+    }
+
     setTrackedOutcome(null);
     getTelemetry().captureEvent({ name: "first_build_started" });
     void handleApply();
@@ -129,7 +168,7 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
           <code className="block truncate font-mono text-foreground text-sm">{command}</code>
         </div>
         {status === "idle" ? (
-          <Button onClick={runBuild} className="shrink-0">
+          <Button onClick={runFirstBuild} className="shrink-0">
             <Play className="size-4" aria-hidden="true" />
             Run build
           </Button>
@@ -139,7 +178,7 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
             Building…
           </Button>
         ) : status === "error" ? (
-          <Button onClick={runBuild} className="shrink-0">
+          <Button onClick={runFirstBuild} className="shrink-0">
             <RotateCcw className="size-4" aria-hidden="true" />
             Retry build
           </Button>

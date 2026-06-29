@@ -69,10 +69,14 @@ export {
 export {
   selectCelebrating,
   selectInferenceDeferred,
+  selectTrackedCustomizationSources,
   selectTrackedCustomizations,
   selectViewingStep,
   useOnboarding,
   type OnboardingSelector,
+  type OnboardingStateValues,
+  type OnboardingStepId,
+  type TrackedCustomizationSource,
 } from "./onboarding";
 export type { OnboardingStateValues, OnboardingStepId } from "./onboarding";
 
