@@ -74,6 +74,7 @@ fn rfind_unquoted_dot(value: &str) -> Option<usize> {
 pub fn ensure_system_defaults_module(
     config_dir: &str,
     add_primary_user: bool,
+    auto_format: bool,
 ) -> Result<std::path::PathBuf> {
     let modules_dir = std::path::Path::new(config_dir)
         .join("modules")
@@ -105,6 +106,7 @@ pub fn ensure_system_defaults_module(
                         value: Value::String(username),
                     },
                 },
+                auto_format,
                 None,
             )?;
         }
@@ -151,6 +153,7 @@ fn group_system_defaults(
 fn apply_system_defaults_to_module(
     config_dir: &std::path::Path,
     defaults: &[scanner::SystemDefault],
+    auto_format: bool,
 ) -> Result<()> {
     for (group, attrs) in group_system_defaults(defaults) {
         apply_semantic_edit(
@@ -159,6 +162,7 @@ fn apply_system_defaults_to_module(
                 path: system_defaults_module_path(),
                 action: FileEditAction::SetAttrs { path: group, attrs },
             },
+            auto_format,
             None,
         )?;
     }
@@ -184,14 +188,17 @@ pub async fn apply_system_defaults(
 
     let primary_user = get_system_primary_user(hostname, &dir);
 
-    let module_path = ensure_system_defaults_module(&dir, primary_user.is_none())
-        .context("Failed to ensure system-defaults.nix exists and is imported")?;
+    let auto_format_nix_files = crate::state::ui_prefs::auto_format_nix_files(app);
+
+    let module_path =
+        ensure_system_defaults_module(&dir, primary_user.is_none(), auto_format_nix_files)
+            .context("Failed to ensure system-defaults.nix exists and is imported")?;
     log::info!(
         "[apply_system_defaults] Ensured module at {:?}",
         module_path
     );
 
-    apply_system_defaults_to_module(config_path, &defaults)
+    apply_system_defaults_to_module(config_path, &defaults, auto_format_nix_files)
         .context("Failed to apply system defaults to module")?;
 
     let working_tree_status =
@@ -242,8 +249,8 @@ mod tests {
         );
 
         let config_dir = temp.path().to_string_lossy();
-        let module_path =
-            ensure_system_defaults_module(&config_dir, false).expect("module should be ensured");
+        let module_path = ensure_system_defaults_module(&config_dir, false, false)
+            .expect("module should be ensured");
         let module = std::fs::read_to_string(&module_path).expect("module should be readable");
         let flake = std::fs::read_to_string(temp.path().join("flake.nix"))
             .expect("flake should be readable");
@@ -273,8 +280,8 @@ mod tests {
         );
 
         let config_dir = temp.path().to_string_lossy();
-        let module_path =
-            ensure_system_defaults_module(&config_dir, true).expect("module should be ensured");
+        let module_path = ensure_system_defaults_module(&config_dir, true, false)
+            .expect("module should be ensured");
         let module = std::fs::read_to_string(&module_path).expect("module should be readable");
         let flake = std::fs::read_to_string(temp.path().join("flake.nix"))
             .expect("flake should be readable");
@@ -318,6 +325,7 @@ mod tests {
                     "0",
                 ),
             ],
+            false,
         )
         .expect("defaults should apply");
 

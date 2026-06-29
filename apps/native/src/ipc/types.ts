@@ -1113,7 +1113,11 @@ onboardingLoginDecided: boolean;
 /**
  * Timestamp (unix secs) of the last successful build/evolution apply. Set by `finalize_apply`.
  */
-onboardingLastBuildAt: number | null }
+onboardingLastBuildAt: number | null; 
+/**
+ * Whether or not to auto-format Nix files when making changes to the flakes.
+ */
+autoFormatNixFiles: boolean | null }
 
 /**
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
@@ -1922,7 +1926,11 @@ updateChannel: UpdateChannel;
  * Developer-only feature flag overrides (flag key → variant string).
  * `None` or missing key = use PostHog default.
  */
-featureFlagOverrides: Partial<{ [key in string]: string }> | null }
+featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
+/**
+ * Whether or not to auto-format Nix files when making changes to the flakes.
+ */
+autoFormatNixFiles: boolean | null }
 
 /**
  * Partial update to UI preferences — every field is optional so the caller
@@ -2037,7 +2045,11 @@ onboardingMacScannedAt: number | null;
 /**
  * Set true once the user logged in or explicitly chose bring-your-own-key.
  */
-onboardingLoginDecided: boolean | null }
+onboardingLoginDecided: boolean | null; 
+/**
+ * Auto-format Nix files after smart edits.
+ */
+autoFormatNixFiles: boolean | null }
 
 /**
  * Auto-update channel selected for release-mode builds.

@@ -46,6 +46,12 @@ fn needs_limits_update(update: &UiPrefsUpdate) -> bool {
         || update.max_output_tokens.is_some()
 }
 
+pub fn auto_format_nix_files<R: Runtime>(app: &AppHandle<R>) -> bool {
+    preferences::try_read(app)
+        .and_then(|prefs| prefs.auto_format_nix_files)
+        .unwrap_or(false)
+}
+
 fn apply_secret_updates<R: Runtime>(app: &AppHandle<R>, update: &UiPrefsUpdate) -> Result<()> {
     if let Some(key) = &update.openrouter_api_key {
         secrets::set_openrouter_api_key(app, key)?;
@@ -165,6 +171,10 @@ mod tests {
         }));
         assert!(needs_limits_update(&UiPrefsUpdate {
             max_iterations: Some(10),
+            ..Default::default()
+        }));
+        assert!(!needs_limits_update(&UiPrefsUpdate {
+            auto_format_nix_files: Some(true),
             ..Default::default()
         }));
     }

@@ -338,6 +338,7 @@ fn render_nix_expression_literal(
 pub fn apply_semantic_edit(
     base: &Path,
     edit: &SemanticFileEdit,
+    auto_format: bool,
     gitignore_matcher: Option<&Gitignore>,
 ) -> anyhow::Result<()> {
     rewrite_existing_file_in_dir(
@@ -372,15 +373,21 @@ pub fn apply_semantic_edit(
         },
     )?;
 
-    // Format the file by default.
-    // If the formatting fails for some reason, allow the edit to be successful (but warn).
-    let config_dir = base.to_string_lossy();
-    let format_result = nix_format(&config_dir, &edit.path);
-    if let Err(e) = format_result {
-        log::warn!(
-            "apply_semantic_edit succeeded but nix-format failed: {}. The file may be left in an unformatted state; run nix-format manually to fix formatting issues.",
-            e
+    // Format the file conditionally.
+    if auto_format {
+        log::debug!(
+            "apply_semantic_edit: auto_format is enabled, running nix-format on {}",
+            edit.path
         );
+        // If the formatting fails for some reason, allow the edit to be successful (but warn).
+        let config_dir = base.to_string_lossy();
+        let format_result = nix_format(&config_dir, &edit.path);
+        if let Err(e) = format_result {
+            log::warn!(
+                "apply_semantic_edit succeeded but nix-format failed: {}. The file may be left in an unformatted state; run nix-format manually to fix formatting issues.",
+                e
+            );
+        }
     }
     Ok(())
 }
