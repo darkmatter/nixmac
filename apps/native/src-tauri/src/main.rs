@@ -22,6 +22,7 @@ mod evolve;
 mod feedback;
 mod git;
 mod history;
+mod http_client;
 mod managed_edits;
 mod observable;
 mod orpc;

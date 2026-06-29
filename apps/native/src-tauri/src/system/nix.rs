@@ -461,8 +461,8 @@ const PKG_DOWNLOAD_URL: &str =
 fn download_nix_pkg(app: &AppHandle) -> Result<std::path::PathBuf> {
     info!("[nix] Downloading .pkg from {}", PKG_DOWNLOAD_URL);
 
-    let client = reqwest::blocking::Client::new();
-    let mut response = client.get(PKG_DOWNLOAD_URL).send()?;
+    let client = crate::http_client::logged_blocking();
+    let mut response = client.get(PKG_DOWNLOAD_URL)?;
 
     if !response.status().is_success() {
         anyhow::bail!("Download failed with status {}", response.status());

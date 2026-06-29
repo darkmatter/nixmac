@@ -21,7 +21,7 @@ use crate::shared_types::{
 pub struct GithubBootstrapClient {
     base_url: String,
     origin: String,
-    http: reqwest::Client,
+    http: reqwest_middleware::ClientWithMiddleware,
 }
 
 impl GithubBootstrapClient {
@@ -31,7 +31,7 @@ impl GithubBootstrapClient {
         Ok(Self {
             base_url,
             origin,
-            http: reqwest::Client::new(),
+            http: crate::http_client::logged(),
         })
     }
 
@@ -39,7 +39,10 @@ impl GithubBootstrapClient {
         format!("{}{}", self.base_url, path)
     }
 
-    fn with_origin(&self, builder: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+    fn with_origin(
+        &self,
+        builder: reqwest_middleware::RequestBuilder,
+    ) -> reqwest_middleware::RequestBuilder {
         builder.header(ORIGIN, &self.origin)
     }
 
@@ -90,7 +93,7 @@ pub struct GithubClient {
     base_url: String,
     origin: String,
     api_key: String,
-    http: reqwest::Client,
+    http: reqwest_middleware::ClientWithMiddleware,
 }
 
 #[derive(Deserialize)]
@@ -208,7 +211,7 @@ impl GithubClient {
             base_url,
             origin,
             api_key: api_key.into(),
-            http: reqwest::Client::new(),
+            http: crate::http_client::logged(),
         })
     }
 
@@ -216,7 +219,10 @@ impl GithubClient {
         format!("{}{}", self.base_url, path)
     }
 
-    fn authed(&self, builder: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+    fn authed(
+        &self,
+        builder: reqwest_middleware::RequestBuilder,
+    ) -> reqwest_middleware::RequestBuilder {
         builder
             .header("x-api-key", &self.api_key)
             .header(ORIGIN, &self.origin)

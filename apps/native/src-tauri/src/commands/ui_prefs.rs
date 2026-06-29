@@ -41,7 +41,7 @@ pub async fn verify_openai_api_key(api_key: String) -> Result<bool, String> {
     }
 
     let url = format!("{}/models", secrets::OPENAI_BASE_URL);
-    let response = reqwest::Client::new()
+    let response = crate::http_client::logged()
         .get(url)
         .bearer_auth(trimmed_key)
         .send()

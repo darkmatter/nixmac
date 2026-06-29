@@ -83,7 +83,7 @@ struct CreateApiKeyResponse {
 pub struct AccountClient {
     base_url: String,
     origin: String,
-    http: reqwest::Client,
+    http: reqwest_middleware::ClientWithMiddleware,
 }
 
 impl AccountClient {
@@ -92,10 +92,8 @@ impl AccountClient {
     pub fn new(base_url: impl Into<String>) -> Result<Self> {
         let base_url = base_url.into().trim_end_matches('/').to_string();
         let origin = web_origin(&base_url)?;
-        let http = reqwest::Client::builder()
-            .cookie_store(true)
-            .build()
-            .context("failed to build account HTTP client")?;
+        let http =
+            crate::http_client::logged_with_builder(reqwest::Client::builder().cookie_store(true));
         Ok(Self {
             base_url,
             origin,
@@ -107,7 +105,10 @@ impl AccountClient {
         format!("{}{}", self.base_url, path)
     }
 
-    fn with_origin(&self, builder: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+    fn with_origin(
+        &self,
+        builder: reqwest_middleware::RequestBuilder,
+    ) -> reqwest_middleware::RequestBuilder {
         builder.header(ORIGIN, &self.origin)
     }
 

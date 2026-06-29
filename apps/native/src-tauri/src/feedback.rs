@@ -545,7 +545,7 @@ pub async fn submit(app: &AppHandle, payload: String) -> Result<bool> {
             })
         }
     };
-    let client = reqwest::Client::new();
+    let client = crate::http_client::logged();
 
     let sent = match client
         .post(&feedback_url)
@@ -624,7 +624,7 @@ pub async fn retry_pending(app: &AppHandle) -> Result<usize> {
         entries.len(),
         feedback_url
     );
-    let client = reqwest::Client::new();
+    let client = crate::http_client::logged();
     let mut remaining = Vec::new();
     let mut sent = 0usize;
 

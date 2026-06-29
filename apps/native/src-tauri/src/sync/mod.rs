@@ -66,13 +66,13 @@ fn billing_request<R: Runtime>(
     app: &AppHandle<R>,
     method: reqwest::Method,
     path: &str,
-) -> Result<reqwest::RequestBuilder> {
+) -> Result<reqwest_middleware::RequestBuilder> {
     let api_key =
         store::get_device_api_key(app)?.ok_or_else(|| anyhow!("Sign in before using billing"))?;
     let base = store::get_web_server_url()?;
     let origin = account_client::web_origin(&base)?;
     let url = format!("{}/api/billing/{}", base.trim_end_matches('/'), path);
-    Ok(reqwest::Client::new()
+    Ok(crate::http_client::logged()
         .request(method, url)
         .header("x-api-key", api_key)
         .header(ORIGIN, origin)
@@ -149,7 +149,7 @@ pub async fn billing_products<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<Bill
     let base = store::get_web_server_url()?;
     let origin = account_client::web_origin(&base)?;
     let url = format!("{}/api/billing/products", base.trim_end_matches('/'));
-    let mut request = reqwest::Client::new()
+    let mut request = crate::http_client::logged()
         .get(url)
         .header(ORIGIN, origin)
         .header("accept", "application/json");
