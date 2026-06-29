@@ -19,7 +19,7 @@ export function useAuthDeepLink(): void {
   const queryClient = useQueryClient();
 
   const onSuccess = useCallback(
-    (callbackURL?: string) => {
+    (callbackURL?: string | null) => {
       void queryClient.invalidateQueries({ queryKey: orpc.github.key() });
       window.dispatchEvent(
         new CustomEvent(AUTH_DEEP_LINK_SUCCESS_EVENT, { detail: { callbackURL } }),
