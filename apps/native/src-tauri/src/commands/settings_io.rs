@@ -12,6 +12,7 @@
 
 use super::helpers::capture_err;
 use crate::evolve::config::UserPreferences;
+use crate::evolve::config::UserPreferences;
 use crate::observable::Observable;
 use crate::shared_types::{ExportResult, ImportResult};
 use crate::state::preferences::GlobalPreferences;
@@ -254,6 +255,7 @@ mod tests {
         assert_eq!(output.get("developerMode"), Some(&json!(true)));
         assert_eq!(output.get("maxIterations"), Some(&json!(12)));
         assert_eq!(output.get("maxBuildAttempts"), Some(&json!(4)));
+        assert_eq!(output.get("autoFormatNixFiles"), Some(&json!(true)));
         assert_eq!(output.get("autoFormatNixFiles"), Some(&json!(true)));
         assert!(!output.contains_key("openaiApiKey"));
         assert!(!output.contains_key("promptHistory"));
