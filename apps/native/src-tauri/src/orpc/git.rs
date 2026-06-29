@@ -2,7 +2,7 @@
 
 use super::{OrpcCtx, helpers::internal_err};
 use crate::commands::git;
-use crate::shared_types::{CommitResult, FileDiffContents};
+use crate::shared_types::{CommitResult, FileDiffContents, OkResult};
 use orpc::*;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -16,6 +16,19 @@ struct GitCommitInput {
 
 #[derive(Debug, Deserialize, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
+struct GitCommitFileInput {
+    filename: String,
+    message: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+struct GitDiscardFileInput {
+    filename: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
 struct GitFileDiffContentsInput {
     filenames: Vec<String>,
 }
@@ -24,6 +37,18 @@ async fn commit(ctx: OrpcCtx, input: GitCommitInput) -> Result<CommitResult, ORP
     git::create_commit(ctx.app, input.message)
         .await
         .map_err(|error| internal_err("git.commit", error))
+}
+
+async fn commit_file(ctx: OrpcCtx, input: GitCommitFileInput) -> Result<CommitResult, ORPCError> {
+    git::commit_single_file(ctx.app, input.filename, input.message)
+        .await
+        .map_err(|error| internal_err("git.commitFile", error))
+}
+
+async fn discard_file(ctx: OrpcCtx, input: GitDiscardFileInput) -> Result<OkResult, ORPCError> {
+    git::discard_single_file(ctx.app, input.filename)
+        .await
+        .map_err(|error| internal_err("git.discardFile", error))
 }
 
 async fn file_diff_contents(
@@ -41,6 +66,14 @@ pub fn routes() -> Router<OrpcCtx> {
             .input(orpc_specta::specta::<GitCommitInput>())
             .output(orpc_specta::specta::<CommitResult>())
             .handler(commit),
+        "commitFile" => os::<OrpcCtx>()
+            .input(orpc_specta::specta::<GitCommitFileInput>())
+            .output(orpc_specta::specta::<CommitResult>())
+            .handler(commit_file),
+        "discardFile" => os::<OrpcCtx>()
+            .input(orpc_specta::specta::<GitDiscardFileInput>())
+            .output(orpc_specta::specta::<OkResult>())
+            .handler(discard_file),
         "fileDiffContents" => os::<OrpcCtx>()
             .input(orpc_specta::specta::<GitFileDiffContentsInput>())
             .output(orpc_specta::specta::<HashMap<String, FileDiffContents>>())

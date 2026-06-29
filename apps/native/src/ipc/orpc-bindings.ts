@@ -296,7 +296,11 @@ export type FlakeExistsAtInput = { dir: string }
 
 export type GenerateHistoryFromInput = { commitHash: string; number: number }
 
+export type GitCommitFileInput = { filename: string; message: string }
+
 export type GitCommitInput = { message: string }
+
+export type GitDiscardFileInput = { filename: string }
 
 export type GitFileDiffContentsInput = { filenames: string[] }
 
@@ -777,6 +781,8 @@ export type Procedures = {
   }
   git: {
     commit: Client<Record<never, never>, GitCommitInput, CommitResult, Error>
+    commitFile: Client<Record<never, never>, GitCommitFileInput, CommitResult, Error>
+    discardFile: Client<Record<never, never>, GitDiscardFileInput, OkResult, Error>
     fileDiffContents: Client<Record<never, never>, GitFileDiffContentsInput, Partial<{ [key in string]: FileDiffContents }>, Error>
   }
   github: {

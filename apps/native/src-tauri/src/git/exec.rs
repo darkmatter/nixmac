@@ -183,6 +183,106 @@ pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
     })
 }
 
+/// Commit a single file's change, leaving the rest of the working tree
+/// uncommitted. The index is reset to HEAD so only `path` is included, then the
+/// path is staged (or its deletion staged) and a commit is created.
+pub fn commit_file(dir: &str, path: &str, message: &str) -> Result<CommitInfo> {
+    let repo = git2::Repository::discover(dir)?;
+    let rel = Path::new(path);
+
+    let parent = repo.head().ok().and_then(|head| head.peel_to_commit().ok());
+
+    let mut index = repo.index().context("git2 open repository index")?;
+    // Start from HEAD so only `path` differs in this commit.
+    if let Some(parent) = parent.as_ref() {
+        let head_tree = parent.tree().context("git2 read HEAD tree")?;
+        index
+            .read_tree(&head_tree)
+            .context("git2 reset index to HEAD")?;
+    } else {
+        index.clear().context("git2 clear index")?;
+    }
+
+    let workdir = repo.workdir().context("commit_file in a bare repository")?;
+    if workdir.join(rel).exists() {
+        index
+            .add_path(rel)
+            .with_context(|| format!("git2 stage `{path}`"))?;
+    } else {
+        index
+            .remove_path(rel)
+            .with_context(|| format!("git2 stage deletion of `{path}`"))?;
+    }
+    index.write().context("git2 write staged index")?;
+
+    let tree_id = index.write_tree().context("git2 write commit tree")?;
+    if let Some(parent) = parent.as_ref() {
+        if parent.tree_id() == tree_id {
+            anyhow::bail!("nothing to commit");
+        }
+    }
+    let tree = repo.find_tree(tree_id).context("git2 find commit tree")?;
+
+    let signature =
+        git2::Signature::now("nixmac", "nixmac@local").context("create git signature")?;
+    let parents = parent.iter().collect::<Vec<_>>();
+    let commit_id = repo
+        .commit(
+            Some("HEAD"),
+            &signature,
+            &signature,
+            message,
+            &tree,
+            &parents,
+        )
+        .context("git2 create commit")?;
+
+    Ok(CommitInfo {
+        hash: commit_id.to_string(),
+        tree_hash: tree_id.to_string(),
+    })
+}
+
+/// Discard the working-tree changes for a single file: tracked files are
+/// restored to their HEAD content (covering modifications and deletions), and
+/// an untracked file is removed from the working tree.
+pub fn restore_file(dir: &str, path: &str) -> Result<()> {
+    let repo = git2::Repository::discover(dir)?;
+    let rel = Path::new(path);
+
+    let head_tree = repo.head().ok().and_then(|head| head.peel_to_tree().ok());
+    let tracked_in_head = head_tree
+        .as_ref()
+        .is_some_and(|tree| tree.get_path(rel).is_ok());
+
+    if tracked_in_head {
+        let head_obj = repo
+            .revparse_single("HEAD")
+            .context("git2 resolve HEAD for restore_file")?;
+        let mut checkout = git2::build::CheckoutBuilder::new();
+        checkout.force().update_index(true).path(path);
+        repo.checkout_tree(&head_obj, Some(&mut checkout))
+            .with_context(|| format!("git2 restore `{path}` from HEAD"))?;
+    } else {
+        // Untracked/new file → discarding means removing it from the worktree.
+        let workdir = repo
+            .workdir()
+            .context("restore_file in a bare repository")?;
+        let full = workdir.join(rel);
+        if full.exists() {
+            std::fs::remove_file(&full)
+                .with_context(|| format!("remove untracked `{}`", full.display()))?;
+        }
+        let mut index = repo.index().context("git2 open repository index")?;
+        if index.get_path(rel, 0).is_some() {
+            let _ = index.remove_path(rel);
+            let _ = index.write();
+        }
+    }
+
+    Ok(())
+}
+
 /// Restores tracked files to `commit_hash`, removes untracked files, and leaves HEAD in place.
 ///
 /// Simulates:

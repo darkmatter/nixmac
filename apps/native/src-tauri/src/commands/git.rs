@@ -76,6 +76,82 @@ pub async fn create_commit(
     })
 }
 
+/// Re-derive the mirrored cells after a single-file mutation: refresh the git
+/// status cache, recompute the evolve step from the remaining changes, and
+/// invalidate the change map so summaries regenerate.
+fn refresh_after_single_file_change(app: &AppHandle, dir: &str) {
+    match git::query::status_and_cache(dir, app) {
+        Ok(status) => {
+            evolve_state::refresh(app, &status.changes);
+        }
+        Err(e) => log::warn!("[git] Failed to refresh git state: {}", e),
+    }
+    crate::state::change_map::clear(app);
+}
+
+/// Commit a single file's change, leaving the rest of the working tree in
+/// place. Unlike a full commit this recomputes the evolve step (rather than
+/// clearing the session) so any remaining changes keep their state.
+pub async fn commit_single_file(
+    app: AppHandle,
+    filename: String,
+    message: String,
+) -> Result<shared_types::CommitResult, String> {
+    let db_pool = app.state::<db::DbPool>();
+    let dir = store::ensure_git_repo_folder(&app).map_err(|e| capture_err("git_commit_file", e))?;
+    let commit_info = git::commit_file(&dir, &filename, &message)
+        .map_err(|e| capture_err("git_commit_file", e))?;
+
+    if let Err(e) = git::tag_commit(
+        &dir,
+        &format!("nixmac-commit-{}", &commit_info.hash[..8]),
+        &commit_info.hash,
+        false,
+    ) {
+        log::warn!("[git_commit_file] Failed to tag commit: {}", e);
+    }
+
+    let now = crate::utils::unix_now();
+    if let Err(e) = db::commits::upsert_commit(
+        &db_pool,
+        &commit_info.hash,
+        &commit_info.tree_hash,
+        Some(&message),
+        now,
+    ) {
+        log::error!("[git_commit_file] Failed to save commit: {}", e);
+    }
+
+    if let Ok(current_build_state) = build_state::get(&app) {
+        let updated = build_state::BuildState {
+            head_commit_hash: Some(commit_info.hash.clone()),
+            changeset_id: None,
+            ..current_build_state
+        };
+        if let Err(e) = build_state::set(&app, updated) {
+            log::warn!("[git_commit_file] Failed to update build state: {}", e);
+        }
+    }
+
+    refresh_after_single_file_change(&app, &dir);
+
+    Ok(shared_types::CommitResult {
+        hash: commit_info.hash,
+    })
+}
+
+/// Discard the working-tree changes for a single file, then refresh state.
+pub async fn discard_single_file(
+    app: AppHandle,
+    filename: String,
+) -> Result<shared_types::OkResult, String> {
+    let dir =
+        store::ensure_git_repo_folder(&app).map_err(|e| capture_err("git_discard_file", e))?;
+    git::restore_file(&dir, &filename).map_err(|e| capture_err("git_discard_file", e))?;
+    refresh_after_single_file_change(&app, &dir);
+    Ok(shared_types::OkResult { ok: true })
+}
+
 /// Returns original (HEAD) and modified (working-tree) content for each requested file.
 #[tauri::command]
 pub async fn git_file_diff_contents(
