@@ -70,6 +70,10 @@ fn get_default_permissions() -> Vec<Permission> {
                     .to_string(),
             ),
         },
+        privileged_helper_permission(
+            PermissionStatus::Pending,
+            "Enable this once per device to allow nixmac to activate already-built system generations unattended.",
+        ),
     ]
 }
 
@@ -102,6 +106,20 @@ fn granted_folder_permission(id: &str, name: &str, description: &str) -> Permiss
         can_request_programmatically: true,
         status: PermissionStatus::Granted,
         instructions: None,
+    }
+}
+
+fn privileged_helper_permission(status: PermissionStatus, instructions: &str) -> Permission {
+    Permission {
+        id: "privileged-helper".to_string(),
+        name: "Unattended Sync Helper".to_string(),
+        description:
+            "Required for unattended device sync to activate builds without a password prompt"
+                .to_string(),
+        required: true,
+        can_request_programmatically: true,
+        status,
+        instructions: Some(instructions.to_string()),
     }
 }
 
@@ -269,6 +287,7 @@ pub fn check_all_permissions() -> PermissionsState {
             "documents" => check_documents_access(),
             "admin" => check_admin_privileges(),
             "full-disk" => check_full_disk_access(),
+            "privileged-helper" => check_privileged_helper(),
             _ => PermissionStatus::Unknown,
         };
 
@@ -427,7 +446,32 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
                 ),
             })
         }
+        "privileged-helper" => {
+            let status = crate::privileged_helper::service::register().map(|status| {
+                if status.authorized {
+                    PermissionStatus::Granted
+                } else {
+                    crate::privileged_helper::service::open_login_items_settings();
+                    PermissionStatus::Pending
+                }
+            })?;
+            Ok(privileged_helper_permission(
+                status,
+                "Approve nixmac in System Settings → General → Login Items & Extensions if macOS asks for background item approval.",
+            ))
+        }
         _ => Err(anyhow::anyhow!("Unknown permission: {}", permission_id)),
+    }
+}
+
+fn check_privileged_helper() -> PermissionStatus {
+    let status = crate::privileged_helper::service::status();
+    if status.authorized {
+        PermissionStatus::Granted
+    } else if status.available {
+        PermissionStatus::Pending
+    } else {
+        PermissionStatus::Unknown
     }
 }
 

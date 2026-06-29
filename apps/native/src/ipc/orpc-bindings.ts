@@ -441,6 +441,8 @@ login: string | null;
  */
 installationId: number }
 
+export type HelperServiceStatus = { label: string; available: boolean; registered: boolean; authorized: boolean; socketAvailable: boolean; detail: string | null }
+
 /**
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
  */
@@ -534,6 +536,8 @@ source: string | null;
  * Unix timestamp when this state was last collected.
  */
 lastChecked: number }
+
+export type InstallSyncAgentInput = { config: SyncAgentLaunchConfig | null }
 
 export type LaunchdItem = { 
 /**
@@ -698,6 +702,10 @@ dir: string;
  */
 changed: boolean }
 
+export type SyncAgentLaunchConfig = { configDir: string | null; hostAttr: string | null; syncPull: boolean; unattendedApply: boolean; startIntervalSeconds: number | null }
+
+export type SyncAgentStatus = { label: string; installed: boolean; loaded: boolean; plistPath: string; detail: string | null }
+
 /**
  * A single macOS system default that differs from the factory value.
  */
@@ -766,9 +774,15 @@ export type Procedures = {
     finalizeApply: Client<Record<never, never>, void, void, Error>
     finalizeRestore: Client<Record<never, never>, RestoreTargetInput, void, Error>
     finalizeRollback: Client<Record<never, never>, FinalizeRollbackInput, void, Error>
+    helperRegister: Client<Record<never, never>, void, HelperServiceStatus, Error>
+    helperStatus: Client<Record<never, never>, void, HelperServiceStatus, Error>
+    helperUnregister: Client<Record<never, never>, void, HelperServiceStatus, Error>
     prepareRestore: Client<Record<never, never>, RestoreTargetInput, void, Error>
     rebuildStatus: Client<Record<never, never>, void, RebuildStatus, Error>
     rollbackErase: Client<Record<never, never>, void, RollbackResult, Error>
+    syncAgentInstall: Client<Record<never, never>, InstallSyncAgentInput, SyncAgentStatus, Error>
+    syncAgentStatus: Client<Record<never, never>, void, SyncAgentStatus, Error>
+    syncAgentUninstall: Client<Record<never, never>, void, SyncAgentStatus, Error>
   }
   evolveState: {
     clear: Client<Record<never, never>, void, EvolveState, Error>

@@ -3,6 +3,9 @@
 //! Handles AI-assisted configuration evolution and system rebuilds.
 
 use crate::ai::log_summarizer;
+use crate::privileged_helper::{
+    client as helper_client, protocol as helper_protocol, service as helper_service,
+};
 use chrono::Local;
 use log::{error, info};
 use std::fs::{self, File, OpenOptions};
@@ -475,6 +478,10 @@ fn run_activate_with_path(activate_path: &str) -> Result<ActivateResult, anyhow:
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|_| activate_path.to_owned());
 
+    if let Some(result) = try_activate_with_helper(&real_activate) {
+        return result;
+    }
+
     // Escape a value for safe embedding inside a shell single-quoted string.
     let sq = |s: &str| s.replace('\'', "'\\''");
 
@@ -542,6 +549,38 @@ fn run_activate_with_path(activate_path: &str) -> Result<ActivateResult, anyhow:
         stdout: stdout_str,
         stderr: stderr_str,
     })
+}
+
+fn try_activate_with_helper(activate_path: &str) -> Option<Result<ActivateResult, anyhow::Error>> {
+    let status = helper_service::status();
+    if !status.authorized || !status.socket_available {
+        return None;
+    }
+
+    let request = match helper_protocol::current_user_activation_request(Path::new(activate_path)) {
+        Ok(request) => request,
+        Err(error) => {
+            return Some(Err(
+                error.context("failed to build helper activation request")
+            ));
+        }
+    };
+
+    match helper_client::activate_store_path(request) {
+        Ok(response) => Some(Ok(ActivateResult {
+            success: response.ok,
+            code: response.code,
+            stdout: response.stdout,
+            stderr: response.error.unwrap_or(response.stderr),
+        })),
+        Err(error) => {
+            info!(
+                "[darwin] privileged helper unavailable during activation; falling back to osascript: {}",
+                error
+            );
+            None
+        }
+    }
 }
 
 /// Handle activation failures and determine the appropriate error response.

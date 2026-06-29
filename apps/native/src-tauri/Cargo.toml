@@ -5,6 +5,7 @@ description = "Nixmac - macOS nix-darwin configuration manager"
 authors = ["Darkmatter Labs"]
 license = "MIT"
 edition = "2024"
+default-run = "nixmac"
 
 [lints]
 workspace = true
@@ -97,6 +98,7 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 walkdir = "2.5.0"
 plist = "1.9.0"
 whoami = "2.1.2"
+libc = "0.2"
 orpc = "1.1.0"
 orpc-specta = "1.1.0"
 tauri-plugin-orpc = "1.1.0"

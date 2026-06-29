@@ -653,6 +653,7 @@ mod tests {
                 &[],
             )
             .unwrap();
+        let default_branch_ref = repo.head().unwrap().name().unwrap().to_string();
         drop(tree);
 
         let initial = repo.find_commit(initial_id).unwrap();
@@ -681,7 +682,7 @@ mod tests {
         drop(parent);
         drop(tree);
 
-        repo.set_head("refs/heads/master").unwrap();
+        repo.set_head(&default_branch_ref).unwrap();
         repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))
             .unwrap();
 

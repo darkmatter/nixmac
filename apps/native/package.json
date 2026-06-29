@@ -9,8 +9,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:sidecars": "node scripts/build-tauri-sidecars.mjs",
+    "sign:local-app": "node scripts/sign-local-app.mjs",
     "desktop:dev": "tauri dev --config src-tauri/tauri.conf.dev.json",
-    "desktop:build": "tauri build",
+    "desktop:build": "bun run build:sidecars && tauri build --config '{\"bundle\":{\"externalBin\":[\"binaries/nixmac-helper\",\"binaries/nixmac-sync-agent\"]}}'",
+    "desktop:build:local": "bun run build:sidecars && tauri build --bundles app --config '{\"bundle\":{\"createUpdaterArtifacts\":false,\"externalBin\":[\"binaries/nixmac-helper\",\"binaries/nixmac-sync-agent\"]}}' && bun run sign:local-app",
     "desktop:test": "cargo test --manifest-path src-tauri/Cargo.toml && bun run test:unit",
     "lint": "oxlint .",
     "preview": "vite preview",
@@ -42,8 +45,8 @@
     "test:wdio:manual-changes": "npm run build:e2e && wdio run e2e-tauri/wdio.manual-changes.conf.mjs",
     "test:wdio:onboarding": "npm run build:e2e && wdio run e2e-tauri/wdio.onboarding.conf.mjs",
     "generate": "bun run gen:schemas",
-    "gen:schemas": "cargo run -- gen-schemas",
-    "gen:orpc": "cargo run --manifest-path src-tauri/Cargo.toml -- gen-orpc"
+    "gen:schemas": "cargo run --manifest-path src-tauri/Cargo.toml --bin nixmac -- gen-schemas",
+    "gen:orpc": "cargo run --manifest-path src-tauri/Cargo.toml --bin nixmac -- gen-orpc"
   },
   "dependencies": {
     "@daveyplate/better-auth-tauri": "0.1.9",

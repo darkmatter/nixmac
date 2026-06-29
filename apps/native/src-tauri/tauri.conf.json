@@ -24,13 +24,18 @@
       "../templates/nix-darwin-determinate/",
       "../templates/nixos-unified/",
       "../templates/base/",
-      "resources/gitleaks.toml"
+      "resources/gitleaks.toml",
+      "resources/launchd/com.darkmatter.nixmac.helper.plist",
+      "resources/launchd/com.darkmatter.nixmac.sync-agent.plist"
     ],
     "macOS": {
       "minimumSystemVersion": "10.13",
       "entitlements": "entitlements.plist",
       "infoPlist": "Info.plist",
       "frameworks": [],
+      "files": {
+        "Library/LaunchDaemons/com.darkmatter.nixmac.helper.plist": "resources/launchd/com.darkmatter.nixmac.helper.plist"
+      },
       "dmg": {
         "background": "icons/dmg-background.png",
         "windowSize": {

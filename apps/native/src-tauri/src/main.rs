@@ -28,6 +28,7 @@ mod observable;
 mod orpc;
 mod panic_handler;
 mod peek;
+mod privileged_helper;
 mod rebuild;
 mod schema_gen;
 mod shared_types;

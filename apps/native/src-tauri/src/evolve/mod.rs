@@ -946,13 +946,15 @@ pub async fn generate_evolution<R: Runtime>(
     // instead of silently swapping in field defaults.
     let config::EvolutionLimits {
         mut max_build_attempts,
-        mut max_token_budget,
+        max_token_budget: configured_max_token_budget,
         mut max_iterations,
         ..
     } = app
         .state::<crate::observable::Observable<config::EvolutionLimits>>()
         .read_sync()
         .clone();
+    let mut max_token_budget =
+        config::effective_max_token_budget(&provider_type, configured_max_token_budget);
 
     let mut max_iterations_before_edit = std::cmp::max(
         1,

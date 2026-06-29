@@ -2,6 +2,11 @@
 
 use super::{OrpcCtx, helpers::internal_err};
 use crate::commands::{apply, evolve, rollback};
+use crate::privileged_helper::{
+    protocol::{HelperServiceStatus, SyncAgentLaunchConfig},
+    service,
+    sync_agent::{self, SyncAgentStatus},
+};
 use crate::shared_types::{
     BuildCheckResult, EvolveCancelResult, OkResult, RebuildStatus, RollbackResult,
 };
@@ -45,6 +50,12 @@ struct FinalizeRollbackInput {
 #[serde(rename_all = "camelCase")]
 struct RestoreTargetInput {
     target_hash: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+struct InstallSyncAgentInput {
+    config: Option<SyncAgentLaunchConfig>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Type)]
@@ -151,6 +162,36 @@ async fn rebuild_status(ctx: OrpcCtx, _input: ()) -> Result<RebuildStatus, ORPCE
         .map_err(|error| internal_err("darwin.rebuildStatus", error))
 }
 
+async fn helper_status(_ctx: OrpcCtx, _input: ()) -> Result<HelperServiceStatus, ORPCError> {
+    Ok(service::status())
+}
+
+async fn helper_register(_ctx: OrpcCtx, _input: ()) -> Result<HelperServiceStatus, ORPCError> {
+    service::register().map_err(|error| internal_err("darwin.helperRegister", error))
+}
+
+async fn helper_unregister(_ctx: OrpcCtx, _input: ()) -> Result<HelperServiceStatus, ORPCError> {
+    service::unregister().map_err(|error| internal_err("darwin.helperUnregister", error))
+}
+
+async fn sync_agent_status(_ctx: OrpcCtx, _input: ()) -> Result<SyncAgentStatus, ORPCError> {
+    Ok(sync_agent::status())
+}
+
+async fn sync_agent_install(
+    _ctx: OrpcCtx,
+    input: InstallSyncAgentInput,
+) -> Result<SyncAgentStatus, ORPCError> {
+    let program_path = sync_agent::bundled_sync_agent_path()
+        .ok_or_else(|| ORPCError::internal_server_error("sync agent path unavailable"))?;
+    sync_agent::install(&program_path, input.config.as_ref())
+        .map_err(|error| internal_err("darwin.syncAgentInstall", error))
+}
+
+async fn sync_agent_uninstall(_ctx: OrpcCtx, _input: ()) -> Result<SyncAgentStatus, ORPCError> {
+    sync_agent::uninstall().map_err(|error| internal_err("darwin.syncAgentUninstall", error))
+}
+
 pub fn routes() -> Router<OrpcCtx> {
     router! {
         "evolve" => os::<OrpcCtx>()
@@ -196,5 +237,24 @@ pub fn routes() -> Router<OrpcCtx> {
         "rebuildStatus" => os::<OrpcCtx>()
             .output(orpc_specta::specta::<RebuildStatus>())
             .handler(rebuild_status),
+        "helperStatus" => os::<OrpcCtx>()
+            .output(orpc_specta::specta::<HelperServiceStatus>())
+            .handler(helper_status),
+        "helperRegister" => os::<OrpcCtx>()
+            .output(orpc_specta::specta::<HelperServiceStatus>())
+            .handler(helper_register),
+        "helperUnregister" => os::<OrpcCtx>()
+            .output(orpc_specta::specta::<HelperServiceStatus>())
+            .handler(helper_unregister),
+        "syncAgentStatus" => os::<OrpcCtx>()
+            .output(orpc_specta::specta::<SyncAgentStatus>())
+            .handler(sync_agent_status),
+        "syncAgentInstall" => os::<OrpcCtx>()
+            .input(orpc_specta::specta::<InstallSyncAgentInput>())
+            .output(orpc_specta::specta::<SyncAgentStatus>())
+            .handler(sync_agent_install),
+        "syncAgentUninstall" => os::<OrpcCtx>()
+            .output(orpc_specta::specta::<SyncAgentStatus>())
+            .handler(sync_agent_uninstall),
     }
 }

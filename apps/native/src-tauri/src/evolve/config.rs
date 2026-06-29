@@ -15,10 +15,13 @@ use specta::Type;
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, Runtime};
 
+use crate::ai::providers::NIXMAC_PROVIDER;
 use crate::observable::{ConfiguredRepoScopedJson, Observable, Persistence};
 use crate::state::preferences;
+use crate::storage::store::DEFAULT_MAX_TOKEN_BUDGET;
 
 pub const EVOLUTION_LIMITS_CHANGED_EVENT: &str = "evolution_limits_changed";
+pub(crate) const DEFAULT_NIXMAC_MAX_TOKEN_BUDGET: u32 = 750_000;
 
 #[derive(Configurable, Debug, Clone, Serialize, Deserialize, Type, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
@@ -95,6 +98,14 @@ impl EvolutionLimits {
         if let Some(v) = update.max_output_tokens {
             self.max_output_tokens = v;
         }
+    }
+}
+
+pub(crate) fn effective_max_token_budget(provider: &str, configured_max_token_budget: u32) -> u32 {
+    if provider == NIXMAC_PROVIDER && configured_max_token_budget == DEFAULT_MAX_TOKEN_BUDGET {
+        DEFAULT_NIXMAC_MAX_TOKEN_BUDGET
+    } else {
+        configured_max_token_budget
     }
 }
 
@@ -175,5 +186,22 @@ mod tests {
         assert_eq!(limits.max_token_budget, 50_000);
         assert_eq!(limits.max_build_attempts, 5);
         assert_eq!(limits.max_output_tokens, 32_768);
+    }
+
+    #[test]
+    fn nixmac_provider_uses_hosted_default_token_budget() {
+        assert_eq!(
+            effective_max_token_budget(NIXMAC_PROVIDER, DEFAULT_MAX_TOKEN_BUDGET),
+            DEFAULT_NIXMAC_MAX_TOKEN_BUDGET
+        );
+    }
+
+    #[test]
+    fn effective_token_budget_preserves_custom_and_non_hosted_values() {
+        assert_eq!(effective_max_token_budget(NIXMAC_PROVIDER, 80_000), 80_000);
+        assert_eq!(
+            effective_max_token_budget("openrouter", DEFAULT_MAX_TOKEN_BUDGET),
+            DEFAULT_MAX_TOKEN_BUDGET
+        );
     }
 }
