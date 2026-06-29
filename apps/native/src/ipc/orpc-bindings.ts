@@ -388,7 +388,7 @@ expiresIn: number | null;
  */
 interval: number | null }
 
-export type GithubImportInput = { owner: string; repo: string; dirName: string | null }
+export type GithubImportInput = { repoRef: string; dirName: string | null }
 
 /**
  * A repository the installation can access, returned by `github_list_repos`.

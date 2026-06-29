@@ -161,7 +161,7 @@ mod macos {
     pub const ALTERNATE_FLAG: u64 = 0x00080000;
 
     #[link(name = "CoreGraphics", kind = "framework")]
-    extern "C" {
+    unsafe extern "C" {
         pub fn CGEventSourceFlagsState(stateID: i32) -> u64;
         pub fn CGEventCreate(source: *const c_void) -> *const c_void;
         pub fn CGEventGetLocation(event: *const c_void) -> CGPoint;

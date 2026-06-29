@@ -8,6 +8,66 @@
  * bun run gen:orpc
  * ```
  *
+ * ## Adding a procedure on the Rust side
+ *
+ * Procedures live in `src-tauri/src/orpc/<area>.rs` and are wired into the router
+ * in `src-tauri/src/orpc/mod.rs`. Each area file follows the same shape:
+ *
+ * 1. **(Optional) Define input/output types.** Derive `Deserialize`, `Serialize`,
+ *    and `Type`, and use `#[serde(rename_all = "camelCase")]` so the generated TS
+ *    bindings match the rest of the codebase. Put shared output types in
+ *    `crate::shared_types`; keep area-private input structs in the area file.
+ *
+ *    ```rust
+ *    #[derive(Debug, Deserialize, Serialize, Type)]
+ *    #[serde(rename_all = "camelCase")]
+ *    struct RenameRepoInput {
+ *        repo_ref: String,
+ *        new_name: String,
+ *    }
+ *    ```
+ *
+ * 2. **Write the handler.** Signature is `async fn(ctx: OrpcCtx, input: I) -> Result<O, ORPCError>`.
+ *    Use `()` for no input/output. Map errors through `helpers::internal_err`
+ *    (or a local `*_err` helper) so failures are logged with a stable command tag.
+ *
+ *    ```rust
+ *    async fn rename_repo(
+ *        ctx: OrpcCtx,
+ *        input: RenameRepoInput,
+ *    ) -> Result<(), ORPCError> {
+ *        sync::github_rename_repo(&ctx.app, &input.repo_ref, &input.new_name)
+ *            .await
+ *            .map_err(|e| internal_err("github.renameRepo", e))
+ *    }
+ *    ```
+ *
+ * 3. **Register the route** in the area's `routes()` function via the `router!` macro.
+ *    Each procedure is `"camelCaseName" => os::<OrpcCtx>()` chained with
+ *    `.input(orpc_specta::specta::<InputType>())` and/or
+ *    `.output(orpc_specta::specta::<OutputType>())`, then `.handler(fn)`.
+ *    Omit `.input()`/`.output()` for `()`. Nest a new area with
+ *    `.nest("areaName", area::routes())` in `mod.rs` `build_router()`.
+ *
+ *    ```rust
+ *    pub fn routes() -> Router<OrpcCtx> {
+ *        router! {
+ *            "renameRepo" => os::<OrpcCtx>()
+ *                .input(orpc_specta::specta::<RenameRepoInput>())
+ *                .handler(rename_repo),
+ *        }
+ *    }
+ *    ```
+ *
+ * 4. **Regenerate bindings** so the TS side picks up the new procedure and types:
+ *
+ *    ```sh
+ *    cd apps/native && bun run gen:orpc
+ *    ```
+ *
+ * 5. **Call it from TS** via `client.<area>.<name>(input)` or
+ *    `orpc.<area>.<name>.queryOptions({ input })` / `.mutationOptions()`.
+ *
  * ## Two ways to call procedures
  *
  * **`client`** — direct async calls (like `invoke`, but typed). Use in event
@@ -23,18 +83,7 @@
  * the background. A **mutation** changes data on the server; you typically
  * invalidate related queries after it succeeds.
  *
- * Wire up the app once (e.g. in `main.tsx`):
- *
- * ```tsx
- * import { QueryClientProvider } from "@tanstack/react-query";
- * import { queryClient } from "@/lib/orpc";
- *
- * <QueryClientProvider client={queryClient}>
- *   <App />
- * </QueryClientProvider>
- * ```
- *
- * ### Query example — load GitHub repos when connected
+ * ### Usage example — load GitHub repos when connected
  *
  * ```tsx
  * import { useQuery } from "@tanstack/react-query";
@@ -43,8 +92,11 @@
  * function RepoList({ enabled }: { enabled: boolean }) {
  *   const { data, isLoading, error, refetch } = useQuery(
  *     orpc.github.listRepos.queryOptions({
- *       input: undefined,
- *       enabled, // skip the IPC call until the user is connected
+ *       // Optional: If the function accepts input, you can pass it here.
+ *       input: { owner: "owner", repo: "repo" },
+ *       // Optional: If you want to control when the query is executed, e.g. you don't
+ *       // want to make the call until some condition is met, you can use this
+ *       enabled,
  *     }),
  *   );
  *
