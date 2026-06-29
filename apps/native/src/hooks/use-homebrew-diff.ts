@@ -35,15 +35,21 @@ export function useHomebrewDiff(enabled = true) {
     }),
   );
 
-  const applyDiff = useCallback(async () => {
-    if (!diff || countDiffItems(diff) === 0) return;
-    uiActions.setProcessing(true, "apply");
-    try {
-      await applyStateDiff({ diff });
-    } finally {
-      uiActions.setProcessing(false);
-    }
-  }, [diff, applyStateDiff]);
+  // Apply the full scanned diff by default, or a caller-supplied subset (e.g.
+  // when the user has unchecked some items in the Homebrew badge popover).
+  const applyDiff = useCallback(
+    async (override?: HomebrewState) => {
+      const target = override ?? diff;
+      if (!target || countDiffItems(target) === 0) return;
+      uiActions.setProcessing(true, "apply");
+      try {
+        await applyStateDiff({ diff: target });
+      } finally {
+        uiActions.setProcessing(false);
+      }
+    },
+    [diff, applyStateDiff],
+  );
 
   const hasDiff = enabled && diff !== null && diff.isInstalled && countDiffItems(diff) > 0;
   const error = query.error
