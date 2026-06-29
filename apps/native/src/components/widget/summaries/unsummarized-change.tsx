@@ -1,9 +1,11 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import type { ChangeFileSummary } from "@/components/widget/utils";
 import { CHANGE_TYPE_STYLES, getDirectory, getShortFilename } from "@/components/widget/utils";
 import { cn } from "@/lib/utils";
-import { MoveRight } from "lucide-react";
+import { EllipsisVerticalIcon, MoveRight, Undo } from "lucide-react";
+import { useState } from "react";
 
 function FilePath({ path, role }: { path: string; role?: "old" | "new" }) {
   const dir = getDirectory(path);
@@ -26,9 +28,10 @@ export function UnsummarizedChange({
   hunkCount,
   oldFilename,
 }: ChangeFileSummary) {
+  const [isOpen, setIsOpen] = useState(false);
   const { icon: Icon, iconColor } = CHANGE_TYPE_STYLES[changeType];
   return (
-    <div className={cn("flex items-center gap-2 rounded-md px-2.5 py-1.5")}>
+    <div className={cn("flex items-center gap-2 rounded-md px-2.5 py-1.5 w-full")}>
       <Icon className={cn("h-3.5 w-3.5 shrink-0 opacity-60", iconColor)} />
       {oldFilename ? (
         <span className="flex min-w-0 items-center gap-1.5 overflow-hidden">
@@ -43,6 +46,12 @@ export function UnsummarizedChange({
         <span className="shrink-0 rounded bg-white/6 px-1.5 py-0.5 font-mono text-[10px] text-neutral-500">
           x{hunkCount}
         </span>
+      )}
+      <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)}><EllipsisVerticalIcon /></Button>
+      {isOpen && (
+        <div className="absolute right-0 top-0 flex flex-col gap-1">
+          <Button variant="ghost" size="icon"><Undo />Discard</Button>
+        </div>
       )}
     </div>
   );

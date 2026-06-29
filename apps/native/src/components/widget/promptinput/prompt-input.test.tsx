@@ -46,6 +46,16 @@ vi.mock("@/components/widget/promptinput/system-defaults-cta", () => ({
   SystemDefaultsCTA: () => null,
 }));
 
+// Mock the router so this test doesn't pull in the full component graph
+// (router.tsx → DarwinWidget → EditorPanel → monaco, which needs matchMedia).
+vi.mock("@/router", () => ({
+  nav: {
+    openSettings: vi.fn(),
+    goHome: vi.fn(),
+    closeSettings: vi.fn(),
+  },
+}));
+
 // The animated placeholder isn't under test here; stub it so its timers don't
 // fire state updates outside act() after the assertions.
 vi.mock("@/components/widget/promptinput/use-typewriter-placeholder", () => ({
@@ -87,7 +97,6 @@ function resetStore() {
     preferences: makeGlobalPreferences(),
   });
   uiActions.setProcessing(false);
-  uiActions.setSettingsOpen(false);
 }
 
 async function settleProviderValidation() {

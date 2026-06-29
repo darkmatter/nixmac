@@ -1,23 +1,23 @@
 import { viewModelStore } from "./store";
-import type { ViewModelState } from "./types";
+import type { ViewModelStore } from "./store";
 
 /** Subscribe to slices of the Rust-backed ViewModel. */
 export const useViewModel = viewModelStore;
 
-export type ViewModelSelector<T> = (state: ViewModelState) => T;
+export type ViewModelSelector<T> = (state: ViewModelStore) => T;
 
-export const selectEvolve = (state: ViewModelState) => state.evolve;
-export const selectGit = (state: ViewModelState) => state.git;
-export const selectChangeMap = (state: ViewModelState) => state.changeMap;
-export const selectPreferences = (state: ViewModelState) => state.preferences;
-export const selectHosts = (state: ViewModelState) => state.hosts;
-export const selectPermissions = (state: ViewModelState) => state.permissions;
-export const selectPermissionsHydrated = (state: ViewModelState) => state.permissionsHydrated;
-export const selectNixInstall = (state: ViewModelState) => state.nixInstall;
-export const selectRebuildStatus = (state: ViewModelState) => state.rebuildStatus;
-export const selectRebuildLog = (state: ViewModelState) => state.rebuildLog;
-export const selectEvolveEvents = (state: ViewModelState) => state.evolveEvents;
-export const selectPromptHistory = (state: ViewModelState) => state.promptHistory;
-export const selectHistory = (state: ViewModelState) => state.history;
-export const selectExternalBuildDetected = (state: ViewModelState) =>
+export const selectEvolve = (state: ViewModelStore) => state.evolve;
+export const selectGit = (state: ViewModelStore) => state.git;
+export const selectChangeMap = (state: ViewModelStore) => state.changeMap;
+export const selectPreferences = (state: ViewModelStore) => state.preferences;
+export const selectHosts = (state: ViewModelStore) => state.hosts;
+export const selectPermissions = (state: ViewModelStore) => state.permissions;
+export const selectPermissionsHydrated = (state: ViewModelStore) => state.permissionsHydrated;
+export const selectNixInstall = (state: ViewModelStore) => state.nixInstall;
+export const selectRebuildStatus = (state: ViewModelStore) => state.rebuildStatus;
+export const selectRebuildLog = (state: ViewModelStore) => state.rebuildLog;
+export const selectEvolveEvents = (state: ViewModelStore) => state.evolveEvents;
+export const selectPromptHistory = (state: ViewModelStore) => state.promptHistory;
+export const selectHistory = (state: ViewModelStore) => state.history;
+export const selectExternalBuildDetected = (state: ViewModelStore) =>
   state.build.externalBuildDetected;

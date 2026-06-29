@@ -34,4 +34,42 @@ export const initialViewModelState: ViewModelState = {
   evolveEvents: [],
 };
 
-export const viewModelStore = create<ViewModelState>()(() => initialViewModelState);
+/**
+ * Imperative writers for the ViewModel store. Per the module header, no domain
+ * setters exist here — only the generic `reset`/`patch` used by `viewmodel/`
+ * modules to mirror Rust state.
+ */
+export type ViewModelActions = {
+  reset: () => void;
+  patch: (partial: Partial<ViewModelState>) => void;
+};
+
+/** Combined store shape: state values plus the actions that mutate them. */
+export type ViewModelStore = ViewModelState & ViewModelActions;
+
+export const viewModelStore = create<ViewModelStore>()((set) => ({
+  ...initialViewModelState,
+  reset: () => set(initialViewModelState),
+  patch: (partial) => set(partial),
+}));
+
+/**
+ * Back-compat handle that exposes the store's own actions plus the store's
+ * `getState`/`setState`/`subscribe` utilities. Zustand action references are
+ * stable for the store's lifetime, so they are picked off the initial state
+ * once. Kept so existing call sites that import `viewModelActions` keep
+ * working; new code should prefer `viewModelStore` directly.
+ */
+const { reset, patch } = viewModelStore.getInitialState();
+
+export const viewModelActions: ViewModelActions & {
+  getState: typeof viewModelStore.getState;
+  setState: typeof viewModelStore.setState;
+  subscribe: typeof viewModelStore.subscribe;
+} = {
+  getState: viewModelStore.getState,
+  setState: viewModelStore.setState,
+  subscribe: viewModelStore.subscribe,
+  reset,
+  patch,
+};

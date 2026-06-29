@@ -1,8 +1,15 @@
+import { RouterProvider, nav, router } from "@/router";
+import { makeGlobalPreferences as makePrefs } from "@/utils/test-fixtures";
 import { initialUiState, uiActions, viewModelActions } from "@nixmac/state";
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DarwinWidget } from "./widget";
-import { makeGlobalPreferences as makePrefs } from "@/utils/test-fixtures";
+
+// DarwinWidget now reads router state (useIsOverlayActive), so tests must wrap
+// it in the router provider. The router's root layout renders DarwinWidget
+// itself, so we just render the provider.
+function withRouter() {
+  return <RouterProvider router={router} />;
+}
 
 // Mock Tauri API
 vi.mock("@/ipc/api", () => ({
@@ -28,11 +35,14 @@ vi.mock("@/ipc/api", () => ({
     },
   },
   ipcRenderer: {
-    on: vi.fn().mockReturnValue(Promise.resolve(() => {})),
+    on: vi.fn().mockReturnValue(Promise.resolve(() => { })),
   },
 }));
 
 vi.mock("@/components/editor-panel", () => ({
+  EditorPanel: () => null,
+}));
+vi.mock("@/components/widget/overlays/editor-panel", () => ({
   EditorPanel: () => null,
 }));
 
@@ -76,10 +86,12 @@ describe("DarwinWidget", () => {
       evolveEvents: [],
     });
     uiActions.setState({ ...initialUiState });
+    // Reset router to the index route so no overlay is active
+    nav.goHome();
   });
 
   it("renders without crashing", () => {
-    const { container } = render(<DarwinWidget />);
+    const { container } = render(withRouter());
     expect(container).toBeTruthy();
   });
 
@@ -89,7 +101,7 @@ describe("DarwinWidget", () => {
       hosts: [],
     });
 
-    const { container } = render(<DarwinWidget />);
+    const { container } = render(withRouter());
     expect(container).toBeTruthy();
   });
 
@@ -107,14 +119,8 @@ describe("DarwinWidget", () => {
       },
     });
 
-    const { container } = render(<DarwinWidget />);
+    const { container } = render(withRouter());
     expect(container).toBeTruthy();
   });
 
-  it("renders with error message", () => {
-    uiActions.setError("Test error message");
-
-    const { container } = render(<DarwinWidget />);
-    expect(container).toBeTruthy();
-  });
 });

@@ -1,5 +1,6 @@
 import type {
   EvolutionTelemetry,
+  EvolveStep,
   FileDiffContents,
   RecommendedPrompt,
 } from "@nixmac/native/ipc/types";
@@ -58,4 +59,6 @@ export type UiStateValues = {
   fileDiffContents: Record<string, FileDiffContents>;
   /** On-demand query result. `undefined` means "stale/unfetched"; `null` means "fetched and none found". */
   recommendedPrompt: RecommendedPrompt | null | undefined;
+  /** Override for the current step. Although computed, this lets the user go back */
+  activeStepOverride: EvolveStep | null;
 };

@@ -1,8 +1,8 @@
 import { FeedbackType } from "@nixmac/native/types/feedback";
 import { beforeEach, describe, expect, it } from "vitest";
 import { uiActions } from "./actions";
-import { initialUiState } from "./store";
 import { useUiState } from "./selectors";
+import { initialUiState } from "./store";
 
 describe("useUiState", () => {
   beforeEach(() => {
@@ -113,6 +113,11 @@ describe("useUiState", () => {
   it("reset restores initial state", () => {
     uiActions.setError("boom");
     uiActions.reset();
-    expect(useUiState.getState()).toEqual(initialUiState);
+    // The store now collocates action functions alongside state values, so
+    // compare only the state-value fields, not the full store object.
+    const state = useUiState.getState();
+    for (const key of Object.keys(initialUiState) as (keyof typeof initialUiState)[]) {
+      expect(state[key]).toEqual(initialUiState[key]);
+    }
   });
 });

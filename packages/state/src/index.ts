@@ -1,5 +1,11 @@
 export {
   initialViewModelState,
+  viewModelActions,
+  viewModelStore,
+  type ViewModelActions,
+  type ViewModelStore,
+} from "./viewmodel";
+export {
   selectChangeMap,
   selectEvolve,
   selectEvolveEvents,
@@ -15,16 +21,18 @@ export {
   selectRebuildLog,
   selectRebuildStatus,
   useViewModel,
-  viewModelActions,
-  viewModelStore,
-  type RebuildLog,
-  type ViewModel,
   type ViewModelSelector,
-  type ViewModelState,
 } from "./viewmodel";
+export type { RebuildLog, ViewModel, ViewModelState } from "./viewmodel";
 
 export {
   initialUiState,
+  uiActions,
+  uiStore,
+  type UiStateActions,
+  type UiStateStore,
+} from "./ui";
+export {
   selectCommitMessageSuggestion,
   selectConsoleLogs,
   selectConversationalResponse,
@@ -46,27 +54,26 @@ export {
   selectSettingsOpen,
   selectShowFilesystem,
   selectShowHistory,
-  uiActions,
-  uiStore,
   useUiState,
-  type ProcessingAction,
-  type SettingsTab,
   type UiStateSelector,
-  type UiStateValues,
 } from "./ui";
+export type { ProcessingAction, SettingsTab, UiStateValues } from "./ui";
 
 export {
   initialOnboardingState,
   onboardingActions,
   onboardingStore,
+  type OnboardingActions,
+  type OnboardingStore,
+} from "./onboarding";
+export {
   selectCelebrating,
   selectInferenceDeferred,
   selectTrackedCustomizations,
   selectViewingStep,
   useOnboarding,
   type OnboardingSelector,
-  type OnboardingStateValues,
-  type OnboardingStepId,
 } from "./onboarding";
+export type { OnboardingStateValues, OnboardingStepId } from "./onboarding";
 
 export type { InferenceConfig, InferenceMode } from "./onboarding-types";

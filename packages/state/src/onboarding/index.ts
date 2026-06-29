@@ -1,5 +1,10 @@
-export { onboardingActions } from "./actions";
-export { initialOnboardingState, onboardingStore } from "./store";
+export {
+  initialOnboardingState,
+  onboardingActions,
+  onboardingStore,
+  type OnboardingActions,
+  type OnboardingStore,
+} from "./store";
 export {
   selectCelebrating,
   selectInferenceDeferred,

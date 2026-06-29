@@ -1,7 +1,7 @@
-import { DarwinWidget } from "@/components/widget/widget";
 import { useAuthDeepLink } from "@/lib/auth-deep-link";
 import { bootBreadcrumb, clearBootStage, markBootStage } from "@/lib/boot-diagnostics";
 import { useTelemetry } from "@/lib/telemetry/context";
+import { RouterProvider, router } from "@/router";
 import { useEffect } from "react";
 import { Toaster } from "sonner";
 
@@ -34,7 +34,7 @@ export default function App() {
         className="fixed top-0 left-20 right-44 z-30 h-7"
         aria-hidden="true"
       />
-      <DarwinWidget />
+      <RouterProvider router={router} />
       <Toaster
         position="top-center"
         theme="dark"

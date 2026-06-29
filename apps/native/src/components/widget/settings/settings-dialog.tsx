@@ -17,8 +17,10 @@ import {
 } from "@/lib/providers/api-key-verification";
 import { cn } from "@/lib/utils";
 import { refreshHostsSnapshot } from "@/viewmodel/preferences";
-import { uiActions, useUiState, useViewModel, type SettingsTab } from "@nixmac/state";
+import { useViewModel, type SettingsTab } from "@nixmac/state";
 import { useForm } from "@tanstack/react-form";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { nav } from "@/router";
 import {
   Bot,
   FolderOpen,
@@ -56,27 +58,22 @@ function NavItem({ icon, label, active, onClick }: NavItemProps) {
 }
 
 export function SettingsDialog() {
-  const isOpen = useUiState((s) => s.settingsOpen);
-  const settingsActiveTab = useUiState((s) => s.settingsActiveTab);
+  const settingsActiveTab = useSearch({ from: "/settings" }).tab;
+  const navigate = useNavigate({ from: "/settings" });
   const configDir = useViewModel((s) => s.preferences?.configDir ?? "");
   const hosts = useViewModel((s) => s.hosts);
   const host = useViewModel((s) => s.preferences?.hostAttr ?? "");
   const developerMode = useViewModel((s) => s.preferences?.developerMode ?? false);
-  const [activeTab, setActiveTab] = useState<SettingsTab>("general");
-
-  // Deep-link to a specific tab when requested, otherwise reset to general
-  useEffect(() => {
-    if (isOpen) {
-      setActiveTab(settingsActiveTab ?? "general");
-    }
-  }, [isOpen, settingsActiveTab]);
+  const activeTab: SettingsTab = settingsActiveTab ?? "general";
 
   // If developer mode is turned off while the developer tab is active, fall back to General.
   useEffect(() => {
     if (!developerMode && activeTab === "developer") {
-      setActiveTab("general");
+      navigate({ search: { tab: "general" } });
     }
-  }, [developerMode, activeTab]);
+  }, [developerMode, activeTab, navigate]);
+
+  const setActiveTab = (tab: SettingsTab) => navigate({ search: { tab } });
   const [openrouterKeyStatus, setOpenrouterKeyStatus] = useState<ApiKeyStatus>("idle");
   const [openaiKeyStatus, setOpenaiKeyStatus] = useState<ApiKeyStatus>("idle");
   const openrouterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -143,7 +140,7 @@ export function SettingsDialog() {
     },
   });
 
-  // Load initial values
+  // Load initial values when the settings route is active (mounts the component)
   // biome-ignore lint/correctness/useExhaustiveDependencies: initial load only
   useEffect(() => {
     const loadPrefs = async () => {
@@ -180,10 +177,8 @@ export function SettingsDialog() {
         console.error("Failed to load settings:", err);
       }
     };
-    if (isOpen) {
-      loadPrefs();
-    }
-  }, [isOpen, form]);
+    loadPrefs();
+  }, [form]);
 
   const handleRefreshHosts = async () => {
     await refreshHostsSnapshot();
@@ -191,15 +186,13 @@ export function SettingsDialog() {
 
   const hasFlake = hosts.length > 0;
 
-  if (!isOpen) return null;
-
   return (
     <Suspense fallback={<div>loading...</div>}>
       <div className="fixed inset-0 z-40 flex items-center justify-center" data-tauri-no-drag>
         <button
           aria-label="Close settings"
           className="absolute inset-0 bg-black/40"
-          onClick={() => uiActions.setSettingsOpen(false)}
+          onClick={() => nav.closeSettings()}
           type="button"
         />
         <div className="relative z-10 flex h-[460px] w-[620px] max-w-[90vw] overflow-hidden rounded-xl border border-border bg-card/95 shadow-2xl backdrop-blur-xl">
@@ -258,7 +251,7 @@ export function SettingsDialog() {
             <div className="mt-auto">
               <Button
                 className="w-full"
-                onClick={() => uiActions.setSettingsOpen(false)}
+                onClick={() => nav.closeSettings()}
                 size="sm"
                 variant="secondary"
               >
@@ -280,7 +273,9 @@ export function SettingsDialog() {
                     hosts={hosts}
                     saveHost={saveHost}
                     sendDiagnosticsField={sendDiagnosticsField}
-                    setSettingsOpen={uiActions.setSettingsOpen}
+                    setSettingsOpen={(open: boolean) => {
+                      if (!open) nav.closeSettings();
+                    }}
                   />
                 )}
               </form.Field>

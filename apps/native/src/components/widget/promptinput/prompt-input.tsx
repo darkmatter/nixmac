@@ -27,6 +27,7 @@ import { useEvolve } from "@/hooks/use-evolve";
 import { tauriAPI } from "@/ipc/api";
 import { getProviderConfigInvalidReason } from "@/lib/providers/ai-provider-validation";
 import { uiActions, useUiState, useViewModel } from "@nixmac/state";
+import { nav } from "@/router";
 import { ArrowUpIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -221,7 +222,7 @@ export function PromptInput() {
           {promptValidationError}{" "}
           <button
             className="underline underline-offset-2"
-            onClick={() => uiActions.setSettingsOpen(true, "ai-models")}
+            onClick={() => nav.openSettings("ai-models")}
             type="button"
           >
             Open AI Models settings

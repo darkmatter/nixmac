@@ -1,13 +1,13 @@
 import { onboardingStore } from "./store";
-import type { OnboardingStateValues } from "./types";
+import type { OnboardingStore } from "./store";
 
 /** Subscribe to transient onboarding UI state. */
 export const useOnboarding = onboardingStore;
 
-export type OnboardingSelector<T> = (state: OnboardingStateValues) => T;
+export type OnboardingSelector<T> = (state: OnboardingStore) => T;
 
-export const selectTrackedCustomizations = (state: OnboardingStateValues) =>
+export const selectTrackedCustomizations = (state: OnboardingStore) =>
   state.trackedCustomizations;
-export const selectInferenceDeferred = (state: OnboardingStateValues) => state.inferenceDeferred;
-export const selectCelebrating = (state: OnboardingStateValues) => state.celebrating;
-export const selectViewingStep = (state: OnboardingStateValues) => state.viewingStep;
+export const selectInferenceDeferred = (state: OnboardingStore) => state.inferenceDeferred;
+export const selectCelebrating = (state: OnboardingStore) => state.celebrating;
+export const selectViewingStep = (state: OnboardingStore) => state.viewingStep;

@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Clock, FolderTree, Settings, MessageSquarePlus } from "lucide-react";
 import { APP_NAME } from "../../../../shared/constants";
 import { uiActions, useUiState, viewModelActions } from "@nixmac/state";
+import { nav } from "@/router";
 import { computeCurrentStep } from "@/components/widget/utils";
 
 export function Header() {
@@ -105,7 +106,7 @@ export function Header() {
           className="h-6 w-6 p-0"
           size="sm"
           variant="ghost"
-          onClick={() => uiActions.setSettingsOpen(true)}
+          onClick={() => nav.openSettings()}
           aria-label="Settings"
           title="Settings"
         >

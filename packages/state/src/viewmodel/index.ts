@@ -1,5 +1,4 @@
-export { viewModelActions } from "./actions";
-export { initialViewModelState, viewModelStore } from "./store";
+export { initialViewModelState, viewModelActions, viewModelStore, type ViewModelActions, type ViewModelStore } from "./store";
 export {
   selectChangeMap,
   selectEvolve,

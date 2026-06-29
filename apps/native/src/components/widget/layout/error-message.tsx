@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { EVOLUTION_CANCELLED_MSG } from "@/lib/constants";
 import { uiActions, useUiState } from "@nixmac/state";
+import { nav } from "@/router";
 import { useCurrentStep } from "@/hooks/use-current-step";
 import { FeedbackType } from "@/types/feedback";
 import { Settings } from "lucide-react";
@@ -58,7 +59,7 @@ export function ErrorMessage() {
             size="sm"
             className="h-auto gap-1 p-0 text-red-300 underline text-xs"
             onClick={() => {
-              uiActions.setSettingsOpen(true, "api-keys");
+              nav.openSettings("api-keys");
               uiActions.setError(null);
             }}
           >

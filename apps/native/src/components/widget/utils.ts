@@ -1,7 +1,7 @@
+import type { EvolveState, EvolveStep, PermissionsState } from "@/ipc/types";
 import { filesystemViewEnabled } from "@/lib/flags";
-import type { EvolveState, PermissionsState } from "@/ipc/types";
 import type { WidgetStep } from "@/types/widget";
-import { FilePen, FilePlus, FileX, FileCode, type LucideIcon } from "lucide-react";
+import { FileCode, FilePen, FilePlus, FileX, type LucideIcon } from "lucide-react";
 
 type CurrentStepState = {
   configDir: string;
@@ -15,6 +15,15 @@ type CurrentStepState = {
   showHistory: boolean;
   showFilesystem: boolean;
   evolveState: EvolveState | null;
+  activeStepOverride: EvolveStep | null;
+};
+
+const orderByStep: { [key in EvolveStep]: number } = {
+  begin: 0,
+  evolve: 1,
+  commit: 2,
+  manualCommit: 2,
+  manualEvolve: 1,
 };
 
 export function computeCurrentStep(state: CurrentStepState): WidgetStep {
@@ -50,6 +59,16 @@ export function computeCurrentStep(state: CurrentStepState): WidgetStep {
 
   if (state.showFilesystem && filesystemViewEnabled) {
     return "filesystem";
+  }
+
+  // The override only sends the user *back* to an earlier step; the backend
+  // remains the source of truth for forward progress, so a stale override that
+  // is no longer behind the live step is ignored.
+  if (
+    state.activeStepOverride &&
+    orderByStep[state.activeStepOverride] < orderByStep[state.evolveState?.step ?? "begin"]
+  ) {
+    return state.activeStepOverride;
   }
 
   // Backend is the source of truth for evolve routing

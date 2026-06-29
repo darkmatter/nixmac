@@ -1,11 +1,3 @@
-import { initialViewModelState, viewModelStore } from "./store";
-import type { ViewModelState } from "./types";
-
-/** Imperative writers for the ViewModel store — use from sync modules, not UI. */
-export const viewModelActions = {
-  getState: viewModelStore.getState,
-  setState: viewModelStore.setState,
-  subscribe: viewModelStore.subscribe,
-  reset: () => viewModelStore.setState(initialViewModelState),
-  patch: (partial: Partial<ViewModelState>) => viewModelStore.setState(partial),
-};
+// Actions now live inside the store itself (see `store.ts`). This module is
+// kept only as a re-export so existing deep imports (`./actions`) keep working.
+export { viewModelActions, type ViewModelActions } from "./store";

@@ -1,6 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
 import { uiActions } from "@nixmac/state";
+import { nav } from "@/router";
 
 export function useTrayEvents() {
   useEffect(() => {
@@ -9,7 +10,7 @@ export function useTrayEvents() {
         uiActions.setFeedbackOpen(true);
       }),
       listen("tray:open-settings", () => {
-        uiActions.setSettingsOpen(true);
+        nav.openSettings();
       }),
     ]).catch((error) => {
       if (import.meta.env.PROD) console.error("Tray listeners unavailable:", error);

@@ -22,6 +22,7 @@ import type React from "react";
 // be called inside decorators and story functions".
 import { useArgs, useEffect } from "storybook/preview-api";
 import { DarwinWidget } from "./widget";
+import { RouterProvider, nav, router } from "@/router";
 
 // =============================================================================
 // Fixtures
@@ -308,7 +309,6 @@ function applyArgsToStores(a: Record<string, any>): void {
     history: [],
   });
 
-  uiActions.setSettingsOpen(a.settingsOpen, a.settingsTab === "none" ? null : a.settingsTab);
   uiActions.setShowHistory(a.showHistory);
   uiActions.setShowFilesystem(a.showFilesystem);
   uiActions.setFeedbackOpen(a.feedbackOpen);
@@ -318,6 +318,13 @@ function applyArgsToStores(a: Record<string, any>): void {
   uiActions.setGenerating(a.isGenerating);
   uiActions.setSummarizing(a.isSummarizing);
   uiActions.setProcessing(a.isProcessing, a.processingAction === "none" ? null : a.processingAction);
+
+  // Settings open/tab is now router state — drive it via the router instance.
+  if (a.settingsOpen) {
+    nav.openSettings(a.settingsTab === "none" ? undefined : a.settingsTab);
+  } else {
+    nav.goHome();
+  }
 
   uiActions.clearLogs();
   if (a.consoleLogs) uiActions.appendLog(a.consoleLogs);
@@ -331,6 +338,9 @@ function applyArgsToStores(a: Record<string, any>): void {
 function computeArgsView(): Record<string, any> {
   const ui = useUiState.getState();
   const vm = viewModelActions.getState();
+  const routerState = router.state;
+  const settingsOpen = routerState.location.pathname === "/settings";
+  const settingsTab = (routerState.location.search.tab as string | null) ?? "none";
   return {
     evolveStep: vm.evolve?.step ?? "begin",
     committable: vm.evolve?.committable ?? false,
@@ -340,8 +350,8 @@ function computeArgsView(): Record<string, any> {
     isBootstrapping: ui.isBootstrapping,
     showHistory: ui.showHistory,
     showFilesystem: ui.showFilesystem,
-    settingsOpen: ui.settingsOpen,
-    settingsTab: ui.settingsActiveTab ?? "none",
+    settingsOpen,
+    settingsTab,
     feedbackOpen: ui.feedbackOpen,
     evolvePrompt: ui.evolvePrompt,
     error: ui.error ?? "",
@@ -396,9 +406,11 @@ const withControls: Decorator = (Story, context) => {
     };
     const unsubUi = useUiState.subscribe(push);
     const unsubVm = useViewModel.subscribe(push);
+    const unsubRouter = router.subscribe("onResolved", push);
     return () => {
       unsubUi();
       unsubVm();
+      unsubRouter();
     };
   }, []);
 
@@ -423,11 +435,13 @@ const meta = preview.meta({
   decorators: [
     withControls,
     (Story: React.ComponentType) => (
-      <div className="flex h-screen w-screen items-center justify-center overflow-hidden p-4">
-        <div className="h-[640px] w-[960px] overflow-hidden rounded-xl border border-border shadow-2xl">
-          <Story />
+      <RouterProvider router={router}>
+        <div className="flex h-screen w-screen items-center justify-center overflow-hidden p-4">
+          <div className="h-[640px] w-[960px] overflow-hidden rounded-xl border border-border shadow-2xl">
+            <Story />
+          </div>
         </div>
-      </div>
+      </RouterProvider>
     ),
   ],
   tags: ["autodocs"],

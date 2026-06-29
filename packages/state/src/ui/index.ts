@@ -1,5 +1,3 @@
-export { uiActions } from "./actions";
-export { initialUiState, uiStore } from "./store";
 export {
   selectCommitMessageSuggestion,
   selectConsoleLogs,
@@ -15,14 +13,15 @@ export {
   selectIsProcessing,
   selectIsSummarizing,
   selectProcessingAction,
-  selectRecommendedPrompt,
   selectRebuildContext,
   selectRebuildPanelDismissed,
+  selectRecommendedPrompt,
   selectSettingsActiveTab,
   selectSettingsOpen,
   selectShowFilesystem,
   selectShowHistory,
   useUiState,
-  type UiStateSelector,
+  type UiStateSelector
 } from "./selectors";
+export { initialUiState, uiActions, uiStore, type UiStateActions, type UiStateStore } from "./store";
 export type { ProcessingAction, SettingsTab, UiStateValues } from "./types";

@@ -9,7 +9,6 @@ import { ErrorMessage } from "@/components/widget/layout/error-message";
 import { FeedbackDialog } from "@/components/widget/feedback/feedback-dialog";
 import { Header } from "@/components/widget/layout/header";
 import { ReportIssueButton } from "@/components/widget/feedback/report-issue-button";
-import { SettingsDialog } from "@/components/widget/settings/settings-dialog";
 import { StepContentWrapper } from "@/components/widget/layout/step-content-wrapper";
 import { Stepper } from "@/components/widget/layout/stepper";
 import { OnboardingFlow } from "@/components/widget/onboarding/onboarding-flow";
@@ -39,6 +38,7 @@ import { startViewModelSync } from "@/viewmodel";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
 import { setupWidgetTestHelpers } from "@/utils/widget-test-helpers";
 import { useEffect } from "react";
+import { nav, useIsOverlayActive } from "@/router";
 
 /**
  * Main nixmac window / widget component.
@@ -73,18 +73,24 @@ export function DarwinWidget() {
     }
   }, []);
 
-  // Esc closes the settings modal or history panel (settings takes priority since it overlays history).
-  // Respects defaultPrevented so nested Radix layers (Select/Popover/inner dialogs) handle Esc first.
-  // Skips during IME composition — Esc cancels the candidate, not the modal.
+  // Esc closes the topmost overlay. Settings is now a route (handled via the
+  // router); history/filesystem are still store-driven pending migration.
+  // Respects defaultPrevented so nested Radix layers (Select/Popover/inner
+  // dialogs) handle Esc first. Skips during IME composition — Esc cancels the
+  // candidate, not the modal.
+  const isOverlayActive = useIsOverlayActive();
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
-      const { settingsOpen, showHistory, showFilesystem, isProcessing, isGenerating } =
-        useUiState.getState();
-      if (settingsOpen) {
+      // Settings route takes priority (it overlays everything else).
+      if (isOverlayActive) {
         e.preventDefault();
-        uiActions.setSettingsOpen(false);
-      } else if (showHistory && !(isProcessing || isGenerating)) {
+        nav.goHome();
+        return;
+      }
+      const { showHistory, showFilesystem, isProcessing, isGenerating } =
+        useUiState.getState();
+      if (showHistory && !(isProcessing || isGenerating)) {
         e.preventDefault();
         uiActions.setShowHistory(false);
       } else if (showFilesystem && !(isProcessing || isGenerating)) {
@@ -94,7 +100,7 @@ export function DarwinWidget() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [isOverlayActive]);
 
   // Load initial data once on mount, then start watching for changes
   useEffect(() => {
@@ -174,7 +180,6 @@ export function DarwinWidget() {
     return (
       <div className="flex min-h-[600px] min-w-[800px] h-full w-full flex-col bg-background/60">
         <OnboardingFlow />
-        <SettingsDialog />
         <FeedbackDialog />
         <Console />
       </div>
@@ -205,7 +210,6 @@ export function DarwinWidget() {
       <RebuildOverlayPanel />
       <EditorPanel />
 
-      <SettingsDialog />
       <FeedbackDialog />
 
       <Console />

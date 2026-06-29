@@ -1,7 +1,6 @@
 import { computeCurrentStep } from "@/components/widget/utils";
-import { useUiState } from "@nixmac/state";
-import { useViewModel } from "@nixmac/state";
 import type { WidgetStep } from "@/types/widget";
+import { useUiState, useViewModel } from "@nixmac/state";
 
 /**
  * Hook to get the current widget step.
@@ -24,6 +23,7 @@ export function useCurrentStep(): WidgetStep {
   const showHistory = useUiState((state) => state.showHistory);
   const showFilesystem = useUiState((state) => state.showFilesystem);
   const isBootstrapping = useUiState((state) => state.isBootstrapping);
+  const activeStepOverride = useUiState((state) => state.activeStepOverride);
   return computeCurrentStep({
     nixInstalled,
     darwinRebuildAvailable,
@@ -36,5 +36,6 @@ export function useCurrentStep(): WidgetStep {
     showHistory,
     showFilesystem,
     isBootstrapping,
+    activeStepOverride,
   });
 }
