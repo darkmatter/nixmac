@@ -22,22 +22,22 @@
     "knip": "knip"
   },
   "dependencies": {
-    "effect": "^4.0.0-beta.62"
+    "effect": "4.0.0-beta.62"
   },
   "devDependencies": {
-    "@types/bun": "^1.3.14",
-    "@types/node": "^25.6.0",
-    "bun2nix": "^2.0.6",
-    "danger": "^12.3.3",
-    "knip": "^6.11.0",
-    "oxlint": "^1.0.0",
-    "release-it": "^19.0.3",
-    "turbo": "^2.9.18",
-    "typescript": "^6.0.3",
+    "@types/bun": "1.3.14",
+    "@types/node": "25.6.0",
+    "bun2nix": "2.0.8",
+    "danger": "12.3.4",
+    "knip": "6.11.0",
+    "oxlint": "1.63.0",
+    "release-it": "19.2.4",
+    "turbo": "2.9.18",
+    "typescript": "6.0.3",
     "ultracite": "6.4.0"
   },
   "overrides": {
-    "cpu-features": "npm:noop2@^2.0.0"
+    "cpu-features": "npm:noop2@2.0.0"
   },
   "packageManager": "bun@1.3.13"
 }

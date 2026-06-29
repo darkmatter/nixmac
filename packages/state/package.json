@@ -14,10 +14,10 @@
     "check": "oxlint ."
   },
   "dependencies": {
-    "immer": "^11.1.8",
-    "zustand": "^5.0.8"
+    "immer": "11.1.8",
+    "zustand": "5.0.13"
   },
   "devDependencies": {
-    "@types/react": "^19"
+    "@types/react": "19.2.14"
   }
 }
