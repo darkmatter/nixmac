@@ -19,8 +19,7 @@ struct GithubBootstrapStatusInput {
 #[derive(Debug, Deserialize, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 struct GithubImportInput {
-    owner: String,
-    repo: String,
+    repo_ref: String,
     dir_name: Option<String>,
 }
 
@@ -69,7 +68,7 @@ async fn disconnect(ctx: OrpcCtx, _input: ()) -> Result<(), ORPCError> {
 }
 
 async fn import(ctx: OrpcCtx, input: GithubImportInput) -> Result<SetDirResult, ORPCError> {
-    config::github_import(ctx.app, input.owner, input.repo, input.dir_name)
+    config::config_import_github(ctx.app, input.repo_ref, input.dir_name)
         .await
         .map_err(|error| internal_err("github.import", error))
 }

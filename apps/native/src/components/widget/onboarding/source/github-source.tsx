@@ -431,7 +431,9 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     setError(null);
     setImportingRef(repoRef);
     try {
-      await client.github.import({ owner: repo.owner, repo: repo.name, dirName: DEFAULT_DIR });
+      // TODO: The UI needs updating to support the more extensive format that we support for repo references
+      // including the ref and subdir.
+      await client.github.import({ repoRef: repoRef, dirName: DEFAULT_DIR });
       onImported?.();
     } catch (e: unknown) {
       resetRejectedSession(e);

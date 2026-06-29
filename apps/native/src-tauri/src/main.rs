@@ -533,7 +533,7 @@ fn run_gui_mode(
             app: app.clone(),
         }))
         .invoke_handler(tauri::generate_handler![
-            // Configuration — see `orpc::config`, `orpc::flake`, `orpc::path`, `orpc::github::import`
+            // Configuration — see `orpc::config`, `orpc::flake`, `orpc::path`, `orpc::github::import`            commands::config::config_get,
             // GitHub App connection (server-brokered) — see `orpc::github`
             // nixmac account + non-GitHub sync
             commands::account::account_status,

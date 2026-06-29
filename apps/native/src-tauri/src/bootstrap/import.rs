@@ -9,9 +9,10 @@
 //! had selected an existing flake.
 
 use anyhow::{Context, Result, anyhow, bail};
-use git2::{Cred, CredentialType, FetchOptions, RemoteCallbacks};
+use git2::{Cred, FetchOptions, RemoteCallbacks};
 use std::fs::File;
 use std::path::{Component, Path, PathBuf};
+use tauri::AppHandle;
 
 use crate::bootstrap::default_config::{detect_hostname, detect_username};
 use crate::bootstrap::detect_darwin_platform;
@@ -26,6 +27,10 @@ pub struct RepoRef {
     pub git_ref: Option<String>,
     /// Optional subdirectory inside the repo to use as the flake root.
     pub subdir: Option<String>,
+    /// Repository owner parsed from the locator.
+    pub owner: String,
+    /// Repository name parsed from the locator, without a trailing `.git`.
+    pub repo: String,
 }
 
 /// Sanitize a clone URL for logging, removing any embedded credentials.
@@ -50,6 +55,56 @@ fn is_valid_segment(segment: &str) -> bool {
         && segment
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
+}
+
+/// Checks if the given clone URL is a GitHub URL, either in HTTPS or SSH form.
+fn is_github_clone_url(clone_url: &str) -> bool {
+    if clone_url.starts_with("git@github.com:") {
+        return true;
+    }
+
+    url::Url::parse(clone_url)
+        .ok()
+        .and_then(|url| url.host_str().map(|h| h.to_ascii_lowercase()))
+        .is_some_and(|host| host == "github.com" || host == "www.github.com")
+}
+
+/// Parses one of our repository locator forms into an owner/repo pair, stripping any `.git` suffix and optional `github.com/` prefix.
+/// This is used to populate the `owner` and `repo` fields of `RepoRef`, which are actually only necessary for the GitHub App token retrieval logic.
+fn owner_and_repo(locator: &str) -> Result<(String, String)> {
+    let path = if ["https://", "http://", "ssh://"]
+        .iter()
+        .any(|scheme| locator.starts_with(scheme))
+    {
+        let url = url::Url::parse(locator)
+            .with_context(|| format!("Invalid repository URL: '{}'", locator))?;
+        url.path().trim_matches('/').to_string()
+    } else if let Some((_, path)) = locator
+        .split_once(':')
+        .filter(|_| locator.starts_with("git@"))
+    {
+        path.trim_matches('/').to_string()
+    } else {
+        locator
+            .strip_prefix("github.com/")
+            .or_else(|| locator.strip_prefix("www.github.com/"))
+            .unwrap_or(locator)
+            .trim_matches('/')
+            .to_string()
+    };
+
+    let mut parts = path.rsplit('/');
+    let repo = parts
+        .next()
+        .map(|repo| repo.strip_suffix(".git").unwrap_or(repo))
+        .unwrap_or_default();
+    let owner = parts.next().unwrap_or_default();
+
+    if !is_valid_segment(owner) || !is_valid_segment(repo) {
+        bail!("Expected a repository reference like 'owner/repo'");
+    }
+
+    Ok((owner.to_string(), repo.to_string()))
 }
 
 /// Parses a repository reference into a clone URL plus optional ref and
@@ -83,6 +138,7 @@ pub fn parse_repo_ref(input: &str) -> Result<RepoRef> {
     }
 
     let (locator, git_ref, subdir) = parse_query_params(trimmed)?;
+    let (owner, repo) = owner_and_repo(locator)?;
 
     // Full URL forms.
     let is_full_url = ["https://", "http://", "ssh://"]
@@ -93,8 +149,9 @@ pub fn parse_repo_ref(input: &str) -> Result<RepoRef> {
         return Ok(RepoRef {
             clone_url: locator.to_string(),
             git_ref,
-
             subdir,
+            owner,
+            repo,
         });
     }
 
@@ -104,6 +161,8 @@ pub fn parse_repo_ref(input: &str) -> Result<RepoRef> {
             clone_url: locator.to_string(),
             git_ref,
             subdir,
+            owner,
+            repo,
         });
     }
 
@@ -116,13 +175,14 @@ pub fn parse_repo_ref(input: &str) -> Result<RepoRef> {
     let path = path.trim_matches('/');
 
     let mut parts = path.split('/');
-    let (Some(owner), Some(repo), None) = (parts.next(), parts.next(), parts.next()) else {
+    let (Some(parsed_owner), Some(parsed_repo), None) = (parts.next(), parts.next(), parts.next())
+    else {
         bail!("Expected a GitHub reference like 'owner/repo'");
     };
 
-    let repo = repo.strip_suffix(".git").unwrap_or(repo);
+    let parsed_repo = parsed_repo.strip_suffix(".git").unwrap_or(parsed_repo);
 
-    if !is_valid_segment(owner) || !is_valid_segment(repo) {
+    if !is_valid_segment(parsed_owner) || !is_valid_segment(parsed_repo) {
         bail!("Invalid GitHub reference: '{}'", trimmed);
     }
 
@@ -130,6 +190,8 @@ pub fn parse_repo_ref(input: &str) -> Result<RepoRef> {
         clone_url: format!("https://github.com/{owner}/{repo}.git"),
         git_ref,
         subdir,
+        owner: parsed_owner.to_string(),
+        repo: parsed_repo.to_string(),
     })
 }
 
@@ -191,26 +253,10 @@ fn validate_subdir(path: &str) -> Result<()> {
 /// Clones the repository specified by `spec` into `dest`, then copies the specified
 /// subdirectory (if any) into `dest`, stripping the wrapper directory that git sparse
 /// sparse checkout would normally require. This allows us to support subdirectory imports
-/// without forcing users to understand git's sparse checkout semantics.
-pub fn materialize_repo(spec: &RepoRef, dest: &Path) -> Result<()> {
-    materialize_repo_with_optional_token(spec, dest, None)
-}
-
-/// Clones the repository specified by `spec` using a short-lived HTTPS access
-/// token, then materializes the configured subdirectory when requested.
-pub fn materialize_repo_with_token(spec: &RepoRef, dest: &Path, token: &str) -> Result<()> {
-    if token.is_empty() {
-        bail!("GitHub clone token is empty");
-    }
-
-    materialize_repo_with_optional_token(spec, dest, Some(token))
-}
-
-fn materialize_repo_with_optional_token(
-    spec: &RepoRef,
-    dest: &Path,
-    access_token: Option<&str>,
-) -> Result<()> {
+/// without forcing users to understand git's sparse checkout semantics. When an app handle
+/// is available, GitHub clones first try a short-lived GitHub App token; missing or failed
+/// token retrieval falls back to the user's normal git credentials.
+pub fn materialize_repo(app: Option<AppHandle>, spec: &RepoRef, dest: &Path) -> Result<()> {
     // We're going to have issues later if `dest` already exists as a non-empty directory, so check that upfront before doing any cloning.
     if dest.exists() {
         if !dest.is_dir() {
@@ -223,16 +269,41 @@ fn materialize_repo_with_optional_token(
         }
     }
 
+    let mut clone_spec = spec.clone();
+    let clone_token = app
+        .as_ref()
+        .filter(|_| is_github_clone_url(&spec.clone_url))
+        .and_then(|app| {
+            match tauri::async_runtime::block_on(crate::sync::github_clone_token(
+                app,
+                &spec.owner,
+                &spec.repo,
+            )) {
+                Ok(token) => {
+                    clone_spec.clone_url = token.clone_url;
+                    Some(token.token)
+                }
+                Err(error) => {
+                    log::warn!(
+                        "Could not retrieve a GitHub App clone token for {}/{}; falling back to configured git credentials: {error:#}",
+                        spec.owner,
+                        spec.repo,
+                    );
+                    None
+                }
+            }
+        });
+
     // Easy case. No subdirectory means we can clone directly into the destination.
     if spec.subdir.is_none() {
-        return clone_repo(spec, dest, access_token);
+        return clone_repo(&clone_spec, dest, clone_token.as_deref());
     }
 
     let temp = tempfile::tempdir().context("failed to create temporary clone directory")?;
     let checkout_dir = temp.path().join("repo");
 
     // Perform the actual clone into a temp directory, then copy the specified subdirectory into the final destination.
-    clone_repo(spec, &checkout_dir, access_token)?;
+    clone_repo(&clone_spec, &checkout_dir, clone_token.as_deref())?;
 
     let subdir = spec.subdir.as_ref().unwrap();
     let source = checkout_dir.join(subdir);
@@ -253,7 +324,9 @@ fn materialize_repo_with_optional_token(
 
 /// Clones `spec` into `dest`. `dest` must not already exist as a non-empty
 /// directory (libgit2 requires an empty/absent target).
-fn clone_repo(spec: &RepoRef, dest: &Path, access_token: Option<&str>) -> Result<()> {
+/// It will use a temporary token if provided, otherwise it will try to proceed with default credentials
+/// from the ssh agent or the user's git config.
+fn clone_repo(spec: &RepoRef, dest: &Path, token: Option<&str>) -> Result<()> {
     log::info!(
         "Cloning {} into {} at {}",
         sanitize_clone_url_for_logs(&spec.clone_url),
@@ -265,23 +338,50 @@ fn clone_repo(spec: &RepoRef, dest: &Path, access_token: Option<&str>) -> Result
         builder.branch(branch);
     }
 
-    // Add ssh agent auth. This is required even if we are ostensibly cloning with an https url and even for a public repo
-    // because libgit2 will sometimes attempt to use the ssh transport for https urls when the remote supports it,
-    // and/or somebody is remapping to always use ssh in their local git config (if they have it).
-    // So without these callbacks the clone will fail with an auth error instead of falling back to https.
+    let git_config = git2::Config::open_default().ok();
+    let mut token_attempted = false;
+    let mut ssh_agent_attempted = false;
+    let mut credential_helper_attempted = false;
     let mut callbacks = RemoteCallbacks::new();
-    callbacks.credentials(move |_url, username_from_url, allowed| {
-        if let Some(token) = access_token {
-            return token_credential(token, username_from_url, allowed);
+    callbacks.credentials(move |url, username_from_url, allowed| {
+        if allowed.contains(git2::CredentialType::USERNAME)
+            && !allowed.contains(git2::CredentialType::USER_PASS_PLAINTEXT)
+            && !allowed.contains(git2::CredentialType::SSH_KEY)
+            && !allowed.contains(git2::CredentialType::DEFAULT)
+        {
+            return Cred::username(username_from_url.unwrap_or("git"));
         }
 
-        if allowed.contains(git2::CredentialType::SSH_KEY) {
+        if allowed.contains(git2::CredentialType::USER_PASS_PLAINTEXT) && !token_attempted {
+            token_attempted = true;
+            if let Some(token) = token {
+                return Cred::userpass_plaintext("x-access-token", token);
+            }
+        }
+
+        if allowed.contains(git2::CredentialType::SSH_KEY) && !ssh_agent_attempted {
+            ssh_agent_attempted = true;
             return Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"));
         }
+
+        if allowed.contains(git2::CredentialType::USER_PASS_PLAINTEXT)
+            && !credential_helper_attempted
+        {
+            credential_helper_attempted = true;
+            if let Some(config) = &git_config {
+                if let Ok(credential) = Cred::credential_helper(config, url, username_from_url) {
+                    return Ok(credential);
+                }
+            }
+        }
+
         if allowed.contains(git2::CredentialType::DEFAULT) {
             return Cred::default();
         }
-        Cred::default()
+
+        Err(git2::Error::from_str(
+            "no supported authentication methods succeeded",
+        ))
     });
 
     let mut fetch_options = FetchOptions::new();
@@ -598,9 +698,11 @@ mod tests {
             clone_url: source.to_string_lossy().into_owned(),
             git_ref: Some("import-me".to_string()),
             subdir: None,
+            owner: "local".to_string(),
+            repo: "source".to_string(),
         };
 
-        materialize_repo(&spec, &dest).unwrap();
+        materialize_repo(None, &spec, &dest).unwrap();
 
         assert_eq!(
             fs::read_to_string(dest.join("config/flake.nix")).unwrap(),
@@ -622,9 +724,11 @@ mod tests {
             clone_url: source.to_string_lossy().into_owned(),
             git_ref: None,
             subdir: Some("config".to_string()),
+            owner: "local".to_string(),
+            repo: "source".to_string(),
         };
 
-        materialize_repo(&spec, &dest).unwrap();
+        materialize_repo(None, &spec, &dest).unwrap();
 
         assert_eq!(
             fs::read_to_string(dest.join("flake.nix")).unwrap(),
@@ -645,6 +749,8 @@ mod tests {
                 clone_url: "https://github.com/czxtm/darwin.git".to_string(),
                 git_ref: None,
                 subdir: None,
+                owner: "czxtm".to_string(),
+                repo: "darwin".to_string(),
             }
         );
     }
@@ -658,6 +764,8 @@ mod tests {
                 clone_url: "https://github.com/czxtm/darwin.git".to_string(),
                 git_ref: Some("main".to_string()),
                 subdir: Some("hosts/work".to_string()),
+                owner: "czxtm".to_string(),
+                repo: "darwin".to_string(),
             }
         );
     }
@@ -668,6 +776,8 @@ mod tests {
         assert_eq!(r.clone_url, "https://example.com/x/y.git");
         assert_eq!(r.git_ref.as_deref(), Some("dev"));
         assert_eq!(r.subdir.as_deref(), Some("flakes/mac"));
+        assert_eq!(r.owner, "x");
+        assert_eq!(r.repo, "y");
 
         let r = parse_repo_ref("http://example.com/x/y.git?ref=v1").unwrap();
         assert_eq!(r.clone_url, "http://example.com/x/y.git");
@@ -704,6 +814,8 @@ mod tests {
         assert_eq!(r.clone_url, "git@github.com:czxtm/darwin.git");
         assert_eq!(r.git_ref.as_deref(), Some("main"));
         assert_eq!(r.subdir.as_deref(), Some("mac"));
+        assert_eq!(r.owner, "czxtm");
+        assert_eq!(r.repo, "darwin");
     }
 
     #[test]
@@ -939,31 +1051,9 @@ mod tests {
     }
 
     #[test]
-    fn token_credential_uses_plaintext_userpass_when_allowed() {
-        let credential =
-            token_credential("github-token", None, CredentialType::USER_PASS_PLAINTEXT);
-
-        assert!(credential.is_ok());
+    fn test_is_github_clone_url() {
+        assert!(is_github_clone_url("https://github.com/repo.git"));
+        assert!(is_github_clone_url("https://www.github.com/repo.git"));
+        assert!(!is_github_clone_url("https://gitlab.com/repo.git"));
     }
-
-    #[test]
-    fn token_credential_fails_when_plaintext_userpass_not_allowed() {
-        let credential = token_credential("github-token", None, CredentialType::SSH_KEY);
-
-        assert!(credential.is_err());
-    }
-}
-
-fn token_credential(
-    token: &str,
-    username_from_url: Option<&str>,
-    allowed: CredentialType,
-) -> std::result::Result<Cred, git2::Error> {
-    if token.is_empty() || !allowed.contains(CredentialType::USER_PASS_PLAINTEXT) {
-        return Err(git2::Error::from_str(
-            "token authentication requires plaintext username/password credentials",
-        ));
-    }
-
-    Cred::userpass_plaintext(username_from_url.unwrap_or("x-access-token"), token)
 }

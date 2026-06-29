@@ -124,9 +124,11 @@ ______________________________________________________________________
 ## Notes for the desktop (Tauri) side
 
 - Desktop commands map 1:1: `github_connect_start` → `/api/auth/github/connect/start`, `github_status` →
-  `/api/auth/github/status`, `github_list_repos` → `/api/auth/github/repos`, `github_import` →
+  `/api/auth/github/status`, `github_list_repos` → `/api/auth/github/repos`, →
   `/api/auth/github/clone-token` then `clone_repo` with the token, `github_disconnect` →
   `/api/auth/github/disconnect`.
+- Repo clone command is in `/commands/config.rs` as `config_import_github` to be consistent with other
+  config-bootstrapping methods.
 - GitHub-first onboarding uses `github_bootstrap_start` → `/api/auth/github/bootstrap/start`, then polls
   `github_bootstrap_status` → `/api/auth/github/bootstrap/status?state=…`. Native Rust stores the returned
   `apiKey` and only exposes non-secret account/linkage status to the React UI.

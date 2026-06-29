@@ -326,43 +326,13 @@ pub async fn config_import_github(
 
     // Clone on a blocking thread; libgit2 network I/O is synchronous.
     let target_for_clone = target.clone();
+    let app_for_clone = app.clone();
     tauri::async_runtime::spawn_blocking(move || {
-        import::materialize_repo(&spec, &target_for_clone)
+        import::materialize_repo(Some(app_for_clone), &spec, &target_for_clone)
     })
     .await
     .map_err(|e| capture_err("config_import_github", e))?
     .map_err(|e| capture_err("config_import_github", e))?;
-
-    finalize_imported_dir(&app, &target)
-}
-
-/// Imports `owner/repo` from a connected GitHub App installation, cloning with
-/// a short-lived, repo-scoped token minted by the nixmac server. Works for
-/// private repos; the token is used only for the clone and never persisted.
-pub async fn github_import(
-    app: AppHandle,
-    owner: String,
-    repo: String,
-    dir_name: Option<String>,
-) -> Result<shared_types::SetDirResult, String> {
-    let token = crate::sync::github_clone_token(&app, &owner, &repo)
-        .await
-        .map_err(|e| capture_err("github_import", e))?;
-    let target = prepare_import_target(dir_name)?;
-
-    let spec = import::RepoRef {
-        clone_url: token.clone_url,
-        git_ref: None,
-        subdir: None,
-    };
-    let target_for_clone = target.clone();
-    let access = token.token;
-    tauri::async_runtime::spawn_blocking(move || {
-        import::materialize_repo_with_token(&spec, &target_for_clone, &access)
-    })
-    .await
-    .map_err(|e| capture_err("github_import", e))?
-    .map_err(|e| capture_err("github_import", e))?;
 
     finalize_imported_dir(&app, &target)
 }
