@@ -80,11 +80,7 @@ fn e2e_skip_permissions_enabled() -> bool {
 
 #[cfg(debug_assertions)]
 fn vite_skip_permissions_enabled() -> bool {
-    cfg!(debug_assertions)
-        && std::env::var("VITE_NIXMAC_SKIP_PERMISSIONS")
-            .ok()
-            .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
-            .unwrap_or(false)
+    crate::env::vite_skip_permissions()
 }
 
 #[cfg(not(debug_assertions))]
@@ -446,7 +442,7 @@ mod tests {
         let _env_restore =
             crate::test_support::EnvVarRestore::capture(&["NIXMAC_SKIP_PERMISSIONS"]);
 
-        std::env::set_var("NIXMAC_SKIP_PERMISSIONS", "true");
+        unsafe { std::env::set_var("NIXMAC_SKIP_PERMISSIONS", "true") };
 
         assert!(e2e_skip_permissions_enabled());
     }
@@ -458,7 +454,7 @@ mod tests {
         let _env_restore =
             crate::test_support::EnvVarRestore::capture(&["NIXMAC_SKIP_PERMISSIONS"]);
 
-        std::env::set_var("NIXMAC_SKIP_PERMISSIONS", "true");
+        unsafe { std::env::set_var("NIXMAC_SKIP_PERMISSIONS", "true") };
 
         assert!(!e2e_skip_permissions_enabled());
     }
@@ -470,7 +466,7 @@ mod tests {
         let _env_restore =
             crate::test_support::EnvVarRestore::capture(&["VITE_NIXMAC_SKIP_PERMISSIONS"]);
 
-        std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true");
+        unsafe { std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true") };
 
         assert!(vite_skip_permissions_enabled());
     }
@@ -507,16 +503,16 @@ mod tests {
         let _env_restore =
             crate::test_support::EnvVarRestore::capture(&["VITE_NIXMAC_SKIP_PERMISSIONS"]);
 
-        std::env::remove_var("VITE_NIXMAC_SKIP_PERMISSIONS");
+        unsafe { std::env::remove_var("VITE_NIXMAC_SKIP_PERMISSIONS") };
         assert!(!vite_skip_permissions_enabled());
 
-        std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "0");
+        unsafe { std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "0") };
         assert!(!vite_skip_permissions_enabled());
 
-        std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "false");
+        unsafe { std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "false") };
         assert!(!vite_skip_permissions_enabled());
 
-        std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true");
+        unsafe { std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true") };
         assert_eq!(vite_skip_permissions_enabled(), cfg!(debug_assertions));
     }
 }

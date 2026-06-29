@@ -1,0 +1,3 @@
+[submodule "tools"]
+	path = scripts/tools
+	url = git@github.com:darkmatter/tools.git

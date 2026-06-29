@@ -1,12 +1,12 @@
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   setupNixmacTestEnvironment,
   teardownNixmacTestEnvironment,
-} from '../dist-e2e/tests/wdio/helpers/test-env.js';
+} from "../dist-e2e/tests/wdio/helpers/test-env.js";
 
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
-const APPS_NATIVE_DIR = path.resolve(THIS_DIR, '..');
+const APPS_NATIVE_DIR = path.resolve(THIS_DIR, "..");
 
 /**
  * Create a WDIO config for a specific test suite.
@@ -26,7 +26,7 @@ export function createWdioConfig({ specs, setupOptions = {} }) {
     }
 
     teardownPromise = teardownNixmacTestEnvironment(testEnvironment).catch((error) => {
-      console.error('[wdio:test-env] Teardown failed', error);
+      console.error("[wdio:test-env] Teardown failed", error);
       throw error;
     });
 
@@ -34,7 +34,7 @@ export function createWdioConfig({ specs, setupOptions = {} }) {
   };
 
   const handleSigint = async () => {
-    console.log('[wdio:test-env] Caught SIGINT, running teardown before exit');
+    console.log("[wdio:test-env] Caught SIGINT, running teardown before exit");
     try {
       await performTeardownOnce();
     } finally {
@@ -43,7 +43,7 @@ export function createWdioConfig({ specs, setupOptions = {} }) {
   };
 
   const handleSigterm = async () => {
-    console.log('[wdio:test-env] Caught SIGTERM, running teardown before exit');
+    console.log("[wdio:test-env] Caught SIGTERM, running teardown before exit");
     try {
       await performTeardownOnce();
     } finally {
@@ -56,8 +56,8 @@ export function createWdioConfig({ specs, setupOptions = {} }) {
       return;
     }
 
-    process.once('SIGINT', handleSigint);
-    process.once('SIGTERM', handleSigterm);
+    process.once("SIGINT", handleSigint);
+    process.once("SIGTERM", handleSigterm);
     signalHandlersRegistered = true;
   };
 
@@ -66,8 +66,8 @@ export function createWdioConfig({ specs, setupOptions = {} }) {
       return;
     }
 
-    process.off('SIGINT', handleSigint);
-    process.off('SIGTERM', handleSigterm);
+    process.off("SIGINT", handleSigint);
+    process.off("SIGTERM", handleSigterm);
     signalHandlersRegistered = false;
   };
 
@@ -76,7 +76,7 @@ export function createWdioConfig({ specs, setupOptions = {} }) {
   );
 
   return {
-    runner: 'local',
+    runner: "local",
     port: 4444,
     connectionRetryCount: 10,
     connectionRetryTimeout: 120000,
@@ -85,16 +85,16 @@ export function createWdioConfig({ specs, setupOptions = {} }) {
     maxInstances: 1,
     capabilities: [
       {
-        'tauri:options': {
-          binary: path.resolve(APPS_NATIVE_DIR, '../../target/debug/nixmac'),
+        "tauri:options": {
+          binary: path.resolve(APPS_NATIVE_DIR, "../../target/debug/nixmac"),
         },
       },
     ],
-    logLevel: 'info',
-    framework: 'mocha',
-    reporters: ['spec'],
+    logLevel: "info",
+    framework: "mocha",
+    reporters: ["spec"],
     mochaOpts: {
-      ui: 'bdd',
+      ui: "bdd",
       timeout: Number(process.env.WDIO_TEST_TIMEOUT) || 120000,
     },
     async onPrepare() {

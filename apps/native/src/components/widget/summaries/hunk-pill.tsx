@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import type { ChangeWithRichType } from "@/components/widget/utils";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 import { countDiffLineStats, DiffLineStatsBadge } from "./diff-line-stats";
 
 interface HunkPillProps {
@@ -37,7 +37,7 @@ export function HunkPill({ change, showCounts = true, onClick }: HunkPillProps) 
   return (
     <Badge
       variant="secondary"
-      className="max-w-[140px] cursor-pointer truncate rounded-full border-none font-mono text-[10px] text-[#888] tracking-wide transition-all hover:brightness-110"
+      className="max-w-[140px] cursor-pointer truncate rounded-full border-none font-mono text-[10px] text-[#888] tracking-wide transition-all hover:brightness-110 ml-auto"
       onClick={(e) => {
         e.stopPropagation();
         onClick();

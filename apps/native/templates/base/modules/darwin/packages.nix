@@ -1,5 +1,12 @@
 # System packages and custom scripts
-{ config, pkgs, lib, inputs, user, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  inputs,
+  user,
+  ...
+}:
 
 {
   environment.systemPackages = with pkgs; [
@@ -65,4 +72,3 @@
     (pkgs.writeShellScriptBin "pkg?" (builtins.readFile ./scripts/pkg-search.sh))
   ];
 }
-

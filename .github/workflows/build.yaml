@@ -8,24 +8,17 @@ on:
     branches: [main, develop]
   merge_group:
   workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
   SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 jobs:
-  optimize_ci:
-    runs-on: ghcr.io/cirruslabs/macos-runner:tahoe
-    outputs:
-      skip: ${{ steps.check_skip.outputs.skip }}
-    steps:
-      - name: Optimize CI
-        id: check_skip
-        uses: withgraphite/graphite-ci-action@main
-        with:
-          graphite_token: ${{ secrets.GRAPHITE_TOKEN }}
   build:
-    runs-on: ghcr.io/cirruslabs/macos-runner:tahoe
-    needs: optimize_ci
-    if: needs.optimize_ci.outputs.skip == 'false'
+    runs-on: [self-hosted, macOS]
     permissions:
       contents: write
     steps:
@@ -34,31 +27,30 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: true
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Rust cache
-        uses: Swatinem/rust-cache@v2
+          clean: false
+
+      - name: Clean workspace while preserving CI caches
+        shell: bash
+        run: |
+          git reset --hard
+          git clean -ffdx -e .devenv/ -e .devenv-ci/
+
+      - uses: ./.github/actions/setup
         with:
-          workspaces: apps/native/src-tauri
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-      - name: Setup sops
-        uses: nhedger/setup-sops@v2.1.1
-      - name: Setup age
-        uses: alessiodionisi/setup-age-action@v1.4.0
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-      - name: Cache bun install
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            bun-${{ runner.os }}-
-      - name: Install frontend dependencies
-        run: bun install --frozen-lockfile
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+          setup-rust: true
+          rust-cache-workspaces: ""
+      # tauri-plugin-macos-passkey 0.1.0 ships a Swift package declaring
+      # swift-tools-version 6.1, but the self-hosted runner has Swift 6.0.2
+      # (Xcode 16.1). Fetch crates and lower the declared tools version before
+      # syncing the app version: sync-version mutates Cargo.toml, which would
+      # make `cargo fetch --locked` fail because Cargo.lock still contains the
+      # committed package version.
+      - name: Patch passkey Swift package
+        working-directory: apps/native/src-tauri
+        run: |
+          cargo fetch --locked
+          bash "$GITHUB_WORKSPACE/ops/scripts/ci/patch-passkey-swift.sh"
       # Decide what kind of build this is:
       #   - tag:     push of refs/tags/v* → ship that exact version
       #   - release: push to main → patch-bump the latest tag and ship
@@ -72,6 +64,24 @@ jobs:
       - name: Compute release version
         id: release-version
         run: bash ops/scripts/release/compute-version.sh
+
+      - name: Setup sccache
+        shell: bash
+        run: |
+          if ! command -v sccache &>/dev/null; then
+            brew install sccache 2>/dev/null || cargo install sccache 2>/dev/null || true
+          fi
+          echo "SCCACHE_DIR=$RUNNER_TEMP/sccache" >> "$GITHUB_ENV"
+          echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/sccache"
+
+      - name: Restore sccache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/sccache
+          key: sccache-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            sccache-${{ runner.os }}-${{ runner.arch }}-
       # Sync native app version files. Tag + release modes use the computed
       # version directly; branch/PR builds fall back to the max(package.json,
       # latest-git-tag) guard so a stale package.json cannot embed a version
@@ -86,7 +96,7 @@ jobs:
         run: bash ops/scripts/release/sync-version.sh
       - name: Check for code signing secrets
         id: check-secrets
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         run: |
           if [ -n "$APPLE_CERTIFICATE" ]; then
             echo "has_certificate=true" >> $GITHUB_OUTPUT
@@ -108,31 +118,53 @@ jobs:
           export APPLE_SIGNING_IDENTITY="-"
           unset APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD KEYCHAIN_PASSWORD
           bun run desktop:build
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Pass DSNs and build metadata into the tauri action step so build.rs can read them
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           NIXMAC_ENV: prod
           NIXMAC_VERSION: ${{ steps.sync-version.outputs.build_version }}
-          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
           SUBMITTED_FEEDBACK_DSN: ${{ secrets.SUBMITTED_FEEDBACK_DSN }}
-          VITE_NIXMAC_ENV: prod
-          VITE_NIXMAC_VERSION: ${{ steps.sync-version.outputs.build_version }}
       - name: Unit Test Tauri app
         run: bun run desktop:test
+
+      - name: Save sccache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/sccache
+          key: sccache-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
 
       # Import Apple Developer certificate (only for releases with secrets).
       # Placed AFTER the Tauri build to avoid replacing the keychain search list
       # before `bun run desktop:build`, which caused DMG bundling failures on tags.
+      # The normalizer needs this keychain to re-sign updater archives after
+      # install-name rewrites mutate the embedded app bundle.
       - name: Import Apple Developer certificate
         if: (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
           steps.check-secrets.outputs.has_certificate == 'true'
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         run: bash ops/scripts/release/import-certificate.sh
+      - name: Normalize macOS system install names
+        shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
+        run: |
+          set -euo pipefail
+
+          APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d 2>/dev/null | sed -n '1p' || true)
+          DMG_PATH=$(find target/release/bundle/dmg -name "*.dmg" -type f 2>/dev/null | sed -n '1p' || true)
+          TAR_GZ_PATH=$(find target/release/bundle -name "*.app.tar.gz" -not -name "*.sig" -type f 2>/dev/null | sed -n '1p' || true)
+
+          if [ -z "$APP_PATH" ] || [ -z "$DMG_PATH" ] || [ -z "$TAR_GZ_PATH" ]; then
+            echo "ERROR: missing app, DMG, or updater archive for install-name normalization (APP_PATH=$APP_PATH DMG_PATH=$DMG_PATH TAR_GZ_PATH=$TAR_GZ_PATH)"
+            exit 1
+          fi
+
+          bash ops/scripts/release/normalize-macos-install-names.sh "$APP_PATH" "$DMG_PATH" "$TAR_GZ_PATH"
+
       # Sign the app bundle (required for notarization)
       - name: Sign app bundle
         if: (steps.release-version.outputs.mode == 'tag' ||
@@ -158,8 +190,23 @@ jobs:
           steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
           steps.check-secrets.outputs.has_notarization == 'true'
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         run: bash ops/scripts/release/notarize.sh
+      - name: Check macOS app portability
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d 2>/dev/null | sed -n '1p' || true)
+          DMG_PATH=$(find target/release/bundle/dmg -name "*.dmg" -type f 2>/dev/null | sed -n '1p' || true)
+          TAR_GZ_PATH=$(find target/release/bundle -name "*.app.tar.gz" -not -name "*.sig" -type f 2>/dev/null | sed -n '1p' || true)
+
+          if [ -z "$APP_PATH" ] || [ -z "$DMG_PATH" ] || [ -z "$TAR_GZ_PATH" ]; then
+            echo "ERROR: missing app, DMG, or updater archive for portability check (APP_PATH=$APP_PATH DMG_PATH=$DMG_PATH TAR_GZ_PATH=$TAR_GZ_PATH)"
+            exit 1
+          fi
+
+          bash ops/scripts/release/check-portable-macos-app.sh "$APP_PATH" "$DMG_PATH" "$TAR_GZ_PATH"
       - name: Get artifact paths
         id: artifacts
         run: |
@@ -227,7 +274,7 @@ jobs:
           steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
           !contains(steps.release-version.outputs.tag, '-test.')
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         env:
           AWS_DEFAULT_REGION: auto
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

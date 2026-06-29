@@ -15,6 +15,7 @@ use syn::{Attribute, Expr, ExprArray, ExprRange, LitStr};
 pub(crate) enum StoreScope {
     Global,
     Repo,
+    Env,
 }
 
 /// Parsed `#[config(...)]` attributes that apply to the whole struct.
@@ -30,6 +31,8 @@ pub(crate) struct StructConfig {
     pub(crate) display_name: Option<String>,
     /// One-line description shown beneath the display name.
     pub(crate) description: Option<String>,
+    /// Output filename for generated JSON Schema (e.g. `settings.schema.json`).
+    pub(crate) schema_file: Option<String>,
 }
 
 /// Parsed `#[config(...)]` attributes that apply to a single field.
@@ -51,6 +54,10 @@ pub(crate) struct FieldConfig {
     pub(crate) options: Option<ExprArray>,
     /// Whether a text field should render as a multi-line textarea.
     pub(crate) multiline: bool,
+    /// Process environment variable that overrides repo and build defaults.
+    pub(crate) env_var: Option<String>,
+    /// When true, fall back to compile-time `option_env!` for this field.
+    pub(crate) build_embed: bool,
 }
 
 /// Parses attributes that apply to the whole configurable struct.
@@ -58,10 +65,38 @@ pub(crate) struct FieldConfig {
 /// Struct attributes define how the generated schema is presented and which
 /// managed slice scope owns the values. Unknown keys fail at compile time so
 /// stale migration attributes do not sit unnoticed in settings structs.
-pub(crate) fn parse_struct_config(attrs: &[Attribute]) -> syn::Result<StructConfig> {
+/// Default JSON Schema filename for a configurable struct.
+pub(crate) fn default_schema_file(scope: StoreScope, struct_name: &str) -> String {
+    match scope {
+        StoreScope::Repo => "settings.schema.json".to_string(),
+        StoreScope::Env => "env.schema.json".to_string(),
+        StoreScope::Global => format!("{}.schema.json", struct_name_to_snake(struct_name)),
+    }
+}
+
+fn struct_name_to_snake(name: &str) -> String {
+    let mut out = String::new();
+    for (i, c) in name.chars().enumerate() {
+        if c.is_uppercase() {
+            if i > 0 {
+                out.push('_');
+            }
+            out.extend(c.to_lowercase());
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
+pub(crate) fn parse_struct_config(
+    attrs: &[Attribute],
+    struct_name: &str,
+) -> syn::Result<StructConfig> {
     let mut scope: Option<StoreScope> = None;
     let mut display_name: Option<String> = None;
     let mut description: Option<String> = None;
+    let mut schema_file: Option<String> = None;
 
     for attr in attrs {
         if !attr.path().is_ident("config") {
@@ -74,11 +109,12 @@ pub(crate) fn parse_struct_config(attrs: &[Attribute]) -> syn::Result<StructConf
                 scope = Some(match lit.value().as_str() {
                     "global" => StoreScope::Global,
                     "repo" => StoreScope::Repo,
+                    "env" => StoreScope::Env,
                     other => {
                         return Err(syn::Error::new_spanned(
                             lit,
                             format!("Configurable: unsupported scope `{other}`"),
-                        ))
+                        ));
                     }
                 });
                 Ok(())
@@ -92,16 +128,24 @@ pub(crate) fn parse_struct_config(attrs: &[Attribute]) -> syn::Result<StructConf
                 let lit: LitStr = value.parse()?;
                 description = Some(lit.value());
                 Ok(())
+            } else if meta.path.is_ident("schema_file") {
+                let value = meta.value()?;
+                let lit: LitStr = value.parse()?;
+                schema_file = Some(lit.value());
+                Ok(())
             } else {
                 Err(meta.error("unsupported #[config(...)] attribute on struct"))
             }
         })?;
     }
 
+    let scope = scope.unwrap_or(StoreScope::Global);
+
     Ok(StructConfig {
-        scope: scope.unwrap_or(StoreScope::Global),
+        scope,
         display_name,
         description,
+        schema_file: schema_file.or_else(|| Some(default_schema_file(scope, struct_name))),
     })
 }
 
@@ -121,6 +165,8 @@ pub(crate) fn parse_field_config(
     let mut range: Option<ExprRange> = None;
     let mut options: Option<ExprArray> = None;
     let mut multiline = false;
+    let mut env_var: Option<String> = None;
+    let mut build_embed = false;
 
     for attr in attrs {
         if !attr.path().is_ident("config") {
@@ -159,6 +205,16 @@ pub(crate) fn parse_field_config(
                 let lit: syn::LitBool = value.parse()?;
                 multiline = lit.value;
                 Ok(())
+            } else if meta.path.is_ident("env_var") {
+                let value = meta.value()?;
+                let lit: LitStr = value.parse()?;
+                env_var = Some(lit.value());
+                Ok(())
+            } else if meta.path.is_ident("build_embed") {
+                let value = meta.value()?;
+                let lit: syn::LitBool = value.parse()?;
+                build_embed = lit.value;
+                Ok(())
             } else {
                 Err(meta.error(format!(
                     "unsupported #[config(...)] attribute on field `{}`",
@@ -175,13 +231,15 @@ pub(crate) fn parse_field_config(
         range,
         options,
         multiline,
+        env_var,
+        build_embed,
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use syn::{parse_quote, DeriveInput};
+    use syn::{DeriveInput, parse_quote};
 
     #[test]
     fn parse_struct_config_accepts_repo_scope() {
@@ -192,10 +250,27 @@ mod tests {
             }
         };
 
-        let config = parse_struct_config(&input.attrs).expect("config parses");
+        let config = parse_struct_config(&input.attrs, "EvolutionLimits").expect("config parses");
 
         assert!(matches!(config.scope, StoreScope::Repo));
         assert_eq!(config.display_name.as_deref(), Some("Evolution"));
+        assert_eq!(config.schema_file.as_deref(), Some("settings.schema.json"));
+    }
+
+    #[test]
+    fn parse_struct_config_accepts_env_scope() {
+        let input: DeriveInput = parse_quote! {
+            #[config(scope = "env", display_name = "Environment")]
+            struct NixmacEnvSettings {
+                vite_server_url: String,
+            }
+        };
+
+        let config = parse_struct_config(&input.attrs, "NixmacEnvSettings").expect("config parses");
+
+        assert!(matches!(config.scope, StoreScope::Env));
+        assert_eq!(config.display_name.as_deref(), Some("Environment"));
+        assert_eq!(config.schema_file.as_deref(), Some("env.schema.json"));
     }
 
     #[test]
@@ -206,8 +281,12 @@ mod tests {
             }
         };
 
-        let config = parse_struct_config(&input.attrs).expect("config parses");
+        let config = parse_struct_config(&input.attrs, "Preferences").expect("config parses");
 
         assert!(matches!(config.scope, StoreScope::Global));
+        assert_eq!(
+            config.schema_file.as_deref(),
+            Some("preferences.schema.json")
+        );
     }
 }

@@ -1,7 +1,7 @@
 //! Pipeline entry point for generating summaries over a historical commit range.
 
 use anyhow::Result;
-use tauri::{AppHandle, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 
 use crate::sqlite_types::Change;
 
@@ -11,7 +11,7 @@ pub async fn from_commit_times_number<R: Runtime>(
     number: usize,
 ) -> Result<()> {
     let config_dir = crate::storage::store::get_config_dir(app)?;
-    let db_path = crate::db::get_db_path(app)?;
+    let pool = app.state::<crate::db::DbPool>();
 
     let all_commits = crate::git::query::log(&config_dir, "HEAD", None)?;
     let start = match all_commits.iter().position(|c| c.hash == commit_hash) {
@@ -31,7 +31,7 @@ pub async fn from_commit_times_number<R: Runtime>(
     let mut db_ids: Vec<i64> = Vec::with_capacity(commits.len());
     for commit in &commits {
         let id = crate::db::commits::upsert_commit(
-            &db_path,
+            &pool,
             &commit.hash,
             &commit.tree_hash,
             commit.message.as_deref(),
@@ -55,66 +55,48 @@ pub async fn from_commit_times_number<R: Runtime>(
             .map(|d| crate::git::file_diff_to_change(d, now, true))
             .collect();
 
-        let diff_hashes: Vec<String> = all_changes.iter().map(|c| c.hash.clone()).collect();
-
-        let found = crate::summarize::find_existing::by_base_with_hashes(
-            &db_path,
-            base_commit_id,
-            &diff_hashes,
-        )?;
-
-        let has_changeset = found.change_set.is_some();
-        let semantic_map = crate::summarize::group_existing::from_change_sets(vec![found]);
-
-        if has_changeset && semantic_map.unsummarized_hashes.is_empty() {
-            // fully covered — all changes have summaries
+        if all_changes.is_empty() {
             continue;
         }
 
-        if has_changeset {
-            // partially covered — evolve with unsummarized changes
-            let unsummarized_set: std::collections::HashSet<&str> = semantic_map
-                .unsummarized_hashes
-                .iter()
-                .map(String::as_str)
-                .collect();
-            let missed_changes: Vec<_> = all_changes
-                .into_iter()
-                .filter(|c| unsummarized_set.contains(c.hash.as_str()))
-                .collect();
-            if let Err(e) = super::evolved_changeset::analyze(
-                semantic_map,
-                missed_changes,
-                app,
-                &db_path,
-                Some(commit_id),
-                base_commit_id,
-                commits[i].message.as_deref(),
-                None,
-            )
-            .await
-            {
-                log::error!(
-                    "[history] evolved pipeline failed for {}: {}",
-                    commits[i].hash,
-                    e
-                );
-            }
-        } else {
-            // no changeset yet — run fresh
-            if let Err(e) = super::fresh_changeset::analyze(
-                all_changes,
-                app,
-                &db_path,
-                Some(commit_id),
-                Some(base_commit_id),
-                commits[i].message.as_deref(),
-                None,
-            )
-            .await
-            {
-                log::error!("[history] pipeline failed for {}: {}", commits[i].hash, e);
-            }
+        let diff_hashes: Vec<String> = all_changes.iter().map(|c| c.hash.clone()).collect();
+        let found = crate::summarize::find_existing::by_base_with_hashes(
+            &pool,
+            base_commit_id,
+            &diff_hashes,
+        )?;
+        let semantic_map = crate::summarize::group_existing::from_change_sets(vec![found]);
+
+        if semantic_map.unsummarized_hashes.is_empty() {
+            continue;
+        }
+
+        let unsummarized_set: std::collections::HashSet<&str> = semantic_map
+            .unsummarized_hashes
+            .iter()
+            .map(String::as_str)
+            .collect();
+        let changes_to_summarize: Vec<_> = all_changes
+            .into_iter()
+            .filter(|c| unsummarized_set.contains(c.hash.as_str()))
+            .collect();
+
+        if changes_to_summarize.is_empty() {
+            continue;
+        }
+
+        if let Err(e) = super::whole_diff::analyze(
+            changes_to_summarize,
+            app,
+            Some(commit_id),
+            Some(base_commit_id),
+            None,
+            commits[i].message.as_deref(),
+            None,
+        )
+        .await
+        {
+            log::error!("[history] pipeline failed for {}: {}", commits[i].hash, e);
         }
     }
 

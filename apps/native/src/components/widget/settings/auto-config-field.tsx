@@ -9,29 +9,33 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { tauriAPI } from "@/ipc/api";
-import type { ConfigField } from "@/ipc/types";
+import type { ConfigFieldSchema, JsonValue } from "@/ipc/types";
 import { Info } from "lucide-react";
 import { useState } from "react";
 
 interface Props {
   /** Stable identifier of the Configurable struct this field belongs to. */
   structName: string;
-  /** Field metadata + current value, sourced from the backend registry. */
-  field: ConfigField;
-  /** Called after a successful save with the new value so the parent can
-   *  refresh the schema or surface a status message. Optional. */
-  onSaved?: (key: string, value: unknown) => void;
+  /** Static field metadata sourced from the backend schema. */
+  field: ConfigFieldSchema;
+  /** Current value loaded from the managed observable, looked up by key
+   *  from the snapshot's `values` array. */
+  current: JsonValue;
+  /** Called when the user commits a new value. The parent owns the whole
+   *  snapshot, so it builds the full struct payload and POSTs it via the
+   *  whole-struct `devConfigs.set`. Must reject on backend failure so this
+   *  component can revert its optimistic UI state. */
+  onCommit: (key: string, value: unknown) => Promise<void>;
 }
 
 /**
- * Renders the appropriate control for a `ConfigField` based on `field.ty.kind`
- * and writes changes back through `tauriAPI.devConfigs.set`. Local optimistic
- * state keeps the input snappy while the backend persists. On error, reverts
- * and surfaces the message inline.
+ * Renders the appropriate control for a `ConfigFieldSchema` based on
+ * `field.ty.kind`. Local optimistic state keeps the input snappy while the
+ * parent persists the whole struct; on backend failure, `onCommit` rejects
+ * and this component reverts and surfaces the message inline.
  */
-export function AutoConfigField({ structName, field, onSaved }: Props) {
-  const [value, setValue] = useState<unknown>(field.current);
+export function AutoConfigField({ structName, field, current, onCommit }: Props) {
+  const [value, setValue] = useState<unknown>(current);
   const [error, setError] = useState<string | null>(null);
 
   const commit = async (next: unknown) => {
@@ -39,8 +43,7 @@ export function AutoConfigField({ structName, field, onSaved }: Props) {
     setValue(next);
     setError(null);
     try {
-      await tauriAPI.devConfigs.set(structName, field.key, next);
-      onSaved?.(field.key, next);
+      await onCommit(field.key, next);
     } catch (e) {
       setValue(previous);
       setError(e instanceof Error ? e.message : String(e));
@@ -49,7 +52,10 @@ export function AutoConfigField({ structName, field, onSaved }: Props) {
 
   const labelRow = (
     <div className="flex items-center gap-2">
-      <label className="text-xs font-medium text-muted-foreground" htmlFor={inputId(structName, field.key)}>
+      <label
+        className="text-xs font-medium text-muted-foreground"
+        htmlFor={inputId(structName, field.key)}
+      >
         {field.label}
       </label>
       {field.help && (

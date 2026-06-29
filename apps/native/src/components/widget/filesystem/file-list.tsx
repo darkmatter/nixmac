@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Search } from "lucide-react";
 
-import type { FsFile } from "./data";
+import type { CandidateItem, FsFile } from "./data";
 import { FileRow } from "./file-row";
 import { UntrackedCard } from "./untracked-card";
 
@@ -9,11 +9,18 @@ interface FileListProps {
   files: FsFile[];
   /** Same handler the FileRow uses — the caller seeds the prompt and closes the view. */
   onEditWithPrompt: (file: FsFile) => void;
-  /** Untracked sections route through this — caller seeds the prompt with a tracking task. */
-  onTrack: (seed: string) => void;
+  onTrackHomebrewItems?: (items: CandidateItem[]) => Promise<void> | void;
+  onTrackSystemDefaults?: (items: CandidateItem[]) => Promise<void> | void;
+  onTrackLaunchdItems?: (items: CandidateItem[]) => Promise<void> | void;
 }
 
-export function FileList({ files, onEditWithPrompt, onTrack }: FileListProps) {
+export function FileList({
+  files,
+  onEditWithPrompt,
+  onTrackHomebrewItems,
+  onTrackSystemDefaults,
+  onTrackLaunchdItems,
+}: FileListProps) {
   const [query, setQuery] = useState("");
 
   const q = query.trim().toLowerCase();
@@ -50,7 +57,12 @@ export function FileList({ files, onEditWithPrompt, onTrack }: FileListProps) {
         {filtered.map((f) =>
           f.status === "candidate" ? (
             <div key={f.id} className="border-border/50 border-b p-3">
-              <UntrackedCard file={f} onTrack={onTrack} />
+              <UntrackedCard
+                file={f}
+                onTrackHomebrewItems={onTrackHomebrewItems}
+                onTrackSystemDefaults={onTrackSystemDefaults}
+                onTrackLaunchdItems={onTrackLaunchdItems}
+              />
             </div>
           ) : (
             <FileRow key={f.id} file={f} onEditWithPrompt={onEditWithPrompt} />

@@ -29,7 +29,10 @@ function UtilsDemo() {
           {categories.map((label) => {
             const style = getCategoryStyle(label);
             return (
-              <span className={`rounded-md border px-2 py-1 text-xs ${style.bg} ${style.border} ${style.text}`} key={label}>
+              <span
+                className={`rounded-md border px-2 py-1 text-xs ${style.bg} ${style.border} ${style.text}`}
+                key={label}
+              >
                 {label}
               </span>
             );

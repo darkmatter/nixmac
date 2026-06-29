@@ -99,8 +99,6 @@ export function highlightNixLine(line: string): ReactNode {
   segs = applyRegex(segs, /\b(true|false|null)\b/g, "text-amber-300");
   return segs.map((s, j) => (
     // biome-ignore lint/suspicious/noArrayIndexKey: stable per render
-    <Fragment key={j}>
-      {s.color ? <span className={s.color}>{s.text}</span> : s.text}
-    </Fragment>
+    <Fragment key={j}>{s.color ? <span className={s.color}>{s.text}</span> : s.text}</Fragment>
   ));
 }

@@ -8,8 +8,8 @@
 
 pub(crate) use crate::shared_types::PreviewIndicatorState;
 use once_cell::sync::Lazy;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tauri::{
     AppHandle, Emitter, Manager, PhysicalPosition, Runtime, WebviewUrl, WebviewWindowBuilder,
@@ -161,7 +161,7 @@ mod macos {
     pub const ALTERNATE_FLAG: u64 = 0x00080000;
 
     #[link(name = "CoreGraphics", kind = "framework")]
-    extern "C" {
+    unsafe extern "C" {
         pub fn CGEventSourceFlagsState(stateID: i32) -> u64;
         pub fn CGEventCreate(source: *const c_void) -> *const c_void;
         pub fn CGEventGetLocation(event: *const c_void) -> CGPoint;
@@ -635,6 +635,152 @@ pub fn update_preview_indicator<R: Runtime>(
         } else {
             hide_preview_indicator(app)?;
         }
+    }
+    Ok(())
+}
+
+// =============================================================================
+// Evolve Mascot Indicator Window (experimental)
+// =============================================================================
+
+/// Edge length of the spinning-mascot indicator window (logical points). Square,
+/// with padding around the mascot so the horizontal-axis 3D flip isn't clipped.
+const EVOLVE_MASCOT_SIZE: f64 = 180.0;
+/// Margin from the screen edge (logical points).
+const EVOLVE_MASCOT_MARGIN: f64 = 24.0;
+
+/// Creates the evolve-mascot window (call once from `setup()`, on the main
+/// thread). Mirrors `create_preview_indicator_window`: a transparent,
+/// borderless, always-on-top floating panel, created hidden and shown on demand.
+///
+/// IMPORTANT: the raw AppKit panel tweaks below are main-thread-only, which is
+/// why this runs in `setup()` rather than lazily from a command worker thread.
+/// (An earlier lazy variant wrapped in `run_on_main_thread` never delivered its
+/// closure, so the window was never created — this matches the proven preview
+/// indicator path instead.)
+pub fn create_evolve_mascot_window<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
+    if app.get_webview_window("evolve-mascot").is_some() {
+        return Ok(());
+    }
+
+    let monitor = get_rightmost_monitor(app)?;
+    let scale = monitor.scale_factor;
+    let logical_width = monitor.width / scale;
+    let logical_height = monitor.height / scale;
+    let logical_x = monitor.x / scale;
+    let logical_y = monitor.y / scale;
+    let x = logical_x + logical_width - EVOLVE_MASCOT_SIZE - EVOLVE_MASCOT_MARGIN;
+    let y = logical_y + logical_height - EVOLVE_MASCOT_SIZE - EVOLVE_MASCOT_MARGIN;
+
+    #[cfg_attr(not(target_os = "macos"), allow(unused_variables))]
+    let window = WebviewWindowBuilder::new(
+        app,
+        "evolve-mascot",
+        WebviewUrl::App("evolve-mascot.html".into()),
+    )
+    .title("nixmac")
+    .inner_size(EVOLVE_MASCOT_SIZE, EVOLVE_MASCOT_SIZE)
+    .position(x, y)
+    .resizable(false)
+    .maximizable(false)
+    .minimizable(false)
+    .closable(false)
+    .decorations(false)
+    .transparent(true)
+    .always_on_top(true)
+    .focused(false) // never steal focus from the user's active app
+    .visible(false) // shown on demand while evolving/building
+    .visible_on_all_workspaces(true)
+    .skip_taskbar(true)
+    .build()
+    .map_err(|e| e.to_string())?;
+
+    #[cfg(not(target_os = "macos"))]
+    let _ = &window;
+
+    // Disable shadow and set as an independent floating panel (matches the
+    // preview indicator so it doesn't group/cycle with the main window).
+    #[cfg(target_os = "macos")]
+    {
+        use cocoa::appkit::{NSWindow, NSWindowCollectionBehavior};
+        use cocoa::base::id;
+        use objc::msg_send;
+        use objc::sel;
+        use objc::sel_impl;
+
+        let _ = window.set_shadow(false);
+
+        if let Ok(ns_window) = window.ns_window() {
+            let ns_win = ns_window as id;
+            unsafe {
+                ns_win.setCollectionBehavior_(
+                    NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces
+                        | NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary
+                        | NSWindowCollectionBehavior::NSWindowCollectionBehaviorIgnoresCycle,
+                );
+                let floating_level: i64 = 3; // NSFloatingWindowLevel
+                let _: () = msg_send![ns_win, setLevel: floating_level];
+            }
+        }
+    }
+
+    peek_log!(
+        "🌀 Created evolve mascot indicator window at ({}, {})",
+        x,
+        y
+    );
+    Ok(())
+}
+
+/// Positions the mascot window in the bottom-right of the right-most monitor.
+fn position_evolve_mascot<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("evolve-mascot") {
+        let monitor = get_rightmost_monitor(app)?;
+        let scale = monitor.scale_factor;
+        let logical_width = monitor.width / scale;
+        let logical_height = monitor.height / scale;
+        let logical_x = monitor.x / scale;
+        let logical_y = monitor.y / scale;
+
+        let x = logical_x + logical_width - EVOLVE_MASCOT_SIZE - EVOLVE_MASCOT_MARGIN;
+        let y = logical_y + logical_height - EVOLVE_MASCOT_SIZE - EVOLVE_MASCOT_MARGIN;
+
+        // Convert logical position back to physical for set_position.
+        let phys_x = (x * scale) as i32;
+        let phys_y = (y * scale) as i32;
+
+        window
+            .set_position(PhysicalPosition::new(phys_x, phys_y))
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// Shows the spinning-mascot indicator. The window is created in `setup()`, so
+/// here we just reposition and show — `Window::show`/`set_position` are
+/// marshalled to the main thread by Tauri internally (exactly as the preview
+/// indicator does), so no manual `run_on_main_thread` is needed.
+pub fn show_evolve_mascot<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
+    peek_log!("🌀 show_evolve_mascot invoked");
+    if app.get_webview_window("evolve-mascot").is_none() {
+        // Window is only created at startup when the experimental flag is on;
+        // enabling the flag takes effect on the next launch.
+        peek_log!("🌀 evolve mascot window absent (experimental flag off at launch?)");
+        return Ok(());
+    }
+    position_evolve_mascot(app)?;
+    if let Some(window) = app.get_webview_window("evolve-mascot") {
+        window.show().map_err(|e| e.to_string())?;
+        peek_log!("🌀 Showing evolve mascot indicator");
+    }
+    Ok(())
+}
+
+/// Hides the spinning-mascot indicator.
+pub fn hide_evolve_mascot<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("evolve-mascot") {
+        window.hide().map_err(|e| e.to_string())?;
+        peek_log!("🌀 Hiding evolve mascot indicator");
     }
     Ok(())
 }

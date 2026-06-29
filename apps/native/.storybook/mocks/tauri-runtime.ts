@@ -1,3 +1,4 @@
+
 const defaultHosts = ["Demo-MacBook-Pro", "Work-MacBook"];
 let nextCallbackId = 1;
 
@@ -101,6 +102,37 @@ const okResult = () => ({ ok: true });
 
 const baseSemanticChangeMap = () => ({ groups: [], singles: [], unsummarizedHashes: [] });
 
+const baseGitState = (gitStatus: unknown, externalBuildDetected = false) => ({
+  gitStatus: gitStatus ?? null,
+  externalBuildDetected,
+});
+
+const baseNixInstallState = () => ({
+  installed: true,
+  darwinRebuildAvailable: true,
+  installing: false,
+  installPhase: null,
+  prefetching: false,
+  lastError: null,
+});
+
+const baseRebuildStatus = () => ({
+  isRunning: false,
+  success: null,
+  exitCode: null,
+  errorType: null,
+  errorMessage: null,
+  systemUntouched: null,
+});
+
+const basePermissionsState = () => ({
+  permissions: defaultPermissions.map((permission) => ({ ...permission })),
+  allRequiredGranted: defaultPermissions
+    .filter((permission) => permission.required)
+    .every((permission) => permission.status === "granted"),
+  checkedAt: 0,
+});
+
 const summaryResponse = {
   items: [],
   instructions: "",
@@ -121,17 +153,19 @@ function emit(eventName: string, payload: unknown) {
 
 function addListener<T>(eventName: string, handler: (event: { payload: T }) => void, once = false) {
   const wrapped = once
-    ? ((event: { payload: T }) => {
-        handler(event);
-        removeListener(eventName, wrapped as (event: { payload: unknown }) => void);
-      })
+    ? (event: { payload: T }) => {
+      handler(event);
+      removeListener(eventName, wrapped as (event: { payload: unknown }) => void);
+    }
     : (handler as (event: { payload: unknown }) => void);
 
   const eventListeners = listeners.get(eventName) ?? new Set();
   eventListeners.add(wrapped as (event: { payload: unknown }) => void);
   listeners.set(eventName, eventListeners);
 
-  return Promise.resolve(() => removeListener(eventName, wrapped as (event: { payload: unknown }) => void));
+  return Promise.resolve(() =>
+    removeListener(eventName, wrapped as (event: { payload: unknown }) => void),
+  );
 }
 
 function removeListener(eventName: string, handler: (event: { payload: unknown }) => void) {
@@ -143,6 +177,115 @@ function removeListener(eventName: string, handler: (event: { payload: unknown }
   eventListeners.delete(handler);
   if (eventListeners.size === 0) {
     listeners.delete(eventName);
+  }
+}
+
+type OrpcHandler = (input: unknown) => unknown | Promise<unknown>;
+
+/** Storybook oRPC procedure mocks keyed by dotted path (e.g. `config.setDir`). */
+export const orpcHandlers: Record<string, OrpcHandler> = {
+  "config.get": async () => ({
+    configDir: "/Users/demo/.darwin",
+    hostAttr: defaultHosts[0],
+  }),
+  "config.getThisHostname": async () => "demo-mac",
+  "config.setHostAttr": async () => okResult(),
+  "config.setDir": async () => baseSetDirResult(),
+  "config.prepareNewDir": async (input) => {
+    const dir = (input as { dir?: string } | undefined)?.dir ?? "/Users/demo/.darwin";
+    return { dir, changed: true };
+  },
+  "config.pickDir": async () => baseSetDirResult(),
+  "config.pickZip": async () => "/Users/demo/Downloads/nix-darwin.zip",
+  "config.importGithub": async () => baseSetDirResult(),
+  "config.importZip": async () => baseSetDirResult(),
+  "flake.exists": async () => true,
+  "flake.existsAt": async () => true,
+  "flake.bootstrapDefault": async () => undefined,
+  "path.exists": async () => true,
+  "path.normalize": async (input) => (input as { input?: string } | undefined)?.input ?? "",
+  "github.bootstrapStart": async () => ({
+    installUrl: "https://github.com/apps/nixmac/installations/new",
+    state: "demo",
+    userCode: null,
+    verificationUri: null,
+    expiresIn: null,
+    interval: null,
+  }),
+  "github.connectStart": async () => ({
+    installUrl: "https://github.com/apps/nixmac/installations/new",
+    state: "demo",
+    userCode: null,
+    verificationUri: null,
+    expiresIn: null,
+    interval: null,
+  }),
+  "github.status": async () => ({
+    connected: false,
+    login: null,
+    installationId: 0,
+  }),
+  "github.listRepos": async () => [],
+  "github.import": async () => baseSetDirResult(),
+  "github.disconnect": async () => undefined,
+  "evolveState.get": async () => baseEvolveState(),
+  "evolveState.clear": async () => baseEvolveState(),
+  "homebrew.getStateDiff": async () => ({
+    isInstalled: true,
+    casks: [],
+    brews: [],
+    taps: [],
+    source: null,
+    lastChecked: Date.now(),
+  }),
+  "homebrew.applyDiff": async () => ({ ok: true, count: 0 }),
+  "launchd.scanItems": async () => [],
+  "scanner.scanDefaults": async () => ({ defaults: [], totalScanned: 0 }),
+  "billing.state": async () => ({
+    usage: { currency: "USD", spentUsd: 0 },
+    subscriptions: [],
+    hasPaymentMethod: false,
+    canUseHostedInference: false,
+    canUseDeviceSync: false,
+  }),
+  "billing.products": async () => [
+    {
+      product: "credits",
+      name: "Hosted inference credits",
+      currency: "usd",
+      type: "subscription",
+    },
+    {
+      product: "pro",
+      name: "Pro",
+      currency: "usd",
+      type: "subscription",
+      priceUsd: 5,
+      recurringInterval: "month",
+    },
+  ],
+  "billing.checkout": async () => ({ url: "https://polar.sh/demo-checkout" }),
+  "billing.portal": async () => ({ url: "https://polar.sh/demo-portal" }),
+};
+
+async function handleOrpcInvoke(args?: Record<string, unknown>) {
+  const request = args?.request as { path?: string; input?: { json?: unknown } } | undefined;
+  const path = request?.path;
+  if (!path) {
+    return { type: "response", status: 400, body: { json: { message: "missing oRPC path" } } };
+  }
+
+  const handler = orpcHandlers[path];
+  if (!handler) {
+    return { type: "response", status: 404, body: { json: { message: `unmocked oRPC path: ${path}` } } };
+  }
+
+  try {
+    const json = await handler(request?.input?.json);
+    return { type: "response", status: 200, body: { json } };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { type: "response", status: 500, body: { json: { message } } };
   }
 }
 
@@ -197,6 +340,15 @@ function mockEditorListFiles() {
 }
 
 export async function invoke(command: string, args?: Record<string, unknown>) {
+  // The ViewModel hydrates each backend-owned slice on widget mount by invoking
+  // its `get_*` command (see src/viewmodel/*). In Storybook there is no Rust
+  // backend, so these reads must return the *current store snapshot* — otherwise
+  // mounting the widget would clobber the state a story/its controls just
+  // applied (or crash on a `null` payload the mirrors don't expect). This
+  // mirrors the unidirectional-sync contract: hydrate = read the latest cell.
+  const { useViewModel } = await import("@nixmac/state");
+  const vm = useViewModel.getState();
+
   switch (command) {
     case "plugin:event|listen":
       return nextCallbackId++;
@@ -205,26 +357,54 @@ export async function invoke(command: string, args?: Record<string, unknown>) {
     case "plugin:macos-permissions|check_full_disk_access_permission":
     case "plugin:macos-permissions|request_full_disk_access_permission":
       return true;
+    case "plugin:orpc|handle_rpc":
+      return handleOrpcInvoke(args);
     case "config_get":
     case "plugin:darwin|read_config":
-      return { configDir: "/Users/demo/.darwin", hostAttr: defaultHosts[0] };
+      return {
+        configDir: vm.preferences?.configDir ?? "/Users/demo/.darwin",
+        hostAttr: vm.preferences?.hostAttr ?? defaultHosts[0],
+      };
+    case "get_global_preferences":
+      return vm.preferences;
     case "config_pick_dir":
       return baseSetDirResult();
     case "flake_list_hosts":
     case "plugin:darwin|list_hosts":
-      return [...defaultHosts];
+      return vm.hosts?.length ? [...vm.hosts] : [...defaultHosts];
+    // GitState slice (event shape: `{ gitStatus, externalBuildDetected }`).
+    case "get_git_state":
+      return baseGitState(vm.git, vm.build?.externalBuildDetected ?? false);
+    // GitStatus reads used by the explicit on-mount probe + manual refreshes.
+    // Return the store value *verbatim* (including null) so the on-mount
+    // `getInitialStatus` probe mirrors back exactly what a story applied —
+    // a `?? baseGitStatus()` here would flip null → {} after first render and
+    // make snapshots race the async mount.
     case "git_status":
     case "git_status_and_cache":
     case "plugin:darwin|git_status":
-      return baseGitStatus();
+      return vm.git;
+    case "get_evolve_state":
+      return vm.evolve ?? baseEvolveState();
+    case "get_change_map":
+    case "find_change_map":
+      return vm.changeMap;
+    case "get_permissions":
+      return vm.permissions ?? basePermissionsState();
+    case "get_nix_install_state":
+      return vm.nixInstall ?? baseNixInstallState();
+    case "get_rebuild_status":
+      return vm.rebuildStatus ?? baseRebuildStatus();
+    case "get_prompt_history":
+      // Verbatim (default []) so the async mount mirrors back what's there
+      // instead of injecting a list that flips the prompt-history UI post-render.
+      return [...vm.promptHistory];
+    case "get_history":
+      return vm.history ?? [];
     case "ui_get_prefs":
       return { ...prefs };
     case "permissions_check_all":
-      return {
-        permissions: permissions.map((permission) => ({ ...permission })),
-        allRequiredGranted: permissions.filter((permission) => permission.required).every((permission) => permission.status === "granted"),
-        checkedAt: Date.now(),
-      };
+      return basePermissionsState();
     case "preview_indicator_get_state":
       return { ...previewIndicatorState };
     case "editor_read_file":
@@ -244,7 +424,8 @@ export async function invoke(command: string, args?: Record<string, unknown>) {
 
 export const tauriEvent = {
   listen: addListener,
-  once: <T>(eventName: string, handler: (event: { payload: T }) => void) => addListener(eventName, handler, true),
+  once: <T>(eventName: string, handler: (event: { payload: T }) => void) =>
+    addListener(eventName, handler, true),
   emit,
 };
 
@@ -258,8 +439,8 @@ export const storybookTauriAPI = {
   git: {
     status: async () => baseGitStatus(),
     statusAndCache: async () => {
-      const { useWidgetStore } = await import("../../src/stores/widget-store");
-      return useWidgetStore.getState().gitStatus ?? baseGitStatus();
+      const { useViewModel, viewModelActions } = await import("@nixmac/state");
+      return viewModelActions.getState().git ?? baseGitStatus();
     },
     cached: async () => baseGitStatus(),
     commit: async () => ({ hash: "mock123", evolveState: baseEvolveState() }),
@@ -278,7 +459,16 @@ export const storybookTauriAPI = {
       gitStatus: baseGitStatus(),
       evolveState: baseEvolveState(),
       conversationalResponse: null,
-      telemetry: { state: "generated" as const, iterations: 1, buildAttempts: 1, totalTokens: 500, editsCount: 1, thinkingCount: 1, toolCallsCount: 3, durationMs: 5000 },
+      telemetry: {
+        state: "generated" as const,
+        iterations: 1,
+        buildAttempts: 1,
+        totalTokens: 500,
+        editsCount: 1,
+        thinkingCount: 1,
+        toolCallsCount: 3,
+        durationMs: 5000,
+      },
     }),
     evolveAnswer: async () => okResult(),
     evolveCancel: async () => ({ ok: true, message: "Cancelled" }),
@@ -327,13 +517,13 @@ export const storybookTauriAPI = {
   },
   summarizedChanges: {
     findChangeMap: async () => {
-      const { useWidgetStore } = await import("../../src/stores/widget-store");
-      return useWidgetStore.getState().changeMap ?? baseSemanticChangeMap();
+      const { viewModelActions } = await import("@nixmac/state");
+      return viewModelActions.getState().changeMap ?? baseSemanticChangeMap();
     },
     summarizeCurrent: async () => baseSemanticChangeMap(),
     generateCommitMessage: async () => {
-      const { useWidgetStore } = await import("../../src/stores/widget-store");
-      return useWidgetStore.getState().commitMessageSuggestion ?? "chore: mock commit message";
+      const { useUiState } = await import("@nixmac/state");
+      return useUiState.getState().commitMessageSuggestion ?? "chore: mock commit message";
     },
   },
   summary: {
@@ -389,15 +579,21 @@ export const storybookTauriAPI = {
   scanner: {
     getRecommendedPrompt: async () => null,
     scanDefaults: async () => ({ defaults: [], totalScanned: 0 }),
-    applyDefaults: async () => ({ ok: true, count: 0, changeMap: baseSemanticChangeMap(), gitStatus: baseGitStatus(), evolveState: baseEvolveState() }),
+    applyDefaults: async () => ({
+      ok: true,
+      count: 0,
+      changeMap: baseSemanticChangeMap(),
+      gitStatus: baseGitStatus(),
+      evolveState: baseEvolveState(),
+    }),
   },
   evolveState: {
     get: async () => {
-      // Return the store's current evolveState so init doesn't overwrite story state.
+      // Return the store's current evolve state so init doesn't overwrite story state.
       // Dynamic import avoids circular dep at module-evaluation time; by the time
       // this async method is called the store module is fully initialized.
-      const { useWidgetStore } = await import("../../src/stores/widget-store");
-      return useWidgetStore.getState().evolveState ?? baseEvolveState();
+      const { viewModelActions } = await import("@nixmac/state");
+      return viewModelActions.getState().evolve ?? baseEvolveState();
     },
     clear: async () => baseEvolveState(),
   },
@@ -418,16 +614,26 @@ export const storybookTauriAPI = {
   permissions: {
     checkAll: async () => ({
       permissions: permissions.map((permission) => ({ ...permission })),
-      allRequiredGranted: permissions.filter((permission) => permission.required).every((permission) => permission.status === "granted"),
+      allRequiredGranted: permissions
+        .filter((permission) => permission.required)
+        .every((permission) => permission.status === "granted"),
       checkedAt: Date.now(),
     }),
     request: async (permissionId: string) => {
       permissions = permissions.map((permission) =>
         permission.id === permissionId ? { ...permission, status: "granted" } : permission,
       );
-      return permissions.find((permission) => permission.id === permissionId) ?? { id: permissionId, status: "granted" };
+      return (
+        permissions.find((permission) => permission.id === permissionId) ?? {
+          id: permissionId,
+          status: "granted",
+        }
+      );
     },
-    allRequiredGranted: async () => permissions.filter((permission) => permission.required).every((permission) => permission.status === "granted"),
+    allRequiredGranted: async () =>
+      permissions
+        .filter((permission) => permission.required)
+        .every((permission) => permission.status === "granted"),
     checkFullDiskAccess: async () => true,
     requestFullDiskAccess: async () => {
       permissions = permissions.map((permission) =>
@@ -449,7 +655,13 @@ export const storybookTauriAPI = {
       source: null,
       lastChecked: Date.now(),
     }),
-    applyDiff: async () => ({ ok: true, count: 0, changeMap: baseSemanticChangeMap(), gitStatus: baseGitStatus(), evolveState: baseEvolveState() }),
+    applyDiff: async () => ({
+      ok: true,
+      count: 0,
+      changeMap: baseSemanticChangeMap(),
+      gitStatus: baseGitStatus(),
+      evolveState: baseEvolveState(),
+    }),
   },
   debug: {
     logBreadcrumb: async () => okResult(),
@@ -466,18 +678,26 @@ export const storybookTauriAPI = {
   },
 };
 
-if (typeof window !== "undefined") {
-  const storybookWindow = window as Window & {
+
+declare global {
+  interface Window {
     __NIXMAC__?: typeof storybookTauriAPI;
-    tauriAPI?: typeof storybookTauriAPI;
+  }
+}
+
+if (typeof window !== "undefined") {
+  type StorybookTauriAPI = NonNullable<Window["__NIXMAC__"]>;
+  const storybookWindow = window as Window & {
+    __NIXMAC__?: StorybookTauriAPI;
+    tauriAPI?: StorybookTauriAPI;
     __TAURI_INTERNALS__?: {
       invoke: typeof invoke;
       transformCallback: typeof transformCallback;
     };
   };
 
-  storybookWindow.__NIXMAC__ = storybookTauriAPI;
-  storybookWindow.tauriAPI = storybookTauriAPI;
+  storybookWindow.__NIXMAC__ = storybookTauriAPI as StorybookTauriAPI;
+  storybookWindow.tauriAPI = storybookTauriAPI as StorybookTauriAPI;
   storybookWindow.__TAURI_INTERNALS__ = {
     invoke,
     transformCallback,

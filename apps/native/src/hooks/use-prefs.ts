@@ -1,36 +1,32 @@
-import { useWidgetStore, type BoolPrefKey } from "@/stores/widget-store";
-import { tauriAPI } from "@/ipc/api";
+import type { BoolPrefKey } from "@/types/preferences";
+import { getCachedPrefs, setPrefs } from "@/ipc/preferences";
 
 export function usePrefs() {
-  const loadPrefs = async () => {
-    const prefs = await tauriAPI.ui.getPrefs().catch(() => null);
-    if (prefs) {
-      useWidgetStore.getState().initConfirmPrefs(prefs);
-      useWidgetStore.getState().setAutoSummarizeOnFocus(prefs.autoSummarizeOnFocus ?? false);
-      useWidgetStore
-        .getState()
-        .setBoolPref("scanHomebrewOnStartup", prefs.scanHomebrewOnStartup ?? true);
-      useWidgetStore
-        .getState()
-        .setBoolPref("defaultToDiffTab", prefs.defaultToDiffTab ?? false);
-      useWidgetStore.getState().setDeveloperMode(prefs.developerMode ?? false);
-      useWidgetStore.getState().setPinnedVersion(prefs.pinnedVersion ?? null);
-      useWidgetStore.getState().setUpdateChannel(prefs.updateChannel ?? "stable");
-    }
-    useWidgetStore.getState().setPrefsLoaded(true);
-  };
-
+  // Persist a boolean preference; the backend emits `global_preferences_changed`
+  // and the preferences sync module mirrors it into the ViewModel.
   const setPref = async (key: BoolPrefKey, value: boolean) => {
-    const previous = useWidgetStore.getState()[key];
-    useWidgetStore.getState().setBoolPref(key, value);
     try {
-      await tauriAPI.ui.setPrefs({ [key]: value });
-    } catch {
-      useWidgetStore.getState().setBoolPref(key, previous);
+      await setPrefs({ [key]: value });
+    } catch (error) {
+      console.error(`[prefs] failed to set ${key}:`, error);
     }
   };
 
-  return { loadPrefs, setPref };
+  // Set or clear a single feature-flag override. The backend replaces the
+  // entire `featureFlagOverrides` map, so we merge with the current value
+  // and send `null` when no overrides remain. Errors propagate to the caller.
+  const setFeatureFlagOverride = async (key: string, variant: string | null) => {
+    const current = (await getCachedPrefs()).featureFlagOverrides;
+    const next = { ...current };
+    if (variant === null) {
+      delete next[key];
+    } else {
+      next[key] = variant;
+    }
+    const merged = Object.keys(next).length > 0 ? next : null;
+    await setPrefs({ featureFlagOverrides: merged });
+  };
+
+  return { setPref, setFeatureFlagOverride };
 }
 
-;

@@ -2,15 +2,15 @@ import {
   assertOnboardingVisible,
   clickCreateDefaultConfiguration,
   waitForFirstWindow,
-} from './helpers/app-ui.js';
+} from "./helpers/app-ui.js";
 import {
   waitForConfigRepoFileExists,
   waitForConfigRepoClean,
   waitForConfigRepoInitialized,
-} from './helpers/test-env.js';
+} from "./helpers/test-env.js";
 
-describe('onboarding', () => {
-  it('shows onboarding UI and bootstraps a new config repo', async () => {
+describe("onboarding", () => {
+  it("shows onboarding UI and bootstraps a new config repo", async () => {
     await waitForFirstWindow();
 
     await assertOnboardingVisible();
@@ -18,7 +18,7 @@ describe('onboarding', () => {
     await clickCreateDefaultConfiguration();
 
     await waitForConfigRepoInitialized();
-    await waitForConfigRepoFileExists('flake.nix');
+    await waitForConfigRepoFileExists("flake.nix");
     await waitForConfigRepoClean();
   });
 });

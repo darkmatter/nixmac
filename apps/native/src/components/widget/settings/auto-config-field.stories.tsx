@@ -3,51 +3,70 @@
 import preview from "#storybook/preview";
 import { AutoConfigField } from "@/components/widget/settings/auto-config-field";
 import { tauriAPI } from "@/ipc/api";
-import type { ConfigField } from "@/ipc/types";
+import type { ConfigFieldSchema, JsonValue } from "@/ipc/types";
 
-const fields: ConfigField[] = [
+const fields: Array<{ schema: ConfigFieldSchema; current: JsonValue }> = [
   {
-    key: "maxIterations",
-    label: "Max iterations",
-    help: "API calls before the agent stops.",
-    ty: { kind: "number", min: 1, max: 200, step: 1 },
-    default: 25,
+    schema: {
+      key: "maxIterations",
+      label: "Max iterations",
+      help: "API calls before the agent stops.",
+      ty: { kind: "number", min: 1, max: 200, step: 1 },
+      default: 25,
+    },
     current: 25,
   },
   {
-    key: "autoSummarize",
-    label: "Auto summarize",
-    help: "Create a summary when focus returns to the widget.",
-    ty: { kind: "boolean" },
-    default: true,
+    schema: {
+      key: "maxTokenBudget",
+      label: "Max token budget",
+      help: "Provider-reported tokens before the agent stops.",
+      ty: { kind: "number", min: 1000, max: 1000000, step: 1000 },
+      default: 50000,
+    },
+    current: 50000,
+  },
+  {
+    schema: {
+      key: "autoSummarize",
+      label: "Auto summarize",
+      help: "Create a summary when focus returns to the widget.",
+      ty: { kind: "boolean" },
+      default: true,
+    },
     current: true,
   },
   {
-    key: "defaultPrompt",
-    label: "Default prompt",
-    ty: { kind: "string", multiline: true },
-    default: "",
+    schema: {
+      key: "defaultPrompt",
+      label: "Default prompt",
+      ty: { kind: "string", multiline: true },
+      default: "",
+    },
     current: "Install ripgrep and keep the existing module layout.",
   },
   {
-    key: "provider",
-    label: "Provider",
-    ty: {
-      kind: "enum",
-      variants: [
-        { value: "openrouter", label: "OpenRouter" },
-        { value: "openai", label: "OpenAI" },
-        { value: "ollama", label: "Ollama" },
-      ],
+    schema: {
+      key: "provider",
+      label: "Provider",
+      ty: {
+        kind: "enum",
+        variants: [
+          { value: "openrouter", label: "OpenRouter" },
+          { value: "openai", label: "OpenAI" },
+          { value: "ollama", label: "Ollama" },
+        ],
+      },
+      default: "openrouter",
     },
-    default: "openrouter",
     current: "openrouter",
   },
 ];
 
 function installDevConfigMock() {
   tauriAPI.devConfigs = {
-    list: async () => [],
+    schemas: async () => [],
+    values: async () => ({}),
     set: async () => undefined,
   };
 }
@@ -74,11 +93,13 @@ export default meta;
 export const Controls = meta.story({
   render: () => (
     <div className="space-y-4">
-      {fields.map((field) => (
+      {fields.map(({ schema, current }) => (
         <AutoConfigField
-          key={field.key}
+          key={schema.key}
           structName="EvolutionLimits"
-          field={field}
+          field={schema}
+          current={current}
+          onCommit={async () => undefined}
         />
       ))}
     </div>

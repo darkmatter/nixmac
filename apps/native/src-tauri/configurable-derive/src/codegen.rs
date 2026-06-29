@@ -10,8 +10,8 @@
 //! mapping live in sibling modules so this file can read like the macro's
 //! high-level pipeline.
 
-use crate::attrs::{parse_struct_config, StoreScope};
-use crate::fields::{generate_fields, named_fields, GeneratedFields};
+use crate::attrs::{StoreScope, parse_struct_config};
+use crate::fields::{GeneratedFields, generate_fields, named_fields};
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::DeriveInput;
@@ -26,45 +26,119 @@ use syn::DeriveInput;
 pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
     let name = &input.ident;
     let name_str = name.to_string();
-    let struct_config = parse_struct_config(&input.attrs)?;
+    let struct_config = parse_struct_config(&input.attrs, &name_str)?;
     let display_name = struct_config
         .display_name
         .clone()
         .unwrap_or_else(|| name_str.clone());
-    let fields = generate_fields(named_fields(&input)?, &name_str)?;
+    let schema_file = struct_config
+        .schema_file
+        .clone()
+        .unwrap_or_else(|| crate::attrs::default_schema_file(struct_config.scope, &name_str));
+    let fields = generate_fields(named_fields(&input)?, struct_config.scope)?;
     let methods = build_scope_methods(
         name,
         &name_str,
         &display_name,
         description_expr(struct_config.description.as_ref()),
         struct_config.scope,
-        fields,
+        &fields,
+    );
+    let json_schema_method = build_json_schema_method(
+        &display_name,
+        description_expr(struct_config.description.as_ref()),
+        &fields,
     );
 
     Ok(quote! {
         impl #name {
             #methods
+            #json_schema_method
 
-            // Wry-specialized shims for the type-erased registry. Generic
-            // functions can't be cast to fn pointers; these monomorphic
+            // Wry-specialized shims for the type-erased compile-time registry.
+            // Generic functions can't be cast to fn pointers; these monomorphic
             // wrappers can.
             #[doc(hidden)]
-            pub fn __configurable_schema_wry(
-                app: &::tauri::AppHandle<::tauri::Wry>,
-            ) -> ::std::result::Result<::configurable::ConfigurableSchema, ::anyhow::Error> {
-                Self::schema(app)
+            pub fn __configurable_schema_wry() -> ::configurable::ConfigurableSchema {
+                Self::schema()
             }
 
             #[doc(hidden)]
-            pub fn __configurable_set_field_wry(
+            pub fn __configurable_json_schema_wry() -> ::serde_json::Value {
+                Self::json_schema()
+            }
+
+            #[doc(hidden)]
+            pub fn __configurable_load_wry(
                 app: &::tauri::AppHandle<::tauri::Wry>,
-                key: &str,
+            ) -> ::std::result::Result<::serde_json::Value, ::anyhow::Error> {
+                let __current = Self::load(app)?;
+                ::std::result::Result::Ok(::serde_json::to_value(&__current)?)
+            }
+
+            #[doc(hidden)]
+            pub fn __configurable_set_wry(
+                app: &::tauri::AppHandle<::tauri::Wry>,
                 value: ::serde_json::Value,
             ) -> ::std::result::Result<(), ::anyhow::Error> {
-                Self::set_field(app, key, value)
+                Self::set(app, value)
+            }
+        }
+
+        // Push this configurable into the inventory collection so
+        // `inventory::iter::<ConfigurableMeta>()` enumerates it at runtime.
+        ::configurable::inventory::submit! {
+            ::configurable::ConfigurableMeta {
+                name: #name_str,
+                schema_file: #schema_file,
+                schema_fn: #name::__configurable_schema_wry,
+                json_schema_fn: #name::__configurable_json_schema_wry,
+                load_fn: #name::__configurable_load_wry,
+                set_fn: #name::__configurable_set_wry,
             }
         }
     })
+}
+
+fn build_json_schema_method(
+    display_name: &str,
+    description_expr: TokenStream2,
+    fields: &GeneratedFields,
+) -> TokenStream2 {
+    let json_schema_properties = &fields.json_schema_properties;
+
+    quote! {
+        /// JSON Schema (draft 2020-12) for the on-disk settings file.
+        pub fn json_schema() -> ::serde_json::Value {
+            let mut __props = ::serde_json::Map::new();
+            #(#json_schema_properties)*
+            let mut __schema = ::serde_json::Map::new();
+            __schema.insert(
+                "$schema".into(),
+                ::serde_json::Value::String("https://json-schema.org/draft/2020-12/schema".into()),
+            );
+            __schema.insert(
+                "title".into(),
+                ::serde_json::Value::String(#display_name.to_string()),
+            );
+            if let ::std::option::Option::Some(__description) = #description_expr {
+                __schema.insert(
+                    "description".into(),
+                    ::serde_json::Value::String(__description),
+                );
+            }
+            __schema.insert("type".into(), ::serde_json::Value::String("object".into()));
+            __schema.insert(
+                "properties".into(),
+                ::serde_json::Value::Object(__props),
+            );
+            __schema.insert(
+                "additionalProperties".into(),
+                ::serde_json::Value::Bool(true),
+            );
+            ::serde_json::Value::Object(__schema)
+        }
+    }
 }
 
 /// Converts the optional struct description into generated code.
@@ -78,78 +152,139 @@ fn description_expr(description: Option<&String>) -> TokenStream2 {
     }
 }
 
-/// Emits the generated `load`, `schema`, and `set_field` methods.
+/// Emits the generated `load`, `schema`, and `set` methods.
 ///
-/// All generated methods target the managed `Slice<T>` for the derived type.
-/// That keeps persistence and UI change events behind the slice guard instead
-/// of letting each configurable type choose its own storage path.
+/// `schema` is intentionally context-free: it returns a `ConfigurableSchema`
+/// built from the derive attributes alone, with no `AppHandle` involved. The
+/// dev-settings command joins it with current values at the IPC boundary via
+/// `load_value` so the static metadata stays cacheable.
+///
+/// `set` takes the whole struct as a single JSON payload. One Serde
+/// deserialize validates every field at once; there is no per-field dispatch
+/// table because the type system already knows the shape of `Self`.
 fn build_scope_methods(
     name: &syn::Ident,
     name_str: &str,
     display_name: &str,
     description_expr: TokenStream2,
     scope: StoreScope,
-    fields: GeneratedFields,
+    fields: &GeneratedFields,
 ) -> TokenStream2 {
     let scope_name = match scope {
         StoreScope::Global => "global",
         StoreScope::Repo => "repo",
+        StoreScope::Env => "env",
     };
-    let default_inits = fields.default_inits;
-    let schema_fields = fields.schema_fields;
-    let set_field_arms = fields.set_field_arms;
+    let default_inits = &fields.default_inits;
+    let schema_fields = &fields.schema_fields;
+    let resolve_inits = &fields.resolve_inits;
 
-    // The derive is slice-only: reads mirror the managed slice, and writes go
-    // through the slice guard so persistence and change events stay centralized.
+    let resolve_methods = if resolve_inits.is_empty() {
+        TokenStream2::new()
+    } else {
+        quote! {
+            pub fn resolve(_config_dir: Option<&str>) -> Self {
+                let __build_profile = crate::env::sources::build_profile();
+                Self {
+                    #(#resolve_inits)*
+                }
+            }
+
+            fn __resolve_string(
+                profile: Option<&serde_json::Value>,
+                key: &str,
+                env_var: &str,
+                build_embed: bool,
+                default: &str,
+            ) -> String {
+                if let Some(value) = crate::env::sources::trimmed_env(env_var) {
+                    return value;
+                }
+                if build_embed {
+                    if let Some(value) = crate::env::sources::build_embed(env_var) {
+                        return value;
+                    }
+                }
+                if let Some(profile) = profile {
+                    if let Some(value) = profile.get(key).and_then(|value| value.as_str()) {
+                        let value = value.trim();
+                        if !value.is_empty() {
+                            return value.to_string();
+                        }
+                    }
+                }
+                default.to_string()
+            }
+
+            fn __resolve_bool(
+                profile: Option<&serde_json::Value>,
+                key: &str,
+                env_var: &str,
+                default: bool,
+            ) -> bool {
+                if let Some(value) = crate::env::sources::trimmed_env(env_var) {
+                    return crate::env::sources::env_is_truthy(&value);
+                }
+                if let Some(profile) = profile {
+                    if let Some(value) = profile.get(key).and_then(|value| value.as_bool()) {
+                        return value;
+                    }
+                }
+                default
+            }
+        }
+    };
+
+    // The derive is observable-only: reads mirror the managed observable, and
+    // writes go through the observable guard so persistence and change events
+    // stay centralized.
     //
-    // `load` can be called before startup finishes managing all slices, such as
-    // in tests or early schema rendering. Defaults keep that path deterministic.
+    // `load` can be called before startup finishes managing all observables,
+    // such as in tests or early schema rendering. Defaults keep that path
+    // deterministic.
     quote! {
         pub fn load<R: ::tauri::Runtime>(
             app: &::tauri::AppHandle<R>,
         ) -> ::std::result::Result<Self, ::anyhow::Error> {
-            if let ::std::option::Option::Some(__slice) =
-                ::tauri::Manager::try_state::<crate::state::slice::Slice<#name>>(app)
+            if let ::std::option::Option::Some(__observable) =
+                ::tauri::Manager::try_state::<crate::observable::Observable<#name>>(app)
             {
-                return ::std::result::Result::Ok(__slice.read_sync().clone());
+                return ::std::result::Result::Ok(__observable.read_sync().clone());
             }
             ::std::result::Result::Ok(Self {
                 #(#default_inits)*
             })
         }
 
-        pub fn schema<R: ::tauri::Runtime>(
-            app: &::tauri::AppHandle<R>,
-        ) -> ::std::result::Result<::configurable::ConfigurableSchema, ::anyhow::Error> {
-            let __current = Self::load(app)?;
-            ::std::result::Result::Ok(::configurable::ConfigurableSchema {
+        pub fn schema() -> ::configurable::ConfigurableSchema {
+            ::configurable::ConfigurableSchema {
                 name: #name_str.to_string(),
                 display_name: #display_name.to_string(),
                 description: #description_expr,
                 fields: ::std::vec![
                     #(#schema_fields)*
                 ],
-            })
-        }
-
-        pub fn set_field<R: ::tauri::Runtime>(
-            app: &::tauri::AppHandle<R>,
-            key: &str,
-            value: ::serde_json::Value,
-        ) -> ::std::result::Result<(), ::anyhow::Error> {
-            let __slice = ::tauri::Manager::try_state::<crate::state::slice::Slice<#name>>(app)
-                .ok_or_else(|| ::anyhow::anyhow!(
-                    "Configurable {}: {} slice is not managed",
-                    #name_str, #scope_name,
-                ))?;
-            let mut __state = __slice.write_sync(app);
-            match key {
-                #(#set_field_arms)*
-                other => ::std::result::Result::Err(::anyhow::anyhow!(
-                    "Configurable {}: unknown field `{}`",
-                    #name_str, other,
-                )),
             }
         }
+
+        pub fn set<R: ::tauri::Runtime>(
+            app: &::tauri::AppHandle<R>,
+            value: ::serde_json::Value,
+        ) -> ::std::result::Result<(), ::anyhow::Error> {
+            let __observable =
+                ::tauri::Manager::try_state::<crate::observable::Observable<#name>>(app)
+                    .ok_or_else(|| ::anyhow::anyhow!(
+                        "Configurable {}: {} observable is not managed",
+                        #name_str, #scope_name,
+                    ))?;
+            let __next: Self = ::serde_json::from_value(value).map_err(|e| {
+                ::anyhow::anyhow!("Configurable {}: invalid payload: {}", #name_str, e)
+            })?;
+            let mut __state = __observable.write_sync();
+            *__state = __next;
+            ::std::result::Result::Ok(())
+        }
+
+        #resolve_methods
     }
 }

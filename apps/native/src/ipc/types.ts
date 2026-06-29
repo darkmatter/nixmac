@@ -3,6 +3,65 @@
 // Source: src-tauri/src/shared_types/ (re-exported by shared_types.rs)
 
 /**
+ * Billing snapshot returned by `/api/billing/state` for onboarding and account UI.
+ */
+export type AccountBilling = { usage: BillingUsage; subscriptions: BillingSubscription[]; hasPaymentMethod: boolean; canUseHostedInference: boolean; canUseDeviceSync: boolean }
+
+/**
+ * The signed-in nixmac account, minus any secret material.
+ */
+export type AuthAccount = { 
+/**
+ * Stable account identifier assigned by the server.
+ */
+id: string; 
+/**
+ * Account email address used to sign in.
+ */
+email: string }
+
+/**
+ * Snapshot of the desktop client's authentication state, returned by
+ * `account_status`. The HMAC secret is never included.
+ */
+export type AuthStatus = { 
+/**
+ * Whether a usable account credential is stored on this device.
+ */
+signedIn: boolean; 
+/**
+ * The signed-in account, when `signed_in` is true.
+ */
+account: AuthAccount | null; 
+/**
+ * Public credential/key identifier sent in the `Authorization` header.
+ */
+keyId: string | null; 
+/**
+ * Base URL of the sync server this device is configured to talk to.
+ */
+serverUrl: string; 
+/**
+ * Whether this device can call server-brokered GitHub endpoints (has a
+ * minted Better Auth api-key for the web origin).
+ */
+githubReady: boolean; 
+/**
+ * The web-origin account used for GitHub, when `github_ready` is true.
+ */
+webAccount: AuthAccount | null }
+
+/**
+ * Active Polar subscription mapped to a known nixmac product slug.
+ */
+export type BillingSubscription = { id: string; slug: string; productId: string; status: string }
+
+/**
+ * Hosted inference usage for the signed-in web account.
+ */
+export type BillingUsage = { currency: string; spentUsd: number }
+
+/**
  * Result of `darwin_build_check` — dry-run build outcome.
  */
 export type BuildCheckResult = { 
@@ -15,7 +74,7 @@ passed: boolean;
  */
 output: string }
 
-export type Change = { id: number; hash: string; filename: string; diff: string; lineCount: number; createdAt: number; ownSummaryId: number | null }
+export type Change = { id: number; hash: string; filename: string; diff: string; lineCount: number; createdAt: number; ownSummaryId: number }
 
 /**
  * Groups Changes for a commit→base_commit pair. `commit_id` is NULL for speculative
@@ -78,7 +137,7 @@ createdAt: number;
 /**
  * Direct summary row id assigned to this change, if any.
  */
-ownSummaryId: number | null; 
+ownSummaryId: number; 
 /**
  * Summary title used for display.
  */
@@ -108,17 +167,14 @@ opencode: boolean }
 export type Commit = { id: number; hash: string; treeHash: string; message: string | null; createdAt: number }
 
 /**
- * Result of a successful `git_commit` command.
+ * Result of a successful `git_commit` command. State mirrors (git, evolve,
+ * change map) flow through the `*_changed` events.
  */
 export type CommitResult = { 
 /**
  * Hash of the commit that was created.
  */
-hash: string; 
-/**
- * Evolve state after committing.
- */
-evolveState: EvolveState }
+hash: string }
 
 /**
  * Application configuration returned by `config_get`.
@@ -153,24 +209,15 @@ ok: boolean;
 /**
  * Number of items applied.
  */
-count: number; 
-/**
- * Semantic summary after applying the edit.
- */
-changeMap: SemanticChangeMap; 
-/**
- * Git status after applying the edit.
- */
-gitStatus: GitStatus; 
-/**
- * Evolve routing state after applying the edit.
- */
-evolveState: EvolveState }
+count: number }
 
 /**
- * Per-field description rendered into a UI control.
+ * Static description of one Configurable field.
+ * 
+ * Produced by the derive macro with no runtime context; the same value every
+ * call. Joined with the current store-backed value by `key` at render time.
  */
-export type ConfigField = { 
+export type ConfigFieldSchema = { 
 /**
  * Key as written to the underlying store (typically camelCase).
  */
@@ -190,19 +237,16 @@ ty: FieldType;
 /**
  * Default if the store has no value yet.
  */
-default: JsonValue; 
-/**
- * Current value loaded from the store.
- */
-current: JsonValue }
+default: JsonValue }
 
 /**
  * One section in the auto-rendered settings panel — corresponds to one
- * `#[derive(Configurable)]` struct.
+ * `#[derive(Configurable)]` struct. Static metadata only; current values are
+ * fetched separately and joined by struct name + field key on the frontend.
  */
 export type ConfigurableSchema = { 
 /**
- * Unique stable identifier (struct's Rust name). Used by `set_field` to
+ * Unique stable identifier (struct's Rust name). Used by the setter to
  * dispatch to the right registered configurable.
  */
 name: string; 
@@ -213,7 +257,7 @@ displayName: string;
 /**
  * Optional one-line description shown under the title.
  */
-description?: string | null; fields: ConfigField[] }
+description?: string | null; fields: ConfigFieldSchema[] }
 
 /**
  * Payload for `darwin:apply:data`.
@@ -245,6 +289,10 @@ error_type: RebuildErrorType | null;
  */
 error: string | null; 
 /**
+ * Whether the failed operation completed before changing system state.
+ */
+system_untouched: boolean | null; 
+/**
  * Path to the captured rebuild log, when available.
  */
 log_file: string | null }
@@ -273,19 +321,6 @@ error: boolean | null;
  * Error category when `error` or `complete && !success` is set.
  */
 error_type: RebuildErrorType | null }
-
-/**
- * Response from the debug Sentry event command.
- */
-export type DebugSentryResult = { 
-/**
- * Whether the debug event was sent.
- */
-ok: boolean; 
-/**
- * Human-readable result message.
- */
-message: string }
 
 export type EnumVariant = { value: string; label: string }
 
@@ -324,48 +359,6 @@ changesSummary: string | null;
 suggestedCommitMessage: string | null }
 
 /**
- * Evolution failure payload with partial telemetry.
- */
-export type EvolutionFailureResult = { 
-/**
- * Error message returned to the frontend.
- */
-error: string; 
-/**
- * Best-effort git status captured after failure.
- */
-gitStatus: GitStatus | null; 
-/**
- * Partial telemetry captured before failure.
- */
-telemetry: EvolutionTelemetry }
-
-/**
- * Evolution result returned to the frontend on completion.
- */
-export type EvolutionResult = { 
-/**
- * Semantic summary of the generated changes.
- */
-changeMap: SemanticChangeMap; 
-/**
- * Git status after evolution completes.
- */
-gitStatus: GitStatus; 
-/**
- * Evolve routing state after evolution completes.
- */
-evolveState: EvolveState; 
-/**
- * Assistant response when no file changes were produced.
- */
-conversationalResponse: string | null; 
-/**
- * Telemetry collected during evolution.
- */
-telemetry: EvolutionTelemetry }
-
-/**
  * Evolution lifecycle state.
  */
 export type EvolutionState = 
@@ -396,7 +389,14 @@ export type EvolutionState =
 /**
  * Agent responded conversationally without making any environment changes.
  */
-"conversational"
+"conversational" | 
+/**
+ * Evolution was stopped because a safety limit was reached
+ * (iterations, build attempts, token budget, or stale progress).
+ * Distinguishes "we cut it off" from "the agent finished" so
+ * the eval harness can score runaways correctly.
+ */
+"limitReached"
 
 /**
  * Telemetry counters from a completed evolution run.
@@ -471,7 +471,16 @@ iteration: number | null;
 /**
  * Milliseconds elapsed since the evolution started.
  */
-timestampMs: number }
+timestampMs: number; 
+/**
+ * Telemetry collected during the run; only on the terminal `Complete` event.
+ */
+telemetry?: EvolutionTelemetry | null; 
+/**
+ * Assistant response when no environment changes were produced; only on
+ * the terminal `Complete` event.
+ */
+conversationalResponse?: string | null }
 
 /**
  * Types of evolve events for UI rendering.
@@ -543,7 +552,14 @@ export type EvolveEventType =
 "question"
 
 /**
- * Persisted evolve state stored in `evolve-state.json`.
+ * The evolve routing state as projected for the frontend: the owned
+ * [`EvolveSession`] fields joined with the two derived values (`step`,
+ * `committable`).
+ * 
+ * This is the wire/event type — it is computed by
+ * `state::evolve_state::project` and is never persisted or treated as a
+ * source of truth on its own. `step` and `committable` are always recomputed
+ * from live build/git state, so a value of this type is only a snapshot.
  */
 export type EvolveState = { 
 /**
@@ -575,14 +591,11 @@ rollbackStorePath: string | null;
  */
 rollbackChangesetId: number | null; 
 /**
- * UI step derived from the routing state.
+ * UI step derived from the session plus live build/git state.
  */
 step: EvolveStep; 
 /**
  * Last terminal state observed for this routing session.
- * 
- * This supports transition-sensitive behavior when returning to Begin
- * and maybe some other useful things in the future.
  */
 lastEvolutionState?: EvolutionState | null }
 
@@ -887,19 +900,6 @@ export type FileDiffContents = { original: string; modified: string }
 export type FileEdit = { path: string; search: string; replace: string }
 
 /**
- * Result of a successful `finalize_apply` or `finalize_rollback` command.
- */
-export type FinalizeApplyResult = { 
-/**
- * Git status after finalization.
- */
-gitStatus: GitStatus; 
-/**
- * Evolve state after finalization.
- */
-evolveState: EvolveState }
-
-/**
  * Individual file status parsed from diff headers.
  */
 export type GitFileStatus = { 
@@ -961,6 +961,159 @@ cleanHead: boolean;
  * Raw change rows associated with the current diff.
  */
 changes: Change[] }
+
+/**
+ * Current state of a GitHub-first desktop bootstrap flow.
+ */
+export type GithubBootstrapState = 
+/**
+ * The browser OAuth/install flow has not finished yet.
+ */
+"pending" | 
+/**
+ * The server created/bound the Better Auth user and returned a device key.
+ */
+"complete" | 
+/**
+ * The server could not create an account from GitHub identity; use email OTP.
+ */
+"fallbackRequired" | 
+/**
+ * The state token expired or is no longer usable.
+ */
+"expired"
+
+/**
+ * Public bootstrap status returned to the frontend. Secret material returned by
+ * the server is persisted natively and intentionally omitted from this type.
+ */
+export type GithubBootstrapStatus = { 
+/**
+ * Bootstrap lifecycle state for this browser flow.
+ */
+state: GithubBootstrapState; 
+/**
+ * True once the account is linked to a GitHub App installation.
+ */
+connected: boolean; 
+/**
+ * The connected GitHub login (for display), when known.
+ */
+login: string | null; 
+/**
+ * The linked installation id, when connected.
+ */
+installationId: number; 
+/**
+ * The Better Auth account created or bound by the server, when complete.
+ */
+account: AuthAccount | null; 
+/**
+ * Human-readable reason to show when email OTP fallback is needed.
+ */
+fallbackReason: string | null; 
+/**
+ * Server-requested polling interval in seconds (used for GitHub slow_down).
+ */
+pollIntervalSeconds: number | null }
+
+/**
+ * Result of starting a GitHub connection flow. Authenticated connections use
+ * `install_url` as the GitHub App install URL; unauthenticated bootstrap uses
+ * GitHub device OAuth and includes a user code to display.
+ */
+export type GithubConnectStart = { 
+/**
+ * GitHub URL to open in the user's browser.
+ */
+installUrl: string; 
+/**
+ * Opaque state bound to the account/server flow.
+ */
+state: string; 
+/**
+ * Device OAuth code the user must enter at `verification_uri`.
+ */
+userCode: string | null; 
+/**
+ * Device OAuth verification URL.
+ */
+verificationUri: string | null; 
+/**
+ * Seconds until the device code expires.
+ */
+expiresIn: number | null; 
+/**
+ * Minimum polling interval, in seconds.
+ */
+interval: number | null }
+
+/**
+ * A repository the installation can access, returned by `github_list_repos`.
+ */
+export type GithubRepo = { 
+/**
+ * Repository owner login.
+ */
+owner: string; 
+/**
+ * Repository name.
+ */
+name: string; 
+/**
+ * Whether the repository is private.
+ */
+private: boolean; 
+/**
+ * ISO-8601 timestamp of the last update.
+ */
+updatedAt: string; 
+/**
+ * Default branch name (where `flake.nix` is checked).
+ */
+defaultBranch: string; 
+/**
+ * Whether a `flake.nix` exists at the default branch root.
+ */
+hasFlake: boolean }
+
+/**
+ * Whether this account has a linked GitHub App installation, returned by
+ * `github_status` (polled while the browser install completes).
+ */
+export type GithubStatus = { 
+/**
+ * True once the account is linked to a GitHub App installation.
+ */
+connected: boolean; 
+/**
+ * The connected GitHub login (for display), when known.
+ */
+login: string | null; 
+/**
+ * The linked installation id, when connected.
+ */
+installationId: number }
+
+/**
+ * Preferences local to this app installation.
+ * 
+ * Hydrated via `get_global_preferences`; every mutation emits
+ * `global_preferences_changed` with the full struct as payload.
+ */
+export type GlobalPreferences = { hostAttr: string | null; configDir: string | null; repoRoot: string | null; sendDiagnostics: boolean; evolveProvider: string | null; evolveModel: string | null; summaryProvider: string | null; summaryModel: string | null; ollamaApiBaseUrl: string | null; vllmApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
+/**
+ * Timestamp (unix secs) of the last onboarding "scan this Mac" / customizations review.
+ */
+onboardingMacScannedAt: number | null; 
+/**
+ * True once the user logged in or explicitly chose bring-your-own-key during onboarding.
+ */
+onboardingLoginDecided: boolean; 
+/**
+ * Timestamp (unix secs) of the last successful build/evolution apply. Set by `finalize_apply`.
+ */
+onboardingLastBuildAt: number | null }
 
 /**
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
@@ -1027,6 +1180,10 @@ isOrphanedRestore: boolean;
  */
 isUndone: boolean }
 
+export type HomebrewItem = { name: string; version: string | null; itemType: HomebrewItemType }
+
+export type HomebrewItemType = "tap" | "cask" | "brew"
+
 /**
  * Current Homebrew package state detected on the machine.
  */
@@ -1062,6 +1219,43 @@ lastChecked: number }
 export type ImportResult = { path: string; keysImported: number }
 
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
+
+export type LaunchdItem = { 
+/**
+ * launchd Label
+ */
+label: string; scope: LaunchdItemType; 
+/**
+ * Suggested Nix attribute name.
+ * Example: "redis"
+ */
+name: string; 
+/**
+ * Command and arguments to execute.
+ */
+programArguments: string[]; 
+/**
+ * Launch when loaded.
+ */
+runAtLoad: boolean; 
+/**
+ * Keep the service running.
+ */
+keepAlive: boolean; 
+/**
+ * Environment variables.
+ */
+environmentVariables: Partial<{ [key in string]: string }>; 
+/**
+ * Log file locations.
+ */
+standardOutPath: string | null; standardErrorPath: string | null; 
+/**
+ * Working directory, if specified.
+ */
+workingDirectory: string | null }
+
+export type LaunchdItemType = "LaunchAgent" | "LaunchDaemon" | "LaunchdUserAgent"
 
 /**
  * Result of `nix_check` — reports whether Nix and darwin-rebuild are available.
@@ -1180,6 +1374,36 @@ downloaded: number | null;
  * Total bytes expected, when known.
  */
 total: number | null }
+
+/**
+ * Status of the nix / darwin-rebuild installation flow.
+ */
+export type NixInstallState = { 
+/**
+ * Whether nix is installed; `None` until first checked.
+ */
+installed: boolean | null; 
+/**
+ * Whether darwin-rebuild is available; `None` until first checked.
+ */
+darwinRebuildAvailable: boolean | null; 
+/**
+ * True while an install run is in flight.
+ */
+installing: boolean; 
+/**
+ * Current installer phase ("downloading", "waiting-for-installer",
+ * "prefetching"); `None` when idle.
+ */
+installPhase: string | null; 
+/**
+ * True while the standalone darwin-rebuild prefetch is in flight.
+ */
+prefetching: boolean; 
+/**
+ * Error from the last finished run, if it failed.
+ */
+lastError: string | null }
 
 /**
  * Generic acknowledgement returned by fire-and-forget commands.
@@ -1324,6 +1548,35 @@ export type RebuildErrorType =
 "generic_error"
 
 /**
+ * Lifecycle status of the darwin-rebuild apply/activate streams.
+ */
+export type RebuildStatus = { 
+/**
+ * True while a rebuild stream is in flight.
+ */
+isRunning: boolean; 
+/**
+ * Outcome of the last finished run; `None` while running or never run.
+ */
+success: boolean | null; 
+/**
+ * Exit code of the last finished run.
+ */
+exitCode: number | null; 
+/**
+ * Error class of the last failed run.
+ */
+errorType: string | null; 
+/**
+ * Error message of the last failed run.
+ */
+errorMessage: string | null; 
+/**
+ * Whether the failure left the system untouched.
+ */
+systemUntouched: boolean | null }
+
+/**
  * A recommended prompt based on the user's current macOS settings.
  */
 export type RecommendedPrompt = { 
@@ -1337,17 +1590,10 @@ id: string;
 promptText: string }
 
 /**
- * Result returned from a rollback erase operation.
+ * Result returned from a rollback erase operation. Git/evolve state mirrors
+ * flow through the `*_changed` events; this only carries the rollback target.
  */
 export type RollbackResult = { 
-/**
- * Git status after rollback preparation.
- */
-gitStatus: GitStatus; 
-/**
- * Evolve state after rollback preparation.
- */
-evolveState: EvolveState; 
 /**
  * Store path to reactivate as part of the rollback flow.
  */
@@ -1404,7 +1650,8 @@ unsummarizedHashes: string[] }
 
 /**
  * Result returned when the config directory is set (typed or picked).
- * `evolve_state` and `hosts` are `Some` only when the directory actually changed.
+ * State mirrors (evolve state, git state, hosts) flow through the
+ * `*_changed` events; this only carries genuine command results.
  */
 export type SetDirResult = { 
 /**
@@ -1412,13 +1659,9 @@ export type SetDirResult = {
  */
 dir: string; 
 /**
- * Fresh evolve state after changing directories, when applicable.
+ * True when the selected directory differs from the previous one.
  */
-evolveState: EvolveState | null; 
-/**
- * Hosts discovered in the selected flake, when applicable.
- */
-hosts: string[] | null }
+changed: boolean }
 
 export type SummarizedChange = { 
 /**
@@ -1447,6 +1690,44 @@ changes: SummarizedChange[];
  * Change hashes expected in the set but missing from the database.
  */
 missedHashes: string[] }
+
+/**
+ * Remote sync state for the current account, returned by `sync_status`.
+ */
+export type SyncRemoteStatus = { 
+/**
+ * Whether the server has a stored configuration snapshot for this account.
+ */
+configured: boolean; 
+/**
+ * Commit hash of the latest snapshot the server holds, if any.
+ */
+headCommitHash: string | null; 
+/**
+ * Unix timestamp (seconds) of the latest server-side snapshot, if any.
+ */
+updatedAt: number | null; 
+/**
+ * Number of devices currently registered to the account.
+ */
+deviceCount: number }
+
+/**
+ * Result of a `sync_push` or `sync_pull` operation.
+ */
+export type SyncResult = { 
+/**
+ * Whether the operation succeeded end-to-end.
+ */
+ok: boolean; 
+/**
+ * Commit hash that is now current after the operation, when known.
+ */
+headCommitHash: string | null; 
+/**
+ * Human-readable status detail for display in the UI.
+ */
+message: string }
 
 /**
  * A single macOS system default that differs from the factory value.
@@ -1621,6 +1902,11 @@ scanHomebrewOnStartup: boolean;
  */
 defaultToDiffTab: boolean; 
 /**
+ * Experimental: spin the nixmac mascot (horizontal-axis flip) in a corner
+ * indicator window while an evolution is running or a build is in progress.
+ */
+experimentalSpinningMascot: boolean; 
+/**
  * Whether developer-only UI/actions are enabled.
  */
 developerMode: boolean; 
@@ -1631,7 +1917,12 @@ pinnedVersion: string | null;
 /**
  * Auto-update channel used when no explicit version pin is active.
  */
-updateChannel: UpdateChannel }
+updateChannel: UpdateChannel; 
+/**
+ * Developer-only feature flag overrides (flag key → variant string).
+ * `None` or missing key = use PostHog default.
+ */
+featureFlagOverrides: Partial<{ [key in string]: string }> | null }
 
 /**
  * Partial update to UI preferences — every field is optional so the caller
@@ -1719,6 +2010,10 @@ scanHomebrewOnStartup: boolean | null;
  */
 defaultToDiffTab: boolean | null; 
 /**
+ * Experimental spinning-mascot preference update.
+ */
+experimentalSpinningMascot: boolean | null; 
+/**
  * Developer mode preference update.
  */
 developerMode: boolean | null; 
@@ -1729,7 +2024,20 @@ pinnedVersion?: string | null;
 /**
  * Auto-update channel preference update.
  */
-updateChannel: UpdateChannel | null }
+updateChannel: UpdateChannel | null; 
+/**
+ * `None` -> field not sent; `Some(None)` -> clear all overrides;
+ * `Some(Some(map))` -> replace overrides with `map`.
+ */
+featureFlagOverrides?: Partial<{ [key in string]: string }> | null; 
+/**
+ * Timestamp (unix secs) of the last onboarding "scan this Mac" / customizations review.
+ */
+onboardingMacScannedAt: number | null; 
+/**
+ * Set true once the user logged in or explicitly chose bring-your-own-key.
+ */
+onboardingLoginDecided: boolean | null }
 
 /**
  * Auto-update channel selected for release-mode builds.

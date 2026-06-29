@@ -18,7 +18,7 @@ Hooks in `hooks/` sit between components and `ipc/api.ts`. Each hook owns a slic
 
 ## App State
 
-`widget-store.ts` is a Zustand store that holds widget step routing, git status, evolve state, UI preferences, and shared flags. Most hooks read from and write to this store.
+State is split across two Zustand stores: `view-model.ts` mirrors backend-owned state (git, evolve, change map, preferences, permissions, nix install, rebuild) and is written only by the `viewmodel/` sync modules from backend events; `ui-state.ts` holds TS-owned UI state. `hooks/use-current-step.ts` derives widget step routing from both.
 
 Components read from this store directly when possible to minimize prop-drilling.
 

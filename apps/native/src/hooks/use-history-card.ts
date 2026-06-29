@@ -4,7 +4,7 @@ import type { HistoryItem } from "@/ipc/types";
 import { cn } from "@/lib/utils";
 import { buildColorMap } from "@/components/widget/utils";
 import type { ColorMap } from "@/components/widget/utils";
-import { useViewModel } from "@/stores/view-model";
+import { useViewModel } from "@nixmac/state";
 
 type ActionType = "current" | "base" | "build" | "restore" | "preview";
 
@@ -34,15 +34,16 @@ export function useHistoryCard(item: HistoryItem, isPreview = false): UseHistory
     if (e.key === "Enter" || e.key === " ") setExpanded((prev) => !prev);
   };
 
-  const borderColor = item.isBuilt ? "border-teal-400/40" : "border-white/[0.12]";
-  const interactivity = item.changeMap && !isPreview
-    ? cn(
-        "cursor-pointer",
-        item.isBuilt
-          ? "group-hover:border-teal-400/50"
-          : "group-hover:border-white/35 group-hover:bg-[#151515]",
-      )
-    : "cursor-default";
+  const borderColor = item.isBuilt ? "border-teal-400/40" : "border-white/12";
+  const interactivity =
+    item.changeMap && !isPreview
+      ? cn(
+          "cursor-pointer",
+          item.isBuilt
+            ? "group-hover:border-teal-400/50"
+            : "group-hover:border-white/35 group-hover:bg-[#151515]",
+        )
+      : "cursor-default";
   const expandedStyles = expanded
     ? cn("bg-[#151515]", item.isBuilt ? "border-teal-400/50" : "border-white/35")
     : undefined;

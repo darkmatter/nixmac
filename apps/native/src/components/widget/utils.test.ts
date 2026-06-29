@@ -1,11 +1,13 @@
 import type { ChangeWithRichType } from "@/components/widget/utils";
 import {
   categorizeRenamed,
+  computeCurrentStep,
   getModStartLine,
   inferChangeType,
   newFileContentFromDiffs,
   summarizeChangesByFile,
 } from "@/components/widget/utils";
+import type { EvolveState, EvolveStep } from "@/ipc/types";
 import { describe, expect, it } from "vitest";
 
 function change(
@@ -22,7 +24,7 @@ function change(
     diff: `@@ -${id},1 +${id},1 @@`,
     lineCount,
     createdAt: 0,
-    ownSummaryId: null,
+    ownSummaryId: 3,
     changeType,
     oldFilename,
     shortFilename: filename.split("/").pop() ?? filename,
@@ -102,7 +104,7 @@ describe("categorizeRenamed", () => {
       diff,
       lineCount: 1,
       createdAt: 0,
-      ownSummaryId: null,
+      ownSummaryId: 3,
       changeType,
       shortFilename: filename.split("/").pop() ?? filename,
     };
@@ -123,9 +125,7 @@ describe("categorizeRenamed", () => {
   });
 
   it("does not categorize an in-place rename (no remove + new pair) as renamed", () => {
-    const result = categorizeRenamed([
-      richChange("modules/darwin/networking.nix", "edited"),
-    ]);
+    const result = categorizeRenamed([richChange("modules/darwin/networking.nix", "edited")]);
 
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
@@ -166,20 +166,86 @@ describe("getModStartLine", () => {
 
 describe("newFileContentFromDiffs", () => {
   it("reconstructs added content from a hunk-only new-file diff", () => {
-    expect(newFileContentFromDiffs([
-      "@@ -0,0 +1,4 @@\n+{ config, pkgs, ... }:\n+\n+{\n+  programs.zsh.enable = true;\n+}",
-    ])).toBe("{ config, pkgs, ... }:\n\n{\n  programs.zsh.enable = true;\n}");
+    expect(
+      newFileContentFromDiffs([
+        "@@ -0,0 +1,4 @@\n+{ config, pkgs, ... }:\n+\n+{\n+  programs.zsh.enable = true;\n+}",
+      ]),
+    ).toBe("{ config, pkgs, ... }:\n\n{\n  programs.zsh.enable = true;\n}");
   });
 
   it("ignores diff metadata when reconstructing full new-file diffs", () => {
-    expect(newFileContentFromDiffs([
-      "diff --git a/modules/home/shell.nix b/modules/home/shell.nix\nnew file mode 100644\n--- /dev/null\n+++ b/modules/home/shell.nix\n@@ -0,0 +1,2 @@\n+line one\n+line two",
-    ])).toBe("line one\nline two");
+    expect(
+      newFileContentFromDiffs([
+        "diff --git a/modules/home/shell.nix b/modules/home/shell.nix\nnew file mode 100644\n--- /dev/null\n+++ b/modules/home/shell.nix\n@@ -0,0 +1,2 @@\n+line one\n+line two",
+      ]),
+    ).toBe("line one\nline two");
   });
 
   it("returns null for edited-file diffs", () => {
-    expect(newFileContentFromDiffs([
-      "@@ -3,2 +3,2 @@\n-old\n+new",
-    ])).toBeNull();
+    expect(newFileContentFromDiffs(["@@ -3,2 +3,2 @@\n-old\n+new"])).toBeNull();
+  });
+});
+
+describe("computeCurrentStep — diff gating", () => {
+  // A fully-onboarded, ready state: every earlier gate (permissions, nix,
+  // setup, history) passes, so routing falls through to the evolve logic.
+  function readyState(overrides: Partial<Parameters<typeof computeCurrentStep>[0]> = {}) {
+    return {
+      configDir: "/Users/test/nixmac",
+      host: "Test-Mac",
+      hosts: ["Test-Mac"],
+      permissionsChecked: true,
+      permissionsState: { allRequiredGranted: true } as never,
+      nixInstalled: true,
+      darwinRebuildAvailable: true,
+      isBootstrapping: false,
+      showHistory: false,
+      showFilesystem: false,
+      evolveState: null as EvolveState | null,
+      activeStepOverride: null as EvolveStep | null,
+      hasChanges: false,
+      ...overrides,
+    };
+  }
+
+  const evolveAt = (step: EvolveStep) => ({ step }) as EvolveState;
+
+  it("routes to begin when there is no diff, even with an active evolve session", () => {
+    expect(computeCurrentStep(readyState({ evolveState: evolveAt("evolve") }))).toBe("begin");
+    expect(computeCurrentStep(readyState({ evolveState: evolveAt("commit") }))).toBe("begin");
+    expect(computeCurrentStep(readyState({ evolveState: evolveAt("manualEvolve") }))).toBe("begin");
+  });
+
+  it("honors the backend step once there is a diff to act on", () => {
+    expect(computeCurrentStep(readyState({ evolveState: evolveAt("evolve"), hasChanges: true }))).toBe(
+      "evolve",
+    );
+    expect(computeCurrentStep(readyState({ evolveState: evolveAt("commit"), hasChanges: true }))).toBe(
+      "commit",
+    );
+    expect(
+      computeCurrentStep(readyState({ evolveState: evolveAt("manualEvolve"), hasChanges: true })),
+    ).toBe("manualEvolve");
+  });
+
+  it("applies a backward override only when there is a diff", () => {
+    expect(
+      computeCurrentStep(
+        readyState({ evolveState: evolveAt("commit"), activeStepOverride: "evolve" }),
+      ),
+    ).toBe("begin");
+    expect(
+      computeCurrentStep(
+        readyState({
+          evolveState: evolveAt("commit"),
+          activeStepOverride: "evolve",
+          hasChanges: true,
+        }),
+      ),
+    ).toBe("evolve");
+  });
+
+  it("keeps earlier gates ahead of the diff check", () => {
+    expect(computeCurrentStep(readyState({ showHistory: true }))).toBe("history");
   });
 });

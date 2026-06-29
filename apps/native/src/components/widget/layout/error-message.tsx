@@ -2,7 +2,9 @@
 
 import { Button } from "@/components/ui/button";
 import { EVOLUTION_CANCELLED_MSG } from "@/lib/constants";
-import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
+import { uiActions, useUiState } from "@nixmac/state";
+import { nav } from "@/router";
+import { useCurrentStep } from "@/hooks/use-current-step";
 import { FeedbackType } from "@/types/feedback";
 import { Settings } from "lucide-react";
 import { useEffect, useRef } from "react";
@@ -12,15 +14,12 @@ import { useEffect, useRef } from "react";
  * Filters out certain errors based on context (e.g., expected errors during setup).
  */
 export function ErrorMessage() {
-  const error = useWidgetStore((s) => s.error);
-  const setError = useWidgetStore((s) => s.setError);
-  const openFeedback = useWidgetStore((s) => s.openFeedback);
-  const setSettingsOpen = useWidgetStore((s) => s.setSettingsOpen);
-  const step = useCurrentStep();
+  const error = useUiState((s) => s.error);
+        const step = useCurrentStep();
   const dismissedRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (error && step === "setup") setError(null);
+    if (error && step === "setup") uiActions.setError(null);
   }, [error, step]);
 
   // more persistent dismissal for certain looping (watcher) errors
@@ -51,7 +50,7 @@ export function ErrorMessage() {
       data-testid="widget-error-message"
       className="mx-auto max-w-2xl rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400"
     >
-      <div className="whitespace-pre-wrap break-words">{error}</div>
+      <div className="whitespace-pre-wrap wrap-break-word">{error}</div>
       <div className="mt-2 flex items-center gap-3">
         {showSettingsCta && (
           <Button
@@ -60,8 +59,8 @@ export function ErrorMessage() {
             size="sm"
             className="h-auto gap-1 p-0 text-red-300 underline text-xs"
             onClick={() => {
-              setSettingsOpen(true, "api-keys");
-              setError(null);
+              nav.openSettings("api-keys");
+              uiActions.setError(null);
             }}
           >
             <Settings className="h-3 w-3" />
@@ -73,7 +72,7 @@ export function ErrorMessage() {
           variant="link"
           size="sm"
           className="h-auto p-0 text-red-300 underline text-xs"
-          onClick={() => openFeedback(FeedbackType.Error, error)}
+          onClick={() => uiActions.openFeedback(FeedbackType.Error, error)}
         >
           Report Error
         </Button>
@@ -84,7 +83,7 @@ export function ErrorMessage() {
           className="h-auto p-0 text-red-300 underline text-xs"
           onClick={() => {
             dismissedRef.current = error;
-            setError(null);
+            uiActions.setError(null);
           }}
         >
           Dismiss

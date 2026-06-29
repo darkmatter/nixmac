@@ -1,10 +1,24 @@
 use super::helpers::capture_err;
+use crate::state::permissions_state;
 use crate::{shared_types, system::permissions};
+use tauri::AppHandle;
 
-/// Check all macOS permissions and return their current status.
+/// Returns the last-known permissions from the in-memory cell, without
+/// probing the OS. `None` means permissions were never checked; call
+/// `refresh_permissions` to probe.
 #[tauri::command]
-pub async fn permissions_check_all() -> Result<shared_types::PermissionsState, String> {
-    Ok(permissions::check_all_permissions())
+pub async fn get_permissions(
+    app: AppHandle,
+) -> Result<Option<shared_types::PermissionsState>, String> {
+    Ok(permissions_state::get(&app))
+}
+
+/// Probe all macOS permissions and record the result; the cell write emits
+/// `permissions_changed`.
+#[tauri::command]
+pub async fn refresh_permissions(app: AppHandle) -> Result<(), String> {
+    permissions_state::refresh(&app);
+    Ok(())
 }
 
 /// Request a specific permission by ID.

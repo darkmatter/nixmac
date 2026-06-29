@@ -2,9 +2,27 @@
 
 import { useEffect, useState } from "react";
 
-import { useWidgetStore } from "@/stores/widget-store";
+import { tauriAPI } from "@/ipc/api";
+import { useLaunchdItems } from "@/hooks/use-launchd-items";
+import { useSystemDefaultsScan } from "@/hooks/use-system-defaults-scan";
+import { useHomebrewDiff } from "@/hooks/use-homebrew-diff";
+import { uiActions, useUiState } from "@nixmac/state";
 
-import { FILES, SECTIONS, type FsFile, type SectionId } from "./data";
+import type { HomebrewItem, LaunchdItem, SystemDefault } from "@/ipc/types";
+
+import {
+  FILES,
+  SECTIONS,
+  homebrewFilesFromDiff,
+  launchdItemsFileFromScan,
+  replaceHomebrewPlaceholders,
+  replaceLaunchdPlaceholder,
+  replaceSystemDefaultsPlaceholder,
+  systemDefaultsFileFromScan,
+  type CandidateItem,
+  type FsFile,
+  type SectionId,
+} from "./data";
 import { FileList } from "./file-list";
 import { SectionTabs } from "./section-tabs";
 import { seedForFile } from "./seed-prompt";
@@ -20,9 +38,7 @@ interface FilesystemStepProps {
 }
 
 export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
-  const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
-  const setShowFilesystem = useWidgetStore((s) => s.setShowFilesystem);
-  const targetSection = useWidgetStore((s) => s.filesystemTargetSection);
+      const targetSection = useUiState((s) => s.filesystemTargetSection);
 
   // Honor an upstream "open at section X" intent (e.g. the Untracked
   // banner's View button passes "manage"). Default to System.
@@ -32,43 +48,142 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
       : "darwin";
 
   const [activeSection, setActiveSection] = useState<SectionId>(initialSection);
+  const {
+    diff: homebrewDiff,
+    error: homebrewError,
+    refresh: refreshHomebrew,
+  } = useHomebrewDiff();
+  const {
+    scan: systemDefaultsScan,
+    error: systemDefaultsError,
+    refresh: refreshSystemDefaults,
+  } = useSystemDefaultsScan();
+  const {
+    items: launchdItems,
+    error: launchdError,
+    refresh: refreshLaunchdItems,
+  } = useLaunchdItems();
 
   // Clear the target on mount so a subsequent toggle from the header
   // (which passes no section) returns to the user's last view.
   useEffect(() => {
     if (targetSection) {
-      useWidgetStore.setState({ filesystemTargetSection: null });
+      uiActions.setState({ filesystemTargetSection: null });
     }
-    // Run only on mount — see effect of targetSection changing handled
-    // by the lifecycle below (the view is unmounted between openings).
-    // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only
-  }, []);
+  }, [targetSection]);
 
-  const files = FILES[activeSection] ?? [];
+  const manageFiles = replaceLaunchdPlaceholder(
+    replaceSystemDefaultsPlaceholder(
+      replaceHomebrewPlaceholders(FILES.manage, homebrewFilesFromDiff(homebrewDiff, homebrewError)),
+      systemDefaultsFileFromScan(systemDefaultsScan, systemDefaultsError),
+    ),
+    launchdItemsFileFromScan(launchdItems, launchdError),
+  );
+
+  const filesBySection = {
+    ...FILES,
+    manage: manageFiles,
+  };
+
+  const files = filesBySection[activeSection] ?? [];
 
   const seed = (text: string) => {
     if (onSeedPrompt) {
       onSeedPrompt(text);
       return;
     }
-    setEvolvePrompt(text);
-    setShowFilesystem(false);
+    uiActions.setEvolvePrompt(text);
+    uiActions.setShowFilesystem(false);
+  };
+
+  // The managed-edit apply path updates the git/evolve/change-map cells on
+  // the backend, which emit their change events; the viewmodel sync modules
+  // mirror them. We only invalidate the now-stale recommended prompt.
+  const invalidateRecommendation = () => {
+    uiActions.setRecommendedPrompt(undefined);
   };
 
   const onEditWithPrompt = (file: FsFile) => seed(seedForFile(file));
-  const onTrack = (text: string) => seed(text);
+  const onTrackHomebrewItems = async (items: CandidateItem[]) => {
+    uiActions.setProcessing(true, "apply");
+    try {
+      const homebrewItems: HomebrewItem[] = items.map((item) => {
+        if (item.source !== "homebrew" || !item.itemType) {
+          throw new Error(`Cannot track ${item.name}: missing Homebrew item type.`);
+        }
+        return {
+          name: item.name,
+          version: item.version ?? null,
+          itemType: item.itemType,
+        };
+      });
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
+      await tauriAPI.homebrew.addItems(homebrewItems);
+      invalidateRecommendation();
+      uiActions.setShowFilesystem(false);
+      await refreshHomebrew();
+    } finally {
+      uiActions.setProcessing(false);
+    }
+  };
+
+  const onTrackSystemDefaults = async (items: CandidateItem[]) => {
+    uiActions.setProcessing(true, "apply");
+    try {
+      const defaults: SystemDefault[] = items.map((item) => {
+        if (item.source !== "system") {
+          throw new Error(`Cannot track ${item.name}: missing system default payload.`);
+        }
+        return item.systemDefault;
+      });
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
+      await tauriAPI.scanner.applyDefaults(defaults);
+      invalidateRecommendation();
+      await refreshSystemDefaults();
+      uiActions.setShowFilesystem(false);
+    } finally {
+      uiActions.setProcessing(false);
+    }
+  };
+
+  const onTrackLaunchdItems = async (items: CandidateItem[]) => {
+    uiActions.setProcessing(true, "apply");
+    try {
+      const launchdItemsToApply: LaunchdItem[] = items.map((item) => {
+        if (item.source !== "launchd") {
+          throw new Error(`Cannot track ${item.name}: missing launchd payload.`);
+        }
+        return item.launchdItem;
+      });
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
+      await tauriAPI.launchd.applyLaunchdItems(launchdItemsToApply);
+      invalidateRecommendation();
+      await refreshLaunchdItems();
+      uiActions.setShowFilesystem(false);
+    } finally {
+      uiActions.setProcessing(false);
+    }
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="filesystem-step">
-      <SectionTabs sections={SECTIONS} active={activeSection} setActive={setActiveSection} files={FILES} />
+      <SectionTabs
+        sections={SECTIONS}
+        active={activeSection}
+        setActive={setActiveSection}
+        files={filesBySection}
+      />
       <FileList
         key={activeSection}
         files={files}
         onEditWithPrompt={onEditWithPrompt}
-        onTrack={onTrack}
+        onTrackHomebrewItems={onTrackHomebrewItems}
+        onTrackSystemDefaults={onTrackSystemDefaults}
+        onTrackLaunchdItems={onTrackLaunchdItems}
       />
       <div className="shrink-0 border-border/50 border-t bg-card/40 px-3 py-1.5 text-[10.5px] text-muted-foreground">
-        Use these as starting points — every change goes through the standard plan → review → save flow.
+        Use these as starting points — every change goes through the standard plan → review → save
+        flow.
       </div>
     </div>
   );

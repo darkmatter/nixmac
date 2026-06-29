@@ -4,11 +4,11 @@ mod age;
 mod chat_memory;
 pub(crate) mod config;
 mod config_dir_context;
-pub(crate) mod edit_nix_file;
 mod ensure_secret;
 pub(crate) mod file_ops;
 mod gitignore;
 pub mod messages;
+pub(crate) mod nix_file_editor;
 pub mod providers;
 mod search_code;
 pub mod search_docs;
@@ -24,12 +24,12 @@ pub mod lifecycle;
 /// Directories ignored by file listing and search helpers.
 pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
-use crate::evolve::utils::{escape_user_query, format_duration_secs, short_hash};
+use crate::evolve::utils::{escape_user_query, format_duration_secs};
 use crate::git::query::repo_root;
 // Re-export public API
 use crate::shared_types::{Evolution, EvolutionState, FileEdit};
 use crate::system::nix;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use chrono::Utc;
 use log::{debug, error, info, warn};
 use regex::Regex;
@@ -39,17 +39,19 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::Arc;
 use std::time::Duration;
-use tauri::{AppHandle, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 use tokio::time::sleep;
-use tools::{create_tools, execute_tool, is_editing_tool, ToolResult};
+use tools::{ToolResult, create_tools, execute_tool, is_editing_tool};
 pub use types::{EvolutionProgress, EvolutionRunError};
 
 use crate::{
+    ai::model_capabilities::capabilities_for_model,
     statistics, store,
-    types::{emit_evolve_event, EvolveEvent},
+    types::{EvolveEvent, emit_evolve_event},
     utils as global_utils,
+    utils::short_hash,
 };
-use chat_memory::{to_provider_context_messages, ChatMessage, Role as ChatMemoryRole};
+use chat_memory::{ChatMessage, Role as ChatMemoryRole, to_provider_context_messages};
 
 pub(crate) use chat_memory::session_chat_memory_store;
 use config_dir_context::format_config_dir_context;
@@ -66,13 +68,12 @@ enum MemoryStrategy {
 
 impl MemoryStrategy {
     fn from_env() -> Self {
-        match std::env::var("NIXMAC_EVOLUTION_MEMORY_STRATEGY")
-            .ok()
-            .as_deref()
-            .map(|s| s.trim())
+        match crate::env::settings(None)
+            .evolution_memory_strategy
+            .as_str()
         {
-            None | Some("") | Some("none") => MemoryStrategy::None,
-            Some("retention") => MemoryStrategy::Retention,
+            "" | "none" => MemoryStrategy::None,
+            "retention" => MemoryStrategy::Retention,
             _ => MemoryStrategy::None,
         }
     }
@@ -99,7 +100,12 @@ fn normalize_max_output_tokens(value: usize) -> u32 {
     value.max(1).min(u32::MAX as usize) as u32
 }
 
-/// Return short hex prefix for correlation of error messages without risking sensitive content exposure.
+fn normalize_openai_max_output_tokens(model: &str, value: usize) -> u32 {
+    let normalized = normalize_max_output_tokens(value);
+    // Called only in the direct OpenAI branch. OpenRouter-compatible requests
+    // keep their provider-level behavior even when the slug contains gpt-4o.
+    capabilities_for_model(model).clamp_max_completion_tokens(normalized)
+}
 
 impl EvolutionMessage {
     fn permanent(message: Message, iteration: usize, key: Option<String>) -> Self {
@@ -161,10 +167,10 @@ fn extract_error_metadata(error: &str) -> (Option<u16>, Option<String>, Option<S
     (None, None, None, error.len())
 }
 
-/// Report a ProviderError to Sentry using structured fields (no raw bodies).
+/// Report a ProviderError via tracing using structured fields (no raw bodies).
 /// This is because ProviderError::Http contains the raw response body which may have sensitive info,
 /// (in the case of Ollama it definitely includes the prompt and response related to it)
-/// so we extract only metadata for Sentry.
+/// so we extract only metadata for logging.
 fn report_provider_error(
     err: &ProviderError,
     provider: &str,
@@ -176,18 +182,15 @@ fn report_provider_error(
         ProviderError::Http { status, body } => {
             // compute short hash of body for correlation but never send body
             let body_hash = short_hash(body);
-            sentry::with_scope(
-                |scope| {
-                    scope.set_tag("provider", provider);
-                    scope.set_tag("model", model);
-                    scope.set_tag("iteration", iteration.to_string());
-                    scope.set_tag("messages_count", messages.len().to_string());
-                    scope.set_extra("response_status", (status.as_u16() as u64).into());
-                    scope.set_extra("error_length", (body.len() as u64).into());
-                    scope.set_extra("error_hash", body_hash.into());
-                    sentry::capture_message("AI API HTTP error (redacted)", sentry::Level::Error);
-                },
-                || {},
+            tracing::error!(
+                provider = provider,
+                model = model,
+                iteration = iteration,
+                messages_count = messages.len(),
+                response_status = status.as_u16(),
+                error_length = body.len(),
+                error_hash = %body_hash,
+                "AI API HTTP error (redacted)"
             );
         }
         ProviderError::Other(e) => {
@@ -195,26 +198,17 @@ fn report_provider_error(
             // fallback: use parsing extractor to try to pull metadata
             let (status, code, typ, len) = extract_error_metadata(&err_str);
             let hash = short_hash(&err_str);
-            sentry::with_scope(
-                |scope| {
-                    scope.set_tag("provider", provider);
-                    scope.set_tag("model", model);
-                    scope.set_tag("iteration", iteration.to_string());
-                    scope.set_tag("messages_count", messages.len().to_string());
-                    if let Some(s) = status {
-                        scope.set_extra("response_status", (s as u64).into());
-                    }
-                    if let Some(c) = code {
-                        scope.set_extra("error_code", c.into());
-                    }
-                    if let Some(t) = typ {
-                        scope.set_extra("error_type", t.into());
-                    }
-                    scope.set_extra("error_length", (len as u64).into());
-                    scope.set_extra("error_hash", hash.into());
-                    sentry::capture_message("AI API error (redacted)", sentry::Level::Error);
-                },
-                || {},
+            tracing::error!(
+                provider = provider,
+                model = model,
+                iteration = iteration,
+                messages_count = messages.len(),
+                response_status = status.map(|s| s as u64),
+                error_code = code.as_deref(),
+                error_type = typ.as_deref(),
+                error_length = len,
+                error_hash = %hash,
+                "AI API error (redacted)"
             );
         }
     }
@@ -324,6 +318,7 @@ fn log_api_error(
 
 // Use OpenRouter with Claude for evolution - better reasoning without strict content policies
 const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
+const DEFAULT_OPENAI_MODEL: &str = "gpt-4o";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 
 // Percentage of max_iterations after which we require at least one edit/build_check.
@@ -337,14 +332,13 @@ const BUILD_OUTPUT_TAIL_LINES: usize = 80;
 
 const SYSTEM_PROMPT: &str = include_str!("../../prompts/system.md");
 
-fn configured_model(store_model: Option<String>, env_var: &str) -> Option<String> {
+fn configured_model(
+    store_model: Option<String>,
+    env_model: impl Fn() -> Option<String>,
+) -> Option<String> {
     store_model
         .and_then(global_utils::non_empty_trimmed_string)
-        .or_else(|| {
-            std::env::var(env_var)
-                .ok()
-                .and_then(global_utils::non_empty_trimmed_string)
-        })
+        .or_else(env_model)
 }
 
 fn require_local_model(
@@ -352,7 +346,7 @@ fn require_local_model(
     store_model: Option<String>,
     env_var: &str,
 ) -> Result<String> {
-    configured_model(store_model, env_var).ok_or_else(|| {
+    configured_model(store_model, crate::env::default_evolve_model).ok_or_else(|| {
         anyhow!("No {provider_name} model configured. Please select a model in Settings or set {env_var}.")
     })
 }
@@ -569,6 +563,17 @@ enum EvolutionLimitKind {
     NoProgress,
     MaxIterations,
     BuildAttempts,
+    TokenBudget,
+}
+
+fn format_token_count(tokens: usize) -> String {
+    if tokens >= 1_000_000 {
+        format!("{:.1}M", tokens as f64 / 1_000_000.0)
+    } else if tokens >= 1_000 {
+        format!("{:.1}K", tokens as f64 / 1_000.0)
+    } else {
+        tokens.to_string()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -583,14 +588,21 @@ impl EvolutionLimitKind {
         match self {
             Self::BuildAttempts => format!("{} build attempts", attempts),
             Self::NoProgress | Self::MaxIterations => format!("{} attempts", attempts),
+            Self::TokenBudget => format!("{} tokens", format_token_count(attempts)),
         }
     }
 
     fn prompt(self, attempts: usize) -> String {
-        format!(
-            "The AI has made {}. Keep going?",
-            self.attempts_label(attempts)
-        )
+        match self {
+            Self::TokenBudget => format!(
+                "The AI has used {}. Keep going?",
+                self.attempts_label(attempts)
+            ),
+            _ => format!(
+                "The AI has made {}. Keep going?",
+                self.attempts_label(attempts)
+            ),
+        }
     }
 
     fn stop_summary(self, attempts: usize) -> String {
@@ -605,6 +617,10 @@ impl EvolutionLimitKind {
             ),
             Self::BuildAttempts => format!(
                 "Evolution stopped after reaching {}. You can review the current changes or continue with a follow-up prompt.",
+                self.attempts_label(attempts)
+            ),
+            Self::TokenBudget => format!(
+                "Evolution stopped after consuming {}. You can review the current changes or continue with a follow-up prompt.",
                 self.attempts_label(attempts)
             ),
         }
@@ -711,18 +727,15 @@ fn finish_after_limit_stop<R: Runtime>(
 ) {
     let summary = limit_kind.stop_summary(attempts);
     info!("{}", summary);
+    // The terminal `Complete` event is emitted by the lifecycle after all
+    // state cells are updated; only the informational stop notice goes out here.
     emit_evolve_event(
         app,
         EvolveEvent::info(start_time, Some(iteration), &summary),
     );
-    emit_evolve_event(app, EvolveEvent::complete(start_time, iteration, &summary));
 
     evolution.summary = Some(summary);
-    evolution.state = if evolution.edits.is_empty() {
-        EvolutionState::Conversational
-    } else {
-        EvolutionState::Generated
-    };
+    evolution.state = EvolutionState::LimitReached;
 }
 
 /// Generate an evolution from a user prompt using OpenAI function calling.
@@ -740,10 +753,55 @@ pub async fn generate_evolution<R: Runtime>(
     let repo_root = repo_root(config_dir);
 
     // Determine provider
+    let env_settings = crate::env::settings_from_app(Some(app));
     let store_provider = store::get_evolve_provider(app).ok().flatten();
-    let provider_type = store_provider
-        .or_else(|| std::env::var("EVOLVE_PROVIDER").ok())
-        .unwrap_or_else(|| "openrouter".to_string());
+    let requested_provider_type = store_provider
+        .or_else(|| crate::env::optional(env_settings.default_evolve_provider.clone()));
+    let store_model = store::get_evolve_model(app).ok().flatten();
+    let configured_evolve_model = configured_model(store_model.clone(), || {
+        crate::env::optional(env_settings.default_evolve_model.clone())
+    });
+    let (provider_type, used_legacy_openai_fallback) = if let Some(provider) =
+        requested_provider_type
+    {
+        if provider != "openai" {
+            (provider, false)
+        } else {
+            let has_openai_provider_credential =
+                store::get_effective_openai_provider_credential(app)?.is_some();
+            let has_openrouter_provider_credential =
+                store::get_effective_openrouter_provider_credential(app)?.is_some();
+
+            let resolved_provider = crate::ai::providers::resolve_legacy_openai_provider(
+                provider,
+                configured_evolve_model.as_deref(),
+                has_openai_provider_credential,
+                has_openrouter_provider_credential,
+            );
+            if resolved_provider == "openrouter" {
+                info!("Using OpenRouter for legacy OpenAI evolve provider compatibility");
+            }
+            let used_legacy_openai_fallback = resolved_provider == "openrouter";
+
+            (resolved_provider, used_legacy_openai_fallback)
+        }
+    } else {
+        let has_openai_provider_credential =
+            store::get_effective_openai_provider_credential(app)?.is_some();
+        let has_openrouter_provider_credential =
+            store::get_effective_openrouter_provider_credential(app)?.is_some();
+        let resolved_provider =
+            crate::ai::providers::resolve_unconfigured_openai_compatible_provider(
+                None,
+                has_openai_provider_credential,
+                has_openrouter_provider_credential,
+            );
+        if resolved_provider == "openai" {
+            info!("Using OpenAI evolve provider because only an OpenAI credential is configured");
+        }
+
+        (resolved_provider, false)
+    };
 
     info!("");
     info!("════════════════════════════════════════════════════════════════");
@@ -754,18 +812,17 @@ pub async fn generate_evolution<R: Runtime>(
     info!("Repo root: {}", repo_root.display());
     info!("📝 Prompt: {}", prompt);
 
-    let store_model = store::get_evolve_model(app).ok().flatten();
     let max_output_tokens =
         store::get_max_output_tokens(app).unwrap_or(store::DEFAULT_MAX_OUTPUT_TOKENS);
     let max_output_tokens_for_request = normalize_max_output_tokens(max_output_tokens);
 
     // Select provider implementation
     let provider: Arc<dyn AiProvider> = if provider_type == "ollama" {
-        let model = require_local_model("Ollama", store_model, "EVOLVE_MODEL")?;
+        let model = require_local_model("Ollama", store_model, crate::env::keys::EVOLVE_MODEL)?;
         let base_url = store::get_ollama_api_base_url(app)
             .ok()
             .flatten()
-            .or_else(|| std::env::var("OLLAMA_API_BASE").ok())
+            .or_else(|| crate::env::optional(env_settings.ollama_api_base.clone()))
             .unwrap_or_else(|| DEFAULT_OLLAMA_API_BASE.to_string());
         info!(
             "Using Ollama provider | Model: {} | URL: {} | Max output tokens: {}",
@@ -782,16 +839,15 @@ pub async fn generate_evolution<R: Runtime>(
             "codex" => crate::ai::providers::cli::CliTool::Codex,
             _ => crate::ai::providers::cli::CliTool::OpenCode,
         };
-        let model =
-            configured_model(store_model, "EVOLVE_MODEL").unwrap_or_else(|| provider_type.clone());
+        let model = configured_evolve_model.unwrap_or_else(|| provider_type.clone());
         info!("Using CLI provider: {} | Model: {}", provider_type, model);
         Arc::new(CliProvider::new(tool, model))
     } else if provider_type == "vllm" {
-        let model = require_local_model("vLLM", store_model, "EVOLVE_MODEL")?;
+        let model = require_local_model("vLLM", store_model, crate::env::keys::EVOLVE_MODEL)?;
         let base_url = store::get_vllm_api_base_url(app)
             .ok()
             .flatten()
-            .or_else(|| std::env::var("VLLM_API_BASE").ok())
+            .or_else(|| crate::env::optional(env_settings.vllm_api_base.clone()))
             .ok_or_else(|| anyhow!("No vLLM base URL configured. Please set it in Settings."))?;
         let api_key = store::get_effective_vllm_api_key(app)?.unwrap_or_else(|| "none".to_string());
         info!(
@@ -804,28 +860,61 @@ pub async fn generate_evolution<R: Runtime>(
             model,
             max_output_tokens_for_request,
         ))
-    } else {
-        let (api_key, base_url) = store::get_effective_openai_compatible_credential(app)?
+    } else if provider_type == crate::ai::providers::NIXMAC_PROVIDER {
+        let api_key = store::get_device_api_key(app)?
+            .ok_or_else(|| anyhow!("Sign in to nixmac hosted inference first."))?;
+        let base_url = crate::ai::providers::nixmac_llm_api_base(&store::get_web_server_url()?);
+        let model = configured_evolve_model
+            .unwrap_or_else(|| crate::ai::providers::DEFAULT_NIXMAC_MODEL.to_string());
+        info!(
+            "Using nixmac hosted provider | Model: {} | Max output tokens: {}",
+            model, max_output_tokens_for_request
+        );
+        Arc::new(OpenAIProvider::new(
+            api_key,
+            base_url,
+            model,
+            max_output_tokens_for_request,
+        ))
+    } else if provider_type == "openai" {
+        let (api_key, base_url) = store::get_effective_openai_provider_credential(app)?
             .ok_or_else(|| {
-                anyhow!("No API key found. Please add your API key in Settings to get started.")
+                anyhow!(
+                    "No OpenAI API key found. Please add your API key in Settings to get started."
+                )
             })?;
 
-        let model = configured_model(store_model, "EVOLVE_MODEL")
-            .unwrap_or_else(|| DEFAULT_MODEL.to_string());
-        // Strip OpenRouter-style "openai/" prefix for direct OpenAI usage
-        let model = if base_url == store::OPENAI_BASE_URL {
-            model.strip_prefix("openai/").unwrap_or(&model).to_string()
+        let model = configured_evolve_model.unwrap_or_else(|| DEFAULT_OPENAI_MODEL.to_string());
+        let model = model.strip_prefix("openai/").unwrap_or(&model).to_string();
+        let openai_max_output_tokens_for_request =
+            normalize_openai_max_output_tokens(&model, max_output_tokens);
+        info!(
+            "Using OpenAI provider | Model: {} | Max output tokens: {}",
+            model, openai_max_output_tokens_for_request
+        );
+        Arc::new(OpenAIProvider::new(
+            api_key,
+            base_url.to_string(),
+            model,
+            openai_max_output_tokens_for_request,
+        ))
+    } else {
+        let (api_key, base_url) = store::get_effective_openrouter_provider_credential(app)?
+            .ok_or_else(|| {
+                anyhow!("No OpenRouter API key found. Please add your API key in Settings to get started.")
+            })?;
+
+        let model = if used_legacy_openai_fallback {
+            crate::ai::providers::openrouter_model_slug_or_default(
+                configured_evolve_model,
+                DEFAULT_MODEL,
+            )
         } else {
-            model
-        };
-        let provider_name = if base_url == store::OPENROUTER_BASE_URL {
-            "OpenRouter"
-        } else {
-            "OpenAI"
+            configured_evolve_model.unwrap_or_else(|| DEFAULT_MODEL.to_string())
         };
         info!(
-            "Using {} provider | Model: {} | Max output tokens: {}",
-            provider_name, model, max_output_tokens_for_request
+            "Using OpenRouter provider | Model: {} | Max output tokens: {}",
+            model, max_output_tokens_for_request
         );
         Arc::new(OpenAIProvider::new(
             api_key,
@@ -851,17 +940,20 @@ pub async fn generate_evolution<R: Runtime>(
         EvolveEvent::info(start_time, None, &format!("Target host: {}", host_attr)),
     );
 
-    // Read configurable limits from store (hot-reloaded on every run).
+    // Read configurable limits from the managed observable (hot-reloaded on
+    // every run). `app.state` panics if the observable isn't managed; that is
+    // intentional — it surfaces a startup misconfiguration immediately
+    // instead of silently swapping in field defaults.
     let config::EvolutionLimits {
-        mut max_build_attempts, ..
-    } = config::EvolutionLimits::load(app)
-        .inspect_err(|e| warn!("EvolutionLimits::load failed ({e}); using defaults"))
-        .unwrap_or_default();
-    let legacy_max_iterations =
-        store::get_max_iterations(app).unwrap_or(store::DEFAULT_MAX_ITERATIONS);
-    let max_token_budget =
-        store::get_max_token_budget(app).unwrap_or(store::DEFAULT_MAX_TOKEN_BUDGET);
-    let mut max_iterations = legacy_max_iterations;
+        mut max_build_attempts,
+        mut max_token_budget,
+        mut max_iterations,
+        ..
+    } = app
+        .state::<crate::observable::Observable<config::EvolutionLimits>>()
+        .read_sync()
+        .clone();
+
     let mut max_iterations_before_edit = std::cmp::max(
         1,
         (max_iterations * MAX_ITERATIONS_BEFORE_EDIT_PERCENT) / 100,
@@ -869,6 +961,7 @@ pub async fn generate_evolution<R: Runtime>(
     let max_iterations_before_edit_increment = max_iterations_before_edit.max(1);
     let max_iterations_increment = max_iterations.max(1);
     let max_build_attempts_increment = max_build_attempts.max(1);
+    let max_token_budget_increment = max_token_budget.max(1);
     let interactive_limit_prompt = !banned_tools.contains(&"ask_user");
     info!(
         "Limits: max_token_budget={}, max_iterations_before_edit={} ({}%), max_build_attempts={}, max_iterations={}",
@@ -1101,8 +1194,62 @@ pub async fn generate_evolution<R: Runtime>(
             );
             emit_evolve_event(
                 app,
-                EvolveEvent::api_response(start_time, iteration, usage.total, total_tokens, max_token_budget),
+                EvolveEvent::api_response(
+                    start_time,
+                    iteration,
+                    usage.total,
+                    total_tokens,
+                    max_token_budget,
+                ),
             );
+        }
+
+        // Safety limits -- Token budget. Caps cumulative session tokens
+        // (in addition to the per-call max_output_tokens). Skipped if
+        // the provider didn't report usage; the iteration guard below
+        // is the fallback for those providers.
+        if total_tokens >= max_token_budget {
+            warn!(
+                "⚠️ Evolution reached token budget ({}/{}) - asking whether to continue",
+                total_tokens, max_token_budget,
+            );
+            match ask_to_continue_after_limit(
+                app,
+                start_time,
+                iteration,
+                EvolutionLimitKind::TokenBudget,
+                total_tokens as usize,
+                interactive_limit_prompt,
+            )
+            .await
+            {
+                LimitDecision::Continue => {
+                    max_token_budget = max_token_budget.saturating_add(max_token_budget_increment);
+                    info!("Extending token budget to {}", max_token_budget);
+                }
+                LimitDecision::Stop => {
+                    finish_after_limit_stop(
+                        app,
+                        &mut evolution,
+                        start_time,
+                        iteration,
+                        EvolutionLimitKind::TokenBudget,
+                        total_tokens as usize,
+                    );
+                    break;
+                }
+                LimitDecision::Cancelled => {
+                    evolution.state = EvolutionState::Failed;
+                    return Err(EvolutionRunError::from_state(
+                        session_control::EVOLUTION_CANCELLED_MSG,
+                        &evolution,
+                        iteration,
+                        build_attempts,
+                        total_tokens,
+                    )
+                    .into());
+                }
+            }
         }
 
         let assistant_msg = response.message;
@@ -1283,10 +1430,10 @@ pub async fn generate_evolution<R: Runtime>(
                                     }
                                 }
                                 ToolResult::Done(summary_text) => {
-                                    emit_evolve_event(
-                                        app,
-                                        EvolveEvent::complete(start_time, iteration, summary_text),
-                                    );
+                                    // The terminal `Complete` event is emitted by the
+                                    // lifecycle once all state cells are updated; the
+                                    // agent summary travels with it via `evolution.summary`.
+                                    info!("Agent signalled done: {}", summary_text);
                                 }
                                 ToolResult::Question { question, choices } => {
                                     emit_evolve_event(
@@ -1451,10 +1598,10 @@ Do not invent tool names and do not place tool invocations in assistant content.
             {
                 if evolution.edits.is_empty() {
                     // No files were changed — this is a conversational reply (e.g. "hi").
-                    // Emit the content as the completion event so the UI shows it,
-                    // and mark the state so the caller can skip the review workflow.
+                    // The lifecycle emits the terminal `Complete` event carrying the
+                    // content as `conversational_response`; mark the state so the
+                    // caller can skip the review workflow.
                     info!("Conversational response (no edits made)");
-                    emit_evolve_event(app, EvolveEvent::complete(start_time, iteration, &content));
                     evolution.summary = Some(content);
                     evolution.state = EvolutionState::Conversational;
                 } else {
@@ -1873,6 +2020,10 @@ fn process_tool_result(
                 edit.replace.len()
             );
             evolution.edits.push(edit.clone());
+            // A new edit invalidates any prior successful build: the verified
+            // state no longer matches the files, so `done` must require a fresh
+            // build_check.
+            *build_verified = false;
             let msg = Message::Tool {
                 tool_call_id: tool_call_id.to_string(),
                 content:
@@ -1894,6 +2045,8 @@ fn process_tool_result(
                 search: String::new(),
                 replace: format!("semantic:{:?}", edit.action),
             });
+            // A new edit invalidates any prior successful build verification.
+            *build_verified = false;
 
             let msg = Message::Tool {
                 tool_call_id: tool_call_id.to_string(),
@@ -1911,6 +2064,8 @@ fn process_tool_result(
                 search: String::new(),
                 replace: format!("ensure_secret:{}", result.name),
             });
+            // A new edit invalidates any prior successful build verification.
+            *build_verified = false;
             let content = serde_json::to_string(result)
                 .unwrap_or_else(|_| format!("{{\"name\":\"{}\"}}", result.name));
             let msg = Message::Tool {
@@ -1967,6 +2122,9 @@ fn process_tool_result(
                 };
                 (msg, Some(false))
             } else {
+                // A failing build invalidates any earlier successful verification,
+                // otherwise `done` could still accept the (now broken) config.
+                *build_verified = false;
                 warn!(
                     "❌ BUILD CHECK FAILED (attempt {}/{})",
                     build_attempts, max_build_attempts
@@ -1986,12 +2144,12 @@ fn process_tool_result(
                 }
 
                 let msg = Message::Tool {
-            tool_call_id: tool_call_id.to_string(),
-            content: format!(
-                "{}\n\nUse the 'think' tool to analyze the error, then fix the issue and run build_check again.",
-                model_output
-            ),
-        };
+                    tool_call_id: tool_call_id.to_string(),
+                    content: format!(
+                        "{}\n\nUse the 'think' tool to analyze the error, then fix the issue and run build_check again.",
+                        model_output
+                    ),
+                };
                 (msg, Some(false))
             }
         }
@@ -2044,9 +2202,140 @@ fn process_tool_result(
 #[cfg(test)]
 mod tests {
     use super::{
-        filter_evolution_messages, read_file_dedup_key, store_tool_result, EvolutionMessage,
-        Message, Retention,
+        Evolution, EvolutionMessage, EvolutionState, FileEdit, Message, Retention, ToolResult,
+        filter_evolution_messages, normalize_openai_max_output_tokens, process_tool_result,
+        read_file_dedup_key, store_tool_result,
     };
+
+    fn build_result(success: bool) -> ToolResult {
+        ToolResult::BuildResult {
+            success,
+            output: String::new(),
+            stdout: String::new(),
+            stderr: if success {
+                String::new()
+            } else {
+                "boom".to_string()
+            },
+        }
+    }
+
+    fn run_tool_result(result: &ToolResult, evolution: &mut Evolution, build_verified: &mut bool) {
+        let mut build_attempts = 0usize;
+        process_tool_result(
+            "tool-call-id",
+            result,
+            evolution,
+            build_verified,
+            &mut build_attempts,
+            5,
+            "host",
+            0,
+            0,
+        )
+        .expect("process_tool_result should not error in these cases");
+    }
+
+    #[test]
+    fn direct_openai_gpt_4o_output_tokens_are_capped_to_api_limit() {
+        assert_eq!(normalize_openai_max_output_tokens("gpt-4o", 32_768), 16_384);
+        assert_eq!(
+            normalize_openai_max_output_tokens("openai/gpt-4o-mini", 32_768),
+            16_384
+        );
+        assert_eq!(
+            normalize_openai_max_output_tokens("gpt-4o-2024-08-06", 32_768),
+            16_384
+        );
+    }
+
+    #[test]
+    fn direct_openai_output_token_cap_preserves_lower_user_limit() {
+        assert_eq!(normalize_openai_max_output_tokens("gpt-4o", 4_096), 4_096);
+    }
+
+    #[test]
+    fn direct_openai_output_token_cap_leaves_unknown_models_unchanged() {
+        assert_eq!(
+            normalize_openai_max_output_tokens("custom-openai-model", 32_768),
+            32_768
+        );
+    }
+
+    // Bug 1: build_verified latched true on the first passing build and was never
+    // cleared, so a later failing build_check (or an edit) still let `done`
+    // complete an unbuildable config. A failing build must clear verification.
+    #[test]
+    fn failing_build_check_clears_prior_verification() {
+        let mut evolution = Evolution::new("prompt");
+        let mut build_verified = false;
+
+        run_tool_result(&build_result(true), &mut evolution, &mut build_verified);
+        assert!(
+            build_verified,
+            "a passing build_check should set build_verified"
+        );
+
+        run_tool_result(&build_result(false), &mut evolution, &mut build_verified);
+        assert!(
+            !build_verified,
+            "a failing build_check must clear the prior verification"
+        );
+    }
+
+    // End-to-end consequence: with edits present, calling done after a build that
+    // failed (following an earlier pass) must NOT mark the evolution Generated.
+    #[test]
+    fn done_is_rejected_after_a_failing_build() {
+        let mut evolution = Evolution::new("prompt");
+        evolution.edits.push(FileEdit {
+            path: "configuration.nix".to_string(),
+            search: "a".to_string(),
+            replace: "b".to_string(),
+        });
+        let mut build_verified = false;
+
+        run_tool_result(&build_result(true), &mut evolution, &mut build_verified);
+        run_tool_result(&build_result(false), &mut evolution, &mut build_verified);
+        run_tool_result(
+            &ToolResult::Done("done".to_string()),
+            &mut evolution,
+            &mut build_verified,
+        );
+
+        assert!(
+            !matches!(evolution.state, EvolutionState::Generated),
+            "done must not complete an evolution whose last build_check failed"
+        );
+    }
+
+    // A new edit after a passing build_check must clear verification, so the
+    // agent cannot call done on files that were changed since the last build.
+    #[test]
+    fn edit_after_passing_build_clears_verification() {
+        let mut evolution = Evolution::new("prompt");
+        let mut build_verified = false;
+
+        run_tool_result(&build_result(true), &mut evolution, &mut build_verified);
+        assert!(
+            build_verified,
+            "a passing build_check should set build_verified"
+        );
+
+        run_tool_result(
+            &ToolResult::Edit(FileEdit {
+                path: "configuration.nix".to_string(),
+                search: "a".to_string(),
+                replace: "b".to_string(),
+            }),
+            &mut evolution,
+            &mut build_verified,
+        );
+        assert!(
+            !build_verified,
+            "an edit after a passing build must clear the prior verification"
+        );
+    }
 
     fn set_memory_strategy_for_test(
         value: &str,
@@ -2057,7 +2346,7 @@ mod tests {
         let lock = crate::test_support::e2e_env_lock();
         let restore =
             crate::test_support::EnvVarRestore::capture(&["NIXMAC_EVOLUTION_MEMORY_STRATEGY"]);
-        std::env::set_var("NIXMAC_EVOLUTION_MEMORY_STRATEGY", value);
+        unsafe { std::env::set_var("NIXMAC_EVOLUTION_MEMORY_STRATEGY", value) };
         (lock, restore)
     }
 
@@ -2342,10 +2631,10 @@ mod tests {
         let filtered = filter_evolution_messages(&messages, 3, true);
         // The think before the build check should be filtered out, but the one after should be kept.
         assert!(filtered.iter().any(
-            |m| matches!(&m.message, Message::Tool { ref tool_call_id, .. } if tool_call_id == "think-2")
+            |m| matches!(&m.message, Message::Tool { tool_call_id, .. } if tool_call_id == "think-2")
         ));
         assert!(filtered.iter().all(
-            |m| !matches!(&m.message, Message::Tool { ref tool_call_id, .. } if tool_call_id == "think-1")
+            |m| !matches!(&m.message, Message::Tool { tool_call_id, .. } if tool_call_id == "think-1")
         ));
     }
 

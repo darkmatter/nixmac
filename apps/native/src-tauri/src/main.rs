@@ -16,21 +16,29 @@ mod commands;
 mod db;
 mod e2e_runtime;
 mod editor;
+mod env;
+mod env_keys;
 mod evolve;
 mod feedback;
 mod git;
 mod history;
+mod http_client;
 mod managed_edits;
+mod observable;
+mod orpc;
 mod panic_handler;
 mod peek;
 mod rebuild;
+mod schema_gen;
 mod shared_types;
 mod sqlite_types;
 mod state;
 mod statistics;
 mod storage;
 mod summarize;
+mod sync;
 mod system;
+mod telemetry;
 mod types;
 mod updater_pin;
 mod utils;
@@ -38,20 +46,19 @@ mod utils;
 use state::watcher;
 use storage::store;
 
-use std::env;
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc, Mutex,
+    atomic::{AtomicBool, Ordering},
 };
 use std::time::Duration;
 use tauri::{
+    Emitter, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
     image::Image,
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
     webview::PageLoadEvent,
-    Emitter, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
 };
-use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Global app handle, set during GUI setup so background threads (such as the
 /// drift watcher) can access plugins like notifications without threading an
@@ -183,6 +190,7 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
           background-color: ${captureBackground} !important;
         }
         html[data-nixmac-e2e-capture="${captureMode}"] .bg-background\\/80,
+        html[data-nixmac-e2e-capture="${captureMode}"] .bg-background\\/60,
         html[data-nixmac-e2e-capture="${captureMode}"] .bg-background\\/90,
         html[data-nixmac-e2e-capture="${captureMode}"] .bg-background\\/95,
         html[data-nixmac-e2e-capture="${captureMode}"] .bg-card\\/50,
@@ -215,6 +223,30 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
 "#;
 
 fn main() {
+    if std::env::args().nth(1).as_deref() == Some("gen-schemas") {
+        if let Err(error) = schema_gen::write_default_config_schemas() {
+            eprintln!("gen-schemas: {error:#}");
+            std::process::exit(1);
+        }
+        return;
+    }
+
+    if std::env::args().nth(1).as_deref() == Some("gen-orpc") {
+        let router = orpc::build_router();
+        let output_path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/ipc/orpc-bindings.ts");
+
+        if let Err(error) =
+            orpc_specta::export_ts(&router, output_path.to_str().expect("valid UTF-8 path"))
+        {
+            eprintln!("gen-orpc: {error}");
+            std::process::exit(1);
+        }
+
+        println!("Exported oRPC bindings to {}", output_path.display());
+        return;
+    }
+
     // Initialize tracing subscriber with optional file logging
     let env_filter = crate::e2e_runtime::value("RUST_LOG")
         .map(EnvFilter::new)
@@ -226,7 +258,7 @@ fn main() {
     let log_guard: Arc<Mutex<Option<tracing_appender::non_blocking::WorkerGuard>>> =
         Arc::new(Mutex::new(None));
 
-    if let Some(log_path) = crate::e2e_runtime::value("NIXMAC_LOGFILE") {
+    if let Some(log_path) = crate::env::logfile() {
         // Set up dual logging: console + file
         match std::fs::OpenOptions::new()
             .create(true)
@@ -293,6 +325,25 @@ fn main() {
     run_gui_mode(context, log_guard);
 }
 
+/// Register all app-wide managed observable state.
+///
+/// Tauri runs the `.setup()` closure only from the event loop
+/// (`RunEvent::Ready`), so CLI mode — which builds the app but never starts the
+/// event loop — must call this explicitly after `build()`. The GUI path runs it
+/// from `setup`. Keeping both on one helper stops them drifting (which is how
+/// the CLI lost its `GlobalPreferences` observable in the first place).
+fn register_managed_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> anyhow::Result<()> {
+    app.manage(state::preferences::load_global_observable(app)?);
+    app.manage(evolve::config::load_observable(app)?);
+    app.manage(state::evolve_state::load_observable(app)?);
+    app.manage(state::git_state::load_observable(app));
+    app.manage(state::change_map::load_observable(app));
+    app.manage(state::permissions_state::load_observable(app));
+    app.manage(state::nix_install_state::load_observable(app));
+    app.manage(state::rebuild_status::load_observable(app));
+    Ok(())
+}
+
 fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
     let cli = match cli::parse_cli() {
         Ok(c) => c,
@@ -330,18 +381,24 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
 
             let result = runtime.block_on(async {
                 let app = match tauri::Builder::default()
+                    .plugin(tauri_plugin_os::init())
+                    .plugin(tauri_plugin_deep_link::init())
+                    .plugin(tauri_plugin_opener::init())
                     // Ensure store plugin (and its managed state) is initialized so we can load settings
                     .plugin(tauri_plugin_store::Builder::default().build())
                     .plugin(tauri_plugin_keyring::init())
                     .plugin(tauri_plugin_notification::init())
                     .invoke_handler(tauri::generate_handler![])
                     .setup(|app| {
-                        app.manage(state::preferences::load_global_slice(app.handle())?);
-                        app.manage(evolve::config::load_slice(app.handle())?);
-                        evolve::config::register_slice_config(
-                            &app.state::<state::slice::SliceRegistry>(),
-                        )?;
-                        app.manage(state::evolve_state::load_slice(app.handle())?);
+                        app.manage(state::preferences::load_global_observable(app.handle())?);
+                        app.manage(evolve::config::load_observable(app.handle())?);
+                        app.manage(env::config::load_observable(app.handle())?);
+                        app.manage(state::evolve_state::load_observable(app.handle())?);
+                        app.manage(state::git_state::load_observable(app.handle()));
+                        app.manage(state::change_map::load_observable(app.handle()));
+                        app.manage(state::permissions_state::load_observable(app.handle()));
+                        app.manage(state::nix_install_state::load_observable(app.handle()));
+                        app.manage(state::rebuild_status::load_observable(app.handle()));
                         Ok(())
                     })
                     .build(context)
@@ -354,6 +411,16 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                 };
 
                 let app_handle = app.handle();
+
+                // `build()` does NOT run the `.setup()` closure — Tauri defers
+                // that to the event loop's `RunEvent::Ready`, which CLI mode
+                // never starts. Register managed state (incl. the
+                // `GlobalPreferences` observable that config/repo-root reads
+                // depend on) explicitly here instead.
+                if let Err(e) = register_managed_state(app_handle) {
+                    eprintln!("Failed to initialize app state: {}", e);
+                    return Err(format!("App state initialization failed: {}", e));
+                }
 
                 // Initialize DB schema for CLI mode so commands depending on tables succeed
                 if let Err(e) = db::init(app_handle).await {
@@ -408,44 +475,18 @@ fn run_gui_mode(
 ) {
     // Prefer compile-time embedded vars (set by build.rs via `cargo:rustc-env`),
     // fall back to runtime environment variables.
-    let sentry_dsn = option_env!("SENTRY_DSN")
-        .map(|s| s.to_string())
-        .or_else(|| env::var("SENTRY_DSN").ok());
-
     let nixmac_env = option_env!("NIXMAC_ENV")
         .map(|s| s.to_string())
-        .or_else(|| env::var("NIXMAC_ENV").ok())
+        .or_else(|| std::env::var("NIXMAC_ENV").ok())
         .unwrap_or_else(|| "prod".to_string());
 
     let nixmac_version = option_env!("NIXMAC_VERSION")
         .map(|s| s.to_string())
-        .or_else(|| env::var("NIXMAC_VERSION").ok())
+        .or_else(|| std::env::var("NIXMAC_VERSION").ok())
         .unwrap_or_else(|| "unknown".to_string());
 
-    let mut sentry_guard = None;
-
-    if let Some(dsn) = sentry_dsn.filter(|s| !s.trim().is_empty()) {
-        // clone `nixmac_env`/`nixmac_version` so we don't move the original
-        // values and can use them again below for logging. Annoying Rust thing.
-        let client = sentry::init((
-            dsn,
-            sentry::ClientOptions {
-                environment: Some(nixmac_env.clone().into()),
-                release: Some(nixmac_version.clone().into()),
-                auto_session_tracking: false,
-                send_default_pii: false,
-                ..Default::default()
-            },
-        ));
-
-        sentry_guard = Some(client);
-    }
-
     let mut builder = tauri::Builder::default().plugin(tauri_plugin_http::init());
-
-    if let Some(client) = sentry_guard.as_ref() {
-        builder = builder.plugin(tauri_plugin_sentry::init(client));
-    }
+    let orpc_router = orpc::build_router();
 
     // The updater will misbehave in dev mode (always says an update is available, fails signature
     // checks, tries to downgrade your app, etc.), so we only include it in release builds.
@@ -467,6 +508,9 @@ fn run_gui_mode(
 
     builder
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_keyring::init())
@@ -482,27 +526,32 @@ fn run_gui_mode(
         .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_upload::init())
         .plugin(tauri_plugin_macos_permissions::init())
+        // temporary disabled until we can get it working in CI
+        // .plugin(tauri_plugin_macos_passkey::init())
         .plugin(tauri_plugin_notification::init())
-        // Configurable slices register here during setup so dev settings
-        // commands can update typed state without opening store files directly.
-        .manage(state::slice::SliceRegistry::default())
+        .plugin(tauri_plugin_orpc::init(orpc_router, |app| orpc::OrpcCtx {
+            app: app.clone(),
+        }))
         .invoke_handler(tauri::generate_handler![
-            // Configuration
-            commands::config::config_get,
-            commands::config::config_set_host_attr,
-            commands::config::config_set_dir,
-            commands::config::config_prepare_new_dir,
-            commands::config::config_pick_dir,
-            commands::config::flake_exists_at,
-            commands::config::path_exists,
-            commands::config::path_normalize,
+            // Configuration — see `orpc::config`, `orpc::flake`, `orpc::path`, `orpc::github::import`            commands::config::config_get,
+            // GitHub App connection (server-brokered) — see `orpc::github`
+            // nixmac account + non-GitHub sync
+            commands::account::account_status,
+            commands::account::account_sign_in,
+            commands::account::account_sign_in_web,
+            commands::account::account_sign_up_web,
+            commands::account::account_send_otp,
+            commands::account::account_verify_otp,
+            commands::account::account_sign_out,
+            commands::account::account_set_server_url,
+            commands::account::sync_status,
+            commands::account::sync_push,
+            commands::account::sync_pull,
             // Feedback
             commands::feedback::feedback_gather_metadata,
             commands::feedback::feedback_submit,
             #[cfg(debug_assertions)]
             commands::debug::trigger_test_panic,
-            #[cfg(debug_assertions)]
-            commands::debug::debug_sentry_event,
             commands::debug::developer_clear_tauri_state,
             commands::debug::developer_send_test_notification,
             #[cfg(debug_assertions)]
@@ -510,9 +559,11 @@ fn run_gui_mode(
             #[cfg(debug_assertions)]
             commands::debug::e2e_mark_boot_stage,
             // Homebrew
+            commands::homebrew::homebrew_add_items,
             commands::homebrew::homebrew_apply_diff,
             commands::homebrew::homebrew_get_state_diff,
             // Git
+            commands::git::get_git_state,
             commands::git::git_status,
             commands::git::git_status_and_cache,
             commands::git::git_commit,
@@ -532,28 +583,33 @@ fn run_gui_mode(
             commands::summarize::abort_restore,
             commands::summarize::finalize_restore,
             // Routing state
-            commands::evolve_state::routing_state_get,
-            commands::evolve_state::routing_state_clear,
+            commands::evolve_state::get_evolve_state,
+            commands::evolve_state::clear_evolve_state,
+            commands::apply::get_nix_install_state,
+            commands::apply::get_rebuild_status,
             commands::apply::nix_check,
             commands::apply::nix_install_start,
             commands::apply::darwin_rebuild_prefetch,
             commands::apply::flake_list_hosts,
-            commands::config::flake_exists,
-            commands::config::bootstrap_default_config,
+            // flake_exists, bootstrap_default_config — see `orpc::flake`
             // Summarization
+            commands::summarize::get_change_map,
             commands::summarize::find_change_map,
             commands::summarize::get_history,
             commands::summarize::generate_history_from,
             commands::summarize::summarize_current,
             commands::summarize::generate_commit_message,
             // UI preferences
+            commands::ui_prefs::get_global_preferences,
             commands::ui_prefs::ui_get_prefs,
             commands::ui_prefs::ui_set_prefs,
+            commands::ui_prefs::verify_openai_api_key,
             // Settings backup/restore (developer-mode only)
             commands::settings_io::settings_export,
             commands::settings_io::settings_import,
             // Configurable registry (auto-UI for dev settings)
-            commands::dev_configs::dev_configs_list,
+            commands::dev_configs::dev_configs_schemas,
+            commands::dev_configs::dev_configs_values,
             commands::dev_configs::dev_config_set,
             // Model cache
             commands::ui_prefs::get_cached_models,
@@ -570,13 +626,20 @@ fn run_gui_mode(
             commands::peek::preview_indicator_update,
             commands::peek::preview_indicator_get_state,
             commands::peek::set_has_uncommitted_changes,
+            // Evolve mascot indicator (experimental)
+            commands::peek::evolve_mascot_show,
+            commands::peek::evolve_mascot_hide,
             // Permissions
-            commands::permissions::permissions_check_all,
+            commands::permissions::get_permissions,
+            commands::permissions::refresh_permissions,
             commands::permissions::permissions_request,
             // System defaults scanner
             commands::system_defaults::get_recommended_prompt,
             commands::system_defaults::scan_system_defaults,
             commands::system_defaults::apply_system_defaults,
+            // Launchd scanner
+            commands::launchd::apply_launchd_items,
+            commands::launchd::scan_launchd_items,
             // CLI tool detection
             commands::cli_tool::check_cli_tools,
             commands::cli_tool::list_cli_models,
@@ -593,6 +656,7 @@ fn run_gui_mode(
             commands::editor::lsp_start,
             commands::editor::lsp_send,
             commands::editor::lsp_stop,
+            telemetry::ipc::otel_forward_span,
         ])
         .setup(move |app| {
             let handle = app.handle();
@@ -603,21 +667,19 @@ fn run_gui_mode(
             // Set up panic handler to catch crashes and show feedback dialog
             panic_handler::setup_panic_hook(handle.clone());
 
-            app.manage(state::preferences::load_global_slice(handle)?);
-            app.manage(evolve::config::load_slice(handle)?);
-            evolve::config::register_slice_config(&app.state::<state::slice::SliceRegistry>())?;
-            app.manage(state::evolve_state::load_slice(handle)?);
-            app.manage(summarize::queue_summarizer::start_worker(handle)?);
+            app.manage(state::preferences::load_global_observable(handle)?);
+            app.manage(evolve::config::load_observable(handle)?);
+            app.manage(env::config::load_observable(handle)?);
+            app.manage(state::evolve_state::load_observable(handle)?);
+            app.manage(state::git_state::load_observable(handle));
+            app.manage(state::change_map::load_observable(handle));
+            app.manage(state::permissions_state::load_observable(handle));
+            app.manage(state::nix_install_state::load_observable(handle));
+            app.manage(state::rebuild_status::load_observable(handle));
 
-            // Initialize SQLite database
-            let db_handle = handle.clone();
-            tauri::async_runtime::spawn(async move {
-                if let Err(e) = db::init(&db_handle).await {
-                    log::error!("Failed to initialize database: {}", e);
-                } else {
-                    log::info!("Database initialized successfully");
-                }
-            });
+            // Initialize SQLite database before any consumer that reads the
+            // managed DbPool from app state.
+            tauri::async_runtime::block_on(db::init(handle))?;
 
             // Background initialize the scanner singleton; the returned &'static ref is not
             // needed right now. fire-and-forget is intentional here.
@@ -645,19 +707,23 @@ fn run_gui_mode(
                  evolve::search_docs::initialize_docs_index();
              });
 
-            let send_diagnostics = store::get_send_diagnostics(handle).unwrap_or(false);
+            let send_diagnostics = crate::state::ui_prefs::send_diagnostics(handle);
             if send_diagnostics {
                 log::info!(
-                    "Sentry diagnostics enabled by user preference (env: {}, version: {})",
+                    "Diagnostics enabled by user preference (env: {}, version: {})",
                     nixmac_env,
                     nixmac_version
                 );
             } else {
-                log::info!("Sentry diagnostics disabled by user preference");
-                if sentry_guard.is_some() {
-                    sentry::Hub::current().bind_client(None);
-                }
+                log::info!("Diagnostics disabled by user preference");
             }
+
+            // Initialize the OTEL telemetry pipeline. Rust owns the OTEL
+            // providers; the WebView forwards spans via IPC. The guard is moved
+            // into Tauri-managed state so it lives for the app's lifetime: a
+            // local `let` binding here would drop at the end of `setup`, which
+            // would shut down the globally-registered provider prematurely.
+            app.manage(telemetry::init::init_telemetry(send_diagnostics));
 
             // Build the system tray menu
             let open_i = MenuItem::with_id(app, "open", "Open nixmac", true, None::<&str>)?;
@@ -729,14 +795,14 @@ fn run_gui_mode(
             // Create the main window
             let initial_width = 800.0;
             let initial_height = 800.0;
-            let min_width = 400.0;
-            let max_width = 2000.0;
-            let min_height = 400.0;
+            let min_width = 800.0;
+            let max_width = 2400.0;
+            let min_height = 600.0;
             let max_height = 1800.0;
             let e2e_opaque_window = e2e_opaque_window_enabled();
             let e2e_solid_capture = e2e_solid_capture_enabled();
             let e2e_css_capture = e2e_solid_capture || e2e_opaque_window;
-            let e2e_webview_watchdog = e2e_webview_watchdog_enabled() || e2e_opaque_window;
+            let e2e_webview_watchdog = e2e_webview_watchdog_enabled();
             if e2e_solid_capture {
                 log::info!("NIXMAC_E2E_SOLID_CAPTURE enabled; using CSS-only dark WebView capture while preserving the normal overlay window");
             }
@@ -813,10 +879,34 @@ fn run_gui_mode(
             let main_window = main_window_builder.build().map_err(|e| {
                 let msg = format!("Failed to create main window: {}", e);
                 log::error!("{}", msg);
-                sentry::capture_message(&msg, sentry::Level::Error);
+                tracing::error!(message = %msg, "window build failed");
                 msg
             })?;
             log::debug!("Main nixmac window created");
+
+            // Frosted-glass window background via native AppKit vibrancy
+            // (NSVisualEffectView). The main webview is transparent and the CSS
+            // only paints a translucent tint; without a native backing layer,
+            // macOS recomposites the CSS `backdrop-filter` blur between two
+            // states on every repaint (the idle typewriter caret repaints
+            // continuously), which reads as the window transparency flickering.
+            // Vibrancy gives WKWebView an opaque NSVisualEffectView backing and
+            // fixes the flicker. State is pinned to Active so the material does
+            // not switch appearance with window focus — the crate's default
+            // (FollowsWindowActiveState) would reintroduce a two-value flip.
+            // Skipped in e2e capture modes, which rely on a solid/opaque backing.
+            #[cfg(target_os = "macos")]
+            if !e2e_css_capture {
+                use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectState};
+                if let Err(error) = apply_vibrancy(
+                    &main_window,
+                    NSVisualEffectMaterial::HudWindow,
+                    Some(NSVisualEffectState::Active),
+                    None,
+                ) {
+                    log::warn!("Failed to apply window vibrancy to main window: {}", error);
+                }
+            }
 
             #[cfg(target_os = "macos")]
             if e2e_opaque_window {
@@ -912,9 +1002,18 @@ fn run_gui_mode(
             let _ = main_window;
 
             // Create the preview indicator window (persistent banner for uncommitted changes)
-            // if let Err(e) = peek::create_preview_indicator_window(handle) {
-            //     log::error!("[peek] ❌ Failed to create preview indicator window: {}", e);
-            // }
+            if let Err(e) = peek::create_preview_indicator_window(handle) {
+                log::error!("[peek] ❌ Failed to create preview indicator window: {}", e);
+            }
+
+            // Experimental: create the spinning-mascot indicator window when the
+            // flag is enabled at launch. Gated here so users who never enable it
+            // pay no startup cost; enabling the flag applies on the next launch.
+            if crate::state::ui_prefs::experimental_spinning_mascot(handle) {
+                if let Err(e) = peek::create_evolve_mascot_window(handle) {
+                    log::error!("[peek] failed to create evolve mascot window: {}", e);
+                }
+            }
 
             // Start config watcher - monitors config directory for file changes
             // This emits config:changed events to the frontend when files are modified
@@ -961,8 +1060,58 @@ fn run_gui_mode(
 }
 
 #[cfg(test)]
+mod managed_state_tests {
+    use super::*;
+    use crate::observable::Observable;
+    use crate::shared_types::GlobalPreferences;
+    use tauri::Manager;
+
+    /// Regression for the PR #411 CLI breakage: `run_cli_mode` calls
+    /// `Builder::build()` but never starts the event loop, and Tauri only runs
+    /// `.setup()` from `RunEvent::Ready`. So the `GlobalPreferences` observable
+    /// (which config/repo-root reads depend on) must be registered explicitly
+    /// via `register_managed_state`, not from a `.setup()` closure. This builds
+    /// the app the CLI way — no `.run()` — and asserts the observable lands.
+    #[test]
+    fn register_managed_state_registers_observables_without_event_loop() {
+        let app = tauri::test::mock_builder()
+            // CLI builds with the store plugin available; the repo-scoped
+            // loaders read it during registration.
+            .plugin(tauri_plugin_store::Builder::default().build())
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .expect("mock app builds");
+        let handle = app.handle();
+
+        // Skip the one-shot legacy migration, which writes to the OS app-data
+        // dir that the mock runtime doesn't provide a writable path for. We're
+        // exercising registration, not migration.
+        crate::storage::store::get_store(handle)
+            .expect("store plugin available")
+            .set(
+                crate::state::preferences::LEGACY_MIGRATED_MARKER,
+                serde_json::Value::Bool(true),
+            );
+
+        assert!(
+            handle
+                .try_state::<Observable<GlobalPreferences>>()
+                .is_none(),
+            "observable must not be managed before explicit registration",
+        );
+
+        register_managed_state(handle).expect("registration succeeds");
+
+        assert!(
+            handle
+                .try_state::<Observable<GlobalPreferences>>()
+                .is_some(),
+            "GlobalPreferences observable must be managed after registration",
+        );
+    }
+}
+
+#[cfg(test)]
 mod test_support {
-    use std::env;
     use std::sync::{Mutex, MutexGuard, OnceLock};
 
     pub(crate) fn e2e_env_lock() -> MutexGuard<'static, ()> {
@@ -979,7 +1128,10 @@ mod test_support {
     impl EnvVarRestore {
         pub(crate) fn capture(keys: &[&'static str]) -> Self {
             Self {
-                saved: keys.iter().map(|key| (*key, env::var(key).ok())).collect(),
+                saved: keys
+                    .iter()
+                    .map(|key| (*key, std::env::var(key).ok()))
+                    .collect(),
             }
         }
     }
@@ -988,8 +1140,8 @@ mod test_support {
         fn drop(&mut self) {
             for (key, value) in &self.saved {
                 match value {
-                    Some(value) => env::set_var(key, value),
-                    None => env::remove_var(key),
+                    Some(value) => unsafe { std::env::set_var(key, value) },
+                    None => unsafe { std::env::remove_var(key) },
                 }
             }
         }

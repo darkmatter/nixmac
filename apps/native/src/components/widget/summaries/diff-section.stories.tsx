@@ -6,7 +6,20 @@ import { DiffSection } from "./diff-section";
 
 function ControlledDiffSection({ changes }: { changes: Change[] }) {
   const [openFiles, setOpenFiles] = useState<Record<string, boolean>>({});
-  return <DiffSection changes={changes} openFiles={openFiles} onOpenFilesChange={setOpenFiles} />;
+  const [includedFiles, setIncludedFiles] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(
+      [...new Set(changes.map((c) => c.filename))].map((filename) => [filename, true]),
+    ),
+  );
+  return (
+    <DiffSection
+      changes={changes}
+      openFiles={openFiles}
+      onOpenFilesChange={setOpenFiles}
+      includedFiles={includedFiles}
+      onIncludedFilesChange={setIncludedFiles}
+    />
+  );
 }
 
 const meta = preview.meta({
@@ -72,7 +85,9 @@ const flakeDiff = `diff --git a/flake.nix b/flake.nix
 export const SingleFile = meta.story({
   render: () => (
     <div className="w-[560px]">
-      <ControlledDiffSection changes={[makeChange(1, "modules/darwin/packages.nix", packagesDiff)]} />
+      <ControlledDiffSection
+        changes={[makeChange(1, "modules/darwin/packages.nix", packagesDiff)]}
+      />
     </div>
   ),
 });

@@ -30,7 +30,7 @@ scenario_cleanup() {
 ### Logging
 
 | Function | Description |
-|----------|-------------|
+| ----------------- | ---------------------------------- |
 | `log "message"` | Timestamped info log |
 | `debug "message"` | Only shown when `E2E_VERBOSE=1` |
 | `warn "message"` | Yellow warning |
@@ -41,7 +41,7 @@ scenario_cleanup() {
 ### Phases
 
 | Function | Description |
-|----------|-------------|
+| ------------------ | -------------------------- |
 | `phase "name"` | Start a new numbered phase |
 | `phase_pass "msg"` | Record phase as passed |
 | `phase_fail "msg"` | Record phase as failed |
@@ -49,7 +49,7 @@ scenario_cleanup() {
 ### Assertions
 
 | Function | Signature | Description |
-|----------|-----------|-------------|
+| --------------------- | ------------------------ | --------------------------------------------------- |
 | `assert_true` | `"desc" command args...` | Pass if command exits 0 |
 | `assert_equals` | `"desc" expected actual` | Pass if strings equal |
 | `assert_contains` | `"desc" haystack needle` | Pass if haystack contains needle (case-insensitive) |
@@ -60,7 +60,7 @@ scenario_cleanup() {
 ### Results
 
 | Function | Description |
-|----------|-------------|
+| --------------- | ---------------------------- |
 | `print_results` | Print phase results table |
 | `results_json` | Return JSON summary (for CI) |
 
@@ -69,7 +69,7 @@ scenario_cleanup() {
 ### Low-level
 
 | Function | Description |
-|----------|-------------|
+| ----------------------------------------- | ----------------------------------- |
 | `peek_elements [app]` | Get all UI elements as JSON |
 | `peek_snapshot_id json` | Extract snapshot ID from JSON |
 | `peek_find_button json "pattern"` | Find button by label regex |
@@ -82,7 +82,7 @@ scenario_cleanup() {
 ### High-level
 
 | Function | Signature | Description |
-|----------|-----------|-------------|
+| ----------------- | ------------------------------------------------------ | ---------------------------------------- |
 | `screenshot` | `"name" [app]` | Take annotated screenshot |
 | `wait_for_text` | `"pattern" [--app name] [--timeout 60] [--interval 3]` | Wait for text to appear |
 | `wait_for_button` | `"pattern" [--app name] [--timeout 60]` | Wait for button, returns element ID |
@@ -93,7 +93,7 @@ scenario_cleanup() {
 ## App API (`lib/app.sh`)
 
 | Function | Signature | Description |
-|----------|-----------|-------------|
+| ---------------------- | ------------------------- | ----------------------------------------- |
 | `app_launch` | `path [name] [wait_secs]` | Open app, verify process |
 | `app_quit` | `name` | Graceful quit via Peekaboo, fallback kill |
 | `app_is_running` | `name` | Check if process exists |
@@ -106,7 +106,7 @@ scenario_cleanup() {
 ## Recording API (`lib/recording.sh`)
 
 | Function | Signature | Description |
-|----------|-----------|-------------|
+| ----------------- | ------------------------------- | ----------------------------- |
 | `start_recording` | `[output] [fps] [max_duration]` | Start ffmpeg screen recording |
 | `stop_recording` | `[output]` | Stop recording, log file size |
 
@@ -115,7 +115,7 @@ scenario_cleanup() {
 ### Nix Helpers
 
 | Function | Description |
-|----------|-------------|
+| ------------------------------- | ------------------------------------------ |
 | `nix_is_installed` | Check if Nix binary exists and works |
 | `nix_version` | Get `nix --version` output |
 | `nix_uninstall` | Run `nix-installer uninstall --no-confirm` |
@@ -126,7 +126,7 @@ scenario_cleanup() {
 ### App Helpers
 
 | Function | Description |
-|----------|-------------|
+| ---------------------------------- | --------------------------- |
 | `nixmac_launch [wait]` | Launch nixmac.app |
 | `nixmac_quit` | Quit nixmac |
 | `nixmac_text` | Get all visible text |
@@ -138,7 +138,7 @@ scenario_cleanup() {
 ### Flow Helpers
 
 | Function | Description |
-|----------|-------------|
+| ------------------------------------------ | -------------------------------------- |
 | `nixmac_wait_for_install_screen [timeout]` | Wait for Install Nix button |
 | `nixmac_click_install` | Dismiss dialogs + click Install |
 | `nixmac_wait_for_download [timeout]` | Wait for Installer.app (download done) |
@@ -149,14 +149,14 @@ scenario_cleanup() {
 ## Available Fixtures
 
 | Fixture | Description | Preconditions |
-|---------|-------------|---------------|
+| --------------- | -------------------------------- | --------------------------- |
 | `clean-machine` | Nix uninstalled, app not running | Peekaboo OK, app at path |
 | `nix-installed` | Nix present, app through setup | Runs install flow if needed |
 
 ## Environment Variables
 
 | Variable | Default | Description |
-|----------|---------|-------------|
+| -------------------- | -------------------------- | ------------------------ |
 | `E2E_RECORD` | `1` | Enable screen recording |
 | `E2E_CLEANUP_NIX` | `1` | Uninstall Nix after test |
 | `E2E_VERBOSE` | `0` | Debug logging |

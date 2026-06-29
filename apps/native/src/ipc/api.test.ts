@@ -2,11 +2,11 @@ import type { UiPrefs } from "@/ipc/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  invoke: vi.fn(),
-  listen: vi.fn(),
-  once: vi.fn(),
-  checkFullDiskAccessPermission: vi.fn(),
-  requestFullDiskAccessPermission: vi.fn(),
+  invoke: vi.fn<(command: string, args?: Record<string, unknown>) => Promise<unknown>>(),
+  listen: vi.fn<(...args: unknown[]) => Promise<() => void>>(),
+  once: vi.fn<(...args: unknown[]) => Promise<() => void>>(),
+  checkFullDiskAccessPermission: vi.fn<() => Promise<boolean>>(),
+  requestFullDiskAccessPermission: vi.fn<() => Promise<void>>(),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -35,6 +35,8 @@ const prefs = (overrides: Partial<UiPrefs> = {}): UiPrefs =>
     evolveProvider: "openrouter",
     evolveModel: "anthropic/claude-sonnet-4",
     maxIterations: 25,
+    maxTokenBudget: 50000,
+    maxOutputTokens: 32768,
     maxBuildAttempts: 5,
     sendDiagnostics: false,
     confirmBuild: true,
@@ -43,9 +45,11 @@ const prefs = (overrides: Partial<UiPrefs> = {}): UiPrefs =>
     autoSummarizeOnFocus: false,
     scanHomebrewOnStartup: true,
     defaultToDiffTab: false,
+    experimentalSpinningMascot: false,
     developerMode: false,
     pinnedVersion: null,
     updateChannel: "stable",
+    featureFlagOverrides: null,
     ...overrides,
   }) as UiPrefs;
 
@@ -66,6 +70,61 @@ describe("tauriAPI.ui.getPrefs", () => {
     expect(second).toBe(loaded);
     expect(mocks.invoke).toHaveBeenCalledTimes(1);
     expect(mocks.invoke).toHaveBeenCalledWith("ui_get_prefs");
+  });
+
+  it("migrates legacy OpenAI provider prefs before caching", async () => {
+    const loaded = prefs({
+      openrouterApiKey: "openrouter-secret",
+      openaiApiKey: "",
+      evolveProvider: "openai",
+      evolveModel: "gpt-4o",
+      summaryProvider: "openai",
+      summaryModel: "gpt-4o-mini",
+    });
+    mocks.invoke.mockResolvedValueOnce(loaded).mockResolvedValueOnce({ ok: true });
+    const { tauriAPI } = await import("./api");
+
+    const migrated = await tauriAPI.ui.getPrefs();
+
+    expect(migrated.evolveProvider).toBe("openrouter");
+    expect(migrated.evolveModel).toBe("anthropic/claude-sonnet-4");
+    expect(migrated.summaryProvider).toBe("openrouter");
+    expect(migrated.summaryModel).toBe("openai/gpt-4o-mini");
+    expect(mocks.invoke).toHaveBeenNthCalledWith(1, "ui_get_prefs");
+    expect(mocks.invoke).toHaveBeenNthCalledWith(2, "ui_set_prefs", {
+      prefs: {
+        evolveProvider: "openrouter",
+        evolveModel: "anthropic/claude-sonnet-4",
+        summaryProvider: "openrouter",
+        summaryModel: "openai/gpt-4o-mini",
+      },
+    });
+  });
+
+  it("does not cache defaults for unrelated provider prefs during migration", async () => {
+    const loaded = prefs({
+      openrouterApiKey: "openrouter-secret",
+      openaiApiKey: "",
+      evolveProvider: "openai",
+      evolveModel: "gpt-4o",
+      summaryProvider: "ollama",
+      summaryModel: null,
+    });
+    mocks.invoke.mockResolvedValueOnce(loaded).mockResolvedValueOnce({ ok: true });
+    const { tauriAPI } = await import("./api");
+
+    const migrated = await tauriAPI.ui.getPrefs();
+
+    expect(migrated.evolveProvider).toBe("openrouter");
+    expect(migrated.evolveModel).toBe("anthropic/claude-sonnet-4");
+    expect(migrated.summaryProvider).toBe("ollama");
+    expect(migrated.summaryModel).toBeNull();
+    expect(mocks.invoke).toHaveBeenNthCalledWith(2, "ui_set_prefs", {
+      prefs: {
+        evolveProvider: "openrouter",
+        evolveModel: "anthropic/claude-sonnet-4",
+      },
+    });
   });
 
   it("reuses loaded preferences until a write invalidates the cache", async () => {

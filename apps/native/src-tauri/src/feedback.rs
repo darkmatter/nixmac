@@ -521,13 +521,15 @@ fn get_report_path(app: &AppHandle) -> Result<PathBuf> {
 /// Submit feedback: try to POST, save to disk on failure, also flush any pending reports.
 /// Returns true if the new submission was sent successfully.
 pub async fn submit(app: &AppHandle, payload: String) -> Result<bool> {
-    let feedback_url = match get_feedback_url() {
+    let feedback_url = match crate::env::feedback_url() {
         Ok(url) => url,
         Err(_) => {
             log::error!("[feedback] Feedback system is not configured");
             return Ok(false);
         }
     };
+    let settings = crate::env::settings(None);
+    let dsn = settings.submitted_feedback_dsn;
 
     // We expect valid JSON, but users can manually edit the payload preview.
     // If parsing fails, preserve the raw content inside a minimal general
@@ -542,10 +544,11 @@ pub async fn submit(app: &AppHandle, payload: String) -> Result<bool> {
             serde_json::json!({
                 "type": "general",
                 "text": payload,
+                "dsn": dsn,
             })
         }
     };
-    let client = reqwest::Client::new();
+    let client = crate::http_client::logged();
 
     let sent = match client
         .post(&feedback_url)
@@ -596,30 +599,10 @@ fn save_to_queue(app: &AppHandle, payload: &Value, failure_reason: &str) -> Resu
     Ok(())
 }
 
-/// Construct the full feedback submission URL from environment configuration.
-/// If VITE_SERVER_URL is not set, returns an error indicating feedback is not configured.
-/// In a production binary, VITE_SERVER_URL should be embedded at build time;
-/// in development it can be set in the environment.
-fn get_feedback_url() -> Result<String> {
-    let base = option_env!("VITE_SERVER_URL")
-        .map(|s| s.to_string())
-        .or_else(|| std::env::var("VITE_SERVER_URL").ok())
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| anyhow::anyhow!("sending feedback not configured (url)"))?;
-
-    let dsn = option_env!("SUBMITTED_FEEDBACK_DSN")
-        .map(|s| s.to_string())
-        .or_else(|| std::env::var("SUBMITTED_FEEDBACK_DSN").ok())
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| anyhow::anyhow!("sending feedback not configured (dsn)"))?;
-
-    Ok(format!("{}/api/feedback/{}", base, dsn))
-}
-
 /// Retry all pending feedback reports in the background.
 /// Reads report.json, POSTs each entry, removes successes.
 pub async fn retry_pending(app: &AppHandle) -> Result<usize> {
-    let feedback_url = match get_feedback_url() {
+    let feedback_url = match crate::env::feedback_url() {
         Ok(url) => url,
         Err(_) => return Ok(0), // If feedback is not configured, skip retrying
     };
@@ -644,7 +627,7 @@ pub async fn retry_pending(app: &AppHandle) -> Result<usize> {
         entries.len(),
         feedback_url
     );
-    let client = reqwest::Client::new();
+    let client = crate::http_client::logged();
     let mut remaining = Vec::new();
     let mut sent = 0usize;
 
@@ -816,11 +799,13 @@ regex = "token=([A-Za-z0-9]+)"
         assert!(redacted_fields.contains(&"evolution_log_content"));
         assert!(redacted_fields.contains(&"build_error_output"));
         assert!(!redacted_fields.contains(&"changed_nix_files_diff"));
-        assert!(metadata
-            .evolution_log_content
-            .unwrap()
-            .prompt
-            .contains("[REDACTED]"));
+        assert!(
+            metadata
+                .evolution_log_content
+                .unwrap()
+                .prompt
+                .contains("[REDACTED]")
+        );
         assert_eq!(metadata.changed_nix_files_diff.unwrap(), "no secrets here");
         assert!(metadata.build_error_output.unwrap().contains("[REDACTED]"));
     }
@@ -850,17 +835,21 @@ regex = "token=([A-Za-z0-9]+)"
         assert!(redacted_fields.contains(&"ai_provider_model_info"));
 
         let state = metadata.current_app_state_snapshot.unwrap();
-        assert!(state
-            .get("token")
-            .and_then(|v| v.as_str())
-            .unwrap()
-            .contains("[REDACTED]"));
-        assert!(state
-            .get("nested")
-            .and_then(|v| v.get("value"))
-            .and_then(|v| v.as_str())
-            .unwrap()
-            .contains("[REDACTED]"));
+        assert!(
+            state
+                .get("token")
+                .and_then(|v| v.as_str())
+                .unwrap()
+                .contains("[REDACTED]")
+        );
+        assert!(
+            state
+                .get("nested")
+                .and_then(|v| v.get("value"))
+                .and_then(|v| v.as_str())
+                .unwrap()
+                .contains("[REDACTED]")
+        );
 
         let info = metadata.ai_provider_model_info.unwrap();
         assert!(info.evolve_provider.unwrap().contains("[REDACTED]"));
@@ -927,31 +916,6 @@ regex = "token=([A-Za-z0-9]+)"
                 .unwrap(),
             "before [REDACTED (High Entropy)] after"
         );
-    }
-
-    #[test]
-    fn test_get_feedback_url() {
-        let _env_lock = crate::test_support::e2e_env_lock();
-        let _env_restore = crate::test_support::EnvVarRestore::capture(&[
-            "VITE_SERVER_URL",
-            "SUBMITTED_FEEDBACK_DSN",
-        ]);
-
-        // Test with env var set
-        std::env::set_var("VITE_SERVER_URL", "https://example.com");
-        std::env::set_var("SUBMITTED_FEEDBACK_DSN", "test-dsn");
-        let url = super::get_feedback_url().unwrap();
-        assert_eq!(url, "https://example.com/api/feedback/test-dsn");
-
-        // Test with env var missing
-        std::env::remove_var("VITE_SERVER_URL");
-        std::env::remove_var("SUBMITTED_FEEDBACK_DSN");
-        assert!(super::get_feedback_url().is_err());
-
-        // Test with env var empty
-        std::env::set_var("VITE_SERVER_URL", "");
-        std::env::set_var("SUBMITTED_FEEDBACK_DSN", "");
-        assert!(super::get_feedback_url().is_err());
     }
 
     #[test]

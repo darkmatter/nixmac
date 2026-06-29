@@ -1,9 +1,10 @@
 "use client";
 
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { DEFAULT_NIXMAC_MODEL, NIXMAC_PROVIDER } from "@/components/widget/onboarding/lib/inference";
 import {
   Command,
   CommandEmpty,
@@ -17,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { tauriAPI } from "@/ipc/api";
 
 interface ModelComboboxProps {
-  provider: "openrouter" | "openai" | "ollama" | "vllm" | "opencode";
+  provider: "nixmac" | "openrouter" | "openai" | "ollama" | "vllm" | "opencode";
   value: string;
   onChange: (value: string) => void;
   onBlur?: () => void;
@@ -33,6 +34,8 @@ interface OpenRouterModel {
 interface OllamaModel {
   name: string;
 }
+
+const OPENAI_MODELS = ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini"] as const;
 
 async function fetchOpenRouterModels(): Promise<string[]> {
   try {
@@ -77,15 +80,23 @@ async function fetchOllamaModels(baseUrl?: string): Promise<string[]> {
 type ModelProvider = ModelComboboxProps["provider"];
 
 async function fetchFreshModels(provider: ModelProvider): Promise<string[]> {
-  if (provider === "openai") {
+  if (provider === NIXMAC_PROVIDER) {
+    return [DEFAULT_NIXMAC_MODEL];
+  }
+  if (provider === "openrouter") {
     return fetchOpenRouterModels();
   }
+  if (provider === "openai") {
+    return [...OPENAI_MODELS];
+  }
   if (provider === "ollama") {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     const prefs = await tauriAPI.ui.getPrefs();
     const baseUrl = prefs?.ollamaApiBaseUrl || undefined;
     return fetchOllamaModels(baseUrl);
   }
   if (provider === "opencode") {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     return tauriAPI.cli.listModels("opencode");
   }
   return [];
@@ -95,8 +106,18 @@ async function loadProviderModels(
   provider: ModelProvider,
   applyModels: (models: string[]) => void,
 ) {
+  if (provider === "openai") {
+    applyModels([...OPENAI_MODELS]);
+    return;
+  }
+  if (provider === NIXMAC_PROVIDER) {
+    applyModels([DEFAULT_NIXMAC_MODEL]);
+    return;
+  }
+
   // First try to load from cache
   try {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     const cached = await tauriAPI.models.getCached(provider);
     if (cached && cached.length > 0) {
       applyModels(cached);
@@ -117,6 +138,7 @@ async function loadProviderModels(
     // Cache the models when we got any
     if (freshModels.length > 0) {
       try {
+        // deprecated(orpc): replace with client/orpc from @/lib/orpc
         await tauriAPI.models.setCached(provider, freshModels);
       } catch {
         // Ignore cache errors
@@ -146,7 +168,7 @@ export function ModelCombobox({
     setInputValue(value);
   }, [value]);
 
-  const loadModels = () => {
+  const loadModels = useCallback(() => {
     let cancelled = false;
 
     setIsLoading(true);
@@ -167,17 +189,17 @@ export function ModelCombobox({
     return () => {
       cancelled = true;
     };
-  };
+  }, [provider]);
 
   // Load models when popover opens
   useEffect(() => {
     if (open) {
       return loadModels();
     }
-  }, [open, provider]);
+  }, [loadModels, open]);
 
   // Also load models on mount and provider change to have them ready
-  useEffect(() => loadModels(), [provider]);
+  useEffect(() => loadModels(), [loadModels]);
 
   const handleSelect = (selectedValue: string) => {
     onChange(selectedValue);

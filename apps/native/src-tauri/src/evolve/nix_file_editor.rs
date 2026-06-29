@@ -1,0 +1,1753 @@
+//! `nix_file_editor`: Apply "smart"" edits to Nix files, such as adding/removing packages from a list or setting scalar values.
+
+use crate::evolve::types::SemanticFileEdit;
+use anyhow::{Context, Result};
+use log::{debug, info};
+use rnix::SyntaxNode;
+use rnix::ast::{AttrSet, HasEntry, List};
+use rnix::{Parse, Root};
+use rowan::ast::AstNode;
+use rowan::{TextRange, TextSize};
+use std::path::Path;
+
+use crate::evolve::file_ops::rewrite_existing_file_in_dir;
+use crate::evolve::types::FileEditAction;
+use ignore::gitignore::Gitignore;
+
+/// Internal marker key used in JSON edit payloads to request a raw Nix path literal.
+///
+/// This lets tools pass values like `../../secrets/foo.yaml` without quoting, while still
+/// keeping the action payload valid JSON. It is an internal contract between evolve tools.
+pub(crate) const NIX_PATH_MARKER_KEY: &str = "__nixPath";
+
+/// Internal marker key used in JSON edit payloads to request a raw Nix expression.
+///
+/// This is intentionally restricted and should only be used by trusted internal tool flows
+/// (for example `ensure_secret`) when a scalar expression is required instead of a quoted string.
+pub(crate) const NIX_EXPR_MARKER_KEY: &str = "__nixExpr";
+
+/// Internal marker key used in JSON edit payloads to request a `builtins.path` expression.
+///
+/// This is narrower than `__nixExpr`: it only accepts a validated relative Nix path literal
+/// and renders it as `builtins.path { path = ...; }`.
+pub(crate) const NIX_BUILTINS_PATH_MARKER_KEY: &str = "__nixBuiltinsPath";
+
+pub(crate) fn nix_expr_meta_value(expression: &str) -> serde_json::Value {
+    let mut value = serde_json::Map::new();
+    value.insert(
+        NIX_EXPR_MARKER_KEY.to_string(),
+        serde_json::Value::String(expression.to_string()),
+    );
+    serde_json::Value::Object(value)
+}
+
+pub(crate) fn nix_builtins_path_meta_value(path: &str) -> serde_json::Value {
+    let mut value = serde_json::Map::new();
+    value.insert(
+        NIX_BUILTINS_PATH_MARKER_KEY.to_string(),
+        serde_json::Value::String(path.to_string()),
+    );
+    serde_json::Value::Object(value)
+}
+
+/// Helper to render a `builtins.path { path = ...; }` expression for Nix.
+/// This is used when a module expects an absolute path value but the source path
+/// is relative to the edited file.
+pub(crate) fn builtins_path_expression(path: &str) -> String {
+    format!("builtins.path {{ path = {}; }}", path)
+}
+
+fn text_size_to_usize(size: TextSize) -> usize {
+    u32::from(size) as usize
+}
+
+fn text_range_to_usize_range(range: TextRange) -> std::ops::Range<usize> {
+    text_size_to_usize(range.start())..text_size_to_usize(range.end())
+}
+
+fn normalize_attrpath_for_match(input: &str) -> String {
+    input
+        .chars()
+        .filter(|c| !c.is_whitespace() && *c != '"')
+        .collect()
+}
+
+fn render_nix_string(value: &str) -> String {
+    let mut rendered = String::from("\"");
+    for ch in value.chars() {
+        match ch {
+            '\\' => rendered.push_str("\\\\"),
+            '"' => rendered.push_str("\\\""),
+            '\n' => rendered.push_str("\\n"),
+            '\r' => rendered.push_str("\\r"),
+            '\t' => rendered.push_str("\\t"),
+            '$' => rendered.push_str("\\$"),
+            _ => rendered.push(ch),
+        }
+    }
+    rendered.push('"');
+    rendered
+}
+
+fn render_nix_scalar(value: &serde_json::Value) -> Result<String> {
+    match value {
+        serde_json::Value::Bool(boolean) => Ok(if *boolean {
+            "true".to_string()
+        } else {
+            "false".to_string()
+        }),
+        serde_json::Value::Number(number) => Ok(number.to_string()),
+        serde_json::Value::String(string) => Ok(render_nix_string(string)),
+        serde_json::Value::Null => Ok("null".to_string()),
+        _ => Err(anyhow::anyhow!(
+            "Set action only supports scalar JSON values (bool, number, string, null)"
+        )),
+    }
+}
+
+fn render_nix_attr_key(key: &str) -> String {
+    let key = normalize_nix_attr_key_input(key);
+    let mut chars = key.chars();
+    let starts_with_valid = chars
+        .next()
+        .map(|ch| ch.is_ascii_alphabetic() || ch == '_')
+        .unwrap_or(false);
+    let rest_valid =
+        chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-' || ch == '\'');
+
+    if starts_with_valid && rest_valid {
+        key
+    } else {
+        render_nix_string(&key)
+    }
+}
+
+/// Accept attrset keys supplied either as raw attribute names (`foo.bar`) or as
+/// Nix quoted attr syntax (`"foo.bar"`). In the quoted form, the quotes delimit
+/// an attr segment; they are not part of the option key itself.
+/// This comes up in cases like system.defaults.NSGlobalDomain."com.apple.sound.beep.feedback"
+fn normalize_nix_attr_key_input(key: &str) -> String {
+    if key.len() < 2 || !key.starts_with('"') || !key.ends_with('"') {
+        return key.to_string();
+    }
+
+    let inner = &key[1..key.len() - 1];
+    let mut normalized = String::new();
+    let mut chars = inner.chars();
+    while let Some(ch) = chars.next() {
+        if ch != '\\' {
+            normalized.push(ch);
+            continue;
+        }
+
+        match chars.next() {
+            Some('"') => normalized.push('"'),
+            Some('\\') => normalized.push('\\'),
+            Some('n') => normalized.push('\n'),
+            Some('r') => normalized.push('\r'),
+            Some('t') => normalized.push('\t'),
+            Some('$') => normalized.push('$'),
+            Some(other) => {
+                normalized.push('\\');
+                normalized.push(other);
+            }
+            None => normalized.push('\\'),
+        }
+    }
+
+    normalized
+}
+
+fn render_nix_value(value: &serde_json::Value) -> Result<String> {
+    match value {
+        serde_json::Value::Array(items) => {
+            if items.is_empty() {
+                return Ok("[ ]".to_string());
+            }
+
+            let rendered_items = items
+                .iter()
+                .map(render_nix_value)
+                .collect::<Result<Vec<_>>>()?;
+            Ok(format!("[ {} ]", rendered_items.join(" ")))
+        }
+        serde_json::Value::Object(map) => {
+            if let Some(path_literal) = render_nix_path_literal(map)? {
+                return Ok(path_literal);
+            }
+
+            if let Some(builtins_path) = render_nix_builtins_path_literal(map)? {
+                return Ok(builtins_path);
+            }
+
+            if let Some(expression) = render_nix_expression_literal(map)? {
+                return Ok(expression);
+            }
+
+            if map.is_empty() {
+                return Ok("{ }".to_string());
+            }
+
+            let rendered_pairs = map
+                .iter()
+                .map(|(key, nested)| -> Result<String> {
+                    Ok(format!(
+                        "{} = {};",
+                        render_nix_attr_key(key),
+                        render_nix_value(nested)?
+                    ))
+                })
+                .collect::<Result<Vec<_>>>()?;
+
+            Ok(format!("{{ {} }}", rendered_pairs.join(" ")))
+        }
+        _ => render_nix_scalar(value),
+    }
+}
+
+fn render_nix_path_literal(
+    map: &serde_json::Map<String, serde_json::Value>,
+) -> Result<Option<String>> {
+    let Some(raw_path) = map.get(NIX_PATH_MARKER_KEY) else {
+        return Ok(None);
+    };
+
+    if map.len() != 1 {
+        return Err(anyhow::anyhow!(
+            "Nix path marker object must only contain '{}'",
+            NIX_PATH_MARKER_KEY
+        ));
+    }
+
+    let path = raw_path
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("'{}' must be a string", NIX_PATH_MARKER_KEY))?;
+
+    if path.is_empty() {
+        return Err(anyhow::anyhow!(
+            "'{}' must not be empty",
+            NIX_PATH_MARKER_KEY
+        ));
+    }
+
+    let valid = path
+        .chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '/' | '.' | '_' | '-' | '+'));
+
+    if !valid {
+        return Err(anyhow::anyhow!(
+            "'{}' contains invalid characters for a Nix path literal",
+            NIX_PATH_MARKER_KEY
+        ));
+    }
+
+    Ok(Some(path.to_string()))
+}
+
+fn render_nix_builtins_path_literal(
+    map: &serde_json::Map<String, serde_json::Value>,
+) -> Result<Option<String>> {
+    let Some(raw_path) = map.get(NIX_BUILTINS_PATH_MARKER_KEY) else {
+        return Ok(None);
+    };
+
+    if map.len() != 1 {
+        return Err(anyhow::anyhow!(
+            "Nix builtins.path marker object must only contain '{}'",
+            NIX_BUILTINS_PATH_MARKER_KEY
+        ));
+    }
+
+    let path = raw_path
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("'{}' must be a string", NIX_BUILTINS_PATH_MARKER_KEY))?;
+
+    if path.is_empty() {
+        return Err(anyhow::anyhow!(
+            "'{}' must not be empty",
+            NIX_BUILTINS_PATH_MARKER_KEY
+        ));
+    }
+
+    if path.starts_with('/') {
+        return Err(anyhow::anyhow!(
+            "'{}' must be a relative Nix path literal",
+            NIX_BUILTINS_PATH_MARKER_KEY
+        ));
+    }
+
+    let valid = path
+        .chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '/' | '.' | '_' | '-' | '+'));
+
+    if !valid {
+        return Err(anyhow::anyhow!(
+            "'{}' contains invalid characters for a builtins.path literal",
+            NIX_BUILTINS_PATH_MARKER_KEY
+        ));
+    }
+
+    Ok(Some(builtins_path_expression(path)))
+}
+
+/// Render a Nix expression from a JSON object with a specific marker key, allowing tools to pass raw Nix expressions in edits.
+/// This is intentionally restricted and should only be used by trusted internal tool flows, for reasons not the least of which
+/// is that it does not perform any validation or sanitization on the expression string, and it doesn't allow
+/// all possible Nix expressions. It is an internal contract between evolve tools.
+fn render_nix_expression_literal(
+    map: &serde_json::Map<String, serde_json::Value>,
+) -> Result<Option<String>> {
+    let Some(raw_expression) = map.get(NIX_EXPR_MARKER_KEY) else {
+        return Ok(None);
+    };
+
+    if map.len() != 1 {
+        return Err(anyhow::anyhow!(
+            "Nix expression marker object must only contain '{}'",
+            NIX_EXPR_MARKER_KEY
+        ));
+    }
+
+    let expression = raw_expression
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("'{}' must be a string", NIX_EXPR_MARKER_KEY))?;
+
+    if expression.is_empty() {
+        return Err(anyhow::anyhow!(
+            "'{}' must not be empty",
+            NIX_EXPR_MARKER_KEY
+        ));
+    }
+
+    let valid = expression
+        .chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '.' | '_' | '-' | '"'));
+
+    if !valid {
+        return Err(anyhow::anyhow!(
+            "'{}' contains invalid characters for a Nix expression",
+            NIX_EXPR_MARKER_KEY
+        ));
+    }
+
+    Ok(Some(expression.to_string()))
+}
+
+/// Apply a semantic file edit to the filesystem, with Nix-aware handling for specific edit types.
+pub fn apply_semantic_edit(
+    base: &Path,
+    edit: &SemanticFileEdit,
+    gitignore_matcher: Option<&Gitignore>,
+) -> anyhow::Result<()> {
+    rewrite_existing_file_in_dir(
+        base,
+        &edit.path,
+        "apply semantic nix edit",
+        gitignore_matcher,
+        |content| {
+            info!(
+                "apply_semantic_edit: path={} | action={:?}",
+                edit.path, edit.action
+            );
+
+            match &edit.action {
+                FileEditAction::Add { path, values } => {
+                    info!("Action=Add path={} values={:?}", path, values);
+                    add(content, path, values)
+                }
+                FileEditAction::Remove { path, values } => {
+                    info!("Action=Remove path={} values={:?}", path, values);
+                    remove(content, path, values)
+                }
+                FileEditAction::Set { path, value } => {
+                    info!("Action=Set path={} value={:?}", path, value);
+                    set_value(content, path, value)
+                }
+                FileEditAction::SetAttrs { path, attrs } => {
+                    info!("Action=SetAttrs path={} attrs_count={}", path, attrs.len());
+                    set_attrs(content, path, attrs)
+                }
+            }
+        },
+    )?;
+
+    Ok(())
+}
+
+/// Extract package names from a List node
+fn extract_package_list(node: &SyntaxNode) -> Result<Vec<String>> {
+    let list = List::cast(node.clone()).context("Expected a List node")?;
+    let mut pkgs = Vec::new();
+    for expr in list.items() {
+        pkgs.push(expr.to_string().trim().to_string());
+    }
+    Ok(pkgs)
+}
+
+/// Build the full attrpath for a list by checking brace nesting context.
+/// For a list inside nested attrsets like `homebrew = { taps = [...]; }`,
+/// this returns the full path "homebrew.taps" by scanning backwards through braces.
+/// For flat assignments like `environment.systemPackages = [...]`, returns just the full path.
+fn list_full_attrpath(content: &str, list_start: usize) -> Option<String> {
+    let before_list = content.get(..list_start)?;
+    let equals_pos = before_list.rfind('=')?;
+
+    // Start with the immediate LHS (e.g., "taps")
+    let immediate_lhs = assignment_lhs_at_equals(content, equals_pos)?;
+    let mut path_segments = vec![immediate_lhs.to_string()];
+
+    // Trace backwards through the content to find parent attrsets.
+    // Scan from the `=` position backwards, counting brace nesting, to find the opening brace
+    // of the immediately-enclosing attrset.
+    let mut brace_depth = 0;
+    let before_equals = content.get(..equals_pos)?;
+
+    let char_indices: Vec<(usize, char)> = before_equals.char_indices().collect();
+    for (idx, ch) in char_indices.iter().rev() {
+        match ch {
+            '}' => brace_depth += 1,
+            '{' if brace_depth > 0 => {
+                brace_depth -= 1;
+            }
+            '{' if brace_depth == 0 => {
+                // Found the opening brace of the enclosing attrset.
+                // Use the exact position from the iteration, not rfind, to avoid selecting
+                // the wrong brace if there are fully-closed { ... } blocks in between.
+                let brace_pos = *idx;
+                if let Some(parent_equals) = content.get(..brace_pos).and_then(|s| s.rfind('=')) {
+                    if let Some(parent_lhs) = assignment_lhs_at_equals(content, parent_equals) {
+                        path_segments.insert(0, parent_lhs.to_string());
+                    }
+                }
+                break;
+            }
+            _ => {}
+        }
+    }
+
+    Some(path_segments.join("."))
+}
+
+fn assignment_lhs_at_equals(content: &str, equals_pos: usize) -> Option<&str> {
+    let before_equals = content.get(..equals_pos)?;
+
+    // Treat ';', '{', and '}' as statement boundaries for locating assignment LHS.
+    let statement_start = before_equals
+        .rfind([';', '{', '}'])
+        .map_or(0, |idx| idx + 1);
+
+    let lhs_region = before_equals.get(statement_start..)?;
+
+    // In real modules, comments often sit directly above an assignment.
+    // Use the last non-empty, non-comment line as the LHS candidate.
+    let lhs_line = lhs_region.lines().rev().find_map(|line| {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            None
+        } else {
+            Some(trimmed)
+        }
+    })?;
+
+    if lhs_line.is_empty() {
+        return None;
+    }
+
+    Some(lhs_line)
+}
+
+fn find_assignment_value_range(content: &str, attrpath: &str) -> Option<std::ops::Range<usize>> {
+    let target = normalize_attrpath_for_match(attrpath);
+
+    for (equals_pos, character) in content.char_indices() {
+        if character != '=' {
+            continue;
+        }
+
+        let Some(lhs) = assignment_lhs_at_equals(content, equals_pos) else {
+            continue;
+        };
+        if normalize_attrpath_for_match(lhs) != target {
+            continue;
+        }
+
+        let rhs_start = content
+            .get(equals_pos + 1..)?
+            .char_indices()
+            .find_map(|(offset, ch)| (!ch.is_whitespace()).then_some(equals_pos + 1 + offset))?;
+
+        let rhs_end = find_statement_end(content, rhs_start)?;
+        return Some(rhs_start..rhs_end);
+    }
+
+    None
+}
+
+fn find_statement_end(content: &str, start: usize) -> Option<usize> {
+    let slice = content.get(start..)?;
+    let mut bracket_depth = 0usize;
+    let mut brace_depth = 0usize;
+    let mut paren_depth = 0usize;
+    let mut in_comment = false;
+    let mut in_double_string = false;
+    let mut in_indented_string = false;
+    let mut escaped = false;
+
+    let mut iter = slice.char_indices().peekable();
+    while let Some((offset, ch)) = iter.next() {
+        let absolute = start + offset;
+
+        if in_comment {
+            if ch == '\n' {
+                in_comment = false;
+            }
+            continue;
+        }
+
+        if in_double_string {
+            if escaped {
+                escaped = false;
+                continue;
+            }
+            match ch {
+                '\\' => escaped = true,
+                '"' => in_double_string = false,
+                _ => {}
+            }
+            continue;
+        }
+
+        if in_indented_string {
+            if ch == '\'' {
+                if let Some((_, next)) = iter.peek() {
+                    if *next == '\'' {
+                        iter.next();
+                        in_indented_string = false;
+                    }
+                }
+            }
+            continue;
+        }
+
+        match ch {
+            '#' => in_comment = true,
+            '"' => in_double_string = true,
+            '\'' => {
+                if let Some((_, next)) = iter.peek() {
+                    if *next == '\'' {
+                        iter.next();
+                        in_indented_string = true;
+                    }
+                }
+            }
+            '[' => bracket_depth += 1,
+            ']' => bracket_depth = bracket_depth.saturating_sub(1),
+            '{' => brace_depth += 1,
+            '}' => brace_depth = brace_depth.saturating_sub(1),
+            '(' => paren_depth += 1,
+            ')' => paren_depth = paren_depth.saturating_sub(1),
+            ';' if bracket_depth == 0 && brace_depth == 0 && paren_depth == 0 => {
+                return Some(absolute);
+            }
+            _ => {}
+        }
+    }
+
+    None
+}
+
+/// Find a List node assigned to a specific attrpath.
+/// Handles both flat assignments (e.g., `environment.systemPackages = [...]`)
+/// and nested ones (e.g., `homebrew = { taps = [...]; }`).
+fn find_list_for_attrpath(root: &SyntaxNode, content: &str, attrpath: &str) -> Option<SyntaxNode> {
+    let target = normalize_attrpath_for_match(attrpath);
+
+    for node in root.descendants() {
+        if List::cast(node.clone()).is_some() {
+            let list_start = text_size_to_usize(node.text_range().start());
+            if let Some(full_path) = list_full_attrpath(content, list_start) {
+                let full_path_normalized = normalize_attrpath_for_match(&full_path);
+                if full_path_normalized == target {
+                    return Some(node);
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Infer the editable list attrpath for shorthand tool calls that omit one.
+///
+/// This is intentionally conservative: it only returns a path when the file has exactly
+/// one list assignment. Files with multiple lists need the caller to say which one.
+pub(crate) fn infer_single_list_attrpath(content: &str) -> Result<Option<String>> {
+    let parsed: Parse<Root> = Root::parse(content);
+    let root: Root = parsed
+        .ok()
+        .context("Failed to parse Nix content when inferring list attrpath")?;
+    let root_node = root.syntax().clone();
+
+    let mut inferred = None;
+    for node in root_node.descendants() {
+        if List::cast(node.clone()).is_some() {
+            let list_start = text_size_to_usize(node.text_range().start());
+            if let Some(full_path) = list_full_attrpath(content, list_start) {
+                if inferred.as_deref() == Some(full_path.as_str()) {
+                    continue;
+                }
+                if inferred.is_some() {
+                    return Ok(None);
+                }
+                inferred = Some(full_path);
+            }
+        }
+    }
+
+    Ok(inferred)
+}
+
+/// Resolve a dot-separated `attrpath` to the value expression it is assigned,
+/// descending through attrset *literals* (`a = { b = …; }`) as well as flat
+/// dotted assignments (`a.b = …`) and any mix of the two. Returns the value
+/// node if the leaf is defined anywhere, regardless of its type.
+///
+/// This is the structural counterpart to `find_assignment_value_range`, which
+/// matches only a flat dotted LHS and so cannot see a leaf nested inside an
+/// attrset literal — the case that let `add()` insert a duplicate assignment.
+///
+/// Known limitation: a quoted key containing dots (e.g.
+/// `NSGlobalDomain."com.apple.sound.beep.feedback"`) is one AST segment but
+/// splits into several here, so such paths won't resolve. That matches the
+/// existing dot-splitting behaviour elsewhere in this module.
+fn find_attrpath_value_node(root: &SyntaxNode, attrpath: &str) -> Option<SyntaxNode> {
+    let target: Vec<String> = attrpath
+        .split('.')
+        .map(normalize_attrpath_for_match)
+        .filter(|segment| !segment.is_empty())
+        .collect();
+    if target.is_empty() {
+        return None;
+    }
+
+    // The top-level expression of a module is its outermost attrset.
+    let top = AttrSet::cast(root.clone()).or_else(|| root.descendants().find_map(AttrSet::cast))?;
+    resolve_in_attrset(&top, &target)
+}
+
+fn resolve_in_attrset(attrset: &AttrSet, target: &[String]) -> Option<SyntaxNode> {
+    for entry in attrset.attrpath_values() {
+        let Some(attrpath) = entry.attrpath() else {
+            continue;
+        };
+        let key: Vec<String> = attrpath
+            .attrs()
+            .map(|attr| normalize_attrpath_for_match(&attr.syntax().text().to_string()))
+            .collect();
+        // The entry's key must be a (possibly partial) prefix of what we want.
+        if key.is_empty() || key.len() > target.len() || key[..] != target[..key.len()] {
+            continue;
+        }
+        let Some(value) = entry.value() else {
+            continue;
+        };
+        let value_node = value.syntax().clone();
+        if key.len() == target.len() {
+            return Some(value_node);
+        }
+        // Strict prefix: the remaining segments must resolve inside this
+        // entry's attrset value (e.g. `dock` matched, `mru-spaces` is inside).
+        if let Some(inner) = AttrSet::cast(value_node) {
+            if let Some(found) = resolve_in_attrset(&inner, &target[key.len()..]) {
+                return Some(found);
+            }
+        }
+    }
+    None
+}
+
+fn append_values_to_existing_list(
+    content: &str,
+    list_node: &SyntaxNode,
+    values: &[String],
+) -> Result<String> {
+    // Compute the byte range for the List node and extract its text.
+    // Operate on the raw slice so we can insert *before* the closing token.
+    let range = list_node.text_range();
+    let byte_range = text_range_to_usize_range(range);
+    let list_text = content
+        .get(byte_range.clone())
+        .context("List text range was out of bounds")?;
+
+    // Find the closing ']' inside the list text. Insert before this.
+    let close_offset = list_text
+        .rfind(']')
+        .context("Existing list node had no closing ']' token")?;
+    let before_close = &list_text[..close_offset];
+
+    // Two insertion modes: multiline lists (preserve per-line indentation and comments)
+    // and single-line lists (append inline space-separated values).
+    let (insert_rel, insertion_text) = if list_text.contains('\n') {
+        // Multiline: find the start of the close line and derive the indentation
+        // used for existing list items so the appended items match formatting.
+        let close_line_start = before_close.rfind('\n').map_or(0, |idx| idx + 1);
+        let close_line = &before_close[close_line_start..];
+        let close_line_has_content = !close_line.trim().is_empty();
+        let close_indent: String = close_line
+            .chars()
+            .take_while(|ch| ch.is_whitespace())
+            .collect();
+
+        // Determine item indentation by scanning previous non-empty, non-'[' lines
+        // and using their leading whitespace. If none found, default to two spaces
+        // beyond the closing line's indentation.
+        let item_indent = before_close
+            .lines()
+            .rev()
+            .find_map(|line| {
+                let trimmed = line.trim();
+                if trimmed.is_empty() || trimmed == "[" {
+                    return None;
+                }
+                Some(
+                    line.chars()
+                        .take_while(|ch| ch.is_whitespace())
+                        .collect::<String>(),
+                )
+            })
+            .unwrap_or_else(|| format!("{}  ", close_indent));
+
+        // Build the insertion text: each value on its own line using the detected indent.
+        let mut insertion = String::new();
+
+        // If the closing bracket is on the same line as content, insert at the exact
+        // bracket position and prefix a newline so values append after existing items.
+        if close_line_has_content {
+            insertion.push('\n');
+        }
+
+        for value in values {
+            insertion.push_str(&item_indent);
+            insertion.push_str(value);
+            insertion.push('\n');
+        }
+
+        if close_line_has_content {
+            insertion.push_str(&close_indent);
+        }
+
+        (
+            if close_line_has_content {
+                close_offset
+            } else {
+                close_line_start
+            },
+            insertion,
+        )
+    } else {
+        // Single-line list: append space-separated values, preserving a single space
+        // between existing content and the new values. Detect whether there is
+        // already trailing whitespace to avoid double-spacing.
+        let trimmed_before_close = before_close.trim_end_matches(char::is_whitespace);
+        let has_trailing_space = trimmed_before_close.len() != before_close.len();
+        let mut insertion = format!(" {}", values.join(" "));
+        if !has_trailing_space {
+            insertion.push(' ');
+        }
+        (trimmed_before_close.len(), insertion)
+    };
+
+    // Convert the relative insert offset into an absolute byte offset in the file,
+    // perform the string insertion, and return the patched content.
+    let insert_abs = byte_range.start + insert_rel;
+    let mut patched = content.to_string();
+    patched.insert_str(insert_abs, &insertion_text);
+    Ok(patched)
+}
+
+/// Add values to a list at the given attrpath, creating the list if it doesn't exist. Idempotent for existing values.
+fn add(content: &str, attrpath: &str, values: &[String]) -> Result<String> {
+    if values.is_empty() {
+        info!("No values provided for add at {}; no-op", attrpath);
+        return Ok(content.to_string());
+    }
+
+    let parsed: Parse<Root> = Root::parse(content);
+    let root: Root = parsed
+        .ok()
+        .context("Failed to parse Nix content when adding values")?;
+    let root_node_ref: &SyntaxNode = root.syntax();
+    let root_node: SyntaxNode = root_node_ref.clone();
+
+    // Resolve the attrpath structurally (through attrset literals as well as
+    // flat dotted assignments) so we can tell "already defined" from "absent"
+    // even when the definition is nested inside an attrset.
+    let resolved = find_attrpath_value_node(&root_node, attrpath);
+
+    // An existing list to append to: the flat fast-path first, then a nested
+    // list the resolver found (e.g. defined deeper than one attrset level).
+    let existing_list = find_list_for_attrpath(&root_node, content, attrpath).or_else(|| {
+        resolved
+            .clone()
+            .filter(|node| List::cast(node.clone()).is_some())
+    });
+
+    if let Some(list_node) = existing_list {
+        debug!("Found existing list for {}", attrpath);
+        let mut items = extract_package_list(&list_node)?;
+        let mut values_to_append = Vec::new();
+        for value in values {
+            if items.contains(value) {
+                info!("Value {} already present at {}; skipping", value, attrpath);
+                continue;
+            }
+            items.push(value.clone());
+            values_to_append.push(value.clone());
+        }
+
+        if values_to_append.is_empty() {
+            info!("All values already present at {}; no-op", attrpath);
+            return Ok(content.to_string());
+        }
+
+        info!(
+            "Appending values {:?} to existing list at {}",
+            values_to_append, attrpath
+        );
+        return append_values_to_existing_list(content, &list_node, &values_to_append);
+    }
+
+    // No appendable list was found. If the attrpath is already defined as a
+    // non-list — whether flat (`programs.git = { … };`) or nested inside an
+    // attrset literal (`system.defaults.dock = { mru-spaces = 0; };`) —
+    // inserting a fresh `attrpath = [ … ];` would produce two assignments to
+    // the same attribute, which is invalid Nix. Refuse rather than corrupt it.
+    if resolved.is_some() {
+        return Err(anyhow::anyhow!(
+            "Cannot add list values to '{}': it already exists and is not a list",
+            attrpath
+        ));
+    }
+
+    // not found -> insert new attr assignment in top-level attrset
+    let insert_pos = find_top_level_attrset_end(&root_node)
+        .context("Cannot find top-level attribute set to insert new attr")?;
+    let addition = format!("\n  {} = [ {} ];", attrpath, values.join(" "));
+
+    // TODO: Inserted attrs that reference `pkgs.*` may need an enclosing `with pkgs;` that isn't
+    // verified here; agent-generated edits currently handle this implicitly.
+    info!(
+        "{} not found; inserting '{}' at {}",
+        attrpath, addition, insert_pos
+    );
+    let mut patched = content.to_string();
+    patched.insert_str(insert_pos, &addition);
+    Ok(patched)
+}
+
+/// Remove values from a list at the given attrpath. Idempotent for missing values. No-op if list or attrpath doesn't exist.
+fn remove(content: &str, attrpath: &str, values: &[String]) -> Result<String> {
+    if values.is_empty() {
+        info!("No values provided for remove at {}; no-op", attrpath);
+        return Ok(content.to_string());
+    }
+
+    let parsed: Parse<Root> = Root::parse(content);
+    let root: Root = parsed
+        .ok()
+        .context("Failed to parse Nix content when removing values")?;
+    let root_node_ref: &SyntaxNode = root.syntax();
+    let root_node: SyntaxNode = root_node_ref.clone();
+
+    if let Some(list_node) = find_list_for_attrpath(&root_node, content, attrpath) {
+        debug!("Found existing list for removal at {}", attrpath);
+        let mut items = extract_package_list(&list_node)?;
+        let original_len = items.len();
+        items.retain(|item| !values.contains(item));
+
+        if items.len() == original_len {
+            info!(
+                "None of the requested values were present at {}; no-op",
+                attrpath
+            );
+            return Ok(content.to_string());
+        }
+
+        let new_text = format!("[ {} ]", items.join(" "));
+        let range = list_node.text_range();
+        let mut patched = content.to_string();
+        let byte_range = text_range_to_usize_range(range);
+        info!("Replacing list at {:?} with {}", byte_range, new_text);
+        patched.replace_range(byte_range, &new_text);
+        return Ok(patched);
+    }
+
+    info!(
+        "No list found for {} to remove {:?}; no-op",
+        attrpath, values
+    );
+    Ok(content.to_string())
+}
+
+fn set_value(content: &str, attrpath: &str, value: &serde_json::Value) -> Result<String> {
+    let rendered_value = render_nix_value(value)?;
+
+    if let Some(value_range) = find_assignment_value_range(content, attrpath) {
+        let mut patched = content.to_string();
+        info!(
+            "Replacing scalar assignment for {} at {:?} with {}",
+            attrpath, value_range, rendered_value
+        );
+        patched.replace_range(value_range, &rendered_value);
+        return Ok(patched);
+    }
+
+    let parsed: Parse<Root> = Root::parse(content);
+    let root: Root = parsed
+        .ok()
+        .context("Failed to parse Nix content when setting value")?;
+    let insert_pos = find_top_level_attrset_end(&root.syntax().clone())
+        .context("Cannot find top-level attribute set to insert scalar attr")?;
+    let addition = format!("\n  {} = {};", attrpath, rendered_value);
+    info!(
+        "{} not found; inserting scalar assignment '{}' at {}",
+        attrpath, addition, insert_pos
+    );
+    let mut patched = content.to_string();
+    patched.insert_str(insert_pos, &addition);
+    Ok(patched)
+}
+
+/// Find the end of the top-level attribute set to insert new attributes
+fn find_top_level_attrset_end(root: &SyntaxNode) -> Option<usize> {
+    let mut largest_attrset_end: Option<TextSize> = None;
+    let mut largest_attrset_len: u32 = 0;
+
+    // Nix modules often contain two attrsets: argument attrset and body attrset.
+    // Selecting the largest one targets the body where home.packages belongs.
+    for node in root.descendants() {
+        if let Some(attr_set) = AttrSet::cast(node) {
+            let range = attr_set.syntax().text_range();
+            let len = u32::from(range.end() - range.start());
+            if len > largest_attrset_len {
+                largest_attrset_len = len;
+                largest_attrset_end = Some(range.end());
+            }
+        }
+    }
+
+    largest_attrset_end
+        .map(text_size_to_usize)
+        .and_then(|end| end.checked_sub(1))
+}
+
+/// Create or update a Nix attribute set at the given path with the provided scalar key-value pairs.
+///
+/// Strategy:
+///   1. Keys that already exist as flat assignments (`path.key = val;`) are updated via `set_value`.
+///   2. Remaining keys are merged into an existing `path = { ... }` attrset (updating present keys,
+///      inserting missing ones before the closing `}`).
+///   3. If no attrset exists at `path`, a fresh one is inserted into the top-level module body.
+fn set_attrs(
+    content: &str,
+    path: &str,
+    attrs: &serde_json::Map<String, serde_json::Value>,
+) -> Result<String> {
+    if attrs.is_empty() {
+        info!("No attrs provided for set_attrs at {}; no-op", path);
+        return Ok(content.to_string());
+    }
+
+    let mut current = content.to_string();
+    let mut pending: Vec<(&str, &serde_json::Value)> = Vec::new();
+
+    // Step 1: handle keys that already exist as flat assignments (e.g. path.key = val).
+    for (key, value) in attrs {
+        let flat_path = format!("{}.{}", path, key);
+        if find_assignment_value_range(&current, &flat_path).is_some() {
+            info!("Updating flat assignment {} for set_attrs", flat_path);
+            current = set_value(&current, &flat_path, value)?;
+        } else {
+            pending.push((key.as_str(), value));
+        }
+    }
+
+    if pending.is_empty() {
+        return Ok(current);
+    }
+
+    // Step 2: check whether path = { ... } already exists.
+    let attrset_exists = find_assignment_value_range(&current, path)
+        .map(|r| current[r].trim_start().starts_with('{'))
+        .unwrap_or(false);
+
+    if attrset_exists {
+        // Merge into existing attrset; re-query range after each mutation.
+        for (key, value) in pending {
+            let rendered = render_nix_value(value)?;
+            let attrset_range = find_assignment_value_range(&current, path)
+                .ok_or_else(|| anyhow::anyhow!("set_attrs: lost attrset range during update"))?;
+            let attrset_text = current[attrset_range.clone()].to_string();
+
+            if let Some(key_val_range) = find_assignment_value_range(&attrset_text, key) {
+                // Key exists – update its value.
+                let abs_start = attrset_range.start + key_val_range.start;
+                let abs_end = attrset_range.start + key_val_range.end;
+                info!(
+                    "Updating key {} inside attrset {} at {}..{}",
+                    key, path, abs_start, abs_end
+                );
+                current.replace_range(abs_start..abs_end, &rendered);
+            } else {
+                // Key absent – insert before closing `}`.
+                let close_offset = attrset_text.rfind('}').ok_or_else(|| {
+                    anyhow::anyhow!("set_attrs: malformed attrset – no closing brace")
+                })?;
+                let indent = infer_inner_indent(&attrset_text);
+                let insert_pos = attrset_range.start + close_offset;
+                let kv = format!("{}{} = {};\n", indent, render_nix_attr_key(key), rendered);
+                info!(
+                    "Inserting key {} into attrset {} at {}",
+                    key, path, insert_pos
+                );
+                current.insert_str(insert_pos, &kv);
+            }
+        }
+    } else {
+        // Step 3: create a fresh attrset assignment.
+        let parsed = Root::parse(&current)
+            .ok()
+            .context("Failed to parse Nix content when creating attrset")?;
+        let insert_pos = find_top_level_attrset_end(parsed.syntax())
+            .context("Cannot find top-level attrset end for set_attrs insertion")?;
+
+        let inner_indent = "    ";
+        let body = pending
+            .iter()
+            .map(|(k, v)| -> Result<String> {
+                Ok(format!(
+                    "{}{} = {};",
+                    inner_indent,
+                    render_nix_attr_key(k),
+                    render_nix_value(v)?
+                ))
+            })
+            .collect::<Result<Vec<_>>>()?
+            .join("\n");
+
+        let insertion = format!("\n  {} = {{\n{}\n  }};", path, body);
+        info!(
+            "Creating new attrset for {} at position {}",
+            path, insert_pos
+        );
+        current.insert_str(insert_pos, &insertion);
+    }
+
+    Ok(current)
+}
+
+/// Infer the indentation string used for key-value lines inside an attrset text fragment.
+fn infer_inner_indent(attrset_text: &str) -> String {
+    for line in attrset_text.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed == "{" || trimmed.starts_with('}') {
+            continue;
+        }
+        let leading = line.len() - line.trim_start().len();
+        if leading > 0 {
+            return " ".repeat(leading);
+        }
+    }
+    "    ".to_string() // default: 4 spaces
+}
+
+/// Escape a string for safe insertion into a Nix string literal.
+pub(crate) fn escape_nix_string(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    let mut chars = value.chars().peekable();
+    while let Some(ch) = chars.next() {
+        match ch {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            '\t' => out.push_str("\\t"),
+            '$' if chars.peek() == Some(&'{') => {
+                out.push_str("\\${");
+                chars.next(); // consume '{'
+            }
+            _ => out.push(ch),
+        }
+    }
+    out
+}
+
+/// Quote and escape a list of string values for safe insertion into Nix list literals.
+///
+/// This escapes backslashes, double quotes and dollar signs, and wraps each value
+/// in double quotes so callers can insert them into a Nix list like: `[ "a" "b" ]`.
+pub(crate) fn nix_quote_values(values: &[String]) -> Vec<String> {
+    values
+        .iter()
+        .map(|value| {
+            let escaped = value
+                .replace('\\', "\\\\")
+                .replace('"', "\\\"")
+                .replace('$', "\\$");
+            format!("\"{}\"", escaped)
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const WITH_PKGS_EMPTY: &str = r#"{ config, pkgs, ... }:
+{
+environment.systemPackages = with pkgs; [
+];
+}
+"#;
+
+    const WITH_PKGS_COMMENTED: &str = r#"{ config, pkgs, ... }:
+{
+    # System packages module
+    # Purpose:
+    # - Declare packages that should be present in the global system profile.
+    # - Use this for CLI tools and utilities you want available to all users.
+
+    environment.systemPackages = with pkgs; [
+        # Example packages (uncomment or add your own):
+        # git   # version control
+    ];
+}
+"#;
+
+    const NO_WITH_PACKAGES_ACTIVE: &str = r#"{ config, pkgs, ... }:
+{
+        environment.systemPackages = [
+            git
+
+            # this is ripgrep
+            ripgrep
+        ];
+}
+"#;
+
+    const NO_WITH_PACKAGES_INLINE_CLOSE: &str = r#"{ config, pkgs, ... }:
+{
+    environment.systemPackages = [
+        git];
+}
+"#;
+
+    const BOOL_ASSIGNMENT: &str = r#"{ config, pkgs, ... }:
+{
+    services.tailscale.enable = false;
+}
+"#;
+
+    #[test]
+    fn finds_existing_list_for_with_pkgs_attrpath() {
+        let parsed: Parse<Root> = Root::parse(WITH_PKGS_EMPTY);
+        let root: Root = parsed.ok().expect("fixture should parse");
+        let root_node = root.syntax().clone();
+
+        let found =
+            find_list_for_attrpath(&root_node, WITH_PKGS_EMPTY, "environment.systemPackages");
+        assert!(
+            found.is_some(),
+            "expected to find existing list for environment.systemPackages"
+        );
+    }
+
+    #[test]
+    fn add_updates_existing_with_pkgs_list_instead_of_inserting_new_attr() {
+        let edited = add(
+            WITH_PKGS_EMPTY,
+            "environment.systemPackages",
+            &["ripgrep".to_string()],
+        )
+        .expect("add should succeed");
+
+        assert!(
+            edited.contains("environment.systemPackages = with pkgs; [\n  ripgrep\n];"),
+            "expected to update existing assignment in-place"
+        );
+
+        assert_eq!(
+            edited.matches("environment.systemPackages =").count(),
+            1,
+            "should not insert duplicate environment.systemPackages assignment"
+        );
+    }
+
+    #[test]
+    fn add_refuses_to_duplicate_non_list_attr() {
+        // `programs.git` already exists as an attrset, not a list. Adding list
+        // values must error rather than insert a second `programs.git = [ ... ];`
+        // assignment (which would be invalid, duplicated Nix).
+        let src = "{\n  programs.git = { enable = true; };\n}\n";
+        let err = add(src, "programs.git", &["foo".to_string()])
+            .expect_err("add to a non-list attr should error, not duplicate it");
+        assert!(
+            err.to_string().contains("not a list"),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
+    fn add_refuses_to_duplicate_nested_attrset_leaf() {
+        // `mru-spaces` is defined *nested inside* an attrset literal, not as a
+        // flat `system.defaults.dock.mru-spaces = ...` assignment. The flat-only
+        // guard missed this and `add()` inserted a duplicate; the structural
+        // resolver must catch it and error instead.
+        let src =
+            "{\n  system.defaults.dock = {\n    magnification = 1;\n    mru-spaces = 0;\n  };\n}\n";
+        let err = add(src, "system.defaults.dock.mru-spaces", &["foo".to_string()])
+            .expect_err("add to a nested non-list leaf should error, not duplicate it");
+        assert!(
+            err.to_string().contains("not a list"),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
+    fn add_inserts_new_leaf_under_existing_attrset() {
+        // A genuinely-absent leaf must still be inserted (no false positive from
+        // the resolver just because a sibling attrset exists at a prefix).
+        let src = "{\n  system.defaults.dock = {\n    mru-spaces = 0;\n  };\n}\n";
+        let out = add(src, "environment.systemPackages", &["foo".to_string()])
+            .expect("adding a brand-new attrpath should succeed");
+        assert_eq!(
+            out.matches("environment.systemPackages").count(),
+            1,
+            "new attr should be inserted exactly once"
+        );
+    }
+
+    #[test]
+    fn add_appends_to_list_nested_in_attrset() {
+        // A list nested deeper than `find_list_for_attrpath` reconstructs must be
+        // appended to via the resolver, not duplicated.
+        let src =
+            "{\n  programs.foo = {\n    settings = {\n      tags = [ \"a\" ];\n    };\n  };\n}\n";
+        let out = add(src, "programs.foo.settings.tags", &["b".to_string()])
+            .expect("appending to a nested list should succeed");
+        assert_eq!(
+            out.matches("tags =").count(),
+            1,
+            "nested list must not be duplicated"
+        );
+        assert!(out.contains('b'), "appended value should be present: {out}");
+    }
+
+    #[test]
+    fn remove_updates_existing_with_pkgs_list() {
+        let with_item = add(
+            WITH_PKGS_EMPTY,
+            "environment.systemPackages",
+            &["ripgrep".to_string()],
+        )
+        .expect("seed add should succeed");
+        let removed = remove(
+            &with_item,
+            "environment.systemPackages",
+            &["ripgrep".to_string()],
+        )
+        .expect("remove should succeed");
+
+        assert!(
+            removed.contains("environment.systemPackages = with pkgs; [  ];"),
+            "expected to remove item from existing assignment"
+        );
+        assert_eq!(
+            removed.matches("environment.systemPackages =").count(),
+            1,
+            "should not duplicate assignment during remove"
+        );
+    }
+
+    #[test]
+    fn add_updates_existing_list_when_comments_precede_assignment() {
+        let edited = add(
+            WITH_PKGS_COMMENTED,
+            "environment.systemPackages",
+            &["ripgrep".to_string()],
+        )
+        .expect("add should succeed");
+
+        let expected = r#"
+    environment.systemPackages = with pkgs; [
+        # Example packages (uncomment or add your own):
+        # git   # version control
+        ripgrep
+    ];"#;
+
+        assert!(
+            edited.contains(expected),
+            "expected ripgrep to append at the end while preserving list comment/spacing structure"
+        );
+        assert_eq!(
+            edited.matches("environment.systemPackages =").count(),
+            1,
+            "should not insert duplicate environment.systemPackages assignment"
+        );
+    }
+
+    #[test]
+    fn add_supports_multiple_values() {
+        let edited = add(
+            WITH_PKGS_EMPTY,
+            "environment.systemPackages",
+            &["ripgrep".to_string(), "fd".to_string()],
+        )
+        .expect("add should succeed");
+
+        assert!(
+            edited.contains("environment.systemPackages = with pkgs; [\n  ripgrep\n  fd\n];"),
+            "expected add to insert multiple values into existing assignment"
+        );
+    }
+
+    #[test]
+    fn add_preserves_existing_multiline_list_structure_and_comments() {
+        let edited = add(
+            NO_WITH_PACKAGES_ACTIVE,
+            "environment.systemPackages",
+            &["firefox".to_string()],
+        )
+        .expect("add should preserve list structure and comments");
+
+        let expected = r#"environment.systemPackages = [
+            git
+
+            # this is ripgrep
+            ripgrep
+            firefox
+        ];"#;
+
+        assert!(
+            edited.contains(expected),
+            "expected firefox to append at the end while preserving list comment/spacing structure.\nExpected:\n{}\n\nActual:\n{}",
+            expected,
+            edited
+        );
+    }
+
+    #[test]
+    fn add_appends_when_multiline_list_closes_inline_with_last_item() {
+        let edited = add(
+            NO_WITH_PACKAGES_INLINE_CLOSE,
+            "environment.systemPackages",
+            &["firefox".to_string()],
+        )
+        .expect("add should append for multiline lists with inline closing bracket");
+
+        let expected = r#"environment.systemPackages = [
+        git
+        firefox
+        ];"#;
+
+        assert!(
+            edited.contains(expected),
+            "expected appended value to be inserted after existing inline-closing item.\nExpected:\n{}\n\nActual:\n{}",
+            expected,
+            edited
+        );
+    }
+
+    #[test]
+    fn remove_supports_multiple_values() {
+        let with_items = add(
+            WITH_PKGS_EMPTY,
+            "environment.systemPackages",
+            &["ripgrep".to_string(), "fd".to_string(), "jq".to_string()],
+        )
+        .expect("seed add should succeed");
+        let removed = remove(
+            &with_items,
+            "environment.systemPackages",
+            &["ripgrep".to_string(), "fd".to_string()],
+        )
+        .expect("remove should succeed");
+
+        assert!(
+            removed.contains("environment.systemPackages = with pkgs; [ jq ];"),
+            "expected remove to drop multiple values from existing assignment"
+        );
+    }
+
+    #[test]
+    fn set_updates_existing_boolean_assignment() {
+        let edited = set_value(
+            BOOL_ASSIGNMENT,
+            "services.tailscale.enable",
+            &serde_json::Value::Bool(true),
+        )
+        .expect("set should succeed");
+
+        assert!(
+            edited.contains("services.tailscale.enable = true;"),
+            "expected set to replace existing boolean assignment"
+        );
+    }
+
+    #[test]
+    fn set_inserts_missing_scalar_assignment() {
+        let edited = set_value(
+            WITH_PKGS_EMPTY,
+            "services.tailscale.enable",
+            &serde_json::Value::Bool(true),
+        )
+        .expect("set should succeed");
+
+        assert!(
+            edited.contains("services.tailscale.enable = true;"),
+            "expected set to insert missing boolean assignment"
+        );
+    }
+
+    #[test]
+    fn set_renders_strings_as_nix_strings() {
+        let edited = set_value(
+            WITH_PKGS_EMPTY,
+            "networking.hostName",
+            &serde_json::Value::String("my-mac".to_string()),
+        )
+        .expect("set should succeed");
+
+        assert!(
+            edited.contains("networking.hostName = \"my-mac\";"),
+            "expected set to quote string values as Nix strings"
+        );
+    }
+
+    #[test]
+    fn set_renders_nix_expr_marker_without_quotes() {
+        let edited = set_value(
+            WITH_PKGS_EMPTY,
+            "environment.variables.MYAPP_FILE",
+            &nix_expr_meta_value("config.sops.secrets.\"myapp\".path"),
+        )
+        .expect("set should support nix expression marker values");
+
+        assert!(
+            edited
+                .contains("environment.variables.MYAPP_FILE = config.sops.secrets.\"myapp\".path;"),
+            "expected expression marker to render as raw Nix expression"
+        );
+        assert!(
+            !edited.contains(
+                "environment.variables.MYAPP_FILE = \"config.sops.secrets.\\\"myapp\\\".path\";"
+            ),
+            "expected expression marker not to render as a quoted string"
+        );
+    }
+
+    #[test]
+    fn render_nix_value_accepts_builtins_path_marker() {
+        let rendered = render_nix_value(&nix_builtins_path_meta_value(
+            "../../secrets/ssh-private-key.yaml",
+        ))
+        .expect("render_nix_value should accept the builtins.path marker");
+
+        assert_eq!(
+            rendered,
+            "builtins.path { path = ../../secrets/ssh-private-key.yaml; }"
+        );
+    }
+
+    #[test]
+    fn render_nix_value_rejects_builtins_path_expression_via_nix_expr_marker() {
+        let err = render_nix_value(&nix_expr_meta_value(&builtins_path_expression(
+            "../../secrets/ssh-private-key.yaml",
+        )))
+        .expect_err("__nixExpr should remain restricted and reject builtins.path syntax");
+
+        assert!(err.to_string().contains(NIX_EXPR_MARKER_KEY));
+    }
+
+    const DOCK_ATTRSET: &str = r#"{ config, pkgs, ... }:
+{
+    system.defaults.dock = {
+        tilesize = 48;
+    };
+}
+"#;
+
+    #[test]
+    fn set_attrs_creates_new_attrset_when_missing() {
+        let mut attrs = serde_json::Map::new();
+        attrs.insert("tilesize".to_string(), serde_json::json!(48));
+        attrs.insert("autohide".to_string(), serde_json::json!(true));
+
+        let edited = set_attrs(WITH_PKGS_EMPTY, "system.defaults.dock", &attrs)
+            .expect("set_attrs should succeed");
+
+        assert!(
+            edited.contains("system.defaults.dock = {"),
+            "expected set_attrs to create attrset block"
+        );
+        assert!(
+            edited.contains("tilesize = 48;"),
+            "expected tilesize key in new attrset"
+        );
+        assert!(
+            edited.contains("autohide = true;"),
+            "expected autohide key in new attrset"
+        );
+        assert_eq!(
+            edited.matches("system.defaults.dock").count(),
+            1,
+            "should only appear once"
+        );
+    }
+
+    #[test]
+    fn set_attrs_updates_existing_key_in_attrset() {
+        let mut attrs = serde_json::Map::new();
+        attrs.insert("tilesize".to_string(), serde_json::json!(64));
+
+        let edited = set_attrs(DOCK_ATTRSET, "system.defaults.dock", &attrs)
+            .expect("set_attrs should succeed");
+
+        assert!(
+            edited.contains("tilesize = 64;"),
+            "expected tilesize to be updated to 64"
+        );
+        assert!(
+            !edited.contains("tilesize = 48;"),
+            "expected old tilesize value to be replaced"
+        );
+    }
+
+    #[test]
+    fn set_attrs_inserts_new_key_into_existing_attrset() {
+        let mut attrs = serde_json::Map::new();
+        attrs.insert("autohide".to_string(), serde_json::json!(true));
+
+        let edited = set_attrs(DOCK_ATTRSET, "system.defaults.dock", &attrs)
+            .expect("set_attrs should succeed");
+
+        assert!(
+            edited.contains("autohide = true;"),
+            "expected autohide to be inserted into existing attrset"
+        );
+        assert!(
+            edited.contains("tilesize = 48;"),
+            "expected original tilesize to be preserved"
+        );
+        assert_eq!(
+            edited.matches("system.defaults.dock").count(),
+            1,
+            "should not duplicate the attrset assignment"
+        );
+    }
+
+    #[test]
+    fn set_attrs_supports_nested_json_values() {
+        let mut attrs = serde_json::Map::new();
+        attrs.insert(
+            "script".to_string(),
+            serde_json::json!("source /run/secrets/myapp && exec /usr/local/bin/myapp"),
+        );
+        attrs.insert(
+            "serviceConfig".to_string(),
+            serde_json::json!({
+                "Label": "org.myapp.service",
+                "RunAtLoad": true,
+                "StandardOutPath": "/tmp/myapp.out.log",
+                "StandardErrorPath": "/tmp/myapp.err.log"
+            }),
+        );
+
+        let edited = set_attrs(WITH_PKGS_EMPTY, "launchd.user.agents.myapp", &attrs)
+            .expect("set_attrs should support nested values");
+
+        assert!(
+            edited.contains("launchd.user.agents.myapp = {"),
+            "expected set_attrs to create target attrset"
+        );
+        assert!(
+            edited.contains("script = \"source /run/secrets/myapp && exec /usr/local/bin/myapp\";"),
+            "expected script string to render"
+        );
+        assert!(
+            edited.contains("serviceConfig = { Label = \"org.myapp.service\"; RunAtLoad = true; StandardErrorPath = \"/tmp/myapp.err.log\"; StandardOutPath = \"/tmp/myapp.out.log\"; };"),
+            "expected nested object to render as Nix attrset"
+        );
+    }
+
+    #[test]
+    fn set_attrs_treats_quoted_key_input_as_nix_attr_syntax() {
+        let mut attrs = serde_json::Map::new();
+        attrs.insert(
+            "NSGlobalDomain".to_string(),
+            serde_json::json!({
+                "\"com.apple.sound.beep.feedback\"": 0,
+                "KeyRepeat": 2
+            }),
+        );
+
+        let edited = set_attrs(WITH_PKGS_EMPTY, "system.defaults", &attrs)
+            .expect("set_attrs should support quoted Nix attr key input");
+
+        assert!(
+            edited.contains("\"com.apple.sound.beep.feedback\" = 0;"),
+            "expected quoted attr syntax without embedded quote characters"
+        );
+        assert!(
+            !edited.contains("\"\\\"com.apple.sound.beep.feedback\\\"\" = 0;"),
+            "expected quotes not to become part of the attr key"
+        );
+    }
+
+    #[test]
+    fn set_attrs_renders_nix_expr_marker_without_quotes() {
+        let mut attrs = serde_json::Map::new();
+        attrs.insert(
+            "MYAPP_ENV_FILE".to_string(),
+            nix_expr_meta_value("config.sops.secrets.\"myapp-env\".path"),
+        );
+
+        let edited = set_attrs(WITH_PKGS_EMPTY, "environment.variables", &attrs)
+            .expect("set_attrs should render nix expression marker");
+
+        assert!(
+            edited.contains("MYAPP_ENV_FILE = config.sops.secrets.\"myapp-env\".path;"),
+            "expected MYAPP_ENV_FILE to render as a raw expression"
+        );
+        assert!(
+            !edited.contains("MYAPP_ENV_FILE = \"config.sops.secrets.\\\"myapp-env\\\".path\";"),
+            "expected MYAPP_ENV_FILE not to be rendered as a quoted string"
+        );
+    }
+
+    #[test]
+    fn set_attrs_renders_builtins_path_expression_for_sops_file() {
+        let mut attrs = serde_json::Map::new();
+        attrs.insert(
+            "sopsFile".to_string(),
+            nix_builtins_path_meta_value("../../secrets/ssh-private-key.yaml"),
+        );
+
+        let edited = set_attrs(WITH_PKGS_EMPTY, "sops.secrets.\"ssh-private-key\"", &attrs)
+            .expect("set_attrs should render builtins.path expression for sopsFile");
+
+        assert!(
+            edited.contains(
+                "sopsFile = builtins.path { path = ../../secrets/ssh-private-key.yaml; };"
+            ),
+            "expected sopsFile to render as a builtins.path expression"
+        );
+    }
+
+    const HOMEBREW_NESTED: &str = r#"{ config, pkgs, ... }:
+{
+  homebrew = {
+    # Homebrew taps (e.g., "dotenvx/brew")
+    taps = [
+      # "dotenvx/brew" # required for dotenvx formula
+    ];
+
+    # Homebrew brews (non-GUI packages)
+    brews = [
+      # "git" # required for CLI workflows
+    ];
+
+    casks = [
+      # Homebrew Casks should be specified as strings (Cask token names).
+      # Add casks here, e.g.
+      # "visual-studio-code" # editor - enable if you prefer cask-managed VSCode
+    ];
+  };
+}
+"#;
+
+    #[test]
+    fn add_to_nested_list_inside_attrset() {
+        let edited = add(
+            HOMEBREW_NESTED,
+            "homebrew.taps",
+            &["dotenvx/brew".to_string()],
+        )
+        .expect("add should succeed for nested list in attrset");
+
+        assert!(
+            edited.contains("dotenvx/brew"),
+            "expected to find dotenvx/brew in the edited output"
+        );
+        assert_eq!(
+            edited.matches("taps = [").count(),
+            1,
+            "should not insert duplicate taps assignment"
+        );
+    }
+
+    #[test]
+    fn nix_quote_values_basic() {
+        let input = vec!["git".to_string(), "visual-studio-code".to_string()];
+        let quoted = nix_quote_values(&input);
+        assert_eq!(
+            quoted,
+            vec!["\"git\"".to_string(), "\"visual-studio-code\"".to_string()]
+        );
+    }
+
+    #[test]
+    fn nix_quote_values_escapes() {
+        let input = vec!["a\"b".to_string(), "c\\d".to_string(), "e$f".to_string()];
+        let quoted = nix_quote_values(&input);
+        assert_eq!(
+            quoted,
+            vec![
+                "\"a\\\"b\"".to_string(),
+                "\"c\\\\d\"".to_string(),
+                "\"e\\$f\"".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn nix_quote_values_empty() {
+        let input: Vec<String> = vec![];
+        let quoted = nix_quote_values(&input);
+        assert!(quoted.is_empty());
+    }
+
+    #[test]
+    fn test_escape_nix_string() {
+        let input = "This is a \"test\" string with \\ backslashes and ${dollar} signs.";
+        let escaped = escape_nix_string(input);
+        assert_eq!(
+            escaped,
+            "This is a \\\"test\\\" string with \\\\ backslashes and \\${dollar} signs."
+        );
+    }
+
+    #[test]
+    fn escape_nix_string_only_escapes_interpolation_start() {
+        let cases = [
+            ("$HOME", "$HOME"),
+            ("${name}", "\\${name}"),
+            (
+                "prefix ${one}${two} suffix",
+                "prefix \\${one}\\${two} suffix",
+            ),
+            ("unterminated ${", "unterminated \\${"),
+            ("just $ and { braces }", "just $ and { braces }"),
+            ("$x{not-interpolation}", "$x{not-interpolation}"),
+        ];
+
+        for (input, expected) in cases {
+            assert_eq!(escape_nix_string(input), expected, "input: {input}");
+        }
+    }
+
+    #[test]
+    fn escape_nix_string_handles_backslash_before_interpolation() {
+        let escaped = escape_nix_string(r"\${already-looking-escaped}");
+
+        assert_eq!(escaped, r"\\\${already-looking-escaped}");
+    }
+}

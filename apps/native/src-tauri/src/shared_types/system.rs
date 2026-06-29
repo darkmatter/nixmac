@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -16,6 +18,7 @@ pub struct HomebrewState {
     /// Source used to collect the state, when known.
     pub source: Option<String>,
     /// Unix timestamp when this state was last collected.
+    #[specta(type = f64)]
     pub last_checked: i64,
 }
 
@@ -28,10 +31,13 @@ pub struct PreviewIndicatorState {
     /// Summary text displayed in the indicator.
     pub summary: Option<String>,
     /// Number of changed files represented by the indicator.
+    #[specta(type = f64)]
     pub files_changed: usize,
     /// Added lines displayed in the indicator.
+    #[specta(type = Option<f64>)]
     pub additions: Option<usize>,
     /// Removed lines displayed in the indicator.
+    #[specta(type = Option<f64>)]
     pub deletions: Option<usize>,
     /// Whether the indicator should show a loading state.
     pub is_loading: bool,
@@ -84,6 +90,74 @@ pub struct PermissionsState {
     pub checked_at: Option<i64>,
 }
 
+/// Status of the nix / darwin-rebuild installation flow.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Type, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NixInstallState {
+    /// Whether nix is installed; `None` until first checked.
+    pub installed: Option<bool>,
+    /// Whether darwin-rebuild is available; `None` until first checked.
+    pub darwin_rebuild_available: Option<bool>,
+    /// True while an install run is in flight.
+    pub installing: bool,
+    /// Current installer phase ("downloading", "waiting-for-installer",
+    /// "prefetching"); `None` when idle.
+    pub install_phase: Option<String>,
+    /// True while the standalone darwin-rebuild prefetch is in flight.
+    pub prefetching: bool,
+    /// Error from the last finished run, if it failed.
+    pub last_error: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum LaunchdItemType {
+    LaunchAgent,
+    LaunchDaemon,
+    LaunchdUserAgent,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct LaunchdItem {
+    /// launchd Label
+    pub label: String,
+    pub scope: LaunchdItemType,
+    /// Suggested Nix attribute name.
+    /// Example: "redis"
+    pub name: String,
+    /// Command and arguments to execute.
+    pub program_arguments: Vec<String>,
+    /// Launch when loaded.
+    pub run_at_load: bool,
+    /// Keep the service running.
+    pub keep_alive: bool,
+    /// Environment variables.
+    pub environment_variables: BTreeMap<String, String>,
+    /// Log file locations.
+    pub standard_out_path: Option<String>,
+    pub standard_error_path: Option<String>,
+    /// Working directory, if specified.
+    pub working_directory: Option<String>,
+}
+
+/// Lifecycle status of the darwin-rebuild apply/activate streams.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Type, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RebuildStatus {
+    /// True while a rebuild stream is in flight.
+    pub is_running: bool,
+    /// Outcome of the last finished run; `None` while running or never run.
+    pub success: Option<bool>,
+    /// Exit code of the last finished run.
+    pub exit_code: Option<i32>,
+    /// Error class of the last failed run.
+    pub error_type: Option<String>,
+    /// Error message of the last failed run.
+    pub error_message: Option<String>,
+    /// Whether the failure left the system untouched.
+    pub system_untouched: Option<bool>,
+}
+
 /// A single macOS system default that differs from the factory value.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -107,6 +181,7 @@ pub struct SystemDefaultsScan {
     /// Defaults that differ from known factory values.
     pub defaults: Vec<SystemDefault>,
     /// Number of defaults keys scanned.
+    #[specta(type = f64)]
     pub total_scanned: usize,
 }
 

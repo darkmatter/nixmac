@@ -1,3 +1,4 @@
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   getModStartLine,
   getShortFilename,
@@ -8,7 +9,6 @@ import type { FileDiffContents } from "@/ipc/types";
 import type { editor } from "monaco-editor";
 import { useRef } from "react";
 import { CollapsibleDiff } from "./collapsible-diff";
-import { HunkPill } from "./hunk-pill";
 import { DiffView } from "./diff-view";
 import { monaco } from "./monaco-setup";
 import { FileView } from "./file-view";
@@ -20,9 +20,21 @@ interface FullFileDiffEditorProps {
   contents?: FileDiffContents;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  included: boolean;
+  onIncludedChange: (included: boolean) => void;
+  disableEditorRuntime?: boolean;
 }
 
-export function FullFileDiffEditor({ filename, changes, contents, isOpen, onOpenChange }: FullFileDiffEditorProps) {
+export function FullFileDiffEditor({
+  filename,
+  changes,
+  contents,
+  isOpen,
+  onOpenChange,
+  included,
+  onIncludedChange,
+  disableEditorRuntime = false,
+}: FullFileDiffEditorProps) {
   const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
   const pendingScrollLineRef = useRef<number | null>(
     isOpen ? getModStartLine(changes[0].diff) : null,
@@ -47,7 +59,9 @@ export function FullFileDiffEditor({ filename, changes, contents, isOpen, onOpen
       return;
     }
     if (target != null) {
-      editorRef.current?.getModifiedEditor().revealLineInCenter(target, monaco.editor.ScrollType.Smooth);
+      editorRef.current
+        ?.getModifiedEditor()
+        .revealLineInCenter(target, monaco.editor.ScrollType.Smooth);
     }
   };
 
@@ -69,11 +83,12 @@ export function FullFileDiffEditor({ filename, changes, contents, isOpen, onOpen
 
   const changeType = displayChange.changeType;
   const fileStats = sumDiffLineStats(changes);
-  const fallbackNewFileContents = changeType === "new"
-    ? newFileContentFromDiffs(changes.map((change) => change.diff))
-    : null;
+  const fallbackNewFileContents =
+    changeType === "new" ? newFileContentFromDiffs(changes.map((change) => change.diff)) : null;
   const displayContents =
-    changeType === "new" && fallbackNewFileContents !== null && (!contents || contents.modified === "")
+    changeType === "new" &&
+    fallbackNewFileContents !== null &&
+    (!contents || contents.modified === "")
       ? { original: "", modified: fallbackNewFileContents }
       : contents;
 
@@ -83,28 +98,36 @@ export function FullFileDiffEditor({ filename, changes, contents, isOpen, onOpen
       open={isOpen}
       onToggle={handleToggle}
       headerExtra={
-        <>
-          <DiffLineStatsBadge
-            stats={fileStats}
-            className="rounded-full bg-black/20 px-1.5 py-0.5"
-          />
-          {changes.map((c, i) => (
-            <HunkPill
-              key={c.hash}
-              change={c}
-              showCounts={changes.length > 1}
-              onClick={() => focusChange(i)}
-            />
-          ))}
-        </>
+        <DiffLineStatsBadge
+          stats={fileStats}
+          className="rounded-full bg-black/20 px-1.5 py-0.5 ml-auto"
+        />
       }
     >
       {displayContents ? (
-        changeType === "new" ? (
-          <FileView contents={displayContents} filename={filename} />
-        ) : (
-          <DiffView contents={displayContents} filename={filename} onMount={handleMount} />
-        )
+        <div className="relative">
+          {changeType === "new" ? (
+            <FileView
+              contents={displayContents}
+              filename={filename}
+              disableRuntime={disableEditorRuntime}
+            />
+          ) : (
+            <DiffView
+              contents={displayContents}
+              filename={filename}
+              onMount={handleMount}
+              disableRuntime={disableEditorRuntime}
+            />
+          )}
+          <div className="absolute top-2 right-2 z-10 flex h-7 w-7 items-center justify-center rounded-md border border-border/60 bg-background/80 shadow-sm backdrop-blur-sm">
+            <Checkbox
+              checked={included}
+              onCheckedChange={(checked) => onIncludedChange(checked === true)}
+              aria-label={`Include ${filename}`}
+            />
+          </div>
+        </div>
       ) : (
         <div className="flex items-center justify-center py-8 text-muted-foreground text-xs">
           Loading...

@@ -1,1 +1,137 @@
-{"derivations":{"d69fr3dn4bwxb17h0029k2ai414la9m7-ripgrep-15.1.0.drv":{"args":["-e","/nix/store/l622p70vy8k5sh7y5wizi5f2mic6ynpg-source-stdenv.sh","/nix/store/shkw4qm9qcw5sc5n1k5jznc83ny02r39-default-builder.sh"],"builder":"/nix/store/f700nj7wlwg441h39gkq29qbviy99sgq-bash-5.3p9/bin/bash","env":{"NIX_MAIN_PROGRAM":"rg","PKG_CONFIG_ALLOW_CROSS":"0","RUST_LOG":"","__darwinAllowLocalNetworking":"","__impureHostDeps":"/bin/sh /usr/lib/libSystem.B.dylib /usr/lib/system/libunc.dylib /dev/zero /dev/random /dev/urandom /bin/sh","__propagatedImpureHostDeps":"","__propagatedSandboxProfile":"","__sandboxProfile":"","__structuredAttrs":"","buildFeatures":"pcre2","buildInputs":"/nix/store/2iq8w7wyg6nadxflnxlwcjagx2h28267-pcre2-10.46-dev","builder":"/nix/store/f700nj7wlwg441h39gkq29qbviy99sgq-bash-5.3p9/bin/bash","cargoBuildFeatures":"pcre2","cargoBuildNoDefaultFeatures":"","cargoBuildType":"release","cargoCheckFeatures":"pcre2","cargoCheckNoDefaultFeatures":"","cargoCheckType":"release","cargoDeps":"/nix/store/nif80rzzj4db0br94pfa3hm1j6rhxaln-ripgrep-15.1.0-vendor","cargoHash":"sha256-ry3pLuYNwX776Dpj9IE2+uc7eEa5+sQvdNNeG1eJecs=","cmakeFlags":"","configureFlags":"","configurePhase":"runHook preConfigure\nrunHook postConfigure\n","depsBuildBuild":"","depsBuildBuildPropagated":"","depsBuildTarget":"","depsBuildTargetPropagated":"","depsHostHost":"","depsHostHostPropagated":"","depsTargetTarget":"","depsTargetTargetPropagated":"","doCheck":"1","doInstallCheck":"1","installCheckPhase":"file=\"$(mktemp)\"\necho \"abc\\nbcd\\ncde\" > \"$file\"\n/nix/store/dxvcarq7wwz5mjdzzp0vr7mmi2ssc2r8-exec/bin/exec $out/bin/rg -N 'bcd' \"$file\"\n/nix/store/dxvcarq7wwz5mjdzzp0vr7mmi2ssc2r8-exec/bin/exec $out/bin/rg -N 'cd' \"$file\"\necho '(a(aa)aa)' | /nix/store/dxvcarq7wwz5mjdzzp0vr7mmi2ssc2r8-exec/bin/exec $out/bin/rg -P '\\((a*|(?R))*\\)'\n","mesonFlags":"","name":"ripgrep-15.1.0","nativeBuildInputs":"/nix/store/5dy6zfabghx6isx0pyqpqmxi6l2xj6cs-install-shell-files /nix/store/1yxb5ybmg3367vnlsqayb77ydyjz9viy-writable-tmpdir-as-home-hook /nix/store/7693fhfqg2hddwl3kbbpinrdqdp71nq2-pkg-config-wrapper-0.29.2 /nix/store/ivz9d6lm8246s7nva10ng19q80yv2h0f-auditable-cargo-1.94.1 /nix/store/j90ppjw0xrrd7883kzrin3p5zw97rlj8-cargo-build-hook.sh /nix/store/qjzpn55rnqd4kizfjs2167dz4cylpzbi-cargo-check-hook.sh /nix/store/29hhcvy5yvnfyimk1li03rs2dh7chgs0-cargo-install-hook.sh /nix/store/pwdppg51j71xaj38k7gdrfnvrnn5c95y-cargo-setup-hook.sh /nix/store/ldg6i5q2wwb0j4nnd1939cn7hdlsf8xl-rustc-wrapper-1.94.1 /nix/store/mlrgd5zljyrxl15ryn31w15w48f6yii5-cargo-1.94.1","out":"/nix/store/9jagafbvx627qam4f0lnksa8yagk45f7-ripgrep-15.1.0","outputs":"out","patches":"","pname":"ripgrep","postFixup":"/nix/store/dxvcarq7wwz5mjdzzp0vr7mmi2ssc2r8-exec/bin/exec $out/bin/rg --generate man > rg.1\ninstallManPage rg.1\n\ninstallShellCompletion --cmd rg \\\n  --bash <(/nix/store/dxvcarq7wwz5mjdzzp0vr7mmi2ssc2r8-exec/bin/exec $out/bin/rg --generate complete-bash) \\\n  --fish <(/nix/store/dxvcarq7wwz5mjdzzp0vr7mmi2ssc2r8-exec/bin/exec $out/bin/rg --generate complete-fish) \\\n  --zsh <(/nix/store/dxvcarq7wwz5mjdzzp0vr7mmi2ssc2r8-exec/bin/exec $out/bin/rg --generate complete-zsh)\n","propagatedBuildInputs":"","propagatedNativeBuildInputs":"","src":"/nix/store/dbrc4ngqawh70dl8xh4lyv7nxlsqg0zs-source","stdenv":"/nix/store/5qpb391n5rpgdi95j6sczjsplkkgw2v1-stdenv-darwin","strictDeps":"1","system":"aarch64-darwin","version":"15.1.0"},"inputs":{"drvs":{"3msjq4z6a0qs0mxnd1xppwv1wphr4f5v-rustc-wrapper-1.94.1.drv":{"dynamicOutputs":{},"outputs":["out"]},"7xf9c8rrxyyqnpjhfnwl6sp7ymyd8yf9-install-shell-files.drv":{"dynamicOutputs":{},"outputs":["out"]},"awa1zar3xcb7m0d0s2bm6yjp51mf6rgd-pkg-config-wrapper-0.29.2.drv":{"dynamicOutputs":{},"outputs":["out"]},"b3zg8408z446an5g5jkrabsnlwd6h4kk-exec.drv":{"dynamicOutputs":{},"outputs":["out"]},"cz56hnlhx2wrx17l57y30hrh46zlyn7s-cargo-install-hook.sh.drv":{"dynamicOutputs":{},"outputs":["out"]},"d6b4b9l4a2minz65qzg8nidlwahvfvz0-cargo-build-hook.sh.drv":{"dynamicOutputs":{},"outputs":["out"]},"iqrmkq9wa4yjnzzlp74lk0mh5q91cxdp-cargo-check-hook.sh.drv":{"dynamicOutputs":{},"outputs":["out"]},"knwcdhkdhsp9v20w916hr2hlfmnfg5lp-ripgrep-15.1.0-vendor.drv":{"dynamicOutputs":{},"outputs":["out"]},"m2jvax7va24k11kf01z2h3bwnxkdsl6d-writable-tmpdir-as-home-hook.drv":{"dynamicOutputs":{},"outputs":["out"]},"mhfz9lksz7j42p6p12qf01jvhxkza56b-cargo-1.94.1.drv":{"dynamicOutputs":{},"outputs":["out"]},"n7ch9hz305hn7mk03gw8av4x0hmlgkid-auditable-cargo-1.94.1.drv":{"dynamicOutputs":{},"outputs":["out"]},"qlvn37s7z81ad6pzcdj8ffppdsp5jzr3-pcre2-10.46.drv":{"dynamicOutputs":{},"outputs":["dev"]},"rsmmkgasvj3bppbsbybqy6gg1yz3nir3-cargo-setup-hook.sh.drv":{"dynamicOutputs":{},"outputs":["out"]},"vz888daw9ar2b89n7rzn3iql09lkyy54-bash-5.3p9.drv":{"dynamicOutputs":{},"outputs":["out"]},"zgc89h7v0b0ngv6fbvmi5p6p1fns040d-source.drv":{"dynamicOutputs":{},"outputs":["out"]},"zqzclxrikldl7wl6m65g8h4inf8xf95y-stdenv-darwin.drv":{"dynamicOutputs":{},"outputs":["out"]}},"srcs":["l622p70vy8k5sh7y5wizi5f2mic6ynpg-source-stdenv.sh","shkw4qm9qcw5sc5n1k5jznc83ny02r39-default-builder.sh"]},"name":"ripgrep-15.1.0","outputs":{"out":{"path":"9jagafbvx627qam4f0lnksa8yagk45f7-ripgrep-15.1.0"}},"system":"aarch64-darwin","version":4}},"version":4}
+{
+  "derivations": {
+    "d69fr3dn4bwxb17h0029k2ai414la9m7-ripgrep-15.1.0.drv": {
+      "args": [
+        "-e",
+        "/nix/store/l622p70vy8k5sh7y5wizi5f2mic6ynpg-source-stdenv.sh",
+        "/nix/store/shkw4qm9qcw5sc5n1k5jznc83ny02r39-default-builder.sh"
+      ],
+      "builder": "/nix/store/f700nj7wlwg441h39gkq29qbviy99sgq-bash-5.3p9/bin/bash",
+      "env": {
+        "NIX_MAIN_PROGRAM": "rg",
+        "PKG_CONFIG_ALLOW_CROSS": "0",
+        "RUST_LOG": "",
+        "__darwinAllowLocalNetworking": "",
+        "__impureHostDeps": "/bin/sh /usr/lib/libSystem.B.dylib /usr/lib/system/libunc.dylib /dev/zero /dev/random /dev/urandom /bin/sh",
+        "__propagatedImpureHostDeps": "",
+        "__propagatedSandboxProfile": "",
+        "__sandboxProfile": "",
+        "__structuredAttrs": "",
+        "buildFeatures": "pcre2",
+        "buildInputs": "/nix/store/2iq8w7wyg6nadxflnxlwcjagx2h28267-pcre2-10.46-dev",
+        "builder": "/nix/store/f700nj7wlwg441h39gkq29qbviy99sgq-bash-5.3p9/bin/bash",
+        "cargoBuildFeatures": "pcre2",
+        "cargoBuildNoDefaultFeatures": "",
+        "cargoBuildType": "release",
+        "cargoCheckFeatures": "pcre2",
+        "cargoCheckNoDefaultFeatures": "",
+        "cargoCheckType": "release",
+        "cargoDeps": "/nix/store/nif80rzzj4db0br94pfa3hm1j6rhxaln-ripgrep-15.1.0-vendor",
+        "cargoHash": "sha256-ry3pLuYNwX776Dpj9IE2+uc7eEa5+sQvdNNeG1eJecs=",
+        "cmakeFlags": "",
+        "configureFlags": "",
+        "configurePhase": "runHook preConfigure\nrunHook postConfigure\n",
+        "depsBuildBuild": "",
+        "depsBuildBuildPropagated": "",
+        "depsBuildTarget": "",
+        "depsBuildTargetPropagated": "",
+        "depsHostHost": "",
+        "depsHostHostPropagated": "",
+        "depsTargetTarget": "",
+        "depsTargetTargetPropagated": "",
+        "doCheck": "1",
+        "doInstallCheck": "1",
+        "installCheckPhase": "file=\"$(mktemp)\"\necho \"abc\\nbcd\\ncde\" > \"$file\"\n/nix/store/dxvcarq7wwz5mjdzzp0vr7mmi2ssc2r8-exec/bin/exec $out/bin/rg -N 'bcd' \"$file\"\n/nix/store/dxvcarq7wwz5mjdzzp0vr7mmi2ssc2r8-exec/bin/exec $out/bin/rg -N 'cd' \"$file\"\necho '(a(aa)aa)' | /nix/store/dxvcarq7wwz5mjdzzp0vr7mmi2ssc2r8-exec/bin/exec $out/bin/rg -P '\\((a*|(?R))*\\)'\n",
+        "mesonFlags": "",
+        "name": "ripgrep-15.1.0",
+        "nativeBuildInputs": "/nix/store/5dy6zfabghx6isx0pyqpqmxi6l2xj6cs-install-shell-files /nix/store/1yxb5ybmg3367vnlsqayb77ydyjz9viy-writable-tmpdir-as-home-hook /nix/store/7693fhfqg2hddwl3kbbpinrdqdp71nq2-pkg-config-wrapper-0.29.2 /nix/store/ivz9d6lm8246s7nva10ng19q80yv2h0f-auditable-cargo-1.94.1 /nix/store/j90ppjw0xrrd7883kzrin3p5zw97rlj8-cargo-build-hook.sh /nix/store/qjzpn55rnqd4kizfjs2167dz4cylpzbi-cargo-check-hook.sh /nix/store/29hhcvy5yvnfyimk1li03rs2dh7chgs0-cargo-install-hook.sh /nix/store/pwdppg51j71xaj38k7gdrfnvrnn5c95y-cargo-setup-hook.sh /nix/store/ldg6i5q2wwb0j4nnd1939cn7hdlsf8xl-rustc-wrapper-1.94.1 /nix/store/mlrgd5zljyrxl15ryn31w15w48f6yii5-cargo-1.94.1",
+        "out": "/nix/store/9jagafbvx627qam4f0lnksa8yagk45f7-ripgrep-15.1.0",
+        "outputs": "out",
+        "patches": "",
+        "pname": "ripgrep",
+        "postFixup": "/nix/store/dxvcarq7wwz5mjdzzp0vr7mmi2ssc2r8-exec/bin/exec $out/bin/rg --generate man > rg.1\ninstallManPage rg.1\n\ninstallShellCompletion --cmd rg \\\n  --bash <(/nix/store/dxvcarq7wwz5mjdzzp0vr7mmi2ssc2r8-exec/bin/exec $out/bin/rg --generate complete-bash) \\\n  --fish <(/nix/store/dxvcarq7wwz5mjdzzp0vr7mmi2ssc2r8-exec/bin/exec $out/bin/rg --generate complete-fish) \\\n  --zsh <(/nix/store/dxvcarq7wwz5mjdzzp0vr7mmi2ssc2r8-exec/bin/exec $out/bin/rg --generate complete-zsh)\n",
+        "propagatedBuildInputs": "",
+        "propagatedNativeBuildInputs": "",
+        "src": "/nix/store/dbrc4ngqawh70dl8xh4lyv7nxlsqg0zs-source",
+        "stdenv": "/nix/store/5qpb391n5rpgdi95j6sczjsplkkgw2v1-stdenv-darwin",
+        "strictDeps": "1",
+        "system": "aarch64-darwin",
+        "version": "15.1.0"
+      },
+      "inputs": {
+        "drvs": {
+          "3msjq4z6a0qs0mxnd1xppwv1wphr4f5v-rustc-wrapper-1.94.1.drv": {
+            "dynamicOutputs": {},
+            "outputs": ["out"]
+          },
+          "7xf9c8rrxyyqnpjhfnwl6sp7ymyd8yf9-install-shell-files.drv": {
+            "dynamicOutputs": {},
+            "outputs": ["out"]
+          },
+          "awa1zar3xcb7m0d0s2bm6yjp51mf6rgd-pkg-config-wrapper-0.29.2.drv": {
+            "dynamicOutputs": {},
+            "outputs": ["out"]
+          },
+          "b3zg8408z446an5g5jkrabsnlwd6h4kk-exec.drv": { "dynamicOutputs": {}, "outputs": ["out"] },
+          "cz56hnlhx2wrx17l57y30hrh46zlyn7s-cargo-install-hook.sh.drv": {
+            "dynamicOutputs": {},
+            "outputs": ["out"]
+          },
+          "d6b4b9l4a2minz65qzg8nidlwahvfvz0-cargo-build-hook.sh.drv": {
+            "dynamicOutputs": {},
+            "outputs": ["out"]
+          },
+          "iqrmkq9wa4yjnzzlp74lk0mh5q91cxdp-cargo-check-hook.sh.drv": {
+            "dynamicOutputs": {},
+            "outputs": ["out"]
+          },
+          "knwcdhkdhsp9v20w916hr2hlfmnfg5lp-ripgrep-15.1.0-vendor.drv": {
+            "dynamicOutputs": {},
+            "outputs": ["out"]
+          },
+          "m2jvax7va24k11kf01z2h3bwnxkdsl6d-writable-tmpdir-as-home-hook.drv": {
+            "dynamicOutputs": {},
+            "outputs": ["out"]
+          },
+          "mhfz9lksz7j42p6p12qf01jvhxkza56b-cargo-1.94.1.drv": {
+            "dynamicOutputs": {},
+            "outputs": ["out"]
+          },
+          "n7ch9hz305hn7mk03gw8av4x0hmlgkid-auditable-cargo-1.94.1.drv": {
+            "dynamicOutputs": {},
+            "outputs": ["out"]
+          },
+          "qlvn37s7z81ad6pzcdj8ffppdsp5jzr3-pcre2-10.46.drv": {
+            "dynamicOutputs": {},
+            "outputs": ["dev"]
+          },
+          "rsmmkgasvj3bppbsbybqy6gg1yz3nir3-cargo-setup-hook.sh.drv": {
+            "dynamicOutputs": {},
+            "outputs": ["out"]
+          },
+          "vz888daw9ar2b89n7rzn3iql09lkyy54-bash-5.3p9.drv": {
+            "dynamicOutputs": {},
+            "outputs": ["out"]
+          },
+          "zgc89h7v0b0ngv6fbvmi5p6p1fns040d-source.drv": {
+            "dynamicOutputs": {},
+            "outputs": ["out"]
+          },
+          "zqzclxrikldl7wl6m65g8h4inf8xf95y-stdenv-darwin.drv": {
+            "dynamicOutputs": {},
+            "outputs": ["out"]
+          }
+        },
+        "srcs": [
+          "l622p70vy8k5sh7y5wizi5f2mic6ynpg-source-stdenv.sh",
+          "shkw4qm9qcw5sc5n1k5jznc83ny02r39-default-builder.sh"
+        ]
+      },
+      "name": "ripgrep-15.1.0",
+      "outputs": { "out": { "path": "9jagafbvx627qam4f0lnksa8yagk45f7-ripgrep-15.1.0" } },
+      "system": "aarch64-darwin",
+      "version": 4
+    }
+  },
+  "version": 4
+}

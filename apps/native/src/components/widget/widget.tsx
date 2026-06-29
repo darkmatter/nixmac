@@ -9,59 +9,60 @@ import { ErrorMessage } from "@/components/widget/layout/error-message";
 import { FeedbackDialog } from "@/components/widget/feedback/feedback-dialog";
 import { Header } from "@/components/widget/layout/header";
 import { ReportIssueButton } from "@/components/widget/feedback/report-issue-button";
-import { SettingsDialog } from "@/components/widget/settings/settings-dialog";
 import { StepContentWrapper } from "@/components/widget/layout/step-content-wrapper";
 import { Stepper } from "@/components/widget/layout/stepper";
+import { OnboardingFlow } from "@/components/widget/onboarding/onboarding-flow";
+import { useOnboardingFlow } from "@/components/widget/onboarding/use-onboarding-flow";
+import { uiActions } from "@nixmac/state";
 import {
-    BeginStep,
-    CommitStep,
-    EvolveStep,
-    FilesystemStep,
-    HistoryStep,
-    ManualCommitStep,
-    ManualEvolveStep,
-    NixSetupStep,
-    PermissionsStep,
-    SetupStep,
+  BeginStep,
+  CommitStep,
+  FilesystemStep,
+  HistoryStep,
+  ManualCommitStep,
+  ReviewStep,
 } from "@/components/widget/steps";
 import { surfaceRecoveryReport } from "@/hooks/use-feedback-on-recovery";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useNixInstall } from "@/hooks/use-nix-install";
 import { usePanicHandler } from "@/hooks/use-panic-handler";
 import { usePermissions } from "@/hooks/use-permissions";
-import { usePrefs } from "@/hooks/use-prefs";
-import { usePromptHistory } from "@/hooks/use-prompt-history";
 import { useTrayEvents } from "@/hooks/use-tray-events";
-import { loadConfig, loadHosts, loadEvolveState } from "@/hooks/use-widget-initialization";
-import { useSummary } from "@/hooks/use-summary";
-import { markBootStage } from "@/lib/boot-diagnostics";
-import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
+import { markBootRenderStage, markBootStage } from "@/lib/boot-diagnostics";
+import { useEvolveMascot } from "@/hooks/use-evolve-mascot";
+import { useUiState } from "@nixmac/state";
+import { useCurrentStep } from "@/hooks/use-current-step";
 import { UpdateBanner } from "@/components/widget/layout/update-banner";
 import { startViewModelSync } from "@/viewmodel";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
 import { setupWidgetTestHelpers } from "@/utils/widget-test-helpers";
 import { useEffect } from "react";
+import { nav, useIsOverlayActive } from "@/router";
 
 /**
  * Main nixmac window / widget component.
  */
 
 export function DarwinWidget() {
-  markBootStage("darwin-widget-render");
+  markBootRenderStage("darwin-widget-render");
 
   const step = useCurrentStep();
   const { getInitialStatus } = useGitOperations();
   const { checkNix } = useNixInstall();
   const { checkPermissions } = usePermissions();
-  const { loadPrefs } = usePrefs();
-  const { refreshPromptHistory } = usePromptHistory();
-  const { findChangeMap } = useSummary();
+
+  // Experimental: spin the mascot in a corner indicator while evolving/building
+  useEvolveMascot();
 
   // Set up panic handler to catch Rust crashes and show feedback dialog
   usePanicHandler();
 
   // Listen for tray menu events (Send Feedback, Settings)
   useTrayEvents();
+
+  useEffect(() => {
+    markBootStage("darwin-widget-committed");
+  }, []);
 
   // Set up test helpers for error handlers and widget store (development only)
   useEffect(() => {
@@ -71,36 +72,34 @@ export function DarwinWidget() {
     }
   }, []);
 
-  // Esc closes the settings modal or history panel (settings takes priority since it overlays history).
-  // Respects defaultPrevented so nested Radix layers (Select/Popover/inner dialogs) handle Esc first.
-  // Skips during IME composition — Esc cancels the candidate, not the modal.
+  // Esc closes the topmost overlay. Settings is now a route (handled via the
+  // router); history/filesystem are still store-driven pending migration.
+  // Respects defaultPrevented so nested Radix layers (Select/Popover/inner
+  // dialogs) handle Esc first. Skips during IME composition — Esc cancels the
+  // candidate, not the modal.
+  const isOverlayActive = useIsOverlayActive();
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
-      const {
-        settingsOpen,
-        showHistory,
-        showFilesystem,
-        isProcessing,
-        isGenerating,
-        setSettingsOpen,
-        setShowHistory,
-        setShowFilesystem,
-      } = useWidgetStore.getState();
-      if (settingsOpen) {
+      // Settings route takes priority (it overlays everything else).
+      if (isOverlayActive) {
         e.preventDefault();
-        setSettingsOpen(false);
-      } else if (showHistory && !(isProcessing || isGenerating)) {
+        nav.goHome();
+        return;
+      }
+      const { showHistory, showFilesystem, isProcessing, isGenerating } =
+        useUiState.getState();
+      if (showHistory && !(isProcessing || isGenerating)) {
         e.preventDefault();
-        setShowHistory(false);
+        uiActions.setShowHistory(false);
       } else if (showFilesystem && !(isProcessing || isGenerating)) {
         e.preventDefault();
-        setShowFilesystem(false);
+        uiActions.setShowFilesystem(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [isOverlayActive]);
 
   // Load initial data once on mount, then start watching for changes
   useEffect(() => {
@@ -109,24 +108,24 @@ export function DarwinWidget() {
 
     (async () => {
       try {
-        await checkPermissions();
-        await loadConfig();
-        await checkNix();
-        await loadHosts();
-        await loadEvolveState();
-        await getInitialStatus();
-        await loadPrefs();
-        await findChangeMap();
-        refreshPromptHistory();
-
+        // Hydrate every mirrored slice (preferences/hosts, permissions,
+        // prompt history, evolve, git, change map) before anything that
+        // depends on config being available.
         const stop = await startViewModelSync();
         if (cancelled) {
           stop();
         } else {
           stopViewModelSync = stop;
         }
+
+        // Explicit probes: permissions (writes the backend cell, which
+        // round-trips through `permissions_changed`), Nix availability, and
+        // the cached git status snapshot.
+        await checkPermissions();
+        await checkNix();
+        await getInitialStatus();
       } catch (e: unknown) {
-        useWidgetStore.getState().setError((e as Error)?.message || String(e));
+        uiActions.setError((e as Error)?.message || String(e));
       }
 
       if (cancelled) return;
@@ -139,29 +138,26 @@ export function DarwinWidget() {
     };
   }, []);
 
+  // Onboarding (permissions → nix → flake import → customizations → inference →
+  // first build) takes over the whole window via OnboardingFlow. Whether to show
+  // it is derived entirely from durable facts (live backend gates + persisted
+  // preferences) by useOnboardingFlow, so a finished user never re-enters it
+  // across restarts.
+  const { showFlow: showOnboarding } = useOnboardingFlow();
+
   // Routing mechanism
   const getActiveStepComponent = () => {
     switch (step) {
-      case "permissions":
-        return <PermissionsStep />;
-
-      case "nix-setup":
-        return <NixSetupStep />;
-
-      case "setup":
-        return <SetupStep />;
-
       case "begin":
         return <BeginStep />;
 
+      // The AI evolve step and the manual-drift step share one review surface.
       case "evolve":
-        return <EvolveStep />;
+      case "manualEvolve":
+        return <ReviewStep />;
 
       case "commit":
         return <CommitStep />;
-
-      case "manualEvolve":
-        return <ManualEvolveStep />;
 
       case "manualCommit":
         return <ManualCommitStep />;
@@ -178,8 +174,18 @@ export function DarwinWidget() {
   // the StepContentWrapper's padding & overflow handling.
   const isEdgeToEdgeStep = step === "filesystem";
 
+  if (showOnboarding) {
+    return (
+      <div className="flex min-h-[600px] min-w-[800px] h-full w-full flex-col bg-background/60">
+        <OnboardingFlow />
+        <FeedbackDialog />
+        <Console />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-full w-full flex-col bg-background/90 backdrop-blur-xl">
+    <div className="flex min-w-[800px] min-h-[600px]  h-full w-full flex-col bg-background/60">
       <Header />
       <Stepper />
       <UpdateBanner />
@@ -202,7 +208,6 @@ export function DarwinWidget() {
       <RebuildOverlayPanel />
       <EditorPanel />
 
-      <SettingsDialog />
       <FeedbackDialog />
 
       <Console />

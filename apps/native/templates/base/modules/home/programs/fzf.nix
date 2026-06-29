@@ -1,5 +1,10 @@
 # FZF fuzzy finder configuration
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 {
   programs.fzf = {
@@ -15,4 +20,3 @@
     changeDirWidgetCommand = "fd --type d --hidden --follow --exclude .git";
   };
 }
-

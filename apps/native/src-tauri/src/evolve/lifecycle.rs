@@ -7,18 +7,18 @@
 //! All steps are atomic from the frontend's perspective - one call does everything.
 
 use log::info;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 use crate::state::{build_state, evolve_state};
 use crate::storage::store;
 use crate::{
     db, evolve, git,
     shared_types::{
-        EvolutionFailureResult, EvolutionResult, EvolutionState, EvolutionTelemetry, EvolveState,
+        EvolutionFailureResult, EvolutionResult, EvolutionState, EvolutionTelemetry, EvolveSession,
         SemanticChangeMap,
     },
     summarize,
-    types::{emit_evolve_event, EvolveEvent},
+    types::{EvolveEvent, emit_evolve_event},
 };
 
 impl EvolutionTelemetry {
@@ -154,8 +154,12 @@ pub async fn backup_evolve_and_record_changeset(
         initial_status.branch
     );
 
+    // Record the pre-evolution status; the cell write emits `git_state_changed`
+    // and clears any stale external-build flag now that nixmac itself acts.
+    crate::state::git_state::update_status(app, initial_status.clone());
+
     // Step 1: Snapshot the working tree onto a backup branch before AI touches anything.
-    let pre_evolve_state = evolve_state::get(app).unwrap_or_default();
+    let pre_evolve_state = evolve_state::get_session(app);
     let changeset_id = pre_evolve_state.current_changeset_id.unwrap_or(0);
     let backup_branch =
         match git::create_evolution_backup(&repo_root, pre_evolve_state.evolution_id, changeset_id)
@@ -190,16 +194,16 @@ pub async fn backup_evolve_and_record_changeset(
                     bs.as_ref().and_then(|b| b.changeset_id),
                 )
             };
-        let updated = EvolveState {
+        let updated = EvolveSession {
             backup_branch: Some(branch.clone()),
             rollback_branch,
             rollback_store_path,
             rollback_changeset_id,
             ..pre_evolve_state.clone()
         };
-        // fire-and-forget: state cache update before the AI call. Failure is non-fatal —
-        // evolution proceeds and the final set() below will update state correctly.
-        let _ = evolve_state::set(app, updated, &initial_status.changes);
+        // fire-and-forget: session update before the AI call. Failure is non-fatal —
+        // evolution proceeds and the final set_session() below corrects state.
+        let _ = evolve_state::set_session(app, updated, &initial_status.changes);
     }
 
     // Step 2: Run AI evolution
@@ -239,21 +243,35 @@ pub async fn backup_evolve_and_record_changeset(
     // Short-circuit: conversational responses made no environment changes.
     if evolution.state == EvolutionState::Conversational {
         info!("[evolution] Conversational response — skipping git/db workflow");
-        let evolve_state = evolve_state::set(
+        let evolve_state = evolve_state::set_session(
             app,
-            EvolveState {
+            EvolveSession {
                 last_evolution_state: Some(EvolutionState::Conversational),
-                ..evolve_state::get(app).unwrap_or_default()
+                ..evolve_state::get_session(app)
             },
             &initial_status.changes,
         )
-        .unwrap_or_else(|_| evolve_state::get(app).unwrap_or_default());
+        .unwrap_or_default();
+        let telemetry =
+            EvolutionTelemetry::from_evolution(&evolution, elapsed_since(start_time_ms));
+        // Terminal event: every cell this path touches is updated above, so the
+        // frontend mirrors are consistent when the completion data arrives.
+        emit_evolve_event(
+            app,
+            EvolveEvent::complete(
+                start_time_s,
+                evolution.iterations,
+                evolution.summary.as_deref().unwrap_or(""),
+                telemetry.clone(),
+                evolution.summary.clone(),
+            ),
+        );
         return Ok(EvolutionResult {
             change_map: SemanticChangeMap::default(),
             git_status: initial_status,
             evolve_state,
             conversational_response: evolution.summary.clone(),
-            telemetry: EvolutionTelemetry::from_evolution(&evolution, elapsed_since(start_time_ms)),
+            telemetry,
         });
     }
 
@@ -273,17 +291,16 @@ pub async fn backup_evolve_and_record_changeset(
 
     emit_evolve_event(app, EvolveEvent::analyzing(start_time_s, None));
 
-    // fire-and-forget: cache write. We hold `final_status` in memory; a store write
-    // failure here does not block the evolution result from being returned.
-    let _ = store::set_cached_git_status(app, &final_status);
+    // Record the post-evolution status; the cell write emits `git_state_changed`.
+    crate::state::git_state::update_status(app, final_status.clone());
 
     // Insert a DB evolution record and run the appropriate summarization pipeline.
     let (db_evolution_id, new_changeset_id) = store_metadata(app, &final_status).await;
 
-    let current_state = evolve_state::get(app).unwrap_or_default();
-    let evolve_state = evolve_state::set(
+    let current_state = evolve_state::get_session(app);
+    let evolve_state = evolve_state::set_session(
         app,
-        EvolveState {
+        EvolveSession {
             evolution_id: db_evolution_id,
             current_changeset_id: new_changeset_id,
             backup_branch,
@@ -294,19 +311,34 @@ pub async fn backup_evolve_and_record_changeset(
     )
     .unwrap_or_default();
 
-    // Build the change map from whatever is now stored in the DB.
-    let change_map = db::get_db_path(app)
-        .ok()
-        .and_then(|db_path| summarize::find_existing::for_current_state(&db_path, &repo_root).ok())
-        .map(summarize::group_existing::from_change_sets)
-        .unwrap_or_default();
+    // Build the change map from whatever is now stored in the DB and record it
+    // in the cell. The summarize pipeline already writes the cell when it runs,
+    // but it short-circuits when summaries exist; this write covers that path.
+    let base_ref = summarize::active_summary_base_ref(app);
+    let change_map = summarize::change_map_since(app, &base_ref).unwrap_or_default();
+    crate::state::change_map::update(app, change_map.clone());
+
+    let telemetry = EvolutionTelemetry::from_evolution(&evolution, elapsed_since(start_time_ms));
+    // Terminal event: emitted after the git-state, evolve-state, and change-map
+    // cells are all updated, so the frontend mirrors are consistent when the
+    // completion data arrives.
+    emit_evolve_event(
+        app,
+        EvolveEvent::complete(
+            start_time_s,
+            evolution.iterations,
+            evolution.summary.as_deref().unwrap_or(""),
+            telemetry.clone(),
+            None,
+        ),
+    );
 
     Ok(EvolutionResult {
         change_map,
         git_status: final_status,
         evolve_state,
         conversational_response: None,
-        telemetry: EvolutionTelemetry::from_evolution(&evolution, elapsed_since(start_time_ms)),
+        telemetry,
     })
 }
 
@@ -314,10 +346,7 @@ fn restore_after_failure(app: &AppHandle, repo_root: &str, backup_branch: &Optio
     // Allow skipping the actual git restore calls for debugging/testing.
     // If `DEBUG_SKIP_RESTORE_ALL` is set to a non-zero value, skip restore operations
     // but keep the same state updates and logging behavior.
-    let skip_restore = match std::env::var("DEBUG_SKIP_RESTORE_ALL") {
-        Ok(val) => val != "0",
-        Err(_) => false,
-    };
+    let skip_restore = crate::env::debug_skip_restore_all();
 
     if skip_restore {
         log::warn!("[evolution] DEBUG_SKIP_RESTORE_ALL set — skipping restore_from_branch_ref");
@@ -334,12 +363,12 @@ fn restore_after_failure(app: &AppHandle, repo_root: &str, backup_branch: &Optio
 
     // fire-and-forget: clearing backup_branch in an error-recovery path. We are
     // already handling a failure; a secondary store write failure is non-fatal.
-    let _ = evolve_state::set(
+    let _ = evolve_state::set_session(
         app,
-        EvolveState {
+        EvolveSession {
             backup_branch: None,
             last_evolution_state: Some(EvolutionState::Failed),
-            ..evolve_state::get(app).unwrap_or_default()
+            ..evolve_state::get_session(app)
         },
         &[],
     );
@@ -350,18 +379,11 @@ pub async fn store_metadata(
     app: &AppHandle,
     status: &crate::shared_types::GitStatus,
 ) -> (Option<i64>, Option<i64>) {
-    let db_path = match db::get_db_path(app) {
-        Ok(p) => p,
-        Err(e) => {
-            log::error!("[evolution] failed to get db path: {}", e);
-            return (None, None);
-        }
-    };
-
     // Reuse an in-progress evolution (e.g. after adopt-then-evolve); otherwise insert fresh.
-    let existing_id = evolve_state::get(app).ok().and_then(|s| s.evolution_id);
+    let existing_id = evolve_state::get_session(app).evolution_id;
+    let pool = app.state::<db::DbPool>();
     let evolution_id = match db::evolutions::upsert(
-        &db_path,
+        &pool,
         existing_id,
         status.branch.as_deref().unwrap_or("unknown"),
     ) {
@@ -375,7 +397,11 @@ pub async fn store_metadata(
         }
     };
 
-    let changeset_id = match summarize::new_changeset(app, evolution_id).await {
+    // Summarize since we started evolution, falling back to HEAD if the persisted
+    // backup/rollback ref has already been removed.
+    let base_ref = summarize::active_summary_base_ref(app);
+
+    let changeset_id = match summarize::summarize_since(app, &base_ref, evolution_id).await {
         Ok(id) => id,
         Err(e) => {
             log::error!("[evolution] summarization pipeline failed: {}", e);

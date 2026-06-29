@@ -1,46 +1,20 @@
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
-import React, { useEffect, useState } from "react";
-import ReactDOM from "react-dom/client";
 import { PreviewIndicator } from "@/components/preview-indicator/preview-indicator";
-import type { PreviewIndicatorState } from "@/ipc/types";
+import { orpc, queryClient } from "@/lib/orpc";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { invoke } from "@tauri-apps/api/core";
+import React, { useEffect } from "react";
+import ReactDOM from "react-dom/client";
 import "./index.css";
 
 function PreviewIndicatorWindow() {
-  const [state, setState] = useState<PreviewIndicatorState>({
-    visible: false,
-    summary: null,
-    filesChanged: 0,
-    additions: null,
-    deletions: null,
-    isLoading: false,
-  });
-  const [error, setError] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
-
+  const {
+    data: state,
+  } = useQuery(orpc.previewIndicator.getState.queryOptions());
   useEffect(() => {
-    setMounted(true);
-
-    invoke<PreviewIndicatorState>("preview_indicator_get_state")
-      .then((initialState) => {
-        setState(initialState);
-      })
-      .catch((err) => {
-        console.error("[preview-indicator] Failed to get initial state:", err);
-        setError(String(err));
-      });
-
-    const unsubscribe = listen<PreviewIndicatorState>(
-      "preview-indicator:update",
-      (event) => {
-        setState(event.payload);
-      }
-    );
-
-    return () => {
-      unsubscribe.then((unlisten) => unlisten());
-    };
-  }, []);
+    if (state) {
+      console.log("state", state);
+    }
+  }, [state]);
 
   const handleClick = async () => {
     // Show and focus the main window via Tauri command
@@ -53,36 +27,32 @@ function PreviewIndicatorWindow() {
   };
 
   // DEBUG: Show error or loading state
-  if (error) {
-    return (
-      <div
-        style={{ background: "red", color: "white", padding: 8, fontSize: 12 }}
-      >
-        Error: {error}
-      </div>
-    );
-  }
+  // if (error) {
+  //   return (
+  //     <div style={{ background: "red", color: "white", padding: 8, fontSize: 12 }}>
+  //       Error: {error.message}
+  //     </div>
+  //   );
+  // }
 
-  if (!mounted) {
-    return (
-      <div
-        style={{ background: "blue", color: "white", padding: 8, fontSize: 12 }}
-      >
-        Mounting...
-      </div>
-    );
-  }
+  // if (!state) {
+  //   return (
+  //     <div style={{ background: "blue", color: "white", padding: 8, fontSize: 12 }}>
+  //       Loading...
+  //     </div>
+  //   );
+  // }
 
   return (
     <PreviewIndicator
-      additions={state.additions ?? undefined}
-      deletions={state.deletions ?? undefined}
+      additions={state?.additions ?? undefined}
+      deletions={state?.deletions ?? undefined}
       disableExpansion
-      filesChanged={state.filesChanged}
-      isLoading={state.isLoading}
+      filesChanged={state?.filesChanged}
+      isLoading={state?.isLoading}
       onClick={handleClick}
-      summary={state.summary ?? undefined}
-      visible={state.visible}
+      summary={state?.summary ?? undefined}
+      visible={state?.visible ?? false}
     />
   );
 }
@@ -91,7 +61,9 @@ const rootElement = document.getElementById("root");
 if (rootElement) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-      <PreviewIndicatorWindow />
-    </React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <PreviewIndicatorWindow />
+      </QueryClientProvider>
+    </React.StrictMode>,
   );
 }

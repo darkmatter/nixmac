@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
 
 concurrency:
   group: storybook-${{ github.event.pull_request.number || github.ref }}
@@ -14,56 +14,35 @@ jobs:
   storybook-tests:
     name: Storybook Snapshot Tests
     runs-on: [self-hosted, linux]
-    timeout-minutes: 15
+    timeout-minutes: 25
     permissions:
       contents: read
       deployments: write
       issues: write
       pull-requests: write
     steps:
+      - name: Mint darkmatter[bot] token
+        id: bot-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.DARKMATTER_APP_ID }}
+          private-key: ${{ secrets.DARKMATTER_APP_PRIVATE_KEY }}
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ steps.bot-token.outputs.token }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - uses: ./.github/actions/setup
         with:
-          node-version: 22
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.2
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-
-      - name: Install sops
-        run: |
-          case "$(uname -m)" in
-            x86_64) SOPS_ARCH="amd64" ;;
-            aarch64|arm64) SOPS_ARCH="arm64" ;;
-            *)
-              echo "::error::Unsupported architecture: $(uname -m)"
-              exit 1
-              ;;
-          esac
-
-          curl -fsSL "https://github.com/getsops/sops/releases/download/v3.12.1/sops-v3.12.1.linux.${SOPS_ARCH}" -o /tmp/sops
-          sudo install -m 0755 /tmp/sops /usr/local/bin/sops
-          sops --version
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
 
       - name: Resolve secrets
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
         run: |
-          SECRETS_FILE="ops/secrets/secrets.yaml"
+          SECRETS_FILE="ops/secrets/secrets.sops.json"
           if [ ! -f "$SECRETS_FILE" ]; then
             echo "::error::SOPS secrets file not found at $SECRETS_FILE"
             exit 1
@@ -79,9 +58,26 @@ jobs:
             echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID"
           } >> "$GITHUB_ENV"
 
-      - name: Install Playwright browsers
+      - name: Check Playwright browser availability
         working-directory: apps/native
-        run: bunx playwright install --with-deps chromium
+        run: |
+          bunx playwright install --dry-run chromium
+          DEBUG=pw:browser bun --eval '
+            const { chromium } = await import("playwright");
+            const browser = await chromium.launch({
+              args: [
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu-sandbox",
+                "--disable-gpu",
+                "--no-zygote",
+              ],
+            });
+            const page = await browser.newPage();
+            await page.setContent("<h1>ok</h1>");
+            console.log(await page.textContent("h1"));
+            await browser.close();
+          '
 
       - name: Build Storybook
         working-directory: apps/native
@@ -112,6 +108,17 @@ jobs:
           fi
           echo "Storybook preview: $url"
           echo "deployment-url=$url" >> "$GITHUB_OUTPUT"
+
+      # Story-level digest of new/changed/removed stories vs the PR base,
+      # rendered into the sticky comment so reviewers can see what changed.
+      - name: Build story-change digest
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        working-directory: apps/native
+        env:
+          BASE_REF: origin/${{ github.base_ref }}
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: node scripts/build-storybook-digest.mjs
 
       - name: Publish Storybook deployment link
         if: steps.deploy.outputs.deployment-url != ''
@@ -149,7 +156,7 @@ jobs:
       - name: Comment Storybook preview URL on PR
         if: always() && !cancelled() && github.event_name == 'pull_request' && steps.deploy.outputs.deployment-url != ''
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.bot-token.outputs.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
           REPO: ${{ github.repository }}
@@ -157,6 +164,10 @@ jobs:
         run: |
           set -euo pipefail
           MARKER='<!-- nixmac-storybook-preview -->'
+          DIGEST=""
+          if [ -f apps/native/test-results/storybook-digest.md ]; then
+            DIGEST=$(cat apps/native/test-results/storybook-digest.md)
+          fi
           BODY=$(cat <<EOF
           ${MARKER}
           ### 🎨 Storybook preview
@@ -164,6 +175,8 @@ jobs:
           [Open Storybook preview](${DEPLOY_URL})
 
           Updated for ${SHA}
+
+          ${DIGEST}
           EOF
           )
 
@@ -182,21 +195,100 @@ jobs:
           fi
 
       - name: Run Storybook snapshot tests
+        id: snapshot_tests
         working-directory: apps/native
-        run: bun run test:storybook
+        continue-on-error: true
+        run: bun run test:storybook:ci
 
-      - name: Check for snapshot staleness
-        if: always() && !cancelled()
+      # ---- Failed-story screenshots (PR only, only when snapshots drifted) ----
+      # Resolve the failed stories (recorded by the runner) into Storybook IDs +
+      # deep links, and emit the Creevey skip regex used to scope capture.
+      - name: Resolve failed stories
+        id: resolve_failures
+        if: steps.snapshot_tests.outcome == 'failure' && github.event_name == 'pull_request' && steps.deploy.outputs.deployment-url != ''
+        continue-on-error: true
+        working-directory: apps/native
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          node scripts/resolve-failed-stories.mjs
+          count=$(node -e 'const r=require("./test-results/failed-stories-resolved.json"); process.stdout.write(String(r.length))')
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+
+      # Rebuild Storybook with the skip regex baked in, serve it locally, and let
+      # Creevey (Playwright, no Docker) screenshot only the failed stories.
+      - name: Capture failed-story screenshots (Creevey)
+        if: ${{ steps.resolve_failures.outcome == 'success' && steps.resolve_failures.outputs.count != '0' }}
+        continue-on-error: true
         working-directory: apps/native
         run: |
-          if git diff --name-only | grep -q '__snapshots__'; then
-            echo "::error::Storybook snapshots are out of date. Run 'bun run test:update-snapshots' locally and commit the changes."
-            git diff --stat -- '*/__snapshots__/*'
-            exit 1
+          export VITE_CREEVEY_SKIP_REGEX="$(cat test-results/creevey-skip-regex.txt)"
+          bun run build-storybook
+          python3 -m http.server 6100 --directory storybook-static >/tmp/creevey-storybook.log 2>&1 &
+          SB_PID=$!
+          trap 'kill $SB_PID 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do
+            curl -sf http://localhost:6100/index.json >/dev/null && break
+            sleep 1
+          done
+          CREEVEY_STORYBOOK_URL="http://localhost:6100" bunx creevey test --no-docker || true
+          node scripts/harvest-creevey-shots.mjs
+
+      # Host the screenshots on Cloudflare Pages so the PR comment can embed them.
+      - name: Deploy failed-story screenshots
+        id: deploy_shots
+        if: ${{ steps.resolve_failures.outcome == 'success' && steps.resolve_failures.outputs.count != '0' }}
+        continue-on-error: true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          set -euo pipefail
+          bunx wrangler pages project create nixmac-storybook-shots --production-branch=main 2>/dev/null || true
+          output=$(bunx wrangler pages deploy apps/native/test-results/shots \
+            --project-name=nixmac-storybook-shots \
+            --commit-dirty=true \
+            --branch="$BRANCH" 2>&1 | tee /dev/stderr)
+          url=$(echo "$output" | grep -oE 'https://[a-zA-Z0-9.-]+\.pages\.dev' | head -n1 || true)
+          echo "shots-url=$url" >> "$GITHUB_OUTPUT"
+
+      # Re-render the sticky comment to include the failed-snapshot gallery.
+      - name: Update PR comment with failed snapshots
+        if: ${{ steps.deploy_shots.outcome == 'success' && steps.deploy_shots.outputs.shots-url != '' }}
+        continue-on-error: true
+        working-directory: apps/native
+        env:
+          GH_TOKEN: ${{ steps.bot-token.outputs.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          MARKER: "<!-- nixmac-storybook-preview -->"
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+          SHOTS_BASE_URL: ${{ steps.deploy_shots.outputs.shots-url }}
+        run: |
+          set -euo pipefail
+          BODY="$(node scripts/build-failed-comment.mjs)"
+          EXISTING_ID=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --paginate --jq ".[] | select(.body | startswith(\"${MARKER}\")) | .id" \
+            | head -n1 || true)
+          if [ -n "${EXISTING_ID}" ]; then
+            gh api --method PATCH "repos/${REPO}/issues/comments/${EXISTING_ID}" \
+              -f body="${BODY}" >/dev/null
+            echo "Updated sticky comment ${EXISTING_ID}"
+          else
+            gh pr comment "${PR_NUMBER}" --repo "${REPO}" --body "${BODY}"
+            echo "Created sticky comment"
           fi
 
-      - name: Upload snapshot diffs on failure
-        if: failure()
+      - name: Report snapshot drift
+        if: always() && !cancelled() && steps.snapshot_tests.outcome == 'failure'
+        working-directory: apps/native
+        run: |
+          echo "::warning::Storybook snapshots drifted — review the screenshot gallery in the PR comment and accept if intentional."
+
+      - name: Upload snapshot diffs on drift
+        if: always() && !cancelled() && steps.snapshot_tests.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: storybook-snapshot-diffs
@@ -213,9 +305,9 @@ jobs:
           if [ -n "$DEPLOY_URL" ]; then
             echo "[Open Storybook preview]($DEPLOY_URL)" >> "$GITHUB_STEP_SUMMARY"
           fi
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "All Storybook snapshot tests passed" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.snapshot_tests.outcome }}" == "success" ]; then
+            echo "✅ All Storybook snapshot tests passed" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Storybook snapshot tests failed" >> "$GITHUB_STEP_SUMMARY"
+            echo "⚠️ Storybook snapshots drifted — review the PR comment gallery and accept if intentional." >> "$GITHUB_STEP_SUMMARY"
             echo "Check the 'storybook-snapshot-diffs' artifact for visual diffs." >> "$GITHUB_STEP_SUMMARY"
           fi

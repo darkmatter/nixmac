@@ -25,11 +25,7 @@ const Example = () => (
         <form className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="login-email">Email</Label>
-            <Input
-              id="login-email"
-              placeholder="name@example.com"
-              type="email"
-            />
+            <Input id="login-email" placeholder="name@example.com" type="email" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="login-password">Password</Label>
@@ -56,11 +52,7 @@ const Example = () => (
           </div>
           <div className="space-y-2">
             <Label htmlFor="register-email">Email</Label>
-            <Input
-              id="register-email"
-              placeholder="name@example.com"
-              type="email"
-            />
+            <Input id="register-email" placeholder="name@example.com" type="email" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="register-password">Password</Label>
@@ -68,10 +60,7 @@ const Example = () => (
           </div>
           <div className="space-y-2">
             <Label htmlFor="register-bio">Bio</Label>
-            <Textarea
-              id="register-bio"
-              placeholder="Tell us about yourself..."
-            />
+            <Textarea id="register-bio" placeholder="Tell us about yourself..." />
           </div>
           <Button className="w-full" type="submit">
             Create Account

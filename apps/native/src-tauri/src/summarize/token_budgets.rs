@@ -1,9 +1,8 @@
 //! Token budget constants and prompt-length based budget computation for model calls.
 
 use once_cell::sync::Lazy;
-use tiktoken_rs::{cl100k_base, CoreBPE};
+use tiktoken_rs::{CoreBPE, cl100k_base};
 
-const DEFAULT_MODEL_CONTEXT_WINDOW: u32 = 8192;
 const MIN_MEANINGFUL_OUTPUT_TOKENS: u32 = 128;
 
 #[derive(Debug, Clone, Copy)]
@@ -83,68 +82,9 @@ pub fn compute_token_allocation(
 
 /// Returns a best-effort context window size for a model identifier.
 pub fn model_context_window(model: &str) -> u32 {
-    let m = model.to_ascii_lowercase();
-
-    if m.contains("gpt-oss")
-        || m.contains("o1")
-        || m.contains("o3")
-        || m.contains("gpt-4.1")
-        || m.contains("claude-3")
-        || m.contains("gemini-1.5")
-        || m.contains("gemini-2")
-    {
-        return 32768;
-    }
-
-    if m.contains("gpt-4o")
-        || m.contains("llama3")
-        || m.contains("qwen")
-        || m.contains("mistral")
-        || m.contains("codellama")
-    {
-        return 16384;
-    }
-
-    DEFAULT_MODEL_CONTEXT_WINDOW
+    crate::ai::model_capabilities::capabilities_for_model(model).context_window_tokens
 }
 
-// ── map_relations ─────────────────────────────────────────────────────────────
-const MAP_MAX_OUTPUT_TOKENS: u32 = 1600;
-
-pub fn map_relations_budget(prompt: &str, model: &str) -> TokenAllocation {
-    compute_token_allocation(prompt, MAP_MAX_OUTPUT_TOKENS, model_context_window(model))
-}
-
-// ── map_relations_to_existing ─────────────────────────────────────────────────
-const MAP_TO_EXISTING_MAX_OUTPUT_TOKENS: u32 = 1600;
-
-pub fn map_relations_to_existing_budget(prompt: &str, model: &str) -> TokenAllocation {
-    compute_token_allocation(
-        prompt,
-        MAP_TO_EXISTING_MAX_OUTPUT_TOKENS,
-        model_context_window(model),
-    )
-}
-
-// ── summarize_evolved_group / summarize_new_group ─────────────────────────────
-const GROUP_MAX_OUTPUT_TOKENS: u32 = 1400;
-
-pub fn group_budget(prompt: &str, model: &str) -> TokenAllocation {
-    compute_token_allocation(prompt, GROUP_MAX_OUTPUT_TOKENS, model_context_window(model))
-}
-
-// ── summarize_new_single ──────────────────────────────────────────────────────
-const SINGLE_MAX_OUTPUT_TOKENS: u32 = 1600;
-
-pub fn single_budget(prompt: &str, model: &str) -> TokenAllocation {
-    compute_token_allocation(
-        prompt,
-        SINGLE_MAX_OUTPUT_TOKENS,
-        model_context_window(model),
-    )
-}
-
-// ── generate_commit_message_from_map ─────────────────────────────────────────
 const COMMIT_MESSAGE_MAX_OUTPUT_TOKENS: u32 = 600;
 
 pub fn commit_message_budget(prompt: &str, model: &str) -> TokenAllocation {
@@ -239,9 +179,6 @@ mod tests {
     fn model_context_window_uses_reasonable_defaults() {
         assert_eq!(model_context_window("openai/gpt-4o-mini"), 16384);
         assert_eq!(model_context_window("gpt-oss-120b"), 32768);
-        assert_eq!(
-            model_context_window("unknown-model"),
-            DEFAULT_MODEL_CONTEXT_WINDOW
-        );
+        assert_eq!(model_context_window("unknown-model"), 8192);
     }
 }

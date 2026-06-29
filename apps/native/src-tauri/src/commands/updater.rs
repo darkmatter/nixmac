@@ -39,12 +39,9 @@ fn update_info(
 
 #[cfg(not(debug_assertions))]
 fn selected_update_channel(app: &AppHandle) -> Result<shared_types::UpdateChannel, String> {
-    crate::storage::store::get_json_pref_or(
-        app,
-        crate::storage::store::UPDATE_CHANNEL_KEY,
-        shared_types::UpdateChannel::default(),
-    )
-    .map_err(|e| format!("[updater] failed to read update channel preference: {e}"))
+    Ok(crate::state::preferences::try_read(app)
+        .map(|prefs| prefs.update_channel)
+        .unwrap_or_default())
 }
 
 #[cfg(not(debug_assertions))]

@@ -1,15 +1,6 @@
 {
-  "taps": [
-    "dotenvx/brew",
-    "peak/tap"
-  ],
-  "brews": [
-    "dotenvx",
-    "rcm",
-    "mackup",
-    "aircrack-ng",
-    "peak/tap/s5cmd"
-  ],
+  "taps": ["dotenvx/brew", "peak/tap"],
+  "brews": ["dotenvx", "rcm", "mackup", "aircrack-ng", "peak/tap/s5cmd"],
   "casks": [
     "docker-desktop",
     "visual-studio-code",

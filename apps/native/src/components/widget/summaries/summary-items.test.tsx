@@ -5,7 +5,9 @@ import { describe, expect, it, vi } from "vitest";
 import { SummaryItems } from "./summary-items";
 
 vi.mock("@/components/ui/collapsible", () => ({
-  Collapsible: ({ children }: { children: React.ReactNode }) => <div data-testid="collapsible">{children}</div>,
+  Collapsible: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="collapsible">{children}</div>
+  ),
   CollapsibleContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   CollapsibleTrigger: ({ children }: { children: React.ReactNode }) => <button>{children}</button>,
 }));
@@ -32,7 +34,7 @@ function makeSingle(id: number): ChangeWithSummary {
     diff: "",
     lineCount: 1,
     createdAt: 0,
-    ownSummaryId: null,
+    ownSummaryId: 1,
     title: `Change ${id}`,
     description: `Desc ${id}`,
   };
@@ -41,7 +43,13 @@ function makeSingle(id: number): ChangeWithSummary {
 function makeGroup(id: number, changeCount: number): SemanticChangeGroup {
   const changes = Array.from({ length: changeCount }, (_, i) => makeSingle(id * 100 + i));
   return {
-    summary: { id, title: `Group ${id}`, description: `Group desc ${id}`, status: "DONE", createdAt: 0 },
+    summary: {
+      id,
+      title: `Group ${id}`,
+      description: `Group desc ${id}`,
+      status: "DONE",
+      createdAt: 0,
+    },
     changes,
   };
 }
@@ -100,7 +108,17 @@ describe("SummaryItems", () => {
       unsummarizedHashes: [],
     };
     const unsummarized: ChangeWithRichType[] = [
-      { id: 99, hash: "h99", filename: "u.nix", diff: "", lineCount: 1, createdAt: 0, ownSummaryId: null, changeType: "edited", shortFilename: "u.nix" },
+      {
+        id: 99,
+        hash: "h99",
+        filename: "u.nix",
+        diff: "",
+        lineCount: 1,
+        createdAt: 0,
+        ownSummaryId: 2,
+        changeType: "edited",
+        shortFilename: "u.nix",
+      },
     ];
     render(<SummaryItems map={map} unsummarized={unsummarized} />);
     expect(screen.getByTestId("unsummarized")).toBeInTheDocument();

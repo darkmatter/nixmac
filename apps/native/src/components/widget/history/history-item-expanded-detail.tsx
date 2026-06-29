@@ -9,7 +9,11 @@ interface HistoryDetailedChangeInfoProps {
   expanded: boolean;
 }
 
-export function HistoryDetailedChangeInfo({ item, colorMap, expanded }: HistoryDetailedChangeInfoProps) {
+export function HistoryDetailedChangeInfo({
+  item,
+  colorMap,
+  expanded,
+}: HistoryDetailedChangeInfoProps) {
   if (!item.changeMap || !expanded) return null;
   const { groups, singles } = item.changeMap;
   if (groups.length === 0 && singles.length === 0) return null;
@@ -19,9 +23,7 @@ export function HistoryDetailedChangeInfo({ item, colorMap, expanded }: HistoryD
       {groups.map((group) => (
         <SummaryGroup key={group.summary.id} group={group} colorMap={colorMap} />
       ))}
-      {singles.length > 0 && (
-        <SinglesSection singles={singles} colorMap={colorMap} />
-      )}
+      {singles.length > 0 && <SinglesSection singles={singles} colorMap={colorMap} />}
     </div>
   );
 }

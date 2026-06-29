@@ -7,8 +7,7 @@ pub mod pool;
 pub mod restore_commits;
 mod schema;
 pub mod store_bare_changeset;
-pub mod store_evolved_changeset;
-pub mod store_new_changeset;
+pub mod store_whole_diff_changeset;
 pub(crate) mod tables;
 
 use anyhow::Result;
@@ -59,7 +58,7 @@ pub async fn init_pool_at_path(db_path: &Path) -> Result<DbPool> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use diesel::{dsl::count_star, prelude::*};
+    use diesel::{dsl::count_star, prelude::*, sql_types::BigInt};
 
     #[tokio::test]
     async fn init_pool_at_path_runs_migrations_and_returns_working_diesel_connection() {
@@ -74,5 +73,27 @@ mod tests {
             .first::<i64>(&mut conn)
             .unwrap();
         assert_eq!(count, 0);
+    }
+
+    #[tokio::test]
+    async fn migration_03_drops_queued_summaries_table() {
+        // PR #330 removed the queued summary pipeline; migration 03 then drops
+        // the table the worker used to drain. New databases shouldn't contain
+        // it after init.
+        let temp_dir = tempfile::tempdir().unwrap();
+        let db_path = temp_dir.path().join("nixmac.db");
+
+        let pool = init_pool_at_path(&db_path).await.unwrap();
+        let mut conn = pool.get().unwrap();
+
+        let surviving = diesel::select(diesel::dsl::sql::<BigInt>(
+            "COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'queued_summaries'",
+        ))
+        .get_result::<i64>(&mut conn)
+        .unwrap();
+        assert_eq!(
+            surviving, 0,
+            "queued_summaries should be dropped by 03-drop-queued-summaries"
+        );
     }
 }

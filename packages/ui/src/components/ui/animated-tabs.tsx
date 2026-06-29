@@ -3,8 +3,8 @@
 import { TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
-import { createContext, useContext, useId, useState } from "react";
 import type React from "react";
+import { createContext, useContext, useId, useState } from "react";
 
 interface AnimatedTabsContext {
   activeValue: string;
@@ -32,15 +32,15 @@ export function AnimatedTabsList({
   const id = useId();
   const [internalValue, setInternalValue] = useState(defaultValue);
   const activeValue = controlledValue ?? internalValue;
-  const setActiveValue = controlledValue !== undefined ? () => {} : setInternalValue;
+  const setActiveValue = controlledValue !== undefined ? () => { } : setInternalValue;
 
   if (hidden) return null;
 
   return (
-    <AnimatedTabsContext.Provider value={{ activeValue, setActiveValue, layoutId: `tab-highlight-${id}` }}>
-      <TabsList className={cn("h-auto p-0.5", className)}>
-        {children}
-      </TabsList>
+    <AnimatedTabsContext.Provider
+      value={{ activeValue, setActiveValue, layoutId: `tab-highlight-${id}` }}
+    >
+      <TabsList className={cn("h-auto p-0.5", className)}>{children}</TabsList>
     </AnimatedTabsContext.Provider>
   );
 }
@@ -51,11 +51,7 @@ interface AnimatedTabsTriggerProps {
   className?: string;
 }
 
-export function AnimatedTabsTrigger({
-  value,
-  children,
-  className,
-}: AnimatedTabsTriggerProps) {
+export function AnimatedTabsTrigger({ value, children, className }: AnimatedTabsTriggerProps) {
   const ctx = useContext(AnimatedTabsContext);
   const isActive = ctx?.activeValue === value;
 
@@ -65,7 +61,7 @@ export function AnimatedTabsTrigger({
       onClick={() => ctx?.setActiveValue(value)}
       className={cn(
         "relative px-3 py-1 text-xs data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=inactive]:hover:text-foreground",
-        className
+        className,
       )}
     >
       {isActive && (
@@ -75,7 +71,7 @@ export function AnimatedTabsTrigger({
           transition={{ type: "spring", stiffness: 400, damping: 35 }}
         />
       )}
-      <span className="relative z-10">{children}</span>
+      <span className="relative z-10 flex flex-row gap-2 items-center">{children}</span>
     </TabsTrigger>
   );
 }

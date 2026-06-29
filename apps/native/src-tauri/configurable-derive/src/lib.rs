@@ -10,6 +10,15 @@
 //! Use `#[config(scope = "global")]` or `#[config(scope = "repo")]` to select
 //! the managed slice scope. Omitting `scope` defaults to global.
 //!
+//! Use `#[config(scope = "env")]` for build-time deployment profiles stored
+//! in `apps/native/env.{development,release}.json` and embedded by `build.rs`. Fields
+//! may declare `env_var` and `build_embed` to generate a `resolve()` method that
+//! merges process env, CI secrets, and the embedded profile JSON.
+//!
+//! `schema_file` selects the JSON Schema output filename for codegen
+//! (`cargo run -- gen-schemas`). Defaults: `settings.schema.json` (repo),
+//! `env.schema.json` (env), `{snake_case_struct}.schema.json` (global).
+//!
 //! The companion `configurable` crate provides the runtime helpers and
 //! re-exports this derive for end users.
 
@@ -20,7 +29,7 @@ mod strings;
 mod types;
 
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, DeriveInput};
+use syn::{DeriveInput, parse_macro_input};
 
 /// Proc-macro entrypoint called by the compiler for each annotated struct.
 ///

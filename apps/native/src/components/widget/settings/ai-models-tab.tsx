@@ -7,9 +7,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
-import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/ai-provider-validation";
+import { ProviderIcon, type ProviderIconId } from "@/components/widget/controls/provider-icons/provider-icon";
+import { DEFAULT_NIXMAC_MODEL, NIXMAC_PROVIDER } from "@/components/widget/onboarding/lib/inference";
 import { tauriAPI } from "@/ipc/api";
 import type { CliToolsState } from "@/ipc/types";
+import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/providers/ai-provider-validation";
 import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
 import { useEffect, useState } from "react";
 
@@ -37,8 +39,9 @@ function isPlainInputCliProvider(provider: string): boolean {
 }
 
 const DEFAULT_EVOLVE_MODEL: Record<string, string> = {
+  [NIXMAC_PROVIDER]: DEFAULT_NIXMAC_MODEL,
   openrouter: "anthropic/claude-sonnet-4",
-  openai: "anthropic/claude-sonnet-4",
+  openai: "gpt-4o",
   ollama: "",
   vllm: "gpt-oss-120b",
   claude: "",
@@ -47,8 +50,9 @@ const DEFAULT_EVOLVE_MODEL: Record<string, string> = {
 };
 
 const DEFAULT_SUMMARY_MODEL: Record<string, string> = {
+  [NIXMAC_PROVIDER]: DEFAULT_NIXMAC_MODEL,
   openrouter: "openai/gpt-4o-mini",
-  openai: "openai/gpt-4o-mini",
+  openai: "gpt-4o-mini",
   ollama: "llama3.1",
   vllm: "gpt-oss-120b",
   claude: "",
@@ -56,10 +60,33 @@ const DEFAULT_SUMMARY_MODEL: Record<string, string> = {
   opencode: "",
 };
 
+function modelPlaceholder(provider: string, fallback: string): string {
+  if (provider === NIXMAC_PROVIDER) {
+    return DEFAULT_NIXMAC_MODEL;
+  }
+  if (provider === "openai") {
+    return fallback;
+  }
+  if (provider === "ollama") {
+    return fallback === "gpt-4o" ? "" : "llama3.1";
+  }
+  if (provider === "vllm") {
+    return "gpt-oss-120b";
+  }
+  if (provider === "opencode") {
+    return "Leave empty for CLI default";
+  }
+  return fallback === "gpt-4o" ? "anthropic/claude-sonnet-4" : "openai/gpt-4o-mini";
+}
+
 function useCliToolStatus() {
   const [status, setStatus] = useState<CliToolsState | null>(null);
   useEffect(() => {
-    tauriAPI.cli.checkTools().then(setStatus).catch(() => {});
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
+    tauriAPI.cli
+      .checkTools()
+      .then(setStatus)
+      .catch(() => { });
   }, []);
   return status;
 }
@@ -104,28 +131,35 @@ export function AiModelsTab({
   const cliStatus = useCliToolStatus();
   const providerPrefs = useProviderPrefs(form);
 
-  const renderProviderItems = () => (
-    <>
-      {([
-        { value: "openrouter", label: "OpenRouter" },
-        { value: "ollama", label: "Ollama" },
-        { value: "vllm", label: "OpenAI Compatible" },
-      ] as const).map(({ value, label }) => {
-        return (
+  const renderProviderItems = () => {
+    const providers: ReadonlyArray<{ value: string; label: string; icon: ProviderIconId }> = [
+      { value: NIXMAC_PROVIDER, label: "nixmac hosted", icon: "nixmac" },
+      { value: "openrouter", label: "OpenRouter", icon: "openrouter" },
+      { value: "openai", label: "OpenAI", icon: "openai" },
+      { value: "ollama", label: "Ollama", icon: "ollama" },
+      { value: "vllm", label: "OpenAI Compatible", icon: "vllm" },
+    ];
+    return (
+      <>
+        {providers.map(({ value, label, icon }) => (
           <SelectItem key={value} value={value}>
-            {label}
+            <span className="flex items-center gap-2">
+              <ProviderIcon provider={icon} size={14} />
+              {label}
+            </span>
           </SelectItem>
-        );
-      })}
-      {CLI_PROVIDERS.map(({ value, label }) => {
-        return (
+        ))}
+        {CLI_PROVIDERS.map(({ value, label }) => (
           <SelectItem key={value} value={value}>
-            {label}
+            <span className="flex items-center gap-2">
+              <ProviderIcon provider={value as ProviderIconId} size={14} />
+              {label}
+            </span>
           </SelectItem>
-        );
-      })}
-    </>
-  );
+        ))}
+      </>
+    );
+  };
 
   const evolveProviderError = getProviderConfigInvalidReason(
     evolveProviderField.state.value,
@@ -143,8 +177,7 @@ export function AiModelsTab({
       <div>
         <h2 className="mb-4 font-semibold text-base">AI Models</h2>
         <p className="mb-4 text-muted-foreground text-xs">
-          OpenRouter is the supported cloud provider in the main UI. Use local or self-hosted
-          providers when you want model routing outside OpenRouter.
+          Choose a cloud provider, local model, or self-hosted OpenAI-compatible endpoint.
         </p>
         <div className="space-y-6">
           {/* Evolution Model */}
@@ -163,10 +196,12 @@ export function AiModelsTab({
                 </label>
                 <Select
                   onValueChange={async (value) => {
+                    // deprecated(orpc): replace with client/orpc from @/lib/orpc
                     await tauriAPI.models.clearCached(value);
                     evolveProviderField.handleChange(value);
                     const defaultModel = DEFAULT_EVOLVE_MODEL[value] ?? "";
                     evolveModelField.handleChange(defaultModel);
+                    // deprecated(orpc): replace with client/orpc from @/lib/orpc
                     await tauriAPI.ui.setPrefs({
                       evolveProvider: value,
                       evolveModel: defaultModel,
@@ -177,9 +212,7 @@ export function AiModelsTab({
                   <SelectTrigger id="evolveProvider">
                     <SelectValue placeholder="Select provider" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {renderProviderItems()}
-                  </SelectContent>
+                  <SelectContent>{renderProviderItems()}</SelectContent>
                 </Select>
                 {evolveProviderError && (
                   <p className="text-destructive text-xs">{evolveProviderError}</p>
@@ -194,7 +227,10 @@ export function AiModelsTab({
                 >
                   {([evolveProvider]: any[]) => (
                     <>
-                      <label className="text-xs font-medium text-muted-foreground" htmlFor="evolveModel">
+                      <label
+                        className="text-xs font-medium text-muted-foreground"
+                        htmlFor="evolveModel"
+                      >
                         Model Name{isCliProvider(evolveProvider) ? " (optional)" : ""}
                       </label>
                       {isPlainInputCliProvider(evolveProvider) ? (
@@ -203,6 +239,7 @@ export function AiModelsTab({
                           value={evolveModelField.state.value}
                           onChange={async (e) => {
                             evolveModelField.handleChange(e.target.value);
+                            // deprecated(orpc): replace with client/orpc from @/lib/orpc
                             await tauriAPI.ui.setPrefs({ evolveModel: e.target.value });
                           }}
                           onBlur={evolveModelField.handleBlur}
@@ -210,22 +247,23 @@ export function AiModelsTab({
                         />
                       ) : (
                         <ModelCombobox
-                          provider={evolveProvider as "openrouter" | "openai" | "ollama" | "vllm" | "opencode"}
+                          provider={
+                            evolveProvider as
+                            | "nixmac"
+                            | "openrouter"
+                            | "openai"
+                            | "ollama"
+                            | "vllm"
+                            | "opencode"
+                          }
                           value={evolveModelField.state.value}
                           onChange={async (value) => {
                             evolveModelField.handleChange(value);
+                            // deprecated(orpc): replace with client/orpc from @/lib/orpc
                             await tauriAPI.ui.setPrefs({ evolveModel: value });
                           }}
                           onBlur={evolveModelField.handleBlur}
-                          placeholder={
-                            evolveProvider === "ollama"
-                              ? ""
-                              : evolveProvider === "vllm"
-                                ? "gpt-oss-120b"
-                                : evolveProvider === "opencode"
-                                  ? "Leave empty for CLI default"
-                                  : "anthropic/claude-sonnet-4"
-                          }
+                          placeholder={modelPlaceholder(evolveProvider, "gpt-4o")}
                         />
                       )}
                     </>
@@ -251,10 +289,12 @@ export function AiModelsTab({
                 </label>
                 <Select
                   onValueChange={async (value) => {
+                    // deprecated(orpc): replace with client/orpc from @/lib/orpc
                     await tauriAPI.models.clearCached(value);
                     summaryProviderField.handleChange(value);
                     const defaultModel = DEFAULT_SUMMARY_MODEL[value] ?? "";
                     summaryModelField.handleChange(defaultModel);
+                    // deprecated(orpc): replace with client/orpc from @/lib/orpc
                     await tauriAPI.ui.setPrefs({
                       summaryProvider: value,
                       summaryModel: defaultModel,
@@ -265,9 +305,7 @@ export function AiModelsTab({
                   <SelectTrigger id="summaryProvider">
                     <SelectValue placeholder="Select provider" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {renderProviderItems()}
-                  </SelectContent>
+                  <SelectContent>{renderProviderItems()}</SelectContent>
                 </Select>
                 {summaryProviderError && (
                   <p className="text-destructive text-xs">{summaryProviderError}</p>
@@ -282,7 +320,10 @@ export function AiModelsTab({
                 >
                   {([summaryProvider]: any[]) => (
                     <>
-                      <label className="text-xs font-medium text-muted-foreground" htmlFor="summaryModel">
+                      <label
+                        className="text-xs font-medium text-muted-foreground"
+                        htmlFor="summaryModel"
+                      >
                         Model Name{isCliProvider(summaryProvider) ? " (optional)" : ""}
                       </label>
                       {isPlainInputCliProvider(summaryProvider) ? (
@@ -291,6 +332,7 @@ export function AiModelsTab({
                           value={summaryModelField.state.value}
                           onChange={async (e) => {
                             summaryModelField.handleChange(e.target.value);
+                            // deprecated(orpc): replace with client/orpc from @/lib/orpc
                             await tauriAPI.ui.setPrefs({ summaryModel: e.target.value });
                           }}
                           onBlur={summaryModelField.handleBlur}
@@ -298,22 +340,23 @@ export function AiModelsTab({
                         />
                       ) : (
                         <ModelCombobox
-                          provider={summaryProvider as "openrouter" | "openai" | "ollama" | "vllm" | "opencode"}
+                          provider={
+                            summaryProvider as
+                            | "nixmac"
+                            | "openrouter"
+                            | "openai"
+                            | "ollama"
+                            | "vllm"
+                            | "opencode"
+                          }
                           value={summaryModelField.state.value}
                           onChange={async (value) => {
                             summaryModelField.handleChange(value);
+                            // deprecated(orpc): replace with client/orpc from @/lib/orpc
                             await tauriAPI.ui.setPrefs({ summaryModel: value });
                           }}
                           onBlur={summaryModelField.handleBlur}
-                          placeholder={
-                            summaryProvider === "ollama"
-                              ? "llama3.1"
-                              : summaryProvider === "vllm"
-                                ? "gpt-oss-120b"
-                                : summaryProvider === "opencode"
-                                  ? "Leave empty for CLI default"
-                                  : "openai/gpt-4o-mini"
-                          }
+                          placeholder={modelPlaceholder(summaryProvider, "gpt-4o-mini")}
                         />
                       )}
                     </>
@@ -322,7 +365,6 @@ export function AiModelsTab({
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </div>

@@ -1,8 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useRollback } from "@/hooks/use-rollback";
+import {
+  getRebuildErrorSuggestion,
+  getRebuildErrorTitle,
+  getRebuildSystemSafetyMessage,
+} from "@/lib/errors";
 import { cn } from "@/lib/utils";
-import { useWidgetStore, type RebuildErrorType, type RebuildLine } from "@/stores/widget-store";
+import type { RebuildErrorType, RebuildLine } from "@/types/rebuild";
+import { uiActions, useUiState, useViewModel } from "@nixmac/state";
 import {
   AlertTriangle,
   Brain,
@@ -18,46 +24,6 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { Activity, useEffect, useRef, useState } from "react";
-
-/** Get a user-friendly title for the error type */
-function getErrorTitle(errorType: RebuildErrorType | undefined): string {
-  switch (errorType) {
-    case "infinite_recursion":
-      return "Infinite Recursion Detected";
-    case "evaluation_error":
-      return "Nix Evaluation Error";
-    case "build_error":
-      return "Build Failed";
-    case "full_disk_access":
-      return "Full Disk Access Required";
-    case "user_cancelled":
-      return "Activation Cancelled";
-    case "authorization_denied":
-      return "Authorization Denied";
-    default:
-      return "Build Failed";
-  }
-}
-
-/** Get helpful suggestion text for the error type */
-function getErrorSuggestion(errorType: RebuildErrorType | undefined): string {
-  switch (errorType) {
-    case "infinite_recursion":
-      return "Your configuration has a circular dependency. Rolling back will restore your previous working configuration.";
-    case "evaluation_error":
-      return "There's a syntax or evaluation error in your Nix files. Check the error message for details.";
-    case "build_error":
-      return "A package failed to build. You may need to update your flake or fix the package configuration.";
-    case "full_disk_access":
-      return "darwin-rebuild requires Full Disk Access. Make sure nixmac is in your Applications folder (not running from the install disk image), then grant access in System Settings → Privacy & Security → Full Disk Access.";
-    case "user_cancelled":
-      return "The activation was cancelled. You can retry the operation.";
-    case "authorization_denied":
-      return "The activation was denied due to insufficient permissions. You can adjust your settings and retry.";
-    default:
-      return "The build encountered an error. You can rollback to your previous configuration or dismiss to investigate.";
-  }
-}
 
 /** Map backend emoji to icon component and strip from text */
 const EMOJI_MAP: Record<string, (className: string) => React.ReactNode> = {
@@ -138,16 +104,7 @@ function LoaderCore({
   pendingCount?: number;
   children?: React.ReactNode;
 }) {
-  const skeletonWidths = [
-    "w-24",
-    "w-32",
-    "w-28",
-    "w-20",
-    "w-36",
-    "w-30",
-    "w-22",
-    "w-40",
-  ];
+  const skeletonWidths = ["w-24", "w-32", "w-28", "w-20", "w-36", "w-30", "w-22", "w-40"];
   const itemHeight = 36;
 
   // Find the index of the most recently completed step (one before current)
@@ -161,8 +118,8 @@ function LoaderCore({
     <div className="flex h-full w-full flex-col">
       {children}
       <div className="flex min-h-0 flex-1 items-center justify-center">
-          <div className="w-full max-w-2xl mx-auto">
-            <div className="relative flex w-full flex-col items-start">
+        <div className="mx-auto w-full max-w-2xl">
+          <div className="relative flex w-full flex-col items-start">
             <div
               className="relative w-full"
               style={{
@@ -210,7 +167,7 @@ function LoaderCore({
                 return (
                   <motion.div
                     animate={{ opacity, y }}
-                      className="absolute left-0 right-0 flex items-center gap-3 px-6"
+                    className="absolute left-0 right-0 flex items-center gap-3 px-6"
                     initial={{ opacity: 0, y: y + 8 }}
                     key={loadingState.id}
                     transition={{
@@ -250,7 +207,7 @@ function LoaderCore({
                           <span
                             className={cn(
                               textClass,
-                              "block whitespace-pre-wrap break-words text-sm font-normal transition-colors duration-500",
+                              "block whitespace-pre-wrap wrap-break-word text-sm font-normal transition-colors duration-500",
                             )}
                           >
                             {cleanText}
@@ -272,7 +229,7 @@ function LoaderCore({
                 return (
                   <motion.div
                     animate={{ opacity, y }}
-                      className="absolute left-0 right-0 flex items-center gap-3 px-6"
+                    className="absolute left-0 right-0 flex items-center gap-3 px-6"
                     initial={{ opacity: 0, y: y + 8 }}
                     key={`skeleton-${width}`}
                     transition={{
@@ -342,18 +299,28 @@ function RawConsoleOutput({ lines, children }: { lines: string[]; children?: Rea
 export function RebuildOverlayPanel() {
   const { handleRollback } = useRollback();
   const { triggerRebuild } = useRebuildStream();
-  const { isRunning, lines, rawLines, success, errorType, errorMessage, context } = useWidgetStore(
-    (state) => state.rebuild,
-  );
+  const status = useViewModel((state) => state.rebuildStatus);
+  const lines = useViewModel((state) => state.rebuildLog.lines);
+  const rawLines = useViewModel((state) => state.rebuildLog.rawLines);
+  const context = useUiState((state) => state.rebuildContext);
+  const dismissed = useUiState((state) => state.rebuildPanelDismissed);
+
+  const isRunning = status?.isRunning ?? false;
+  const success = status?.success ?? undefined;
+  const errorType = (status?.errorType ?? undefined) as RebuildErrorType | undefined;
+  const errorMessage = status?.errorMessage ?? undefined;
+  const systemUntouched = status?.systemUntouched ?? undefined;
+
   const isRollback = context === "rollback";
+  const systemSafetyMessage = getRebuildSystemSafetyMessage(systemUntouched, context);
 
   const handleRetry = async () => {
-    useWidgetStore.getState().setProcessing(true, "cancel");
+    uiActions.setProcessing(true, "cancel");
     await triggerRebuild({ context: "rollback" });
   };
 
   const handleDismiss = () => {
-    useWidgetStore.getState().clearRebuild();
+    uiActions.setRebuildPanelDismissed(true);
   };
 
   const [showConsole, setShowConsole] = useState(false);
@@ -363,14 +330,14 @@ export function RebuildOverlayPanel() {
   // Reset to summary view when new build starts
   useEffect(() => {
     if (isRunning) {
-      setShowConsole(false);
+      setShowConsole((current) => (current ? false : current));
     }
   }, [isRunning]);
 
   // On failure, switch from console to error panel (if console was shown)
   useEffect(() => {
     if (showErrorPanel) {
-      setShowConsole(false);
+      setShowConsole((current) => (current ? false : current));
     }
   }, [showErrorPanel]);
 
@@ -378,20 +345,21 @@ export function RebuildOverlayPanel() {
     lines.length > 0
       ? lines
       : [
-          {
-            id: 0,
-            text: isRollback ? "Rolling back..." : "Starting rebuild...",
-            type: "info" as const,
-          },
-        ];
+        {
+          id: 0,
+          text: isRollback ? "Rolling back..." : "Starting rebuild...",
+          type: "info" as const,
+        },
+      ];
 
   // Step points to the current (most recent) line
   // - While running: last line is "in progress", previous lines are "completed"
   // - When complete: all lines are "completed" (step past the end)
   const step = isRunning ? Math.max(0, displayLines.length - 1) : displayLines.length;
 
-  // Only show when rebuild is running or has completed
-  const isVisible = isRunning || success !== undefined;
+  // Only show when rebuild is running or has completed (and the completed
+  // run's panel hasn't been dismissed)
+  const isVisible = isRunning || (success !== undefined && !dismissed);
   if (!isVisible) {
     return null;
   }
@@ -425,19 +393,25 @@ export function RebuildOverlayPanel() {
 
                   {/* Error Title */}
                   <h2 className="text-center font-semibold text-white text-lg">
-                    {getErrorTitle(errorType)}
+                    {getRebuildErrorTitle(errorType)}
                   </h2>
+
+                  {systemSafetyMessage && (
+                    <p className="max-w-xl rounded-lg border border-teal-400/30 bg-teal-400/10 px-4 py-2 text-center font-medium text-sm text-teal-200">
+                      {systemSafetyMessage}
+                    </p>
+                  )}
 
                   {/* Error Message */}
                   {errorMessage && (
-                      <p className="max-h-48 w-full max-w-xl overflow-y-auto rounded-lg bg-black/30 px-6 py-3 text-center font-mono text-xs text-zinc-400">
+                    <p className="max-h-48 w-full max-w-xl overflow-y-auto rounded-lg bg-black/30 px-6 py-3 text-center font-mono text-xs text-zinc-400">
                       {errorMessage}
                     </p>
                   )}
 
                   {/* Suggestion */}
                   <p className="max-w-xl text-center text-sm text-zinc-300">
-                    {getErrorSuggestion(errorType)}
+                    {getRebuildErrorSuggestion(errorType)}
                   </p>
                 </motion.div>
               )}

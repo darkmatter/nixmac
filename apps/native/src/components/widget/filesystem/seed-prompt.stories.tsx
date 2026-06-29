@@ -1,12 +1,7 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
 import { FILES, type FsFile } from "./data";
-import {
-  seedForFile,
-  seedForUntrackedBanner,
-  seedForUntrackedItem,
-  seedForUntrackedSection,
-} from "./seed-prompt";
+import { seedForFile } from "./seed-prompt";
 
 /**
  * Reference story — these are pure functions, but having a visible
@@ -14,10 +9,12 @@ import {
  * prompt bias copy without wiring up the full flow.
  */
 function SeedTable() {
-  const all = Object.values(FILES).flat();
+  const all = Object.values(FILES)
+    .flat()
+    .filter((file) => file.status !== "candidate");
   return (
     <div className="grid gap-2">
-      <div className="font-semibold text-[12px]">seedForFile (per managed/candidate file)</div>
+      <div className="font-semibold text-[12px]">seedForFile (per editable file)</div>
       <table className="w-full border-collapse rounded-md border border-border text-[11px]">
         <thead>
           <tr className="border-border border-b bg-card/40">
@@ -36,7 +33,7 @@ function SeedTable() {
                 {f.path}
               </td>
               <td className="px-3 py-2 align-top">
-                <pre className="m-0 whitespace-pre-wrap break-words font-mono text-[10.5px] text-teal-200 leading-[1.5]">
+                <pre className="m-0 whitespace-pre-wrap wrap-break-word font-mono text-[10.5px] text-teal-200 leading-normal">
                   {seedForFile(f)}
                 </pre>
               </td>
@@ -59,35 +56,4 @@ export default meta;
 
 export const PerFileSeeds = meta.story({
   render: () => <SeedTable />,
-});
-
-export const UntrackedSectionSeed = meta.story({
-  render: () => {
-    const brew = FILES.manage.find((f) => f.id === "untracked-brew")!;
-    return (
-      <pre className="m-0 max-w-[700px] whitespace-pre-wrap rounded-md border border-border bg-card/40 p-3 font-mono text-[11px] text-teal-200 leading-[1.5]">
-        {seedForUntrackedSection(brew)}
-      </pre>
-    );
-  },
-});
-
-export const SingleItemSeed = meta.story({
-  render: () => {
-    const brew = FILES.manage.find((f) => f.id === "untracked-brew")!;
-    const item = brew.items![0];
-    return (
-      <pre className="m-0 max-w-[700px] whitespace-pre-wrap rounded-md border border-border bg-card/40 p-3 font-mono text-[11px] text-teal-200 leading-[1.5]">
-        {seedForUntrackedItem(brew, item)}
-      </pre>
-    );
-  },
-});
-
-export const BannerSeed = meta.story({
-  render: () => (
-    <pre className="m-0 max-w-[700px] whitespace-pre-wrap rounded-md border border-border bg-card/40 p-3 font-mono text-[11px] text-teal-200 leading-[1.5]">
-      {seedForUntrackedBanner(FILES.manage)}
-    </pre>
-  ),
 });

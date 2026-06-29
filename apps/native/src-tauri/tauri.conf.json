@@ -22,6 +22,8 @@
     ],
     "resources": [
       "../templates/nix-darwin-determinate/",
+      "../templates/nixos-unified/",
+      "../templates/base/",
       "resources/gitleaks.toml"
     ],
     "macOS": {
@@ -52,9 +54,7 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": [
-          "$APPDATA/**"
-        ]
+        "scope": ["$APPDATA/**"]
       }
     },
     "macOSPrivateApi": true
@@ -63,10 +63,13 @@
     "shell": {
       "open": true
     },
+    "deep-link": {
+      "desktop": {
+        "schemes": ["nixmac"]
+      }
+    },
     "updater": {
-      "endpoints": [
-        "https://releases.nixmac.com/latest.json"
-      ],
+      "endpoints": ["https://releases.nixmac.com/latest.json"],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDEyQ0ZGMjJEOTNBMDUxQ0IKUldUTFVhQ1RMZkxQRXNDYXVyblBpa3BVbVdUK3QwUFpzaXl0MVVoQThjcjJkU3hkYlBwNHo1L3cK",
       "dangerousInsecureTransportProtocol": true
     }

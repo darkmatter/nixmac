@@ -16,6 +16,7 @@ Lottie is 2D and can't represent a cube.)
 
     uv run --python 3.12 --with lottie python build_lottie.py
 """
+
 import os
 from lottie.parsers.svg import parse_svg_file
 from lottie.exporters.core import export_lottie
@@ -31,7 +32,7 @@ CX, CY = 220.5, 203.0  # canvas centre (viewBox 441 x 406) — the spin pivot
 # TUNE THE PERSONALITY HERE  ← the part that's yours to shape.
 # ──────────────────────────────────────────────────────────────────────────
 FPS = 60
-LOOP_S = 8.0        # loop length (s) == how often the hop fires. Bigger = rarer.
+LOOP_S = 8.0  # loop length (s) == how often the hop fires. Bigger = rarer.
 
 BLINK_AT = [0.30, 0.55]
 BLINK_CLOSE = 8
@@ -45,7 +46,7 @@ JUMP_HEIGHT = 72
 CROUCH = 10
 SQUASH = 13
 STRETCH = 13
-SPIN_DEG = 360      # keep a multiple of 360 so he lands upright (seamless loop)
+SPIN_DEG = 360  # keep a multiple of 360 so he lands upright (seamless loop)
 # ── end personality block ──
 
 TOTAL = int(FPS * LOOP_S)
@@ -91,22 +92,35 @@ def add_idle(anim):
         frames = [(0, [100, 100])]
         for at in BLINK_AT:
             t = at * TOTAL
-            frames += [(t - 5, [100, 100]), (t, [100, BLINK_CLOSE]), (t + 5, [100, 100])]
+            frames += [
+                (t - 5, [100, 100]),
+                (t, [100, BLINK_CLOSE]),
+                (t + 5, [100, 100]),
+            ]
         frames += [(TOTAL, [100, 100])]
         kf(g.transform.scale, frames)
 
     g = find(anim, "smile")
     cx, cy = pivot(g)
-    kf(g.transform.position, [(0, [cx, cy]), (0.5 * TOTAL, [cx, cy + SMILE_RISE]), (TOTAL, [cx, cy])])
+    kf(
+        g.transform.position,
+        [(0, [cx, cy]), (0.5 * TOTAL, [cx, cy + SMILE_RISE]), (TOTAL, [cx, cy])],
+    )
 
     for name in ("blush-left", "blush-right"):
         g = find(anim, name)
-        kf(g.transform.opacity, [(0, BLUSH_DIM), (0.5 * TOTAL, 100), (TOTAL, BLUSH_DIM)])
+        kf(
+            g.transform.opacity,
+            [(0, BLUSH_DIM), (0.5 * TOTAL, 100), (TOTAL, BLUSH_DIM)],
+        )
 
     g = find(anim, "circuits")
     frames = [(0, PULSE_DIM)]
     for i in range(PULSES):
-        frames += [((i + 0.5) / PULSES * TOTAL, 100), ((i + 1) / PULSES * TOTAL, PULSE_DIM)]
+        frames += [
+            ((i + 0.5) / PULSES * TOTAL, 100),
+            ((i + 1) / PULSES * TOTAL, PULSE_DIM),
+        ]
     kf(g.transform.opacity, frames)
 
 
@@ -119,37 +133,46 @@ def add_hop(layer):
 
     S, T = SQUASH, STRETCH
 
-    kf(layer.transform.position, [
-        (0, [CX, CY]),
-        (j0, [CX, CY]),
-        (at(0.12), [CX, CY + CROUCH], EZ_OUT),
-        (at(0.24), [CX, CY - JUMP_HEIGHT * 0.2], EZ_OUT),
-        (at(0.50), [CX, CY - JUMP_HEIGHT], EZ_IN),
-        (at(0.78), [CX, CY - JUMP_HEIGHT * 0.15], EZ_IN),
-        (at(0.86), [CX, CY], EZ_OUT),
-        (at(1.00), [CX, CY], EZ_OUT),
-        (TOTAL, [CX, CY]),
-    ])
+    kf(
+        layer.transform.position,
+        [
+            (0, [CX, CY]),
+            (j0, [CX, CY]),
+            (at(0.12), [CX, CY + CROUCH], EZ_OUT),
+            (at(0.24), [CX, CY - JUMP_HEIGHT * 0.2], EZ_OUT),
+            (at(0.50), [CX, CY - JUMP_HEIGHT], EZ_IN),
+            (at(0.78), [CX, CY - JUMP_HEIGHT * 0.15], EZ_IN),
+            (at(0.86), [CX, CY], EZ_OUT),
+            (at(1.00), [CX, CY], EZ_OUT),
+            (TOTAL, [CX, CY]),
+        ],
+    )
 
-    kf(layer.transform.scale, [
-        (0, [100, 100]),
-        (j0, [100, 100]),
-        (at(0.12), [100 + S, 100 - S], EZ_OUT),
-        (at(0.24), [100 - T, 100 + T], EZ_OUT),
-        (at(0.46), [100, 100]),
-        (at(0.82), [100, 100]),
-        (at(0.86), [100 + round(S * 1.3), 100 - round(S * 1.3)], EZ_OUT),
-        (at(0.93), [100 - round(T * 0.4), 100 + round(T * 0.4)], EZ_OUT),
-        (at(1.00), [100, 100]),
-        (TOTAL, [100, 100]),
-    ])
+    kf(
+        layer.transform.scale,
+        [
+            (0, [100, 100]),
+            (j0, [100, 100]),
+            (at(0.12), [100 + S, 100 - S], EZ_OUT),
+            (at(0.24), [100 - T, 100 + T], EZ_OUT),
+            (at(0.46), [100, 100]),
+            (at(0.82), [100, 100]),
+            (at(0.86), [100 + round(S * 1.3), 100 - round(S * 1.3)], EZ_OUT),
+            (at(0.93), [100 - round(T * 0.4), 100 + round(T * 0.4)], EZ_OUT),
+            (at(1.00), [100, 100]),
+            (TOTAL, [100, 100]),
+        ],
+    )
 
-    kf(layer.transform.rotation, [
-        (0, 0),
-        (at(0.20), 0),
-        (at(0.86), SPIN_DEG),
-        (TOTAL, SPIN_DEG),
-    ])
+    kf(
+        layer.transform.rotation,
+        [
+            (0, 0),
+            (at(0.20), 0),
+            (at(0.86), SPIN_DEG),
+            (TOTAL, SPIN_DEG),
+        ],
+    )
 
 
 def main():

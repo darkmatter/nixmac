@@ -4,10 +4,7 @@ use crate::system::nix;
 use crate::{rebuild, shared_types};
 use tauri::AppHandle;
 
-/// Starts a streaming darwin-rebuild switch operation.
-/// Progress is emitted via `darwin:apply:data` events, completion via `darwin:apply:end`.
-#[tauri::command]
-pub async fn darwin_apply_stream_start(
+pub async fn start_apply_stream(
     app: AppHandle,
     host_override: Option<String>,
 ) -> Result<shared_types::OkResult, String> {
@@ -40,9 +37,7 @@ pub async fn darwin_apply_stream_start(
     Ok(shared_types::OkResult::yes())
 }
 
-/// Used by rollback to restore a previous nix store without a full rebuild.
-#[tauri::command]
-pub async fn darwin_activate_store_path(
+pub async fn activate_store_path(
     app: AppHandle,
     store_path: String,
 ) -> Result<shared_types::OkResult, String> {
@@ -51,28 +46,70 @@ pub async fn darwin_activate_store_path(
         .map_err(|e| capture_err("darwin_activate_store_path", e))
 }
 
-/// Records build state and changeset after a successful darwin-rebuild switch.
-#[tauri::command]
-pub async fn finalize_apply(app: AppHandle) -> Result<shared_types::FinalizeApplyResult, String> {
+pub async fn run_finalize_apply(app: AppHandle) -> Result<(), String> {
     crate::rebuild::finalize_apply(&app)
         .await
         .map_err(|e| capture_err("finalize_apply", e))
 }
 
-/// Finalize a rollback store-path activation — restores the pre-evolution build record.
-#[tauri::command]
-pub async fn finalize_rollback(
+pub async fn run_finalize_rollback(
     app: AppHandle,
     store_path: Option<String>,
     changeset_id: Option<i64>,
-) -> Result<shared_types::FinalizeApplyResult, String> {
+) -> Result<(), String> {
     crate::rebuild::finalize_rollback(&app, store_path, changeset_id)
         .await
         .map_err(|e| capture_err("finalize_rollback", e))
 }
 
+pub async fn fetch_rebuild_status(app: AppHandle) -> Result<shared_types::RebuildStatus, String> {
+    Ok(crate::state::rebuild_status::get(&app))
+}
+
 #[tauri::command]
-pub async fn nix_check() -> Result<shared_types::NixCheckResult, String> {
+pub async fn darwin_apply_stream_start(
+    app: AppHandle,
+    host_override: Option<String>,
+) -> Result<shared_types::OkResult, String> {
+    start_apply_stream(app, host_override).await
+}
+
+#[tauri::command]
+pub async fn darwin_activate_store_path(
+    app: AppHandle,
+    store_path: String,
+) -> Result<shared_types::OkResult, String> {
+    activate_store_path(app, store_path).await
+}
+
+#[tauri::command]
+pub async fn finalize_apply(app: AppHandle) -> Result<(), String> {
+    run_finalize_apply(app).await
+}
+
+#[tauri::command]
+pub async fn finalize_rollback(
+    app: AppHandle,
+    store_path: Option<String>,
+    changeset_id: Option<i64>,
+) -> Result<(), String> {
+    run_finalize_rollback(app, store_path, changeset_id).await
+}
+
+#[tauri::command]
+pub async fn get_rebuild_status(app: AppHandle) -> Result<shared_types::RebuildStatus, String> {
+    fetch_rebuild_status(app).await
+}
+
+#[tauri::command]
+pub async fn get_nix_install_state(
+    app: AppHandle,
+) -> Result<shared_types::NixInstallState, String> {
+    Ok(crate::state::nix_install_state::get(&app))
+}
+
+#[tauri::command]
+pub async fn nix_check(app: AppHandle) -> Result<shared_types::NixCheckResult, String> {
     let installed = nix::is_nix_installed();
     let version = if installed {
         nix::get_nix_version()
@@ -84,6 +121,10 @@ pub async fn nix_check() -> Result<shared_types::NixCheckResult, String> {
     } else {
         false
     };
+    crate::state::nix_install_state::update(&app, |state| {
+        state.installed = Some(installed);
+        state.darwin_rebuild_available = Some(darwin_rebuild_available);
+    });
     Ok(shared_types::NixCheckResult {
         installed,
         version,
@@ -104,11 +145,9 @@ pub async fn nix_install_start(app: AppHandle) -> Result<shared_types::OkResult,
     Ok(shared_types::OkResult::yes())
 }
 
-/// Lists all darwinConfigurations defined in the flake.
 #[tauri::command]
 pub async fn flake_list_hosts(app: AppHandle) -> Result<Vec<String>, String> {
-    let dir =
-        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("flake_list_hosts", e))?;
+    let dir = store::get_config_dir(&app).map_err(|e| capture_err("flake_list_hosts", e))?;
     let hosts = nix::list_darwin_hosts(&dir).map_err(|e| capture_err("flake_list_hosts", e))?;
     Ok(hosts)
 }

@@ -95,7 +95,17 @@ pub fn dry_run_build_check(
 ///
 /// This spawns the rebuild in a background thread and emits events:
 /// - `darwin:apply:data`: Emitted for each line of output with `{"chunk": "..."}`
-/// - `darwin:apply:end`: Emitted on completion with `{"ok": bool, "code": int, "error_type": string, "error": string, "log_file": string}`
+/// - `darwin:apply:end`: Emitted on completion with `{"ok": bool, "code": int, "error_type": string, "error": string, "system_untouched": bool | null, "log_file": string}`
+///
+/// Emits the terminal `darwin:apply:end` event and records the outcome in
+/// the rebuild-status cell (which emits `rebuild_status_changed`).
+fn emit_apply_end(app: &AppHandle, payload: serde_json::Value) {
+    crate::state::rebuild_status::record_end(app, &payload);
+    // fire-and-forget: emit returns Err only when no listeners are registered
+    // (window may be hidden/destroyed). Missing this event is non-fatal.
+    let _ = app.emit("darwin:apply:end", payload);
+}
+
 pub fn apply_stream(
     app: &AppHandle,
     config_dir: &str,
@@ -105,6 +115,7 @@ pub fn apply_stream(
         "[darwin] apply_stream: config_dir={}, host_attr={}",
         config_dir, host_attr
     );
+    crate::state::rebuild_status::record_start(app);
 
     if e2e_mock_system_enabled() {
         let app_handle = app.clone();
@@ -141,8 +152,8 @@ pub fn apply_stream(
                     "success": true,
                 }),
             );
-            let _ = app_handle.emit(
-                "darwin:apply:end",
+            emit_apply_end(
+                &app_handle,
                 serde_json::json!({
                     "ok": true,
                     "code": 0,
@@ -164,7 +175,7 @@ pub fn apply_stream(
                 info!("[darwin] darwin-rebuild completed successfully");
                 // fire-and-forget: emit returns Err only when no listeners are registered
                 // (window may be hidden/destroyed). Missing this event is non-fatal.
-                let _ = app_handle.emit("darwin:apply:end", payload);
+                emit_apply_end(&app_handle, payload);
             }
             Err(error_payload) => {
                 let error_type = error_payload
@@ -176,7 +187,7 @@ pub fn apply_stream(
                     error_type
                 );
                 // fire-and-forget: same reasoning as the Ok branch above.
-                let _ = app_handle.emit("darwin:apply:end", error_payload);
+                emit_apply_end(&app_handle, error_payload);
             }
         }
     });
@@ -386,6 +397,7 @@ pub fn activate_store_path_stream(
         "[darwin] activate_store_path_stream: store_path={}",
         store_path
     );
+    crate::state::rebuild_status::record_start(app);
     let app_handle = app.clone();
 
     // All emit calls below are fire-and-forget: this closure runs in a background
@@ -410,8 +422,8 @@ pub fn activate_store_path_stream(
 
                 if result.success {
                     info!("[darwin] store path activation succeeded");
-                    let _ = app_handle.emit(
-                        "darwin:apply:end",
+                    emit_apply_end(
+                        &app_handle,
                         serde_json::json!({"ok": true, "code": result.code}),
                     );
                 } else {
@@ -420,26 +432,28 @@ pub fn activate_store_path_stream(
                         "[darwin] store path activation failed (code={}): {}",
                         result.code, error
                     );
-                    let _ = app_handle.emit(
-                        "darwin:apply:end",
+                    emit_apply_end(
+                        &app_handle,
                         serde_json::json!({
                             "ok": false,
                             "code": result.code,
                             "error_type": error_type,
                             "error": error,
+                            "system_untouched": activation_failure_left_system_untouched(error_type),
                         }),
                     );
                 }
             }
             Err(e) => {
                 error!("[darwin] activate_store_path_stream error: {}", e);
-                let _ = app_handle.emit(
-                    "darwin:apply:end",
+                emit_apply_end(
+                    &app_handle,
                     serde_json::json!({
                         "ok": false,
                         "code": -1,
                         "error_type": "generic_error",
                         "error": format!("Activation failed: {}", e),
+                        "system_untouched": true,
                     }),
                 );
             }
@@ -453,7 +467,7 @@ fn run_activate_with_path(activate_path: &str) -> Result<ActivateResult, anyhow:
     let nix_path = crate::system::nix::get_nix_path();
     let home = std::env::var("HOME").unwrap_or_default();
     let ssh_sock = std::env::var("SSH_AUTH_SOCK").unwrap_or_default();
-    let user = std::env::var("USER").unwrap_or_else(|_| "root".to_string());
+    let user = whoami::username().unwrap_or_else(|_| "root".to_string());
 
     // Resolve the symlink to the real nix store path.
     // sudo / visudo match against the canonical path, not the symlink.
@@ -543,6 +557,7 @@ fn handle_activation_error(result: &ActivateResult, log_path: &Path) -> serde_js
             "code": -128,
             "error_type": "user_cancelled",
             "error": "Activation cancelled by user",
+            "system_untouched": true,
         });
     }
 
@@ -577,6 +592,7 @@ fn handle_activation_error(result: &ActivateResult, log_path: &Path) -> serde_js
             "code": -129,
             "log_file": log_path.to_string_lossy(),
             "error_type": "authorization_denied",
+            "system_untouched": false,
             "error": format!(
                 "Authorization denied — administrator credentials required.\n\nDetails:\n{}",
                 details
@@ -612,8 +628,27 @@ fn handle_activation_error(result: &ActivateResult, log_path: &Path) -> serde_js
         "code": result.code,
         "log_file": log_path.to_string_lossy(),
         "error_type": "generic_error",
+        "system_untouched": false,
         "error": format!("Activation failed (exit code {}):\n{}", result.code, stderr_tail),
     })
+}
+
+fn activation_failure_left_system_untouched(error_type: &str) -> bool {
+    matches!(error_type, "user_cancelled")
+}
+
+#[cfg(test)]
+mod activation_safety_tests {
+    use super::activation_failure_left_system_untouched;
+
+    #[test]
+    fn only_explicit_cancellation_is_known_untouched() {
+        assert!(activation_failure_left_system_untouched("user_cancelled"));
+        assert!(!activation_failure_left_system_untouched(
+            "authorization_denied"
+        ));
+        assert!(!activation_failure_left_system_untouched("generic_error"));
+    }
 }
 
 /// Internal function to run darwin-rebuild with proper streaming.
@@ -630,6 +665,7 @@ fn run_darwin_rebuild(
             "ok": false,
             "code": -1,
             "error_type": "generic_error",
+            "system_untouched": true,
             "error": format!("Failed to create log file: {}", e),
         })
     })?;
@@ -681,6 +717,7 @@ fn run_darwin_rebuild(
                 "code": -1,
                 "log_file": log_path.to_string_lossy(),
                 "error_type": "generic_error",
+                "system_untouched": true,
                 "error": format!("Build step failed to execute: {}", e),
             })
         })?;
@@ -710,6 +747,7 @@ fn run_darwin_rebuild(
             "log_file": log_path.to_string_lossy(),
             "error": err_msg,
             "error_type": "build_error",
+            "system_untouched": true,
         }));
     }
 
@@ -726,6 +764,7 @@ fn run_darwin_rebuild(
             "code": -1,
             "log_file": log_path.to_string_lossy(),
             "error_type": "generic_error",
+            "system_untouched": true,
             "error": format!("Activation step failed to execute: {}", e),
         })
     })?;

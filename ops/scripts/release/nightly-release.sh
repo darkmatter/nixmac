@@ -15,7 +15,9 @@ set -euo pipefail
 #      one-line "nothing to release" message and exit 0 — see should_release()
 #   3. Compute next minor version from latest stable v* tag (vMAJ.(MIN+1).0)
 #   4. Merge develop into main locally with --no-ff (always produces a merge
-#      commit so the release boundary is visible in `git log --first-parent`)
+#      commit so the release boundary is visible in `git log --first-parent`).
+#      If the merge has conflicts, they are auto-resolved by taking develop's
+#      version for every conflicted file (develop is the integration branch).
 #   5. Tag the merge commit with vMAJ.(MIN+1).0
 #   6. Push main + tag atomically
 #   7. The tag push triggers build.yaml's `tag` mode and ships
@@ -185,10 +187,27 @@ main() {
 	# release boundary is visible in `git log --first-parent main`.
 	run git checkout "${MAIN_BRANCH}"
 	run git reset --hard "origin/${MAIN_BRANCH}"
-	run git merge --no-ff --no-edit \
+	if ! run git merge --no-ff --no-edit \
 		-m "release: merge develop for ${tag}" \
-		"origin/${DEVELOP_BRANCH}"
-
+		"origin/${DEVELOP_BRANCH}"; then
+		# Resolve merge conflicts by taking develop's version for every
+		# conflicted file. develop is the integration branch and source of
+		# truth for release merges — any divergence on main that conflicts
+		# was either cherry-picked or hotfixed and should yield to develop's
+		# tip. `git checkout --theirs` resolves both add/add and
+		# content conflicts; `git add` marks them resolved.
+		conflicts=$(git diff --name-only --diff-filter=U)
+		count=$(echo "$conflicts" | grep -c .)
+		echo "Resolving $count merge conflict(s) using develop's version:"
+		echo "$conflicts"
+		while IFS= read -r file; do
+			[[ -z "$file" ]] && continue
+			run git checkout --theirs "$file"
+			run git add "$file"
+		done <<< "$conflicts"
+		# Complete the merge commit now that conflicts are resolved.
+		run git commit --no-edit
+	fi
 	run git tag -a "${tag}" -m "Release ${tag}"
 
 	# Push main first so the tag points at a commit reachable from main.

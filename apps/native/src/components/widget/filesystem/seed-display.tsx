@@ -20,7 +20,9 @@ export function SeedDisplay({ children, title = "Prompt seed" }: SeedDisplayProp
 
   return (
     <div className="grid gap-3" style={{ gridTemplateColumns: "minmax(0, 1fr) 360px" }}>
-      <div className="overflow-hidden rounded-lg border border-border bg-card/40">{children(push)}</div>
+      <div className="overflow-hidden rounded-lg border border-border bg-card/40">
+        {children(push)}
+      </div>
       <div className="rounded-lg border border-border bg-card/40 p-3">
         <div className="mb-2 flex items-center justify-between">
           <div className="font-semibold text-[12px]">{title}</div>
@@ -42,14 +44,11 @@ export function SeedDisplay({ children, title = "Prompt seed" }: SeedDisplayProp
           <ol className="m-0 grid list-none gap-2 p-0">
             {history.map((seed, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: stable per render
-              <li
-                key={i}
-                className="rounded-md border border-teal-500/20 bg-teal-500/[0.04] p-2"
-              >
+              <li key={i} className="rounded-md border border-teal-500/20 bg-teal-500/4 p-2">
                 <div className="mb-1 text-[9.5px] text-muted-foreground uppercase tracking-wider">
                   {i === 0 ? "latest" : `prev #${i}`}
                 </div>
-                <pre className="m-0 whitespace-pre-wrap break-words font-mono text-[11px] text-teal-200 leading-[1.5]">
+                <pre className="m-0 whitespace-pre-wrap wrap-break-word font-mono text-[11px] text-teal-200 leading-normal">
                   {seed}
                 </pre>
               </li>

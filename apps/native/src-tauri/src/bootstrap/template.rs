@@ -4,10 +4,14 @@
 //! This module provides a flexible templating system that can process
 //! Nix configuration files with variable substitution and conditional logic.
 
+use anyhow::{Context, Error, Result};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
-use tera::{Context, Tera};
+use tera::{Context as TeraContext, Tera};
+use walkdir::WalkDir;
+
+use crate::bootstrap::is_nix_file;
 
 /// Template engine wrapper for Nix configuration files.
 pub struct TemplateEngine {
@@ -124,15 +128,15 @@ impl TemplateContext {
     }
 
     /// Converts this context to a Tera context.
-    fn to_tera_context(&self) -> Context {
-        let mut ctx = Context::new();
+    fn to_tera_context(&self) -> TeraContext {
+        let mut ctx = TeraContext::new();
         for (key, value) in &self.values {
             self.insert_value_into_context(&mut ctx, key, value);
         }
         ctx
     }
 
-    fn insert_value_into_context(&self, ctx: &mut Context, key: &str, value: &ContextValue) {
+    fn insert_value_into_context(&self, ctx: &mut TeraContext, key: &str, value: &ContextValue) {
         fn context_value_to_json(value: &ContextValue) -> serde_json::Value {
             match value {
                 ContextValue::String(s) => serde_json::Value::String(s.clone()),
@@ -186,6 +190,51 @@ pub enum TemplateError {
     /// Error reading a template file
     #[error("Template I/O error: {0}")]
     Io(#[from] std::io::Error),
+}
+
+/// Recursively applies template placeholder substitutions to all .nix files in `dir`.
+pub fn apply_template_placeholders_in_dir(
+    dir: &Path,
+    hostname: &str,
+    platform: &str,
+    username: &str,
+) -> Result<()> {
+    for entry in WalkDir::new(dir).min_depth(1) {
+        let entry = entry.with_context(|| format!("failed to walk {}", dir.display()))?;
+
+        if entry.file_type().is_file() {
+            let path = entry.path();
+            if !is_nix_file(path) {
+                continue;
+            }
+
+            let processed = apply_template_placeholders(path, hostname, platform, username)
+                .with_context(|| format!("failed to process template {}", path.display()))?;
+            fs::write(path, processed)
+                .with_context(|| format!("failed to write {}", path.display()))?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Applies simple string substitutions for our "standard" nix-darwin-related
+/// placeholders in a file.
+pub fn apply_template_placeholders(
+    src_path: &Path,
+    hostname: &str,
+    platform: &str,
+    username: &str,
+) -> Result<String, Error> {
+    let content = fs::read_to_string(src_path)
+        .with_context(|| format!("failed to read {}", src_path.display()))?;
+
+    let processed = content
+        .replace("HOSTNAME_PLACEHOLDER", hostname)
+        .replace("PLATFORM_PLACEHOLDER", platform)
+        .replace("USERNAME_PLACEHOLDER", username);
+
+    Ok(processed)
 }
 
 /// Renders a template file and writes the result to the output path.
@@ -319,5 +368,30 @@ mod tests {
         assert!(result.contains("\"My nix-darwin configuration\""));
         assert!(result.contains("darwinConfigurations.\"macbook-pro\""));
         assert!(result.contains("system = \"aarch64-darwin\""));
+    }
+
+    #[test]
+    fn test_apply_template_placeholders() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let template_path = temp_dir.path().join("template.nix");
+
+        // Write a template with all supported placeholders.
+        let content = r#"hostname = "HOSTNAME_PLACEHOLDER";
+platform = "PLATFORM_PLACEHOLDER";
+username = "USERNAME_PLACEHOLDER";"#;
+        fs::write(&template_path, content).unwrap();
+
+        let result = apply_template_placeholders(
+            &template_path,
+            "my-macbook",
+            "aarch64-darwin",
+            "my-username",
+        )
+        .unwrap();
+
+        // Assert that the results contain the expected substitutions.
+        assert!(result.contains("hostname = \"my-macbook\";"));
+        assert!(result.contains("platform = \"aarch64-darwin\";"));
+        assert!(result.contains("username = \"my-username\";"));
     }
 }

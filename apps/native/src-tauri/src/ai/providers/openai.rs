@@ -1,17 +1,18 @@
 use super::{ChatCompletionProvider, TokenUsage};
+use crate::ai::model_capabilities::capabilities_for_model;
 use crate::ai::provider_errors::{classify_openai_error, friendly_provider_error};
 use anyhow::Result;
 use async_openai::{
+    Client,
     config::OpenAIConfig,
     error::OpenAIError,
     types::{
         ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestUserMessageArgs,
         CreateChatCompletionRequestArgs, ResponseFormat,
     },
-    Client,
 };
 use async_trait::async_trait;
-use log::debug;
+use log::{debug, info, warn};
 
 /// Normalize an async_openai error into a user-friendly anyhow error.
 ///
@@ -26,9 +27,78 @@ fn normalize_completion_error(e: OpenAIError) -> anyhow::Error {
     }
 }
 
+fn log_provider_request_start(
+    kind: &str,
+    url: &str,
+    model: &str,
+    request_id: &str,
+) -> std::time::Instant {
+    info!("→ AI {kind} POST {url} model={model} id={request_id}");
+    std::time::Instant::now()
+}
+
+fn log_provider_request_ok(
+    kind: &str,
+    url: &str,
+    model: &str,
+    request_id: &str,
+    start: std::time::Instant,
+) {
+    info!(
+        "← AI {kind} POST {url} model={model} id={request_id} ok ({})",
+        format_elapsed(start)
+    );
+}
+
+fn log_provider_request_err(
+    kind: &str,
+    url: &str,
+    model: &str,
+    request_id: &str,
+    start: std::time::Instant,
+    error: &OpenAIError,
+) {
+    if let Some((status, _)) = classify_openai_error(error) {
+        warn!(
+            "✗ AI {kind} POST {url} model={model} id={request_id} failed status={status} ({})",
+            format_elapsed(start)
+        );
+    } else {
+        warn!(
+            "✗ AI {kind} POST {url} model={model} id={request_id} failed: {error} ({})",
+            format_elapsed(start)
+        );
+    }
+}
+
+fn chat_completions_url(base_url: &str) -> String {
+    let url = format!("{}/chat/completions", base_url.trim_end_matches('/'));
+    remove_credentials(&url)
+}
+
+fn remove_credentials(url: &str) -> String {
+    let Ok(mut parsed) = reqwest::Url::parse(url) else {
+        return url.to_string();
+    };
+    parsed.set_password(None).ok();
+    parsed.set_username("").ok();
+    parsed.to_string()
+}
+
+fn format_elapsed(start: std::time::Instant) -> String {
+    let elapsed = start.elapsed();
+    let ms = elapsed.as_millis();
+    if ms < 1000 {
+        format!("{ms}ms")
+    } else {
+        format!("{:.2}s", elapsed.as_secs_f64())
+    }
+}
+
 pub struct OpenAIClient {
     client: Client<OpenAIConfig>,
     model: String,
+    chat_completions_url: String,
     record_chat_logs: bool,
 }
 
@@ -45,6 +115,7 @@ impl OpenAIClient {
         Self {
             client,
             model: model.to_string(),
+            chat_completions_url: chat_completions_url(base_url),
             record_chat_logs,
         }
     }
@@ -65,7 +136,8 @@ impl ChatCompletionProvider for OpenAIClient {
         temperature: f32,
         request_id: &str,
     ) -> Result<(String, TokenUsage)> {
-        let request = CreateChatCompletionRequestArgs::default()
+        let mut request_builder = CreateChatCompletionRequestArgs::default();
+        request_builder
             .model(&self.model)
             .messages(vec![
                 ChatCompletionRequestSystemMessageArgs::default()
@@ -77,9 +149,13 @@ impl ChatCompletionProvider for OpenAIClient {
                     .build()?
                     .into(),
             ])
-            .max_completion_tokens(max_tokens)
-            .temperature(temperature)
-            .build()?;
+            .max_completion_tokens(max_tokens);
+
+        if capabilities_for_model(&self.model).supports_custom_temperature {
+            request_builder.temperature(temperature);
+        }
+
+        let request = request_builder.build()?;
 
         crate::state::completion_log::append_event_jsonl(
             self.record_chat_logs,
@@ -94,12 +170,31 @@ impl ChatCompletionProvider for OpenAIClient {
             "Requesting completion from {} [id: {}]",
             self.model, request_id
         );
-        let response = self
-            .client
-            .chat()
-            .create(request)
-            .await
-            .map_err(normalize_completion_error)?;
+        let start =
+            log_provider_request_start("chat", &self.chat_completions_url, &self.model, request_id);
+        let response = match self.client.chat().create(request).await {
+            Ok(response) => {
+                log_provider_request_ok(
+                    "chat",
+                    &self.chat_completions_url,
+                    &self.model,
+                    request_id,
+                    start,
+                );
+                response
+            }
+            Err(error) => {
+                log_provider_request_err(
+                    "chat",
+                    &self.chat_completions_url,
+                    &self.model,
+                    request_id,
+                    start,
+                    &error,
+                );
+                return Err(normalize_completion_error(error));
+            }
+        };
         crate::state::completion_log::append_event_jsonl(
             self.record_chat_logs,
             "summary_provider_chat",
@@ -136,7 +231,8 @@ impl ChatCompletionProvider for OpenAIClient {
             self.model,
             request_id
         );
-        let request = CreateChatCompletionRequestArgs::default()
+        let mut request_builder = CreateChatCompletionRequestArgs::default();
+        request_builder
             .model(&self.model)
             .messages(vec![
                 ChatCompletionRequestSystemMessageArgs::default()
@@ -149,9 +245,13 @@ impl ChatCompletionProvider for OpenAIClient {
                     .into(),
             ])
             .max_completion_tokens(max_tokens)
-            .temperature(temperature)
-            .response_format(ResponseFormat::JsonObject)
-            .build()?;
+            .response_format(ResponseFormat::JsonObject);
+
+        if capabilities_for_model(&self.model).supports_custom_temperature {
+            request_builder.temperature(temperature);
+        }
+
+        let request = request_builder.build()?;
 
         crate::state::completion_log::append_event_jsonl(
             self.record_chat_logs,
@@ -166,12 +266,35 @@ impl ChatCompletionProvider for OpenAIClient {
             "Requesting JSON completion from {} [id: {}]",
             self.model, request_id
         );
-        let response = self
-            .client
-            .chat()
-            .create(request)
-            .await
-            .map_err(normalize_completion_error)?;
+        let start = log_provider_request_start(
+            "json_chat",
+            &self.chat_completions_url,
+            &self.model,
+            request_id,
+        );
+        let response = match self.client.chat().create(request).await {
+            Ok(response) => {
+                log_provider_request_ok(
+                    "json_chat",
+                    &self.chat_completions_url,
+                    &self.model,
+                    request_id,
+                    start,
+                );
+                response
+            }
+            Err(error) => {
+                log_provider_request_err(
+                    "json_chat",
+                    &self.chat_completions_url,
+                    &self.model,
+                    request_id,
+                    start,
+                    &error,
+                );
+                return Err(normalize_completion_error(error));
+            }
+        };
         crate::state::completion_log::append_event_jsonl(
             self.record_chat_logs,
             "summary_provider_chat",

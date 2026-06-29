@@ -12,9 +12,9 @@
 
 use super::helpers::capture_err;
 use crate::evolve::config::EvolutionLimits;
+use crate::observable::Observable;
 use crate::shared_types::{ExportResult, ImportResult};
 use crate::state::preferences::GlobalPreferences;
-use crate::state::slice::Slice;
 use serde_json::{Map, Value};
 use std::borrow::Borrow;
 use tauri::{AppHandle, Manager};
@@ -69,7 +69,7 @@ fn collect_slice_export_entries(
     let mut output = Map::new();
     let mut skipped = Vec::new();
 
-    if let Some(global) = app.try_state::<Slice<GlobalPreferences>>() {
+    if let Some(global) = app.try_state::<Observable<GlobalPreferences>>() {
         merge_export_object(
             &mut output,
             &mut skipped,
@@ -79,7 +79,7 @@ fn collect_slice_export_entries(
         );
     }
 
-    if let Some(limits) = app.try_state::<Slice<EvolutionLimits>>() {
+    if let Some(limits) = app.try_state::<Observable<EvolutionLimits>>() {
         merge_export_object(
             &mut output,
             &mut skipped,
@@ -159,17 +159,17 @@ pub async fn settings_import(app: AppHandle) -> Result<Option<ImportResult>, Str
 
     let keys_imported = entries.len();
 
-    if let Some(global) = app.try_state::<Slice<GlobalPreferences>>() {
+    if let Some(global) = app.try_state::<Observable<GlobalPreferences>>() {
         let prefs = serde_json::from_value::<GlobalPreferences>(imported_value.clone())
             .map_err(|e| capture_err("settings_import", e))?;
-        let mut global = global.write_sync(&app);
+        let mut global = global.write_sync();
         *global = prefs;
     }
 
-    if let Some(limits) = app.try_state::<Slice<EvolutionLimits>>() {
+    if let Some(limits) = app.try_state::<Observable<EvolutionLimits>>() {
         let prefs = serde_json::from_value::<EvolutionLimits>(imported_value)
             .map_err(|e| capture_err("settings_import", e))?;
-        let mut limits = limits.write_sync(&app);
+        let mut limits = limits.write_sync();
         *limits = prefs;
     }
 

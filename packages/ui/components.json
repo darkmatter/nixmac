@@ -4,7 +4,6 @@
   "rsc": false,
   "tsx": true,
   "tailwind": {
-    "config": "../../apps/native/tailwind.config.js",
     "css": "../../apps/native/src/index.css",
     "baseColor": "neutral",
     "cssVariables": true,

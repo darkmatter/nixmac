@@ -205,8 +205,7 @@ mod tests {
         let outside = temp.path().join("../outside.txt");
         fs::write(&outside, "outside").expect("write outside file");
 
-        std::os::unix::fs::symlink(&outside, temp.path().join("link.txt"))
-            .expect("create symlink");
+        std::os::unix::fs::symlink(&outside, temp.path().join("link.txt")).expect("create symlink");
 
         assert_eq!(workdir_file_contents(&repo, Path::new("link.txt")), "");
     }

@@ -17,13 +17,20 @@
   /* ──────────────────────────────────────────────────────────────────
      TUNE THE PERSONALITY HERE  ← this is the part that's yours to shape.
      ────────────────────────────────────────────────────────────────── */
-  --blink-period: 5.5s; /* time between blinks — lower = more nervous   */
-  --blink-close: 0.09; /* eye height at peak of blink (0 = fully shut) */
-  --smile-period: 4s; /* breathing-smile cadence                      */
-  --smile-rise: 2.5px; /* how far the smile lifts                      */
-  --pulse-period: 2.4s; /* circuit "data flow" speed                    */
-  --pulse-dim: 0.35; /* how dark the circuits go between pulses       */
-  --hop-period: 8s; /* how often he hops + spins (bigger = rarer)   */
+  --blink-period: 5.5s;
+  /* time between blinks — lower = more nervous   */
+  --blink-close: 0.09;
+  /* eye height at peak of blink (0 = fully shut) */
+  --smile-period: 4s;
+  /* breathing-smile cadence                      */
+  --smile-rise: 2.5px;
+  /* how far the smile lifts                      */
+  --pulse-period: 2.4s;
+  /* circuit "data flow" speed                    */
+  --pulse-dim: 0.35;
+  /* how dark the circuits go between pulses       */
+  --hop-period: 8s;
+  /* how often he hops + spins (bigger = rarer)   */
   /* ── end personality block ── */
 }
 
@@ -41,6 +48,7 @@
     transform-origin: center;
     animation: nixmac-blink var(--blink-period) infinite ease-in-out;
   }
+
   .nixmac-mascot #eye-right {
     animation-delay: 40ms;
   }
@@ -74,6 +82,7 @@
   100% {
     transform: scaleY(1);
   }
+
   93% {
     transform: scaleY(var(--blink-close));
   }
@@ -84,6 +93,7 @@
   100% {
     transform: translateY(0) scaleX(1);
   }
+
   50% {
     transform: translateY(var(--smile-rise)) scaleX(1.03);
   }
@@ -94,6 +104,7 @@
   100% {
     opacity: 0.8;
   }
+
   50% {
     opacity: 1;
   }
@@ -104,6 +115,7 @@
   100% {
     opacity: var(--pulse-dim);
   }
+
   50% {
     opacity: 1;
   }
@@ -116,21 +128,32 @@
   68% {
     transform: translateY(0) rotate(0) scale(1, 1);
   }
+
   71% {
     transform: translateY(2.5%) rotate(0) scale(1.13, 0.87);
-  } /* crouch  */
+  }
+
+  /* crouch  */
   74% {
     transform: translateY(-3%) rotate(0) scale(0.9, 1.1);
-  } /* takeoff */
+  }
+
+  /* takeoff */
   80% {
     transform: translateY(-18%) rotate(180deg) scale(1, 1);
-  } /* peak    */
+  }
+
+  /* peak    */
   88% {
     transform: translateY(0) rotate(355deg) scale(1.15, 0.85);
-  } /* land    */
+  }
+
+  /* land    */
   91% {
     transform: translateY(0) rotate(360deg) scale(0.96, 1.04);
-  } /* rebound */
+  }
+
+  /* rebound */
   94%,
   100% {
     transform: translateY(0) rotate(360deg) scale(1, 1);

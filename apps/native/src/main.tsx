@@ -1,7 +1,15 @@
 import { AppFatalFallback } from "@/components/widget/layout/AppFatalFallback";
 import { markBootStage } from "@/lib/boot-diagnostics";
-import { attachSentry, captureRenderError } from "@/lib/sentry/init";
-import * as Sentry from "@sentry/react";
+import { isE2eProfile, nixmacEnvironment } from "@/lib/env";
+import { initTelemetry } from "@/lib/telemetry/init";
+import { TelemetryContextProvider } from "@/lib/telemetry/context";
+import { getTelemetry, setTelemetryProvider } from "@/lib/telemetry/instance";
+import { queryClient } from "@/lib/orpc";
+import type { TelemetryProvider } from "@/lib/telemetry/types";
+import { AppErrorBoundary } from "@/components/widget/layout/AppErrorBoundary";
+import { queryPersistOptions } from "@/lib/query-persist";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
@@ -16,47 +24,59 @@ if (!rootElement) {
 markBootStage("root-found");
 
 // Dropped from production, e2e harness
-if (import.meta.env.VITE_NIXMAC_E2E_MODE === "true") {
-  void import("@/e2e/boot-harness").then((m) =>
-    m.attachBootHarness({ rootElement }),
-  );
+if (isE2eProfile) {
+  void import("@/e2e/boot-harness").then((m) => m.attachBootHarness({ rootElement }));
+}
+
+if (import.meta.env.DEV) {
+  void import("@/lib/dev-onboarding-reset");
 }
 
 const root = ReactDOM.createRoot(rootElement);
 
-const renderApp = () => {
+const renderApp = (telemetry: TelemetryProvider) => {
   markBootStage("react-render-start");
   root.render(
     <React.StrictMode>
-      <Sentry.ErrorBoundary
-        fallback={({ error }) => (
-          <AppFatalFallback error={error instanceof Error ? error : null} />
+      <AppErrorBoundary fallback={(error) => <AppFatalFallback error={error} />}>
+        {queryPersistOptions ? (
+          <PersistQueryClientProvider client={queryClient} persistOptions={queryPersistOptions}>
+            <TelemetryContextProvider value={telemetry}>
+              <App />
+            </TelemetryContextProvider>
+          </PersistQueryClientProvider>
+        ) : (
+          <QueryClientProvider client={queryClient}>
+            <TelemetryContextProvider value={telemetry}>
+              <App />
+            </TelemetryContextProvider>
+          </QueryClientProvider>
         )}
-        onError={(error, _componentStack) => {
-          console.error("ErrorBoundary caught:", error);
-          captureRenderError("render-error", error);
-        }}
-      >
-        <App />
-      </Sentry.ErrorBoundary>
+      </AppErrorBoundary>
     </React.StrictMode>,
   );
   markBootStage("react-render-scheduled");
 };
 
 const bootstrap = async () => {
-  // Awaiting attachSentry blocks render in production,
-  // in E2E_MODE resolves synchronously and the harness handles its own init lifecycle.
-  await attachSentry();
+  // In E2E_MODE, initTelemetry returns a noop provider synchronously.
+  const telemetry = await initTelemetry();
+  setTelemetryProvider(telemetry);
+  telemetry.captureEvent({
+    name: "app_launched",
+    props: {
+      environment: nixmacEnvironment,
+    },
+  });
 
   try {
-    renderApp();
+    renderApp(telemetry);
   } catch (error) {
     markBootStage("react-render-fatal");
-    captureRenderError("render-fatal", error);
-    root.render(
-      <AppFatalFallback error={error instanceof Error ? error : null} />,
-    );
+    getTelemetry().captureError(error instanceof Error ? error : new Error(String(error)), {
+      name: "render-fatal",
+    });
+    root.render(<AppFatalFallback error={error instanceof Error ? error : null} />);
   }
 };
 

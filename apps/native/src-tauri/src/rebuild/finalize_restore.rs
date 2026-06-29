@@ -1,7 +1,7 @@
 //! Post-restore finalization: commit, tag, record in DB, then record build state.
 
 use anyhow::{Context, Result};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 use crate::state::build_state;
 use crate::storage::store;
@@ -30,27 +30,25 @@ pub async fn finalize_restore(app: &AppHandle, target_hash: String) -> Result<Gi
     }
 
     // Record restore origin in DB
-    if let Ok(db_path) = db::get_db_path(app) {
-        let commit_hash = info.hash.clone();
-        let origin = target_hash.clone();
-        match tokio::task::spawn_blocking(move || {
-            db::restore_commits::insert(&db_path, &commit_hash, &origin)
-        })
-        .await
-        {
-            Ok(Ok(())) => {}
-            Ok(Err(e)) => log::warn!("[finalize_restore] Failed to record restore origin: {}", e),
-            Err(e) => log::warn!(
-                "[finalize_restore] Failed to record restore origin (panic): {}",
-                e
-            ),
-        }
+    let pool = app.state::<db::DbPool>().inner().clone();
+    let commit_hash = info.hash.clone();
+    let origin = target_hash.clone();
+    match tokio::task::spawn_blocking(move || {
+        db::restore_commits::insert(&pool, &commit_hash, &origin)
+    })
+    .await
+    {
+        Ok(Ok(())) => {}
+        Ok(Err(e)) => log::warn!("[finalize_restore] Failed to record restore origin: {}", e),
+        Err(e) => log::warn!(
+            "[finalize_restore] Failed to record restore origin (panic): {}",
+            e
+        ),
     }
 
     let git_status = git::status(&config_dir).context("Failed to get git status after restore")?;
-    // fire-and-forget: best-effort cache update. `git_status` is returned directly;
-    // a store write failure here must not abort the restore finalization.
-    let _ = store::set_cached_git_status(app, &git_status);
+    // Record the post-restore status; the cell write emits `git_state_changed`.
+    crate::state::git_state::update_status(app, git_status.clone());
 
     build_state::record_build(app, &git_status)
         .context("Failed to record build state after restore")?;

@@ -1,12 +1,13 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PromptInput } from "@/components/widget/promptinput/prompt-input";
+import { EVOLVE_PROMPT_SUGGESTIONS_FLAG } from "@/components/widget/promptinput/prompt-suggestions-variant";
+import { STARTER_PROMPT_CHIPS } from "@/components/widget/promptinput/starter-prompts";
 import type { GitStatus } from "@/ipc/types";
-import { useWidgetStore } from "@/stores/widget-store";
-import { mirrorEvolveState } from "@/viewmodel/evolve";
-import { mirrorGitState } from "@/viewmodel/git";
+import { makeGlobalPreferences } from "@/utils/test-fixtures";
+import { uiActions, viewModelActions } from "@nixmac/state";
 
 const mocks = vi.hoisted(() => ({
   handleEvolve: vi.fn<() => Promise<void>>(),
@@ -45,7 +46,23 @@ vi.mock("@/components/widget/promptinput/system-defaults-cta", () => ({
   SystemDefaultsCTA: () => null,
 }));
 
-vi.mock("@/lib/ai-provider-validation", () => ({
+// Mock the router so this test doesn't pull in the full component graph
+// (router.tsx → DarwinWidget → EditorPanel → monaco, which needs matchMedia).
+vi.mock("@/router", () => ({
+  nav: {
+    openSettings: vi.fn(),
+    goHome: vi.fn(),
+    closeSettings: vi.fn(),
+  },
+}));
+
+// The animated placeholder isn't under test here; stub it so its timers don't
+// fire state updates outside act() after the assertions.
+vi.mock("@/components/widget/promptinput/use-typewriter-placeholder", () => ({
+  useTypewriterPlaceholder: () => ({ text: "", isTyping: false }),
+}));
+
+vi.mock("@/lib/providers/ai-provider-validation", () => ({
   getProviderConfigInvalidReason: () => null,
 }));
 
@@ -72,12 +89,21 @@ const dirtyGitStatus: GitStatus = {
 };
 
 function resetStore() {
-  const store = useWidgetStore.getState();
-  store.setEvolvePrompt("");
-  mirrorGitState(null);
-  mirrorEvolveState(null);
-  store.setProcessing(false);
-  store.setSettingsOpen(false);
+  uiActions.setEvolvePrompt("");
+  viewModelActions.setState({
+    git: null,
+    evolve: null,
+    build: { externalBuildDetected: false },
+    preferences: makeGlobalPreferences(),
+  });
+  uiActions.setProcessing(false);
+}
+
+async function settleProviderValidation() {
+  await waitFor(() => {
+    expect(mocks.getPrefs).toHaveBeenCalled();
+    expect(mocks.checkTools).toHaveBeenCalled();
+  });
 }
 
 describe("<PromptInput>", () => {
@@ -96,12 +122,11 @@ describe("<PromptInput>", () => {
   });
 
   it("opens the dirty-tree resolution dialog instead of racing adopt and evolve", async () => {
-    const store = useWidgetStore.getState();
-    store.setEvolvePrompt("install vim");
-    mirrorGitState(dirtyGitStatus);
-    mirrorEvolveState(null);
+    uiActions.setEvolvePrompt("install vim");
+    viewModelActions.setState({ git: dirtyGitStatus, evolve: null });
 
     render(<PromptInput />);
+    await settleProviderValidation();
 
     fireEvent.click(screen.getByTestId("evolve-prompt-send"));
 
@@ -110,5 +135,28 @@ describe("<PromptInput>", () => {
       expect(mocks.evolveFromManual).not.toHaveBeenCalled();
       expect(mocks.handleEvolve).not.toHaveBeenCalled();
     });
+  });
+
+  it("seeds a full starter prompt from the curated chips", async () => {
+    // The default suggestion variant is `spotlight`; force `chips` via the
+    // developer override so the curated chips render for this scenario.
+    viewModelActions.patch({
+      preferences: makeGlobalPreferences({
+        featureFlagOverrides: { [EVOLVE_PROMPT_SUGGESTIONS_FLAG]: "chips" },
+      }),
+    });
+
+    const suggestion = STARTER_PROMPT_CHIPS.find(({ id }) => id === "dev-terminal");
+    if (!suggestion) throw new Error("Expected dev-terminal starter prompt");
+
+    render(<PromptInput />);
+    await settleProviderValidation();
+
+    const chip = screen.getByRole("button", { name: suggestion.label });
+    expect(chip.querySelector("svg")).toBeInTheDocument();
+
+    fireEvent.click(chip);
+
+    expect(screen.getByTestId("evolve-prompt-input")).toHaveValue(suggestion.prompt);
   });
 });

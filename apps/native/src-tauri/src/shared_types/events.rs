@@ -134,6 +134,8 @@ pub struct DarwinApplyEndEvent {
     pub error_type: Option<RebuildErrorType>,
     /// Human-readable failure message.
     pub error: Option<String>,
+    /// Whether the failed operation completed before changing system state.
+    pub system_untouched: Option<bool>,
     /// Path to the captured rebuild log, when available.
     pub log_file: Option<String>,
 }

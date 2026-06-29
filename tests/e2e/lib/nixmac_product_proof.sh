@@ -335,8 +335,8 @@ import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 
 const [repoRoot, screenshotPath] = process.argv.slice(2);
-const visualProofUrl = pathToFileURL(path.join(repoRoot, 'tools/computer-use-e2e/visual-proof.mjs')).href;
-const artifactUtilsUrl = pathToFileURL(path.join(repoRoot, 'tools/computer-use-e2e/artifact-utils.mjs')).href;
+const visualProofUrl = pathToFileURL(path.join(repoRoot, 'tests/e2e/computer-use/visual-proof.mjs')).href;
+const artifactUtilsUrl = pathToFileURL(path.join(repoRoot, 'tests/e2e/computer-use/artifact-utils.mjs')).href;
 const { pngSignalStats, probeCropForImage } = await import(visualProofUrl);
 const { pngDimensions } = await import(artifactUtilsUrl);
 
@@ -551,6 +551,7 @@ nixmac_pp_redacted_text_snapshot() {
     path="$dir/${label//[^a-zA-Z0-9._-]/_}.txt"
     raw=$(nixmac_text)
 
+    # shellcheck disable=SC2016
     printf '%s' "$raw" | node --input-type=module -e '
 import path from "node:path";
 
@@ -559,7 +560,7 @@ const chunks = [];
 process.stdin.on("data", (chunk) => chunks.push(chunk));
 process.stdin.on("end", async () => {
   const text = Buffer.concat(chunks).toString("utf8");
-  const modulePath = path.join(repoRoot, "tools/computer-use-e2e/redaction.mjs");
+  const modulePath = path.join(repoRoot, "tests/e2e/computer-use/redaction.mjs");
   const { redact, containsUnmaskedSecret } = await import(`file://${modulePath}`);
   process.stdout.write(`${redact(text)}\n`);
   if (containsUnmaskedSecret(text)) process.exit(3);

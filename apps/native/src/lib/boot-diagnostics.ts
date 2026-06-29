@@ -1,9 +1,10 @@
 import { tauriAPI } from "@/ipc/api";
+import { isE2eProfile } from "@/lib/env";
 
 const MAX_DETAIL_LENGTH = 1_000;
 const APP_TITLE = "nixmac";
 
-const e2eBootDiagnosticsEnabled = import.meta.env.VITE_NIXMAC_E2E_MODE === "true";
+const e2eBootDiagnosticsEnabled = isE2eProfile;
 let bootStageCleared = false;
 
 function setStorageValue(key: string, value: string) {
@@ -14,17 +15,33 @@ function setStorageValue(key: string, value: string) {
   }
 }
 
+function normalizeBootStage(stage: string): string {
+  return stage.replace(/[^\w:.-]/g, "-").slice(0, 80);
+}
+
+function setBootStageDomMarker(stage: string) {
+  document.documentElement.dataset.nixmacBootStage = stage;
+  document.title = `nixmac boot:${stage}`;
+}
+
 function markNativeBootStage(stage: string) {
   void tauriAPI.debug.markBootStage(stage, Date.now()).catch(() => {});
 }
 
+/** E2E-only render-body marker: DOM/title only, no IPC or localStorage. */
+export function markBootRenderStage(stage: string) {
+  if (!e2eBootDiagnosticsEnabled || bootStageCleared) return;
+
+  const normalizedStage = normalizeBootStage(stage);
+  setBootStageDomMarker(normalizedStage);
+}
+
+/** E2E-only effect/event-safe marker with full out-of-band persistence. */
 export function markBootStage(stage: string) {
   if (!e2eBootDiagnosticsEnabled || bootStageCleared) return;
 
-  // E2E-only: intentionally callable from render bodies to expose pre-effect hangs.
-  const normalizedStage = stage.replace(/[^\w:.-]/g, "-").slice(0, 80);
-  document.documentElement.dataset.nixmacBootStage = normalizedStage;
-  document.title = `nixmac boot:${normalizedStage}`;
+  const normalizedStage = normalizeBootStage(stage);
+  setBootStageDomMarker(normalizedStage);
   setStorageValue("nixmac:e2e-boot-stage", normalizedStage);
   markNativeBootStage(normalizedStage);
   console.info(`[nixmac boot-stage] ${normalizedStage}`);

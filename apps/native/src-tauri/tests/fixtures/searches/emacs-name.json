@@ -1,1 +1,12 @@
-{"legacyPackages.aarch64-darwin.emacs":{"description":"Extensible, customizable GNU text editor","pname":"emacs","version":"30.2"},"legacyPackages.aarch64-darwin.emacs30":{"description":"Extensible, customizable GNU text editor","pname":"emacs","version":"30.2"}}
+{
+  "legacyPackages.aarch64-darwin.emacs": {
+    "description": "Extensible, customizable GNU text editor",
+    "pname": "emacs",
+    "version": "30.2"
+  },
+  "legacyPackages.aarch64-darwin.emacs30": {
+    "description": "Extensible, customizable GNU text editor",
+    "pname": "emacs",
+    "version": "30.2"
+  }
+}

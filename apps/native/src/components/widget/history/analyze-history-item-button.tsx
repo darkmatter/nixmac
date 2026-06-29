@@ -1,6 +1,6 @@
 import { AnalyzeButton } from "@/components/widget/summaries/analyze-button";
 import { useHistory } from "@/hooks/use-history";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@nixmac/state";
 import { Dna, Loader2 } from "lucide-react";
 import { useState } from "react";
 interface AnalyzeHistoryItemButtonProps {
@@ -15,9 +15,7 @@ export function AnalyzeHistoryItemButton({
   className,
 }: AnalyzeHistoryItemButtonProps) {
   const [localAnalyzing, setLocalAnalyzing] = useState(false);
-  const queuedByMany = useWidgetStore((state) =>
-    state.analyzingHistoryForHashes.has(hash),
-  );
+  const queuedByMany = useUiState((state) => state.analyzingHistoryForHashes.has(hash));
   const isAnalyzing = localAnalyzing || queuedByMany;
   const { analyzeOne } = useHistory();
 

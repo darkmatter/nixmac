@@ -67,7 +67,9 @@ async fn install_version_impl(app: tauri::AppHandle, version: String) -> Result<
 
     // Fetch the minisign signature for this historic version from R2.
     let sig_url = format!("{RELEASES_BASE}/{version}/nixmac.app.tar.gz.sig");
-    let resp = reqwest::get(&sig_url)
+    let resp = crate::http_client::logged()
+        .get(&sig_url)
+        .send()
         .await
         .map_err(|e| format!("failed to fetch signature: {e}"))?;
     if !resp.status().is_success() {
@@ -158,11 +160,10 @@ async fn install_version_impl(app: tauri::AppHandle, version: String) -> Result<
         .map_err(|e| format!("download_and_install failed: {e}"))?;
 
     // Persist the pinned version so the silent update check at next launch can be suppressed.
-    crate::storage::store::set_string_pref(
-        &app,
-        crate::storage::store::PINNED_VERSION_KEY,
-        &version,
-    )
+    let pinned = version.clone();
+    crate::state::preferences::write(&app, move |prefs| {
+        prefs.pinned_version = Some(pinned);
+    })
     .map_err(|e| format!("failed to persist pinned version: {e}"))?;
 
     log::info!("[developer] install_version({version}) succeeded");
@@ -183,7 +184,7 @@ pub async fn install_version(app: tauri::AppHandle, version: String) -> Result<(
 
 /// Clear the pinned-version preference so the silent update check resumes.
 pub async fn clear_pinned_version(app: tauri::AppHandle) -> Result<(), String> {
-    crate::storage::store::delete_pref(&app, crate::storage::store::PINNED_VERSION_KEY)
+    crate::state::preferences::write(&app, |prefs| prefs.pinned_version = None)
         .map_err(|e| format!("failed to clear pinned version: {e}"))?;
     Ok(())
 }
