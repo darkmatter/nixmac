@@ -7,6 +7,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
+import { ProviderIcon, type ProviderIconId } from "@/components/widget/controls/provider-icons/provider-icon";
 import { DEFAULT_NIXMAC_MODEL, NIXMAC_PROVIDER } from "@/components/widget/onboarding/lib/inference";
 import { tauriAPI } from "@/ipc/api";
 import type { CliToolsState } from "@/ipc/types";
@@ -130,32 +131,35 @@ export function AiModelsTab({
   const cliStatus = useCliToolStatus();
   const providerPrefs = useProviderPrefs(form);
 
-  const renderProviderItems = () => (
-    <>
-      {(
-        [
-          { value: NIXMAC_PROVIDER, label: "nixmac hosted" },
-          { value: "openrouter", label: "OpenRouter" },
-          { value: "openai", label: "OpenAI" },
-          { value: "ollama", label: "Ollama" },
-          { value: "vllm", label: "OpenAI Compatible" },
-        ] as const
-      ).map(({ value, label }) => {
-        return (
+  const renderProviderItems = () => {
+    const providers: ReadonlyArray<{ value: string; label: string; icon: ProviderIconId }> = [
+      { value: NIXMAC_PROVIDER, label: "nixmac hosted", icon: "nixmac" },
+      { value: "openrouter", label: "OpenRouter", icon: "openrouter" },
+      { value: "openai", label: "OpenAI", icon: "openai" },
+      { value: "ollama", label: "Ollama", icon: "ollama" },
+      { value: "vllm", label: "OpenAI Compatible", icon: "vllm" },
+    ];
+    return (
+      <>
+        {providers.map(({ value, label, icon }) => (
           <SelectItem key={value} value={value}>
-            {label}
+            <span className="flex items-center gap-2">
+              <ProviderIcon provider={icon} size={14} />
+              {label}
+            </span>
           </SelectItem>
-        );
-      })}
-      {CLI_PROVIDERS.map(({ value, label }) => {
-        return (
+        ))}
+        {CLI_PROVIDERS.map(({ value, label }) => (
           <SelectItem key={value} value={value}>
-            {label}
+            <span className="flex items-center gap-2">
+              <ProviderIcon provider={value as ProviderIconId} size={14} />
+              {label}
+            </span>
           </SelectItem>
-        );
-      })}
-    </>
-  );
+        ))}
+      </>
+    );
+  };
 
   const evolveProviderError = getProviderConfigInvalidReason(
     evolveProviderField.state.value,

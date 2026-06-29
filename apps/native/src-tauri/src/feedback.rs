@@ -528,6 +528,8 @@ pub async fn submit(app: &AppHandle, payload: String) -> Result<bool> {
             return Ok(false);
         }
     };
+    let settings = crate::env::settings(None);
+    let dsn = settings.submitted_feedback_dsn;
 
     // We expect valid JSON, but users can manually edit the payload preview.
     // If parsing fails, preserve the raw content inside a minimal general
@@ -542,6 +544,7 @@ pub async fn submit(app: &AppHandle, payload: String) -> Result<bool> {
             serde_json::json!({
                 "type": "general",
                 "text": payload,
+                "dsn": dsn,
             })
         }
     };

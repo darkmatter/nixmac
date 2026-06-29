@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
+import { ProviderIcon } from "@/components/widget/controls/provider-icons/provider-icon";
 import {
   BYOK_PROVIDERS,
   DEFAULT_NIXMAC_MODEL,
@@ -756,7 +757,10 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
             <SelectContent>
               {BYOK_PROVIDERS.map((p) => (
                 <SelectItem key={p.id} value={p.id}>
-                  {p.name}
+                  <span className="flex items-center gap-2">
+                    <ProviderIcon provider={p.id} size={14} />
+                    {p.name}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>

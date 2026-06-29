@@ -14,7 +14,7 @@ const DEFAULT_SUMMARY_MODEL: &str = "openai/gpt-4o-mini";
 const DEFAULT_OPENAI_SUMMARY_MODEL: &str = "gpt-4o-mini";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 pub(crate) const NIXMAC_PROVIDER: &str = "nixmac";
-pub(crate) const DEFAULT_NIXMAC_MODEL: &str = "openai/gpt-4o-mini";
+pub(crate) const DEFAULT_NIXMAC_MODEL: &str = "auto";
 
 pub(crate) fn nixmac_llm_api_base(web_server_url: &str) -> String {
     format!("{}/api/llm/v1", web_server_url.trim_end_matches('/'))
