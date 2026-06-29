@@ -379,38 +379,46 @@ function GroupCard({
         isWarning ? "border-warning/30" : "border-border",
       )}
     >
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-start gap-3 p-4 text-left"
-      >
+      <div className="flex w-full items-start gap-3 p-4 text-left">
         <Checkbox
           checked={allTracked}
-          onCheckedChange={() => onTrack(group.items)}
+          onCheckedChange={(checked) => {
+            if (checked === true) {
+              onTrack(group.items);
+            } else {
+              onUntrack(ids);
+            }
+          }}
           className={cn("size-4 border-none", allTracked ? "bg-white" : "bg-zinc-700")}
         />
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2 font-semibold text-sm">
-            {group.items.length} {group.title}
-            {allTracked ? <Check className="size-4 text-success" aria-hidden="true" /> : null}
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex min-w-0 flex-1 items-start gap-3 text-left"
+        >
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-2 font-semibold text-sm">
+              {group.items.length} {group.title}
+              {allTracked ? <Check className="size-4 text-success" aria-hidden="true" /> : null}
+            </span>
+            <span className="mt-1 block text-pretty text-muted-foreground text-xs leading-relaxed">
+              {group.description}
+            </span>
+            <span className="mt-2 block font-mono text-muted-foreground/80 text-xs">
+              <span className="text-muted-foreground">$ {group.command}</span>
+              {group.commandNote ? ` (${group.commandNote})` : ""} · scanned just now · would land
+              in <span className="text-foreground">{group.landingPath}</span>
+            </span>
           </span>
-          <span className="mt-1 block text-pretty text-muted-foreground text-xs leading-relaxed">
-            {group.description}
-          </span>
-          <span className="mt-2 block font-mono text-muted-foreground/80 text-xs">
-            <span className="text-muted-foreground">$ {group.command}</span>
-            {group.commandNote ? ` (${group.commandNote})` : ""} · scanned just now · would land in{" "}
-            <span className="text-foreground">{group.landingPath}</span>
-          </span>
-        </span>
-        <ChevronDown
-          className={cn(
-            "mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform",
-            expanded && "rotate-180",
-          )}
-          aria-hidden="true"
-        />
-      </button>
+          <ChevronDown
+            className={cn(
+              "mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform",
+              expanded && "rotate-180",
+            )}
+            aria-hidden="true"
+          />
+        </button>
+      </div>
 
       {expanded ? (
         <>
