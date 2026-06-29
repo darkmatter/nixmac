@@ -10,6 +10,9 @@
     "./ui-state": "./src/ui/index.ts",
     "./onboarding": "./src/onboarding/index.ts"
   },
+  "scripts": {
+    "check": "oxlint ."
+  },
   "dependencies": {
     "zustand": "^5.0.8"
   },

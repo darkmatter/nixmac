@@ -1,10 +1,12 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PromptInput } from "@/components/widget/promptinput/prompt-input";
+import { EVOLVE_PROMPT_SUGGESTIONS_FLAG } from "@/components/widget/promptinput/prompt-suggestions-variant";
 import { STARTER_PROMPT_CHIPS } from "@/components/widget/promptinput/starter-prompts";
 import type { GitStatus } from "@/ipc/types";
+import { makeGlobalPreferences } from "@/utils/test-fixtures";
 import { uiActions, viewModelActions } from "@nixmac/state";
 
 const mocks = vi.hoisted(() => ({
@@ -82,6 +84,7 @@ function resetStore() {
     git: null,
     evolve: null,
     build: { externalBuildDetected: false },
+    preferences: makeGlobalPreferences(),
   });
   uiActions.setProcessing(false);
   uiActions.setSettingsOpen(false);
@@ -126,6 +129,14 @@ describe("<PromptInput>", () => {
   });
 
   it("seeds a full starter prompt from the curated chips", async () => {
+    // The default suggestion variant is `spotlight`; force `chips` via the
+    // developer override so the curated chips render for this scenario.
+    viewModelActions.patch({
+      preferences: makeGlobalPreferences({
+        featureFlagOverrides: { [EVOLVE_PROMPT_SUGGESTIONS_FLAG]: "chips" },
+      }),
+    });
+
     const suggestion = STARTER_PROMPT_CHIPS.find(({ id }) => id === "dev-terminal");
     if (!suggestion) throw new Error("Expected dev-terminal starter prompt");
 

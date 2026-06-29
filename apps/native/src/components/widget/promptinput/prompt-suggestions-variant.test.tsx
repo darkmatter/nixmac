@@ -14,10 +14,10 @@ function makeFlagProvider(initial: boolean | string | undefined) {
   const listeners = new Set<() => void>();
   const provider: TelemetryProvider = {
     enabled: true,
-    captureEvent() {},
-    captureError() {},
-    setEnabled() {},
-    reset() {},
+    captureEvent() { },
+    captureError() { },
+    setEnabled() { },
+    reset() { },
     getFeatureFlag: () => value,
     onFeatureFlags: (cb) => {
       listeners.add(cb);
@@ -39,16 +39,16 @@ describe("resolvePromptSuggestionsVariant", () => {
   });
 
   it("falls back to the control variant for unset / unknown / boolean values", () => {
-    expect(resolvePromptSuggestionsVariant(undefined)).toBe("chips");
-    expect(resolvePromptSuggestionsVariant(true)).toBe("chips");
-    expect(resolvePromptSuggestionsVariant("mystery-variant")).toBe("chips");
+    expect(resolvePromptSuggestionsVariant(undefined)).toBe("spotlight");
+    expect(resolvePromptSuggestionsVariant(true)).toBe("spotlight");
+    expect(resolvePromptSuggestionsVariant("mystery-variant")).toBe("spotlight");
   });
 });
 
 describe("usePromptSuggestionsVariant", () => {
-  it("defaults to chips outside a telemetry provider", () => {
+  it("defaults to spotlight outside a telemetry provider", () => {
     const { result } = renderHook(() => usePromptSuggestionsVariant());
-    expect(result.current).toBe("chips");
+    expect(result.current).toBe("spotlight");
   });
 
   it("reflects the PostHog flag and updates when flags refresh", () => {
@@ -65,6 +65,6 @@ describe("usePromptSuggestionsVariant", () => {
     expect(result.current).toBe("trending");
 
     act(() => setFlag(undefined));
-    expect(result.current).toBe("chips");
+    expect(result.current).toBe("spotlight");
   });
 });

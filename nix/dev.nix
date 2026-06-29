@@ -210,6 +210,11 @@ lib.mkIf (!config.container.isBuilding) {
     exec = "sops exec-env ${config.git.root}/ops/secrets/secrets.sops.json 'bun run test:watch'";
   };
 
+  scripts.check = {
+    description = "Run all checks";
+    exec = "bun run check";
+  };
+
   # Formatting
   treefmt.enable = true;
   treefmt.config = {
