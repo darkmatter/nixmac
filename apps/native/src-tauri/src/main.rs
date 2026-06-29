@@ -258,7 +258,7 @@ fn main() {
     let log_guard: Arc<Mutex<Option<tracing_appender::non_blocking::WorkerGuard>>> =
         Arc::new(Mutex::new(None));
 
-    if let Some(log_path) = crate::e2e_runtime::value("NIXMAC_LOGFILE") {
+    if let Some(log_path) = crate::env::logfile() {
         // Set up dual logging: console + file
         match std::fs::OpenOptions::new()
             .create(true)

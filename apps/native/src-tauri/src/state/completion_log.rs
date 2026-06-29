@@ -8,12 +8,13 @@ use tokio::task::spawn_blocking;
 
 /// Returns the daily-rotated JSONL path for the given prefix.
 ///
-/// Uses `NIXMAC_COMPLETION_LOG_DIR` (including e2e runtime overrides) when set,
-/// otherwise defaults to `~/Library/Application Support/nixmac/logs/{prefix}_YYYY-MM-DD.jsonl`
-/// on macOS.
+/// Uses `NIXMAC_COMPLETION_LOG_DIR` (resolved through `crate::env`, which
+/// checks process env, the build-time profile, and the e2e runtime file)
+/// when set, otherwise defaults to
+/// `~/Library/Application Support/nixmac/logs/{prefix}_YYYY-MM-DD.jsonl` on macOS.
 fn log_path_for_today(prefix: &str) -> PathBuf {
     let date = Local::now().format("%Y-%m-%d");
-    crate::e2e_runtime::value("NIXMAC_COMPLETION_LOG_DIR")
+    crate::env::completion_log_dir()
         .map(PathBuf::from)
         .unwrap_or_else(|| {
             dirs::data_local_dir()
@@ -27,7 +28,7 @@ fn log_path_for_today(prefix: &str) -> PathBuf {
 /// Checks `NIXMAC_RECORD_COMPLETIONS`, ensures the log directory exists, and
 /// logs the target path. Returns `true` when recording should be enabled.
 pub fn init_recording(prefix: &str, label: &str) -> bool {
-    if crate::e2e_runtime::value("NIXMAC_RECORD_COMPLETIONS").is_none() {
+    if !crate::env::record_completions() {
         return false;
     }
 

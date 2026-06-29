@@ -182,6 +182,22 @@ pub fn trimmed(name: &str) -> Option<String> {
     sources::trimmed_env(name)
 }
 
+/// Whether AI completion request/response JSONL recording is enabled.
+pub fn record_completions() -> bool {
+    settings(None).record_completions
+}
+
+/// Override directory for completion JSONL logs. `None` falls back to the
+/// platform default (`~/Library/Application Support/nixmac/logs/`).
+pub fn completion_log_dir() -> Option<String> {
+    non_empty(settings(None).completion_log_dir)
+}
+
+/// Optional path to mirror `tracing` output to a file.
+pub fn logfile() -> Option<String> {
+    non_empty(settings(None).logfile)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

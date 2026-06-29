@@ -180,6 +180,30 @@ pub struct NixmacEnvSettings {
         label = "Enable filesystem view"
     )]
     pub vite_nixmac_filesystem: bool,
+
+    #[config(
+        default = false,
+        env_var = "NIXMAC_RECORD_COMPLETIONS",
+        label = "Record AI completion request/response JSONL",
+        help = "When true, full request/response payloads for every AI provider call are written to a daily JSONL file and mirrored to stderr."
+    )]
+    pub record_completions: bool,
+
+    #[config(
+        default = "",
+        env_var = "NIXMAC_COMPLETION_LOG_DIR",
+        label = "Completion log directory",
+        help = "Override the directory for AI completion JSONL logs. Defaults to ~/Library/Application Support/nixmac/logs/."
+    )]
+    pub completion_log_dir: String,
+
+    #[config(
+        default = "",
+        env_var = "NIXMAC_LOGFILE",
+        label = "Rust log file path",
+        help = "When set, tracing output is mirrored to this file in addition to stderr."
+    )]
+    pub logfile: String,
 }
 
 impl Default for NixmacEnvSettings {
