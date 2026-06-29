@@ -123,3 +123,4 @@ All paths read the same `nixmac-mascot.svg`, so re-rig geometry there.
 For real lighting / materials / perspective beyond flat faces, rebuild in
 [React Three Fiber](https://r3f.docs.pmnd.rs) (`three` + `@react-three/fiber`) and
 load a GLB. Bigger dependency; only worth it if you want shading, not flat faces.
+
