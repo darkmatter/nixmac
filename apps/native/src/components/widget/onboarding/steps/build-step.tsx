@@ -130,6 +130,9 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
       // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.scanner.applyDefaults(trackedSources.systemDefaults);
     }
+
+    // Avoid re-applying on build retries; changes are now represented in the config.
+    onboardingActions.setTrackedCustomizations([], {});
   }
 
   // Runs the "first" build as part of onboarding. Before it can do that, it needs
