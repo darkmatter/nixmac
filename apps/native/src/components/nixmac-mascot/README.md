@@ -1,7 +1,5 @@
 # nixmac mascot — animated
 
-An idle animation of the nixmac face (blink · smile breathe · circuit pulse) plus
-\<<\<<\<<< HEAD
 an intermittent **hop + 360° spin**, built from the brand mark. Two render paths;
 pick by your needs.
 
@@ -126,4 +124,3 @@ For real lighting / materials / perspective beyond flat faces, rebuild in
 [React Three Fiber](https://r3f.docs.pmnd.rs) (`three` + `@react-three/fiber`) and
 load a GLB. Bigger dependency; only worth it if you want shading, not flat faces.
 
-> > > > > > > 6e14a4d3 (feat: session transcript logging + nixmac mascot (#332))
