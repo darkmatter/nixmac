@@ -307,6 +307,29 @@ runs:
           cat .devenv-ci/env >> "$GITHUB_ENV"
         fi
 
+    - name: Align Bun with packageManager
+      if: inputs.install-bun-deps == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        expected="$(jq -r '.packageManager // empty' package.json | sed -n 's/^bun@//p')"
+        if [ -z "$expected" ]; then
+          echo "No bun packageManager version pinned; using bun from PATH."
+          exit 0
+        fi
+
+        current="$(bun --version 2>/dev/null || true)"
+        if [ "$current" = "$expected" ]; then
+          echo "Bun $current matches packageManager."
+          exit 0
+        fi
+
+        echo "Bun version mismatch: PATH has '${current:-missing}', packageManager requires '$expected'. Installing bun-v$expected."
+        curl -fsSL https://bun.sh/install | bash -s -- "bun-v$expected"
+        echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
+        "$HOME/.bun/bin/bun" --version
+
     - name: Install Rust toolchain
       if: inputs.setup-rust == 'true'
       uses: dtolnay/rust-toolchain@stable

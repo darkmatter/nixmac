@@ -3584,6 +3584,7 @@ dependencies = [
  "hmac",
  "http",
  "ignore",
+ "libc",
  "libsqlite3-sys",
  "log",
  "objc",

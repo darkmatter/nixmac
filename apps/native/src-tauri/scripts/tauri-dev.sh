@@ -65,7 +65,7 @@ fi
 
 if [ "$schema_needs_regen" = true ]; then
   echo "[tauri-dev] Regenerating configurable JSON Schema files"
-  cargo run -- gen-schemas
+  cargo run --bin nixmac -- gen-schemas
   printf '%s\n' "$input_hash" > "$schema_stamp_file"
 else
   echo "[tauri-dev] Configurable JSON Schemas up-to-date; skipping generation"

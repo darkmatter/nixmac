@@ -102,7 +102,7 @@ RUN nix-daemon &>/var/log/nix-daemon.log & \
 
 # ---- Bun --------------------------------------------------------------------
 # Version pinned to match package.json `packageManager` field.
-ARG BUN_VERSION=1.3.13
+ARG BUN_VERSION=1.3.14
 RUN BUN_TAG="bun-v${BUN_VERSION}" && \
     curl -fsSL "https://github.com/oven-sh/bun/releases/download/${BUN_TAG}/bun-linux-x64.zip" -o /tmp/bun.zip && \
     unzip -q /tmp/bun.zip -d /tmp/bun && \
