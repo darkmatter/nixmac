@@ -60,7 +60,7 @@ jobs:
         id: bun-version
         shell: bash
         run: |
-          # Extract the version from `packageManager: "bun@1.3.13"`.
+          # Extract the version from `packageManager: "bun@1.3.14"`.
           VERSION=$(jq -r '.packageManager // empty' package.json | sed -n 's/^bun@//p')
           if [ -z "$VERSION" ]; then
             echo "::error::Could not find bun version in package.json (packageManager field)"
