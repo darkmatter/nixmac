@@ -92,6 +92,28 @@ const summarizedChangeMap: SemanticChangeMap = {
   unsummarizedHashes: ["hash-3"],
 };
 
+// One group of three files → collapses to "hello, manual-new.nix, +1".
+const groupedChangeMap: SemanticChangeMap = {
+  groups: [
+    {
+      summary: {
+        id: 1,
+        title: "Switched the shell setup to a new host",
+        description: "",
+        status: "DONE",
+        createdAt: 0,
+      },
+      changes: [
+        { ...makeChange(1, "hello", EDITED_DIFF), title: "", description: "" },
+        { ...makeChange(2, "hosts/manual-new.nix", ADDED_DIFF), title: "", description: "" },
+        { ...makeChange(3, "modules/home/shell.nix", REMOVED_DIFF), title: "", description: "" },
+      ] as never,
+    },
+  ],
+  singles: [],
+  unsummarizedHashes: [],
+};
+
 // An active AI session (evolutionId set) → DriftReview hides the drift banner
 // and the adopt-into-AI affordances, and titles the card "Proposed changes".
 const aiSession = {
@@ -151,6 +173,14 @@ export const Unsummarized = meta.story({
  */
 export const Summarized = meta.story({
   render: () => setup({ changes: driftChanges, changeMap: summarizedChangeMap }),
+});
+
+/**
+ * A grouped summary: the three files collapse onto one line as
+ * "hello, manual-new.nix, +1" with the summary beneath.
+ */
+export const Grouped = meta.story({
+  render: () => setup({ changes: driftChanges, changeMap: groupedChangeMap }),
 });
 
 /**

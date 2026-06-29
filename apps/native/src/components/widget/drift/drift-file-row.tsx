@@ -32,7 +32,7 @@ export function DriftFileRow({ file }: { file: DriftFileRowData }) {
   const glyph = CHANGE_TYPE_GLYPH[changeType];
 
   return (
-    <li className="group flex items-center gap-3 px-4 py-2.5">
+    <li className="group flex items-center gap-3 py-2.5">
       <span
         className={cn(
           "flex h-5 w-5 shrink-0 items-center justify-center rounded bg-muted font-mono font-bold text-[10px]",

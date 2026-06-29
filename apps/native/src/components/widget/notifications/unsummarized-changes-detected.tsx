@@ -1,7 +1,7 @@
 "use client";
 
 import { ConfigDirBadge } from "@/components/widget/badges/config-dir-badge";
-import { AnalyzeCurrentButton } from "@/components/widget/summaries/analyze-current-button";
+import { AnalyzeCheckbox } from "@/components/widget/summaries/analyze-checkbox";
 import { useViewModel } from "@nixmac/state";
 
 export function UnsummarizedChangesDetected() {
@@ -18,7 +18,7 @@ export function UnsummarizedChangesDetected() {
         {hasSummaries ? "Also in" : "Manual Changes found in"}
         <ConfigDirBadge configDir={configDir} />
         :
-        <AnalyzeCurrentButton />
+        <AnalyzeCheckbox />
       </span>
     </div>
   );

@@ -105,84 +105,88 @@ export function DriftReview() {
   const buildReady = buildStatus === "passed" && !isApplyBusy && !rebuildRunning;
 
   return (
-    <div className="space-y-3">
-      {isManualDrift && !dismissed && (
-        <DriftBanner fileCount={total} configDir={configDir} onDismiss={() => setDismissed(true)} />
+    <div className="flex flex-col gap-4">
+      {!dismissed && (
+        <DriftBanner
+          isManualDrift={isManualDrift}
+          fileCount={total}
+          configDir={configDir}
+          onDismiss={() => setDismissed(true)}
+        />
       )}
 
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
-        <header className="flex items-center justify-between gap-3 border-border/60 border-b px-4 py-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="font-semibold text-card-foreground text-sm">
-              {isManualDrift ? "Manual changes" : "Proposed changes"}
-            </span>
-            <Badge variant="secondary" className="font-mono text-muted-foreground">
-              {formatDriftCounts(counts)}
-            </Badge>
-          </div>
-
-          <Tabs value={view} onValueChange={(v) => setView(v as DriftView)}>
-            <AnimatedTabsList value={view}>
-              <AnimatedTabsTrigger value="summary">
-                <MessageSquareText className="h-3.5 w-3.5" aria-hidden="true" />
-                Summary
-              </AnimatedTabsTrigger>
-              <AnimatedTabsTrigger value="files">
-                <ListTree className="h-3.5 w-3.5" aria-hidden="true" />
-                Diff
-              </AnimatedTabsTrigger>
-            </AnimatedTabsList>
-          </Tabs>
-        </header>
-
-        <div className="max-h-72 overflow-y-auto">
-          {view === "summary" ? (
-            <DriftSummaryView />
-          ) : (
-            <ul className="divide-y divide-border/50">
-              {files.map((file) => (
-                <DriftFileRow key={`${file.oldFilename ?? ""}\0${file.filename}`} file={file} />
-              ))}
-            </ul>
-          )}
+      <header className="flex items-center justify-between gap-3 border-border/60 border-b pb-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="font-semibold text-foreground text-sm">
+            {isManualDrift ? "Manual changes" : "Proposed changes"}
+          </span>
+          <Badge variant="secondary" className="font-mono text-muted-foreground">
+            {formatDriftCounts(counts)}
+          </Badge>
         </div>
 
-        <footer className="flex items-center justify-between gap-3 border-border/60 border-t bg-muted/30 px-4 py-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setConfirmDiscard(true)}
-            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-          >
-            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-            Discard
-          </Button>
+        <Tabs value={view} onValueChange={(v) => setView(v as DriftView)}>
+          <AnimatedTabsList value={view}>
+            <AnimatedTabsTrigger value="summary">
+              <MessageSquareText className="h-3.5 w-3.5" aria-hidden="true" />
+              Summary
+            </AnimatedTabsTrigger>
+            <AnimatedTabsTrigger value="files">
+              <ListTree className="h-3.5 w-3.5" aria-hidden="true" />
+              Diff
+            </AnimatedTabsTrigger>
+          </AnimatedTabsList>
+        </Tabs>
+      </header>
 
-          <div className="flex items-center gap-2">
-            {/* AI session: refine by returning to the Describe step, which keeps
+      <div>
+        {view === "summary" ? (
+          <DriftSummaryView />
+        ) : (
+          <ul className="divide-y divide-border/50">
+            {files.map((file) => (
+              <DriftFileRow key={`${file.oldFilename ?? ""}\0${file.filename}`} file={file} />
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <footer className="flex items-center justify-between gap-3 border-border/60 border-t pt-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setConfirmDiscard(true)}
+          className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+        >
+          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+          Discard
+        </Button>
+
+        <div className="flex items-center gap-2">
+          {/* AI session: refine by returning to the Describe step, which keeps
                 the prompt + the live conversation. (Manual drift has no
                 conversation — it refines via the "Refine with AI" combo item.) */}
-            {!isManualDrift && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => uiActions.setActiveStepOverride("begin")}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-                Refine with AI
-              </Button>
-            )}
-            <div className="flex items-center">
-              <ConfirmButton
-                size="sm"
-                disabled={!buildReady}
-                className={isManualDrift ? "rounded-r-none" : ""}
-                confirmPrefKey="confirmBuild"
-                onConfirm={handleApply}
-                message="Rebuild with these configuration changes?"
-                color="teal"
-              >
+          {!isManualDrift && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => uiActions.setActiveStepOverride("begin")}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+              Back to Prompt
+            </Button>
+          )}
+          <div className="flex items-center">
+            <ConfirmButton
+              size="sm"
+              disabled={!buildReady}
+              className={isManualDrift ? "rounded-r-none" : ""}
+              confirmPrefKey="confirmBuild"
+              onConfirm={handleApply}
+              message="Rebuild with these configuration changes?"
+              color="teal"
+            >
               {buildChecking ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
               ) : (
@@ -229,10 +233,9 @@ export function DriftReview() {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            </div>
           </div>
-        </footer>
-      </div>
+        </div>
+      </footer>
 
       {confirmDiscard && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3">

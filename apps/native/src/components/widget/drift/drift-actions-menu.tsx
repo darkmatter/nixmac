@@ -10,29 +10,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { getShortFilename } from "@/components/widget/utils";
 import { useEvolve } from "@/hooks/use-evolve";
+import { client } from "@/lib/orpc";
 import { uiActions, useViewModel } from "@nixmac/state";
-import { Eye, GitCommitHorizontal, MoreVertical, Sparkles, Trash2 } from "lucide-react";
-
-/** A "Soon" tag for menu actions that have no backend support yet. */
-function SoonTag() {
-  return (
-    <span className="ml-auto rounded bg-muted px-1 py-0.5 font-medium text-[9px] text-muted-foreground uppercase tracking-wide">
-      Soon
-    </span>
-  );
-}
+import { GitCommitHorizontal, MoreVertical, Sparkles, Trash2 } from "lucide-react";
 
 /**
- * Per-file actions shown on both the technical and plain drift rows. The
- * hidden-until-hover trigger expects the row to be a `group`.
+ * Per-file actions shown on the drift rows. The hidden-until-hover trigger
+ * expects the row to be a `group`. "Refine with AI" only applies to manual
+ * drift; commit/discard operate on the single file via the git bindings.
  */
 export function DriftActionsMenu({ filename }: { filename: string }) {
   const { evolveFromManual } = useEvolve();
   const evolutionId = useViewModel((s) => s.evolve?.evolutionId ?? null);
-  // Adopting into AI only applies to manual drift; an active session refines via
-  // its own prompt input.
   const isManualDrift = evolutionId === null;
   const shortName = getShortFilename(filename);
+
+  const reportError = (error: unknown) =>
+    uiActions.setError((error as Error)?.message ?? String(error));
 
   return (
     <DropdownMenu>
@@ -47,30 +41,35 @@ export function DriftActionsMenu({ filename }: { filename: string }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem onSelect={() => uiActions.setEditingFile(filename)}>
-          <Eye />
-          View diff
-        </DropdownMenuItem>
         {isManualDrift && (
-          <DropdownMenuItem
-            onSelect={() => {
-              void evolveFromManual();
-            }}
-          >
-            <Sparkles />
-            Refine with AI
-          </DropdownMenuItem>
+          <>
+            <DropdownMenuItem
+              onSelect={() => {
+                void evolveFromManual();
+              }}
+            >
+              <Sparkles />
+              Refine with AI
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
         )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem disabled>
+        <DropdownMenuItem
+          onSelect={() => {
+            client.git.commitFile({ filename, message: `Update ${shortName}` }).catch(reportError);
+          }}
+        >
           <GitCommitHorizontal />
           Commit only this
-          <SoonTag />
         </DropdownMenuItem>
-        <DropdownMenuItem disabled className="text-destructive">
+        <DropdownMenuItem
+          className="text-destructive"
+          onSelect={() => {
+            client.git.discardFile({ filename }).catch(reportError);
+          }}
+        >
           <Trash2 />
           Discard change
-          <SoonTag />
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
