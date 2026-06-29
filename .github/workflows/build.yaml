@@ -29,6 +29,12 @@ jobs:
           persist-credentials: true
           clean: false
 
+      - name: Clean workspace while preserving CI caches
+        shell: bash
+        run: |
+          git reset --hard
+          git clean -ffdx -e .devenv/ -e .devenv-ci/
+
       - uses: ./.github/actions/setup
         with:
           darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
