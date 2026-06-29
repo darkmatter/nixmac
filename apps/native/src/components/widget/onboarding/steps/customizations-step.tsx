@@ -10,6 +10,8 @@ import {
   type CustomizationGroup,
   type CustomizationItem,
   type CustomizationSource,
+  type CustomizationItem,
+  type CustomizationSource,
 } from "@/components/widget/onboarding/lib/customizations";
 import { stepEyebrow } from "@/components/widget/onboarding/lib/onboarding";
 import { StepShell } from "@/components/widget/onboarding/step-shell";
@@ -413,6 +415,7 @@ function GroupCard({
       <div className="flex w-full items-start gap-3 p-4 text-left">
         <Checkbox
           checked={allTracked}
+          onCheckedChange={() => onTrack(group.items)}
           onCheckedChange={(checked) => {
             if (checked === true) {
               onTrack(group.items);
@@ -460,6 +463,7 @@ function GroupCard({
                 Tracking all {ids.length}
               </Button>
             ) : (
+              <Button size="sm" onClick={() => onTrack(group.items)}>
               <Button size="sm" onClick={() => onTrack(group.items)}>
                 <Plus className="size-4" aria-hidden="true" />
                 Track{" "}

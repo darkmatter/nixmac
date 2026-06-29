@@ -74,6 +74,9 @@ export {
   selectViewingStep,
   useOnboarding,
   type OnboardingSelector,
+  type OnboardingStateValues,
+  type OnboardingStepId,
+  type TrackedCustomizationSource,
 } from "./onboarding";
 export type { TrackedCustomizationSource } from "./onboarding";
 
