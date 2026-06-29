@@ -104,7 +104,9 @@ fn feedback_url_for_config(config_dir: Option<&str>) -> Result<String> {
     let resolved = settings(config_dir);
     let base =
         non_empty(resolved.vite_server_url).context("sending feedback not configured (url)")?;
-    Ok(format!("{base}/api/feedback"))
+    let dsn = non_empty(resolved.submitted_feedback_dsn)
+        .context("sending feedback not configured (dsn)")?;
+    Ok(format!("{base}/api/feedback/{dsn}"))
 }
 
 #[allow(dead_code)]
@@ -208,15 +210,15 @@ mod tests {
             keys::SUBMITTED_FEEDBACK_DSN,
         ]);
 
-        std::env::set_var(keys::VITE_SERVER_URL, "https://example.com");
-        std::env::set_var(keys::SUBMITTED_FEEDBACK_DSN, "test-dsn");
+        unsafe { std::env::set_var(keys::VITE_SERVER_URL, "https://example.com") };
+        unsafe { std::env::set_var(keys::SUBMITTED_FEEDBACK_DSN, "test-dsn") };
         assert_eq!(
             feedback_url().unwrap(),
             "https://example.com/api/feedback/test-dsn"
         );
 
-        std::env::remove_var(keys::VITE_SERVER_URL);
-        std::env::remove_var(keys::SUBMITTED_FEEDBACK_DSN);
+        unsafe { std::env::remove_var(keys::VITE_SERVER_URL) };
+        unsafe { std::env::remove_var(keys::SUBMITTED_FEEDBACK_DSN) };
         assert!(feedback_url().is_err());
     }
 
@@ -228,17 +230,17 @@ mod tests {
             keys::NIXMAC_E2E_CONFIG_DIR,
         ]);
 
-        std::env::remove_var(keys::NIXMAC_E2E_MOCK_SYSTEM);
-        std::env::set_var(keys::NIXMAC_E2E_CONFIG_DIR, "/tmp/nixmac-e2e-config");
+        unsafe { std::env::remove_var(keys::NIXMAC_E2E_MOCK_SYSTEM) };
+        unsafe { std::env::set_var(keys::NIXMAC_E2E_CONFIG_DIR, "/tmp/nixmac-e2e-config") };
         assert_eq!(e2e_override(keys::NIXMAC_E2E_CONFIG_DIR), None);
 
-        std::env::set_var(keys::NIXMAC_E2E_MOCK_SYSTEM, "1");
+        unsafe { std::env::set_var(keys::NIXMAC_E2E_MOCK_SYSTEM, "1") };
         assert_eq!(
             e2e_override(keys::NIXMAC_E2E_CONFIG_DIR).as_deref(),
             Some("/tmp/nixmac-e2e-config")
         );
 
-        std::env::remove_var(keys::NIXMAC_E2E_MOCK_SYSTEM);
+        unsafe { std::env::remove_var(keys::NIXMAC_E2E_MOCK_SYSTEM) };
         assert_eq!(e2e_override(keys::NIXMAC_E2E_CONFIG_DIR), None);
     }
 }

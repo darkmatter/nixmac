@@ -124,7 +124,7 @@ mod tests {
 
         let tmp = tempfile::tempdir().expect("create tempdir");
         let home = tmp.path().to_path_buf();
-        std::env::set_var("HOME", &home);
+        unsafe { std::env::set_var("HOME", &home) };
 
         let got = normalize_path_input("~/my/config/dir").expect("normalize ~/my/config/dir");
         assert!(

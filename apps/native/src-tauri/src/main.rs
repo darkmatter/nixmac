@@ -1140,8 +1140,8 @@ mod test_support {
         fn drop(&mut self) {
             for (key, value) in &self.saved {
                 match value {
-                    Some(value) => std::env::set_var(key, value),
-                    None => std::env::remove_var(key),
+                    Some(value) => unsafe { std::env::set_var(key, value) },
+                    None => unsafe { std::env::remove_var(key) },
                 }
             }
         }

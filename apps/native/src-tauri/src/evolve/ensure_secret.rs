@@ -444,11 +444,11 @@ mod tests {
         let fake_home = temp.path().join("home");
         std::fs::create_dir_all(&fake_home).expect("create fake HOME");
 
-        std::env::set_var("HOME", &fake_home);
+        unsafe { std::env::set_var("HOME", &fake_home) };
 
         // Point sops at the explicit key path for deterministic test behavior.
         let age_key_file = fake_home.join(".config/sops/age/keys.txt");
-        std::env::set_var("SOPS_AGE_KEY_FILE", &age_key_file);
+        unsafe { std::env::set_var("SOPS_AGE_KEY_FILE", &age_key_file) };
 
         let secret_name = "manual-interactive-secret";
         let args = json!({

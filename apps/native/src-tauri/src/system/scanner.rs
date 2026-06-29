@@ -1896,9 +1896,9 @@ mod tests {
             "NIXMAC_E2E_SYSTEM_DEFAULTS_JSON",
         ]);
 
-        std::env::set_var("NIXMAC_E2E_MOCK_SYSTEM", "1");
-        std::env::set_var("NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE", "1");
-        std::env::remove_var("NIXMAC_E2E_SYSTEM_DEFAULTS_JSON");
+        unsafe { std::env::set_var("NIXMAC_E2E_MOCK_SYSTEM", "1") };
+        unsafe { std::env::set_var("NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE", "1") };
+        unsafe { std::env::remove_var("NIXMAC_E2E_SYSTEM_DEFAULTS_JSON") };
 
         let scan = e2e_system_defaults_scan().expect("fixture scan");
         assert_eq!(scan.defaults.len(), 1);

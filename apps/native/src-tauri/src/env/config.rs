@@ -228,8 +228,8 @@ mod tests {
             "VITE_SERVER_URL",
             "SUMMARY_AI_PROVIDER",
         ]);
-        std::env::set_var("VITE_SERVER_URL", "https://env.example.com");
-        std::env::remove_var("SUMMARY_AI_PROVIDER");
+        unsafe { std::env::set_var("VITE_SERVER_URL", "https://env.example.com") };
+        unsafe { std::env::remove_var("SUMMARY_AI_PROVIDER") };
 
         let settings = NixmacEnvSettings::resolve(None);
         assert_eq!(settings.vite_server_url, "https://env.example.com");
@@ -239,7 +239,7 @@ mod tests {
     fn build_profile_reads_uppercase_env_var_keys() {
         let _env_lock = crate::test_support::e2e_env_lock();
         let _env_restore = crate::test_support::EnvVarRestore::capture(&["VITE_SERVER_URL"]);
-        std::env::remove_var("VITE_SERVER_URL");
+        unsafe { std::env::remove_var("VITE_SERVER_URL") };
 
         let settings = NixmacEnvSettings::resolve(None);
         assert_eq!(settings.vite_server_url, "https://nixmac.com");

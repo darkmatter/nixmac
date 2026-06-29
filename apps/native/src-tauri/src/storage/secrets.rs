@@ -298,11 +298,11 @@ mod tests {
         let _env_restore =
             crate::test_support::EnvVarRestore::capture(&["OPENROUTER_API_KEY", "OPENAI_API_KEY"]);
 
-        std::env::set_var("OPENROUTER_API_KEY", "sk-or-existing");
-        std::env::remove_var("OPENAI_API_KEY");
+        unsafe { std::env::set_var("OPENROUTER_API_KEY", "sk-or-existing") };
+        unsafe { std::env::remove_var("OPENAI_API_KEY") };
         assert_eq!(get_env_openai_provider_credential(), None);
 
-        std::env::set_var("OPENAI_API_KEY", " sk-openai-direct ");
+        unsafe { std::env::set_var("OPENAI_API_KEY", " sk-openai-direct ") };
         assert_eq!(
             get_env_openai_provider_credential(),
             Some(("sk-openai-direct".to_string(), OPENAI_BASE_URL))
@@ -315,11 +315,11 @@ mod tests {
         let _env_restore =
             crate::test_support::EnvVarRestore::capture(&["OPENROUTER_API_KEY", "OPENAI_API_KEY"]);
 
-        std::env::remove_var("OPENROUTER_API_KEY");
-        std::env::set_var("OPENAI_API_KEY", "sk-openai-existing");
+        unsafe { std::env::remove_var("OPENROUTER_API_KEY") };
+        unsafe { std::env::set_var("OPENAI_API_KEY", "sk-openai-existing") };
         assert_eq!(get_env_openrouter_provider_credential(), None);
 
-        std::env::set_var("OPENROUTER_API_KEY", " sk-or-direct ");
+        unsafe { std::env::set_var("OPENROUTER_API_KEY", " sk-or-direct ") };
         assert_eq!(
             get_env_openrouter_provider_credential(),
             Some(("sk-or-direct".to_string(), OPENROUTER_BASE_URL))

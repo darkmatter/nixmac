@@ -134,8 +134,8 @@ mod tests {
         fn set(value: Option<&Path>) -> Self {
             let original = std::env::var_os(SOPS_AGE_KEY_FILE_ENV_VAR);
             match value {
-                Some(path) => std::env::set_var(SOPS_AGE_KEY_FILE_ENV_VAR, path),
-                None => std::env::remove_var(SOPS_AGE_KEY_FILE_ENV_VAR),
+                Some(path) => unsafe { std::env::set_var(SOPS_AGE_KEY_FILE_ENV_VAR, path) },
+                None => unsafe { std::env::remove_var(SOPS_AGE_KEY_FILE_ENV_VAR) },
             }
             Self { original }
         }
@@ -143,8 +143,8 @@ mod tests {
         fn set_raw(value: Option<&str>) -> Self {
             let original = std::env::var_os(SOPS_AGE_KEY_FILE_ENV_VAR);
             match value {
-                Some(raw) => std::env::set_var(SOPS_AGE_KEY_FILE_ENV_VAR, raw),
-                None => std::env::remove_var(SOPS_AGE_KEY_FILE_ENV_VAR),
+                Some(raw) => unsafe { std::env::set_var(SOPS_AGE_KEY_FILE_ENV_VAR, raw) },
+                None => unsafe { std::env::remove_var(SOPS_AGE_KEY_FILE_ENV_VAR) },
             }
             Self { original }
         }
@@ -153,9 +153,9 @@ mod tests {
     impl Drop for EnvVarGuard {
         fn drop(&mut self) {
             if let Some(original) = &self.original {
-                std::env::set_var(SOPS_AGE_KEY_FILE_ENV_VAR, original);
+                unsafe { std::env::set_var(SOPS_AGE_KEY_FILE_ENV_VAR, original) };
             } else {
-                std::env::remove_var(SOPS_AGE_KEY_FILE_ENV_VAR);
+                unsafe { std::env::remove_var(SOPS_AGE_KEY_FILE_ENV_VAR) };
             }
         }
     }

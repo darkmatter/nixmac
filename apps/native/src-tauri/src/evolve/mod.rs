@@ -2346,7 +2346,7 @@ mod tests {
         let lock = crate::test_support::e2e_env_lock();
         let restore =
             crate::test_support::EnvVarRestore::capture(&["NIXMAC_EVOLUTION_MEMORY_STRATEGY"]);
-        std::env::set_var("NIXMAC_EVOLUTION_MEMORY_STRATEGY", value);
+        unsafe { std::env::set_var("NIXMAC_EVOLUTION_MEMORY_STRATEGY", value) };
         (lock, restore)
     }
 
@@ -2631,10 +2631,10 @@ mod tests {
         let filtered = filter_evolution_messages(&messages, 3, true);
         // The think before the build check should be filtered out, but the one after should be kept.
         assert!(filtered.iter().any(
-            |m| matches!(&m.message, Message::Tool { ref tool_call_id, .. } if tool_call_id == "think-2")
+            |m| matches!(&m.message, Message::Tool { tool_call_id, .. } if tool_call_id == "think-2")
         ));
         assert!(filtered.iter().all(
-            |m| !matches!(&m.message, Message::Tool { ref tool_call_id, .. } if tool_call_id == "think-1")
+            |m| !matches!(&m.message, Message::Tool { tool_call_id, .. } if tool_call_id == "think-1")
         ));
     }
 
