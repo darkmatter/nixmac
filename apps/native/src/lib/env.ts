@@ -105,4 +105,3 @@ export function getWebSiteUrl(): string {
 
 
 console.log("Running with env", import.meta.env);
-console.log("Running with settings", settings);

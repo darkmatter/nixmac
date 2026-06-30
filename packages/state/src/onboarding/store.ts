@@ -20,7 +20,10 @@ export const initialOnboardingState: OnboardingStateValues = {
 /** Imperative writers for the transient onboarding UI store. */
 export type OnboardingActions = {
   reset: () => void;
-  setTrackedCustomizations: (trackedCustomizations: string[]) => void;
+  setTrackedCustomizations: (
+    trackedCustomizations: string[],
+    trackedCustomizationSources: OnboardingStateValues["trackedCustomizationSources"],
+  ) => void;
   /** Defer inference to the build step (inline setup runs alongside the build). */
   deferInference: () => void;
   /** Keep the success celebration mounted after the build gate is satisfied. */
@@ -34,7 +37,8 @@ export type OnboardingStore = OnboardingStateValues & OnboardingActions;
 export const onboardingStore = create<OnboardingStore>()((set) => ({
   ...initialOnboardingState,
   reset: () => set(initialOnboardingState),
-  setTrackedCustomizations: (trackedCustomizations) => set({ trackedCustomizations }),
+  setTrackedCustomizations: (trackedCustomizations, trackedCustomizationSources) =>
+    set({ trackedCustomizations, trackedCustomizationSources }),
   deferInference: () => set({ inferenceDeferred: true }),
   setCelebrating: (celebrating) => set({ celebrating }),
   setViewingStep: (viewingStep) => set({ viewingStep }),

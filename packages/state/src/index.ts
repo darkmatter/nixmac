@@ -74,10 +74,7 @@ export {
   selectViewingStep,
   useOnboarding,
   type OnboardingSelector,
-  type OnboardingStateValues,
-  type OnboardingStepId,
-  type TrackedCustomizationSource,
 } from "./onboarding";
-export type { OnboardingStateValues, OnboardingStepId } from "./onboarding";
+export type { TrackedCustomizationSource } from "./onboarding";
 
 export type { InferenceConfig, InferenceMode } from "./onboarding-types";

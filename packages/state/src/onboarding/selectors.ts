@@ -1,5 +1,6 @@
 import { onboardingStore } from "./store";
 import type { OnboardingStore } from "./store";
+import { OnboardingStateValues } from "./types";
 
 /** Subscribe to transient onboarding UI state. */
 export const useOnboarding = onboardingStore;
