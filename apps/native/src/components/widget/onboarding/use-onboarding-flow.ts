@@ -36,7 +36,9 @@ export function useOnboardingFlow(): {
   const celebrating = useOnboarding((s) => s.celebrating);
   const viewingStep = useOnboarding((s) => s.viewingStep);
 
-  const permissionsReady = !(permissionsHydrated && permissions && !permissions.allRequiredGranted);
+  const permissionsReady =
+    settings.skipPermissions ||
+    !(permissionsHydrated && permissions && !permissions.allRequiredGranted);
   const nixReady =
     (nixInstalled === true && darwinRebuildAvailable === true) ||
     settings.nixInstalledOverride === true;
