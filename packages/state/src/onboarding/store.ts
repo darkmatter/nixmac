@@ -10,38 +10,40 @@ import { create } from "zustand";
 import type { OnboardingStateValues, OnboardingStepId } from "./types";
 
 export const initialOnboardingState: OnboardingStateValues = {
-  trackedCustomizations: [],
-  trackedCustomizationSources: {},
-  inferenceDeferred: false,
-  celebrating: false,
-  viewingStep: null,
+	trackedCustomizations: [],
+	trackedCustomizationSources: {},
+	inferenceDeferred: false,
+	celebrating: false,
+	viewingStep: null,
 };
 
 /** Imperative writers for the transient onboarding UI store. */
 export type OnboardingActions = {
-  reset: () => void;
-  setTrackedCustomizations: (
-    trackedCustomizations: string[],
-    trackedCustomizationSources: OnboardingStateValues["trackedCustomizationSources"],
-  ) => void;
-  /** Defer inference to the build step (inline setup runs alongside the build). */
-  deferInference: () => void;
-  /** Keep the success celebration mounted after the build gate is satisfied. */
-  setCelebrating: (celebrating: boolean) => void;
-  setViewingStep: (viewingStep: OnboardingStepId | null) => void;
+	reset: () => void;
+	setTrackedCustomizations: (
+		trackedCustomizations: string[],
+		trackedCustomizationSources: OnboardingStateValues["trackedCustomizationSources"],
+	) => void;
+	/** Defer inference to the build step (inline setup runs alongside the build). */
+	deferInference: () => void;
+	/** Keep the success celebration mounted after the build gate is satisfied. */
+	setCelebrating: (celebrating: boolean) => void;
+	setViewingStep: (viewingStep: OnboardingStepId | null) => void;
 };
 
 /** Combined store shape: state values plus the actions that mutate them. */
 export type OnboardingStore = OnboardingStateValues & OnboardingActions;
 
 export const onboardingStore = create<OnboardingStore>()((set) => ({
-  ...initialOnboardingState,
-  reset: () => set(initialOnboardingState),
-  setTrackedCustomizations: (trackedCustomizations, trackedCustomizationSources) =>
-    set({ trackedCustomizations, trackedCustomizationSources }),
-  deferInference: () => set({ inferenceDeferred: true }),
-  setCelebrating: (celebrating) => set({ celebrating }),
-  setViewingStep: (viewingStep) => set({ viewingStep }),
+	...initialOnboardingState,
+	reset: () => set(initialOnboardingState),
+	setTrackedCustomizations: (
+		trackedCustomizations,
+		trackedCustomizationSources,
+	) => set({ trackedCustomizations, trackedCustomizationSources }),
+	deferInference: () => set({ inferenceDeferred: true, viewingStep: null }),
+	setCelebrating: (celebrating) => set({ celebrating }),
+	setViewingStep: (viewingStep) => set({ viewingStep }),
 }));
 
 /**
@@ -51,20 +53,25 @@ export const onboardingStore = create<OnboardingStore>()((set) => ({
  * once. Kept so existing call sites that import `onboardingActions` keep
  * working; new code should prefer `onboardingStore` directly.
  */
-const { reset, setTrackedCustomizations, deferInference, setCelebrating, setViewingStep } =
-  onboardingStore.getInitialState();
+const {
+	reset,
+	setTrackedCustomizations,
+	deferInference,
+	setCelebrating,
+	setViewingStep,
+} = onboardingStore.getInitialState();
 
 export const onboardingActions: OnboardingActions & {
-  getState: typeof onboardingStore.getState;
-  setState: typeof onboardingStore.setState;
-  subscribe: typeof onboardingStore.subscribe;
+	getState: typeof onboardingStore.getState;
+	setState: typeof onboardingStore.setState;
+	subscribe: typeof onboardingStore.subscribe;
 } = {
-  getState: onboardingStore.getState,
-  setState: onboardingStore.setState,
-  subscribe: onboardingStore.subscribe,
-  reset,
-  setTrackedCustomizations,
-  deferInference,
-  setCelebrating,
-  setViewingStep,
+	getState: onboardingStore.getState,
+	setState: onboardingStore.setState,
+	subscribe: onboardingStore.subscribe,
+	reset,
+	setTrackedCustomizations,
+	deferInference,
+	setCelebrating,
+	setViewingStep,
 };
