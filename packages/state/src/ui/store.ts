@@ -9,6 +9,7 @@
 // concerns (e.g. closing a settings panel just because git status changed).
 
 import type {
+  EtcClobberCheckResult,
   EvolutionTelemetry,
   EvolveStep,
   FileDiffContents,
@@ -53,6 +54,8 @@ export const initialUiState: UiStateValues = {
   isBootstrapping: false,
   rebuildContext: "apply",
   rebuildPanelDismissed: false,
+  etcClobber: null,
+  etcClobberDialogOpen: false,
   conversationalResponse: null,
   evolutionTelemetry: null,
   commitMessageSuggestion: null,
@@ -88,6 +91,8 @@ export type UiStateActions = {
   setBootstrapping: (isBootstrapping: boolean) => void;
   setRebuildContext: (rebuildContext: RebuildContext) => void;
   setRebuildPanelDismissed: (rebuildPanelDismissed: boolean) => void;
+  setEtcClobber: (etcClobber: EtcClobberCheckResult | null) => void;
+  setEtcClobberDialogOpen: (etcClobberDialogOpen: boolean) => void;
   setConversationalResponse: (conversationalResponse: string | null) => void;
   setEvolutionTelemetry: (evolutionTelemetry: EvolutionTelemetry | null) => void;
   setCommitMessageSuggestion: (commitMessageSuggestion: string | null) => void;
@@ -140,6 +145,8 @@ export const uiStore = create<UiStateStore>()(
     setBootstrapping: (isBootstrapping) => set({ isBootstrapping }),
     setRebuildContext: (rebuildContext) => set({ rebuildContext }),
     setRebuildPanelDismissed: (rebuildPanelDismissed) => set({ rebuildPanelDismissed }),
+    setEtcClobber: (etcClobber) => set({ etcClobber }),
+    setEtcClobberDialogOpen: (etcClobberDialogOpen) => set({ etcClobberDialogOpen }),
     setConversationalResponse: (conversationalResponse) => set({ conversationalResponse }),
     setEvolutionTelemetry: (evolutionTelemetry) => set({ evolutionTelemetry }),
     setCommitMessageSuggestion: (commitMessageSuggestion) =>
@@ -179,6 +186,8 @@ const {
   setBootstrapping,
   setRebuildContext,
   setRebuildPanelDismissed,
+  setEtcClobber,
+  setEtcClobberDialogOpen,
   setConversationalResponse,
   setEvolutionTelemetry,
   setCommitMessageSuggestion,
@@ -216,6 +225,8 @@ export const uiActions: UiStateActions & {
   setBootstrapping,
   setRebuildContext,
   setRebuildPanelDismissed,
+  setEtcClobber,
+  setEtcClobberDialogOpen,
   setConversationalResponse,
   setEvolutionTelemetry,
   setCommitMessageSuggestion,

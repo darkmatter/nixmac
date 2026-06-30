@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "build:sidecars": "node scripts/build-tauri-sidecars.mjs",
-    "sign:local-app": "node scripts/sign-local-app.mjs",
+    "sign:local-app": "sops exec-env ../../ops/secrets/secrets.sops.json 'bash ../../ops/scripts/release/sign-local-app.sh'",
     "desktop:dev": "tauri dev --config src-tauri/tauri.conf.dev.json",
     "desktop:build": "bun run build:sidecars && tauri build --config '{\"bundle\":{\"externalBin\":[\"binaries/nixmac-helper\",\"binaries/nixmac-sync-agent\"]}}'",
     "desktop:build:local": "bun run build:sidecars && tauri build --bundles app --config '{\"bundle\":{\"createUpdaterArtifacts\":false,\"externalBin\":[\"binaries/nixmac-helper\",\"binaries/nixmac-sync-agent\"]}}' && bun run sign:local-app",

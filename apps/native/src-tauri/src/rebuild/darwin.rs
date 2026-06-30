@@ -88,6 +88,45 @@ pub fn dry_run_build_check(
     Ok((output.status.success(), stdout, stderr))
 }
 
+/// Thin re-export of the `/etc` clobber preflight so callers in this module (and
+/// the rebuild flow) don't reach across into `system::etc_preflight` directly.
+pub fn preflight_etc_clobber(
+    config_dir: &str,
+    host_attr: &str,
+) -> Result<crate::shared_types::EtcClobberCheckResult, anyhow::Error> {
+    crate::system::etc_preflight::check_etc_clobber(config_dir, host_attr)
+}
+
+/// Build the `darwin:apply:end` payload for an aborted-before-activation clobber.
+///
+/// `system_untouched: true` is the key signal to the UI: because we bail before
+/// the activation step (and before the admin prompt), nothing on the system has
+/// changed and the user can safely rename the listed files and retry.
+fn etc_clobber_error_payload(
+    result: crate::shared_types::EtcClobberCheckResult,
+    log_path: &Path,
+) -> serde_json::Value {
+    let paths = result
+        .conflicts
+        .iter()
+        .map(|conflict| format!("  {}", conflict.path))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    serde_json::json!({
+        "ok": false,
+        "code": 2,
+        "log_file": log_path.to_string_lossy(),
+        "error_type": "etc_clobber",
+        "system_untouched": true,
+        "etc_clobber": result,
+        "error": format!(
+            "Unexpected files in /etc would be overwritten:\n{}\n\nPlease check there is nothing critical in these files, rename them by adding .before-nix-darwin to the end, and then try again.",
+            paths
+        ),
+    })
+}
+
 /// Runs `darwin-rebuild switch` with streaming output in two steps:
 /// 1. `darwin-rebuild build` as the user (no sudo)
 /// 2. `result/activate` as root via native macOS authentication dialog (supports Touch ID)
@@ -366,10 +405,26 @@ fn activate_store_path(store_path: &str) -> Result<ActivateResult, anyhow::Error
 
 /// Classify an activation failure into (error_type, error_message).
 fn classify_activate_error(result: &ActivateResult) -> (&'static str, String) {
-    let stderr_lower = result.stderr.to_lowercase();
-    if stderr_lower.contains("user canceled") {
+    let output_lower = format!("{}\n{}", result.stderr, result.stdout).to_lowercase();
+    if output_lower.contains("user canceled") {
         return ("user_cancelled", "Activation cancelled by user".to_string());
     }
+    const APP_MANAGEMENT_PHRASES: &[&str] = &[
+        "permission denied when trying to update apps",
+        "requires permission to update your apps",
+        "grant the permission for your terminal emulator in system settings",
+        "privacy & security > app management",
+    ];
+    if APP_MANAGEMENT_PHRASES
+        .iter()
+        .any(|p| output_lower.contains(p))
+    {
+        return (
+            "app_management",
+            "App Management permission is required to update managed app bundles.".to_string(),
+        );
+    }
+
     const AUTH_PHRASES: &[&str] = &[
         "authorization failed",
         "not authorized",
@@ -379,7 +434,7 @@ fn classify_activate_error(result: &ActivateResult) -> (&'static str, String) {
         "authentication failed",
         "is not an administrator",
     ];
-    if AUTH_PHRASES.iter().any(|p| stderr_lower.contains(p)) {
+    if AUTH_PHRASES.iter().any(|p| output_lower.contains(p)) {
         return (
             "authorization_denied",
             "Authorization denied — administrator credentials required.".to_string(),
@@ -574,21 +629,34 @@ fn try_activate_with_helper(activate_path: &str) -> Option<Result<ActivateResult
             stderr: response.error.unwrap_or(response.stderr),
         })),
         Err(error) => {
-            info!(
-                "[darwin] privileged helper unavailable during activation; falling back to osascript: {}",
-                error
-            );
-            None
+            if error
+                .to_string()
+                .contains("failed to connect to /var/run/nixmac/helper.sock")
+            {
+                info!(
+                    "[darwin] privileged helper socket was stale; falling back to osascript: {error:#}"
+                );
+                return None;
+            }
+
+            Some(Ok(ActivateResult {
+                success: false,
+                code: -1,
+                stdout: String::new(),
+                stderr: format!(
+                    "Privileged helper activation did not return a response: {error:#}. Activation may still be running; nixmac did not fall back to the password prompt."
+                ),
+            }))
         }
     }
 }
 
 /// Handle activation failures and determine the appropriate error response.
 fn handle_activation_error(result: &ActivateResult, log_path: &Path) -> serde_json::Value {
-    let stderr_lower = result.stderr.to_lowercase();
+    let (error_type, friendly_error) = classify_activate_error(result);
 
     // AppleScript cancellation (-128)
-    if stderr_lower.contains("user canceled") {
+    if error_type == "user_cancelled" {
         info!("[darwin] Activation cancelled by user");
         error!("[darwin] osascript stderr: {}", result.stderr);
         return serde_json::json!({
@@ -600,18 +668,20 @@ fn handle_activation_error(result: &ActivateResult, log_path: &Path) -> serde_js
         });
     }
 
-    // Authorization / privilege failure
-    const AUTH_DENIED_PHRASES: &[&str] = &[
-        "authorization failed",
-        "not authorized",
-        "authorization denied",
-        "not permitted",
-        "you do not have permission",
-        "authentication failed",
-        "is not an administrator",
-    ];
+    if error_type == "app_management" {
+        error!("[darwin] Activation failed: {friendly_error}");
+        return serde_json::json!({
+            "ok": false,
+            "code": result.code,
+            "log_file": log_path.to_string_lossy(),
+            "error_type": error_type,
+            "system_untouched": false,
+            "error": friendly_error,
+        });
+    }
 
-    if AUTH_DENIED_PHRASES.iter().any(|p| stderr_lower.contains(p)) {
+    // Authorization / privilege failure
+    if error_type == "authorization_denied" {
         let details = result
             .stderr
             .lines()
@@ -678,7 +748,43 @@ fn activation_failure_left_system_untouched(error_type: &str) -> bool {
 
 #[cfg(test)]
 mod activation_safety_tests {
-    use super::activation_failure_left_system_untouched;
+    use super::{
+        ActivateResult, activation_failure_left_system_untouched, classify_activate_error,
+    };
+
+    fn failed_activation(stdout: &str, stderr: &str) -> ActivateResult {
+        ActivateResult {
+            success: false,
+            code: 1,
+            stdout: stdout.to_string(),
+            stderr: stderr.to_string(),
+        }
+    }
+
+    #[test]
+    fn app_management_failure_is_classified_from_activation_stdout() {
+        let result = failed_activation(
+            "error: permission denied when trying to update apps, aborting activation\nhome-manager requires permission to update your apps",
+            "",
+        );
+
+        let (error_type, message) = classify_activate_error(&result);
+
+        assert_eq!(error_type, "app_management");
+        assert!(message.contains("App Management"));
+    }
+
+    #[test]
+    fn app_management_failure_takes_precedence_over_generic_not_permitted_text() {
+        let result = failed_activation(
+            "Operation not permitted\nIf you did not get a notification, navigate to System Settings > Privacy & Security > App Management.",
+            "",
+        );
+
+        let (error_type, _) = classify_activate_error(&result);
+
+        assert_eq!(error_type, "app_management");
+    }
 
     #[test]
     fn only_explicit_cancellation_is_known_untouched() {
@@ -791,6 +897,38 @@ fn run_darwin_rebuild(
     }
 
     log_and_emit!("darwin-rebuild build completed successfully.");
+
+    // =========================================================================
+    // Step 1b: proactively detect /etc files nix-darwin would refuse to
+    // overwrite. We mirror nix-darwin's own etc.nix check (compare each
+    // managed target against its knownSha256Hashes) using structured data
+    // from `nix eval`, so we can fail *before* prompting for admin rights and
+    // leave the system untouched. A check failure (e.g. nix eval error) is
+    // non-fatal: we fall through and let activation surface the real error.
+    // =========================================================================
+    match preflight_etc_clobber(config_dir, host_attr) {
+        Ok(result) if !result.ok => {
+            log_and_emit!(format!(
+                "Preflight: {} file(s) in /etc would be overwritten; aborting before activation.",
+                result.conflicts.len()
+            ));
+            summarizer.complete(false);
+            return Err(etc_clobber_error_payload(result, &log_path));
+        }
+        Ok(result) => {
+            if result.warnings.is_empty() {
+                log_and_emit!("Preflight: no /etc conflicts detected.");
+            } else {
+                log_and_emit!(format!(
+                    "Preflight: no /etc conflicts detected; {} managed file(s) will be backed up before activation.",
+                    result.warnings.len()
+                ));
+            }
+        }
+        Err(error) => {
+            log_and_emit!(format!("Preflight: /etc conflict check skipped ({error}).",));
+        }
+    }
 
     // =========================================================================
     // Step 2: activate as root via native macOS authentication dialog

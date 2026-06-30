@@ -8,7 +8,8 @@ use crate::privileged_helper::{
     sync_agent::{self, SyncAgentStatus},
 };
 use crate::shared_types::{
-    BuildCheckResult, EvolveCancelResult, OkResult, RebuildStatus, RollbackResult,
+    BuildCheckResult, EtcClobberCheckResult, EvolveCancelResult, OkResult, RebuildStatus,
+    RollbackResult,
 };
 use orpc::*;
 use serde::{Deserialize, Serialize};
@@ -106,6 +107,12 @@ async fn apply_stream_start(
     apply::start_apply_stream(ctx.app, input.host_override)
         .await
         .map_err(|error| internal_err("darwin.applyStreamStart", error))
+}
+
+async fn check_etc_clobber(ctx: OrpcCtx, _input: ()) -> Result<EtcClobberCheckResult, ORPCError> {
+    apply::check_etc_clobber(ctx.app)
+        .await
+        .map_err(|error| internal_err("darwin.checkEtcClobber", error))
 }
 
 async fn activate_store_path(
@@ -214,6 +221,9 @@ pub fn routes() -> Router<OrpcCtx> {
             .input(orpc_specta::specta::<ApplyStreamStartInput>())
             .output(orpc_specta::specta::<OkResult>())
             .handler(apply_stream_start),
+        "checkEtcClobber" => os::<OrpcCtx>()
+            .output(orpc_specta::specta::<EtcClobberCheckResult>())
+            .handler(check_etc_clobber),
         "activateStorePath" => os::<OrpcCtx>()
             .input(orpc_specta::specta::<ActivateStorePathInput>())
             .output(orpc_specta::specta::<OkResult>())

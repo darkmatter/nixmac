@@ -69,10 +69,18 @@ const PERMISSION_DEFS = [
   {
     id: "full-disk",
     name: "Full Disk Access",
-    description: "Recommended so every file in your flake can be managed.",
-    required: false,
+    description: "Required for darwin-rebuild to apply system changes.",
+    required: true,
     canRequestProgrammatically: false,
     instructions: "System Settings → Privacy & Security → Full Disk Access",
+  },
+  {
+    id: "app-management",
+    name: "App Management",
+    description: "Recommended so darwin-rebuild can update apps it manages.",
+    required: false,
+    canRequestProgrammatically: false,
+    instructions: "System Settings → Privacy & Security → App Management",
   },
 ];
 
@@ -462,7 +470,7 @@ function installBackend(startAt: string) {
   patch(tauriAPI.darwin, "applyStreamStart", async () => {
     viewModelActions.setState({
       rebuildStatus: { isRunning: true, success: null, exitCode: null } as any,
-      rebuildLog: { lines: [], rawLines: [] },
+      rebuildLog: { lines: [], rawLines: [], notices: [] },
     });
     BUILD_LINES.forEach((line, i) => {
       timers.push(

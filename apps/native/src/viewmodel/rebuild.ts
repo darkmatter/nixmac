@@ -1,10 +1,11 @@
 import { ipcRenderer, tauriAPI } from "@/ipc/api";
 import type { DarwinApplyDataEvent, DarwinApplySummaryEvent, RebuildStatus } from "@/ipc/types";
-import { REBUILD_ERROR_CODES } from "@/lib/errors";
+import { isProbeablePermissionRebuildError } from "@/lib/errors";
 import { client } from "@/lib/orpc";
 import type { RebuildLine } from "@/types/rebuild";
 import { uiActions, viewModelActions } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
+import { noticesForBuildLogLines } from "./log-triggers";
 
 // Monotonic id for summary lines; reset on every new run.
 let nextLineId = 1;
@@ -20,7 +21,7 @@ export function setRebuildRawLineEcho(echo: boolean): void {
 /** Reset the rebuild output fold (debug tooling / e2e reset). */
 export function clearRebuildLog(): void {
   nextLineId = 1;
-  viewModelActions.setState({ rebuildLog: { lines: [], rawLines: [] } });
+  viewModelActions.setState({ rebuildLog: { lines: [], rawLines: [], notices: [] } });
 }
 
 function appendSummaryLines(texts: string[], type: RebuildLine["type"]): void {
@@ -36,12 +37,18 @@ function appendSummaryLines(texts: string[], type: RebuildLine["type"]): void {
 }
 
 function appendRawLines(lines: string[]): void {
-  viewModelActions.setState((state) => ({
-    rebuildLog: {
-      ...state.rebuildLog,
-      rawLines: [...state.rebuildLog.rawLines, ...lines].slice(-500), // Keep last 500 raw lines
-    },
-  }));
+  viewModelActions.setState((state) => {
+    const existingNotices = state.rebuildLog.notices;
+    const newNotices = noticesForBuildLogLines(lines, existingNotices);
+
+    return {
+      rebuildLog: {
+        ...state.rebuildLog,
+        rawLines: [...state.rebuildLog.rawLines, ...lines].slice(-500), // Keep last 500 raw lines
+        notices: newNotices.length > 0 ? [...existingNotices, ...newNotices] : existingNotices,
+      },
+    };
+  });
 }
 
 function mirrorRebuildStatus(status: RebuildStatus): void {
@@ -55,6 +62,7 @@ function mirrorRebuildStatus(status: RebuildStatus): void {
       rebuildLog: {
         lines: [{ id: 0, text: "Preparing rebuild...", type: "info" }],
         rawLines: [],
+        notices: [],
       },
     });
     uiActions.setRebuildPanelDismissed(false);
@@ -64,12 +72,12 @@ function mirrorRebuildStatus(status: RebuildStatus): void {
   viewModelActions.setState({ rebuildStatus: status });
 
   if (wasRunning && !status.isRunning) {
-    // Run ended: release the global processing flag. On Full Disk Access
+    // Run ended: release the global processing flag. On probeable permission
     // failures, re-probe permissions — the backend writes the cell and
     // `permissions_changed` mirrors it, routing the UI to the permissions
     // step.
     uiActions.setProcessing(false);
-    if (status.errorType === REBUILD_ERROR_CODES.FULL_DISK_ACCESS) {
+    if (isProbeablePermissionRebuildError(status.errorType)) {
       // deprecated(orpc): replace with client/orpc from @/lib/orpc
       void tauriAPI.permissions.refresh();
     }

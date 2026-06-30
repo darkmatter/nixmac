@@ -7,7 +7,7 @@ import { tauriAPI } from "@/ipc/api";
 import type { Permission } from "@/ipc/types";
 import { cn } from "@/lib/utils";
 import { useViewModel } from "@nixmac/state";
-import { Check, ExternalLink, Folder, HardDrive, KeyRound, Loader2, ShieldCheck, Terminal } from "lucide-react";
+import { AppWindow, Check, ExternalLink, Folder, HardDrive, KeyRound, Loader2, ShieldCheck, Terminal } from "lucide-react";
 import { useEffect, useState } from "react";
 
 /**
@@ -36,6 +36,19 @@ export function PermissionsStep() {
       if (permission.id === "full-disk") {
         await tauriAPI.permissions.requestFullDiskAccess();
         // Give the user a beat to grant access in System Settings, then re-probe.
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      } else if (permission.id === "app-management") {
+        // Opens System Settings → Privacy & Security → App Management. macOS
+        // can't grant this programmatically and exposes no probe, so we can
+        // only deep-link and let the user toggle it. Give them a beat, then
+        // re-probe; the backend will keep this row pending rather than report
+        // a false grant.
+        await tauriAPI.permissions.request(permission.id);
+        setNotice({
+          tone: "info",
+          message:
+            "nixmac opened System Settings → Privacy & Security → App Management. Enable nixmac there, then return here. macOS does not let nixmac verify this permission, so this recommended row may remain pending.",
+        });
         await new Promise((resolve) => setTimeout(resolve, 1000));
       } else if (permission.id === "privileged-helper") {
         // Registers the bundled SMAppService LaunchDaemon. macOS may require
@@ -106,6 +119,8 @@ export function PermissionsStep() {
                 return <Terminal className="size-5" />;
               case "full-disk":
                 return <HardDrive className="size-5" />;
+              case "app-management":
+                return <AppWindow className="size-5" />;
               case "privileged-helper":
                 return <KeyRound className="size-5" />;
               default:
@@ -194,7 +209,8 @@ export function PermissionsStep() {
 
       <p className="mt-5 text-muted-foreground/70 text-xs leading-relaxed">
         The unattended sync helper is installed once during onboarding so later builds can activate
-        without repeated password prompts. Full Disk Access is recommended for the smoothest experience.
+        without repeated password prompts. Full Disk Access is required for reliable activation; App
+        Management is recommended for managed app updates, but macOS does not let nixmac verify it.
       </p>
     </StepShell>
   );

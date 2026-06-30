@@ -156,6 +156,73 @@ export type ConfigSetDirInput = { dir: string }
 export type ConfigSetHostAttrInput = { host: string }
 
 /**
+ * Result of proactively checking managed-file overwrite safety.
+ */
+export type EtcClobberCheckResult = { 
+/**
+ * True when no hard conflicts were detected.
+ */
+ok: boolean; 
+/**
+ * Number of enabled managed-file entries inspected.
+ */
+checked: number; 
+/**
+ * Conflicts that would make nix-darwin abort activation.
+ */
+conflicts: EtcClobberConflict[]; 
+/**
+ * Non-blocking managed-file collisions that activation will back up.
+ */
+warnings: ManagedFileWarning[] }
+
+/**
+ * A single `/etc` path that nix-darwin would refuse to overwrite.
+ */
+export type EtcClobberConflict = { 
+/**
+ * Absolute path under `/etc` that would be clobbered.
+ */
+path: string; 
+/**
+ * nix-darwin `environment.etc.<name>.target` value.
+ */
+target: string; 
+/**
+ * Symlink target nix-darwin expects for an already-managed file.
+ */
+expectedStaticPath: string; 
+/**
+ * Existing symlink target, if the path is currently a symlink.
+ */
+currentLinkTarget: string | null; 
+/**
+ * Safe hashes advertised by nix-darwin for this entry.
+ */
+knownSha256Hashes: string[]; 
+/**
+ * Reason this path is considered unsafe to overwrite.
+ */
+kind: EtcClobberConflictKind }
+
+/**
+ * Kind of `/etc` clobber conflict detected before nix-darwin activation.
+ */
+export type EtcClobberConflictKind = 
+/**
+ * Existing file content does not match any nix-darwin known safe hash.
+ */
+"unrecognized_content" | 
+/**
+ * Existing path is not a regular file, so nix-darwin cannot hash/adopt it.
+ */
+"non_regular_target" | 
+/**
+ * Existing path could not be inspected or hashed by nixmac.
+ */
+"unreadable"
+
+/**
  * Evolution lifecycle state.
  */
 export type EvolutionState = 
@@ -577,6 +644,52 @@ workingDirectory: string | null }
 export type LaunchdItemType = "LaunchAgent" | "LaunchDaemon" | "LaunchdUserAgent"
 
 /**
+ * Managed file root inspected by the clobber preflight.
+ */
+export type ManagedFileRoot = 
+/**
+ * nix-darwin `environment.etc`, rooted at `/etc`.
+ */
+"etc" | 
+/**
+ * Home Manager `xdg.configFile`, rooted at `$XDG_CONFIG_HOME`.
+ */
+"xdg_config"
+
+/**
+ * A managed file that will be moved aside before activation continues.
+ */
+export type ManagedFileWarning = { 
+/**
+ * Absolute path that will be moved aside or replaced by activation.
+ */
+path: string; 
+/**
+ * Managed-file target relative to its root.
+ */
+target: string; 
+/**
+ * Root and option family that owns this target.
+ */
+managedRoot: ManagedFileRoot; 
+/**
+ * Home Manager user that owns the file, when known.
+ */
+user: string | null; 
+/**
+ * Existing symlink target, if the path is currently a symlink.
+ */
+currentLinkTarget: string | null; 
+/**
+ * Expected symlink target, when the configuration exposes a concrete source.
+ */
+expectedLinkTarget: string | null; 
+/**
+ * Backup suffix activation will append before linking the generated file.
+ */
+backupExtension: string | null }
+
+/**
  * Generic acknowledgement returned by fire-and-forget commands.
  */
 export type OkResult = { 
@@ -767,6 +880,7 @@ export type Procedures = {
     activateStorePath: Client<Record<never, never>, ActivateStorePathInput, OkResult, Error>
     applyStreamStart: Client<Record<never, never>, ApplyStreamStartInput, OkResult, Error>
     buildCheck: Client<Record<never, never>, void, BuildCheckResult, Error>
+    checkEtcClobber: Client<Record<never, never>, void, EtcClobberCheckResult, Error>
     evolve: Client<Record<never, never>, EvolveInput, void, Error>
     evolveAnswer: Client<Record<never, never>, EvolveAnswerInput, OkResult, Error>
     evolveCancel: Client<Record<never, never>, void, EvolveCancelResult, Error>
