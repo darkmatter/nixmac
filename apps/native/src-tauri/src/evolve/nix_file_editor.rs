@@ -384,7 +384,7 @@ pub fn apply_semantic_edit(
         let format_result = nix_format(&config_dir, &edit.path);
         if let Err(e) = format_result {
             log::warn!(
-                "apply_semantic_edit succeeded but nix-format failed: {}. The file may be left in an unformatted state; run nix-format manually to fix formatting issues.",
+                "apply_semantic_edit succeeded but nixfmt failed: {}. The file may be left in an unformatted state; run nixfmt manually to fix formatting issues.",
                 e
             );
         }

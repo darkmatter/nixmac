@@ -68,7 +68,7 @@ pub struct UiPrefs {
     /// `None` or missing key = use PostHog default.
     pub feature_flag_overrides: Option<BTreeMap<String, String>>,
     /// Whether or not to auto-format Nix files when making changes to the flakes.
-    pub auto_format_nix_files: Option<bool>,
+    pub auto_format_nix_files: bool,
 }
 
 /// Partial update to UI preferences — every field is optional so the caller
@@ -180,7 +180,7 @@ pub struct GlobalPreferences {
     /// Timestamp (unix secs) of the last successful build/evolution apply. Set by `finalize_apply`.
     pub onboarding_last_build_at: Option<i64>,
     /// Whether or not to auto-format Nix files when making changes to the flakes.
-    pub auto_format_nix_files: Option<bool>,
+    pub auto_format_nix_files: bool,
 }
 
 impl Default for GlobalPreferences {
@@ -210,7 +210,7 @@ impl Default for GlobalPreferences {
             onboarding_mac_scanned_at: None,
             onboarding_login_decided: false,
             onboarding_last_build_at: None,
-            auto_format_nix_files: None,
+            auto_format_nix_files: false,
         }
     }
 }
@@ -279,7 +279,7 @@ impl GlobalPreferences {
             self.onboarding_login_decided = v;
         }
         if let Some(v) = update.auto_format_nix_files {
-            self.auto_format_nix_files = Some(v);
+            self.auto_format_nix_files = v;
         }
     }
 

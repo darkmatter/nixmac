@@ -231,7 +231,7 @@ mod tests {
             serde_json::to_value(GlobalPreferences {
                 host_attr: Some("macbook".to_string()),
                 developer_mode: true,
-                auto_format_nix_files: Some(true),
+                auto_format_nix_files: true,
                 ..GlobalPreferences::default()
             })
             .unwrap(),

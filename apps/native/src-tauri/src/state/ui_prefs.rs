@@ -47,9 +47,7 @@ fn needs_limits_update(update: &UiPrefsUpdate) -> bool {
 }
 
 pub fn auto_format_nix_files<R: Runtime>(app: &AppHandle<R>) -> bool {
-    preferences::try_read(app)
-        .and_then(|prefs| prefs.auto_format_nix_files)
-        .unwrap_or(false)
+    preferences::try_read(app).is_some_and(|prefs| prefs.auto_format_nix_files)
 }
 
 fn apply_secret_updates<R: Runtime>(app: &AppHandle<R>, update: &UiPrefsUpdate) -> Result<()> {

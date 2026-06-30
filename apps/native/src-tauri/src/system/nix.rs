@@ -359,7 +359,7 @@ pub fn get_nix_version() -> Option<String> {
     }
 }
 
-/// Runs `nixfmt` directly from the flake on the provided file.
+/// Runs `nixfmt` (from nixpkgs via `nix run`) against the provided file in `config_dir`.
 /// Executes the command:
 /// `nix run nixpkgs#nixfmt -- <file>`
 pub fn nix_format(config_dir: &str, file: &str) -> Result<String> {
