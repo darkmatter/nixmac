@@ -2,7 +2,6 @@
 
 use crate::evolve::types::SemanticFileEdit;
 use crate::system::nix::nix_format;
-use crate::system::nix::nix_format;
 use anyhow::{Context, Result};
 use log::{debug, info};
 use rnix::SyntaxNode;

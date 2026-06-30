@@ -104,8 +104,10 @@ pub fn experimental_spinning_mascot<R: Runtime>(app: &AppHandle<R>) -> bool {
 }
 
 pub fn set_host_attr<R: Runtime>(app: &AppHandle<R>, attr: &str) -> Result<()> {
-    let attr = attr.to_string();
-    preferences::write(app, move |prefs| prefs.host_attr = Some(attr))
+    let attr = attr.trim().to_string();
+    preferences::write(app, move |prefs| {
+        prefs.host_attr = if attr.is_empty() { None } else { Some(attr) }
+    })
 }
 
 pub fn set_evolve_provider<R: Runtime>(app: &AppHandle<R>, provider: &str) -> Result<()> {

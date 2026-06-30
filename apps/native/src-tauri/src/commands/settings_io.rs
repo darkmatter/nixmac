@@ -12,7 +12,6 @@
 
 use super::helpers::capture_err;
 use crate::evolve::config::UserPreferences;
-use crate::evolve::config::UserPreferences;
 use crate::observable::Observable;
 use crate::shared_types::{ExportResult, ImportResult};
 use crate::state::preferences::GlobalPreferences;

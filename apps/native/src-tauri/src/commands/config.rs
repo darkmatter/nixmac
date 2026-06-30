@@ -132,10 +132,10 @@ pub async fn config_prepare_new_dir(
     }
 
     if p.exists() && !is_dir_empty_or_only_git(p)? {
-        return Err(
-            "Directory already exists and is not empty. Choose Existing to use a current configuration."
-                .to_string(),
-        );
+        return Err(format!(
+            "Directory {} already exists and is not empty. Choose Existing to use a current configuration.",
+            normalized_dir.display()
+        ));
     }
 
     let prev_dir = store::get_config_dir(&app).ok();
@@ -226,14 +226,20 @@ pub async fn bootstrap_default_config(
     default_config::bootstrap_with_template(&app, &hostname, template_id.as_deref())
 }
 
-/// Resolves an optional directory name into an absolute target for an imported
+/// Resolves an optional destination into an absolute target for an imported
 /// configuration. Defaults to `/etc/nix-darwin`.
+///
+/// Accepted forms:
+/// - a plain directory name (resolved as `~/name`), or
+/// - a path-like input (e.g. `~/.darwin` or `/Users/alice/.darwin`).
 fn resolve_import_target(dir_name: Option<String>) -> Result<PathBuf, String> {
     let name = dir_name.as_deref().map(str::trim).filter(|n| !n.is_empty());
 
     if let Some(name) = name {
-        if name.contains('/') || name == "." || name == ".." {
-            return Err("Use a directory name, not a path".to_string());
+        let looks_like_path = name.contains('/') || name.starts_with('~');
+        if looks_like_path {
+            return utils::normalize_path_input(name)
+                .map_err(|e| capture_err("resolve_import_target", e));
         }
 
         let home =
@@ -273,10 +279,10 @@ fn prepare_import_target(dir_name: Option<String>) -> Result<PathBuf, String> {
     let target = resolve_import_target(dir_name)?;
     validate_new_dir_location(&target)?;
     if !is_importable_target(&target)? {
-        return Err(
-            "Directory already exists and is not empty. Choose Existing to use a current configuration."
-                .to_string(),
-        );
+        return Err(format!(
+            "Directory {} already exists and is not empty. Choose Existing to use a current configuration.",
+            target.display()
+        ));
     }
     if target.exists() {
         let ds_store = target.join(".DS_Store");
@@ -284,6 +290,9 @@ fn prepare_import_target(dir_name: Option<String>) -> Result<PathBuf, String> {
             std::fs::remove_file(&ds_store)
                 .map_err(|e| format!("Failed to clear {}: {}", ds_store.display(), e))?;
         }
+    } else {
+        std::fs::create_dir_all(&target)
+            .map_err(|e| format!("Failed to create directory {}: {}", target.display(), e))?;
     }
     Ok(target)
 }
@@ -423,5 +432,37 @@ mod tests {
         assert!(validate_new_dir_location(&home.join(".darwin-test")).is_ok());
         assert!(validate_new_dir_location(&home.join("configs").join("darwin")).is_err());
         assert!(validate_new_dir_location(Path::new("/tmp/darwin")).is_err());
+    }
+
+    #[test]
+    fn test_prepare_import_target_creates_empty_dir_under_home() {
+        let home = dirs::home_dir().expect("home directory");
+        let dir = home.join(".nixmac-test-prepare-import");
+        let target = prepare_import_target(Some(dir.to_string_lossy().to_string()))
+            .expect("prepare import target");
+        assert_eq!(target, dir);
+        assert!(target.exists());
+        assert!(target.is_dir());
+
+        let _ = fs::remove_dir_all(target);
+    }
+
+    #[test]
+    fn test_prepare_import_target_rejects_dir_not_under_home() {
+        let dir = PathBuf::from("/tmp/nixmac-test");
+        let result = prepare_import_target(Some(dir.to_string_lossy().to_string()));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_prepare_import_target_rejects_non_empty_dir() {
+        let dir = temp_dir("prepare-import-target-non-empty");
+        fs::create_dir_all(&dir).expect("create temp dir");
+        fs::write(dir.join("flake.nix"), "").expect("create flake");
+
+        let result = prepare_import_target(Some(dir.to_string_lossy().to_string()));
+        assert!(result.is_err());
+
+        let _ = fs::remove_dir_all(dir);
     }
 }

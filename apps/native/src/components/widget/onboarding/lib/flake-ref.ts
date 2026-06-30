@@ -1,203 +1,221 @@
 export interface ParsedFlakeRef {
-  valid: boolean;
-  /** The recognized flakeref type from the Nix manual. */
-  type:
-    | "github"
-    | "gitlab"
-    | "sourcehut"
-    | "git"
-    | "mercurial"
-    | "tarball"
-    | "path"
-    | "indirect"
-    | "unknown";
-  /** Human-friendly description of what this reference points to. */
-  label: string;
-  /** Hint shown under the input. */
-  hint: string;
-  /**
-   * Whether the current native backend can import this kind of reference.
-   * The backend imports GitHub repos (owner/repo) and local paths directly;
-   * other flakeref kinds are recognized but not yet wired.
-   */
-  importable: boolean;
+	valid: boolean;
+	/** The recognized import input shape understood by the backend parser. */
+	type: "repo" | "unknown";
+	/** Human-friendly description of what this reference points to. */
+	label: string;
+	/** Hint shown under the input. */
+	hint: string;
+	/** Whether the current native backend can import this reference. */
+	importable: boolean;
 }
 
-const ARCHIVE_RE = /\.(zip|tar|tgz|tar\.gz|tar\.xz|tar\.bz2|tar\.zst)$/i;
+const VALID_SEGMENT_RE = /^[A-Za-z0-9._-]+$/;
+
+function isValidSegment(segment: string): boolean {
+	return segment.length > 0 && VALID_SEGMENT_RE.test(segment);
+}
+
+function validateSubdir(path: string): string | null {
+	if (path.startsWith("/")) return "Subdirectory must be relative.";
+
+	const components = path.split("/");
+	for (const component of components) {
+		if (!component || component === "." || component === "..") {
+			return "Invalid dir. Avoid empty segments and '.' or '..'.";
+		}
+	}
+
+	return null;
+}
+
+function parseQuery(input: string): { locator: string; error?: string } {
+	const [locator, query] = input.split("?", 2);
+	if (!query) return { locator };
+
+	const seen = new Set<string>();
+
+	for (const pair of query.split("&").filter(Boolean)) {
+		const [key, value] = pair.split("=", 2);
+		if (!key || value === undefined) {
+			return { locator, error: `Invalid query parameter '${pair}'.` };
+		}
+		if (!value) {
+			return { locator, error: `Query parameter '${key}' must not be empty.` };
+		}
+
+		if (key !== "ref" && key !== "dir") {
+			return { locator, error: `Unsupported query parameter '${key}'.` };
+		}
+		if (seen.has(key)) {
+			return { locator, error: `'${key}' specified more than once.` };
+		}
+		seen.add(key);
+
+		if (key === "dir") {
+			const subdirError = validateSubdir(value);
+			if (subdirError) return { locator, error: subdirError };
+		}
+	}
+
+	return { locator };
+}
+
+function ownerAndRepoFromLocator(
+	locator: string,
+): { owner: string; repo: string } | null {
+	const fullUrl = locator.match(/^(https?:\/\/|ssh:\/\/)/i);
+	let path = "";
+
+	if (fullUrl) {
+		try {
+			const url = new URL(locator);
+			path = url.pathname.replace(/^\/+|\/+$/g, "");
+		} catch {
+			return null;
+		}
+	} else if (locator.startsWith("git@")) {
+		const idx = locator.indexOf(":");
+		if (idx < 0) return null;
+		path = locator.slice(idx + 1).replace(/^\/+|\/+$/g, "");
+	} else {
+		path = locator
+			.replace(/^github\.com\//i, "")
+			.replace(/^www\.github\.com\//i, "")
+			.replace(/^\/+|\/+$/g, "");
+	}
+
+	const parts = path.split("/").filter(Boolean);
+	if (parts.length < 2) return null;
+
+	const owner = parts[parts.length - 2] ?? "";
+	const repo = (parts[parts.length - 1] ?? "").replace(/\.git$/i, "");
+
+	if (!isValidSegment(owner) || !isValidSegment(repo)) return null;
+	return { owner, repo };
+}
 
 /**
- * Best-effort parser/validator for Nix flake references. Mirrors the types in
- * the Nix manual (github, gitlab, sourcehut, git, mercurial, tarball/file,
- * path, indirect). Validates shape only — it does not fetch anything.
+ * Best-effort parser/validator for repository references supported by
+ * `bootstrap::import::parse_repo_ref`.
  */
 export function parseFlakeRef(raw: string): ParsedFlakeRef {
-  const input = raw.trim();
+	const input = raw.trim();
 
-  if (!input) {
-    return {
-      valid: false,
-      type: "unknown",
-      label: "",
-      hint: "Paste a flake reference to continue.",
-      importable: false,
-    };
-  }
+	if (!input) {
+		return {
+			valid: false,
+			type: "unknown",
+			label: "",
+			hint: "Paste a repository reference to continue.",
+			importable: false,
+		};
+	}
 
-  // github:owner/repo(/ref-or-rev)?
-  const gh = input.match(/^github:([\w.-]+)\/([\w.-]+)(?:\/([\w./-]+))?/i);
-  if (gh) {
-    const [, owner, repo, refOrRev] = gh;
-    return {
-      valid: true,
-      type: "github",
-      label: `GitHub · ${owner}/${repo}${refOrRev ? ` @ ${refOrRev}` : ""}`,
-      hint: "Fetched from GitHub — fast and no full clone.",
-      importable: true,
-    };
-  }
+	const { locator, error } = parseQuery(input);
+	if (error) {
+		return {
+			valid: false,
+			type: "unknown",
+			label: "",
+			hint: error,
+			importable: false,
+		};
+	}
 
-  // gitlab:owner/repo
-  const gl = input.match(/^gitlab:([\w.%-]+)\/([\w.-]+)(?:\/([\w./-]+))?/i);
-  if (gl) {
-    const [, owner, repo] = gl;
-    return {
-      valid: true,
-      type: "gitlab",
-      label: `GitLab · ${owner}/${repo}`,
-      hint: "GitLab imports aren't wired yet — use GitHub or a local folder.",
-      importable: false,
-    };
-  }
+	const parsed = ownerAndRepoFromLocator(locator);
+	if (parsed) {
+		const fullUrl = /^(https?:\/\/|ssh:\/\/)/i.test(locator);
+		const scpUrl = locator.startsWith("git@");
+		const githubHost = /^(www\.)?github\.com\//i.test(locator);
+		const shorthand = !fullUrl && !scpUrl && !githubHost;
 
-  // sourcehut:~owner/repo
-  const sh = input.match(/^sourcehut:(~[\w.-]+)\/([\w.-]+)/i);
-  if (sh) {
-    const [, owner, repo] = sh;
-    return {
-      valid: true,
-      type: "sourcehut",
-      label: `SourceHut · ${owner}/${repo}`,
-      hint: "SourceHut imports aren't wired yet — use GitHub or a local folder.",
-      importable: false,
-    };
-  }
+		const sourceKind = fullUrl
+			? "Git URL"
+			: scpUrl
+				? "SSH repo"
+				: shorthand
+					? "GitHub shorthand"
+					: "GitHub path";
 
-  // git, git+https, git+ssh, git+file, git://
-  if (/^git(\+(https?|ssh|file|git))?:\/\/.+/i.test(input)) {
-    return {
-      valid: true,
-      type: "git",
-      label: "Git repository",
-      hint: "Raw git refs aren't wired yet — use GitHub or a local folder.",
-      importable: false,
-    };
-  }
+		return {
+			valid: true,
+			type: "repo",
+			label: `${sourceKind} · ${parsed.owner}/${parsed.repo}`,
+			hint: "Supports optional ?ref=<branch-or-tag> and ?dir=<subdirectory>.",
+			importable: true,
+		};
+	}
 
-  // mercurial: hg+http(s)/ssh/file
-  if (/^hg\+(https?|ssh|file):\/\/.+/i.test(input)) {
-    return {
-      valid: true,
-      type: "mercurial",
-      label: "Mercurial repository",
-      hint: "Mercurial imports aren't wired yet — use GitHub or a local folder.",
-      importable: false,
-    };
-  }
-
-  // tarball+http / file+http or any http(s) ending in an archive extension
-  if (
-    /^(tarball|file)\+https?:\/\/.+/i.test(input) ||
-    (/^https?:\/\/.+/i.test(input) && ARCHIVE_RE.test(input.split("?")[0]))
-  ) {
-    return {
-      valid: true,
-      type: "tarball",
-      label: "Tarball flake",
-      hint: "Remote tarballs aren't wired yet — use GitHub or a local folder.",
-      importable: false,
-    };
-  }
-
-  // plain https URL (treated as tarball/file fetcher)
-  if (/^https?:\/\/.+/i.test(input)) {
-    return {
-      valid: true,
-      type: "tarball",
-      label: "Remote flake (http)",
-      hint: "Remote URLs aren't wired yet — use GitHub or a local folder.",
-      importable: false,
-    };
-  }
-
-  // path: explicit, absolute, ~ or ./ relative
-  if (/^(path:|~|\/|\.\/|\.\.\/|\.$)/.test(input)) {
-    return {
-      valid: true,
-      type: "path",
-      label: "Local path",
-      hint: "Points to a directory on this machine that contains a flake.nix.",
-      importable: true,
-    };
-  }
-
-  // indirect registry id, e.g. nixpkgs or nixpkgs/nixos-unstable
-  if (/^[\w.-]+(\/[\w./-]+)?$/.test(input)) {
-    return {
-      valid: true,
-      type: "indirect",
-      label: `Registry · ${input}`,
-      hint: "Registry refs aren't wired yet — use GitHub or a local folder.",
-      importable: false,
-    };
-  }
-
-  return {
-    valid: false,
-    type: "unknown",
-    label: "",
-    hint: "This doesn't look like a valid flake reference.",
-    importable: false,
-  };
+	return {
+		valid: false,
+		type: "unknown",
+		label: "",
+		hint: "Expected owner/repo, github.com/owner/repo, git@github.com:owner/repo.git, or an http(s)/ssh git URL.",
+		importable: false,
+	};
 }
 
 /** Example refs surfaced as quick-fill chips in the UI. */
 export const EXAMPLE_REFS: { ref: string; note: string }[] = [
-  { ref: "github:alice/nix-darwin-config", note: "GitHub repo" },
-  { ref: "~/Documents/nix-darwin", note: "Local folder" },
-  { ref: "github:alice/dotfiles/main", note: "GitHub branch" },
+	{ ref: "owner/repo", note: "GitHub shorthand" },
+	{ ref: "owner/repo?ref=main", note: "Shorthand + branch/tag" },
+	{ ref: "owner/repo?dir=hosts/work", note: "Shorthand + subdirectory" },
+	{ ref: "owner/repo?ref=main&dir=hosts/work", note: "Shorthand + ref + dir" },
+	{ ref: "github.com/owner/repo.git", note: "GitHub host form" },
+	{ ref: "https://github.com/owner/repo", note: "GitHub HTTPS URL" },
+	{
+		ref: "git@github.com:owner/repo.git?ref=main&dir=mac",
+		note: "GitHub SSH URL",
+	},
+	{
+		ref: "ssh://git@example.com/x/y.git?dir=system",
+		note: "Generic SSH Git URL",
+	},
 ];
 
 export interface StarterTemplate {
-  id: StarterTemplateId;
-  name: string;
-  description: string;
-  includes: string[];
-  recommended?: boolean;
+	id: StarterTemplateId;
+	name: string;
+	description: string;
+	includes: string[];
+	recommended?: boolean;
 }
 
-export type StarterTemplateId = "nix-darwin-determinate" | "nixos-unified" | "flake-parts";
+export type StarterTemplateId =
+	| "nix-darwin-determinate"
+	| "nixos-unified"
+	| "flake-parts";
 
 /** Starter configurations offered to first-time users. */
 export const STARTER_TEMPLATES: StarterTemplate[] = [
-  {
-    id: "nix-darwin-determinate",
-    name: "nix-darwin + Determinate",
-    description: "The bundled nixmac starter: nix-darwin, Determinate Nix, sops-nix, and modular defaults.",
-    includes: ["nix-darwin", "Determinate Nix", "sops-nix", "Home Manager ready"],
-    recommended: true,
-  },
-  {
-    id: "nixos-unified",
-    name: "nixos-unified",
-    description: "A cross-platform template for sharing NixOS, nix-darwin, and home-manager structure.",
-    includes: ["nixos-unified", "nix-darwin", "NixOS", "home-manager"],
-  },
-  {
-    id: "flake-parts",
-    name: "Flake parts",
-    description: "A generic flake-parts starter with per-system outputs and a simple default package.",
-    includes: ["flake-parts", "nixpkgs", "perSystem", "packages.default"],
-  },
+	{
+		id: "nix-darwin-determinate",
+		name: "nix-darwin + Determinate",
+		description:
+			"The bundled nixmac starter: nix-darwin, Determinate Nix, sops-nix, and modular defaults.",
+		includes: [
+			"nix-darwin",
+			"Determinate Nix",
+			"sops-nix",
+			"Home Manager ready",
+		],
+		recommended: true,
+	},
+	{
+		id: "nixos-unified",
+		name: "nixos-unified",
+		description:
+			"A cross-platform template for sharing NixOS, nix-darwin, and home-manager structure.",
+		includes: ["nixos-unified", "nix-darwin", "NixOS", "home-manager"],
+	},
+	{
+		id: "flake-parts",
+		name: "Flake parts",
+		description:
+			"A generic flake-parts starter with per-system outputs and a simple default package.",
+		includes: ["flake-parts", "nixpkgs", "perSystem", "packages.default"],
+	},
 ];
 
 /** Default directory a new starter configuration is written to. */

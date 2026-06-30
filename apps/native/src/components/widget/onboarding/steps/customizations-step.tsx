@@ -10,8 +10,6 @@ import {
   type CustomizationGroup,
   type CustomizationItem,
   type CustomizationSource,
-  type CustomizationItem,
-  type CustomizationSource,
 } from "@/components/widget/onboarding/lib/customizations";
 import { stepEyebrow } from "@/components/widget/onboarding/lib/onboarding";
 import { StepShell } from "@/components/widget/onboarding/step-shell";
@@ -491,7 +489,6 @@ function GroupCard({
                 Tracking all {ids.length}
               </Button>
             ) : (
-              <Button size="sm" onClick={() => onTrack(group.items)}>
               <Button size="sm" onClick={() => onTrack(group.items)}>
                 <Plus className="size-4" aria-hidden="true" />
                 Track{" "}
