@@ -41,7 +41,7 @@ export const onboardingStore = create<OnboardingStore>()((set) => ({
 		trackedCustomizations,
 		trackedCustomizationSources,
 	) => set({ trackedCustomizations, trackedCustomizationSources }),
-	deferInference: () => set({ inferenceDeferred: true, viewingStep: null }),
+	deferInference: () => set({ inferenceDeferred: true }),
 	setCelebrating: (celebrating) => set({ celebrating }),
 	setViewingStep: (viewingStep) => set({ viewingStep }),
 }));

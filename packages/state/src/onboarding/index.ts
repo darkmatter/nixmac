@@ -15,8 +15,4 @@ export {
 	useOnboarding,
 	type OnboardingSelector,
 } from "./selectors";
-export type {
-	OnboardingStateValues,
-	OnboardingStepId,
-	TrackedCustomizationSource,
-} from "./types";
+export type { TrackedCustomizationSource } from "./types";
