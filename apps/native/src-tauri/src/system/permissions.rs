@@ -499,18 +499,47 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
             Ok(app_management_permission(check_app_management()))
         }
         "privileged-helper" => {
-            let status = crate::privileged_helper::service::register().map(|status| {
-                if status.authorized {
-                    PermissionStatus::Granted
-                } else {
-                    crate::privileged_helper::service::open_login_items_settings();
-                    PermissionStatus::Pending
-                }
-            })?;
-            Ok(privileged_helper_permission(
-                status,
-                "Approve nixmac in System Settings → General → Login Items & Extensions if macOS asks for background item approval.",
-            ))
+            // SMAppService registration requires the helper binary and its
+            // LaunchDaemon plist to be embedded inside the .app bundle
+            // (Contents/MacOS/nixmac-helper and
+            // Contents/Library/LaunchDaemons/com.darkmatter.nixmac.helper.plist).
+            // Those assets are only staged by `bun run desktop:build[:local]`
+            // (externalBin in package.json). Under `tauri dev` the app runs as
+            // a bare binary from target/debug with no bundle, so
+            // registerAndReturnError: fails with an opaque "Operation not
+            // permitted". Detect that up front and surface a clear Pending
+            // state instead of propagating the OS error to the UI.
+            let bundle_present = crate::system::install_location::check_install_location()
+                .bundle_path
+                .is_some();
+
+            let (status, instructions) = if !bundle_present {
+                warn!(
+                    "privileged helper registration skipped: nixmac is not running from a .app bundle"
+                );
+                (
+                    PermissionStatus::Pending,
+                    "Build a signed .app with `bun run desktop:build:local`, drag it into /Applications, and launch it from there to install the unattended sync helper. It cannot be installed from a dev build.",
+                )
+            } else {
+                let status = match crate::privileged_helper::service::register() {
+                    Ok(status) if status.authorized => PermissionStatus::Granted,
+                    Ok(_) => {
+                        crate::privileged_helper::service::open_login_items_settings();
+                        PermissionStatus::Pending
+                    }
+                    Err(error) => {
+                        warn!("privileged helper registration failed: {error:#}");
+                        crate::privileged_helper::service::open_login_items_settings();
+                        PermissionStatus::Pending
+                    }
+                };
+                (
+                    status,
+                    "Approve nixmac in System Settings → General → Login Items & Extensions if macOS asks for background item approval.",
+                )
+            };
+            Ok(privileged_helper_permission(status, instructions))
         }
         _ => Err(anyhow::anyhow!("Unknown permission: {}", permission_id)),
     }

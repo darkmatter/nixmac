@@ -269,3 +269,22 @@ pub struct RecommendedPrompt {
     /// Prompt text suggested to the user.
     pub prompt_text: String,
 }
+
+/// Result of inspecting the running app's install location.
+///
+/// The UI surfaces a "move to /Applications" warning when the app is running
+/// from a `.app` bundle that is not in `/Applications` (e.g. still on the
+/// mounted DMG). When `bundle_path` is `None` the process is not running from
+/// a bundle at all (e.g. `tauri dev`, cargo test, e2e runners); the UI must
+/// treat that as "check not applicable" rather than "misplaced" so dev and
+/// test runs don't show a false warning.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct InstallLocationState {
+    /// True when the `.app` bundle's parent directory is `/Applications`.
+    pub in_applications_dir: bool,
+    /// Absolute path to the detected `.app` bundle, or `None` when the process
+    /// is not running from inside a bundle.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bundle_path: Option<String>,
+}

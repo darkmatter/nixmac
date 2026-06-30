@@ -5,8 +5,10 @@ import { stepEyebrow } from "@/components/widget/onboarding/lib/onboarding";
 import { StepShell } from "@/components/widget/onboarding/step-shell";
 import { tauriAPI } from "@/ipc/api";
 import type { Permission } from "@/ipc/types";
+import { orpc } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 import { useViewModel } from "@nixmac/state";
+import { useQuery } from "@tanstack/react-query";
 import { AppWindow, Check, ExternalLink, Folder, HardDrive, KeyRound, Loader2, ShieldCheck, Terminal } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -28,6 +30,16 @@ export function PermissionsStep() {
       console.error("Failed to check permissions:", error);
     });
   }, []);
+
+  // Detect whether nixmac is running from /Applications. macOS TCC services
+  // (Full Disk Access especially) key off the bundle's location, so an app
+  // launched from the mounted DMG or a download folder will not match the TCC
+  // entry and grants silently fail. Only warn when we are actually inside a
+  // bundle but misplaced — `bundlePath` is null under `tauri dev` / tests, and
+  // we must not surface a false warning there.
+  const { data: installLocation } = useQuery(orpc.system.installLocation.queryOptions());
+  const showMisplacedWarning =
+    installLocation?.bundlePath != null && !installLocation.inApplicationsDir;
 
   async function handleGrant(permission: Permission) {
     setRequesting(permission.id);
@@ -88,6 +100,20 @@ export function PermissionsStep() {
       title="System Permissions"
       description="nixmac needs a few macOS permissions before it can read your configuration and apply changes. Grant the required ones to continue — we’ll move on automatically."
     >
+      {showMisplacedWarning ? (
+        <p className="mb-4 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
+          nixmac is running from{" "}
+          <span className="font-mono text-xs">
+            {installLocation?.bundlePath}
+          </span>
+          , not from <span className="font-mono text-xs">/Applications</span>. macOS
+          permissions like Full Disk Access are tied to the app’s location, so grants
+          won’t take effect here. Quit nixmac, drag it into{" "}
+          <span className="font-mono text-xs">/Applications</span>, and launch it from
+          there before granting permissions.
+        </p>
+      ) : null}
+
       {notice ? (
         <p
           className={cn(

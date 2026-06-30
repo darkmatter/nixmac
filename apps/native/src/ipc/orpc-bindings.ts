@@ -604,6 +604,27 @@ source: string | null;
  */
 lastChecked: number }
 
+/**
+ * Result of inspecting the running app's install location.
+ * 
+ * The UI surfaces a "move to /Applications" warning when the app is running
+ * from a `.app` bundle that is not in `/Applications` (e.g. still on the
+ * mounted DMG). When `bundle_path` is `None` the process is not running from
+ * a bundle at all (e.g. `tauri dev`, cargo test, e2e runners); the UI must
+ * treat that as "check not applicable" rather than "misplaced" so dev and
+ * test runs don't show a false warning.
+ */
+export type InstallLocationState = { 
+/**
+ * True when the `.app` bundle's parent directory is `/Applications`.
+ */
+inApplicationsDir: boolean; 
+/**
+ * Absolute path to the detected `.app` bundle, or `None` when the process
+ * is not running from inside a bundle.
+ */
+bundlePath?: string | null }
+
 export type InstallSyncAgentInput = { config: SyncAgentLaunchConfig | null }
 
 export type LaunchdItem = { 
@@ -951,5 +972,8 @@ export type Procedures = {
     generateCommitMessage: Client<Record<never, never>, void, string, Error>
     getChangeMap: Client<Record<never, never>, void, SemanticChangeMap, Error>
     summarizeCurrent: Client<Record<never, never>, void, SemanticChangeMap, Error>
+  }
+  system: {
+    installLocation: Client<Record<never, never>, void, InstallLocationState, Error>
   }
 }
