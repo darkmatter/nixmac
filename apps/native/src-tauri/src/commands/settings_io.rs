@@ -255,7 +255,6 @@ mod tests {
         assert_eq!(output.get("maxIterations"), Some(&json!(12)));
         assert_eq!(output.get("maxBuildAttempts"), Some(&json!(4)));
         assert_eq!(output.get("autoFormatNixFiles"), Some(&json!(true)));
-        assert_eq!(output.get("autoFormatNixFiles"), Some(&json!(true)));
         assert!(!output.contains_key("openaiApiKey"));
         assert!(!output.contains_key("promptHistory"));
         assert!(skipped.is_empty());
