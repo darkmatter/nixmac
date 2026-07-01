@@ -29,7 +29,7 @@ concurrency:
 jobs:
   update-snapshots:
     name: Update Storybook Snapshots
-    runs-on: arc
+    runs-on: [self-hosted, linux]
     timeout-minutes: 60
     permissions:
       contents: write

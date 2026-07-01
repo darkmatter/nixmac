@@ -17,7 +17,7 @@ jobs:
           graphite_token: ${{ secrets.GRAPHITE_TOKEN }}
 
   danger:
-    runs-on: arc
+    runs-on: [self-hosted, linux]
     needs: optimize_ci
     if: needs.optimize_ci.outputs.skip == 'false'
     permissions:

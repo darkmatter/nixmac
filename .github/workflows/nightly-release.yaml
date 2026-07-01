@@ -45,7 +45,7 @@ concurrency:
 
 jobs:
   nightly-release:
-    runs-on: arc
+    runs-on: [self-hosted, linux]
     permissions:
       contents: write
     steps:
