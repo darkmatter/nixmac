@@ -58,7 +58,7 @@ pub struct GitStatus {
 }
 
 /// Payload emitted on `git_state_changed` by the git status watcher.
-#[derive(Debug, Clone, Serialize, Type, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct GitState {
     /// Latest git status snapshot, if it could be read.

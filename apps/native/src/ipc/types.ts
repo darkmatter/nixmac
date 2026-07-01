@@ -10,19 +10,19 @@ export type AccountBilling = { usage: BillingUsage; subscriptions: BillingSubscr
 /**
  * Result of proactively checking App Management-sensitive copyApps targets.
  */
-export type AppManagementCheckResult = {
+export type AppManagementCheckResult = { 
 /**
  * True when every existing managed app bundle accepted the update probe.
  */
-ok: boolean;
+ok: boolean; 
 /**
  * Number of existing app bundles inspected.
  */
-checked: number;
+checked: number; 
 /**
  * Target directories with existing app bundles that were inspected.
  */
-targets: AppManagementPermissionTarget[];
+targets: AppManagementPermissionTarget[]; 
 /**
  * Existing app bundles that could not be updated.
  */
@@ -31,15 +31,15 @@ failures: AppManagementProbeFailure[] }
 /**
  * Home Manager copyApps target that requires App Management-sensitive probing.
  */
-export type AppManagementPermissionTarget = {
+export type AppManagementPermissionTarget = { 
 /**
  * Home Manager user that owns the target directory.
  */
-user: string;
+user: string; 
 /**
  * Absolute copyApps target directory.
  */
-directory: string;
+directory: string; 
 /**
  * Existing app bundles inspected under the target directory.
  */
@@ -48,15 +48,15 @@ appBundles: string[] }
 /**
  * An existing app bundle that could not be updated during the preflight probe.
  */
-export type AppManagementProbeFailure = {
+export type AppManagementProbeFailure = { 
 /**
  * Home Manager user that owns the app bundle target.
  */
-user: string;
+user: string; 
 /**
  * Existing app bundle that macOS blocked nixmac from updating.
  */
-appBundle: string;
+appBundle: string; 
 /**
  * OS error returned by the harmless `.DS_Store` update probe.
  */
@@ -354,7 +354,7 @@ log_file: string | null;
 /**
  * Structured `/etc` clobber conflicts when `error_type` is `etc_clobber`.
  */
-etc_clobber: EtcClobberCheckResult | null;
+etc_clobber: EtcClobberCheckResult | null; 
 /**
  * Structured App Management probe failures when `error_type` is `app_management`.
  */
@@ -1247,7 +1247,7 @@ onboardingLastBuildAt: number | null;
 /**
  * Whether or not to auto-format Nix files when making changes to the flakes.
  */
-autoFormatNixFiles: boolean | null }
+autoFormatNixFiles: boolean }
 
 /**
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
@@ -2114,7 +2114,7 @@ featureFlagOverrides: Partial<{ [key in string]: string }> | null;
 /**
  * Whether or not to auto-format Nix files when making changes to the flakes.
  */
-autoFormatNixFiles: boolean | null }
+autoFormatNixFiles: boolean }
 
 /**
  * Partial update to UI preferences — every field is optional so the caller
@@ -2256,3 +2256,4 @@ version: string;
  * Release notes from the channel manifest, when available.
  */
 notes: string | null }
+

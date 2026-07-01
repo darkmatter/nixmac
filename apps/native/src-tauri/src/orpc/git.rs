@@ -2,7 +2,7 @@
 
 use super::{OrpcCtx, helpers::internal_err};
 use crate::commands::git;
-use crate::shared_types::{CommitResult, FileDiffContents, OkResult};
+use crate::shared_types::{CommitResult, FileDiffContents, GitState, GitStatus, OkResult};
 use orpc::*;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -60,6 +60,24 @@ async fn file_diff_contents(
         .map_err(|error| internal_err("git.fileDiffContents", error))
 }
 
+async fn state(ctx: OrpcCtx, _input: ()) -> Result<GitState, ORPCError> {
+    git::get_git_state(ctx.app)
+        .await
+        .map_err(|error| internal_err("git.state", error))
+}
+
+async fn status(ctx: OrpcCtx, _input: ()) -> Result<GitStatus, ORPCError> {
+    git::git_status(ctx.app)
+        .await
+        .map_err(|error| internal_err("git.status", error))
+}
+
+async fn status_and_cache(ctx: OrpcCtx, _input: ()) -> Result<GitStatus, ORPCError> {
+    git::git_status_and_cache(ctx.app)
+        .await
+        .map_err(|error| internal_err("git.statusAndCache", error))
+}
+
 pub fn routes() -> Router<OrpcCtx> {
     router! {
         "commit" => os::<OrpcCtx>()
@@ -78,5 +96,14 @@ pub fn routes() -> Router<OrpcCtx> {
             .input(orpc_specta::specta::<GitFileDiffContentsInput>())
             .output(orpc_specta::specta::<HashMap<String, FileDiffContents>>())
             .handler(file_diff_contents),
+        "state" => os::<OrpcCtx>()
+            .output(orpc_specta::specta::<GitState>())
+            .handler(state),
+        "status" => os::<OrpcCtx>()
+            .output(orpc_specta::specta::<GitStatus>())
+            .handler(status),
+        "statusAndCache" => os::<OrpcCtx>()
+            .output(orpc_specta::specta::<GitStatus>())
+            .handler(status_and_cache),
     }
 }
