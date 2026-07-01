@@ -8,8 +8,6 @@ export {
 export {
 	selectCelebrating,
 	selectInferenceDeferred,
-	selectTrackedCustomizationSources,
-	selectTrackedCustomizationSources,
 	selectTrackedCustomizations,
 	selectViewingStep,
 	useOnboarding,
