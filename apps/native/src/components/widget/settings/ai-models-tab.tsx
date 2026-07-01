@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/select";
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
 import { ProviderIcon, type ProviderIconId } from "@/components/widget/controls/provider-icons/provider-icon";
-import { DEFAULT_NIXMAC_MODEL, NIXMAC_PROVIDER } from "@/components/widget/onboarding/lib/inference";
+import { DEFAULT_NIXMAC_MODEL, DEFAULT_NIXMAC_SUMMARY_MODEL, NIXMAC_PROVIDER } from "@/components/widget/onboarding/lib/inference";
 import { tauriAPI } from "@/ipc/api";
 import type { CliToolsState } from "@/ipc/types";
 import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/providers/ai-provider-validation";
@@ -43,18 +43,18 @@ const DEFAULT_EVOLVE_MODEL: Record<string, string> = {
   openrouter: "anthropic/claude-sonnet-4",
   openai: "gpt-4o",
   ollama: "",
-  vllm: "gpt-oss-120b",
+  openai_compatible: "",
   claude: "",
   codex: "",
   opencode: "",
 };
 
 const DEFAULT_SUMMARY_MODEL: Record<string, string> = {
-  [NIXMAC_PROVIDER]: DEFAULT_NIXMAC_MODEL,
+  [NIXMAC_PROVIDER]: DEFAULT_NIXMAC_SUMMARY_MODEL,
   openrouter: "openai/gpt-4o-mini",
   openai: "gpt-4o-mini",
   ollama: "llama3.1",
-  vllm: "gpt-oss-120b",
+  openai_compatible: "",
   claude: "",
   codex: "",
   opencode: "",
@@ -70,7 +70,7 @@ function modelPlaceholder(provider: string, fallback: string): string {
   if (provider === "ollama") {
     return fallback === "gpt-4o" ? "" : "llama3.1";
   }
-  if (provider === "vllm") {
+  if (provider === "openai_compatible") {
     return "gpt-oss-120b";
   }
   if (provider === "opencode") {
@@ -95,7 +95,7 @@ function useProviderPrefs(form: AiModelsTabProps["form"]) {
   const [prefs, setPrefs] = useState({
     openrouterApiKey: "",
     openaiApiKey: "",
-    vllmApiBaseUrl: "",
+    openaiCompatibleApiBaseUrl: "",
   });
 
   useEffect(() => {
@@ -104,7 +104,7 @@ function useProviderPrefs(form: AiModelsTabProps["form"]) {
       setPrefs({
         openrouterApiKey: v.openrouterApiKey ?? "",
         openaiApiKey: v.openaiApiKey ?? "",
-        vllmApiBaseUrl: v.vllmApiBaseUrl ?? "",
+        openaiCompatibleApiBaseUrl: v.openaiCompatibleApiBaseUrl ?? "",
       });
     });
 
@@ -113,7 +113,7 @@ function useProviderPrefs(form: AiModelsTabProps["form"]) {
     setPrefs({
       openrouterApiKey: v.openrouterApiKey ?? "",
       openaiApiKey: v.openaiApiKey ?? "",
-      vllmApiBaseUrl: v.vllmApiBaseUrl ?? "",
+      openaiCompatibleApiBaseUrl: v.openaiCompatibleApiBaseUrl ?? "",
     });
 
     return () => subscription.unsubscribe();
@@ -137,7 +137,7 @@ export function AiModelsTab({
       { value: "openrouter", label: "OpenRouter", icon: "openrouter" },
       { value: "openai", label: "OpenAI", icon: "openai" },
       { value: "ollama", label: "Ollama", icon: "ollama" },
-      { value: "vllm", label: "OpenAI Compatible", icon: "vllm" },
+      { value: "openai_compatible", label: "OpenAI Compatible", icon: "openai_compatible" },
     ];
     return (
       <>
@@ -253,7 +253,7 @@ export function AiModelsTab({
                             | "openrouter"
                             | "openai"
                             | "ollama"
-                            | "vllm"
+                            | "openai_compatible"
                             | "opencode"
                           }
                           value={evolveModelField.state.value}
@@ -346,7 +346,7 @@ export function AiModelsTab({
                             | "openrouter"
                             | "openai"
                             | "ollama"
-                            | "vllm"
+                            | "openai_compatible"
                             | "opencode"
                           }
                           value={summaryModelField.state.value}

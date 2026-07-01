@@ -16,8 +16,8 @@ pub use crate::storage::legacy_kv::get_json as get_json_pref;
 pub use crate::storage::legacy_kv::{get_store, set_json as set_json_pref};
 pub use crate::storage::secrets::{
     delete_device_api_key, delete_sync_secret, get_device_api_key,
-    get_effective_openai_provider_credential, get_effective_openrouter_provider_credential,
-    get_effective_vllm_api_key, get_env_openai_provider_credential,
+    get_effective_openai_compatible_api_key, get_effective_openai_provider_credential,
+    get_effective_openrouter_provider_credential, get_env_openai_provider_credential,
     get_env_openrouter_provider_credential, get_sync_secret, set_device_api_key,
     set_openai_api_key, set_openrouter_api_key, set_sync_secret,
 };
@@ -308,8 +308,10 @@ pub fn set_ollama_api_base_url<R: Runtime>(app: &AppHandle<R>, url: &str) -> Res
     crate::state::ui_prefs::set_ollama_api_base_url(app, url)
 }
 
-pub fn get_vllm_api_base_url<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
-    Ok(crate::state::ui_prefs::vllm_api_base_url(app))
+pub fn get_openai_compatible_api_base_url<R: Runtime>(
+    app: &AppHandle<R>,
+) -> Result<Option<String>> {
+    Ok(crate::state::ui_prefs::openai_compatible_api_base_url(app))
 }
 
 pub fn get_max_iterations<R: Runtime>(app: &AppHandle<R>) -> Result<usize> {

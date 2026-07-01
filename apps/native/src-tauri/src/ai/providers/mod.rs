@@ -230,19 +230,25 @@ pub fn create_provider<R: Runtime>(
                 .unwrap_or_else(|| DEFAULT_OLLAMA_API_BASE.to_string());
             Ok(Box::new(OllamaClient::new(&base_url, &model)))
         }
-        "vllm" => {
-            let model = require_local_model("vLLM", store_model, crate::env::keys::SUMMARY_MODEL)?;
+        "openai_compatible" => {
+            let model = require_local_model(
+                "OpenAI-compatible",
+                store_model,
+                crate::env::keys::SUMMARY_MODEL,
+            )?;
 
             let base_url = app_handle
-                .and_then(|app| crate::storage::store::get_vllm_api_base_url(app).ok())
+                .and_then(|app| crate::storage::store::get_openai_compatible_api_base_url(app).ok())
                 .flatten()
-                .or_else(|| crate::env::optional(env_settings.vllm_api_base.clone()))
+                .or_else(|| crate::env::optional(env_settings.openai_compatible_api_base.clone()))
                 .ok_or_else(|| {
-                    anyhow::anyhow!("No vLLM base URL configured. Please set it in Settings.")
+                    anyhow::anyhow!(
+                        "No OpenAI-compatible base URL configured. Please set it in Settings."
+                    )
                 })?;
 
             let api_key = app_handle
-                .map(crate::storage::store::get_effective_vllm_api_key)
+                .map(crate::storage::store::get_effective_openai_compatible_api_key)
                 .transpose()?
                 .flatten()
                 .unwrap_or_else(|| "none".to_string());

@@ -1168,7 +1168,7 @@ installationId: number }
  * Hydrated via `get_global_preferences`; every mutation emits
  * `global_preferences_changed` with the full struct as payload.
  */
-export type GlobalPreferences = { hostAttr: string | null; configDir: string | null; repoRoot: string | null; sendDiagnostics: boolean; evolveProvider: string | null; evolveModel: string | null; summaryProvider: string | null; summaryModel: string | null; ollamaApiBaseUrl: string | null; vllmApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
+export type GlobalPreferences = { hostAttr: string | null; configDir: string | null; repoRoot: string | null; sendDiagnostics: boolean; evolveProvider: string | null; evolveModel: string | null; summaryProvider: string | null; summaryModel: string | null; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
 /**
  * Timestamp (unix secs) of the last onboarding "scan this Mac" / customizations review.
  */
@@ -1909,13 +1909,13 @@ openaiApiKey: string | null;
  */
 ollamaApiBaseUrl: string | null; 
 /**
- * Base URL for vLLM-compatible model servers.
+ * Base URL for OpenAI-compatible model servers.
  */
-vllmApiBaseUrl: string | null; 
+openaiCompatibleApiBaseUrl: string | null; 
 /**
- * API key for vLLM-compatible model servers.
+ * API key for OpenAI-compatible model servers.
  */
-vllmApiKey: string | null; 
+openaiCompatibleApiKey: string | null; 
 /**
  * Provider used for change summaries.
  */
@@ -2049,13 +2049,13 @@ maxOutputTokens: number | null;
  */
 ollamaApiBaseUrl: string | null; 
 /**
- * vLLM base URL update.
+ * OpenAI-compatible base URL update.
  */
-vllmApiBaseUrl: string | null; 
+openaiCompatibleApiBaseUrl: string | null; 
 /**
- * vLLM API key update.
+ * OpenAI-compatible API key update.
  */
-vllmApiKey: string | null; 
+openaiCompatibleApiKey: string | null; 
 /**
  * Diagnostics sharing preference update.
  */

@@ -115,14 +115,14 @@ export function SettingsDialog() {
     await tauriAPI.models.clearCached("ollama");
   };
 
-  const saveVllmUrl = async (url: string) => {
+  const saveOpenaiCompatibleUrl = async (url: string) => {
     // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    await tauriAPI.ui.setPrefs({ vllmApiBaseUrl: url });
+    await tauriAPI.ui.setPrefs({ openaiCompatibleApiBaseUrl: url });
   };
 
-  const saveVllmKey = async (key: string) => {
+  const saveOpenaiCompatibleKey = async (key: string) => {
     // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    await tauriAPI.ui.setPrefs({ vllmApiKey: key });
+    await tauriAPI.ui.setPrefs({ openaiCompatibleApiKey: key });
   };
 
   const form = useForm({
@@ -130,8 +130,8 @@ export function SettingsDialog() {
       openrouterApiKey: "",
       openaiApiKey: "",
       ollamaApiBaseUrl: "",
-      vllmApiBaseUrl: "",
-      vllmApiKey: "",
+      openaiCompatibleApiBaseUrl: "",
+      openaiCompatibleApiKey: "",
       summaryProvider: "openrouter",
       summaryModel: "openai/gpt-4o-mini",
       evolveProvider: "openrouter",
@@ -154,8 +154,8 @@ export function SettingsDialog() {
           form.setFieldValue("openrouterApiKey", prefs.openrouterApiKey ?? "");
           form.setFieldValue("openaiApiKey", prefs.openaiApiKey ?? "");
           form.setFieldValue("ollamaApiBaseUrl", prefs.ollamaApiBaseUrl ?? "");
-          form.setFieldValue("vllmApiBaseUrl", prefs.vllmApiBaseUrl ?? "");
-          form.setFieldValue("vllmApiKey", prefs.vllmApiKey ?? "");
+          form.setFieldValue("openaiCompatibleApiBaseUrl", prefs.openaiCompatibleApiBaseUrl ?? "");
+          form.setFieldValue("openaiCompatibleApiKey", prefs.openaiCompatibleApiKey ?? "");
           form.setFieldValue("summaryProvider", summaryProvider);
           form.setFieldValue(
             "summaryModel",
@@ -288,26 +288,26 @@ export function SettingsDialog() {
                     {(openaiApiKeyField) => (
                       <form.Field name="ollamaApiBaseUrl">
                         {(ollamaApiBaseUrlField) => (
-                          <form.Field name="vllmApiBaseUrl">
-                            {(vllmApiBaseUrlField) => (
-                              <form.Field name="vllmApiKey">
-                                {(vllmApiKeyField) => (
+                          <form.Field name="openaiCompatibleApiBaseUrl">
+                            {(openaiCompatibleApiBaseUrlField) => (
+                              <form.Field name="openaiCompatibleApiKey">
+                                {(openaiCompatibleApiKeyField) => (
                                   <ApiKeysTab
                                     form={form}
                                     ollamaApiBaseUrlField={ollamaApiBaseUrlField}
                                     openaiKeyStatus={openaiKeyStatus}
                                     openaiTimeoutRef={openaiTimeoutRef}
                                     onSaveOllamaUrl={saveOllamaUrl}
-                                    onSaveVllmKey={saveVllmKey}
-                                    onSaveVllmUrl={saveVllmUrl}
+                                    onSaveOpenaiCompatibleKey={saveOpenaiCompatibleKey}
+                                    onSaveOpenaiCompatibleUrl={saveOpenaiCompatibleUrl}
                                     openaiApiKeyField={openaiApiKeyField}
                                     openrouterApiKeyField={openrouterApiKeyField}
                                     openrouterKeyStatus={openrouterKeyStatus}
                                     openrouterTimeoutRef={openrouterTimeoutRef}
                                     verifyOpenaiKey={verifyOpenaiKey}
                                     verifyOpenrouterKey={verifyOpenrouterKey}
-                                    vllmApiBaseUrlField={vllmApiBaseUrlField}
-                                    vllmApiKeyField={vllmApiKeyField}
+                                    openaiCompatibleApiBaseUrlField={openaiCompatibleApiBaseUrlField}
+                                    openaiCompatibleApiKeyField={openaiCompatibleApiKeyField}
                                   />
                                 )}
                               </form.Field>

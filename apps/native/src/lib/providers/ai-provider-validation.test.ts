@@ -8,7 +8,7 @@ import {
 const EMPTY_PREFS = {
   openrouterApiKey: "",
   openaiApiKey: "",
-  vllmApiBaseUrl: "",
+  openaiCompatibleApiBaseUrl: "",
 };
 
 const NO_CLI_TOOLS = { claude: false, codex: false, opencode: false };
@@ -116,8 +116,8 @@ describe("getProviderConfigInvalidReason", () => {
     ).toBeNull();
     expect(
       getProviderConfigInvalidReason(
-        "vllm",
-        { ...EMPTY_PREFS, vllmApiBaseUrl: "http://localhost:8000" },
+        "openai_compatible",
+        { ...EMPTY_PREFS, openaiCompatibleApiBaseUrl: "http://localhost:8000" },
         NO_CLI_TOOLS,
         "   ",
       ),

@@ -15,7 +15,7 @@ pub fn assemble_ui_prefs<R: Runtime>(app: &AppHandle<R>) -> Result<UiPrefs> {
 
     prefs.openrouter_api_key = secrets::get_effective_openrouter_api_key(app)?;
     prefs.openai_api_key = secrets::get_effective_openai_api_key(app)?;
-    prefs.vllm_api_key = secrets::get_effective_vllm_api_key(app)?;
+    prefs.openai_compatible_api_key = secrets::get_effective_openai_compatible_api_key(app)?;
 
     prefs.max_iterations = Some(limits.max_iterations);
     prefs.max_token_budget = Some(limits.max_token_budget);
@@ -57,8 +57,8 @@ fn apply_secret_updates<R: Runtime>(app: &AppHandle<R>, update: &UiPrefsUpdate) 
     if let Some(key) = &update.openai_api_key {
         secrets::set_openai_api_key(app, key)?;
     }
-    if let Some(key) = &update.vllm_api_key {
-        secrets::set_vllm_api_key(app, key)?;
+    if let Some(key) = &update.openai_compatible_api_key {
+        secrets::set_openai_compatible_api_key(app, key)?;
     }
     Ok(())
 }
@@ -87,8 +87,8 @@ pub fn ollama_api_base_url<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
     preferences::try_read(app).and_then(|prefs| prefs.ollama_api_base_url)
 }
 
-pub fn vllm_api_base_url<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
-    preferences::try_read(app).and_then(|prefs| prefs.vllm_api_base_url)
+pub fn openai_compatible_api_base_url<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
+    preferences::try_read(app).and_then(|prefs| prefs.openai_compatible_api_base_url)
 }
 
 pub fn send_diagnostics<R: Runtime>(app: &AppHandle<R>) -> bool {

@@ -8,7 +8,7 @@ import {
 } from "./helpers/app-ui.js";
 import { assertDiffContains, assertDiffDoesNotContain } from "./helpers/git-helpers.js";
 import { getConfigRepoGitDiff } from "./helpers/test-env.js";
-import { getMockVllmFixturePreset } from "./helpers/mock-vllm-presets.js";
+import { getMockOpenAiCompatibleFixturePreset } from "./helpers/mock-openai-compatible-presets.js";
 import { expect, use } from "chai";
 import chaiAsPromised from "chai-as-promised";
 
@@ -21,7 +21,7 @@ describe("modify", () => {
     const secondPrompt = "also add a second popular programming font";
 
     await preparePromptTestCase({
-      responseFiles: getMockVllmFixturePreset("modifySequentialPrompts"),
+      responseFiles: getMockOpenAiCompatibleFixturePreset("modifySequentialPrompts"),
     });
 
     await submitPromptMessage(firstPrompt);

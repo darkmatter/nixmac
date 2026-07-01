@@ -1,7 +1,8 @@
 export type { InferenceConfig, InferenceMode } from "@nixmac/state";
 
 export const NIXMAC_PROVIDER = "nixmac";
-export const DEFAULT_NIXMAC_MODEL = "openai/gpt-4o-mini";
+export const DEFAULT_NIXMAC_MODEL = "auto";
+export const DEFAULT_NIXMAC_SUMMARY_MODEL = "flash";
 
 /** Checkout product identifiers exposed by the billing API. */
 export type CheckoutProduct = "pro" | "credits";
@@ -26,7 +27,7 @@ export interface InferenceProvider {
  * Bring-your-own-key providers, aligned to what the native backend actually
  * supports (OpenRouter + OpenAI direct). Keys persist to UiPrefs and the
  * selection is written to evolveProvider/evolveModel — exactly like the
- * Settings → AI Models tab. Local providers (Ollama/vLLM) are configured in
+ * Settings → AI Models tab. Local providers (Ollama/OpenAI-compatible) are configured in
  * Settings instead.
  */
 export const BYOK_PROVIDERS: InferenceProvider[] = [

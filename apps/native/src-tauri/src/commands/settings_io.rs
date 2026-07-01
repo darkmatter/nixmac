@@ -21,7 +21,7 @@ use tauri::{AppHandle, Manager};
 use tauri_plugin_dialog::DialogExt;
 
 /// Keys excluded from sanitized export.
-const SENSITIVE_KEYS: &[&str] = &["openrouterApiKey", "openaiApiKey", "vllmApiKey"];
+const SENSITIVE_KEYS: &[&str] = &["openrouterApiKey", "openaiApiKey", "openaiCompatibleApiKey"];
 
 fn is_sensitive_key(key: &str) -> bool {
     SENSITIVE_KEYS.contains(&key) || key.ends_with("ApiKey")

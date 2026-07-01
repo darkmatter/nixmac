@@ -47,8 +47,8 @@ nixmac_pp_seed_local_validation_settings() {
         '{
             configDir: $configDir,
             hostAttr: $hostAttr,
-            evolveProvider: "vllm",
-            summaryProvider: "vllm",
+            evolveProvider: "openai_compatible",
+            summaryProvider: "openai_compatible",
             evolveModel: "gpt-oss-120b",
             summaryModel: "gpt-oss-120b",
             maxTokenBudget: 50000,

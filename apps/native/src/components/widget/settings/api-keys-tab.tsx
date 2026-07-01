@@ -20,10 +20,10 @@ interface ApiKeysTabProps {
   ollamaApiBaseUrlField: AnyFieldApi;
   onSaveOllamaUrl: (url: string) => Promise<void>;
   // OpenAI Compatible
-  vllmApiBaseUrlField: AnyFieldApi;
-  vllmApiKeyField: AnyFieldApi;
-  onSaveVllmUrl: (url: string) => Promise<void>;
-  onSaveVllmKey: (key: string) => Promise<void>;
+  openaiCompatibleApiBaseUrlField: AnyFieldApi;
+  openaiCompatibleApiKeyField: AnyFieldApi;
+  onSaveOpenaiCompatibleUrl: (url: string) => Promise<void>;
+  onSaveOpenaiCompatibleKey: (key: string) => Promise<void>;
   // Form
   form: AnyFormApi;
 }
@@ -223,10 +223,10 @@ export function ApiKeysTab({
   openaiTimeoutRef,
   ollamaApiBaseUrlField,
   onSaveOllamaUrl,
-  vllmApiBaseUrlField,
-  vllmApiKeyField,
-  onSaveVllmUrl,
-  onSaveVllmKey,
+  openaiCompatibleApiBaseUrlField,
+  openaiCompatibleApiKeyField,
+  onSaveOpenaiCompatibleUrl,
+  onSaveOpenaiCompatibleKey,
   form,
 }: ApiKeysTabProps) {
   return (
@@ -318,7 +318,7 @@ export function ApiKeysTab({
           <div className="rounded-lg border border-border p-4">
             <div className="mb-3 flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-md bg-linear-to-br from-blue-500 to-cyan-500 text-white">
-                <ProviderIcon provider="vllm" size={18} />
+                <ProviderIcon provider="openai_compatible" size={18} />
               </div>
               <div>
                 <h3 className="font-medium text-sm">OpenAI Compatible</h3>
@@ -329,22 +329,22 @@ export function ApiKeysTab({
             </div>
             <div className="space-y-4">
               <UrlInput
-                id="vllmApiBaseUrl"
+                id="openaiCompatibleApiBaseUrl"
                 label="API Base URL"
                 description=""
                 placeholder="http://localhost:8000/v1"
-                field={vllmApiBaseUrlField}
+                field={openaiCompatibleApiBaseUrlField}
                 form={form}
-                onSave={onSaveVllmUrl}
+                onSave={onSaveOpenaiCompatibleUrl}
               />
               <UrlInput
-                id="vllmApiKey"
+                id="openaiCompatibleApiKey"
                 label="API Key (optional)"
                 description="Leave blank if your OpenAI-compatible endpoint is unauthenticated. Required for LiteLLM proxy."
                 placeholder="sk-..."
-                field={vllmApiKeyField}
+                field={openaiCompatibleApiKeyField}
                 form={form}
-                onSave={onSaveVllmKey}
+                onSave={onSaveOpenaiCompatibleKey}
                 type="password"
               />
             </div>

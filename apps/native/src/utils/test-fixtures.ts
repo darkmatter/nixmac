@@ -23,7 +23,7 @@ export function makeGlobalPreferences(
     summaryProvider: null,
     summaryModel: null,
     ollamaApiBaseUrl: null,
-    vllmApiBaseUrl: null,
+    openaiCompatibleApiBaseUrl: null,
     confirmBuild: true,
     confirmClear: true,
     confirmRollback: true,

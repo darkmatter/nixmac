@@ -30,11 +30,11 @@ pub mod names {
     pub const EVOLVE_PROVIDER: &str = "EVOLVE_PROVIDER";
     pub const EVOLVE_MODEL: &str = "EVOLVE_MODEL";
     pub const OLLAMA_API_BASE: &str = "OLLAMA_API_BASE";
-    pub const VLLM_API_BASE: &str = "VLLM_API_BASE";
+    pub const OPENAI_COMPATIBLE_API_BASE: &str = "VLLM_API_BASE";
 
     pub const OPENAI_API_KEY: &str = "OPENAI_API_KEY";
     pub const OPENROUTER_API_KEY: &str = "OPENROUTER_API_KEY";
-    pub const VLLM_API_KEY: &str = "VLLM_API_KEY";
+    pub const OPENAI_COMPATIBLE_API_KEY: &str = "VLLM_API_KEY";
 
     pub const NIXMAC_E2E_MOCK_SYSTEM: &str = "NIXMAC_E2E_MOCK_SYSTEM";
     pub const NIXMAC_E2E_WEB_SERVER_URL: &str = "NIXMAC_E2E_WEB_SERVER_URL";

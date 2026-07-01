@@ -122,7 +122,7 @@ By giving each suite its own config file (and thus its own process), we ensure:
 
    - `{ initializeConfigRepo: true }` – for tests that assume a populated nix config repo exists
    - `{ initializeEmptyConfigDir: true }` – for onboarding/bootstrap flows that start with an empty config directory
-   - Both options set up `mockVllm: {}` automatically (controllable via `NIXMAC_WDIO_VLLM_MODE`)
+   - Both options set up `mockOpenAiCompatible: {}` automatically (controllable via `NIXMAC_WDIO_VLLM_MODE`)
 
 1. Add an npm script in `apps/native/package.json`:
 
@@ -146,16 +146,16 @@ By giving each suite its own config file (and thus its own process), we ensure:
 
 ## Environment Variables and Configuration
 
-### vLLM Mode (Playback vs. Real)
+### OpenAI-Compatible Mode (Playback vs. Real)
 
-Control whether tests use fixture responses or call a real vLLM backend via `NIXMAC_WDIO_VLLM_MODE`:
+Control whether tests use fixture responses or call a real OpenAI-compatible backend via `NIXMAC_WDIO_VLLM_MODE`:
 
 - `playback` (default) – run against fixture-backed mock HTTP server (no real backend needed)
-- `real` – bypass mock server and call a real vLLM endpoint directly
+- `real` – bypass mock server and call a real OpenAI-compatible endpoint directly
 
 For `playback` mode, no credentials are required. For `real` mode, set:
 
-- `VLLM_API_BASE_URL` – base URL of your real vLLM instance (e.g., `http://localhost:8000/v1`)
+- `VLLM_API_BASE_URL` – base URL of your real OpenAI-compatible instance (e.g., `http://localhost:8000/v1`)
 - `VLLM_API_KEY` (optional) – API key if your backend requires authentication
 
 Example running a single suite in real mode:
@@ -218,23 +218,23 @@ This keeps selectors stable and readable as component markup changes.
 
 ## Mocking AI Completion Responses
 
-Instead of pointing tests at a real vLLM endpoint, you can start a lightweight local HTTP server that replays canned OpenAI-compatible responses from JSONL fixture files. The server is started in `onPrepare` (before the app binary launches) and its URL is written into `settings.json` as `vllmApiBaseUrl`, so the app talks to it transparently.
+Instead of pointing tests at a real OpenAI-compatible endpoint, you can start a lightweight local HTTP server that replays canned OpenAI-compatible responses from JSONL fixture files. The server is started in `onPrepare` (before the app binary launches) and its URL is written into `settings.json` as `openaiCompatibleApiBaseUrl`, so the app talks to it transparently.
 
 ### How it works
 
-- `mockVllm: {}` in `setupOptions` tells `setupNixmacTestEnvironment` to start a mock server on a random free port.
+- `mockOpenAiCompatible: {}` in `setupOptions` tells `setupNixmacTestEnvironment` to start a mock server on a random free port.
 - The server queues responses in order and returns one per `POST /v1/chat/completions` request.
 - If the queue runs dry, it returns a `500` with `code: MOCK_RESPONSE_QUEUE_EXHAUSTED` plus a preview of the request body that over-ran it.
-- Within a test, call `setMockVllmResponses(...)` to load responses at the start of each `it` block. The server resets its queue and index on every call, so tests are independent.
+- Within a test, call `setMockOpenAiCompatibleResponses(...)` to load responses at the start of each `it` block. The server resets its queue and index on every call, so tests are independent.
 
 ### Fixture files
 
-Fixtures live under `tests/data/`. Each file is a JSONL file where every line is a valid `CreateChatCompletionResponse` JSON object — exactly what the real vLLM/OpenAI API would return. You can capture real responses (potentially by running nixmac against a real LLM endpoint with `NIXMAC_RECORD_COMPLETIONS` turned on) and drop them in here.
+Fixtures live under `tests/data/`. Each file is a JSONL file where every line is a valid `CreateChatCompletionResponse` JSON object — exactly what the real OpenAI-compatible/OpenAI API would return. You can capture real responses (potentially by running nixmac against a real LLM endpoint with `NIXMAC_RECORD_COMPLETIONS` turned on) and drop them in here.
 
-Named presets live in `tests/wdio/helpers/mock-vllm-presets.ts`:
+Named presets live in `tests/wdio/helpers/mock-openai-compatible-presets.ts`:
 
 ```js
-const MOCK_VLLM_FIXTURE_PRESETS = Object.freeze({
+const MOCK_OPENAI_COMPATIBLE_FIXTURE_PRESETS = Object.freeze({
   basicPromptsAddFont: ["add-font.jsonl"],
   modifySequentialPrompts: ["add-font-add-another.jsonl"],
 });
@@ -244,7 +244,7 @@ Add new presets there as you add new fixture files.
 
 ### Suite config
 
-Enable the mock server for a suite by passing `mockVllm: {}` in `setupOptions`. No fixture files need to be specified here — individual tests pick their own responses at runtime:
+Enable the mock server for a suite by passing `mockOpenAiCompatible: {}` in `setupOptions`. No fixture files need to be specified here — individual tests pick their own responses at runtime:
 
 ```js
 import { createWdioConfig } from "./wdio.conf.base.mjs";
@@ -253,7 +253,7 @@ export const config = createWdioConfig({
   specs: ["../dist-e2e/tests/wdio/my-feature.spec.js"],
   setupOptions: {
     initializeConfigRepo: true,
-    mockVllm: {},
+    mockOpenAiCompatible: {},
   },
 });
 ```
@@ -263,12 +263,12 @@ export const config = createWdioConfig({
 For single-test suites, load responses at the top of each `it` block before triggering any UI action that will cause the app to call the LLM:
 
 ```js
-import { setMockVllmResponses } from "./helpers/test-env.js";
-import { getMockVllmFixturePreset } from "./helpers/mock-vllm-presets.js";
+import { setMockOpenAiCompatibleResponses } from "./helpers/test-env.js";
+import { getMockOpenAiCompatibleFixturePreset } from "./helpers/mock-openai-compatible-presets.js";
 
 it("does something with the LLM", async () => {
-  await setMockVllmResponses({
-    responseFiles: getMockVllmFixturePreset("basicPromptsAddFont"),
+  await setMockOpenAiCompatibleResponses({
+    responseFiles: getMockOpenAiCompatibleFixturePreset("basicPromptsAddFont"),
   });
 
   // now drive the app...
@@ -278,7 +278,7 @@ it("does something with the LLM", async () => {
 You can also pass raw response objects instead of files (but this isn't recommended):
 
 ```js
-await setMockVllmResponses({
+await setMockOpenAiCompatibleResponses({
   responses: [
     /* ...objects... */
   ],
@@ -291,13 +291,13 @@ Use one `describe` with a fixture map so each test gets clean state and its own 
 
 ```js
 import { registerPromptSuiteBeforeEach, submitPromptMessage } from "./helpers/app-ui.js";
-import { getMockVllmFixturePreset } from "./helpers/mock-vllm-presets.js";
+import { getMockOpenAiCompatibleFixturePreset } from "./helpers/mock-openai-compatible-presets.js";
 
 describe("my prompt suite", () => {
   registerPromptSuiteBeforeEach({
     fixtureByTestTitle: {
-      "test A": getMockVllmFixturePreset("basicPromptsAddFont"),
-      "test B": getMockVllmFixturePreset("basicPromptsConfigureScreenshots"),
+      "test A": getMockOpenAiCompatibleFixturePreset("basicPromptsAddFont"),
+      "test B": getMockOpenAiCompatibleFixturePreset("basicPromptsConfigureScreenshots"),
     },
   });
 

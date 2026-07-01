@@ -1,6 +1,6 @@
 import { $, $$, browser } from "@wdio/globals";
 import { expect } from "chai";
-import { setMockVllmResponses } from "./test-env.js";
+import { setMockOpenAiCompatibleResponses } from "./test-env.js";
 
 const ERROR_MESSAGE_SELECTOR = '[data-testid="widget-error-message"]';
 
@@ -248,7 +248,7 @@ async function resetPromptWorkflowState() {
 
 export async function preparePromptTestCase({ responseFiles = [], responses = null } = {}) {
   await resetPromptWorkflowState();
-  await setMockVllmResponses({ responseFiles, responses });
+  await setMockOpenAiCompatibleResponses({ responseFiles, responses });
 }
 
 export function registerPromptSuiteBeforeEach({ fixtureByTestTitle }: any = {}) {

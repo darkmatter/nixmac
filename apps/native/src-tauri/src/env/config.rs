@@ -132,8 +132,12 @@ pub struct NixmacEnvSettings {
     #[config(default = "", env_var = "OLLAMA_API_BASE", label = "Ollama API base")]
     pub ollama_api_base: String,
 
-    #[config(default = "", env_var = "VLLM_API_BASE", label = "vLLM API base")]
-    pub vllm_api_base: String,
+    #[config(
+        default = "",
+        env_var = "VLLM_API_BASE",
+        label = "OpenAI-compatible API base"
+    )]
+    pub openai_compatible_api_base: String,
 
     #[config(
         default = "",
@@ -154,10 +158,10 @@ pub struct NixmacEnvSettings {
     #[config(
         default = "",
         env_var = "VLLM_API_KEY",
-        label = "vLLM API key",
+        label = "OpenAI-compatible API key",
         help = "Prefer env vars or keychain for secrets; do not commit in env.*.json."
     )]
-    pub vllm_api_key: String,
+    pub openai_compatible_api_key: String,
 
     #[config(
         default = "",

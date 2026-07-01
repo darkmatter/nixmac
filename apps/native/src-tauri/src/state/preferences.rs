@@ -159,7 +159,7 @@ mod tests {
             "summaryProvider": "openai",
             "summaryModel": "gpt-5-mini",
             "ollamaApiBaseUrl": "http://localhost:11434",
-            "vllmApiBaseUrl": "http://localhost:8000",
+            "openaiCompatibleApiBaseUrl": "http://localhost:8000",
             "confirmBuild": false,
             "confirmClear": false,
             "confirmRollback": false,

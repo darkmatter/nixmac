@@ -176,12 +176,12 @@ pub fn set_openai_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<(
     set_secret_pref(app, "openaiApiKey", key)
 }
 
-pub fn get_vllm_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
-    get_secret_pref(app, "vllmApiKey")
+pub fn get_openai_compatible_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
+    get_secret_pref(app, "openaiCompatibleApiKey")
 }
 
-pub fn set_vllm_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()> {
-    set_secret_pref(app, "vllmApiKey", key)
+pub fn set_openai_compatible_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()> {
+    set_secret_pref(app, "openaiCompatibleApiKey", key)
 }
 
 pub fn get_effective_openrouter_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
@@ -198,10 +198,12 @@ pub fn get_effective_openai_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Op
     )
 }
 
-pub fn get_effective_vllm_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
+pub fn get_effective_openai_compatible_api_key<R: Runtime>(
+    app: &AppHandle<R>,
+) -> Result<Option<String>> {
     resolve_secret_with_env_override(
-        normalize_secret(crate::env::vllm_api_key_for_app(app)),
-        || get_vllm_api_key(app),
+        normalize_secret(crate::env::openai_compatible_api_key_for_app(app)),
+        || get_openai_compatible_api_key(app),
     )
 }
 

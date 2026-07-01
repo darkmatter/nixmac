@@ -1,6 +1,6 @@
+import { readFile } from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
-import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -14,14 +14,14 @@ interface MockResponse {
   [key: string]: unknown;
 }
 
-export interface MockVllmServerContext {
+export interface MockOpenAiCompatibleServerContext {
   server: http.Server;
   baseUrl: string;
   origin: string;
   responseCount: number;
 }
 
-export interface MockVllmOptions {
+export interface MockOpenAiCompatibleOptions {
   responseFiles?: string[];
   host?: string;
   pathnames?: string[];
@@ -78,7 +78,7 @@ async function loadMockResponses(
 
   if (responses.length === 0) {
     throw new Error(
-      "[wdio:test-env] mockVllm fixture files were loaded but produced zero responses",
+      "[wdio:test-env] mockOpenAiCompatible fixture files were loaded but produced zero responses",
     );
   }
 
@@ -103,15 +103,15 @@ async function readRequestBody(request: http.IncomingMessage): Promise<string> {
   return `${rawBody.slice(0, 4000)}…[truncated ${rawBody.length - 4000} chars]`;
 }
 
-export async function startMockVllmServer(
-  mockVllmOptions: MockVllmOptions = {},
-): Promise<MockVllmServerContext> {
+export async function startMockOpenAiCompatibleServer(
+  mockOpenAiCompatibleOptions: MockOpenAiCompatibleOptions = {},
+): Promise<MockOpenAiCompatibleServerContext> {
   const {
     responseFiles = [],
     host = "127.0.0.1",
     pathnames = ["/v1/chat/completions", "/chat/completions"],
     dataDir = TEST_DATA_DIR,
-  } = mockVllmOptions;
+  } = mockOpenAiCompatibleOptions;
 
   let responses = await loadMockResponses(responseFiles, dataDir);
   const allowedPaths = new Set(pathnames);
@@ -212,12 +212,12 @@ export async function startMockVllmServer(
   const address = server.address();
   if (!address || typeof address === "string") {
     server.close();
-    throw new Error("[wdio:test-env] Failed to determine mock vLLM server address");
+    throw new Error("[wdio:test-env] Failed to determine mock OpenAI-compatible server address");
   }
 
   const origin = `http://${host}:${address.port}`;
   console.log(
-    `[wdio:test-env] Started mock vLLM server at ${origin} with ${responses.length} queued responses`,
+    `[wdio:test-env] Started mock OpenAI-compatible server at ${origin} with ${responses.length} queued responses`,
   );
 
   return {
@@ -228,8 +228,8 @@ export async function startMockVllmServer(
   };
 }
 
-export async function stopMockVllmServer(
-  serverContext: MockVllmServerContext | null | undefined,
+export async function stopMockOpenAiCompatibleServer(
+  serverContext: MockOpenAiCompatibleServerContext | null | undefined,
 ): Promise<void> {
   if (!serverContext?.server) {
     return;
@@ -245,5 +245,5 @@ export async function stopMockVllmServer(
     });
   });
 
-  console.log(`[wdio:test-env] Stopped mock vLLM server at ${serverContext.origin}`);
+  console.log(`[wdio:test-env] Stopped mock OpenAI-compatible server at ${serverContext.origin}`);
 }

@@ -2,12 +2,6 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import http from "node:http";
-import os from "node:os";
-import path from "node:path";
-import process from "node:process";
-import { fileURLToPath } from "node:url";
-import { scenarioLabels as sharedScenarioLabels } from "./scenario-catalog.mjs";
 import {
   access,
   cp,
@@ -20,6 +14,11 @@ import {
   stat,
   writeFile,
 } from "node:fs/promises";
+import http from "node:http";
+import os from "node:os";
+import path from "node:path";
+import process from "node:process";
+import { fileURLToPath } from "node:url";
 import {
   DEFAULT_PEEKABOO_SCENARIO,
   applyPeekabooResultToState,
@@ -29,6 +28,7 @@ import {
   runPeekabooScenario,
 } from "./peekaboo-runner.mjs";
 import { shellQuote } from "./remote-stage.mjs";
+import { scenarioLabels as sharedScenarioLabels } from "./scenario-catalog.mjs";
 
 const THIS_FILE = fileURLToPath(import.meta.url);
 const TOOL_DIR = path.dirname(THIS_FILE);
@@ -901,11 +901,11 @@ async function setup({ mode = "deterministic" } = {}) {
     await writeJson(SETTINGS_FILE, {
       hostAttr: hostname,
       configDir,
-      vllmApiBaseUrl: mockInfo.baseUrl,
-      vllmApiKey: null,
-      evolveProvider: "vllm",
+      openaiCompatibleApiBaseUrl: mockInfo.baseUrl,
+      openaiCompatibleApiKey: null,
+      evolveProvider: "openai_compatible",
       evolveModel: "gpt-oss-120b",
-      summaryProvider: "vllm",
+      summaryProvider: "openai_compatible",
       summaryModel: "gpt-oss-120b",
       sendDiagnostics: false,
       confirmBuild: true,

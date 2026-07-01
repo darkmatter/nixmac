@@ -842,16 +842,23 @@ pub async fn generate_evolution<R: Runtime>(
         let model = configured_evolve_model.unwrap_or_else(|| provider_type.clone());
         info!("Using CLI provider: {} | Model: {}", provider_type, model);
         Arc::new(CliProvider::new(tool, model))
-    } else if provider_type == "vllm" {
-        let model = require_local_model("vLLM", store_model, crate::env::keys::EVOLVE_MODEL)?;
-        let base_url = store::get_vllm_api_base_url(app)
+    } else if provider_type == "openai_compatible" {
+        let model = require_local_model(
+            "OpenAI-compatible",
+            store_model,
+            crate::env::keys::EVOLVE_MODEL,
+        )?;
+        let base_url = store::get_openai_compatible_api_base_url(app)
             .ok()
             .flatten()
-            .or_else(|| crate::env::optional(env_settings.vllm_api_base.clone()))
-            .ok_or_else(|| anyhow!("No vLLM base URL configured. Please set it in Settings."))?;
-        let api_key = store::get_effective_vllm_api_key(app)?.unwrap_or_else(|| "none".to_string());
+            .or_else(|| crate::env::optional(env_settings.openai_compatible_api_base.clone()))
+            .ok_or_else(|| {
+                anyhow!("No OpenAI-compatible base URL configured. Please set it in Settings.")
+            })?;
+        let api_key = store::get_effective_openai_compatible_api_key(app)?
+            .unwrap_or_else(|| "none".to_string());
         info!(
-            "Using vLLM provider | Model: {} | URL: {} | Max output tokens: {}",
+            "Using OpenAI-compatible provider | Model: {} | URL: {} | Max output tokens: {}",
             model, base_url, max_output_tokens_for_request
         );
         Arc::new(OpenAIProvider::new(

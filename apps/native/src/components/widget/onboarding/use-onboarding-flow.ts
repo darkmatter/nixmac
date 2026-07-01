@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   computeOnboardingStep,
   resolveOnboardingStep,
@@ -6,8 +5,9 @@ import {
   STEPS,
   type StepId,
 } from "@/components/widget/onboarding/lib/onboarding";
-import { onboardingActions, useOnboarding, useViewModel } from "@nixmac/state";
 import { settings } from "@/lib/env";
+import { onboardingActions, useOnboarding, useViewModel } from "@nixmac/state";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 export function useOnboardingFlow(): {
   /** Step to render. */
@@ -42,13 +42,15 @@ export function useOnboardingFlow(): {
   const nixReady =
     (nixInstalled === true && darwinRebuildAvailable === true) ||
     settings.nixInstalledOverride === true;
-  const flakeReady = Boolean(configDir) && Boolean(host) && hosts.includes(host);
+  const configDirReady = Boolean(configDir);
+  const flakeReady = configDirReady && Boolean(host) && hosts.includes(host);
 
   const derivedStep = useMemo(
     () =>
       computeOnboardingStep({
         permissionsReady,
         nixReady,
+        configDirReady,
         flakeReady,
         macScanned: macScannedAt !== null,
         loginDecided,
@@ -59,6 +61,7 @@ export function useOnboardingFlow(): {
     [
       permissionsReady,
       nixReady,
+      configDirReady,
       flakeReady,
       macScannedAt,
       loginDecided,

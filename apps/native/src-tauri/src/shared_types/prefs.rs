@@ -21,10 +21,10 @@ pub struct UiPrefs {
     pub openai_api_key: Option<String>,
     /// Base URL for Ollama-compatible local models.
     pub ollama_api_base_url: Option<String>,
-    /// Base URL for vLLM-compatible model servers.
-    pub vllm_api_base_url: Option<String>,
-    /// API key for vLLM-compatible model servers.
-    pub vllm_api_key: Option<String>,
+    /// Base URL for OpenAI-compatible model servers.
+    pub openai_compatible_api_base_url: Option<String>,
+    /// API key for OpenAI-compatible model servers.
+    pub openai_compatible_api_key: Option<String>,
     /// Provider used for change summaries.
     pub summary_provider: Option<String>,
     /// Model used for change summaries.
@@ -98,10 +98,10 @@ pub struct UiPrefsUpdate {
     pub max_output_tokens: Option<usize>,
     /// Ollama base URL update.
     pub ollama_api_base_url: Option<String>,
-    /// vLLM base URL update.
-    pub vllm_api_base_url: Option<String>,
-    /// vLLM API key update.
-    pub vllm_api_key: Option<String>,
+    /// OpenAI-compatible base URL update.
+    pub openai_compatible_api_base_url: Option<String>,
+    /// OpenAI-compatible API key update.
+    pub openai_compatible_api_key: Option<String>,
     /// Diagnostics sharing preference update.
     pub send_diagnostics: Option<bool>,
     /// Build confirmation preference update.
@@ -161,7 +161,7 @@ pub struct GlobalPreferences {
     pub summary_provider: Option<String>,
     pub summary_model: Option<String>,
     pub ollama_api_base_url: Option<String>,
-    pub vllm_api_base_url: Option<String>,
+    pub openai_compatible_api_base_url: Option<String>,
     pub confirm_build: bool,
     pub confirm_clear: bool,
     pub confirm_rollback: bool,
@@ -197,7 +197,7 @@ impl Default for GlobalPreferences {
             summary_provider: None,
             summary_model: None,
             ollama_api_base_url: None,
-            vllm_api_base_url: None,
+            openai_compatible_api_base_url: None,
             confirm_build: true,
             confirm_clear: true,
             confirm_rollback: true,
@@ -235,8 +235,8 @@ impl GlobalPreferences {
         if let Some(v) = &update.ollama_api_base_url {
             self.ollama_api_base_url = Some(v.clone());
         }
-        if let Some(v) = &update.vllm_api_base_url {
-            self.vllm_api_base_url = Some(v.clone());
+        if let Some(v) = &update.openai_compatible_api_base_url {
+            self.openai_compatible_api_base_url = Some(v.clone());
         }
         if let Some(v) = update.send_diagnostics {
             self.send_diagnostics = v;
@@ -291,8 +291,8 @@ impl GlobalPreferences {
             openrouter_api_key: None,
             openai_api_key: None,
             ollama_api_base_url: self.ollama_api_base_url.clone(),
-            vllm_api_base_url: self.vllm_api_base_url.clone(),
-            vllm_api_key: None,
+            openai_compatible_api_base_url: self.openai_compatible_api_base_url.clone(),
+            openai_compatible_api_key: None,
             summary_provider: self.summary_provider.clone(),
             summary_model: self.summary_model.clone(),
             evolve_provider: self.evolve_provider.clone(),

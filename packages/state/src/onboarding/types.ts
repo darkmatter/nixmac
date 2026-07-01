@@ -3,6 +3,7 @@ import type { HomebrewItem, LaunchdItem, SystemDefault } from "@nixmac/native/ip
 export type OnboardingStepId =
   | "permissions"
   | "nix-setup"
+  | "config-dir"
   | "setup"
   | "customizations"
   | "inference"

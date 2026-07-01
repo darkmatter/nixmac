@@ -7,7 +7,7 @@ import {
   registerPromptSuiteBeforeEach,
   submitPromptMessage,
 } from "./helpers/app-ui.js";
-import { getMockVllmFixturePreset } from "./helpers/mock-vllm-presets.js";
+import { getMockOpenAiCompatibleFixturePreset } from "./helpers/mock-openai-compatible-presets.js";
 import { expect, use } from "chai";
 import chaiAsPromised from "chai-as-promised";
 
@@ -16,10 +16,10 @@ use(chaiAsPromised);
 describe("conversational prompts", () => {
   registerPromptSuiteBeforeEach({
     fixtureByTestTitle: {
-      "submits a conversational prompt on the Begin step": getMockVllmFixturePreset(
+      "submits a conversational prompt on the Begin step": getMockOpenAiCompatibleFixturePreset(
         "conversationalPromptsOnBegin",
       ),
-      "submits a conversational prompt on the Evolve step": getMockVllmFixturePreset(
+      "submits a conversational prompt on the Evolve step": getMockOpenAiCompatibleFixturePreset(
         "conversationalPromptsOnEvolve",
       ),
     },

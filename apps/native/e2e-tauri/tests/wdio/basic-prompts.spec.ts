@@ -7,7 +7,7 @@ import {
 } from "./helpers/app-ui.js";
 import { loadBuildState, loadEvolveState, getConfigRepoGitDiff } from "./helpers/test-env.js";
 import { assertDiffContains } from "./helpers/git-helpers.js";
-import { getMockVllmFixturePreset } from "./helpers/mock-vllm-presets.js";
+import { getMockOpenAiCompatibleFixturePreset } from "./helpers/mock-openai-compatible-presets.js";
 import { expect, use } from "chai";
 import chaiAsPromised from "chai-as-promised";
 
@@ -17,12 +17,12 @@ describe("basic prompts", () => {
   registerPromptSuiteBeforeEach({
     fixtureByTestTitle: {
       "submits a basic prompt and reaches evolve review with diff":
-        getMockVllmFixturePreset("basicPromptsAddFont"),
-      "handles a prompt that triggers a docs search": getMockVllmFixturePreset(
+        getMockOpenAiCompatibleFixturePreset("basicPromptsAddFont"),
+      "handles a prompt that triggers a docs search": getMockOpenAiCompatibleFixturePreset(
         "basicPromptsConfigureScreenshots",
       ),
       "asks a question prompt and then submits a follow-up prompt based on the answer":
-        getMockVllmFixturePreset("askQuestionPrompts"),
+        getMockOpenAiCompatibleFixturePreset("askQuestionPrompts"),
     },
   });
 

@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { tauriAPI } from "@/ipc/api";
 
 interface ModelComboboxProps {
-  provider: "nixmac" | "openrouter" | "openai" | "ollama" | "vllm" | "opencode";
+  provider: "nixmac" | "openrouter" | "openai" | "ollama" | "openai_compatible" | "opencode";
   value: string;
   onChange: (value: string) => void;
   onBlur?: () => void;

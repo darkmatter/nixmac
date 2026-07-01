@@ -65,7 +65,7 @@ export function PromptInput() {
         const normalizedPrefs = {
           openrouterApiKey: prefs?.openrouterApiKey ?? "",
           openaiApiKey: prefs?.openaiApiKey ?? "",
-          vllmApiBaseUrl: prefs?.vllmApiBaseUrl ?? "",
+          openaiCompatibleApiBaseUrl: prefs?.openaiCompatibleApiBaseUrl ?? "",
         };
 
         if (!cancelled) {

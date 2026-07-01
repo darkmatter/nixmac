@@ -16,8 +16,9 @@ import { useEffect, useRef } from "react";
  *
  * - Permissions → click each "Request" / "Open Settings" to grant.
  * - System Setup → "Check again" detects Nix on the 2nd probe.
- * - Import Flake → GitHub / local / flake-ref / "Start from scratch" all work;
- *   they populate a config dir + hosts, then pick a host.
+ * - Config Directory → GitHub / local / flake-ref / "Start from scratch" all work;
+ *   they populate a config dir.
+ * - Choose Machine → pick the host that matches this Mac.
  * - Import Customizations → "Scan this Mac" returns mocked defaults/casks/taps.
  * - AI Inference → BYOK (saves a key) or hosted (sign in + mock subscription checkout).
  * - First Build → "Run build" streams a mocked log to success → celebration.
@@ -39,7 +40,7 @@ const meta = preview.meta({
 export default meta;
 
 const SAMPLE_HOSTS = ["macbook-pro", "mac-studio"];
-const STEP_ORDER = ["permissions", "nix-setup", "setup", "customizations", "inference", "build"];
+const STEP_ORDER = ["permissions", "nix-setup", "config-dir", "setup", "customizations", "inference", "build"];
 
 const PERMISSION_DEFS = [
   {
@@ -188,12 +189,12 @@ function installBackend(startAt: string) {
     nixProbes: 0,
     configDir: startIdx >= 3 ? "/Users/demo/.darwin" : "",
     hosts: startIdx >= 3 ? SAMPLE_HOSTS : [],
-    hostAttr: startIdx >= 3 ? SAMPLE_HOSTS[0] : "",
+    hostAttr: startIdx >= 4 ? SAMPLE_HOSTS[0] : "",
     flakeExists: startIdx >= 3,
-    macScannedAt: (startIdx >= 4 ? 1_700_000_000 : null) as number | null,
-    evolveProvider: (startIdx >= 5 ? "openrouter" : null) as string | null,
-    evolveModel: (startIdx >= 5 ? "anthropic/claude-sonnet-4" : null) as string | null,
-    loginDecided: startIdx >= 5,
+    macScannedAt: (startIdx >= 5 ? 1_700_000_000 : null) as number | null,
+    evolveProvider: (startIdx >= 6 ? "openrouter" : null) as string | null,
+    evolveModel: (startIdx >= 6 ? "anthropic/claude-sonnet-4" : null) as string | null,
+    loginDecided: startIdx >= 6,
     lastBuildAt: null as number | null,
     githubConnected: false,
   };
@@ -228,7 +229,7 @@ function installBackend(startAt: string) {
         summaryProvider: null,
         summaryModel: null,
         ollamaApiBaseUrl: null,
-        vllmApiBaseUrl: null,
+        openaiCompatibleApiBaseUrl: null,
         confirmBuild: true,
         confirmClear: true,
         confirmRollback: true,
@@ -535,8 +536,8 @@ export const NixSetup = meta.story({
   render: () => <OnboardingHarness startAt="nix-setup" />,
 });
 
-export const ImportFlake = meta.story({
-  render: () => <OnboardingHarness startAt="setup" />,
+export const ConfigDirectory = meta.story({
+  render: () => <OnboardingHarness startAt="config-dir" />,
 });
 
 export const Customizations = meta.story({
