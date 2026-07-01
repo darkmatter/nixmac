@@ -31,9 +31,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: ./.github/actions/setup
+      - name: Setup Nix and caches
+        uses: ./.github/actions/setup-nix
         with:
           darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+
+      - name: Setup devenv profile
+        uses: ./.github/actions/setup-devenv
+        with:
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
+
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+
       # Generate a coverage report so the dangerfile has something to surface.
       # `continue-on-error` keeps Danger running even if a test fails — Danger
       # itself is not the gate for test failures, the test workflow is.

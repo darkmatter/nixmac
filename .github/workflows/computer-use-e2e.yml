@@ -63,10 +63,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: ./.github/actions/setup
+      - name: Setup Nix and caches
+        uses: ./.github/actions/setup-nix
         with:
           darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
-          install-bun-deps: false
+
+      - name: Setup devenv profile
+        uses: ./.github/actions/setup-devenv
+        with:
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
 
       - name: Initialize timing telemetry
         shell: bash
@@ -623,10 +628,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: ./.github/actions/setup
+      - name: Setup Nix and caches
+        uses: ./.github/actions/setup-nix
         with:
           darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
-          install-bun-deps: false
+
+      - name: Setup devenv profile
+        uses: ./.github/actions/setup-devenv
+        with:
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
 
       - name: Download Storybook plan
         uses: actions/download-artifact@v7

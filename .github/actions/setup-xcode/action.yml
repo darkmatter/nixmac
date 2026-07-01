@@ -1,0 +1,30 @@
+name: "Setup Xcode Swift toolchain"
+description: "Prefer Xcode Swift/SPM over devenv Swift on macOS."
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure Xcode swift toolchain
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        developer_dir="$(env -u DEVELOPER_DIR /usr/bin/xcode-select -p 2>/dev/null || true)"
+        if [ -z "$developer_dir" ]; then
+          developer_dir="/Applications/Xcode.app/Contents/Developer"
+        fi
+
+        swift_bin="$developer_dir/Toolchains/XcodeDefault.xctoolchain/usr/bin"
+        if [ -x "$swift_bin/swift" ]; then
+          echo "DEVELOPER_DIR=$developer_dir" >> "$GITHUB_ENV"
+          sdk_root="$(env -u SDKROOT DEVELOPER_DIR="$developer_dir" /usr/bin/xcrun --sdk macosx --show-sdk-path 2>/dev/null || true)"
+          if [ -n "$sdk_root" ]; then
+            echo "SDKROOT=$sdk_root" >> "$GITHUB_ENV"
+          fi
+          # GITHUB_PATH prepends — adding after devenv profile bin means
+          # Xcode's swift takes precedence over devenv's standalone swift,
+          # which lacks swift-build (SPM) required by swift-rs.
+          echo "$swift_bin" >> "$GITHUB_PATH"
+          unset NIX_SWIFTFLAGS_COMPILE NIX_SWIFTFLAGS_LINK 2>/dev/null || true
+        fi

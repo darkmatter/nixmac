@@ -96,11 +96,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: ./.github/actions/setup
+      - name: Setup Nix and caches
+        uses: ./.github/actions/setup-nix
         with:
           darkmatter-cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
-          install-bun-deps: false
           install-devenv: false
+
       - name: Check changed Nix and shell files
         shell: bash
         env:
