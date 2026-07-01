@@ -12,6 +12,13 @@ import { DEFAULT_NIXMAC_MODEL, DEFAULT_NIXMAC_SUMMARY_MODEL, NIXMAC_PROVIDER } f
 import { tauriAPI } from "@/ipc/api";
 import type { CliToolsState } from "@/ipc/types";
 import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/providers/ai-provider-validation";
+import {
+  AI_MODEL_PROVIDERS,
+  DEFAULT_EVOLVE_MODEL,
+  DEFAULT_SUMMARY_MODEL,
+  isPlainInputCliProvider,
+  modelPlaceholder,
+} from "@/lib/providers/ai-models";
 import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
 import { useEffect, useState } from "react";
 
@@ -141,19 +148,11 @@ export function AiModelsTab({
     ];
     return (
       <>
-        {providers.map(({ value, label, icon }) => (
-          <SelectItem key={value} value={value}>
+        {AI_MODEL_PROVIDERS.map((provider) => (
+          <SelectItem key={provider.id} value={provider.id}>
             <span className="flex items-center gap-2">
-              <ProviderIcon provider={icon} size={14} />
-              {label}
-            </span>
-          </SelectItem>
-        ))}
-        {CLI_PROVIDERS.map(({ value, label }) => (
-          <SelectItem key={value} value={value}>
-            <span className="flex items-center gap-2">
-              <ProviderIcon provider={value as ProviderIconId} size={14} />
-              {label}
+              <ProviderIcon provider={provider.icon} size={14} />
+              {provider.name}
             </span>
           </SelectItem>
         ))}
