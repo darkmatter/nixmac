@@ -1,6 +1,7 @@
 //! `nix_file_editor`: Apply "smart"" edits to Nix files, such as adding/removing packages from a list or setting scalar values.
 
 use crate::evolve::types::SemanticFileEdit;
+use crate::system::nix::nix_format;
 use anyhow::{Context, Result};
 use log::{debug, info};
 use rnix::SyntaxNode;
@@ -337,6 +338,7 @@ fn render_nix_expression_literal(
 pub fn apply_semantic_edit(
     base: &Path,
     edit: &SemanticFileEdit,
+    auto_format: bool,
     gitignore_matcher: Option<&Gitignore>,
 ) -> anyhow::Result<()> {
     rewrite_existing_file_in_dir(
@@ -371,6 +373,22 @@ pub fn apply_semantic_edit(
         },
     )?;
 
+    // Format the file conditionally.
+    if auto_format {
+        log::debug!(
+            "apply_semantic_edit: auto_format is enabled, running nix-format on {}",
+            edit.path
+        );
+        // If the formatting fails for some reason, allow the edit to be successful (but warn).
+        let config_dir = base.to_string_lossy();
+        let format_result = nix_format(&config_dir, &edit.path);
+        if let Err(e) = format_result {
+            log::warn!(
+                "apply_semantic_edit succeeded but nixfmt failed: {}. The file may be left in an unformatted state; run nixfmt manually to fix formatting issues.",
+                e
+            );
+        }
+    }
     Ok(())
 }
 

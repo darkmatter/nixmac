@@ -52,6 +52,7 @@ export type SettingsType = {
   readonly posthogHost: string;
   readonly filesystemEnabled: boolean;
   readonly nixInstalledOverride?: boolean;
+  readonly skipPermissions: boolean;
 };
 
 function loadMergedProfile(): EnvProfile {
@@ -71,6 +72,7 @@ function toSettings(profile: EnvProfile): SettingsType {
     posthogHost: profile.VITE_POSTHOG_HOST,
     filesystemEnabled: profile.VITE_NIXMAC_FILESYSTEM,
     nixInstalledOverride: profile.NIX_INSTALLED_OVERRIDE ? true : undefined,
+    skipPermissions: profile.VITE_NIXMAC_SKIP_PERMISSIONS,
   };
 }
 
@@ -103,4 +105,3 @@ export function getWebSiteUrl(): string {
 
 
 console.log("Running with env", import.meta.env);
-console.log("Running with settings", settings);

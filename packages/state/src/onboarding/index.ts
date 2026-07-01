@@ -8,9 +8,10 @@ export {
 export {
   selectCelebrating,
   selectInferenceDeferred,
+  selectTrackedCustomizationSources,
   selectTrackedCustomizations,
   selectViewingStep,
   useOnboarding,
   type OnboardingSelector,
 } from "./selectors";
-export type { OnboardingStateValues, OnboardingStepId } from "./types";
+export type { TrackedCustomizationSource } from "./types";

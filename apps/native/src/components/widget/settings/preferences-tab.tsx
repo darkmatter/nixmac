@@ -10,6 +10,7 @@ export function PreferencesTab() {
   const autoSummarizeOnFocus = useViewModel((s) => s.preferences?.autoSummarizeOnFocus ?? false);
   const scanHomebrewOnStartup = useViewModel((s) => s.preferences?.scanHomebrewOnStartup ?? true);
   const defaultToDiffTab = useViewModel((s) => s.preferences?.defaultToDiffTab ?? false);
+  const autoFormatNixFiles = useViewModel((s) => s.preferences?.autoFormatNixFiles ?? false);
 
   return (
     <div className="space-y-6">
@@ -81,6 +82,18 @@ export function PreferencesTab() {
               <Switch
                 checked={defaultToDiffTab}
                 onCheckedChange={(checked) => setPref("defaultToDiffTab", checked)}
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-border p-3">
+              <div className="space-y-0.5">
+                <div className="text-sm">Auto-Format Nix Files</div>
+                <div className="text-muted-foreground text-xs">
+                  Automatically format Nix files after smart edits
+                </div>
+              </div>
+              <Switch
+                checked={autoFormatNixFiles}
+                onCheckedChange={(checked) => setPref("autoFormatNixFiles", checked)}
               />
             </div>
           </div>

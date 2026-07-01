@@ -79,6 +79,7 @@ pub struct EnsureSecretResult {
 pub fn execute_ensure_secret(
     base: &Path,
     args: &serde_json::Value,
+    auto_format: bool,
     gitignore_matcher: Option<&Gitignore>,
 ) -> Result<EnsureSecretResult> {
     let parsed: EnsureSecretArgs = serde_json::from_value(args.clone()).map_err(|error| {
@@ -112,7 +113,14 @@ pub fn execute_ensure_secret(
     edit_secret_blocking(base, &secret_path, &age.key_path)?;
 
     if let Some(inject) = parsed.inject {
-        inject_secret(base, &parsed.name, &secret_path, &inject, gitignore_matcher)?;
+        inject_secret(
+            base,
+            &parsed.name,
+            &secret_path,
+            &inject,
+            auto_format,
+            gitignore_matcher,
+        )?;
     }
 
     let runtime_path = runtime_secret_path(&parsed.name);
@@ -151,6 +159,7 @@ fn inject_secret(
     name: &str,
     secret_path: &str,
     inject: &SecretInject,
+    auto_format: bool,
     gitignore_matcher: Option<&Gitignore>,
 ) -> Result<()> {
     if inject.file.trim().is_empty() {
@@ -192,6 +201,7 @@ fn inject_secret(
                 attrs,
             },
         },
+        auto_format,
         gitignore_matcher,
     )?;
 
@@ -210,6 +220,7 @@ fn inject_secret(
                 value: nix_expr_meta_value(&format!("config.sops.secrets.\"{}\".path", name)),
             },
         },
+        auto_format,
         gitignore_matcher,
     )?;
 
@@ -455,7 +466,7 @@ mod tests {
             "name": secret_name,
         });
 
-        let result = execute_ensure_secret(&base, &args, None)
+        let result = execute_ensure_secret(&base, &args, false, None)
             .expect("execute_ensure_secret should succeed after interactive edit is completed");
 
         assert_eq!(result.name, secret_name);

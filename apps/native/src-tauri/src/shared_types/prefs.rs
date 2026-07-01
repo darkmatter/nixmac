@@ -67,6 +67,8 @@ pub struct UiPrefs {
     /// Developer-only feature flag overrides (flag key → variant string).
     /// `None` or missing key = use PostHog default.
     pub feature_flag_overrides: Option<BTreeMap<String, String>>,
+    /// Whether or not to auto-format Nix files when making changes to the flakes.
+    pub auto_format_nix_files: bool,
 }
 
 /// Partial update to UI preferences — every field is optional so the caller
@@ -139,6 +141,8 @@ pub struct UiPrefsUpdate {
     pub onboarding_mac_scanned_at: Option<i64>,
     /// Set true once the user logged in or explicitly chose bring-your-own-key.
     pub onboarding_login_decided: Option<bool>,
+    /// Auto-format Nix files after smart edits.
+    pub auto_format_nix_files: Option<bool>,
 }
 
 /// Preferences local to this app installation.
@@ -175,6 +179,8 @@ pub struct GlobalPreferences {
     pub onboarding_login_decided: bool,
     /// Timestamp (unix secs) of the last successful build/evolution apply. Set by `finalize_apply`.
     pub onboarding_last_build_at: Option<i64>,
+    /// Whether or not to auto-format Nix files when making changes to the flakes.
+    pub auto_format_nix_files: bool,
 }
 
 impl Default for GlobalPreferences {
@@ -204,6 +210,7 @@ impl Default for GlobalPreferences {
             onboarding_mac_scanned_at: None,
             onboarding_login_decided: false,
             onboarding_last_build_at: None,
+            auto_format_nix_files: false,
         }
     }
 }
@@ -271,6 +278,9 @@ impl GlobalPreferences {
         if let Some(v) = update.onboarding_login_decided {
             self.onboarding_login_decided = v;
         }
+        if let Some(v) = update.auto_format_nix_files {
+            self.auto_format_nix_files = v;
+        }
     }
 
     /// Builds the non-secret subset of [`UiPrefs`] from global preferences.
@@ -301,6 +311,7 @@ impl GlobalPreferences {
             pinned_version: self.pinned_version.clone(),
             update_channel: self.update_channel,
             feature_flag_overrides: self.feature_flag_overrides.clone(),
+            auto_format_nix_files: self.auto_format_nix_files,
         }
     }
 }

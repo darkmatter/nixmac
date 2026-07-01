@@ -1,4 +1,11 @@
-import type { HomebrewState, LaunchdItem, SystemDefaultsScan } from "@/ipc/types";
+import type {
+  HomebrewItem,
+  HomebrewState,
+  LaunchdItem,
+  SystemDefault,
+  SystemDefaultsScan,
+} from "@/ipc/types";
+import type { TrackedCustomizationSource } from "@nixmac/state";
 
 export type CustomizationGroupId =
   | "macos-settings"
@@ -7,6 +14,14 @@ export type CustomizationGroupId =
   | "launch-agents";
 
 export type GroupSeverity = "info" | "warning";
+
+export type CustomizationSource = TrackedCustomizationSource;
+
+export interface TrackedCustomizationBuckets {
+  homebrew: HomebrewItem[];
+  launchd: LaunchdItem[];
+  systemDefaults: SystemDefault[];
+}
 
 export interface CustomizationItem {
   id: string;
@@ -18,6 +33,8 @@ export interface CustomizationItem {
   meta: string;
   /** The nix line this item would add to the config */
   nixLine: string;
+  /** The original scanner payload, tagged by scanner type for apply-time routing. */
+  source: CustomizationSource;
 }
 
 export interface CustomizationGroup {
@@ -51,6 +68,7 @@ function defaultsGroup(scan: SystemDefaultsScan): CustomizationGroup | null {
       detail: `${d.nixKey} = ${d.currentValue}`,
       meta: `default: ${d.defaultValue}`,
       nixLine: `${d.nixKey} = ${d.currentValue};`,
+      source: { type: "system-default", item: d },
     })),
   };
 }
@@ -70,6 +88,7 @@ function casksGroup(state: HomebrewState): CustomizationGroup | null {
       detail: "Homebrew cask",
       meta: "cask",
       nixLine: `homebrew.casks = [ "${name}" ];`,
+      source: { type: "homebrew", item: { name, version: null, itemType: "cask" } },
     })),
   };
 }
@@ -89,6 +108,7 @@ function tapsGroup(state: HomebrewState): CustomizationGroup | null {
       detail: "Homebrew tap",
       meta: "tap",
       nixLine: `homebrew.taps = [ "${name}" ];`,
+      source: { type: "homebrew", item: { name, version: null, itemType: "tap" } },
     })),
   };
 }
@@ -110,6 +130,7 @@ function launchdGroup(items: LaunchdItem[]): CustomizationGroup | null {
       nixLine: `launchd.user.agents.${item.name || "service"}.serviceConfig.ProgramArguments = [ ${item.programArguments
         .map((a) => `"${a}"`)
         .join(" ")} ];`,
+      source: { type: "launchd", item },
     })),
   };
 }
@@ -132,6 +153,48 @@ export function totalCustomizations(groups: CustomizationGroup[]): number {
   return groups.reduce((sum, g) => sum + g.items.length, 0);
 }
 
+export function collectTrackedCustomizationSources(
+  trackedCustomizations: string[],
+  trackedCustomizationSources: Record<string, CustomizationSource>,
+): TrackedCustomizationBuckets {
+  const homebrew: HomebrewItem[] = [];
+  const launchd: LaunchdItem[] = [];
+  const systemDefaults: SystemDefault[] = [];
+
+  for (const id of trackedCustomizations) {
+    const source = trackedCustomizationSources[id];
+    if (!source) continue;
+
+    switch (source.type) {
+      case "homebrew":
+        homebrew.push(source.item);
+        break;
+      case "launchd":
+        launchd.push(source.item);
+        break;
+      case "system-default":
+        systemDefaults.push(source.item);
+        break;
+    }
+  }
+
+  return {
+    homebrew: uniqueHomebrewItems(homebrew),
+    launchd,
+    systemDefaults,
+  };
+}
+
+function uniqueHomebrewItems(items: HomebrewItem[]): HomebrewItem[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = `${item.itemType}:${item.name}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 /** A small static sample used by Storybook and as a graceful fallback. */
 export const MOCK_CUSTOMIZATION_GROUPS: CustomizationGroup[] = [
   {
@@ -150,6 +213,16 @@ export const MOCK_CUSTOMIZATION_GROUPS: CustomizationGroup[] = [
         detail: "system.defaults.dock.expose-group-apps = true",
         meta: "default: false",
         nixLine: "system.defaults.dock.expose-group-apps = true;",
+        source: {
+          type: "system-default",
+          item: {
+            nixKey: "system.defaults.dock.expose-group-apps",
+            label: "Group windows by application in Mission Control",
+            category: "Dock",
+            currentValue: "true",
+            defaultValue: "false",
+          },
+        },
       },
       {
         id: "default-wm",
@@ -157,6 +230,16 @@ export const MOCK_CUSTOMIZATION_GROUPS: CustomizationGroup[] = [
         detail: "system.defaults.WindowManager.HideDesktop = true",
         meta: "default: false",
         nixLine: "system.defaults.WindowManager.HideDesktop = true;",
+        source: {
+          type: "system-default",
+          item: {
+            nixKey: "system.defaults.WindowManager.HideDesktop",
+            label: "Hide desktop items in Stage Manager",
+            category: "Window Manager",
+            currentValue: "true",
+            defaultValue: "false",
+          },
+        },
       },
     ],
   },
@@ -174,6 +257,7 @@ export const MOCK_CUSTOMIZATION_GROUPS: CustomizationGroup[] = [
         detail: "Homebrew cask",
         meta: "cask",
         nixLine: 'homebrew.casks = [ "raycast" ];',
+        source: { type: "homebrew", item: { name: "raycast", version: null, itemType: "cask" } },
       },
       {
         id: "cask-ghostty",
@@ -181,6 +265,7 @@ export const MOCK_CUSTOMIZATION_GROUPS: CustomizationGroup[] = [
         detail: "Homebrew cask",
         meta: "cask",
         nixLine: 'homebrew.casks = [ "ghostty" ];',
+        source: { type: "homebrew", item: { name: "ghostty", version: null, itemType: "cask" } },
       },
     ],
   },

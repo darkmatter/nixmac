@@ -252,6 +252,7 @@ function installBackend(startAt: string) {
   syncVM();
   onboardingActions.setState({
     trackedCustomizations: [],
+    trackedCustomizationSources: {},
     inferenceDeferred: false,
     celebrating: false,
     viewingStep: null,

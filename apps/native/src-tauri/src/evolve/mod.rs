@@ -944,15 +944,16 @@ pub async fn generate_evolution<R: Runtime>(
     // every run). `app.state` panics if the observable isn't managed; that is
     // intentional — it surfaces a startup misconfiguration immediately
     // instead of silently swapping in field defaults.
-    let config::EvolutionLimits {
+    let config::UserPreferences {
         mut max_build_attempts,
         max_token_budget: configured_max_token_budget,
         mut max_iterations,
         ..
     } = app
-        .state::<crate::observable::Observable<config::EvolutionLimits>>()
+        .state::<crate::observable::Observable<config::UserPreferences>>()
         .read_sync()
         .clone();
+    let auto_format_nix_files = crate::state::ui_prefs::auto_format_nix_files(app);
     let mut max_token_budget =
         config::effective_max_token_budget(&provider_type, configured_max_token_budget);
 
@@ -1316,6 +1317,7 @@ pub async fn generate_evolution<R: Runtime>(
                         host_attr.as_str(),
                         tool_name,
                         &args,
+                        auto_format_nix_files,
                         gitignore_matcher.as_ref(),
                     );
 

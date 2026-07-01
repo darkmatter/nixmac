@@ -185,8 +185,12 @@ pub async fn apply_homebrew_diff(
     }
     let item_count = homebrew_item_count(&diff);
 
-    apply_homebrew_import(diff, std::path::Path::new(&dir))
-        .context("Failed to apply Homebrew diff")?;
+    apply_homebrew_import(
+        diff,
+        std::path::Path::new(&dir),
+        crate::state::ui_prefs::auto_format_nix_files(app),
+    )
+    .context("Failed to apply Homebrew diff")?;
 
     let working_tree_status =
         crate::git::status(&dir).context("Failed to get working tree status for evolve state")?;
@@ -592,7 +596,11 @@ fn apply_homebrew_data_import(
 /// Writes missing items in the diff to the config, using the source field to determine where to write.
 /// If the source is empty, we'll set up the official .nixmac/homebrew module and write data.json.
 /// We also hook up .nixmac to flake.nix in that case.
-pub fn apply_homebrew_import(diff: HomebrewState, config_dir: &std::path::Path) -> Result<()> {
+pub fn apply_homebrew_import(
+    diff: HomebrewState,
+    config_dir: &std::path::Path,
+    auto_format: bool,
+) -> Result<()> {
     if diff.casks.is_empty() && diff.brews.is_empty() && diff.taps.is_empty() {
         return Ok(());
     }
@@ -669,6 +677,7 @@ pub fn apply_homebrew_import(diff: HomebrewState, config_dir: &std::path::Path) 
                     values: nix_quote_values(&diff.taps),
                 },
             },
+            auto_format,
             None,
         )?;
     }
@@ -683,6 +692,7 @@ pub fn apply_homebrew_import(diff: HomebrewState, config_dir: &std::path::Path) 
                     values: nix_quote_values(&diff.brews),
                 },
             },
+            auto_format,
             None,
         )?;
     }
@@ -697,6 +707,7 @@ pub fn apply_homebrew_import(diff: HomebrewState, config_dir: &std::path::Path) 
                     values: nix_quote_values(&diff.casks),
                 },
             },
+            auto_format,
             None,
         )?;
     }
@@ -1144,7 +1155,7 @@ mod tests {
         let sanitized = sanitize_homebrew_diff(submitted, fresh_installed, fresh_config);
 
         assert_eq!(sanitized.source, None);
-        apply_homebrew_import(sanitized, temp.path())
+        apply_homebrew_import(sanitized, temp.path(), false)
             .expect("sanitized apply should create default module");
 
         let data_file = temp.path().join(NIXMAC_HOMEBREW_DATA_PATH);
@@ -1192,7 +1203,8 @@ mod tests {
             last_checked: 0,
         };
 
-        apply_homebrew_import(diff, temp.path()).expect("apply_homebrew_import should succeed");
+        apply_homebrew_import(diff, temp.path(), false)
+            .expect("apply_homebrew_import should succeed");
 
         let data_file = temp.path().join(NIXMAC_HOMEBREW_DATA_PATH);
         let data: Value = serde_json::from_str(
@@ -1225,7 +1237,7 @@ mod tests {
             last_checked: 0,
         };
 
-        let err = apply_homebrew_import(diff, temp.path())
+        let err = apply_homebrew_import(diff, temp.path(), false)
             .expect_err("default .nixmac source should require flake.nix");
 
         assert!(err.to_string().contains("flake.nix"));
@@ -1274,7 +1286,8 @@ mod tests {
             last_checked: 0,
         };
 
-        apply_homebrew_import(diff, temp.path()).expect("apply_homebrew_import should succeed");
+        apply_homebrew_import(diff, temp.path(), false)
+            .expect("apply_homebrew_import should succeed");
 
         let flake_content = std::fs::read_to_string(flake).expect("flake should remain readable");
         assert_eq!(

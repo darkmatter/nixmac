@@ -99,6 +99,22 @@ fn vite_skip_permissions_enabled() -> bool {
     false
 }
 
+fn skip_permissions_enabled() -> bool {
+    vite_skip_permissions_enabled() || e2e_skip_permissions_enabled()
+}
+
+fn granted_permissions_state() -> PermissionsState {
+    let mut permissions = get_default_permissions();
+    for perm in &mut permissions {
+        perm.status = PermissionStatus::Granted;
+    }
+    PermissionsState {
+        permissions,
+        all_required_granted: true,
+        checked_at: Some(chrono::Utc::now().timestamp()),
+    }
+}
+
 fn granted_folder_permission(id: &str, name: &str, description: &str) -> Permission {
     Permission {
         id: id.to_string(),
@@ -300,19 +316,11 @@ fn check_admin_privileges() -> PermissionStatus {
 
 /// Check all permissions and return the current state
 pub fn check_all_permissions() -> PermissionsState {
-    // In CI/E2E mode, skip all permission checks and report everything as granted.
-    // The E2E test environment may not have FDA granted and can't obtain it programmatically.
-    if e2e_skip_permissions_enabled() {
-        info!("NIXMAC_SKIP_PERMISSIONS=1: reporting all permissions as granted");
-        let mut permissions = get_default_permissions();
-        for perm in &mut permissions {
-            perm.status = PermissionStatus::Granted;
-        }
-        return PermissionsState {
-            permissions,
-            all_required_granted: true,
-            checked_at: Some(chrono::Utc::now().timestamp()),
-        };
+    // Debug/test environments may not have TCC permissions granted and cannot
+    // obtain them programmatically, so the skip flags satisfy the whole gate.
+    if skip_permissions_enabled() {
+        info!("permission skip enabled: reporting all permissions as granted");
+        return granted_permissions_state();
     }
 
     let mut permissions = get_default_permissions();
@@ -678,5 +686,51 @@ mod tests {
 
         unsafe { std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true") };
         assert_eq!(vite_skip_permissions_enabled(), cfg!(debug_assertions));
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn vite_permission_skip_reports_all_permissions_granted() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore = crate::test_support::EnvVarRestore::capture(&[
+            "NIXMAC_SKIP_PERMISSIONS",
+            "VITE_NIXMAC_SKIP_PERMISSIONS",
+        ]);
+
+        unsafe { std::env::remove_var("NIXMAC_SKIP_PERMISSIONS") };
+        unsafe { std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true") };
+
+        let state = check_all_permissions();
+
+        assert!(state.all_required_granted);
+        assert!(
+            state
+                .permissions
+                .iter()
+                .all(|permission| permission.status == PermissionStatus::Granted)
+        );
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn nixmac_permission_skip_reports_all_permissions_granted() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore = crate::test_support::EnvVarRestore::capture(&[
+            "NIXMAC_SKIP_PERMISSIONS",
+            "VITE_NIXMAC_SKIP_PERMISSIONS",
+        ]);
+
+        unsafe { std::env::set_var("NIXMAC_SKIP_PERMISSIONS", "true") };
+        unsafe { std::env::remove_var("VITE_NIXMAC_SKIP_PERMISSIONS") };
+
+        let state = check_all_permissions();
+
+        assert!(state.all_required_granted);
+        assert!(
+            state
+                .permissions
+                .iter()
+                .all(|permission| permission.status == PermissionStatus::Granted)
+        );
     }
 }

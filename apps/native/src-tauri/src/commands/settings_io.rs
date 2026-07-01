@@ -11,7 +11,7 @@
 //! before invoking import.
 
 use super::helpers::capture_err;
-use crate::evolve::config::EvolutionLimits;
+use crate::evolve::config::UserPreferences;
 use crate::observable::Observable;
 use crate::shared_types::{ExportResult, ImportResult};
 use crate::state::preferences::GlobalPreferences;
@@ -79,7 +79,7 @@ fn collect_slice_export_entries(
         );
     }
 
-    if let Some(limits) = app.try_state::<Observable<EvolutionLimits>>() {
+    if let Some(limits) = app.try_state::<Observable<UserPreferences>>() {
         merge_export_object(
             &mut output,
             &mut skipped,
@@ -166,8 +166,8 @@ pub async fn settings_import(app: AppHandle) -> Result<Option<ImportResult>, Str
         *global = prefs;
     }
 
-    if let Some(limits) = app.try_state::<Observable<EvolutionLimits>>() {
-        let prefs = serde_json::from_value::<EvolutionLimits>(imported_value)
+    if let Some(limits) = app.try_state::<Observable<UserPreferences>>() {
+        let prefs = serde_json::from_value::<UserPreferences>(imported_value)
             .map_err(|e| capture_err("settings_import", e))?;
         let mut limits = limits.write_sync();
         *limits = prefs;
@@ -231,6 +231,7 @@ mod tests {
             serde_json::to_value(GlobalPreferences {
                 host_attr: Some("macbook".to_string()),
                 developer_mode: true,
+                auto_format_nix_files: true,
                 ..GlobalPreferences::default()
             })
             .unwrap(),
@@ -239,7 +240,7 @@ mod tests {
         merge_export_object(
             &mut output,
             &mut skipped,
-            serde_json::to_value(EvolutionLimits {
+            serde_json::to_value(UserPreferences {
                 max_iterations: 12,
                 max_token_budget: 80_000,
                 max_build_attempts: 4,
@@ -253,6 +254,7 @@ mod tests {
         assert_eq!(output.get("developerMode"), Some(&json!(true)));
         assert_eq!(output.get("maxIterations"), Some(&json!(12)));
         assert_eq!(output.get("maxBuildAttempts"), Some(&json!(4)));
+        assert_eq!(output.get("autoFormatNixFiles"), Some(&json!(true)));
         assert!(!output.contains_key("openaiApiKey"));
         assert!(!output.contains_key("promptHistory"));
         assert!(skipped.is_empty());
