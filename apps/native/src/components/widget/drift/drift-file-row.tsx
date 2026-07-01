@@ -1,10 +1,13 @@
 "use client";
 
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DiffLineStatsBadge } from "@/components/widget/summaries/diff-line-stats";
 import { CHANGE_TYPE_STYLES, getDirectory, getShortFilename } from "@/components/widget/utils";
 import { cn } from "@/lib/utils";
-import { MoveRight } from "lucide-react";
+import { ChevronRight, MoveRight } from "lucide-react";
+import { useState } from "react";
 import { DriftActionsMenu } from "./drift-actions-menu";
+import { DriftDiffPreview } from "./drift-diff-preview";
 import { CHANGE_TYPE_GLYPH, type DriftFileRowData } from "./drift-utils";
 
 function FilePath({ path, role }: { path: string; role?: "old" | "new" }) {
@@ -23,47 +26,73 @@ function FilePath({ path, role }: { path: string; role?: "old" | "new" }) {
 }
 
 /**
- * A single file in the "File changes" view: change-type glyph + icon, path,
- * hunk count, +/- line stats, and a per-file actions menu.
+ * A single file in the "Diff" view: change-type glyph + icon, path, hunk count,
+ * +/- line stats, and a per-file actions menu. The row expands to reveal the
+ * file's unified diff inline; the actions menu sits outside the toggle so its
+ * clicks don't collapse the row.
  */
 export function DriftFileRow({ file }: { file: DriftFileRowData }) {
-  const { changeType, filename, oldFilename, hunkCount, stats } = file;
+  const { changeType, filename, oldFilename, hunkCount, stats, diffText } = file;
   const { icon: Icon, iconColor } = CHANGE_TYPE_STYLES[changeType];
   const glyph = CHANGE_TYPE_GLYPH[changeType];
+  const [open, setOpen] = useState(false);
+  const hasDiff = diffText.trim().length > 0;
 
   return (
-    <li className="group flex items-center gap-3 px-4 py-2.5">
-      <span
-        className={cn(
-          "flex h-5 w-5 shrink-0 items-center justify-center rounded bg-muted font-mono font-bold text-[10px]",
-          iconColor,
-        )}
-        title={changeType}
-      >
-        {glyph.label}
-      </span>
-      <Icon className={cn("h-4 w-4 shrink-0", iconColor)} aria-hidden="true" />
+    <li className="group">
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <div className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted/30">
+          <CollapsibleTrigger
+            disabled={!hasDiff}
+            aria-label={`${open ? "Collapse" : "Expand"} diff for ${getShortFilename(filename)}`}
+            className="flex min-w-0 flex-1 items-center gap-3 text-left outline-none disabled:cursor-default"
+          >
+            <ChevronRight
+              className={cn(
+                "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-200",
+                open && "rotate-90",
+                !hasDiff && "invisible",
+              )}
+              aria-hidden="true"
+            />
+            <span
+              className={cn(
+                "flex h-5 w-5 shrink-0 items-center justify-center rounded bg-muted font-mono font-bold text-[10px]",
+                iconColor,
+              )}
+              title={changeType}
+            >
+              {glyph.label}
+            </span>
+            <Icon className={cn("h-4 w-4 shrink-0", iconColor)} aria-hidden="true" />
 
-      {oldFilename ? (
-        <span className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
-          <FilePath path={oldFilename} role="old" />
-          <MoveRight className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <FilePath path={filename} role="new" />
-        </span>
-      ) : (
-        <span className="min-w-0 flex-1 overflow-hidden">
-          <FilePath path={filename} />
-        </span>
-      )}
+            {oldFilename ? (
+              <span className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+                <FilePath path={oldFilename} role="old" />
+                <MoveRight className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <FilePath path={filename} role="new" />
+              </span>
+            ) : (
+              <span className="min-w-0 flex-1 overflow-hidden">
+                <FilePath path={filename} />
+              </span>
+            )}
 
-      {hunkCount > 1 && (
-        <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-          x{hunkCount}
-        </span>
-      )}
-      <DiffLineStatsBadge stats={stats} />
+            {hunkCount > 1 && (
+              <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                x{hunkCount}
+              </span>
+            )}
+            <DiffLineStatsBadge stats={stats} />
+          </CollapsibleTrigger>
 
-      <DriftActionsMenu filename={filename} />
+          <DriftActionsMenu filename={filename} />
+        </div>
+
+        <CollapsibleContent className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
+          <DriftDiffPreview diff={diffText} />
+        </CollapsibleContent>
+      </Collapsible>
     </li>
   );
 }

@@ -19,7 +19,7 @@ use crate::ai::providers::create_provider;
 
 // Reasoning models count hidden reasoning against max_completion_tokens, so
 // keep this comfortably above the visible summary length.
-const MAX_COMPLETION_TOKENS: u32 = 512;
+const MAX_COMPLETION_TOKENS: u32 = 1024;
 const TEMPERATURE: f32 = 0.2;
 
 /// Interval between summarized log emissions

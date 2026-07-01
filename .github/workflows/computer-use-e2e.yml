@@ -1422,7 +1422,7 @@ jobs:
     name: Computer Use E2E Result
     needs: [prepare, remote-computer-use, publish-report]
     if: always()
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: arc
     steps:
       - name: Enforce final workflow result
         shell: bash

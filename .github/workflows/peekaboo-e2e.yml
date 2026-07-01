@@ -676,7 +676,7 @@ jobs:
     name: Peekaboo E2E Result
     needs: [peekaboo-product-proof, publish-peekaboo-report]
     if: always()
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: arc
     steps:
       - name: Enforce final workflow result
         shell: bash

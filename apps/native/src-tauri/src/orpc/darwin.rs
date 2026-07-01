@@ -29,6 +29,15 @@ struct EvolveAnswerInput {
 
 #[derive(Debug, Deserialize, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
+struct FixWithAiInput {
+    /// The failing log line (or error message) the user asked to fix.
+    error: String,
+    /// Backend error classification (`RebuildErrorType`), when known.
+    error_type: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
 struct ApplyStreamStartInput {
     host_override: Option<String>,
 }
@@ -70,6 +79,12 @@ async fn evolve_handler(ctx: OrpcCtx, input: EvolveInput) -> Result<(), ORPCErro
     evolve::run_evolve(ctx.app, input.description)
         .await
         .map_err(|error| internal_err("darwin.evolve", error))
+}
+
+async fn fix_with_ai(ctx: OrpcCtx, input: FixWithAiInput) -> Result<(), ORPCError> {
+    evolve::run_fix(ctx.app, input.error, input.error_type)
+        .await
+        .map_err(|error| internal_err("darwin.fixWithAi", error))
 }
 
 async fn evolve_cancel(_ctx: OrpcCtx, _input: ()) -> Result<EvolveCancelResult, ORPCError> {
@@ -213,6 +228,9 @@ pub fn routes() -> Router<OrpcCtx> {
         "evolve" => os::<OrpcCtx>()
             .input(orpc_specta::specta::<EvolveInput>())
             .handler(evolve_handler),
+        "fixWithAi" => os::<OrpcCtx>()
+            .input(orpc_specta::specta::<FixWithAiInput>())
+            .handler(fix_with_ai),
         "evolveCancel" => os::<OrpcCtx>()
             .output(orpc_specta::specta::<EvolveCancelResult>())
             .handler(evolve_cancel),

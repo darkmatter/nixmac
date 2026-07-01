@@ -32,7 +32,7 @@ async function openExternalUrl(url: string) {
   }
 }
 
-type CheckStatus = "ok" | "missing" | "unknown" | "checking";
+type CheckStatus = "ok" | "missing" | "optional" | "unknown" | "checking";
 
 export function NixSetupStep() {
   const nixInstalled = useViewModel((s) => s.nixInstall?.installed ?? null);
@@ -59,7 +59,9 @@ export function NixSetupStep() {
     if (isChecking || probing) return "checking";
     if (key === "nix") return nixInstalled === true ? "ok" : "missing";
     if (nixInstalled !== true) return "unknown";
-    return darwinRebuildAvailable === true ? "ok" : "missing";
+    // nix-darwin is optional: if it's already installed we show it, otherwise
+    // the first build fetches it via `nix run` — never a blocking "missing".
+    return darwinRebuildAvailable === true ? "ok" : "optional";
   }
 
   const CHECKS: { key: "nix" | "darwin"; label: string; hint: string }[] = [
@@ -67,15 +69,15 @@ export function NixSetupStep() {
     {
       key: "darwin",
       label: "nix-darwin (darwin-rebuild)",
-      hint: "Applies your system configuration",
+      hint: "Optional — fetched via nix run during your first build",
     },
   ];
 
   return (
     <StepShell
       eyebrow={stepEyebrow("nix-setup")}
-      title="Install Nix & nix-darwin"
-      description="nixmac needs Nix and nix-darwin installed before it can manage this Mac. Installation happens in your terminal — follow the links below, then re-check."
+      title="Install Nix"
+      description="nixmac needs the Nix package manager before it can manage this Mac. Installation happens in your terminal — follow the link below, then re-check. nix-darwin is optional: if it isn't already installed, the first build fetches it via nix run."
     >
       <div className="rounded-xl border border-border bg-card">
         <div className="flex flex-col gap-3 border-border border-b p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -105,7 +107,7 @@ export function NixSetupStep() {
                     "flex size-7 shrink-0 items-center justify-center rounded-full",
                     status === "ok" && "bg-success/15 text-success",
                     status === "missing" && "bg-destructive/15 text-destructive",
-                    (status === "unknown" || status === "checking") &&
+                    (status === "optional" || status === "unknown" || status === "checking") &&
                       "bg-muted text-muted-foreground",
                   )}
                   aria-hidden="true"
@@ -127,7 +129,9 @@ export function NixSetupStep() {
                       ? "Detected and ready"
                       : status === "missing"
                         ? "Not found — install it below"
-                        : check.hint}
+                        : status === "optional"
+                          ? "Not installed — nixmac runs it during the build"
+                          : check.hint}
                   </p>
                 </div>
               </li>
@@ -136,7 +140,7 @@ export function NixSetupStep() {
         </ul>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+      <div className="mt-5 grid gap-3">
         {NIX_INSTALLERS.map((installer, i) => (
           <InstallLink
             key={installer.href}
@@ -146,17 +150,19 @@ export function NixSetupStep() {
             href={installer.href}
           />
         ))}
-        <InstallLink
-          step="2"
-          title="Install nix-darwin"
-          subtitle="Set up darwin-rebuild"
-          href={NIX_DARWIN_URL}
-        />
       </div>
 
       <p className="mt-5 text-muted-foreground/70 text-xs leading-relaxed">
-        Already installed everything? Hit “Check again” and nixmac will continue as soon as both
-        tools are detected.
+        Prefer to install{" "}
+        <button
+          type="button"
+          onClick={() => void openExternalUrl(NIX_DARWIN_URL)}
+          className="text-primary hover:underline"
+        >
+          nix-darwin
+        </button>{" "}
+        yourself? That's fine too. Otherwise, hit “Check again” and nixmac will continue as soon as
+        Nix is detected.
       </p>
     </StepShell>
   );

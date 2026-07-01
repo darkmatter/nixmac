@@ -5,6 +5,7 @@ use crate::privileged_helper::protocol::{
 use anyhow::{Context, Result, bail};
 use std::fs;
 use std::io::{BufRead, BufReader, Write};
+#[cfg(target_os = "macos")]
 use std::os::fd::AsRawFd;
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::{UnixListener, UnixStream};
@@ -161,6 +162,7 @@ struct PeerIdentity {
     executable: Option<String>,
 }
 
+#[cfg(target_os = "macos")]
 fn peer_identity(stream: &UnixStream) -> Result<PeerIdentity> {
     let fd = stream.as_raw_fd();
     let mut uid: libc::uid_t = 0;
@@ -174,6 +176,11 @@ fn peer_identity(stream: &UnixStream) -> Result<PeerIdentity> {
         uid,
         executable: peer_executable_path(fd).ok(),
     })
+}
+
+#[cfg(not(target_os = "macos"))]
+fn peer_identity(_stream: &UnixStream) -> Result<PeerIdentity> {
+    bail!("peer credential validation is only implemented on macOS")
 }
 
 #[cfg(target_os = "macos")]

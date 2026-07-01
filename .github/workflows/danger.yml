@@ -6,7 +6,7 @@ on:
 
 jobs:
   optimize_ci:
-    runs-on: [self-hosted, linux]
+    runs-on: arc
     outputs:
       skip: ${{ steps.check_skip.outputs.skip }}
     steps:

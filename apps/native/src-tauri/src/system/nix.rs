@@ -1055,7 +1055,7 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
     // Create a test that runs the launchd eval on the current system and prints the results.

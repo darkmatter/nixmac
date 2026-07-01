@@ -95,6 +95,51 @@ fn format_elapsed(start: std::time::Instant) -> String {
     }
 }
 
+/// Extracts the assistant message content from a chat completion choice,
+/// surfacing a clearer error when the model truncated to an empty response
+/// (typically a reasoning model that exhausted `max_completion_tokens` on
+/// hidden chain-of-thought before emitting visible output).
+fn extract_content_or_length_error(
+    response: &async_openai::types::CreateChatCompletionResponse,
+) -> Result<String> {
+    let Some(choice) = response.choices.first() else {
+        return Err(anyhow::anyhow!(
+            "provider returned no choices (model={}, id={:?})",
+            response.model,
+            response.id
+        ));
+    };
+
+    if let Some(content) = choice.message.content.clone() {
+        if !content.is_empty() {
+            return Ok(content);
+        }
+    }
+
+    let finish_reason = choice.finish_reason;
+    let completion_tokens = response
+        .usage
+        .as_ref()
+        .map(|u| u.completion_tokens)
+        .unwrap_or(0);
+
+    match finish_reason {
+        Some(async_openai::types::FinishReason::Length) => Err(anyhow::anyhow!(
+            "model {} truncated by max_completion_tokens ({}) before emitting visible content — \
+             likely a reasoning model that spent the entire budget on hidden chain-of-thought. \
+             Increase the output token budget or switch to a non-reasoning model.",
+            response.model,
+            completion_tokens
+        )),
+        other => Err(anyhow::anyhow!(
+            "model {} returned empty content with finish_reason {:?} (id={:?})",
+            response.model,
+            other,
+            response.id
+        )),
+    }
+}
+
 pub struct OpenAIClient {
     client: Client<OpenAIConfig>,
     model: String,
@@ -207,14 +252,8 @@ impl ChatCompletionProvider for OpenAIClient {
             input: response.usage.as_ref().map(|u| u.prompt_tokens),
             output: response.usage.as_ref().map(|u| u.completion_tokens),
         };
-        Ok((
-            response
-                .choices
-                .first()
-                .and_then(|c| c.message.content.clone())
-                .unwrap_or_default(),
-            usage,
-        ))
+        let content = extract_content_or_length_error(&response)?;
+        Ok((content, usage))
     }
 
     async fn json_completion(
@@ -308,13 +347,7 @@ impl ChatCompletionProvider for OpenAIClient {
             output: response.usage.as_ref().map(|u| u.completion_tokens),
         };
 
-        Ok((
-            response
-                .choices
-                .first()
-                .and_then(|c| c.message.content.clone())
-                .unwrap_or_default(),
-            usage,
-        ))
+        let content = extract_content_or_length_error(&response)?;
+        Ok((content, usage))
     }
 }

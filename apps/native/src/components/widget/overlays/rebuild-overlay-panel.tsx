@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { EtcClobberConflictList } from "@/components/widget/overlays/etc-clobber-conflict-list";
+import { useFixWithAi } from "@/hooks/use-fix-with-ai";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useRollback } from "@/hooks/use-rollback";
 import { tauriAPI } from "@/ipc/api";
@@ -7,6 +8,7 @@ import {
   getRebuildErrorSuggestion,
   getRebuildErrorTitle,
   getRebuildSystemSafetyMessage,
+  isAiFixableRebuildError,
 } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 import type { RebuildErrorType, RebuildLine, RebuildNotice } from "@/types/rebuild";
@@ -357,6 +359,7 @@ function RawConsoleOutput({ lines, children }: { lines: string[]; children?: Rea
 export function RebuildOverlayPanel() {
   const { handleRollback } = useRollback();
   const { triggerRebuild } = useRebuildStream();
+  const { fixWithAi } = useFixWithAi();
   const status = useViewModel((state) => state.rebuildStatus);
   const lines = useViewModel((state) => state.rebuildLog.lines);
   const rawLines = useViewModel((state) => state.rebuildLog.rawLines);
@@ -540,6 +543,16 @@ export function RebuildOverlayPanel() {
                 >
                   <RotateCcw className="mr-2 h-4 w-4" />
                   {isRollback ? "Retry Rollback" : "Rollback"}
+                </Button>
+              )}
+              {success === false && !isRollback && isAiFixableRebuildError(errorType) && (
+                <Button
+                  className="bg-teal-400/15 text-teal-200 hover:bg-teal-400/25"
+                  onClick={() => fixWithAi()}
+                  size="sm"
+                >
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Fix with AI
                 </Button>
               )}
             </motion.div>

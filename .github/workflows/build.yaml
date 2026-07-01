@@ -17,7 +17,48 @@ env:
   CARGO_TERM_COLOR: always
   SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 jobs:
+  rust-tests:
+    name: Rust Tests (Linux)
+    runs-on: arc
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Linux Tauri dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            pkg-config \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libxdo-dev \
+            patchelf
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/native/src-tauri
+
+      - name: Patch passkey Swift package
+        working-directory: apps/native/src-tauri
+        run: |
+          cargo fetch --locked
+          bash "$GITHUB_WORKSPACE/ops/scripts/ci/patch-passkey-swift.sh"
+
+      - name: Rust unit tests
+        working-directory: apps/native
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+        env:
+          NIXMAC_ENV: production
   build:
+    needs: rust-tests
     runs-on: [self-hosted, macOS]
     permissions:
       contents: write
@@ -40,6 +81,11 @@ jobs:
           darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
           setup-rust: true
           rust-cache-workspaces: ""
+          install-bun-deps: false
+
+      - name: Install frontend dependencies
+        run: bun install
+
       # tauri-plugin-macos-passkey 0.1.0 ships a Swift package declaring
       # swift-tools-version 6.1, but the self-hosted runner has Swift 6.0.2
       # (Xcode 16.1). Fetch crates and lower the declared tools version before
@@ -127,8 +173,10 @@ jobs:
           NIXMAC_VERSION: ${{ steps.sync-version.outputs.build_version }}
           VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
           SUBMITTED_FEEDBACK_DSN: ${{ secrets.SUBMITTED_FEEDBACK_DSN }}
-      - name: Unit Test Tauri app
-        run: bun run desktop:test
+
+      - name: Unit Test frontend
+        working-directory: apps/native
+        run: bun run test:unit
 
       - name: Save sccache
         if: always()
