@@ -10,6 +10,7 @@
 //!
 //! On non-macOS targets every call reports `NotRunningFromBundle`.
 
+#[cfg(target_os = "macos")]
 use std::path::PathBuf;
 
 use crate::shared_types::InstallLocationState;

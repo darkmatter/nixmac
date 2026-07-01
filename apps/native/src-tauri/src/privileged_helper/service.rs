@@ -1,5 +1,7 @@
 use crate::privileged_helper::client;
-use crate::privileged_helper::protocol::{HELPER_LABEL, HELPER_PLIST_NAME, HelperServiceStatus};
+use crate::privileged_helper::protocol::HelperServiceStatus;
+#[cfg(target_os = "macos")]
+use crate::privileged_helper::protocol::{HELPER_LABEL, HELPER_PLIST_NAME};
 use anyhow::Result;
 
 pub fn status() -> HelperServiceStatus {
