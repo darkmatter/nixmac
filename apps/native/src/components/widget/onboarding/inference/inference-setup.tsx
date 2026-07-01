@@ -730,6 +730,8 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
       const prefs: Partial<UiPrefs> = {
         evolveProvider: provider.id,
         evolveModel: model,
+        summaryProvider: provider.id,
+        summaryModel: model,
       };
       if (setup.kind === "apiKey") {
         prefs[setup.prefsKeyField] = key.trim();

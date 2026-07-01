@@ -58,6 +58,7 @@ const mocks = vi.hoisted(() => ({
   captureEvent: vi.fn<(event: unknown) => void>(),
   identify: vi.fn<(id: string, properties: Record<string, unknown>) => void>(),
   openExternal: vi.fn<(url: string) => Promise<void>>(),
+  setPrefs: vi.fn<(prefs: Record<string, unknown>) => Promise<{ ok: boolean }>>(),
 }));
 
 vi.mock("@/ipc/api", () => ({
@@ -68,7 +69,7 @@ vi.mock("@/ipc/api", () => ({
       verifyOtp: (email: string, otp: string, name: string) => mocks.verifyOtp(email, otp, name),
     },
     ui: {
-      setPrefs: vi.fn<() => Promise<{ ok: boolean }>>().mockResolvedValue({ ok: true }),
+      setPrefs: (prefs: Record<string, unknown>) => mocks.setPrefs(prefs),
     },
   },
 }));
@@ -151,6 +152,7 @@ describe("InferenceSetup", () => {
     mocks.billingProducts.mockResolvedValue(demoProducts);
     mocks.billingCheckout.mockResolvedValue({ url: "https://polar.sh/demo-checkout" });
     mocks.openExternal.mockResolvedValue(undefined);
+    mocks.setPrefs.mockResolvedValue({ ok: true });
   });
 
   it("signs in to hosted inference with an email one-time code", async () => {
@@ -216,6 +218,28 @@ describe("InferenceSetup", () => {
     fireEvent.click(screen.getByRole("button", { name: /subscribe to pro/i }));
 
     await waitFor(() => expect(mocks.billingCheckout).toHaveBeenCalledWith({ product: "pro" }));
+  });
+
+  it("saves the selected BYOK model for both evolution and summary", async () => {
+    renderSetup();
+
+    fireEvent.click(screen.getByRole("tab", { name: /bring your own key/i }));
+    fireEvent.change(screen.getByLabelText("API key"), {
+      target: { value: "sk-or-v1-test-key-with-enough-length" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save & use this provider/i }));
+
+    await waitFor(() =>
+      expect(mocks.setPrefs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          evolveProvider: "openrouter",
+          evolveModel: "anthropic/claude-sonnet-4",
+          summaryProvider: "openrouter",
+          summaryModel: "anthropic/claude-sonnet-4",
+          openrouterApiKey: "sk-or-v1-test-key-with-enough-length",
+        }),
+      ),
+    );
   });
 
   it("resumes at payment when a web account is already persisted", async () => {
