@@ -437,11 +437,14 @@ mod tests {
     #[test]
     fn test_prepare_import_target_creates_empty_dir_under_home() {
         let home = dirs::home_dir().expect("home directory");
-        let dir = home.join(".nixmac-test-prepare-import");
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time should be after epoch")
+            .as_nanos();
+        let dir = home.join(format!(".nixmac-test-prepare-import-{nonce}"));
         let target = prepare_import_target(Some(dir.to_string_lossy().to_string()))
             .expect("prepare import target");
         assert_eq!(target, dir);
-        assert!(target.exists());
         assert!(target.is_dir());
 
         let _ = fs::remove_dir_all(target);

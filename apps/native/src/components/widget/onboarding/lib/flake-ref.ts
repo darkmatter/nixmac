@@ -79,7 +79,14 @@ function ownerAndRepoFromLocator(
 		if (idx < 0) return null;
 		path = locator.slice(idx + 1).replace(/^\/+|\/+$/g, "");
 	} else {
-		path = locator
+		const withoutLeading = locator.replace(/^\/+/, "");
+		if (
+			locator.startsWith("/") &&
+			/^(www\.)?github\.com\//i.test(withoutLeading)
+		) {
+			return null;
+		}
+		path = withoutLeading
 			.replace(/^github\.com\//i, "")
 			.replace(/^www\.github\.com\//i, "")
 			.replace(/^\/+|\/+$/g, "");

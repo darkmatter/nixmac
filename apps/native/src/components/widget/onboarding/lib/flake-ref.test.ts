@@ -91,6 +91,11 @@ describe("parseFlakeRef", () => {
 			importable: false,
 		});
 
+		expect(parseFlakeRef("/www.github.com/czxtm/darwin/")).toMatchObject({
+			valid: false,
+			importable: false,
+		});
+
 		expect(parseFlakeRef("owner/repo?other=value")).toMatchObject({
 			valid: false,
 			importable: false,
