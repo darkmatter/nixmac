@@ -35,6 +35,10 @@ interface OllamaModel {
   name: string;
 }
 
+interface OpenAiCompatibleModel {
+  id: string;
+}
+
 const OPENAI_MODELS = ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini"] as const;
 
 async function fetchOpenRouterModels(): Promise<string[]> {
@@ -77,6 +81,39 @@ async function fetchOllamaModels(baseUrl?: string): Promise<string[]> {
   }
 }
 
+async function fetchOpenAiCompatibleModels(
+  baseUrl?: string | null,
+  apiKey?: string | null,
+): Promise<string[]> {
+  if (!baseUrl?.trim()) {
+    return [];
+  }
+
+  const base = baseUrl.trim().replace(/\/$/, "");
+  try {
+    const headers: Record<string, string> = {};
+    if (apiKey?.trim()) {
+      headers.Authorization = `Bearer ${apiKey.trim()}`;
+    }
+
+    const response = await fetch(`${base}/models`, {
+      headers,
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = await response.json();
+    const models: OpenAiCompatibleModel[] = data.data || [];
+
+    return models.map((m) => m.id).sort((a, b) => a.localeCompare(b));
+  } catch {
+    return [];
+  }
+}
+
 type ModelProvider = ModelComboboxProps["provider"];
 
 async function fetchFreshModels(provider: ModelProvider): Promise<string[]> {
@@ -94,6 +131,11 @@ async function fetchFreshModels(provider: ModelProvider): Promise<string[]> {
     const prefs = await tauriAPI.ui.getPrefs();
     const baseUrl = prefs?.ollamaApiBaseUrl || undefined;
     return fetchOllamaModels(baseUrl);
+  }
+  if (provider === "vllm") {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
+    const prefs = await tauriAPI.ui.getPrefs();
+    return fetchOpenAiCompatibleModels(prefs?.vllmApiBaseUrl, prefs?.vllmApiKey);
   }
   if (provider === "opencode") {
     // deprecated(orpc): replace with client/orpc from @/lib/orpc

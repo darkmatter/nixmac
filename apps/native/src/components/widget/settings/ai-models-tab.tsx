@@ -164,11 +164,13 @@ export function AiModelsTab({
     evolveProviderField.state.value,
     providerPrefs,
     cliStatus,
+    evolveModelField.state.value,
   );
   const summaryProviderError = getProviderConfigInvalidReason(
     summaryProviderField.state.value,
     providerPrefs,
     cliStatus,
+    summaryModelField.state.value,
   );
 
   return (
@@ -222,6 +224,7 @@ export function AiModelsTab({
                   selector={(state: any) => [
                     state.values.evolveProvider,
                     state.values.openaiApiKey,
+                    state.values.vllmApiBaseUrl,
                   ]}
                 >
                   {([evolveProvider]: any[]) => (
@@ -315,6 +318,7 @@ export function AiModelsTab({
                   selector={(state: any) => [
                     state.values.summaryProvider,
                     state.values.openaiApiKey,
+                    state.values.vllmApiBaseUrl,
                   ]}
                 >
                   {([summaryProvider]: any[]) => (

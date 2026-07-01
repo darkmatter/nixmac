@@ -118,11 +118,17 @@ export function SettingsDialog() {
   const saveOpenaiCompatibleUrl = async (url: string) => {
     // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.ui.setPrefs({ openaiCompatibleApiBaseUrl: url });
+    // Clear cached OpenAI-compatible models when the endpoint changes.
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
+    await tauriAPI.models.clearCached("vllm");
   };
 
   const saveOpenaiCompatibleKey = async (key: string) => {
     // deprecated(orpc): replace with client/orpc from @/lib/orpc
     await tauriAPI.ui.setPrefs({ openaiCompatibleApiKey: key });
+    // Clear cached OpenAI-compatible models because auth can change visible models.
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
+    await tauriAPI.models.clearCached("vllm");
   };
 
   const form = useForm({
