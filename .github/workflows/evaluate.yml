@@ -28,11 +28,6 @@ jobs:
   rust-check:
     name: Rust Check
     runs-on: arc
-    container:
-      image: ghcr.io/darkmatter/nixmac-ci:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -60,14 +55,14 @@ jobs:
     name: TypeScript
     if: github.event_name != 'push'
     runs-on: arc
-    container:
-      image: ghcr.io/darkmatter/nixmac-ci:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup
+        with:
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+          install-bun-deps: false
 
       - name: Install frontend dependencies
         # Non-frozen: CI ubuntu resolves 2 fewer platform-specific packages
@@ -85,11 +80,6 @@ jobs:
     name: Treefmt
     if: github.event_name != 'push'
     runs-on: arc
-    container:
-      image: ghcr.io/darkmatter/nixmac-ci:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6

@@ -20,11 +20,6 @@ jobs:
   desktop-tests:
     name: Desktop Tests (Linux)
     runs-on: arc
-    container:
-      image: ghcr.io/darkmatter/nixmac-ci:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
     permissions:
       contents: read
       packages: read
