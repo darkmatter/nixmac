@@ -17,23 +17,9 @@ const mockBootstrapStatus = vi.fn<(input: { state: string }) => Promise<GithubBo
 const mockConnectStart = vi.fn<() => Promise<GithubStart>>();
 const mockGitHubStatus = vi.fn<() => Promise<GithubStatus>>();
 const mockListRepos = vi.fn<() => Promise<never[]>>();
-const mockImport = vi.fn<(owner: string, repo: string, dirName?: string) => Promise<void>>();
 const mockOpen = vi.fn<(url: string) => Promise<void>>();
 const mockSignInSocial = vi.fn<(input: SignInSocialInput) => Promise<void>>();
 const mockAuthClient = vi.hoisted(() => ({}));
-
-vi.mock("@/ipc/api", () => ({
-  tauriAPI: {
-    account: {
-      status: () => mockAccountStatus(),
-      sendOtp: vi.fn<() => void>(),
-      verifyOtp: vi.fn<() => void>(),
-    },
-    github: {
-      import: (owner: string, repo: string, dirName?: string) => mockImport(owner, repo, dirName),
-    },
-  },
-}));
 
 vi.mock("@/lib/auth", () => ({
   auth: mockAuthClient,
@@ -42,6 +28,9 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/orpc", async () => {
   const { createTanstackQueryUtils } = await import("@orpc/tanstack-query");
   const client = {
+    account: {
+      status: () => mockAccountStatus(),
+    },
     github: {
       bootstrapStart: () => mockBootstrapStart(),
       bootstrapStatus: (input: { state: string }) => mockBootstrapStatus(input),
@@ -87,7 +76,6 @@ describe("GitHubSource", () => {
     });
     mockGitHubStatus.mockResolvedValue({ connected: false, login: null, installationId: null });
     mockListRepos.mockResolvedValue([]);
-    mockImport.mockResolvedValue(undefined);
     mockOpen.mockResolvedValue(undefined);
     mockSignInSocial.mockResolvedValue(undefined);
   });

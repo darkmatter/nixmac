@@ -22,7 +22,6 @@ export function useOnboardingFlow(): {
   const permissions = useViewModel((s) => s.permissions);
   const permissionsHydrated = useViewModel((s) => s.permissionsHydrated);
   const nixInstalled = useViewModel((s) => s.nixInstall?.installed ?? null);
-  const darwinRebuildAvailable = useViewModel((s) => s.nixInstall?.darwinRebuildAvailable ?? null);
   const configDir = useViewModel((s) => s.preferences?.configDir ?? "");
   const host = useViewModel((s) => s.preferences?.hostAttr ?? "");
   const hosts = useViewModel((s) => s.hosts);
@@ -39,9 +38,10 @@ export function useOnboardingFlow(): {
   const permissionsReady =
     settings.skipPermissions ||
     !(permissionsHydrated && permissions && !permissions.allRequiredGranted);
-  const nixReady =
-    (nixInstalled === true && darwinRebuildAvailable === true) ||
-    settings.nixInstalledOverride === true;
+  // nix-darwin is not a hard prerequisite: the first build runs it via
+  // `nix run nix-darwin`, so we only gate on the Nix package manager itself.
+  // `darwinRebuildAvailable` is still surfaced in the step as an optional check.
+  const nixReady = nixInstalled === true || settings.nixInstalledOverride === true;
   const configDirReady = Boolean(configDir);
   const flakeReady = configDirReady && Boolean(host) && hosts.includes(host);
 
