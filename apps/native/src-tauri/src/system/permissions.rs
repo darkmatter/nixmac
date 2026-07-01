@@ -614,7 +614,7 @@ mod tests {
         let _env_restore =
             crate::test_support::EnvVarRestore::capture(&["VITE_NIXMAC_SKIP_PERMISSIONS"]);
 
-        std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true");
+        unsafe { std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true") };
 
         assert!(!vite_skip_permissions_enabled());
     }
