@@ -205,6 +205,24 @@ lib.mkIf (!config.container.isBuilding) {
     };
   };
 
+  # Build + Developer-ID-sign a local .app bundle (target/release/bundle/macos)
+  # so the privileged sync helper (SMAppService) can register, then launch it.
+  # Disabled by default like storybook; start it manually from the
+  # process-compose TUI. `desktop:build:local` chains `sign:local-app`, which
+  # signs with the SOPS team certificate via `sops exec-env`. This is a
+  # production `tauri build` (static frontend) — no HMR; use `tauri dev` for that.
+  processes.desktop-build-local = {
+    cwd = "${config.git.root}/apps/native";
+    exec = lib.optionalString pkgs.stdenv.isDarwin xcodeSwiftPathHook + ''
+      "${pkgs.bun}/bin/bun" run desktop:build:local \
+        && open "${config.git.root}/target/release/bundle/macos/nixmac.app"
+    '';
+    process-compose = {
+      is_foreground = true;
+      disabled = true;
+    };
+  };
+
   processes.test = {
     cwd = "${config.git.root}/apps/native";
     exec = "sops exec-env ${config.git.root}/ops/secrets/secrets.sops.json 'bun run test:watch'";

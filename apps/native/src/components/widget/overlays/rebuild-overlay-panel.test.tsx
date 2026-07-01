@@ -3,7 +3,7 @@ import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RebuildOverlayPanel } from "@/components/widget/overlays/rebuild-overlay-panel";
-import type { RebuildStatus } from "@/ipc/types";
+import type { EtcClobberCheckResult, RebuildStatus } from "@/ipc/types";
 import { REBUILD_ERROR_CODES } from "@/lib/errors";
 import type { RebuildContext } from "@/types/rebuild";
 import { makeRebuildStatus } from "@/utils/test-fixtures";
@@ -43,11 +43,29 @@ vi.mock("@/hooks/use-rollback", () => ({
 
 const safetyMessage = "No changes were made to your system.";
 
+function makeEtcClobberResult(): EtcClobberCheckResult {
+  return {
+    ok: false,
+    checked: 12,
+    conflicts: [
+      {
+        path: "/etc/nix/github-token.conf",
+        target: "nix/github-token.conf",
+        expectedStaticPath: "/etc/static/nix/github-token.conf",
+        currentLinkTarget: null,
+        knownSha256Hashes: [],
+        kind: "unrecognized_content",
+      },
+    ],
+    warnings: [],
+  };
+}
+
 function resetStores() {
   act(() => {
     viewModelActions.setState({
       rebuildStatus: null,
-      rebuildLog: { lines: [], rawLines: [] },
+      rebuildLog: { lines: [], rawLines: [], notices: [] },
     });
     uiActions.setState({ ...initialUiState });
   });
@@ -69,6 +87,7 @@ async function renderWithRebuildState(
       rebuildLog: {
         lines: [{ id: 1, text: "Build failed", type: "stderr" }],
         rawLines: [],
+        notices: [],
       },
     });
     uiActions.setState({ rebuildContext: context, rebuildPanelDismissed: false });
@@ -111,6 +130,68 @@ describe("<RebuildOverlayPanel>", () => {
     );
 
     expect(screen.queryByText(safetyMessage)).not.toBeInTheDocument();
+  });
+
+  it("shows App Management guidance for managed app update failures", async () => {
+    await renderWithRebuildState({
+      errorType: REBUILD_ERROR_CODES.APP_MANAGEMENT,
+      errorMessage: "permission denied when trying to update apps",
+      systemUntouched: false,
+    });
+
+    expect(screen.getByText("App Management is required to update managed app bundles")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Privacy & Security → App Management/),
+    ).toBeInTheDocument();
+  });
+
+  it("renders build-log-triggered notices while a rebuild is running", async () => {
+    act(() => {
+      viewModelActions.setState({
+        rebuildStatus: makeRebuildStatus({
+          isRunning: true,
+          success: null,
+          errorType: null,
+          errorMessage: null,
+          systemUntouched: null,
+        }),
+        rebuildLog: {
+          lines: [{ id: 1, text: "Requesting admin privileges", type: "info" }],
+          rawLines: ["darwin-rebuild requires permission to update your apps"],
+          notices: [
+            {
+              id: "app-management-permission",
+              title: "App Management permission required",
+              body: "Open System Settings → Privacy & Security → App Management and enable nixmac.",
+              permissionId: "app-management",
+              actionLabel: "Open App Management",
+            },
+          ],
+        },
+      });
+      uiActions.setState({ rebuildContext: "apply", rebuildPanelDismissed: false });
+    });
+
+    render(<RebuildOverlayPanel />);
+
+    expect(screen.getByText("App Management permission required")).toBeInTheDocument();
+    expect(screen.getByText(/enable nixmac/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open App Management" })).toBeInTheDocument();
+  });
+
+  it("lists the structured /etc clobber conflicts on an etc_clobber failure", async () => {
+    act(() => {
+      uiActions.setState({ etcClobber: makeEtcClobberResult() });
+    });
+
+    await renderWithRebuildState({
+      errorType: REBUILD_ERROR_CODES.ETC_CLOBBER,
+      errorMessage: "Unexpected files in /etc would be overwritten",
+      systemUntouched: true,
+    });
+
+    expect(screen.getByText("/etc/nix/github-token.conf")).toBeInTheDocument();
+    expect(screen.getByText("Unrecognized content")).toBeInTheDocument();
   });
 
   it("hides the panel once dismissed", async () => {

@@ -1,4 +1,5 @@
 import type {
+  EtcClobberCheckResult,
   EvolutionTelemetry,
   EvolveStep,
   FileDiffContents,
@@ -50,6 +51,10 @@ export type UiStateValues = {
   rebuildContext: RebuildContext;
   /** True once the user (or a successful run) dismissed the rebuild panel. */
   rebuildPanelDismissed: boolean;
+  /** Latest structured managed-file clobber preflight result, if any. */
+  etcClobber: EtcClobberCheckResult | null;
+  /** Whether the proactive pre-apply managed-file warning dialog is open. */
+  etcClobberDialogOpen: boolean;
   /** Command result: assistant reply when an evolve turned out conversational. */
   conversationalResponse: string | null;
   /** Command result: telemetry of the last evolve run. */

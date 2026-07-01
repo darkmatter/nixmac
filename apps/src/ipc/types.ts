@@ -329,25 +329,21 @@ error_type: RebuildErrorType | null }
 export type EnumVariant = { value: string; label: string }
 
 /**
- * Result of proactively checking managed-file overwrite safety.
+ * Result of proactively checking nix-darwin `/etc` overwrite safety.
  */
 export type EtcClobberCheckResult = { 
 /**
- * True when no hard conflicts were detected.
+ * True when no conflicts were detected.
  */
 ok: boolean; 
 /**
- * Number of enabled managed-file entries inspected.
+ * Number of enabled `environment.etc` entries inspected.
  */
 checked: number; 
 /**
  * Conflicts that would make nix-darwin abort activation.
  */
-conflicts: EtcClobberConflict[]; 
-/**
- * Non-blocking managed-file collisions that activation will back up.
- */
-warnings: ManagedFileWarning[] }
+conflicts: EtcClobberConflict[] }
 
 /**
  * A single `/etc` path that nix-darwin would refuse to overwrite.
@@ -1327,52 +1323,6 @@ standardOutPath: string | null; standardErrorPath: string | null;
 workingDirectory: string | null }
 
 export type LaunchdItemType = "LaunchAgent" | "LaunchDaemon" | "LaunchdUserAgent"
-
-/**
- * Managed file root inspected by the clobber preflight.
- */
-export type ManagedFileRoot = 
-/**
- * nix-darwin `environment.etc`, rooted at `/etc`.
- */
-"etc" | 
-/**
- * Home Manager `xdg.configFile`, rooted at `$XDG_CONFIG_HOME`.
- */
-"xdg_config"
-
-/**
- * A managed file that will be moved aside before activation continues.
- */
-export type ManagedFileWarning = { 
-/**
- * Absolute path that will be moved aside or replaced by activation.
- */
-path: string; 
-/**
- * Managed-file target relative to its root.
- */
-target: string; 
-/**
- * Root and option family that owns this target.
- */
-managedRoot: ManagedFileRoot; 
-/**
- * Home Manager user that owns the file, when known.
- */
-user: string | null; 
-/**
- * Existing symlink target, if the path is currently a symlink.
- */
-currentLinkTarget: string | null; 
-/**
- * Expected symlink target, when the configuration exposes a concrete source.
- */
-expectedLinkTarget: string | null; 
-/**
- * Backup suffix activation will append before linking the generated file.
- */
-backupExtension: string | null }
 
 /**
  * Result of `nix_check` — reports whether Nix and darwin-rebuild are available.

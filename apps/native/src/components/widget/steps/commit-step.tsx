@@ -11,9 +11,12 @@ import { RefreshCw, Undo2 } from "lucide-react";
 import { useState } from "react";
 
 /**
- * Evolve Commit Step: AI session active, built and ready to commit.
+ * Commit step: changes are built and ready to commit. Shared by AI evolution
+ * (`commit`) and manual drift (`manualCommit`) — the only difference is the
+ * undo label, since manual drift undoes a single ad-hoc build while an AI
+ * session undoes the whole evolution.
  */
-export function CommitStep() {
+export function CommitStep({ isManual = false }: { isManual?: boolean }) {
   const { handleRollback } = useRollback();
   const [action, setAction] = useState<"commit" | "amend">("commit");
 
@@ -30,7 +33,7 @@ export function CommitStep() {
           color="amber"
         >
           <Undo2 className="h-3.5 w-3.5" />
-          Undo All
+          {isManual ? "Undo last build" : "Undo All"}
         </ConfirmButton>
         <Button
           variant="ghost"

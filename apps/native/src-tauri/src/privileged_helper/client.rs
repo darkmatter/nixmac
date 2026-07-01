@@ -7,15 +7,16 @@ use std::os::unix::net::UnixStream;
 use std::time::Duration;
 
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(30);
+const ACTIVATION_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 
 pub fn socket_available() -> bool {
     std::path::Path::new(HELPER_SOCKET_PATH).exists()
 }
 
-pub fn request(request: &HelperRequest) -> Result<HelperResponse> {
+fn request_with_timeout(request: &HelperRequest, timeout: Duration) -> Result<HelperResponse> {
     let mut stream = UnixStream::connect(HELPER_SOCKET_PATH)
         .with_context(|| format!("failed to connect to {HELPER_SOCKET_PATH}"))?;
-    stream.set_read_timeout(Some(CLIENT_TIMEOUT))?;
+    stream.set_read_timeout(Some(timeout))?;
     stream.set_write_timeout(Some(CLIENT_TIMEOUT))?;
 
     let body = serde_json::to_vec(request)?;
@@ -32,13 +33,20 @@ pub fn request(request: &HelperRequest) -> Result<HelperResponse> {
     Ok(serde_json::from_str(&line)?)
 }
 
+pub fn request(request: &HelperRequest) -> Result<HelperResponse> {
+    request_with_timeout(request, CLIENT_TIMEOUT)
+}
+
 #[allow(dead_code)]
 pub fn status() -> Result<HelperResponse> {
     request(&HelperRequest::Status)
 }
 
 pub fn activate_store_path(request_body: ActivateStorePathRequest) -> Result<HelperResponse> {
-    request(&HelperRequest::ActivateStorePath {
-        request: request_body,
-    })
+    request_with_timeout(
+        &HelperRequest::ActivateStorePath {
+            request: request_body,
+        },
+        ACTIVATION_TIMEOUT,
+    )
 }

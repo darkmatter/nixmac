@@ -31,12 +31,23 @@ const defaultPermissions = [
   {
     id: "full-disk",
     name: "Full Disk Access",
-    description: "Recommended for complete system management capabilities",
-    required: false,
+    description: "Required for darwin-rebuild to apply system changes",
+    required: true,
     canRequestProgrammatically: false,
     status: "granted",
     instructions:
       "First make sure nixmac is in your Applications folder (not running from the install disk image). Then go to System Settings -> Privacy & Security -> Full Disk Access and add nixmac to the list.",
+  },
+  {
+    id: "app-management",
+    name: "App Management",
+    description:
+      "Recommended so darwin-rebuild can update apps it manages (e.g. linking apps into /Applications)",
+    required: false,
+    canRequestProgrammatically: false,
+    status: "granted",
+    instructions:
+      "Open System Settings -> Privacy & Security -> App Management and enable nixmac. Granting Full Disk Access also covers this.",
   },
 ];
 

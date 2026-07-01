@@ -1,8 +1,16 @@
-use super::helpers::capture_err;
+use super::helpers::{capture_err, get_hostname_and_config_dir};
 use crate::storage::store;
 use crate::system::nix;
 use crate::{rebuild, shared_types};
 use tauri::AppHandle;
+
+pub async fn check_etc_clobber(
+    app: AppHandle,
+) -> Result<shared_types::EtcClobberCheckResult, String> {
+    let (host_attr, config_dir) = get_hostname_and_config_dir(&app, "darwin_check_etc_clobber")?;
+    crate::system::etc_preflight::check_etc_clobber(&config_dir, &host_attr)
+        .map_err(|e| capture_err("darwin_check_etc_clobber", e))
+}
 
 pub async fn start_apply_stream(
     app: AppHandle,

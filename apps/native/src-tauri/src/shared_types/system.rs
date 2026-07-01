@@ -185,6 +185,81 @@ pub struct SystemDefaultsScan {
     pub total_scanned: usize,
 }
 
+/// Managed file root inspected by the clobber preflight.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum ManagedFileRoot {
+    /// nix-darwin `environment.etc`, rooted at `/etc`.
+    Etc,
+    /// Home Manager `xdg.configFile`, rooted at `$XDG_CONFIG_HOME`.
+    XdgConfig,
+}
+
+/// Kind of `/etc` clobber conflict detected before nix-darwin activation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum EtcClobberConflictKind {
+    /// Existing file content does not match any nix-darwin known safe hash.
+    UnrecognizedContent,
+    /// Existing path is not a regular file, so nix-darwin cannot hash/adopt it.
+    NonRegularTarget,
+    /// Existing path could not be inspected or hashed by nixmac.
+    Unreadable,
+}
+
+/// A managed file that will be moved aside before activation continues.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagedFileWarning {
+    /// Absolute path that will be moved aside or replaced by activation.
+    pub path: String,
+    /// Managed-file target relative to its root.
+    pub target: String,
+    /// Root and option family that owns this target.
+    pub managed_root: ManagedFileRoot,
+    /// Home Manager user that owns the file, when known.
+    pub user: Option<String>,
+    /// Existing symlink target, if the path is currently a symlink.
+    pub current_link_target: Option<String>,
+    /// Expected symlink target, when the configuration exposes a concrete source.
+    pub expected_link_target: Option<String>,
+    /// Backup suffix activation will append before linking the generated file.
+    pub backup_extension: Option<String>,
+}
+
+/// A single `/etc` path that nix-darwin would refuse to overwrite.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct EtcClobberConflict {
+    /// Absolute path under `/etc` that would be clobbered.
+    pub path: String,
+    /// nix-darwin `environment.etc.<name>.target` value.
+    pub target: String,
+    /// Symlink target nix-darwin expects for an already-managed file.
+    pub expected_static_path: String,
+    /// Existing symlink target, if the path is currently a symlink.
+    pub current_link_target: Option<String>,
+    /// Safe hashes advertised by nix-darwin for this entry.
+    pub known_sha256_hashes: Vec<String>,
+    /// Reason this path is considered unsafe to overwrite.
+    pub kind: EtcClobberConflictKind,
+}
+
+/// Result of proactively checking managed-file overwrite safety.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct EtcClobberCheckResult {
+    /// True when no hard conflicts were detected.
+    pub ok: bool,
+    /// Number of enabled managed-file entries inspected.
+    #[specta(type = f64)]
+    pub checked: usize,
+    /// Conflicts that would make nix-darwin abort activation.
+    pub conflicts: Vec<EtcClobberConflict>,
+    /// Non-blocking managed-file collisions that activation will back up.
+    pub warnings: Vec<ManagedFileWarning>,
+}
+
 /// A recommended prompt based on the user's current macOS settings.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -193,4 +268,23 @@ pub struct RecommendedPrompt {
     pub id: String,
     /// Prompt text suggested to the user.
     pub prompt_text: String,
+}
+
+/// Result of inspecting the running app's install location.
+///
+/// The UI surfaces a "move to /Applications" warning when the app is running
+/// from a `.app` bundle that is not in `/Applications` (e.g. still on the
+/// mounted DMG). When `bundle_path` is `None` the process is not running from
+/// a bundle at all (e.g. `tauri dev`, cargo test, e2e runners); the UI must
+/// treat that as "check not applicable" rather than "misplaced" so dev and
+/// test runs don't show a false warning.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct InstallLocationState {
+    /// True when the `.app` bundle's parent directory is `/Applications`.
+    pub in_applications_dir: bool,
+    /// Absolute path to the detected `.app` bundle, or `None` when the process
+    /// is not running from inside a bundle.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bundle_path: Option<String>,
 }

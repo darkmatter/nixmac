@@ -149,7 +149,7 @@ describe("view model sync", () => {
       promptHistory: [],
       nixInstall: null,
       rebuildStatus: null,
-      rebuildLog: { lines: [], rawLines: [] },
+      rebuildLog: { lines: [], rawLines: [], notices: [] },
       evolveEvents: [],
     });
     uiActions.setState({ ...initialUiState });
@@ -320,7 +320,17 @@ describe("view model sync", () => {
 
     // A new run resets the fold and seeds the preparing line.
     viewModelActions.setState({
-      rebuildLog: { lines: [{ id: 7, text: "stale", type: "info" }], rawLines: ["stale"] },
+      rebuildLog: {
+        lines: [{ id: 7, text: "stale", type: "info" }],
+        rawLines: ["stale"],
+        notices: [
+          {
+            id: "stale-notice",
+            title: "Stale notice",
+            body: "This should be cleared when a new run starts.",
+          },
+        ],
+      },
     });
     uiActions.setRebuildPanelDismissed(true);
     const running = makeRebuildStatus({ isRunning: true });
@@ -331,11 +341,19 @@ describe("view model sync", () => {
       { id: 0, text: "Preparing rebuild...", type: "info" },
     ]);
     expect(viewModelActions.getState().rebuildLog.rawLines).toEqual([]);
+    expect(viewModelActions.getState().rebuildLog.notices).toEqual([]);
     expect(useUiState.getState().rebuildPanelDismissed).toBe(false);
 
     // Output streams fold into the log.
     apiMocks.listeners.get("darwin:apply:data")?.({ payload: { chunk: "raw a\nraw b\n" } });
     expect(viewModelActions.getState().rebuildLog.rawLines).toEqual(["raw a", "raw b"]);
+
+    apiMocks.listeners.get("darwin:apply:data")?.({
+      payload: { chunk: "`darwin-rebuild` requires permission to update your apps\n" },
+    });
+    expect(viewModelActions.getState().rebuildLog.notices).toEqual([
+      expect.objectContaining({ id: "app-management-permission" }),
+    ]);
 
     apiMocks.listeners.get("darwin:apply:summary")?.({ payload: { text: "Building..." } });
     apiMocks.listeners.get("darwin:apply:summary")?.({
@@ -374,6 +392,25 @@ describe("view model sync", () => {
     });
 
     expect(apiMocks.refreshPermissions).toHaveBeenCalledTimes(1);
+
+    stop();
+  });
+
+  it("keeps App Management failures in the rebuild error panel instead of re-probing permissions", async () => {
+    const stop = await startRebuildSync();
+
+    apiMocks.listeners.get("rebuild_status_changed")?.({
+      payload: makeRebuildStatus({ isRunning: true }),
+    });
+    apiMocks.listeners.get("rebuild_status_changed")?.({
+      payload: makeRebuildStatus({
+        success: false,
+        errorType: REBUILD_ERROR_CODES.APP_MANAGEMENT,
+        errorMessage: "needs App Management",
+      }),
+    });
+
+    expect(apiMocks.refreshPermissions).not.toHaveBeenCalled();
 
     stop();
   });

@@ -9,7 +9,7 @@ import type {
   RebuildStatus,
   SemanticChangeMap,
 } from "@nixmac/native/ipc/types";
-import type { RebuildLine } from "@nixmac/native/types/rebuild";
+import type { RebuildLine, RebuildNotice } from "@nixmac/native/types/rebuild";
 
 type BuildView = {
   externalBuildDetected: boolean;
@@ -20,6 +20,8 @@ export type RebuildLog = {
   lines: RebuildLine[];
   /** Raw darwin-rebuild output lines (last 500), folded from `darwin:apply:data`. */
   rawLines: string[];
+  /** User-facing guidance produced by generic build-log trigger rules. */
+  notices: RebuildNotice[];
 };
 
 /** Read-only projection of Rust-backed state. */

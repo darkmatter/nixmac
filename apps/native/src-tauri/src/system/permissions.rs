@@ -7,6 +7,7 @@
 //! - Desktop folder access
 //! - Documents folder access
 //! - Full Disk Access (FDA) - required for darwin-rebuild over SSH
+//! - App Management - recommended so activation can update managed apps
 //! - Administrator privileges (sudo access)
 
 pub(crate) use crate::shared_types::{Permission, PermissionStatus, PermissionsState};
@@ -70,6 +71,7 @@ fn get_default_permissions() -> Vec<Permission> {
                     .to_string(),
             ),
         },
+        app_management_permission(PermissionStatus::Pending),
         privileged_helper_permission(
             PermissionStatus::Pending,
             "Enable this once per device to allow nixmac to activate already-built system generations unattended.",
@@ -120,6 +122,42 @@ fn privileged_helper_permission(status: PermissionStatus, instructions: &str) ->
         can_request_programmatically: true,
         status,
         instructions: Some(instructions.to_string()),
+    }
+}
+
+/// App Management (`kTCCServiceSystemPolicyAppBundles`).
+///
+/// macOS gates modifying another app's signed bundle behind this permission.
+/// nix-darwin / home-manager activation trips it whenever it links or copies
+/// macOS apps into `/Applications` (e.g. `targets.darwin.copyApps`,
+/// `homebrew` casks, or any `system.activationScripts.applications` step), so
+/// a build that manages apps fails with the "updating apps over SSH" error
+/// without it.
+///
+/// It is `required: false` (Recommended) on purpose:
+/// 1. macOS exposes no public API to probe this service, and the bundled
+///    `tauri-plugin-macos-permissions` (2.3.0) has no App Management command,
+///    so we cannot reliably observe it being granted. Marking it required
+///    would make `all_required_granted` impossible to satisfy and deadlock
+///    the onboarding permissions gate forever.
+/// 2. Full Disk Access may cover the underlying bundle-modification operation,
+///    but the App Management row describes the explicit App Management TCC
+///    service. Inferring this row from FDA makes the permissions screen report
+///    a false grant.
+fn app_management_permission(status: PermissionStatus) -> Permission {
+    Permission {
+        id: "app-management".to_string(),
+        name: "App Management".to_string(),
+        description:
+            "Recommended so darwin-rebuild can update apps it manages (e.g. linking apps into /Applications)"
+                .to_string(),
+        required: false,
+        can_request_programmatically: false,
+        status,
+        instructions: Some(
+            "Open System Settings → Privacy & Security → App Management and enable nixmac. macOS does not expose a reliable way for nixmac to verify this grant."
+                .to_string(),
+        ),
     }
 }
 
@@ -287,6 +325,7 @@ pub fn check_all_permissions() -> PermissionsState {
             "documents" => check_documents_access(),
             "admin" => check_admin_privileges(),
             "full-disk" => check_full_disk_access(),
+            "app-management" => check_app_management(),
             "privileged-helper" => check_privileged_helper(),
             _ => PermissionStatus::Unknown,
         };
@@ -437,7 +476,7 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
                 id: "full-disk".to_string(),
                 name: "Full Disk Access".to_string(),
                 description: "Required for darwin-rebuild to apply system changes".to_string(),
-                required: false,
+                required: true,
                 can_request_programmatically: false,
                 status: check_full_disk_access(),
                 instructions: Some(
@@ -446,19 +485,61 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
                 ),
             })
         }
+        "app-management" => {
+            // Deep-link to the App Management privacy pane. macOS cannot grant
+            // this programmatically, so we mirror the Full Disk Access flow:
+            // open the exact Settings anchor and re-probe afterwards.
+            // fire-and-forget: `open` spawn failure is not actionable here.
+            let _ = Command::new("open")
+                .args([
+                    "x-apple.systempreferences:com.apple.preference.security?Privacy_AppBundles",
+                ])
+                .spawn();
+
+            Ok(app_management_permission(check_app_management()))
+        }
         "privileged-helper" => {
-            let status = crate::privileged_helper::service::register().map(|status| {
-                if status.authorized {
-                    PermissionStatus::Granted
-                } else {
-                    crate::privileged_helper::service::open_login_items_settings();
-                    PermissionStatus::Pending
-                }
-            })?;
-            Ok(privileged_helper_permission(
-                status,
-                "Approve nixmac in System Settings → General → Login Items & Extensions if macOS asks for background item approval.",
-            ))
+            // SMAppService registration requires the helper binary and its
+            // LaunchDaemon plist to be embedded inside the .app bundle
+            // (Contents/MacOS/nixmac-helper and
+            // Contents/Library/LaunchDaemons/com.darkmatter.nixmac.helper.plist).
+            // Those assets are only staged by `bun run desktop:build[:local]`
+            // (externalBin in package.json). Under `tauri dev` the app runs as
+            // a bare binary from target/debug with no bundle, so
+            // registerAndReturnError: fails with an opaque "Operation not
+            // permitted". Detect that up front and surface a clear Pending
+            // state instead of propagating the OS error to the UI.
+            let bundle_present = crate::system::install_location::check_install_location()
+                .bundle_path
+                .is_some();
+
+            let (status, instructions) = if !bundle_present {
+                warn!(
+                    "privileged helper registration skipped: nixmac is not running from a .app bundle"
+                );
+                (
+                    PermissionStatus::Pending,
+                    "Build a signed .app with `bun run desktop:build:local`, drag it into /Applications, and launch it from there to install the unattended sync helper. It cannot be installed from a dev build.",
+                )
+            } else {
+                let status = match crate::privileged_helper::service::register() {
+                    Ok(status) if status.authorized => PermissionStatus::Granted,
+                    Ok(_) => {
+                        crate::privileged_helper::service::open_login_items_settings();
+                        PermissionStatus::Pending
+                    }
+                    Err(error) => {
+                        warn!("privileged helper registration failed: {error:#}");
+                        crate::privileged_helper::service::open_login_items_settings();
+                        PermissionStatus::Pending
+                    }
+                };
+                (
+                    status,
+                    "Approve nixmac in System Settings → General → Login Items & Extensions if macOS asks for background item approval.",
+                )
+            };
+            Ok(privileged_helper_permission(status, instructions))
         }
         _ => Err(anyhow::anyhow!("Unknown permission: {}", permission_id)),
     }
@@ -473,6 +554,17 @@ fn check_privileged_helper() -> PermissionStatus {
     } else {
         PermissionStatus::Unknown
     }
+}
+
+/// Best-effort App Management status.
+///
+/// macOS provides no public API to read `kTCCServiceSystemPolicyAppBundles`,
+/// and the bundled permissions plugin has no command for it. Full Disk Access
+/// can authorize the same underlying app-bundle updates, but it is a different
+/// TCC service and does not mean App Management itself is granted. Keep this as
+/// `Pending` so the UI never displays a false positive.
+fn check_app_management() -> PermissionStatus {
+    PermissionStatus::Pending
 }
 
 #[cfg(test)]
@@ -525,6 +617,34 @@ mod tests {
         unsafe { std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true") };
 
         assert!(!vite_skip_permissions_enabled());
+    }
+
+    #[test]
+    fn app_management_is_present_and_recommended_not_required() {
+        let perms = get_default_permissions();
+        let app_mgmt = perms
+            .iter()
+            .find(|p| p.id == "app-management")
+            .expect("app-management permission should be registered");
+
+        // Recommended, not required: macOS exposes no reliable probe for App
+        // Management, so requiring it would deadlock the onboarding gate
+        // (all_required_granted could never become true).
+        assert!(!app_mgmt.required);
+        assert!(!app_mgmt.can_request_programmatically);
+
+        // It must not count toward the required-permission gate.
+        assert!(
+            !perms
+                .iter()
+                .filter(|p| p.required)
+                .any(|p| p.id == "app-management")
+        );
+    }
+
+    #[test]
+    fn app_management_is_not_inferred_from_full_disk_access() {
+        assert_eq!(check_app_management(), PermissionStatus::Pending);
     }
 
     #[test]
