@@ -2,6 +2,7 @@
 
 import { ConfigEditOverlayPanel } from "@/components/widget/overlays/config-edit-overlay-panel";
 import { EditorPanel } from "@/components/widget/overlays/editor-panel";
+import { EtcClobberWarningDialog } from "@/components/widget/overlays/etc-clobber-warning-dialog";
 import { EvolveOverlayPanel } from "@/components/widget/overlays/evolve-overlay-panel";
 import { RebuildOverlayPanel } from "@/components/widget/overlays/rebuild-overlay-panel";
 import { Console } from "@/components/widget/layout/console";
@@ -19,7 +20,6 @@ import {
   CommitStep,
   FilesystemStep,
   HistoryStep,
-  ManualCommitStep,
   ReviewStep,
 } from "@/components/widget/steps";
 import { surfaceRecoveryReport } from "@/hooks/use-feedback-on-recovery";
@@ -160,7 +160,7 @@ export function DarwinWidget() {
         return <CommitStep />;
 
       case "manualCommit":
-        return <ManualCommitStep />;
+        return <CommitStep isManual />;
 
       case "history":
         return <HistoryStep />;
@@ -178,6 +178,7 @@ export function DarwinWidget() {
     return (
       <div className="flex min-h-[600px] min-w-[800px] h-full w-full flex-col bg-background/60">
         <OnboardingFlow />
+        <EtcClobberWarningDialog />
         <FeedbackDialog />
         <Console />
       </div>
@@ -207,6 +208,7 @@ export function DarwinWidget() {
       <ConfigEditOverlayPanel />
       <RebuildOverlayPanel />
       <EditorPanel />
+      <EtcClobberWarningDialog />
 
       <FeedbackDialog />
 

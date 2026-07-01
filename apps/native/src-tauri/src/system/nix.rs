@@ -61,6 +61,54 @@ struct NixLaunchdEvalItem {
     program_arguments: Vec<String>,
 }
 
+/// A single enabled `environment.etc.<name>` entry, reduced to the fields the
+/// `/etc` clobber preflight needs. `target` is the path relative to `/etc`;
+/// `known_sha256_hashes` is nix-darwin's allow-list of safe-to-overwrite hashes
+/// (empty for most generated files and secrets).
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NixEnvironmentEtcEntry {
+    pub target: String,
+    #[serde(default)]
+    pub known_sha256_hashes: Vec<String>,
+}
+
+/// A single enabled Home Manager `xdg.configFile.<name>` entry, reduced to the
+/// fields needed for preflight collision warnings.
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NixHomeManagerXdgConfigFileEntry {
+    pub user: String,
+    pub target: String,
+    pub xdg_config_home: String,
+    pub source: Option<String>,
+    pub force: bool,
+    pub backup_file_extension: Option<String>,
+}
+
+/// Raw `nix eval` shape including `enable`, which we filter on before exposing
+/// the trimmed [`NixEnvironmentEtcEntry`] (nix-darwin skips disabled entries).
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct NixEnvironmentEtcEvalEntry {
+    target: String,
+    enable: bool,
+    #[serde(default)]
+    known_sha256_hashes: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct NixHomeManagerXdgConfigFileEvalEntry {
+    user: String,
+    target: String,
+    xdg_config_home: String,
+    source: Option<String>,
+    enable: bool,
+    force: bool,
+    backup_file_extension: Option<String>,
+}
+
 static NIX_PATH_CACHE: OnceLock<String> = OnceLock::new();
 
 /// Gets a command with our typical setup to execute `nix`.
@@ -318,6 +366,126 @@ pub fn list_darwin_hosts(config_dir: &str) -> Result<Vec<String>> {
     let stdout = String::from_utf8(output.stdout)?;
     let hosts: Vec<String> = serde_json::from_str(&stdout)?;
     Ok(hosts)
+}
+
+/// Gets enabled nix-darwin `environment.etc` targets and safe hashes.
+///
+/// This is the structured-data source for the `/etc` clobber preflight: instead
+/// of parsing activation logs, we read the same `environment.etc` attrset
+/// nix-darwin consumes. The `--apply` projection keeps only the three fields we
+/// need so the JSON stays small and stable across nix-darwin versions.
+pub fn get_nix_environment_etc_entries(
+    hostname: &str,
+    config_dir: &str,
+) -> Result<Vec<NixEnvironmentEtcEntry>> {
+    // Serialize via serde_json so an unusual hostname can't break out of the
+    // flake attribute path (e.g. embedded quotes).
+    let host_attr = serde_json::to_string(hostname)?;
+    let flake_attr = format!(
+        ".#darwinConfigurations.{}.config.environment.etc",
+        host_attr
+    );
+
+    let output = nix_command(config_dir)
+        .args([
+            "eval",
+            "--json",
+            &flake_attr,
+            "--apply",
+            r#"builtins.mapAttrs (_name: value: {
+              target = value.target;
+              enable = value.enable;
+              knownSha256Hashes = value.knownSha256Hashes;
+            })"#,
+        ])
+        .output()
+        .with_context(|| "Failed to run nix eval for environment.etc".to_string())?;
+
+    if !output.status.success() {
+        anyhow::bail!(
+            "Failed to evaluate environment.etc for host {}: {}",
+            hostname,
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    let stdout = String::from_utf8(output.stdout)
+        .with_context(|| "nix eval for environment.etc returned invalid UTF-8".to_string())?;
+    let evaluated_items: BTreeMap<String, NixEnvironmentEtcEvalEntry> =
+        serde_json::from_str(&stdout)
+            .with_context(|| "Failed to parse nix eval JSON for environment.etc".to_string())?;
+
+    Ok(evaluated_items
+        .into_values()
+        .filter(|entry| entry.enable)
+        .map(|entry| NixEnvironmentEtcEntry {
+            target: entry.target,
+            known_sha256_hashes: entry.known_sha256_hashes,
+        })
+        .collect())
+}
+
+/// Gets enabled Home Manager `xdg.configFile` targets managed by nix-darwin.
+pub fn get_nix_home_manager_xdg_config_file_entries(
+    hostname: &str,
+    config_dir: &str,
+) -> Result<Vec<NixHomeManagerXdgConfigFileEntry>> {
+    let host_attr = serde_json::to_string(hostname)?;
+    let flake_attr = format!(".#darwinConfigurations.{}.config", host_attr);
+
+    let output = nix_command(config_dir)
+        .args([
+            "eval",
+            "--json",
+            &flake_attr,
+            "--apply",
+            r#"config:
+              let
+                users = config.home-manager.users or {};
+                backupFileExtension = config.home-manager.backupFileExtension or null;
+              in builtins.concatLists (builtins.attrValues (builtins.mapAttrs (user: userConfig:
+                builtins.attrValues (builtins.mapAttrs (_name: value: {
+                  inherit user;
+                  target = value.target;
+                  xdgConfigHome = userConfig.xdg.configHome;
+                  source = if value ? source && value.source != null then toString value.source else null;
+                  enable = value.enable;
+                  force = value.force or false;
+                  inherit backupFileExtension;
+                }) (userConfig.xdg.configFile or {}))
+              ) users))"#,
+        ])
+        .output()
+        .with_context(|| "Failed to run nix eval for home-manager xdg.configFile".to_string())?;
+
+    if !output.status.success() {
+        anyhow::bail!(
+            "Failed to evaluate home-manager xdg.configFile for host {}: {}",
+            hostname,
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    let stdout = String::from_utf8(output.stdout).with_context(|| {
+        "nix eval for home-manager xdg.configFile returned invalid UTF-8".to_string()
+    })?;
+    let evaluated_items: Vec<NixHomeManagerXdgConfigFileEvalEntry> = serde_json::from_str(&stdout)
+        .with_context(|| {
+            "Failed to parse nix eval JSON for home-manager xdg.configFile".to_string()
+        })?;
+
+    Ok(evaluated_items
+        .into_iter()
+        .filter(|entry| entry.enable)
+        .map(|entry| NixHomeManagerXdgConfigFileEntry {
+            user: entry.user,
+            target: entry.target,
+            xdg_config_home: entry.xdg_config_home,
+            source: entry.source,
+            force: entry.force,
+            backup_file_extension: entry.backup_file_extension,
+        })
+        .collect())
 }
 
 /// Checks if Nix is installed by attempting to run `nix --version`.

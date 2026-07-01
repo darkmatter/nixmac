@@ -18,6 +18,7 @@ mod path;
 mod preview_indicator;
 mod scanner;
 mod summarized_changes;
+mod system;
 
 use orpc::*;
 use tauri::AppHandle;
@@ -42,4 +43,5 @@ pub fn build_router() -> Router<OrpcCtx> {
         .nest("launchd", launchd::routes())
         .nest("scanner", scanner::routes())
         .nest("billing", billing::routes())
+        .nest("system", system::routes())
 }

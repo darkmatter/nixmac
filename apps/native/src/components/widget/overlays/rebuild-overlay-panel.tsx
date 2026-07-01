@@ -1,16 +1,19 @@
 import { Button } from "@/components/ui/button";
+import { EtcClobberConflictList } from "@/components/widget/overlays/etc-clobber-conflict-list";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useRollback } from "@/hooks/use-rollback";
+import { tauriAPI } from "@/ipc/api";
 import {
   getRebuildErrorSuggestion,
   getRebuildErrorTitle,
   getRebuildSystemSafetyMessage,
 } from "@/lib/errors";
 import { cn } from "@/lib/utils";
-import type { RebuildErrorType, RebuildLine } from "@/types/rebuild";
+import type { RebuildErrorType, RebuildLine, RebuildNotice } from "@/types/rebuild";
 import { uiActions, useUiState, useViewModel } from "@nixmac/state";
 import {
   AlertTriangle,
+  AppWindow,
   Brain,
   CheckCircle,
   Download,
@@ -260,6 +263,61 @@ function LoaderCore({
   );
 }
 
+function RebuildNoticeList({ notices }: { notices: RebuildNotice[] }) {
+  const [requestingPermission, setRequestingPermission] = useState<string | null>(null);
+
+  if (notices.length === 0) {
+    return null;
+  }
+
+  async function handlePermissionAction(permissionId: string) {
+    setRequestingPermission(permissionId);
+    try {
+      await tauriAPI.permissions.request(permissionId);
+      await tauriAPI.permissions.refresh();
+    } finally {
+      setRequestingPermission(null);
+    }
+  }
+
+  return (
+    <div className="mb-4 flex flex-col gap-3">
+      {notices.map((notice) => {
+        const permissionId = notice.permissionId;
+        const isRequestingPermission = requestingPermission === permissionId;
+
+        return (
+          <div
+            key={notice.id}
+            className="rounded-xl border border-amber-300/30 bg-amber-300/10 p-4 text-amber-50 shadow-lg shadow-amber-950/20"
+          >
+            <div className="flex gap-3">
+              <AppWindow className="mt-0.5 size-5 shrink-0 text-amber-200" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-sm text-amber-100">{notice.title}</p>
+                <p className="mt-1 text-amber-50/85 text-xs leading-relaxed">{notice.body}</p>
+                {permissionId ? (
+                  <Button
+                    className="mt-3 border-amber-200/30 text-amber-50 hover:bg-amber-200/10"
+                    disabled={isRequestingPermission}
+                    onClick={() => handlePermissionAction(permissionId)}
+                    size="sm"
+                    variant="outline"
+                  >
+                    {isRequestingPermission
+                      ? "Opening…"
+                      : (notice.actionLabel ?? "Open System Settings")}
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function RawConsoleOutput({ lines, children }: { lines: string[]; children?: React.ReactNode }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -302,8 +360,10 @@ export function RebuildOverlayPanel() {
   const status = useViewModel((state) => state.rebuildStatus);
   const lines = useViewModel((state) => state.rebuildLog.lines);
   const rawLines = useViewModel((state) => state.rebuildLog.rawLines);
+  const notices = useViewModel((state) => state.rebuildLog.notices);
   const context = useUiState((state) => state.rebuildContext);
   const dismissed = useUiState((state) => state.rebuildPanelDismissed);
+  const etcClobber = useUiState((state) => state.etcClobber);
 
   const isRunning = status?.isRunning ?? false;
   const success = status?.success ?? undefined;
@@ -376,6 +436,10 @@ export function RebuildOverlayPanel() {
         >
           {/* Main content */}
           <div className="min-h-0 flex-1">
+            {/* Build-log-triggered guidance lives above the active running view;
+                failure panels render it inline to avoid duplicate mounted copies. */}
+            {(!showErrorPanel || showConsole) && <RebuildNoticeList notices={notices} />}
+
             {/* Error panel - conditional, only on failure when not viewing console */}
             <AnimatePresence>
               {showErrorPanel && !showConsole && (
@@ -396,14 +460,22 @@ export function RebuildOverlayPanel() {
                     {getRebuildErrorTitle(errorType)}
                   </h2>
 
+                  <div className="w-full max-w-xl">
+                    <RebuildNoticeList notices={notices} />
+                  </div>
+
                   {systemSafetyMessage && (
                     <p className="max-w-xl rounded-lg border border-teal-400/30 bg-teal-400/10 px-4 py-2 text-center font-medium text-sm text-teal-200">
                       {systemSafetyMessage}
                     </p>
                   )}
 
+                  {errorType === "etc_clobber" && etcClobber && (
+                    <EtcClobberConflictList result={etcClobber} />
+                  )}
+
                   {/* Error Message */}
-                  {errorMessage && (
+                  {errorMessage && errorType !== "etc_clobber" && (
                     <p className="max-h-48 w-full max-w-xl overflow-y-auto rounded-lg bg-black/30 px-6 py-3 text-center font-mono text-xs text-zinc-400">
                       {errorMessage}
                     </p>
