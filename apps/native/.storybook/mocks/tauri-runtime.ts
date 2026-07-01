@@ -241,6 +241,7 @@ export const orpcHandlers: Record<string, OrpcHandler> = {
   "github.disconnect": async () => undefined,
   "evolveState.get": async () => baseEvolveState(),
   "evolveState.clear": async () => baseEvolveState(),
+  "git.state": async () => baseGitState(baseGitStatus()),
   "homebrew.getStateDiff": async () => ({
     isInstalled: true,
     casks: [],

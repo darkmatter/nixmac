@@ -23,9 +23,9 @@ import {
   Check,
   ChevronDown,
   CircleDashed,
+  CornerDownRight,
   Info,
   Loader2,
-  Plus,
   Radar,
   SkipForward,
 } from "lucide-react";
@@ -394,13 +394,12 @@ function GroupCard({
   onTrack: (items: CustomizationItem[]) => void;
   onUntrack: (ids: string[]) => void;
 }) {
-  const [expanded, setExpanded] = useState(group.severity === "info");
+  const [expanded, setExpanded] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
   const ids = group.items.map((i) => i.id);
   const trackedIds = ids.filter((id) => trackedSet.has(id));
   const allTracked = trackedIds.length === ids.length;
-  const someTracked = trackedIds.length > 0;
   const isWarning = group.severity === "warning";
 
   return (
@@ -413,14 +412,9 @@ function GroupCard({
       <div className="flex w-full items-start gap-3 p-4 text-left">
         <Checkbox
           checked={allTracked}
-          onCheckedChange={(checked) => {
-            if (checked === true) {
-              onTrack(group.items);
-            } else {
-              onUntrack(ids);
-            }
-          }}
-          className={cn("size-4 border-none", allTracked ? "bg-white" : "bg-zinc-700")}
+          onCheckedChange={(checked) => (checked === true ? onTrack(group.items) : onUntrack(ids))}
+          aria-label={`Track all ${group.title}`}
+          className={cn("mt-1 size-4 border-none", allTracked ? "bg-white" : "bg-zinc-700")}
         />
         <button
           type="button"
@@ -428,19 +422,22 @@ function GroupCard({
           className="flex min-w-0 flex-1 items-start gap-3 text-left"
         >
           <span className="min-w-0 flex-1">
-            <span className="flex items-center gap-2 font-semibold text-sm">
+            <span className="font-semibold text-sm">
               {group.items.length} {group.title}
-              {allTracked ? <Check className="size-4 text-success" aria-hidden="true" /> : null}
             </span>
             <span className="mt-1 block text-pretty text-muted-foreground text-xs leading-relaxed">
               {group.description}
             </span>
-            <span className="mt-2 block font-mono text-muted-foreground/80 text-xs">
-              <span className="text-muted-foreground">$ {group.command}</span>
-              {group.commandNote ? ` (${group.commandNote})` : ""} · scanned just now · would land
-              in <span className="text-foreground">{group.landingPath}</span>
+            <span className="mt-2 flex items-center gap-1.5 text-muted-foreground/70 text-xs">
+              <CornerDownRight className="size-3 shrink-0" aria-hidden="true" />
+              <span className="truncate font-mono">{group.landingPath}</span>
             </span>
           </span>
+          {trackedIds.length > 0 && !allTracked ? (
+            <span className="mt-0.5 shrink-0 font-medium text-success text-xs tabular-nums">
+              {trackedIds.length}/{ids.length}
+            </span>
+          ) : null}
           <ChevronDown
             className={cn(
               "mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform",
@@ -453,68 +450,48 @@ function GroupCard({
 
       {expanded ? (
         <>
-          <div className="flex flex-wrap items-center gap-2 border-border border-t bg-background/40 px-4 py-3">
-            {allTracked ? (
-              <Button size="sm" variant="secondary" onClick={() => onUntrack(ids)}>
-                <Check className="size-4 text-success" aria-hidden="true" />
-                Tracking all {ids.length}
-              </Button>
-            ) : (
-              <Button size="sm" onClick={() => onTrack(group.items)}>
-                <Plus className="size-4" aria-hidden="true" />
-                Track{" "}
-                {someTracked
-                  ? `remaining ${ids.length - trackedIds.length}`
-                  : `these ${ids.length}`}
-              </Button>
-            )}
-            <Button size="sm" variant="ghost" onClick={() => setShowPreview((v) => !v)}>
-              <Braces className="size-4" aria-hidden="true" />
-              {showPreview ? "Hide additions" : "Preview additions"}
-            </Button>
-          </div>
-
-          <p className="px-4 pt-3 font-mono text-[11px] text-muted-foreground/70 uppercase tracking-wider">
-            · Found · {group.items.length}
-          </p>
-          <ul className="divide-y divide-border/60">
+          <ul className="divide-y divide-border/60 border-border border-t">
             {group.items.map((item) => {
               const isTracked = trackedSet.has(item.id);
               return (
-                <li key={item.id} className="flex items-start justify-between gap-4 px-4 py-3">
-                  <div className="min-w-0">
+                <li key={item.id} className="flex items-start gap-3 px-4 py-2.5">
+                  <Checkbox
+                    checked={isTracked}
+                    onCheckedChange={(checked) =>
+                      checked === true ? onTrack([item]) : onUntrack([item.id])
+                    }
+                    aria-label={`Track ${item.label}`}
+                    className={cn(
+                      "mt-0.5 size-4 border-none",
+                      isTracked ? "bg-white" : "bg-zinc-700",
+                    )}
+                  />
+                  <div className="min-w-0 flex-1">
                     <p className="text-pretty font-medium text-sm">{item.label}</p>
                     <p className="mt-0.5 break-all font-mono text-muted-foreground text-xs">
                       {item.detail}
                     </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <span className="hidden font-mono text-muted-foreground/70 text-xs sm:inline">
+                  {item.meta ? (
+                    <span className="mt-0.5 hidden shrink-0 font-mono text-muted-foreground/60 text-xs sm:inline">
                       {item.meta}
                     </span>
-                    {isTracked ? (
-                      <button
-                        type="button"
-                        onClick={() => onUntrack([item.id])}
-                        className="inline-flex items-center gap-1 font-medium text-success text-xs hover:underline"
-                      >
-                        <Check className="size-3.5" aria-hidden="true" />
-                        Tracked
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => onTrack([item])}
-                        className="font-medium text-primary text-xs hover:underline"
-                      >
-                        Track
-                      </button>
-                    )}
-                  </div>
+                  ) : null}
                 </li>
               );
             })}
           </ul>
+
+          <div className="border-border border-t bg-background/40 px-4 py-2.5">
+            <button
+              type="button"
+              onClick={() => setShowPreview((v) => !v)}
+              className="inline-flex items-center gap-1.5 text-muted-foreground text-xs transition-colors hover:text-foreground"
+            >
+              <Braces className="size-3.5" aria-hidden="true" />
+              {showPreview ? "Hide additions" : "Preview additions"}
+            </button>
+          </div>
 
           {showPreview ? (
             <div className="border-border border-t bg-background/60 p-4">
