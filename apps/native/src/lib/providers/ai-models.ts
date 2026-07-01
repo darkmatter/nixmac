@@ -2,6 +2,7 @@ import type { ProviderIconId } from "@/components/widget/controls/provider-icons
 
 export const NIXMAC_PROVIDER = "nixmac";
 export const DEFAULT_NIXMAC_MODEL = "openai/gpt-4o-mini";
+const DEFAULT_OLLAMA_MODEL = "llama3.1";
 
 export type AiModelProviderId =
 	| "nixmac"
@@ -167,7 +168,7 @@ export function modelPlaceholder(provider: string, fallback: string): string {
 		return fallback;
 	}
 	if (config.id === "ollama") {
-		return fallback === "gpt-4o" ? "" : "llama3.1";
+		return DEFAULT_OLLAMA_MODEL;
 	}
 	if (config.id === "openai_compatible") {
 		return "gpt-oss-120b";
