@@ -36,7 +36,7 @@ export function ConfirmationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("max-w-md gap-6 shadow-[0_0_0_3px_#000000_inset] bg-transparent border border-black dark:border-white/20 dark:text-white text-black rounded-lg font-bold transform hover:-translate-y-1 transition duration-400")}>
+      <DialogContent data-color={color} className={cn("max-w-md gap-6 shadow-[0_0_0_3px_#000000_inset] bg-transparent border border-black dark:border-white/20 dark:text-white text-black rounded-lg font-bold transform hover:-translate-y-1 transition duration-400")}>
         <DialogHeader>
           <DialogTitle className="sr-only">Confirm Action</DialogTitle>
           <DialogDescription className="text-base leading-relaxed">{message}</DialogDescription>

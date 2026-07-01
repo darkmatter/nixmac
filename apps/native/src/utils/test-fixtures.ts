@@ -38,6 +38,7 @@ export function makeGlobalPreferences(
     onboardingMacScannedAt: null,
     onboardingLoginDecided: false,
     onboardingLastBuildAt: null,
+    autoFormatNixFiles: false,
     ...overrides,
   };
 }
