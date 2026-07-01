@@ -3,7 +3,7 @@
 //! Storage is repo-scoped — values live under `<config_dir>/.nixmac/settings.json`
 //! so they ride along with the user's nix config repo across machines.
 //!
-//! The struct is managed as an `Observable<EvolutionLimits>` at startup. The
+//! The struct is managed as an `Observable<UserPreferences>` at startup. The
 //! derive macro pushes its metadata into the compile-time `inventory`
 //! collection so Developer settings can render and update it without opening
 //! store files directly.
@@ -20,17 +20,17 @@ use crate::observable::{ConfiguredRepoScopedJson, Observable, Persistence};
 use crate::state::preferences;
 use crate::storage::store::DEFAULT_MAX_TOKEN_BUDGET;
 
-pub const EVOLUTION_LIMITS_CHANGED_EVENT: &str = "evolution_limits_changed";
+pub const USER_PREFERENCES_CHANGED_EVENT: &str = "user_preferences_changed";
 pub(crate) const DEFAULT_NIXMAC_MAX_TOKEN_BUDGET: u32 = 750_000;
 
 #[derive(Configurable, Debug, Clone, Serialize, Deserialize, Type, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 #[config(
     scope = "repo",
-    display_name = "Evolution",
+    display_name = "User Preferences",
     description = "How long the agent will try before giving up."
 )]
-pub struct EvolutionLimits {
+pub struct UserPreferences {
     #[config(
         default = 25,
         key = "maxIterations",
@@ -73,7 +73,7 @@ pub struct EvolutionLimits {
 // `preferences::load_or_default`), and on the dev-settings whole-struct
 // `set` path when an incoming JSON payload is missing fields. Deriving
 // `Default` would produce zeros, which would be wrong here.
-impl Default for EvolutionLimits {
+impl Default for UserPreferences {
     fn default() -> Self {
         Self {
             max_iterations: 25,
@@ -84,7 +84,7 @@ impl Default for EvolutionLimits {
     }
 }
 
-impl EvolutionLimits {
+impl UserPreferences {
     pub fn apply_ui_update(&mut self, update: &crate::shared_types::UiPrefsUpdate) {
         if let Some(v) = update.max_iterations {
             self.max_iterations = v;
@@ -109,15 +109,15 @@ pub(crate) fn effective_max_token_budget(provider: &str, configured_max_token_bu
     }
 }
 
-pub fn try_read<R: Runtime>(app: &AppHandle<R>) -> Option<EvolutionLimits> {
-    app.try_state::<Observable<EvolutionLimits>>()
+pub fn try_read<R: Runtime>(app: &AppHandle<R>) -> Option<UserPreferences> {
+    app.try_state::<Observable<UserPreferences>>()
         .map(|limits| limits.read_sync().clone())
 }
 
-pub fn write<R: Runtime>(app: &AppHandle<R>, f: impl FnOnce(&mut EvolutionLimits)) -> Result<()> {
+pub fn write<R: Runtime>(app: &AppHandle<R>, f: impl FnOnce(&mut UserPreferences)) -> Result<()> {
     let limits = app
-        .try_state::<Observable<EvolutionLimits>>()
-        .ok_or_else(|| anyhow::anyhow!("EvolutionLimits observable is not managed"))?;
+        .try_state::<Observable<UserPreferences>>()
+        .ok_or_else(|| anyhow::anyhow!("UserPreferences observable is not managed"))?;
     let mut next = limits.read_sync().clone();
     f(&mut next);
     if *limits.read_sync() == next {
@@ -127,15 +127,15 @@ pub fn write<R: Runtime>(app: &AppHandle<R>, f: impl FnOnce(&mut EvolutionLimits
     Ok(())
 }
 
-pub fn read_or_default<R: Runtime>(app: &AppHandle<R>) -> EvolutionLimits {
+pub fn read_or_default<R: Runtime>(app: &AppHandle<R>) -> UserPreferences {
     try_read(app).unwrap_or_default()
 }
 
-pub fn load_observable<R: Runtime>(app: &AppHandle<R>) -> Result<Observable<EvolutionLimits>> {
+pub fn load_observable<R: Runtime>(app: &AppHandle<R>) -> Result<Observable<UserPreferences>> {
     let persistence: Arc<dyn Persistence> = Arc::new(ConfiguredRepoScopedJson::new(app.clone()));
-    let initial = preferences::load_or_default::<EvolutionLimits>(persistence.as_ref())?;
+    let initial = preferences::load_or_default::<UserPreferences>(persistence.as_ref())?;
     Ok(Observable::new(initial)
-        .emit_to(app, EVOLUTION_LIMITS_CHANGED_EVENT)
+        .emit_to(app, USER_PREFERENCES_CHANGED_EVENT)
         .persist_to(persistence))
 }
 
@@ -145,7 +145,7 @@ mod tests {
 
     #[test]
     fn default_matches_configured_field_defaults() {
-        let limits = EvolutionLimits::default();
+        let limits = UserPreferences::default();
 
         assert_eq!(limits.max_iterations, 25);
         assert_eq!(limits.max_token_budget, 50_000);
@@ -154,8 +154,8 @@ mod tests {
     }
 
     #[test]
-    fn unknown_fields_do_not_change_limits() {
-        let limits: EvolutionLimits = serde_json::from_value(serde_json::json!({
+    fn unknown_fields_do_not_change_user_preferences() {
+        let limits: UserPreferences = serde_json::from_value(serde_json::json!({
             "maxIterations": 11,
             "maxTokenBudget": 80_000,
             "maxBuildAttempts": 3,
@@ -166,7 +166,7 @@ mod tests {
 
         assert_eq!(
             limits,
-            EvolutionLimits {
+            UserPreferences {
                 max_iterations: 11,
                 max_token_budget: 80_000,
                 max_build_attempts: 3,
@@ -177,7 +177,7 @@ mod tests {
 
     #[test]
     fn missing_fields_use_defaults() {
-        let limits: EvolutionLimits = serde_json::from_value(serde_json::json!({
+        let limits: UserPreferences = serde_json::from_value(serde_json::json!({
             "maxIterations": 11,
         }))
         .expect("limits deserialize");

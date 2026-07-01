@@ -359,6 +359,26 @@ pub fn get_nix_version() -> Option<String> {
     }
 }
 
+/// Runs `nixfmt` (from nixpkgs via `nix run`) against the provided file in `config_dir`.
+/// Executes the command:
+/// `nix run nixpkgs#nixfmt -- <file>`
+pub fn nix_format(config_dir: &str, file: &str) -> Result<String> {
+    log::debug!("Running nix format on file: {}", file);
+
+    let output = nix_command(config_dir)
+        .args(["run", "nixpkgs#nixfmt", "--", file])
+        .output()?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        anyhow::bail!(
+            "Failed to format with nixfmt: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+}
+
 /// Prefetches darwin-rebuild by running `nix build --no-link nix-darwin/master#darwin-rebuild`.
 /// This caches the derivation in the nix store so the `nix run` fallback in darwin.rs is fast.
 /// Emits `nix:darwin-rebuild:end` with `{ ok: bool, error?: string }` on completion.

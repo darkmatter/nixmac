@@ -5,4 +5,5 @@ export type BoolPrefKey =
   | "autoSummarizeOnFocus"
   | "scanHomebrewOnStartup"
   | "defaultToDiffTab"
-  | "experimentalSpinningMascot";
+  | "experimentalSpinningMascot"
+  | "autoFormatNixFiles";

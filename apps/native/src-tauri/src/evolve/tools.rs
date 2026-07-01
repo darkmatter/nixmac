@@ -70,6 +70,7 @@ pub(crate) struct ToolCtx<'a> {
     pub(crate) host_attr: &'a str,
     pub(crate) args: &'a serde_json::Value,
     pub(crate) gitignore_matcher: Option<&'a Gitignore>,
+    pub(crate) auto_format: bool,
 }
 
 /// Result of executing a tool call
@@ -112,6 +113,7 @@ pub fn execute_tool(
     host_attr: &str,
     name: &str,
     args: &serde_json::Value,
+    auto_format: bool,
     gitignore_matcher: Option<&Gitignore>,
 ) -> Result<ToolResult> {
     let ctx = ToolCtx {
@@ -119,6 +121,7 @@ pub fn execute_tool(
         config_dir,
         host_attr,
         args,
+        auto_format,
         gitignore_matcher,
     };
 
@@ -268,6 +271,7 @@ mod tests {
             "dummy-host",
             "read_file",
             &json!({ "path": "secret.txt" }),
+            false,
             gitignore_matcher.as_ref(),
         );
 
@@ -294,6 +298,7 @@ mod tests {
             "dummy-host",
             "read_file",
             &json!({ "path": "nested/secret.txt" }),
+            false,
             gitignore_matcher.as_ref(),
         );
 
@@ -321,6 +326,7 @@ mod tests {
             "dummy-host",
             "list_files",
             &json!({ "pattern": "**/*.txt" }),
+            false,
             gitignore_matcher.as_ref(),
         )
         .expect("list_files should succeed");
@@ -350,6 +356,7 @@ mod tests {
                 "search": "",
                 "replace": "hello"
             }),
+            false,
             gitignore_matcher.as_ref(),
         );
 
@@ -382,6 +389,7 @@ mod tests {
                     }
                 }
             }),
+            false,
             gitignore_matcher.as_ref(),
         );
 
@@ -413,6 +421,7 @@ mod tests {
                     }
                 }
             }),
+            false,
             None,
         );
 
@@ -446,6 +455,7 @@ mod tests {
                 "path": "homebrew.casks",
                 "value": ["docker", "iterm2", "audacity", "rectangle"]
             }),
+            false,
             None,
         );
 
@@ -475,6 +485,7 @@ mod tests {
                 "path": "programs.example.extraPackages",
                 "value": ["alpha", "beta"]
             }),
+            false,
             None,
         );
 
@@ -508,6 +519,7 @@ mod tests {
                     }
                 }
             }),
+            false,
             None,
         );
 
@@ -535,6 +547,7 @@ mod tests {
                     "set_attrs": "launchd.user.agents"
                 }
             }),
+            false,
             None,
         );
 
@@ -575,6 +588,7 @@ mod tests {
                     }
                 }
             }),
+            false,
             None,
         )
         .expect("edit_nix_file should quote Homebrew values");
@@ -611,6 +625,7 @@ mod tests {
                 "path": "modules/darwin/packages.nix",
                 "values": ["wget"]
             }),
+            false,
             None,
         )
         .expect("edit_nix_file should accept add shorthand");
@@ -663,6 +678,7 @@ mod tests {
                 "attr_path": "home.packages",
                 "values": ["fd"]
             }),
+            false,
             None,
         )
         .expect("edit_nix_file should accept explicit attr_path shorthand");
@@ -701,6 +717,7 @@ mod tests {
                 "path": "packages.nix",
                 "values": ["fd"]
             }),
+            false,
             None,
         );
 
@@ -744,6 +761,7 @@ mod tests {
                     }
                 }
             }),
+            false,
             None,
         )
         .expect("edit_nix_file should match quoted Homebrew values");
@@ -770,6 +788,7 @@ mod tests {
                 "search": "[]",
                 "replace": "[\"git\"]"
             }),
+            false,
             None,
         )
         .expect("data.json edits should be allowed");
@@ -792,6 +811,7 @@ mod tests {
                 "search": "{}",
                 "replace": "{\"name\":\"Changed\"}"
             }),
+            false,
             None,
         );
 
@@ -815,6 +835,7 @@ mod tests {
                 "search": "{}",
                 "replace": "{\"enabled\":true}"
             }),
+            false,
             None,
         );
 
@@ -843,6 +864,7 @@ mod tests {
                     }
                 }
             }),
+            false,
             None,
         );
 
@@ -867,6 +889,7 @@ mod tests {
                     "target": "environment.variables.API_TOKEN"
                 }
             }),
+            false,
             None,
         );
 
@@ -892,6 +915,7 @@ mod tests {
                 "search": "",
                 "replace": "hello"
             }),
+            false,
             gitignore_matcher.as_ref(),
         );
 

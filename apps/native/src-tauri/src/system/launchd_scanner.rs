@@ -371,6 +371,7 @@ pub async fn apply_launchd_items_to_flake(
         target_path
     );
 
+    let auto_format_nix_files = crate::state::ui_prefs::auto_format_nix_files(app);
     for (path, attrs) in launchd_items_by_scope(&items) {
         if attrs.is_empty() {
             continue;
@@ -385,6 +386,7 @@ pub async fn apply_launchd_items_to_flake(
                     attrs,
                 },
             },
+            auto_format_nix_files,
             None,
         )
         .with_context(|| format!("Failed to apply launchd items at {}", path))?;
@@ -568,6 +570,7 @@ mod tests {
                         attrs,
                     },
                 },
+                false,
                 None,
             )
             .expect("semantic edit");
@@ -635,6 +638,7 @@ mod tests {
                         attrs,
                     },
                 },
+                false,
                 None,
             )
             .expect("semantic edit");

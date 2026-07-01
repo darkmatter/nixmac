@@ -7,14 +7,14 @@ use configurable::{ConfigurableMeta, inventory};
 use std::path::Path;
 
 use crate::env::config::NixmacEnvSettings;
-use crate::evolve::config::EvolutionLimits;
+use crate::evolve::config::UserPreferences;
 
 const DEFAULT_OUT_DIR: &str = "resources/schemas";
 
 /// Ensures inventory entries are linked into the binary.
 fn link_configurables() {
     let _ = (
-        EvolutionLimits::json_schema(),
+        UserPreferences::json_schema(),
         NixmacEnvSettings::json_schema(),
     );
 }
@@ -48,9 +48,9 @@ mod tests {
     use serde_json::Value;
 
     #[test]
-    fn evolution_limits_json_schema_has_expected_shape() {
+    fn user_preferences_json_schema_has_expected_shape() {
         link_configurables();
-        let schema = EvolutionLimits::json_schema();
+        let schema = UserPreferences::json_schema();
         assert_eq!(
             schema.get("$schema").and_then(Value::as_str),
             Some("https://json-schema.org/draft/2020-12/schema")

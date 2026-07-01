@@ -502,6 +502,7 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
             path: path.to_string(),
             action: action.clone(),
         },
+        ctx.auto_format,
         ctx.gitignore_matcher,
     )?;
 
