@@ -60,7 +60,6 @@ export type SettingsType = {
 	readonly filesystemEnabled: boolean;
 	readonly nixInstalledOverride?: boolean;
 	readonly skipPermissions: boolean;
-	readonly skipPermissions: boolean;
 };
 
 function loadMergedProfile(): EnvProfile {
