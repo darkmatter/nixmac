@@ -1,5 +1,6 @@
 "use client";
 
+import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DiffLineStatsBadge } from "@/components/widget/summaries/diff-line-stats";
 import { CHANGE_TYPE_STYLES, getDirectory, getShortFilename } from "@/components/widget/utils";
@@ -31,7 +32,19 @@ function FilePath({ path, role }: { path: string; role?: "old" | "new" }) {
  * file's unified diff inline; the actions menu sits outside the toggle so its
  * clicks don't collapse the row.
  */
-export function DriftFileRow({ file }: { file: DriftFileRowData }) {
+type DriftFileRowProps = {
+  file: DriftFileRowData;
+  included?: boolean;
+  onIncludedChange?: (included: boolean) => void;
+  showActions?: boolean;
+};
+
+export function DriftFileRow({
+  file,
+  included,
+  onIncludedChange,
+  showActions = true,
+}: DriftFileRowProps) {
   const { changeType, filename, oldFilename, hunkCount, stats, diffText } = file;
   const { icon: Icon, iconColor } = CHANGE_TYPE_STYLES[changeType];
   const glyph = CHANGE_TYPE_GLYPH[changeType];
@@ -86,7 +99,16 @@ export function DriftFileRow({ file }: { file: DriftFileRowData }) {
             <DiffLineStatsBadge stats={stats} />
           </CollapsibleTrigger>
 
-          <DriftActionsMenu filename={filename} />
+          {onIncludedChange && (
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border/60 bg-background/80 shadow-sm">
+              <Checkbox
+                checked={included ?? true}
+                onCheckedChange={(checked) => onIncludedChange(checked === true)}
+                aria-label={`Include ${filename}`}
+              />
+            </div>
+          )}
+          {showActions && <DriftActionsMenu filename={filename} />}
         </div>
 
         <CollapsibleContent className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
