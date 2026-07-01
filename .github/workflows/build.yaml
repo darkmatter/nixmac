@@ -55,7 +55,8 @@ jobs:
       - name: Rust unit tests
         working-directory: apps/native
         run: cargo test --manifest-path src-tauri/Cargo.toml
-
+        env:
+          NIXMAC_ENV: production
   build:
     needs: rust-tests
     runs-on: [self-hosted, macOS]
