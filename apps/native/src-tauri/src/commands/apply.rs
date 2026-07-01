@@ -12,6 +12,14 @@ pub async fn check_etc_clobber(
         .map_err(|e| capture_err("darwin_check_etc_clobber", e))
 }
 
+pub async fn check_app_management(
+    app: AppHandle,
+) -> Result<shared_types::AppManagementCheckResult, String> {
+    let (host_attr, config_dir) = get_hostname_and_config_dir(&app, "darwin_check_app_management")?;
+    crate::system::app_management_preflight::check_app_management(&config_dir, &host_attr)
+        .map_err(|e| capture_err("darwin_check_app_management", e))
+}
+
 pub async fn start_apply_stream(
     app: AppHandle,
     host_override: Option<String>,

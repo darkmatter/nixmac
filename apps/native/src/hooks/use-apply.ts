@@ -1,4 +1,5 @@
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
+import type { AppManagementCheckResult } from "@/ipc/types";
 import { client } from "@/lib/orpc";
 import { uiActions } from "@nixmac/state";
 
@@ -28,6 +29,32 @@ async function hasEtcClobberConflicts(): Promise<boolean> {
   }
 }
 
+function appManagementPreflightMessage(result: AppManagementCheckResult): string {
+  const appBundles = result.failures.map((failure) => failure.appBundle);
+  const listed = appBundles.slice(0, 3).map((path) => `- ${path}`).join("\n");
+  const extra = appBundles.length > 3 ? `\n- ${appBundles.length - 3} more` : "";
+  return `App Management is required to update managed app bundles.\n\n${listed}${extra}\n\nOpen System Settings > Privacy & Security > App Management and enable nixmac, then retry.`;
+}
+
+/**
+ * Probe the same App Management-sensitive copyApps targets Home Manager checks
+ * during activation. A failed proactive check is treated as blocking because the
+ * in-flight rebuild would fail before making useful progress.
+ */
+async function hasAppManagementBlockers(): Promise<boolean> {
+  try {
+    const result = await client.darwin.checkAppManagement();
+    if (result.ok) {
+      return false;
+    }
+    uiActions.setError(appManagementPreflightMessage(result));
+    return true;
+  } catch (e) {
+    console.error("Proactive App Management check failed:", e);
+    return false;
+  }
+}
+
 /**
  * Hook for the apply/rebuild operation.
  * Handles darwin-rebuild with streaming logs and auto-staging on success.
@@ -43,6 +70,11 @@ export function useApply() {
     // Warn about managed-file clobbers before prompting for admin rights. Hard
     // /etc conflicts stop here; backup-only warnings continue into rebuild.
     if (await hasEtcClobberConflicts()) {
+      uiActions.setProcessing(false);
+      return;
+    }
+
+    if (await hasAppManagementBlockers()) {
       uiActions.setProcessing(false);
       return;
     }
@@ -63,6 +95,11 @@ export function useApply() {
     uiActions.setProcessing(true, "apply");
 
     if (await hasEtcClobberConflicts()) {
+      uiActions.setProcessing(false);
+      return;
+    }
+
+    if (await hasAppManagementBlockers()) {
       uiActions.setProcessing(false);
       return;
     }

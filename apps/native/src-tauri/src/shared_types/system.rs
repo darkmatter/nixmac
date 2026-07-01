@@ -260,6 +260,45 @@ pub struct EtcClobberCheckResult {
     pub warnings: Vec<ManagedFileWarning>,
 }
 
+/// Home Manager copyApps target that requires App Management-sensitive probing.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AppManagementPermissionTarget {
+    /// Home Manager user that owns the target directory.
+    pub user: String,
+    /// Absolute copyApps target directory.
+    pub directory: String,
+    /// Existing app bundles inspected under the target directory.
+    pub app_bundles: Vec<String>,
+}
+
+/// An existing app bundle that could not be updated during the preflight probe.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AppManagementProbeFailure {
+    /// Home Manager user that owns the app bundle target.
+    pub user: String,
+    /// Existing app bundle that macOS blocked nixmac from updating.
+    pub app_bundle: String,
+    /// OS error returned by the harmless `.DS_Store` update probe.
+    pub error: String,
+}
+
+/// Result of proactively checking App Management-sensitive copyApps targets.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AppManagementCheckResult {
+    /// True when every existing managed app bundle accepted the update probe.
+    pub ok: bool,
+    /// Number of existing app bundles inspected.
+    #[specta(type = f64)]
+    pub checked: usize,
+    /// Target directories with existing app bundles that were inspected.
+    pub targets: Vec<AppManagementPermissionTarget>,
+    /// Existing app bundles that could not be updated.
+    pub failures: Vec<AppManagementProbeFailure>,
+}
+
 /// A recommended prompt based on the user's current macOS settings.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]

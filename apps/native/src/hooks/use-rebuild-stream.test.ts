@@ -50,6 +50,7 @@ function applyEndPayload(overrides: Partial<DarwinApplyEndEvent> = {}): DarwinAp
     system_untouched: null,
     log_file: null,
     etc_clobber: null,
+    app_management: null,
     ...overrides,
   };
 }

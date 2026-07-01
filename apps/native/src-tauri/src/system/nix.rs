@@ -86,6 +86,16 @@ pub struct NixHomeManagerXdgConfigFileEntry {
     pub backup_file_extension: Option<String>,
 }
 
+/// A Home Manager user with `targets.darwin.copyApps` enabled and permission
+/// checks turned on.
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NixHomeManagerCopyAppsEntry {
+    pub user: String,
+    pub home_directory: String,
+    pub directory: String,
+}
+
 /// Raw `nix eval` shape including `enable`, which we filter on before exposing
 /// the trimmed [`NixEnvironmentEtcEntry`] (nix-darwin skips disabled entries).
 #[derive(Debug, Deserialize)]
@@ -107,6 +117,16 @@ struct NixHomeManagerXdgConfigFileEvalEntry {
     enable: bool,
     force: bool,
     backup_file_extension: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct NixHomeManagerCopyAppsEvalEntry {
+    user: String,
+    home_directory: String,
+    directory: String,
+    enable: bool,
+    enable_checks: bool,
 }
 
 static NIX_PATH_CACHE: OnceLock<String> = OnceLock::new();
@@ -484,6 +504,67 @@ pub fn get_nix_home_manager_xdg_config_file_entries(
             source: entry.source,
             force: entry.force,
             backup_file_extension: entry.backup_file_extension,
+        })
+        .collect())
+}
+
+/// Gets enabled Home Manager `targets.darwin.copyApps` configs managed by
+/// nix-darwin.
+pub fn get_nix_home_manager_copy_apps_entries(
+    hostname: &str,
+    config_dir: &str,
+) -> Result<Vec<NixHomeManagerCopyAppsEntry>> {
+    let host_attr = serde_json::to_string(hostname)?;
+    let flake_attr = format!(".#darwinConfigurations.{}.config", host_attr);
+
+    let output = nix_command(config_dir)
+        .args([
+            "eval",
+            "--json",
+            &flake_attr,
+            "--apply",
+            r#"config:
+              let
+                users = config.home-manager.users or {};
+              in builtins.attrValues (builtins.mapAttrs (user: userConfig:
+                let cfg = userConfig.targets.darwin.copyApps or {};
+                in {
+                  inherit user;
+                  homeDirectory = userConfig.home.homeDirectory;
+                  directory = cfg.directory or "Applications/Home Manager Apps";
+                  enable = cfg.enable or false;
+                  enableChecks = cfg.enableChecks or true;
+                }
+              ) users)"#,
+        ])
+        .output()
+        .with_context(|| {
+            "Failed to run nix eval for home-manager targets.darwin.copyApps".to_string()
+        })?;
+
+    if !output.status.success() {
+        anyhow::bail!(
+            "Failed to evaluate home-manager targets.darwin.copyApps for host {}: {}",
+            hostname,
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    let stdout = String::from_utf8(output.stdout).with_context(|| {
+        "nix eval for home-manager targets.darwin.copyApps returned invalid UTF-8".to_string()
+    })?;
+    let evaluated_items: Vec<NixHomeManagerCopyAppsEvalEntry> = serde_json::from_str(&stdout)
+        .with_context(|| {
+            "Failed to parse nix eval JSON for home-manager targets.darwin.copyApps".to_string()
+        })?;
+
+    Ok(evaluated_items
+        .into_iter()
+        .filter(|entry| entry.enable && entry.enable_checks)
+        .map(|entry| NixHomeManagerCopyAppsEntry {
+            user: entry.user,
+            home_directory: entry.home_directory,
+            directory: entry.directory,
         })
         .collect())
 }

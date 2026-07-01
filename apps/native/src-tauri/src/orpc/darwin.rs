@@ -8,8 +8,8 @@ use crate::privileged_helper::{
     sync_agent::{self, SyncAgentStatus},
 };
 use crate::shared_types::{
-    BuildCheckResult, EtcClobberCheckResult, EvolveCancelResult, OkResult, RebuildStatus,
-    RollbackResult,
+    AppManagementCheckResult, BuildCheckResult, EtcClobberCheckResult, EvolveCancelResult,
+    OkResult, RebuildStatus, RollbackResult,
 };
 use orpc::*;
 use serde::{Deserialize, Serialize};
@@ -113,6 +113,15 @@ async fn check_etc_clobber(ctx: OrpcCtx, _input: ()) -> Result<EtcClobberCheckRe
     apply::check_etc_clobber(ctx.app)
         .await
         .map_err(|error| internal_err("darwin.checkEtcClobber", error))
+}
+
+async fn check_app_management(
+    ctx: OrpcCtx,
+    _input: (),
+) -> Result<AppManagementCheckResult, ORPCError> {
+    apply::check_app_management(ctx.app)
+        .await
+        .map_err(|error| internal_err("darwin.checkAppManagement", error))
 }
 
 async fn activate_store_path(
@@ -224,6 +233,9 @@ pub fn routes() -> Router<OrpcCtx> {
         "checkEtcClobber" => os::<OrpcCtx>()
             .output(orpc_specta::specta::<EtcClobberCheckResult>())
             .handler(check_etc_clobber),
+        "checkAppManagement" => os::<OrpcCtx>()
+            .output(orpc_specta::specta::<AppManagementCheckResult>())
+            .handler(check_app_management),
         "activateStorePath" => os::<OrpcCtx>()
             .input(orpc_specta::specta::<ActivateStorePathInput>())
             .output(orpc_specta::specta::<OkResult>())

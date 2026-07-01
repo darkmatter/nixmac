@@ -97,6 +97,16 @@ pub fn preflight_etc_clobber(
     crate::system::etc_preflight::check_etc_clobber(config_dir, host_attr)
 }
 
+/// Thin re-export of the App Management preflight. This mirrors Home Manager's
+/// `targets.darwin.copyApps` permission probe before activation asks for admin
+/// rights.
+pub fn preflight_app_management(
+    config_dir: &str,
+    host_attr: &str,
+) -> Result<crate::shared_types::AppManagementCheckResult, anyhow::Error> {
+    crate::system::app_management_preflight::check_app_management(config_dir, host_attr)
+}
+
 /// Build the `darwin:apply:end` payload for an aborted-before-activation clobber.
 ///
 /// `system_untouched: true` is the key signal to the UI: because we bail before
@@ -123,6 +133,33 @@ fn etc_clobber_error_payload(
         "error": format!(
             "Unexpected files in /etc would be overwritten:\n{}\n\nPlease check there is nothing critical in these files, rename them by adding .before-nix-darwin to the end, and then try again.",
             paths
+        ),
+    })
+}
+
+/// Build the `darwin:apply:end` payload for an App Management denial caught
+/// before activation.
+fn app_management_error_payload(
+    result: crate::shared_types::AppManagementCheckResult,
+    log_path: &Path,
+) -> serde_json::Value {
+    let app_bundles = result
+        .failures
+        .iter()
+        .map(|failure| format!("  {}", failure.app_bundle))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    serde_json::json!({
+        "ok": false,
+        "code": 3,
+        "log_file": log_path.to_string_lossy(),
+        "error_type": "app_management",
+        "system_untouched": true,
+        "app_management": result,
+        "error": format!(
+            "App Management permission is required to update managed app bundles:\n{}\n\nOpen System Settings > Privacy & Security > App Management and enable nixmac, then retry.",
+            app_bundles
         ),
     })
 }
@@ -392,15 +429,18 @@ fn run_build_step(
 ///   A temporary NOPASSWD sudoers rule is created for the exact, content-
 ///   addressed, immutable nix store activate path and is removed via a shell
 ///   trap — no persistent system configuration is required.
-fn run_activate_step(config_dir: &str) -> Result<ActivateResult, anyhow::Error> {
+fn run_activate_step(
+    config_dir: &str,
+    allow_helper: bool,
+) -> Result<ActivateResult, anyhow::Error> {
     let activate_path = format!("{}/result/activate", config_dir);
-    run_activate_with_path(&activate_path)
+    run_activate_with_path(&activate_path, allow_helper)
 }
 
 /// Activate a specific nix store path directly
 fn activate_store_path(store_path: &str) -> Result<ActivateResult, anyhow::Error> {
     let activate_path = format!("{}/activate", store_path);
-    run_activate_with_path(&activate_path)
+    run_activate_with_path(&activate_path, true)
 }
 
 /// Classify an activation failure into (error_type, error_message).
@@ -521,7 +561,10 @@ pub fn activate_store_path_stream(
     Ok(())
 }
 
-fn run_activate_with_path(activate_path: &str) -> Result<ActivateResult, anyhow::Error> {
+fn run_activate_with_path(
+    activate_path: &str,
+    allow_helper: bool,
+) -> Result<ActivateResult, anyhow::Error> {
     let nix_path = crate::system::nix::get_nix_path();
     let home = std::env::var("HOME").unwrap_or_default();
     let ssh_sock = std::env::var("SSH_AUTH_SOCK").unwrap_or_default();
@@ -533,8 +576,12 @@ fn run_activate_with_path(activate_path: &str) -> Result<ActivateResult, anyhow:
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|_| activate_path.to_owned());
 
-    if let Some(result) = try_activate_with_helper(&real_activate) {
-        return result;
+    if allow_helper {
+        if let Some(result) = try_activate_with_helper(&real_activate) {
+            return result;
+        }
+    } else {
+        info!("[darwin] Skipping privileged helper for App Management-sensitive activation");
     }
 
     // Escape a value for safe embedding inside a shell single-quoted string.
@@ -931,11 +978,45 @@ fn run_darwin_rebuild(
     }
 
     // =========================================================================
+    // Step 1c: proactively detect App Management denial for Home Manager
+    // copyApps. This mirrors Home Manager's own harmless `.DS_Store` update
+    // probe, but does it before the admin activation prompt. When existing app
+    // bundles are involved, avoid the unattended helper path so macOS attributes
+    // the TCC decision to the foreground app flow more consistently.
+    // =========================================================================
+    let mut allow_activation_helper = true;
+    match preflight_app_management(config_dir, host_attr) {
+        Ok(result) if !result.ok => {
+            log_and_emit!(
+                "Preflight: App Management permission is required to update managed app bundles. Open System Settings > Privacy & Security > App Management and enable nixmac, then retry."
+            );
+            summarizer.complete(false);
+            return Err(app_management_error_payload(result, &log_path));
+        }
+        Ok(result) => {
+            if result.checked > 0 {
+                allow_activation_helper = false;
+                log_and_emit!(format!(
+                    "Preflight: App Management check passed for {} managed app bundle(s).",
+                    result.checked
+                ));
+            } else {
+                log_and_emit!("Preflight: no managed app bundles require App Management.");
+            }
+        }
+        Err(error) => {
+            log_and_emit!(format!(
+                "Preflight: App Management check skipped ({error}).",
+            ));
+        }
+    }
+
+    // =========================================================================
     // Step 2: activate as root via native macOS authentication dialog
     // =========================================================================
     log_and_emit!("Requesting admin privileges for activation...");
 
-    let activate_result = run_activate_step(config_dir).map_err(|e| {
+    let activate_result = run_activate_step(config_dir, allow_activation_helper).map_err(|e| {
         serde_json::json!({
             "ok": false,
             "code": -1,

@@ -8,6 +8,61 @@
 export type AccountBilling = { usage: BillingUsage; subscriptions: BillingSubscription[]; hasPaymentMethod: boolean; canUseHostedInference: boolean; canUseDeviceSync: boolean }
 
 /**
+ * Result of proactively checking App Management-sensitive copyApps targets.
+ */
+export type AppManagementCheckResult = {
+/**
+ * True when every existing managed app bundle accepted the update probe.
+ */
+ok: boolean;
+/**
+ * Number of existing app bundles inspected.
+ */
+checked: number;
+/**
+ * Target directories with existing app bundles that were inspected.
+ */
+targets: AppManagementPermissionTarget[];
+/**
+ * Existing app bundles that could not be updated.
+ */
+failures: AppManagementProbeFailure[] }
+
+/**
+ * Home Manager copyApps target that requires App Management-sensitive probing.
+ */
+export type AppManagementPermissionTarget = {
+/**
+ * Home Manager user that owns the target directory.
+ */
+user: string;
+/**
+ * Absolute copyApps target directory.
+ */
+directory: string;
+/**
+ * Existing app bundles inspected under the target directory.
+ */
+appBundles: string[] }
+
+/**
+ * An existing app bundle that could not be updated during the preflight probe.
+ */
+export type AppManagementProbeFailure = {
+/**
+ * Home Manager user that owns the app bundle target.
+ */
+user: string;
+/**
+ * Existing app bundle that macOS blocked nixmac from updating.
+ */
+appBundle: string;
+/**
+ * OS error returned by the harmless `.DS_Store` update probe.
+ */
+error: string }
+
+/**
  * The signed-in nixmac account, minus any secret material.
  */
 export type AuthAccount = { 
@@ -299,7 +354,11 @@ log_file: string | null;
 /**
  * Structured `/etc` clobber conflicts when `error_type` is `etc_clobber`.
  */
-etc_clobber: EtcClobberCheckResult | null }
+etc_clobber: EtcClobberCheckResult | null;
+/**
+ * Structured App Management probe failures when `error_type` is `app_management`.
+ */
+app_management: AppManagementCheckResult | null }
 
 /**
  * Payload for `darwin:apply:summary`.
@@ -2197,4 +2256,3 @@ version: string;
  * Release notes from the channel manifest, when available.
  */
 notes: string | null }
-

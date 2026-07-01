@@ -1,10 +1,11 @@
-import type { EtcClobberCheckResult } from "@/ipc/types";
+import type { AppManagementCheckResult, EtcClobberCheckResult } from "@/ipc/types";
 import { initialUiState, uiActions, useUiState } from "@nixmac/state";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useApply } from "./use-apply";
 
 const mocks = vi.hoisted(() => ({
+  checkAppManagement: vi.fn(),
   checkEtcClobber: vi.fn(),
   finalizeApply: vi.fn(),
   triggerRebuild: vi.fn(),
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/orpc", () => ({
   client: {
     darwin: {
+      checkAppManagement: mocks.checkAppManagement,
       checkEtcClobber: mocks.checkEtcClobber,
       finalizeApply: mocks.finalizeApply,
     },
@@ -44,11 +46,24 @@ function makeEtcClobberResult(overrides: Partial<EtcClobberCheckResult> = {}): E
   };
 }
 
+function makeAppManagementResult(
+  overrides: Partial<AppManagementCheckResult> = {},
+): AppManagementCheckResult {
+  return {
+    ok: true,
+    checked: 0,
+    targets: [],
+    failures: [],
+    ...overrides,
+  };
+}
+
 describe("useApply", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     uiActions.setState({ ...initialUiState });
     mocks.checkEtcClobber.mockResolvedValue(makeEtcClobberResult({ ok: true, conflicts: [] }));
+    mocks.checkAppManagement.mockResolvedValue(makeAppManagementResult());
     mocks.finalizeApply.mockResolvedValue(undefined);
     mocks.triggerRebuild.mockResolvedValue(undefined);
   });
@@ -94,6 +109,39 @@ describe("useApply", () => {
     expect(mocks.triggerRebuild).toHaveBeenCalledTimes(1);
     expect(useUiState.getState().etcClobber).toBe(resultWithWarnings);
     expect(useUiState.getState().etcClobberDialogOpen).toBe(true);
+  });
+
+  it("stops before starting a rebuild when App Management would block managed app updates", async () => {
+    mocks.checkAppManagement.mockResolvedValue(
+      makeAppManagementResult({
+        ok: false,
+        checked: 1,
+        targets: [
+          {
+            user: "alice",
+            directory: "/Users/alice/Applications/Home Manager Apps",
+            appBundles: ["/Users/alice/Applications/Home Manager Apps/Example.app"],
+          },
+        ],
+        failures: [
+          {
+            user: "alice",
+            appBundle: "/Users/alice/Applications/Home Manager Apps/Example.app",
+            error: "Operation not permitted",
+          },
+        ],
+      }),
+    );
+    const { result } = renderHook(() => useApply());
+
+    await act(async () => {
+      await result.current.handleApply();
+    });
+
+    expect(mocks.triggerRebuild).not.toHaveBeenCalled();
+    expect(useUiState.getState().error).toContain("App Management is required");
+    expect(useUiState.getState().error).toContain("Example.app");
+    expect(useUiState.getState().isProcessing).toBe(false);
   });
 
   it("continues into the rebuild stream when the proactive /etc check is clear", async () => {

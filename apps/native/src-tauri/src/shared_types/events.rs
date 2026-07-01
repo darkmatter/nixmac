@@ -11,7 +11,7 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-use super::system::EtcClobberCheckResult;
+use super::system::{AppManagementCheckResult, EtcClobberCheckResult};
 
 /// Phase emitted during Nix installation/setup.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -146,6 +146,8 @@ pub struct DarwinApplyEndEvent {
     pub log_file: Option<String>,
     /// Structured `/etc` clobber conflicts when `error_type` is `etc_clobber`.
     pub etc_clobber: Option<EtcClobberCheckResult>,
+    /// Structured App Management probe failures when `error_type` is `app_management`.
+    pub app_management: Option<AppManagementCheckResult>,
 }
 
 /// Payload for `rust:panic`.

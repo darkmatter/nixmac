@@ -12,6 +12,61 @@ export type ActivateStorePathInput = { storePath: string }
 
 export type AdoptManualChangesResult = { evolutionId: number }
 
+/**
+ * Result of proactively checking App Management-sensitive copyApps targets.
+ */
+export type AppManagementCheckResult = {
+/**
+ * True when every existing managed app bundle accepted the update probe.
+ */
+ok: boolean;
+/**
+ * Number of existing app bundles inspected.
+ */
+checked: number;
+/**
+ * Target directories with existing app bundles that were inspected.
+ */
+targets: AppManagementPermissionTarget[];
+/**
+ * Existing app bundles that could not be updated.
+ */
+failures: AppManagementProbeFailure[] }
+
+/**
+ * Home Manager copyApps target that requires App Management-sensitive probing.
+ */
+export type AppManagementPermissionTarget = {
+/**
+ * Home Manager user that owns the target directory.
+ */
+user: string;
+/**
+ * Absolute copyApps target directory.
+ */
+directory: string;
+/**
+ * Existing app bundles inspected under the target directory.
+ */
+appBundles: string[] }
+
+/**
+ * An existing app bundle that could not be updated during the preflight probe.
+ */
+export type AppManagementProbeFailure = {
+/**
+ * Home Manager user that owns the app bundle target.
+ */
+user: string;
+/**
+ * Existing app bundle that macOS blocked nixmac from updating.
+ */
+appBundle: string;
+/**
+ * OS error returned by the harmless `.DS_Store` update probe.
+ */
+error: string }
+
 export type ApplyDiffInput = { diff: HomebrewState }
 
 export type ApplyStreamStartInput = { hostOverride: string | null }
@@ -901,6 +956,7 @@ export type Procedures = {
     activateStorePath: Client<Record<never, never>, ActivateStorePathInput, OkResult, Error>
     applyStreamStart: Client<Record<never, never>, ApplyStreamStartInput, OkResult, Error>
     buildCheck: Client<Record<never, never>, void, BuildCheckResult, Error>
+    checkAppManagement: Client<Record<never, never>, void, AppManagementCheckResult, Error>
     checkEtcClobber: Client<Record<never, never>, void, EtcClobberCheckResult, Error>
     evolve: Client<Record<never, never>, EvolveInput, void, Error>
     evolveAnswer: Client<Record<never, never>, EvolveAnswerInput, OkResult, Error>
