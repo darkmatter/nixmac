@@ -62,6 +62,8 @@ jobs:
       - name: Unit Test Tauri app
         working-directory: apps/native
         run: bun run desktop:test
+        env:
+          VITE_NIXMAC_SKIP_PERMISSIONS: "false"
 
   build:
     needs: desktop-tests
