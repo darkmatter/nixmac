@@ -377,6 +377,36 @@ describe("view model sync", () => {
     expect(apiMocks.unlisten).toHaveBeenCalledTimes(3);
   });
 
+  it("keeps the rebuild panel dismissed when hydrating a finished run from a prior UI session", async () => {
+    // The rebuild-status cell lives on the long-lived backend process; a
+    // reopened webview must not resurrect the previous run's panel.
+    apiMocks.rebuildStatus = makeRebuildStatus({ success: true, exitCode: 0 });
+    uiActions.setRebuildPanelDismissed(false);
+
+    const stop = await startRebuildSync();
+
+    expect(viewModelActions.getState().rebuildStatus).toBe(apiMocks.rebuildStatus);
+    expect(useUiState.getState().rebuildPanelDismissed).toBe(true);
+    // No log lines are seeded for a stale finished run (nothing to show).
+    expect(viewModelActions.getState().rebuildLog.lines).toEqual([]);
+
+    stop();
+  });
+
+  it("opens the rebuild panel when hydrating a run that is still in flight", async () => {
+    apiMocks.rebuildStatus = makeRebuildStatus({ isRunning: true });
+    uiActions.setRebuildPanelDismissed(true);
+
+    const stop = await startRebuildSync();
+
+    expect(useUiState.getState().rebuildPanelDismissed).toBe(false);
+    expect(viewModelActions.getState().rebuildLog.lines).toEqual([
+      { id: 0, text: "Preparing rebuild...", type: "info" },
+    ]);
+
+    stop();
+  });
+
   it("re-probes permissions when a rebuild fails with full_disk_access", async () => {
     const stop = await startRebuildSync();
 

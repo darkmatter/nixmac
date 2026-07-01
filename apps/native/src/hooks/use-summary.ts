@@ -1,5 +1,5 @@
-import { uiActions, viewModelActions } from "@nixmac/state";
 import { client } from "@/lib/orpc";
+import { uiActions, viewModelActions } from "@nixmac/state";
 
 /**
  * Hook for fetching and managing the AI-generated summary of changes.
@@ -14,13 +14,16 @@ const findChangeMap = async (): Promise<void> => {
   }
 };
 
-const generateCommitMessage = async () => {
-  uiActions.setCommitMessageSuggestion(null);
+const generateCommitMessage = async (options?: { clear?: boolean }) => {
+  const clear = options?.clear ?? true;
+  if (clear) {
+    uiActions.setCommitMessageSuggestion(null);
+  }
   try {
     const message = await client.summarizedChanges.generateCommitMessage();
     uiActions.setCommitMessageSuggestion(message);
   } catch {
-    // Keep null on error — user can type manually
+    // Keep existing on error — user can type manually
   }
 };
 

@@ -115,10 +115,10 @@ export function DriftReview() {
         />
       )}
 
-      <header className="flex items-center justify-between gap-3 border-border/60 border-b pb-2">
+      <header className="flex items-center justify-between gap-3  pb-2">
         <div className="flex min-w-0 items-center gap-2">
           <span className="font-semibold text-foreground text-sm">
-            {isManualDrift ? "Manual changes" : "Proposed changes"}
+            {isManualDrift ? "Detected changes" : "Proposed changes"}
           </span>
           <Badge variant="secondary" className="font-mono text-muted-foreground">
             {formatDriftCounts(counts)}
@@ -129,7 +129,7 @@ export function DriftReview() {
           <AnimatedTabsList value={view}>
             <AnimatedTabsTrigger value="summary">
               <MessageSquareText className="h-3.5 w-3.5" aria-hidden="true" />
-              Summary
+              Semantic
             </AnimatedTabsTrigger>
             <AnimatedTabsTrigger value="files">
               <ListTree className="h-3.5 w-3.5" aria-hidden="true" />

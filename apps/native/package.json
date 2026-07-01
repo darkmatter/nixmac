@@ -128,6 +128,7 @@
     "@storybook/addon-onboarding": "10.4.2",
     "@storybook/addon-vitest": "10.4.2",
     "@storybook/react-vite": "10.4.2",
+    "@tailwindcss/typography": "0.5.20",
     "@tailwindcss/vite": "4.3.1",
     "@tauri-apps/cli": "2.11.3",
     "@testing-library/dom": "10.4.1",

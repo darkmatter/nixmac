@@ -1,13 +1,13 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ConfirmButton } from "@/components/widget/controls/confirm-button";
 import { MergeSection } from "@/components/widget/layout/merge-section";
 import { PromptInputSection } from "@/components/widget/promptinput/prompt-input-section";
-import { StepActionsHeader } from "@/components/widget/layout/step-actions-header";
 import { SummaryOrDiff } from "@/components/widget/summaries/summary-or-diff";
 import { useRollback } from "@/hooks/use-rollback";
-import { RefreshCw, Undo2 } from "lucide-react";
+import { CheckCircle, MoreVertical, RefreshCw, Undo2 } from "lucide-react";
 import { useState } from "react";
 
 /**
@@ -22,31 +22,48 @@ export function CommitStep({ isManual = false }: { isManual?: boolean }) {
 
   return (
     <>
-      <StepActionsHeader label="All changes active!">
-        <ConfirmButton
-          variant="ghost"
-          size="sm"
-          className="text-rose-400 hover:text-rose-300 hover:bg-rose-400/10"
-          confirmPrefKey="confirmRollback"
-          onConfirm={handleRollback}
-          message="Discard changes and rebuild to previous commit?"
-          color="amber"
-        >
-          <Undo2 className="h-3.5 w-3.5" />
-          {isManual ? "Undo last build" : "Undo All"}
-        </ConfirmButton>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground hover:text-foreground"
-          onClick={() => setAction(action === "commit" ? "amend" : "commit")}
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          {action === "commit" ? "Continue editing" : "Back to commit"}
-        </Button>
-      </StepActionsHeader>
+      <div className="flex items-center justify-between py-3">
+        <h3 className="text-base font-bold flex items-center gap-2 text-zinc-900 dark:text-zinc-200/90">
+          <CheckCircle className="size-4 text-green-500" />
+          Your changes have been activated successfully
+        </h3>
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" aria-label="More actions" size="icon-sm" className="outline-none hover:outline-none">
+                <MoreVertical />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem>
+                <ConfirmButton
+                  variant="link"
+                  confirmPrefKey="confirmRollback"
+                  onConfirm={handleRollback}
+                  message="Discard changes and rebuild to previous commit?"
+                  color="amber"
+                >
+                  <Undo2 />
+                  {isManual ? "Undo last build" : "Undo All"}
+                </ConfirmButton>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Button variant="link" size="sm">
+                  <RefreshCw />
+                  {action === "commit" ? "Continue editing" : "Back to commit"}
+                </Button>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div >
 
+      <p className="text-sm mb-2 text-zinc-900 dark:text-zinc-200/90 leading-relaxed tracking-tight">
+        If you're happy with your changes, click the "Commit" button below to add it to your version history.
+      </p>
+      <br />
       <SummaryOrDiff />
+      <br />
       {action === "commit" && <MergeSection />}
       {action === "amend" && <PromptInputSection />}
     </>

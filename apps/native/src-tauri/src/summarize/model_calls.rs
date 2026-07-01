@@ -23,7 +23,11 @@ async fn request_json<R: Runtime, T: serde::de::DeserializeOwned>(
     app_handle: Option<&AppHandle<R>>,
 ) -> Result<(T, TokenUsage)> {
     let provider = create_provider(app_handle)?;
-    let allocation = budget_for(user_prompt, provider.model());
+    // The model processes both system and user prompts as input tokens, so
+    // include both when sizing the budget — otherwise we underestimate the
+    // input and may starve the output budget for reasoning models.
+    let combined_prompt = format!("{system_prompt}\n{user_prompt}");
+    let allocation = budget_for(&combined_prompt, provider.model());
     let request_id = uuid::Uuid::new_v4().to_string();
     debug!(
         "[{}] requesting from {} [id: {}] output_tokens={} context_window_tokens={}",

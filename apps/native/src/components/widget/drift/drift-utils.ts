@@ -10,8 +10,12 @@ import {
 } from "@/components/widget/summaries/diff-line-stats";
 import type { Change, ChangeType } from "@/ipc/types";
 
-/** A per-file drift row: the collapsed file summary plus its summed +/- line stats. */
-export type DriftFileRowData = ChangeFileSummary & { stats: DiffLineStats };
+/**
+ * A per-file drift row: the collapsed file summary, its summed +/- line stats,
+ * and the full unified diff (every hunk of the file concatenated) so the row can
+ * expand to reveal the diff without any further fetching.
+ */
+export type DriftFileRowData = ChangeFileSummary & { stats: DiffLineStats; diffText: string };
 
 export type DriftSummaryCounts = {
   added: number;
@@ -32,13 +36,15 @@ export const CHANGE_TYPE_GLYPH: Record<ChangeType, { label: string; verb: string
 
 /**
  * Collapse raw git changes into one row per file, carrying the summed +/- line
- * counts. `summarizeChangesByFile` discards individual hunk diffs, so the line
- * stats are accumulated from the enriched changes first and then attached.
+ * counts and the full unified diff. `summarizeChangesByFile` keeps only the
+ * first hunk's diff, so the line stats and the combined diff text are both
+ * accumulated from the enriched changes first and then attached.
  */
 export function deriveDriftFiles(changes: Change[]): DriftFileRowData[] {
   const enriched = categorizeRenamed(enrichChanges(changes));
 
   const statsByFile = new Map<string, DiffLineStats>();
+  const diffByFile = new Map<string, string[]>();
   for (const change of enriched) {
     const prev = statsByFile.get(change.filename) ?? { added: 0, removed: 0 };
     const next = countDiffLineStats(change.diff);
@@ -46,11 +52,16 @@ export function deriveDriftFiles(changes: Change[]): DriftFileRowData[] {
       added: prev.added + next.added,
       removed: prev.removed + next.removed,
     });
+
+    const hunks = diffByFile.get(change.filename) ?? [];
+    hunks.push(change.diff);
+    diffByFile.set(change.filename, hunks);
   }
 
   return summarizeChangesByFile(enriched).map((file) => ({
     ...file,
     stats: statsByFile.get(file.filename) ?? { added: 0, removed: 0 },
+    diffText: (diffByFile.get(file.filename) ?? [file.diff]).join("\n"),
   }));
 }
 

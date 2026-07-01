@@ -14,6 +14,11 @@ let nextLineId = 1;
 // lines double as summary lines. Toggled per-run by `useRebuildStream`.
 let echoRawToSummary = false;
 
+// The rebuild-status cell lives on the (long-lived) backend process, but the
+// panel/log state is webview-local and resets on reload. Reset per bind so the
+// first mirror is recognised as the startup hydration.
+let hydrated = false;
+
 export function setRebuildRawLineEcho(echo: boolean): void {
   echoRawToSummary = echo;
 }
@@ -53,6 +58,19 @@ function appendRawLines(lines: string[]): void {
 
 function mirrorRebuildStatus(status: RebuildStatus): void {
   const wasRunning = viewModelActions.getState().rebuildStatus?.isRunning ?? false;
+  const isHydration = !hydrated;
+  hydrated = true;
+
+  // Startup hydration of a finished run: the backend process outlives the
+  // webview, so a completed/failed run from a previous UI session would
+  // otherwise reopen the panel (fresh webview => `rebuildPanelDismissed` false,
+  // empty log => a stale "Starting rebuild..." fold). Only an actively running
+  // rebuild should open the panel on hydration; keep a finished one dismissed.
+  if (isHydration && !status.isRunning) {
+    viewModelActions.setState({ rebuildStatus: status });
+    uiActions.setRebuildPanelDismissed(true);
+    return;
+  }
 
   if (status.isRunning && !wasRunning) {
     // A new run started: reset the output fold and re-show the panel.
@@ -85,6 +103,7 @@ function mirrorRebuildStatus(status: RebuildStatus): void {
 }
 
 export async function startRebuildSync(): Promise<() => void> {
+  hydrated = false;
   const [statusUnlisten, dataUnlisten, summaryUnlisten] = await Promise.all([
     bindBackendSlice<RebuildStatus>({
       hydrate: () => client.darwin.rebuildStatus(),

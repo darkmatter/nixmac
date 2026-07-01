@@ -5,10 +5,10 @@ import { Tabs } from "@/components/ui/tabs";
 import { DiffSection } from "@/components/widget/summaries/diff-section";
 import { SummaryItems } from "@/components/widget/summaries/summary-items";
 import { prefetchFileDiffContents } from "@/hooks/use-git-operations";
+import type { Change } from "@/ipc/types";
 import { cn } from "@/lib/utils";
 import { useViewModel, viewModelActions } from "@nixmac/state";
-import type { Change } from "@/ipc/types";
-import { Dna, Wrench } from "lucide-react";
+import { Dna, Zap } from "lucide-react";
 import { Activity, useEffect, useMemo, useState } from "react";
 import { enrichChanges } from "../utils";
 
@@ -70,7 +70,7 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
       <div className="flex shrink-0 items-center justify-between gap-2 border-border/50 border-b py-2">
         <div className="flex items-center gap-2">
           {evolveState.step === "commit" ? (
-            <Wrench className="h-4 w-4 text-primary" />
+            <Zap className="h-4 w-4 text-primary" />
           ) : (
             <Dna className="h-4 w-4 text-primary" />
           )}

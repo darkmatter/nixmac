@@ -40,6 +40,42 @@ fn create_log_file() -> anyhow::Result<(File, PathBuf)> {
     Ok((file, log_path))
 }
 
+/// Read the tail (last `max_lines` lines) of the most-recently-modified
+/// `darwin-rebuild_*.log`, for feeding build-failure context to the "Fix with
+/// AI" evolve run.
+///
+/// The frontend never receives a durable log path (`log_file` lives only on the
+/// transient `darwin:apply:end` event and `RebuildStatus` has no such field), so
+/// the current run's transcript is rediscovered here by modification time.
+/// Returns `None` when the log dir is unreadable or holds no rebuild logs.
+pub fn read_latest_rebuild_log_tail(max_lines: usize) -> Option<String> {
+    let log_dir = get_log_dir().ok()?;
+
+    let mut newest: Option<(std::time::SystemTime, PathBuf)> = None;
+    for entry in fs::read_dir(&log_dir).ok()?.flatten() {
+        let path = entry.path();
+        let is_rebuild_log = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.starts_with("darwin-rebuild_") && name.ends_with(".log"));
+        if !is_rebuild_log {
+            continue;
+        }
+        let Some(modified) = entry.metadata().ok().and_then(|meta| meta.modified().ok()) else {
+            continue;
+        };
+        if newest.as_ref().is_none_or(|(best, _)| modified > *best) {
+            newest = Some((modified, path));
+        }
+    }
+
+    let (_, path) = newest?;
+    let contents = fs::read_to_string(&path).ok()?;
+    let lines: Vec<&str> = contents.lines().collect();
+    let start = lines.len().saturating_sub(max_lines);
+    Some(lines[start..].join("\n"))
+}
+
 /// Run a dry-run nix build check against the current working tree.
 ///
 /// Returns `(passed, stdout, stderr)`. No build artefacts are produced.

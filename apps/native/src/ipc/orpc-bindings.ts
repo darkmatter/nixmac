@@ -847,6 +847,16 @@ export type FileEdit = { path: string; search: string; replace: string }
 
 export type FinalizeRollbackInput = { storePath: string | null; changesetId: number | null }
 
+export type FixWithAiInput = { 
+/**
+ * The failing log line (or error message) the user asked to fix.
+ */
+error: string; 
+/**
+ * Backend error classification (`RebuildErrorType`), when known.
+ */
+errorType: string | null }
+
 export type FlakeExistsAtInput = { dir: string }
 
 export type GatherMetadataInput = { request: FeedbackMetadataRequest }
@@ -1781,6 +1791,7 @@ export type Procedures = {
     finalizeApply: Client<Record<never, never>, void, void, Error>
     finalizeRestore: Client<Record<never, never>, RestoreTargetInput, void, Error>
     finalizeRollback: Client<Record<never, never>, FinalizeRollbackInput, void, Error>
+    fixWithAi: Client<Record<never, never>, FixWithAiInput, void, Error>
     helperRegister: Client<Record<never, never>, void, HelperServiceStatus, Error>
     helperStatus: Client<Record<never, never>, void, HelperServiceStatus, Error>
     helperUnregister: Client<Record<never, never>, void, HelperServiceStatus, Error>

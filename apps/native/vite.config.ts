@@ -1,9 +1,9 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import monacoEditorPlugin from "vite-plugin-monaco-editor";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
+import monacoEditorPlugin from "vite-plugin-monaco-editor";
 import { nixmacBuildDefines } from "./nixmac-profile";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -91,6 +91,11 @@ export default defineConfig({
       "@radix-ui/react-select",
       "@radix-ui/number",
       "@radix-ui/react-compose-refs",
+      // Loaded via React.lazy() in CelebrationOverlay. Lazy optimization
+      // discovery mid-session emits a 504 "Outdated Optimize Dep" in the
+      // Tauri webview, which fails the dynamic import and tears down the
+      // render tree. Pre-bundle so no discovery happens at runtime.
+      "lottie-react",
     ],
     // Don't optimize packages from Nix store
     exclude: [],

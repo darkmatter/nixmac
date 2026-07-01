@@ -38,6 +38,33 @@ export function isProbeablePermissionRebuildError(errorCode: string | null | und
   return errorCode === REBUILD_ERROR_CODES.FULL_DISK_ACCESS;
 }
 
+/**
+ * Rebuild failures that are NOT fixable by editing Nix config — permission,
+ * authorization, cancellation, and /etc-clobber classes. These route to their
+ * own resolution flows (permission re-probe, rename-and-retry), so "Fix with
+ * AI" is suppressed for them to avoid wasting an evolve run.
+ */
+const AI_UNFIXABLE_REBUILD_ERRORS = new Set<string>([
+  REBUILD_ERROR_CODES.FULL_DISK_ACCESS,
+  REBUILD_ERROR_CODES.APP_MANAGEMENT,
+  REBUILD_ERROR_CODES.USER_CANCELLED,
+  REBUILD_ERROR_CODES.AUTHORIZATION_DENIED,
+  REBUILD_ERROR_CODES.ETC_CLOBBER,
+]);
+
+/**
+ * True when a failed build's error class is something the evolve agent can
+ * plausibly fix by editing the configuration (evaluation/build/recursion
+ * errors and the generic catch-all). Used to gate the "Fix with AI" button.
+ */
+export function isAiFixableRebuildError(errorCode: string | null | undefined): boolean {
+  if (!errorCode) {
+    // Unknown/unclassified failures are still worth an attempt.
+    return true;
+  }
+  return !AI_UNFIXABLE_REBUILD_ERRORS.has(errorCode);
+}
+
 type RebuildErrorDetails = {
   why: string;
   fix: string;
