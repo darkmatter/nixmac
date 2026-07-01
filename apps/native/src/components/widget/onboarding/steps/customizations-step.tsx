@@ -22,6 +22,8 @@ import {
   Braces,
   Check,
   ChevronDown,
+  CircleDashed,
+  Info,
   Loader2,
   Plus,
   Radar,
@@ -136,58 +138,87 @@ export function CustomizationsStep({
       <StepShell
         eyebrow={stepEyebrow("customizations")}
         title="Import your customizations"
-        description="Already set this Mac up by hand? nixmac can scan for tweaks that aren't in your flake yet — macOS preferences, Homebrew casks and taps, launch agents — and turn them into code."
+        description="You only need this if you've set up this Mac by hand and don't want those tweaks overwritten when your flake is applied. If your config already reflects how you like things, skip it."
       >
-        <div className="relative flex flex-col overflow-hidden rounded-2xl rounded-tl-3xl rounded-br-3xl rounded-bl-3xl border border-transparent shadow ring-1 shadow-black/10 ring-white/5">
-          <DottedGlowBackground
-            className="pointer-events-none mask-radial-to-90% mask-radial-at-center"
-            opacity={0.5}
-            gap={10}
-            radius={1.6}
-            color="rgba(115, 115, 115, 0.55)"
-            darkColor="rgba(115, 115, 115, 0.55)"
-            glowColor="rgba(115, 115, 115, 0.85)"
-            darkGlowColor="rgba(45, 212, 191, 0.85)"
-            backgroundOpacity={1}
-            speedMin={0.1}
-            speedMax={1}
-            speedScale={.8}
-          />
-
-
-
-          <span
-            className="relative z-20 mx-auto mt-8 flex size-16 items-center justify-center rounded-2xl bg-brand/10 text-brand ring-1 ring-brand/30"
-            aria-hidden="true"
-          >
-            <Radar className="size-8" />
+        <div className="mb-4 flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 font-medium text-primary text-xs">
+            <CircleDashed className="size-3.5" aria-hidden="true" />
+            Optional step
           </span>
+        </div>
 
-          <div className="relative z-20 flex flex-1 flex-col items-center px-6 pt-6 pb-8 text-center">
-            <h3 className="text-balance font-semibold text-xl">
-              Scan this Mac for untracked settings
-            </h3>
-            <p className="mt-2 max-w-md text-pretty text-muted-foreground text-sm leading-relaxed">
-              Already set this Mac up by hand? We&apos;ll run a few read-only commands to detect what
-              you&apos;ve customized and turn it into code. Nothing changes on your system — you
-              choose what to track afterward.
-            </p>
+        <div className="flex flex-col gap-3">
+          {/* Scan — the emphasized path for people who customized by hand. */}
+          <div className="relative flex flex-col overflow-hidden rounded-2xl rounded-tl-3xl rounded-br-3xl rounded-bl-3xl border border-transparent shadow ring-1 shadow-black/10 ring-white/5">
+            <DottedGlowBackground
+              className="pointer-events-none mask-radial-to-90% mask-radial-at-center"
+              opacity={0.5}
+              gap={10}
+              radius={1.6}
+              color="rgba(115, 115, 115, 0.55)"
+              darkColor="rgba(115, 115, 115, 0.55)"
+              glowColor="rgba(115, 115, 115, 0.85)"
+              darkGlowColor="rgba(45, 212, 191, 0.85)"
+              backgroundOpacity={1}
+              speedMin={0.1}
+              speedMax={1}
+              speedScale={0.8}
+            />
 
-            <div className="relative z-20 mt-7">
-              <ButtonGlow className="bg-slate-900" active onClick={startScan}>
-                <Radar className="size-4" aria-hidden="true" />
-                Scan this Mac
-              </ButtonGlow>
+            <span
+              className="relative z-20 mx-auto mt-8 flex size-16 items-center justify-center rounded-2xl bg-brand/10 text-brand ring-1 ring-brand/30"
+              aria-hidden="true"
+            >
+              <Radar className="size-8" />
+            </span>
+
+            <div className="relative z-20 flex flex-1 flex-col items-center px-6 pt-6 pb-8 text-center">
+              <h3 className="text-balance font-semibold text-xl">
+                Scan this Mac for untracked settings
+              </h3>
+              <p className="mt-2 max-w-md text-pretty text-muted-foreground text-sm leading-relaxed">
+                A few read-only commands detect your tweaks and turn them into code. Nothing changes
+                — you choose what to track.
+              </p>
+
+              <div className="relative z-20 mt-7">
+                <ButtonGlow className="bg-slate-900" active onClick={startScan}>
+                  <Radar className="size-4" aria-hidden="true" />
+                  Scan this Mac
+                </ButtonGlow>
+              </div>
+            </div>
+          </div>
+
+          {/* Skip — a first-class, safe choice for fresh setups. */}
+          <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5">
+            <span
+              className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"
+              aria-hidden="true"
+            >
+              <SkipForward className="size-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-base">Skip for now</h3>
+              <p className="mt-1 text-pretty text-muted-foreground text-sm leading-relaxed">
+                Recommended if you&apos;re starting fresh or your flake is already your source of
+                truth. You can import anytime later from the Untracked tab.
+              </p>
+            </div>
+            <div className="shrink-0">
+              <Button variant="outline" onClick={onContinue}>
+                Skip
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </Button>
             </div>
           </div>
         </div>
 
-        <div className="mt-6 flex items-center justify-end">
-          <Button variant="ghost" onClick={onContinue}>
-            <SkipForward className="size-4" aria-hidden="true" />
-            Skip — I&apos;ll import later
-          </Button>
-        </div>
+        <p className="mt-4 flex items-center gap-2 text-muted-foreground/70 text-xs">
+          <Info className="size-3.5 shrink-0" aria-hidden="true" />
+          Skipping never loses anything — untracked settings stay on disk and can be captured
+          whenever you want.
+        </p>
       </StepShell>
     );
   }
