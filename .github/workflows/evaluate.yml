@@ -27,23 +27,24 @@ permissions:
 jobs:
   rust-check:
     name: Rust Check
-    runs-on: [self-hosted, macOS]
+    runs-on: arc
+    container:
+      image: ghcr.io/darkmatter/nixmac-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      # cargo check needs only the Rust toolchain plus the system C compiler
-      # (libgit2-sys / libsqlite3-sys build their vendored C with `cc`). It does
-      # not need the devenv profile (node/bun/sops/python) or JS deps, so skip
-      # both — that drops the ~8 min devenv provisioning to a ~1 min toolchain
-      # setup. This speeds up the PR check too; the full build (build.yaml) is
-      # unaffected and still provides heavyweight coverage.
+      # Linux checks need the devenv profile for native Tauri/WebKit/GTK build
+      # inputs, but still skip JS deps; this keeps the fast PR Rust gate off the
+      # macOS signing/build runner while preserving the same Cargo check.
       - uses: ./.github/actions/setup
         with:
-          darkmatter-cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
           setup-rust: true
           rust-cache-workspaces: apps/native/src-tauri
-          install-devenv: false
           install-bun-deps: false
       - name: Check Rust app crate
         working-directory: apps/native/src-tauri
@@ -58,7 +59,7 @@ jobs:
   typescript:
     name: TypeScript
     if: github.event_name != 'push'
-    runs-on: [self-hosted, linux]
+    runs-on: arc
     container:
       image: ghcr.io/darkmatter/nixmac-ci:latest
       credentials:
@@ -83,7 +84,7 @@ jobs:
   treefmt:
     name: Treefmt
     if: github.event_name != 'push'
-    runs-on: [self-hosted, linux]
+    runs-on: arc
     container:
       image: ghcr.io/darkmatter/nixmac-ci:latest
       credentials:
