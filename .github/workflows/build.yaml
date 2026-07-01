@@ -17,8 +17,8 @@ env:
   CARGO_TERM_COLOR: always
   SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 jobs:
-  desktop-tests:
-    name: Desktop Tests (Linux)
+  rust-tests:
+    name: Rust Tests (Linux)
     runs-on: arc
     permissions:
       contents: read
@@ -46,28 +46,18 @@ jobs:
         with:
           workspaces: apps/native/src-tauri
 
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.14
-
-      - name: Install frontend dependencies
-        run: bun install
-
       - name: Patch passkey Swift package
         working-directory: apps/native/src-tauri
         run: |
           cargo fetch --locked
           bash "$GITHUB_WORKSPACE/ops/scripts/ci/patch-passkey-swift.sh"
 
-      - name: Unit Test Tauri app
+      - name: Rust unit tests
         working-directory: apps/native
-        run: bun run desktop:test
-        env:
-          NIXMAC_ENV: production
-          VITE_NIXMAC_SKIP_PERMISSIONS: "false"
+        run: cargo test --manifest-path src-tauri/Cargo.toml
 
   build:
-    needs: desktop-tests
+    needs: rust-tests
     runs-on: [self-hosted, macOS]
     permissions:
       contents: write
@@ -177,6 +167,10 @@ jobs:
           NIXMAC_VERSION: ${{ steps.sync-version.outputs.build_version }}
           VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
           SUBMITTED_FEEDBACK_DSN: ${{ secrets.SUBMITTED_FEEDBACK_DSN }}
+
+      - name: Unit Test frontend
+        working-directory: apps/native
+        run: bun run test:unit
 
       - name: Save sccache
         if: always()
