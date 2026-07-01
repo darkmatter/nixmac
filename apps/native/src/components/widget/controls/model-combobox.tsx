@@ -132,10 +132,10 @@ async function fetchFreshModels(provider: ModelProvider): Promise<string[]> {
     const baseUrl = prefs?.ollamaApiBaseUrl || undefined;
     return fetchOllamaModels(baseUrl);
   }
-  if (provider === "vllm") {
+  if (provider === "openai_compatible") {
     // deprecated(orpc): replace with client/orpc from @/lib/orpc
     const prefs = await tauriAPI.ui.getPrefs();
-    return fetchOpenAiCompatibleModels(prefs?.vllmApiBaseUrl, prefs?.vllmApiKey);
+    return fetchOpenAiCompatibleModels(prefs?.openaiCompatibleApiBaseUrl, prefs?.openaiCompatibleApiKey);
   }
   if (provider === "opencode") {
     // deprecated(orpc): replace with client/orpc from @/lib/orpc

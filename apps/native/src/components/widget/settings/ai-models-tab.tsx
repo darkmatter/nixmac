@@ -7,17 +7,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
-import { ProviderIcon, type ProviderIconId } from "@/components/widget/controls/provider-icons/provider-icon";
+import { ProviderIcon } from "@/components/widget/controls/provider-icons/provider-icon";
 import { DEFAULT_NIXMAC_MODEL, DEFAULT_NIXMAC_SUMMARY_MODEL, NIXMAC_PROVIDER } from "@/components/widget/onboarding/lib/inference";
 import { tauriAPI } from "@/ipc/api";
 import type { CliToolsState } from "@/ipc/types";
 import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/providers/ai-provider-validation";
 import {
   AI_MODEL_PROVIDERS,
-  DEFAULT_EVOLVE_MODEL,
-  DEFAULT_SUMMARY_MODEL,
-  isPlainInputCliProvider,
-  modelPlaceholder,
 } from "@/lib/providers/ai-models";
 import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
 import { useEffect, useState } from "react";
@@ -139,13 +135,6 @@ export function AiModelsTab({
   const providerPrefs = useProviderPrefs(form);
 
   const renderProviderItems = () => {
-    const providers: ReadonlyArray<{ value: string; label: string; icon: ProviderIconId }> = [
-      { value: NIXMAC_PROVIDER, label: "nixmac hosted", icon: "nixmac" },
-      { value: "openrouter", label: "OpenRouter", icon: "openrouter" },
-      { value: "openai", label: "OpenAI", icon: "openai" },
-      { value: "ollama", label: "Ollama", icon: "ollama" },
-      { value: "openai_compatible", label: "OpenAI Compatible", icon: "openai_compatible" },
-    ];
     return (
       <>
         {AI_MODEL_PROVIDERS.map((provider) => (

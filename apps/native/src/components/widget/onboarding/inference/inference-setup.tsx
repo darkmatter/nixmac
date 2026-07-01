@@ -703,7 +703,7 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
   const setup = provider.setup;
   const isApiKeyProvider = setup.kind === "apiKey";
   const isBaseUrlProvider = setup.kind === "baseUrl";
-  const requiresModel = provider.id === "ollama" || provider.id === "vllm";
+  const requiresModel = provider.id === "ollama" || provider.id === "openai_compatible";
   const setupReady =
     isApiKeyProvider
       ? format.valid
@@ -806,7 +806,7 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
           ) : (
             <ModelCombobox
               provider={
-                provider.id as "nixmac" | "openrouter" | "openai" | "ollama" | "vllm" | "opencode"
+                provider.id as "nixmac" | "openrouter" | "openai" | "ollama" | "openai_compatible" | "opencode"
               }
               value={model}
               onChange={setModel}
