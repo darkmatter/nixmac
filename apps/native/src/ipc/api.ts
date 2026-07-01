@@ -6,32 +6,13 @@
  */
 import type { StarterTemplateId } from "@/components/widget/onboarding/lib/flake-ref";
 import type {
-  AuthStatus,
-  CliToolsState,
-  ConfigEditApplyResult,
-  ConfigurableSchema,
-  ExportResult,
-  FeedbackMetadata,
   FeedbackShareOptions,
-  GitState,
-  GitStatus,
-  GlobalPreferences,
   HomebrewItem,
   HomebrewState,
-  ImportResult,
   JsonValue,
   LaunchdItem,
-  NixCheckResult,
-  NixInstallState,
   OkResult,
-  Permission,
-  PermissionsState,
-  RecommendedPrompt,
-  SyncRemoteStatus,
-  SyncResult,
   SystemDefault,
-  SystemDefaultsScan,
-  UpdateInfo,
 } from "@/ipc/types";
 import { client, type PreviewIndicatorState } from "@/lib/orpc";
 import { invoke } from "@tauri-apps/api/core";
@@ -81,42 +62,42 @@ export const tauriAPI = {
     disconnect: () => client.github.disconnect(),
   },
   account: {
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    status: () => invoke<AuthStatus>("account_status"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
+    /** @deprecated Use `client.account.status()` or `orpc.account.status` from `@/lib/orpc`. */
+    status: () => client.account.status(),
+    /** @deprecated Use `client.account.signIn()` or `orpc.account.signIn` from `@/lib/orpc`. */
     signIn: (email: string, password: string) =>
-      invoke<AuthStatus>("account_sign_in", { email, password }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
+      client.account.signIn({ email, password }),
+    /** @deprecated Use `client.account.signInWeb()` or `orpc.account.signInWeb` from `@/lib/orpc`. */
     signInWeb: (email: string, password: string) =>
-      invoke<AuthStatus>("account_sign_in_web", { email, password }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
+      client.account.signInWeb({ email, password }),
+    /** @deprecated Use `client.account.signUpWeb()` or `orpc.account.signUpWeb` from `@/lib/orpc`. */
     signUpWeb: (name: string, email: string, password: string) =>
-      invoke<AuthStatus>("account_sign_up_web", { name, email, password }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    sendOtp: (email: string) => invoke<void>("account_send_otp", { email }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
+      client.account.signUpWeb({ name, email, password }),
+    /** @deprecated Use `client.account.sendOtp()` or `orpc.account.sendOtp` from `@/lib/orpc`. */
+    sendOtp: (email: string) => client.account.sendOtp({ email }),
+    /** @deprecated Use `client.account.verifyOtp()` or `orpc.account.verifyOtp` from `@/lib/orpc`. */
     verifyOtp: (email: string, otp: string, name: string) =>
-      invoke<AuthStatus>("account_verify_otp", { email, otp, name }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    signOut: () => invoke<AuthStatus>("account_sign_out"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    setServerUrl: (url: string) => invoke<AuthStatus>("account_set_server_url", { url }),
+      client.account.verifyOtp({ email, otp, name }),
+    /** @deprecated Use `client.account.signOut()` or `orpc.account.signOut` from `@/lib/orpc`. */
+    signOut: () => client.account.signOut(),
+    /** @deprecated Use `client.account.setServerUrl()` or `orpc.account.setServerUrl` from `@/lib/orpc`. */
+    setServerUrl: (url: string) => client.account.setServerUrl({ url }),
   },
   sync: {
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    status: () => invoke<SyncRemoteStatus>("sync_status"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    push: () => invoke<SyncResult>("sync_push"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    pull: () => invoke<SyncResult>("sync_pull"),
+    /** @deprecated Use `client.sync.status()` or `orpc.sync.status` from `@/lib/orpc`. */
+    status: () => client.sync.status(),
+    /** @deprecated Use `client.sync.push()` or `orpc.sync.push` from `@/lib/orpc`. */
+    push: () => client.sync.push(),
+    /** @deprecated Use `client.sync.pull()` or `orpc.sync.pull` from `@/lib/orpc`. */
+    pull: () => client.sync.pull(),
   },
   git: {
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    state: () => invoke<GitState>("get_git_state"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    status: () => invoke<GitStatus>("git_status"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    statusAndCache: () => invoke<GitStatus>("git_status_and_cache"),
+    /** @deprecated Use `client.git.state()` or `orpc.git.state` from `@/lib/orpc`. */
+    state: () => client.git.state(),
+    /** @deprecated Use `client.git.status()` or `orpc.git.status` from `@/lib/orpc`. */
+    status: () => client.git.status(),
+    /** @deprecated Use `client.git.statusAndCache()` or `orpc.git.statusAndCache` from `@/lib/orpc`. */
+    statusAndCache: () => client.git.statusAndCache(),
     /** @deprecated Use `client.git.commit()` or `orpc.git.commit` from `@/lib/orpc`. */
     commit: (message: string) => client.git.commit({ message }),
     /** @deprecated Use `client.git.fileDiffContents()` or `orpc.git.fileDiffContents` from `@/lib/orpc`. */
@@ -156,14 +137,14 @@ export const tauriAPI = {
     rebuildStatus: () => client.darwin.rebuildStatus(),
   },
   nix: {
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    check: () => invoke<NixCheckResult>("nix_check"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    installState: () => invoke<NixInstallState>("get_nix_install_state"),
+    /** @deprecated Use `client.nix.check()` or `orpc.nix.check` from `@/lib/orpc`. */
+    check: () => client.nix.check(),
+    /** @deprecated Use `client.nix.installState()` or `orpc.nix.installState` from `@/lib/orpc`. */
+    installState: () => client.nix.installState(),
   },
   flake: {
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    listHosts: () => invoke<string[]>("flake_list_hosts"),
+    /** @deprecated Use `client.flake.listHosts()` or `orpc.flake.listHosts` from `@/lib/orpc`. */
+    listHosts: () => client.flake.listHosts(),
     /** @deprecated Use `client.flake.exists()` or `orpc.flake.exists` from `@/lib/orpc`. */
     exists: () => client.flake.exists(),
     /** @deprecated Use `client.flake.existsAt()` or `orpc.flake.existsAt` from `@/lib/orpc`. */
@@ -189,11 +170,11 @@ export const tauriAPI = {
     generateCommitMessage: () => client.summarizedChanges.generateCommitMessage(),
   },
   feedback: {
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
+    /** @deprecated Use `client.feedback.gatherMetadata()` or `orpc.feedback.gatherMetadata` from `@/lib/orpc`. */
     gatherMetadata: (feedbackType: string, share: FeedbackShareOptions) =>
-      invoke<FeedbackMetadata>("feedback_gather_metadata", { request: { feedbackType, share } }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    submit: (payload: string) => invoke<boolean>("feedback_submit", { payload }),
+      client.feedback.gatherMetadata({ request: { feedbackType, share } }),
+    /** @deprecated Use `client.feedback.submit()` or `orpc.feedback.submit` from `@/lib/orpc`. */
+    submit: (payload: string) => client.feedback.submit(payload),
   },
   debug: {
     logBreadcrumb: (label: string, detail?: string, clientTimestampUnixMs?: number) =>
@@ -217,62 +198,63 @@ export const tauriAPI = {
     setPrefs,
   },
   preferences: {
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    get: () => invoke<GlobalPreferences>("get_global_preferences"),
+    /** @deprecated Use `client.preferences.get()` or `orpc.preferences.get` from `@/lib/orpc`. */
+    get: () => client.preferences.get(),
   },
   settings: {
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
+    /** @deprecated Use `client.settings.export()` or `orpc.settings.export` from `@/lib/orpc`. */
     export: (includeSecrets: boolean) =>
-      invoke<ExportResult | null>("settings_export", { includeSecrets }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    import: () => invoke<ImportResult | null>("settings_import"),
+      client.settings.export({ includeSecrets }),
+    /** @deprecated Use `client.settings.import()` or `orpc.settings.import` from `@/lib/orpc`. */
+    import: () => client.settings.import(),
   },
   devConfigs: {
     /**
      * Returns the static schema for every registered Configurable struct.
      * Same value every call — safe to cache.
-     * @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`.
+     * @deprecated Use `client.devConfigs.schemas()` or `orpc.devConfigs.schemas` from `@/lib/orpc`.
      */
-    schemas: () => invoke<ConfigurableSchema[]>("dev_configs_schemas"),
+    schemas: () => client.devConfigs.schemas(),
     /**
      * Returns the current store-backed value of every registered Configurable,
      * keyed by struct name (matching `ConfigurableSchema.name`). Each value
      * is the full struct as a JSON object. Refresh this after `set` instead
      * of re-fetching schemas.
-     * @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`.
+     * @deprecated Use `client.devConfigs.values()` or `orpc.devConfigs.values` from `@/lib/orpc`.
      */
-    values: () => invoke<Record<string, JsonValue>>("dev_configs_values"),
+    values: () =>
+      client.devConfigs.values() as Promise<Record<string, JsonValue>>,
     /**
      * Replace a Configurable struct with a whole-struct payload. `value` must
      * be the full struct (every field), not a partial update — Serde validates
      * the whole thing in one pass on the backend.
-     * @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`.
+     * @deprecated Use `client.devConfigs.set()` or `orpc.devConfigs.set` from `@/lib/orpc`.
      */
     set: (structName: string, value: Record<string, unknown>) =>
-      invoke<void>("dev_config_set", { structName, value }),
+      client.devConfigs.set({ structName, value: value as JsonValue }),
   },
   models: {
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    getCached: (provider: string) => invoke<string[] | null>("get_cached_models", { provider }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
+    /** @deprecated Use `client.models.getCached()` or `orpc.models.getCached` from `@/lib/orpc`. */
+    getCached: (provider: string) => client.models.getCached({ provider }),
+    /** @deprecated Use `client.models.setCached()` or `orpc.models.setCached` from `@/lib/orpc`. */
     setCached: (provider: string, models: string[]) =>
-      invoke<OkResult>("set_cached_models", { provider, models }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    clearCached: (provider: string) => invoke<OkResult>("clear_cached_models", { provider }),
+      client.models.setCached({ provider, models }),
+    /** @deprecated Use `client.models.clearCached()` or `orpc.models.clearCached` from `@/lib/orpc`. */
+    clearCached: (provider: string) => client.models.clearCached({ provider }),
   },
 
   cli: {
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    checkTools: () => invoke<CliToolsState>("check_cli_tools"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    listModels: (tool: string) => invoke<string[]>("list_cli_models", { tool }),
+    /** @deprecated Use `client.cli.checkTools()` or `orpc.cli.checkTools` from `@/lib/orpc`. */
+    checkTools: () => client.cli.checkTools(),
+    /** @deprecated Use `client.cli.listModels()` or `orpc.cli.listModels` from `@/lib/orpc`. */
+    listModels: (tool: string) => client.cli.listModels({ tool }),
   },
 
   promptHistory: {
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    get: () => invoke<string[]>("get_prompt_history"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    add: (prompt: string) => invoke<OkResult>("add_to_prompt_history", { prompt }),
+    /** @deprecated Use `client.promptHistory.get()` or `orpc.promptHistory.get` from `@/lib/orpc`. */
+    get: () => client.promptHistory.get(),
+    /** @deprecated Use `client.promptHistory.add()` or `orpc.promptHistory.add` from `@/lib/orpc`. */
+    add: (prompt: string) => client.promptHistory.add({ prompt }),
   },
 
   previewIndicator: {
@@ -288,34 +270,35 @@ export const tauriAPI = {
 
   // Experimental: the spinning-mascot corner indicator shown during evolve/build.
   evolveMascot: {
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    show: () => invoke<OkResult>("evolve_mascot_show"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    hide: () => invoke<OkResult>("evolve_mascot_hide"),
+    /** @deprecated Use `client.evolveMascot.show()` or `orpc.evolveMascot.show` from `@/lib/orpc`. */
+    show: () => client.evolveMascot.show(),
+    /** @deprecated Use `client.evolveMascot.hide()` or `orpc.evolveMascot.hide` from `@/lib/orpc`. */
+    hide: () => client.evolveMascot.hide(),
   },
 
   scanner: {
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    getRecommendedPrompt: () => invoke<RecommendedPrompt | null>("get_recommended_prompt"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    scanDefaults: () => invoke<SystemDefaultsScan>("scan_system_defaults"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
+    /** @deprecated Use `client.scanner.getRecommendedPrompt()` or `orpc.scanner.getRecommendedPrompt` from `@/lib/orpc`. */
+    getRecommendedPrompt: () => client.scanner.getRecommendedPrompt(),
+    /** @deprecated Use `client.scanner.scanDefaults()` or `orpc.scanner.scanDefaults` from `@/lib/orpc`. */
+    scanDefaults: () => client.scanner.scanDefaults(),
+    /** @deprecated Use `client.scanner.applyDefaults()` or `orpc.scanner.applyDefaults` from `@/lib/orpc`. */
     applyDefaults: (defaults: SystemDefault[]) =>
-      invoke<ConfigEditApplyResult>("apply_system_defaults", { defaults }),
+      client.scanner.applyDefaults({ defaults }),
   },
   permissions: {
     /**
      * Last-known permissions from the backend cell; null = never probed.
-     * @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`.
+     * @deprecated Use `client.permissions.get()` or `orpc.permissions.get` from `@/lib/orpc`.
      */
-    get: () => invoke<PermissionsState | null>("get_permissions"),
+    get: () => client.permissions.get(),
     /**
      * Probe all macOS permissions; the result arrives via `permissions_changed`.
-     * @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`.
+     * @deprecated Use `client.permissions.refresh()` or `orpc.permissions.refresh` from `@/lib/orpc`.
      */
-    refresh: () => invoke<void>("refresh_permissions"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    request: (permissionId: string) => invoke<Permission>("permissions_request", { permissionId }),
+    refresh: () => client.permissions.refresh(),
+    /** @deprecated Use `client.permissions.request()` or `orpc.permissions.request` from `@/lib/orpc`. */
+    request: (permissionId: string) =>
+      client.permissions.request({ permissionId }),
     // macOS-specific permission checks via tauri-plugin-macos-permissions
     checkFullDiskAccess: () => checkFullDiskAccessPermission(),
     requestFullDiskAccess: () => requestFullDiskAccessPermission(),
@@ -337,52 +320,51 @@ export const tauriAPI = {
   },
 
   editor: {
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    readFile: (relPath: string) => invoke<string>("editor_read_file", { relPath }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
+    /** @deprecated Use `client.editor.readFile()` or `orpc.editor.readFile` from `@/lib/orpc`. */
+    readFile: (relPath: string) => client.editor.readFile({ relPath }),
+    /** @deprecated Use `client.editor.writeFile()` or `orpc.editor.writeFile` from `@/lib/orpc`. */
     writeFile: (relPath: string, content: string) =>
-      invoke<void>("editor_write_file", { relPath, content }),
+      client.editor.writeFile({ relPath, content }),
   },
 
   lsp: {
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    start: () => invoke<void>("lsp_start"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    send: (message: string) => invoke<void>("lsp_send", { message }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    stop: () => invoke<void>("lsp_stop"),
+    /** @deprecated Use `client.lsp.start()` or `orpc.lsp.start` from `@/lib/orpc`. */
+    start: () => client.lsp.start(),
+    /** @deprecated Use `client.lsp.send()` or `orpc.lsp.send` from `@/lib/orpc`. */
+    send: (message: string) => client.lsp.send({ message }),
+    /** @deprecated Use `client.lsp.stop()` or `orpc.lsp.stop` from `@/lib/orpc`. */
+    stop: () => client.lsp.stop(),
   },
 
   homebrew: {
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    getStateDiff: () => invoke<HomebrewState>("homebrew_get_state_diff"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    applyDiff: (diff: HomebrewState) =>
-      invoke<ConfigEditApplyResult>("homebrew_apply_diff", { diff }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    addItems: (items: HomebrewItem[]) =>
-      invoke<ConfigEditApplyResult>("homebrew_add_items", { items }),
+    /** @deprecated Use `client.homebrew.getStateDiff()` or `orpc.homebrew.getStateDiff` from `@/lib/orpc`. */
+    getStateDiff: () => client.homebrew.getStateDiff(),
+    /** @deprecated Use `client.homebrew.applyDiff()` or `orpc.homebrew.applyDiff` from `@/lib/orpc`. */
+    applyDiff: (diff: HomebrewState) => client.homebrew.applyDiff({ diff }),
+    /** @deprecated Use `client.homebrew.addItems()` or `orpc.homebrew.addItems` from `@/lib/orpc`. */
+    addItems: (items: HomebrewItem[]) => client.homebrew.addItems({ items }),
   },
 
   launchd: {
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    scanLaunchdItems: () => invoke<LaunchdItem[]>("scan_launchd_items"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
+    /** @deprecated Use `client.launchd.scanItems()` or `orpc.launchd.scanItems` from `@/lib/orpc`. */
+    scanLaunchdItems: () => client.launchd.scanItems(),
+    /** @deprecated Use `client.launchd.applyItems()` or `orpc.launchd.applyItems` from `@/lib/orpc`. */
     applyLaunchdItems: (items: LaunchdItem[]) =>
-      invoke<ConfigEditApplyResult>("apply_launchd_items", { items }),
+      client.launchd.applyItems({ items }),
   },
 
   updater: {
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    checkUpdate: () => invoke<UpdateInfo | null>("check_update"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    installUpdate: () => invoke<void>("install_update"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    installVersion: (version: string) => invoke<void>("install_version", { version }),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    relaunch: () => invoke<void>("relaunch_after_update"),
-    /** @deprecated oRPC migration pending — add procedure in `src-tauri/src/orpc/` then `bun run gen:orpc`. */
-    clearPinnedVersion: () => invoke<void>("clear_pinned_version"),
+    /** @deprecated Use `client.updater.checkUpdate()` or `orpc.updater.checkUpdate` from `@/lib/orpc`. */
+    checkUpdate: () => client.updater.checkUpdate(),
+    /** @deprecated Use `client.updater.installUpdate()` or `orpc.updater.installUpdate` from `@/lib/orpc`. */
+    installUpdate: () => client.updater.installUpdate(),
+    /** @deprecated Use `client.updater.installVersion()` or `orpc.updater.installVersion` from `@/lib/orpc`. */
+    installVersion: (version: string) =>
+      client.updater.installVersion({ version }),
+    /** @deprecated Use `client.updater.relaunch()` or `orpc.updater.relaunch` from `@/lib/orpc`. */
+    relaunch: () => client.updater.relaunch(),
+    /** @deprecated Use `client.updater.clearPinnedVersion()` or `orpc.updater.clearPinnedVersion` from `@/lib/orpc`. */
+    clearPinnedVersion: () => client.updater.clearPinnedVersion(),
   },
 };
 

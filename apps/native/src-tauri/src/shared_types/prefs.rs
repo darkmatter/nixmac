@@ -174,10 +174,12 @@ pub struct GlobalPreferences {
     pub update_channel: UpdateChannel,
     pub feature_flag_overrides: Option<BTreeMap<String, String>>,
     /// Timestamp (unix secs) of the last onboarding "scan this Mac" / customizations review.
+    #[specta(type = Option<f64>)]
     pub onboarding_mac_scanned_at: Option<i64>,
     /// True once the user logged in or explicitly chose bring-your-own-key during onboarding.
     pub onboarding_login_decided: bool,
     /// Timestamp (unix secs) of the last successful build/evolution apply. Set by `finalize_apply`.
+    #[specta(type = Option<f64>)]
     pub onboarding_last_build_at: Option<i64>,
     /// Whether or not to auto-format Nix files when making changes to the flakes.
     pub auto_format_nix_files: bool,

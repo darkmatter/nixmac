@@ -87,6 +87,7 @@ pub struct PermissionsState {
     /// True when every required permission is granted.
     pub all_required_granted: bool,
     /// Unix timestamp when permissions were last checked.
+    #[specta(type = Option<f64>)]
     pub checked_at: Option<i64>,
 }
 

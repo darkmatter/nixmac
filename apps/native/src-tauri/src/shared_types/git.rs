@@ -46,8 +46,10 @@ pub struct GitStatus {
     /// Unified diff for the current working tree/index changes.
     pub diff: String,
     /// Total added lines in `diff`.
+    #[specta(type = f64)]
     pub additions: usize,
     /// Total removed lines in `diff`.
+    #[specta(type = f64)]
     pub deletions: usize,
     /// Current HEAD commit hash, when available.
     pub head_commit_hash: Option<String>,

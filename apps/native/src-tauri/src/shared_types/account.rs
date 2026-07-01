@@ -46,6 +46,7 @@ pub struct SyncRemoteStatus {
     /// Commit hash of the latest snapshot the server holds, if any.
     pub head_commit_hash: Option<String>,
     /// Unix timestamp (seconds) of the latest server-side snapshot, if any.
+    #[specta(type = Option<f64>)]
     pub updated_at: Option<i64>,
     /// Number of devices currently registered to the account.
     pub device_count: u32,

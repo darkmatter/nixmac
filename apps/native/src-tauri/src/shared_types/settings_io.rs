@@ -7,6 +7,7 @@ use specta::Type;
 #[serde(rename_all = "camelCase")]
 pub struct ExportResult {
     pub path: String,
+    #[specta(type = f64)]
     pub keys_written: usize,
     pub keys_skipped: Vec<String>,
 }
@@ -16,6 +17,7 @@ pub struct ExportResult {
 #[serde(rename_all = "camelCase")]
 pub struct ImportResult {
     pub path: String,
+    #[specta(type = f64)]
     pub keys_imported: usize,
 }
 
