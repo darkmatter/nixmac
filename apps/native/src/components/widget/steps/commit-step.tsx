@@ -2,10 +2,12 @@
 
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ConfirmButton } from "@/components/widget/controls/confirm-button";
+import { CheckConfirmationOff } from "@/components/widget/controls/check-confirmation-off";
+import { ConfirmationDialog } from "@/components/widget/controls/confirmation-dialog";
 import { MergeSection } from "@/components/widget/layout/merge-section";
 import { PromptInputSection } from "@/components/widget/promptinput/prompt-input-section";
 import { SummaryOrDiff } from "@/components/widget/summaries/summary-or-diff";
+import { useConfirm } from "@/hooks/use-confirm";
 import { useRollback } from "@/hooks/use-rollback";
 import { CheckCircle, MoreVertical, RefreshCw, Undo2 } from "lucide-react";
 import { useState } from "react";
@@ -18,7 +20,11 @@ import { useState } from "react";
  */
 export function CommitStep({ isManual = false }: { isManual?: boolean }) {
   const { handleRollback } = useRollback();
-  const [action, setAction] = useState<"commit" | "amend">("commit");
+  const [action] = useState<"commit" | "amend">("commit");
+  const rollbackConfirm = useConfirm({
+    confirmPrefKey: "confirmRollback",
+    onConfirm: handleRollback,
+  });
 
   return (
     <>
@@ -35,17 +41,9 @@ export function CommitStep({ isManual = false }: { isManual?: boolean }) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem>
-                <ConfirmButton
-                  variant="link"
-                  confirmPrefKey="confirmRollback"
-                  onConfirm={handleRollback}
-                  message="Discard changes and rebuild to previous commit?"
-                  color="amber"
-                >
-                  <Undo2 />
-                  {isManual ? "Undo last build" : "Undo All"}
-                </ConfirmButton>
+              <DropdownMenuItem onSelect={rollbackConfirm.request}>
+                <Undo2 />
+                {isManual ? "Undo last build" : "Undo All"}
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <Button variant="link" size="sm">
@@ -56,7 +54,17 @@ export function CommitStep({ isManual = false }: { isManual?: boolean }) {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </div >
+      </div>
+
+      <ConfirmationDialog
+        open={rollbackConfirm.open}
+        onOpenChange={rollbackConfirm.setOpen}
+        message="Discard changes and rebuild to previous commit?"
+        onConfirm={rollbackConfirm.handleConfirm}
+        color="amber"
+      >
+        <CheckConfirmationOff onCheckedChange={rollbackConfirm.setDisable} />
+      </ConfirmationDialog>
 
       <p className="text-sm mb-2 text-zinc-900 dark:text-zinc-200/90 leading-relaxed tracking-tight">
         If you're happy with your changes, click the "Commit" button below to add it to your version history.

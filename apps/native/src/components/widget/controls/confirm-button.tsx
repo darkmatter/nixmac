@@ -3,11 +3,9 @@
 import { Button } from "@/components/ui/button";
 import { CheckConfirmationOff } from "@/components/widget/controls/check-confirmation-off";
 import { ConfirmationDialog } from "@/components/widget/controls/confirmation-dialog";
-import { usePrefs } from "@/hooks/use-prefs";
-import { useViewModel } from "@nixmac/state";
+import { useConfirm } from "@/hooks/use-confirm";
 import type { ConfirmPrefKey } from "@/types/preferences";
 import type { ComponentProps } from "react";
-import { useState } from "react";
 
 interface ConfirmButtonProps extends ComponentProps<typeof Button> {
   confirmPrefKey: ConfirmPrefKey;
@@ -24,29 +22,14 @@ export function ConfirmButton({
   children,
   ...buttonProps
 }: ConfirmButtonProps) {
-  const confirm = useViewModel((s) => s.preferences?.[confirmPrefKey] ?? true);
-  const { setPref } = usePrefs();
-
-  const [open, setOpen] = useState(false);
-  const [disable, setDisable] = useState(false);
-
-  const handleClick = () => {
-    if (confirm) {
-      setDisable(false);
-      setOpen(true);
-    } else {
-      onConfirm();
-    }
-  };
-
-  const handleConfirm = () => {
-    if (disable) setPref(confirmPrefKey, false);
-    onConfirm();
-  };
+  const { open, setOpen, setDisable, request, handleConfirm } = useConfirm({
+    confirmPrefKey,
+    onConfirm,
+  });
 
   return (
     <>
-      <Button {...buttonProps} onClick={handleClick}>
+      <Button {...buttonProps} onClick={request}>
         {children}
       </Button>
       <ConfirmationDialog
