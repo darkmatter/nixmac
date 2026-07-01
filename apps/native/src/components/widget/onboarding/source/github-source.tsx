@@ -22,7 +22,7 @@ import { signInSocial } from "@daveyplate/better-auth-tauri";
 import { GitHubLogoIcon } from "@radix-ui/react-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-shell";
-import { Check, FileWarning, Globe, Loader2, Lock, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import { Check, Copy, FileWarning, Globe, Loader2, Lock, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 interface GitHubSourceProps {
@@ -38,6 +38,13 @@ const EMAIL_FALLBACK_MESSAGE =
   "GitHub could not finish account setup. Use an email code to continue, then reconnect GitHub.";
 
 const DEFAULT_BOOTSTRAP_POLL_MS = 5000;
+
+/**
+ * When true, the primary "Connect" button runs the server bootstrap (device
+ * code) flow, and the browser OAuth (`signInSocial`) flow moves to the
+ * secondary link. Flip to false to restore OAuth as the default for testing.
+ */
+const USE_SERVER_BOOTSTRAP_DEFAULT = true;
 
 async function openExternal(url: string) {
   try {
@@ -149,9 +156,14 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
   const [repoPage, setRepoPage] = useState(0);
   const [importingRef, setImportingRef] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
   const cancelled = useRef(false);
   const bootstrapResolved = useRef(false);
   const bootstrapStateRef = useRef<string | null>(null);
+  // Mirror the poll interval into a ref so the polling loop can read the latest
+  // cadence without the effect tearing down and restarting its timer.
+  const bootstrapPollIntervalRef = useRef(DEFAULT_BOOTSTRAP_POLL_MS);
 
   const resetRejectedSession = useCallback((error: unknown): boolean => {
     if (!isUnauthorizedSession(error)) return false;
@@ -290,18 +302,33 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     };
   }, [pollGitHubConnection]);
 
+  // Keep the interval ref in sync with the server-requested cadence.
+  useEffect(() => {
+    bootstrapPollIntervalRef.current = bootstrapPollIntervalMs;
+  }, [bootstrapPollIntervalMs]);
+
+  // Poll while connecting. A self-scheduling timeout (rather than setInterval
+  // with the interval in the dep array) means a mid-flight cadence change never
+  // resets the countdown, so authorization is always eventually detected.
   useEffect(() => {
     if (auth !== "connecting") return;
-    const intervalMs =
-      connectMode === "bootstrap"
-        ? Math.max(bootstrapPollIntervalMs, DEFAULT_BOOTSTRAP_POLL_MS)
-        : 2500;
-    void pollGitHubConnection();
-    const id = setInterval(() => {
-      void pollGitHubConnection();
-    }, intervalMs);
-    return () => clearInterval(id);
-  }, [auth, bootstrapPollIntervalMs, connectMode, pollGitHubConnection]);
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = async () => {
+      await pollGitHubConnection();
+      if (stopped) return;
+      const delay =
+        connectMode === "bootstrap"
+          ? Math.max(bootstrapPollIntervalRef.current, DEFAULT_BOOTSTRAP_POLL_MS)
+          : 2500;
+      timer = setTimeout(() => void tick(), delay);
+    };
+    void tick();
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+    };
+  }, [auth, connectMode, pollGitHubConnection]);
 
   // Repos shown after connecting; cached + deduped via React Query.
   const reposQuery = useQuery(
@@ -425,6 +452,37 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     await pollGitHubConnection();
   }
 
+  async function copyDeviceCode(code: string) {
+    try {
+      await navigator.clipboard.writeText(code);
+      if (cancelled.current) return;
+      setCodeCopied(true);
+      setTimeout(() => {
+        if (!cancelled.current) setCodeCopied(false);
+      }, 2000);
+    } catch {
+      // Clipboard can be unavailable/denied; the code is still shown to type.
+    }
+  }
+
+  async function disconnectGitHub() {
+    setError(null);
+    setDisconnecting(true);
+    try {
+      await client.github.disconnect();
+      if (cancelled.current) return;
+      queryClient.removeQueries({ queryKey: orpc.github.key() });
+      setLogin(null);
+      setConnectMode(null);
+      bootstrapResolved.current = false;
+      setAuth("disconnected");
+    } catch (e: unknown) {
+      if (!cancelled.current) setError(errorMessage(e));
+    } finally {
+      if (!cancelled.current) setDisconnecting(false);
+    }
+  }
+
   async function chooseRepo(repo: GithubRepo) {
     if (!repo.hasFlake) return;
     const repoRef = `${repo.owner}/${repo.name}`;
@@ -480,7 +538,13 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     const emailValid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
     const accountFormReady = emailValid && (!otpSent || otp.trim().length > 0);
     const canContinue = usingEmailFallback ? accountFormReady : true;
-    const primaryAction = usingEmailFallback ? (otpSent ? verifyOtpAndConnect : sendOtp) : connect;
+    // The default GitHub connect action is toggled by USE_SERVER_BOOTSTRAP_DEFAULT.
+    const defaultConnect = USE_SERVER_BOOTSTRAP_DEFAULT ? connectWithServerBootstrap : connect;
+    const primaryAction = usingEmailFallback
+      ? otpSent
+        ? verifyOtpAndConnect
+        : sendOtp
+      : defaultConnect;
     const primaryLabel = usingEmailFallback
       ? otpSent
         ? "Verify code and connect"
@@ -586,9 +650,24 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
         {connecting && connectMode === "bootstrap" && bootstrapUserCode ? (
           <div className="mt-4 w-full max-w-sm rounded-lg border border-border bg-muted/30 p-3 text-left">
             <p className="font-medium text-sm">Enter this code on GitHub</p>
-            <p className="mt-2 rounded-md bg-background px-3 py-2 text-center font-mono font-semibold text-lg tracking-widest">
-              {bootstrapUserCode}
-            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <p className="flex-1 rounded-md bg-background px-3 py-2 text-center font-mono font-semibold text-lg tracking-widest">
+                {bootstrapUserCode}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => copyDeviceCode(bootstrapUserCode)}
+                aria-label={codeCopied ? "Code copied" : "Copy code"}
+              >
+                {codeCopied ? (
+                  <Check className="size-4 text-success" aria-hidden="true" />
+                ) : (
+                  <Copy className="size-4" aria-hidden="true" />
+                )}
+              </Button>
+            </div>
             <p className="mt-2 text-muted-foreground text-xs">
               We opened{" "}
               <button
@@ -602,16 +681,6 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
             </p>
           </div>
         ) : null}
-        {!usingEmailFallback && !connecting ? (
-          <button
-            type="button"
-            onClick={connectWithServerBootstrap}
-            disabled={connectBusy}
-            className="mt-3 text-muted-foreground text-xs hover:underline disabled:pointer-events-none disabled:opacity-50"
-          >
-            Try server bootstrap flow
-          </button>
-        ) : null}
         {connecting ? (
           <div className="mt-3 flex flex-col items-center gap-1.5">
             <button
@@ -624,7 +693,7 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
             </button>
             <button
               type="button"
-              onClick={connect}
+              onClick={connectMode === "bootstrap" ? connectWithServerBootstrap : connect}
               className="text-muted-foreground text-xs hover:underline"
             >
               Re-open GitHub
@@ -653,7 +722,14 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
           </span>
           Connected{login ? <> as <span className="font-medium">@{login}</span></> : null}
         </span>
-        <span className="text-muted-foreground text-xs">Read-only</span>
+        <button
+          type="button"
+          onClick={disconnectGitHub}
+          disabled={disconnecting}
+          className="text-muted-foreground text-xs transition-colors hover:text-destructive hover:underline disabled:pointer-events-none disabled:opacity-50"
+        >
+          {disconnecting ? "Disconnecting…" : "Disconnect"}
+        </button>
       </div>
 
       {error ? (

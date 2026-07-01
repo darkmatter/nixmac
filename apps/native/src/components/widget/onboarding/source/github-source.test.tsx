@@ -92,7 +92,9 @@ describe("GitHubSource", () => {
     mockSignInSocial.mockResolvedValue(undefined);
   });
 
-  it("starts GitHub auth through Better Auth Tauri social sign-in", async () => {
+  // The primary button runs the server bootstrap (device code) flow by default;
+  // see USE_SERVER_BOOTSTRAP_DEFAULT in github-source.tsx.
+  it("starts GitHub auth through the server bootstrap device flow", async () => {
     renderGitHubSource();
 
     const connectButton = await screen.findByTestId("github-connect-button");
@@ -100,13 +102,10 @@ describe("GitHubSource", () => {
       fireEvent.click(connectButton);
     });
 
-    await waitFor(() =>
-      expect(mockSignInSocial).toHaveBeenCalledWith({
-        authClient: mockAuthClient,
-        provider: "github",
-      }),
+    await waitFor(() => expect(mockBootstrapStart).toHaveBeenCalled());
+    expect(mockOpen).toHaveBeenCalledWith(
+      "https://github.com/apps/nixmac/installations/new?state=state-1",
     );
-    expect(mockBootstrapStart).not.toHaveBeenCalled();
-    expect(mockOpen).not.toHaveBeenCalled();
+    expect(mockSignInSocial).not.toHaveBeenCalled();
   });
 });

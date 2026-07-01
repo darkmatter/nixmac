@@ -6,14 +6,18 @@ import { FlakeRefSource } from "@/components/widget/onboarding/source/flake-ref-
 import { GitHubSource } from "@/components/widget/onboarding/source/github-source";
 import { LocalSource } from "@/components/widget/onboarding/source/local-source";
 import { StepShell } from "@/components/widget/onboarding/step-shell";
+import { Button } from "@/components/ui/button";
 import { useViewModel } from "@nixmac/state";
 import { GitHubLogoIcon } from "@radix-ui/react-icons";
 import {
   ArrowLeft,
+  Check,
   ChevronRight,
+  FolderGit2,
   GitBranch,
   HardDrive,
   Link2,
+  RefreshCw,
   Rocket,
 } from "lucide-react";
 import type { ComponentType } from "react";
@@ -128,10 +132,36 @@ export function ConfigDirStep() {
   }, [configDir]);
 
   if (!showSources) {
-    // Nothing to render here for the gated state — the host-selection step
-    // (`setup`) takes over once a config dir is chosen. This branch is
-    // unreachable while the gate machine is consistent, but defensive.
-    return null;
+    // A config dir is already chosen. During forward onboarding the gate machine
+    // advances past this step automatically, but the user can navigate back to
+    // it from the stepper — so show what's set, with a way to change it.
+    return (
+      <StepShell
+        eyebrow={stepEyebrow("config-dir")}
+        title="Your configuration"
+        description="nixmac is reading your Mac's configuration from this flake. You can point it somewhere else if you need to."
+      >
+        <div className="flex items-start gap-4 rounded-xl border border-border bg-card p-5">
+          <span
+            className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-success/15 text-success"
+            aria-hidden="true"
+          >
+            <FolderGit2 className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <span className="flex items-center gap-1.5 font-semibold text-sm">
+              <Check className="size-4 text-success" aria-hidden="true" />
+              Config directory set
+            </span>
+            <p className="mt-1 break-all font-mono text-muted-foreground text-xs">{configDir}</p>
+          </div>
+          <Button variant="outline" className="shrink-0" onClick={() => setChanging(true)}>
+            <RefreshCw className="size-4" aria-hidden="true" />
+            Change source
+          </Button>
+        </div>
+      </StepShell>
+    );
   }
 
   if (mode === "choose") {
@@ -182,7 +212,11 @@ export function ConfigDirStep() {
       title="Import your configuration"
       description="Import an existing flake from a GitHub repo, a local folder, or a flake reference — whichever matches your setup."
     >
-      <BackLink onClick={() => setMode("choose")} />
+      {/* One context-aware Back: a sub-method returns to the GitHub view, the
+          GitHub view (the import entry point) returns to the choose screen. */}
+      <BackLink
+        onClick={() => (method === "github" ? setMode("choose") : setMethod("github"))}
+      />
 
       {method === "github" ? (
         <div className="flex flex-col gap-5">
@@ -221,14 +255,6 @@ export function ConfigDirStep() {
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          <button
-            type="button"
-            onClick={() => setMethod("github")}
-            className="inline-flex items-center gap-1.5 self-start text-muted-foreground text-sm transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" aria-hidden="true" />
-            Back to GitHub
-          </button>
           {method === "local" ? <LocalSource onImported={() => setChanging(false)} /> : null}
           {method === "ref" ? <FlakeRefSource onImported={() => setChanging(false)} /> : null}
         </div>
