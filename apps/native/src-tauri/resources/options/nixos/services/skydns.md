@@ -5,7 +5,7 @@
 All options under `services.skydns`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.skydns.address` | | |
 | `services.skydns.domain` | | |
 | `services.skydns.enable` | | |

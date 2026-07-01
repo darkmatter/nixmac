@@ -5,7 +5,7 @@
 All options under `services.picom`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.picom.activeOpacity` | | |
 | `services.picom.backend` | | |
 | `services.picom.enable` | | |

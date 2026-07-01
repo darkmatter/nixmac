@@ -5,7 +5,7 @@
 All options under `programs.exa`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `programs.exa.enable` | | |
 | `programs.exa.extraOptions` | | |
 | `programs.exa.git` | | |

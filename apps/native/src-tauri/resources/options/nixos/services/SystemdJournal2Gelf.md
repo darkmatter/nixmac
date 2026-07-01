@@ -5,7 +5,7 @@
 All options under `services.SystemdJournal2Gelf`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.SystemdJournal2Gelf.enable` | | |
 | `services.SystemdJournal2Gelf.extraOptions` | | |
 | `services.SystemdJournal2Gelf.graylogServer` | | |

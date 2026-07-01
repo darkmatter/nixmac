@@ -5,7 +5,7 @@
 All options under `services.overseerr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.overseerr.enable` | | |
 | `services.overseerr.openFirewall` | | |
 | `services.overseerr.package` | | |

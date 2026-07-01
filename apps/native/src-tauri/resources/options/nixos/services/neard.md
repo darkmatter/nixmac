@@ -5,6 +5,6 @@
 All options under `services.neard`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.neard.enable` | | |
 | `services.neard.settings` | | |

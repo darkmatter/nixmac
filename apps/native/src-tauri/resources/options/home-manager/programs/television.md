@@ -5,7 +5,7 @@
 All options under `programs.television`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.television.channels` | `attribute set of (TOML value)` | Each set of channels are written to $XDG_CONFIG_HOME/television/cable/NAME.toml |
 | `programs.television.enable` | `boolean` | Whether to enable television. |
 | `programs.television.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |

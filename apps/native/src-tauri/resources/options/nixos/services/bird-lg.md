@@ -5,7 +5,7 @@
 All options under `services.bird-lg`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------ | ---- | ----------- |
 | `services.bird-lg.frontend.bgpMapInfo` | | |
 | `services.bird-lg.frontend.dnsInterface` | | |
 | `services.bird-lg.frontend.domain` | | |

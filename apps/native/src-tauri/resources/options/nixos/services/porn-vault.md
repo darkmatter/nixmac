@@ -5,7 +5,7 @@
 All options under `services.porn-vault`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.porn-vault.autoStart` | | |
 | `services.porn-vault.enable` | | |
 | `services.porn-vault.openFirewall` | | |

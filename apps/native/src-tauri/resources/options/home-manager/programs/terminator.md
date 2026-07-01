@@ -5,7 +5,7 @@
 All options under `programs.terminator`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | --------------------------- | --------------------------------------------------------- |
 | `programs.terminator.config` | `attribute set of anything` | configuration for terminator. |
 | `programs.terminator.enable` | `boolean` | Whether to enable terminator, a tiling terminal emulator. |
 | `programs.terminator.package` | `package` | The terminator package to use. |

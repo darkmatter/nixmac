@@ -5,7 +5,7 @@
 All options under `services.mautrix-telegram`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.mautrix-telegram.enable` | | |
 | `services.mautrix-telegram.environmentFile` | | |
 | `services.mautrix-telegram.package` | | |

@@ -1,5 +1,11 @@
 # Git configuration
-{ config, pkgs, lib, user, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  user,
+  ...
+}:
 
 {
   programs.git = {
@@ -26,8 +32,14 @@
       };
 
       color.ui = "auto";
-      diff = { colorMoved = "zebra"; tool = "vimdiff"; };
-      merge = { ff = false; tool = "sublimerge"; };
+      diff = {
+        colorMoved = "zebra";
+        tool = "vimdiff";
+      };
+      merge = {
+        ff = false;
+        tool = "sublimerge";
+      };
       push.default = "current";
       pull.rebase = false;
       fetch.prune = true;
@@ -82,14 +94,37 @@
   };
 
   programs.git.ignores = [
-    ".DS_Store" "._*" ".Spotlight-V100" ".Trashes"
-    "*.swp" "*.swo" "*~" ".netrwhist"
-    ".vscode/" "*.code-workspace" ".history/"
-    ".direnv/" ".envrc"
-    "node_modules/" "npm-debug.log*" "yarn-debug.log*" "yarn-error.log*" ".pnpm-debug.log*"
-    "__pycache__/" "*.py[cod]" "*$py.class" ".Python" "venv/" ".venv/"
-    ".terraform/" "*.tfstate" "*.tfstate.*"
-    "*.log" ".env" ".env.local" ".env.*.local"
+    ".DS_Store"
+    "._*"
+    ".Spotlight-V100"
+    ".Trashes"
+    "*.swp"
+    "*.swo"
+    "*~"
+    ".netrwhist"
+    ".vscode/"
+    "*.code-workspace"
+    ".history/"
+    ".direnv/"
+    ".envrc"
+    "node_modules/"
+    "npm-debug.log*"
+    "yarn-debug.log*"
+    "yarn-error.log*"
+    ".pnpm-debug.log*"
+    "__pycache__/"
+    "*.py[cod]"
+    "*$py.class"
+    ".Python"
+    "venv/"
+    ".venv/"
+    ".terraform/"
+    "*.tfstate"
+    "*.tfstate.*"
+    "*.log"
+    ".env"
+    ".env.local"
+    ".env.*.local"
     ".aws-sam/"
   ];
 
@@ -105,4 +140,3 @@
     # * Are there any side effects?
   '';
 }
-

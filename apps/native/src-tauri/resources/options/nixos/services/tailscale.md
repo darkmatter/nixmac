@@ -5,7 +5,7 @@
 All options under `services.tailscale`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.tailscale.authKeyFile` | | |
 | `services.tailscale.authKeyParameters` | | |
 | `services.tailscale.derper.configureNginx` | | |

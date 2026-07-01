@@ -5,6 +5,6 @@
 All options under `services.hyprpolkitagent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | --------- | ------------------------------------------- |
 | `services.hyprpolkitagent.enable` | `boolean` | Whether to enable Hyprland Policykit Agent. |
 | `services.hyprpolkitagent.package` | `package` | The hyprpolkitagent package to use. |

@@ -5,7 +5,7 @@
 All options under `services.rke2`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------------------------- | ---- | ----------- |
 | `services.rke2.agentToken` | | |
 | `services.rke2.agentTokenFile` | | |
 | `services.rke2.autoDeployCharts` | | |

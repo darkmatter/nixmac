@@ -5,7 +5,7 @@
 All options under `services.misc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.misc.nzbget.configFile` | | |
 | `services.misc.nzbget.dataDir` | | |
 | `services.misc.nzbget.openFirewall` | | |

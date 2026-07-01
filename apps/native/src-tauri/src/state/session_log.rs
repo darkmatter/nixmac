@@ -14,7 +14,7 @@ use chrono::Local;
 use serde_json::Value;
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
 use crate::system::secret_scanner::SecretScanner;
@@ -133,7 +133,7 @@ fn sanitize_payload_for_session_log(payload: &Value) -> Value {
 /// line is serialized to a single newline-terminated buffer and written with
 /// `write_all`, which (combined with `O_APPEND`) keeps each line effectively
 /// atomic for the small payloads seen here.
-pub async fn append_event(path: &PathBuf, event_type: &str, payload: &serde_json::Value) {
+pub async fn append_event(path: &Path, event_type: &str, payload: &serde_json::Value) {
     let payload = sanitize_payload_for_session_log(payload);
     let line = serde_json::json!({
         "ts": chrono::Utc::now().to_rfc3339(),
@@ -141,7 +141,7 @@ pub async fn append_event(path: &PathBuf, event_type: &str, payload: &serde_json
         "data": payload,
     });
     let buf = format!("{line}\n").into_bytes();
-    let path = path.clone();
+    let path = path.to_path_buf();
 
     match tokio::task::spawn_blocking(move || -> std::io::Result<()> {
         let mut file = OpenOptions::new().append(true).open(&path)?;

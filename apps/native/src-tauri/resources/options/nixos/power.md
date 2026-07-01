@@ -5,7 +5,7 @@
 All options under `power`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `power.ups.enable` | | |
 | `power.ups.maxStartDelay` | | |
 | `power.ups.mode` | | |

@@ -5,5 +5,5 @@
 All options under `services.do-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.do-agent.enable` | | |

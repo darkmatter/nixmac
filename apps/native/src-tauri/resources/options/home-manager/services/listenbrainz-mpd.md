@@ -5,7 +5,7 @@
 All options under `services.listenbrainz-mpd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ----------------- | --------------------------------------------------------------------------------------------- |
 | `services.listenbrainz-mpd.enable` | `boolean` | Whether to enable listenbrainz-mpd. |
 | `services.listenbrainz-mpd.package` | `null or package` | The listenbrainz-mpd package to use. |
 | `services.listenbrainz-mpd.settings` | `TOML value` | Configuration for listenbrainz-mpd written to $XDG_CONFIG_HOME/listenbrainz-mpd/config.toml . |

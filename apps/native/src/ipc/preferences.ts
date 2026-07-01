@@ -7,13 +7,13 @@
  * initialization to finish first.
  *
  */
-import { invoke } from "@tauri-apps/api/core";
 import type {
-  OkResult,
   UiPrefs as DarwinPrefs,
   UiPrefsUpdate as DarwinPrefsUpdate,
+  OkResult,
 } from "@/ipc/types";
-import { migrateLegacyOpenaiProviderPrefs } from "@/lib/ai-provider-migration";
+import { migrateLegacyOpenaiProviderPrefs } from "@/lib/providers/ai-provider-migration";
+import { invoke } from "@tauri-apps/api/core";
 
 let cachedPrefs: DarwinPrefs | null = null;
 let pendingPrefs: Promise<DarwinPrefs> | null = null;

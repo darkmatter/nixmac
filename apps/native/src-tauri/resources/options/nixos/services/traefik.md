@@ -5,7 +5,7 @@
 All options under `services.traefik`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.traefik.dataDir` | | |
 | `services.traefik.dynamicConfigFile` | | |
 | `services.traefik.dynamicConfigOptions` | | |

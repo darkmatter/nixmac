@@ -5,6 +5,6 @@
 All options under `services.tumbler`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.tumbler.enable` | | |
 | `services.tumbler.package` | | |

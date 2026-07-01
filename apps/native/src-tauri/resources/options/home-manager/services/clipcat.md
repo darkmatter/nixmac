@@ -5,7 +5,7 @@
 All options under `services.clipcat`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `services.clipcat.ctlSettings` | `TOML value` | Configuration settings for clipcatctl. All available options can be found here: https://github.com/xrelkd/clipcat?tab=readme-ov-file#configuration . |
 | `services.clipcat.daemonSettings` | `TOML value` | Configuration settings for clipcatd. All available options can be found here: https://github.com/xrelkd/clipcat?tab=readme-ov-file#configuration . |
 | `services.clipcat.enable` | `boolean` | Whether to enable clipcat. |

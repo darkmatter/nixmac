@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
-import { FileArchive, FolderInput, GitBranch } from "lucide-react";
+import { GitHubLogoIcon } from "@radix-ui/react-icons";
+import { FileArchive, FolderInput } from "lucide-react";
 import { useState } from "react";
 
 type ImportSource = "github" | "zip";
@@ -77,7 +78,7 @@ export function RepoImport({ onImported }: RepoImportProps) {
       >
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="github">
-            <GitBranch className="mr-1 h-3 w-3" />
+            <GitHubLogoIcon className="mr-1 size-3" />
             GitHub
           </TabsTrigger>
           <TabsTrigger value="zip">
@@ -98,11 +99,14 @@ export function RepoImport({ onImported }: RepoImportProps) {
             placeholder="owner/repo"
             className="font-mono text-xs"
             aria-label="GitHub repository reference"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             disabled={isImporting}
           />
           <p className="text-muted-foreground text-xs">
-            A public GitHub repo, e.g. <span className="font-mono">czxtm/darwin</span>. Add{" "}
-            <span className="font-mono">#branch</span> to clone a specific branch.
+            A public GitHub repo, e.g. <span className="font-mono">github.com/darkmatter/nixmac</span>. Add{" "}
+            <span className="font-mono">?ref= and/or ?dir=</span> to clone a specific branch or use a subdirectory.
           </p>
         </div>
       ) : (

@@ -5,7 +5,7 @@
 All options under `programs.skim`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---------------- | -------------------------------------------------------------------------------- |
 | `programs.skim.changeDirWidgetCommand` | `null or string` | The command that gets executed as the source for skim for the ALT-C keybinding. |
 | `programs.skim.changeDirWidgetOptions` | `list of string` | Command line options for the ALT-C keybinding. |
 | `programs.skim.defaultCommand` | `null or string` | The command that gets executed as the default source for skim when running. |

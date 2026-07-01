@@ -5,5 +5,5 @@
 All options under `services.telepathy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.telepathy.enable` | | |

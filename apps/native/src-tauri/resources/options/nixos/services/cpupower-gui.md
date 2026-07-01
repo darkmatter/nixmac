@@ -5,5 +5,5 @@
 All options under `services.cpupower-gui`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.cpupower-gui.enable` | | |

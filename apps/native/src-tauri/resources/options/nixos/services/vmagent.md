@@ -5,7 +5,7 @@
 All options under `services.vmagent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------------- | ---- | ----------- |
 | `services.vmagent.checkConfig` | | |
 | `services.vmagent.dataDir` | | |
 | `services.vmagent.enable` | | |

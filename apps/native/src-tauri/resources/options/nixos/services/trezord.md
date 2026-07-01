@@ -5,7 +5,7 @@
 All options under `services.trezord`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.trezord.emulator.enable` | | |
 | `services.trezord.emulator.port` | | |
 | `services.trezord.enable` | | |

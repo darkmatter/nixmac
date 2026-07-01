@@ -5,5 +5,5 @@
 All options under `services.brltty`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.brltty.enable` | | |

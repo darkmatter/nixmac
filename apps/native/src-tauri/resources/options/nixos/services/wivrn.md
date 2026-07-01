@@ -5,7 +5,7 @@
 All options under `services.wivrn`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.wivrn.autoStart` | | |
 | `services.wivrn.config.enable` | | |
 | `services.wivrn.config.json` | | |

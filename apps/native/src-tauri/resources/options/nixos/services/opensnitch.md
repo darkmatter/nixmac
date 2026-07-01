@@ -5,7 +5,7 @@
 All options under `services.opensnitch`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.opensnitch.configFile` | | |
 | `services.opensnitch.enable` | | |
 | `services.opensnitch.package` | | |

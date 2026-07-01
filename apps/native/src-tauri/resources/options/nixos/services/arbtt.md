@@ -5,7 +5,7 @@
 All options under `services.arbtt`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.arbtt.enable` | | |
 | `services.arbtt.logFile` | | |
 | `services.arbtt.package` | | |

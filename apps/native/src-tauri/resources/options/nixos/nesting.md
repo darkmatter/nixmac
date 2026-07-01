@@ -5,6 +5,6 @@
 All options under `nesting`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------ | ---- | ----------- |
 | `nesting.children` | | |
 | `nesting.clone` | | |

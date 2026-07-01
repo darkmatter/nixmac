@@ -5,6 +5,6 @@
 All options under `programs.coolercontrol`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `programs.coolercontrol.enable` | | |
 | `programs.coolercontrol.nvidiaSupport` | | |

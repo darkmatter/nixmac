@@ -5,7 +5,7 @@
 All options under `programs.msmtp`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | -------------------------------- | ------------------------------------------------------------------------------------ |
 | `programs.msmtp.configContent` | `strings concatenated with “\n”` | Content added to msmtp config. See https://marlam.de/msmtp/msmtprc.txt for examples. |
 | `programs.msmtp.enable` | `boolean` | Whether to enable msmtp. |
 | `programs.msmtp.extraAccounts` | | |

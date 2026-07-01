@@ -5,7 +5,7 @@
 All options under `services.collectd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.collectd.autoLoadPlugin` | | |
 | `services.collectd.buildMinimalPackage` | | |
 | `services.collectd.dataDir` | | |

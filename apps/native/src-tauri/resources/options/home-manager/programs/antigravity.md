@@ -5,7 +5,7 @@
 All options under `programs.antigravity`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `programs.antigravity.argvSettings` | | |
 | `programs.antigravity.enable` | | |
 | `programs.antigravity.mutableExtensionsDir` | | |

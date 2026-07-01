@@ -5,7 +5,7 @@
 All options under `services.rtorrent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.rtorrent.configText` | | |
 | `services.rtorrent.dataDir` | | |
 | `services.rtorrent.dataPermissions` | | |

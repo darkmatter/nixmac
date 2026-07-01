@@ -5,5 +5,5 @@
 All options under `services.das_watchdog`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.das_watchdog.enable` | | |

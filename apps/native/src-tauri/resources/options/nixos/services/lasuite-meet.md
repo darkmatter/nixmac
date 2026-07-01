@@ -5,7 +5,7 @@
 All options under `services.lasuite-meet`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------ | ---- | ----------- |
 | `services.lasuite-meet.addons` | | |
 | `services.lasuite-meet.backendPackage` | | |
 | `services.lasuite-meet.bind` | | |

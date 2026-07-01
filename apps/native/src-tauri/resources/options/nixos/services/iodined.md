@@ -5,7 +5,7 @@
 All options under `services.iodined`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.iodined.client` | | |
 | `services.iodined.domain` | | |
 | `services.iodined.enable` | | |

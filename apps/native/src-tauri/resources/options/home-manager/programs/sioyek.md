@@ -5,7 +5,7 @@
 All options under `programs.sioyek`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.sioyek.bindings` | `attribute set of (string or list of string)` | Input configuration written to $XDG_CONFIG_HOME/sioyek/keys_user.config . See https://github.com/ahrm/sioyek/blob/main/pdf_viewer/keys.config . |
 | `programs.sioyek.config` | `open submodule of attribute set of string` | Input configuration written to $XDG_CONFIG_HOME/sioyek/prefs_user.config . See https://github.com/ahrm/sioyek/blob/main/pdf_viewer/prefs.config . |
 | `programs.sioyek.enable` | `boolean` | Whether to enable Sioyek, a PDF viewer designed for reading research papers and technical books. |

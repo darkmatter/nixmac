@@ -5,7 +5,7 @@
 All options under `services.mimir`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.mimir.configFile` | | |
 | `services.mimir.configuration` | | |
 | `services.mimir.enable` | | |

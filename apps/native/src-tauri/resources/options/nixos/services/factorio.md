@@ -5,7 +5,7 @@
 All options under `services.factorio`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.factorio.admins` | | |
 | `services.factorio.allowedPlayers` | | |
 | `services.factorio.autosave-interval` | | |

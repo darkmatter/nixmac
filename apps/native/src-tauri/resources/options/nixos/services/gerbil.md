@@ -5,6 +5,6 @@
 All options under `services.gerbil`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.gerbil.environmentFile` | | |
 | `services.gerbil.port` | | |

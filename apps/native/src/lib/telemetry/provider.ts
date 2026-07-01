@@ -1,10 +1,7 @@
 import { SpanStatusCode, type Tracer } from "@opentelemetry/api";
 import { WebTracerProvider } from "@opentelemetry/sdk-trace-web";
 import { resourceFromAttributes } from "@opentelemetry/resources";
-import {
-  ATTR_SERVICE_NAME,
-  ATTR_SERVICE_VERSION,
-} from "@opentelemetry/semantic-conventions";
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from "@opentelemetry/semantic-conventions";
 import posthog from "posthog-js";
 import { ForwardingSpanProcessor } from "./forwarding-processor";
 import { sanitizeProps, sanitizeTelemetryAttributes } from "./sanitize";
@@ -21,14 +18,8 @@ const SERVICE_NAME = "nixmac";
 
 // OTEL span attributes accept primitives only; coerce everything else to a
 // JSON string after sanitization so structured props survive the boundary.
-const toAttributeValue = (
-  value: unknown,
-): string | number | boolean | undefined => {
-  if (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  ) {
+const toAttributeValue = (value: unknown): string | number | boolean | undefined => {
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
     return value;
   }
   if (value === null || value === undefined) {
@@ -120,9 +111,7 @@ export function createTelemetryProvider(
       if (context) {
         const sanitized = sanitizeTelemetryAttributes(context);
         if (sanitized && typeof sanitized === "object") {
-          span.setAttributes(
-            toSpanAttributes(sanitized as Record<string, unknown>),
-          );
+          span.setAttributes(toSpanAttributes(sanitized as Record<string, unknown>));
         }
       }
       span.recordException(error);
@@ -131,6 +120,18 @@ export function createTelemetryProvider(
         message: error.message,
       });
       span.end();
+    },
+
+    getFeatureFlag(key: string) {
+      if (!enabled || !posthogStarted) return undefined;
+      return posthog.getFeatureFlag(key);
+    },
+
+    onFeatureFlags(callback: () => void) {
+      if (!posthogStarted) return () => {};
+      // posthog-js passes (flags, variants) to the callback; we only need the
+      // signal that flags changed, so adapt to a zero-arg callback.
+      return posthog.onFeatureFlags(() => callback());
     },
 
     setEnabled(next: boolean) {

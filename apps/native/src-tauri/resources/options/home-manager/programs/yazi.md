@@ -5,7 +5,7 @@
 All options under `programs.yazi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `programs.yazi.enable` | `boolean` | Whether to enable yazi. |
 | `programs.yazi.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.yazi.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |

@@ -5,7 +5,7 @@
 All options under `services.websurfx`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.websurfx.enable` | | |
 | `services.websurfx.openFirewall` | | |
 | `services.websurfx.package` | | |

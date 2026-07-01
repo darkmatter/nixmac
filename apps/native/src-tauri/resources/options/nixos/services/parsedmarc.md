@@ -5,7 +5,7 @@
 All options under `services.parsedmarc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------- | ---- | ----------- |
 | `services.parsedmarc.enable` | | |
 | `services.parsedmarc.provision.elasticsearch` | | |
 | `services.parsedmarc.provision.geoIp` | | |

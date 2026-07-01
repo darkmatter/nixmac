@@ -5,6 +5,6 @@
 All options under `programs.bazecor`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `programs.bazecor.enable` | | |
 | `programs.bazecor.package` | | |

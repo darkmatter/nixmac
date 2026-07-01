@@ -5,7 +5,7 @@
 All options under `services.writefreely`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------ | ---- | ----------- |
 | `services.writefreely.acme.enable` | | |
 | `services.writefreely.admin.initialPasswordFile` | | |
 | `services.writefreely.admin.name` | | |

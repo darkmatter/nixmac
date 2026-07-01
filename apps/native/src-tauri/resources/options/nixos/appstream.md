@@ -5,5 +5,5 @@
 All options under `appstream`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------ | ---- | ----------- |
 | `appstream.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.dnsproxy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.dnsproxy.enable` | | |
 | `services.dnsproxy.flags` | | |
 | `services.dnsproxy.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.llama-swap`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.llama-swap.enable` | | |
 | `services.llama-swap.listenAddress` | | |
 | `services.llama-swap.openFirewall` | | |

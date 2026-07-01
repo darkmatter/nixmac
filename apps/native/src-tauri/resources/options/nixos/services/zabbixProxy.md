@@ -5,7 +5,7 @@
 All options under `services.zabbixProxy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.zabbixProxy.database.createLocally` | | |
 | `services.zabbixProxy.database.host` | | |
 | `services.zabbixProxy.database.name` | | |

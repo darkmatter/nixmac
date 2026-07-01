@@ -1,7 +1,5 @@
 # nixmac mascot — animated
 
-An idle animation of the nixmac face (blink · smile breathe · circuit pulse) plus
-\<<\<<\<<< HEAD
 an intermittent **hop + 360° spin**, built from the brand mark. Two render paths;
 pick by your needs.
 
@@ -25,7 +23,7 @@ bun add lottie-react
 
 ```tsx
 import { NixmacMascotLottie } from "@/components/nixmac-mascot/NixmacMascotLottie";
-<NixmacMascotLottie size={160} />          // speed={2.5} to surface the hop quickly
+<NixmacMascotLottie size={160} />; // speed={2.5} to surface the hop quickly
 ```
 
 ## Option B — SVG + CSS (lightest)
@@ -35,12 +33,12 @@ Best if you only need it in this app and don't need the portable .json.
 
 ```tsx
 import { NixmacMascot } from "@/components/nixmac-mascot/NixmacMascot";
-<NixmacMascot size={160} />
+<NixmacMascot size={160} />;
 ```
 
 ## Tuning the motion
 
-The animation *is* the design decision — both paths expose a "personality" block:
+The animation _is_ the design decision — both paths expose a "personality" block:
 
 - **Lottie:** edit the `PERSONALITY` constants at the top of `build_lottie.py`
   (`LOOP_S` = hop cadence, `JUMP_HEIGHT`, `SPIN_DEG`, `SQUASH`/`STRETCH`, …), then
@@ -125,5 +123,3 @@ All paths read the same `nixmac-mascot.svg`, so re-rig geometry there.
 For real lighting / materials / perspective beyond flat faces, rebuild in
 [React Three Fiber](https://r3f.docs.pmnd.rs) (`three` + `@react-three/fiber`) and
 load a GLB. Bigger dependency; only worth it if you want shading, not flat faces.
-
-> > > > > > > 6e14a4d3 (feat: session transcript logging + nixmac mascot (#332))

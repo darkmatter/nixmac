@@ -5,5 +5,5 @@
 All options under `services.mail`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.mail.sendmailSetuidWrapper` | | |

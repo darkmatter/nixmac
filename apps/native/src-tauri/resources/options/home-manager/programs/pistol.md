@@ -5,7 +5,7 @@
 All options under `programs.pistol`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | --------------------- | ----------------------------------------------------------------------------------------- |
 | `programs.pistol.associations` | `list of (submodule)` | Associations written to the Pistol configuration at $XDG_CONFIG_HOME/pistol/pistol.conf . |
 | `programs.pistol.config` | | |
 | `programs.pistol.enable` | `boolean` | Whether to enable file previewer for terminal file managers. |

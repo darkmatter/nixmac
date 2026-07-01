@@ -5,7 +5,7 @@
 All options under `services.code-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------------- | ---- | ----------- |
 | `services.code-server.auth` | | |
 | `services.code-server.disableFileDownloads` | | |
 | `services.code-server.disableGettingStartedOverride` | | |

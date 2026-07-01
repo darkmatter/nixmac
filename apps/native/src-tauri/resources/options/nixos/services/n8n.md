@@ -5,7 +5,7 @@
 All options under `services.n8n`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.n8n.customNodes` | | |
 | `services.n8n.enable` | | |
 | `services.n8n.environment` | | |

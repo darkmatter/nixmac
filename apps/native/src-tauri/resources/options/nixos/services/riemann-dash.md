@@ -5,7 +5,7 @@
 All options under `services.riemann-dash`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.riemann-dash.config` | | |
 | `services.riemann-dash.dataDir` | | |
 | `services.riemann-dash.enable` | | |

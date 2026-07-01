@@ -5,6 +5,6 @@
 All options under `services.fakeroute`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.fakeroute.enable` | | |
 | `services.fakeroute.route` | | |

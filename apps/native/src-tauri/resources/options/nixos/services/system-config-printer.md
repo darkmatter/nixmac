@@ -5,5 +5,5 @@
 All options under `services.system-config-printer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.system-config-printer.enable` | | |

@@ -5,7 +5,7 @@
 All options under `programs.vivid`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.vivid.activeTheme` | `null or string` | Active theme for vivid. |
 | `programs.vivid.colorMode` | `null or string or one of “8-bit”, “24-bit”` | Color mode for vivid. |
 | `programs.vivid.enable` | `boolean` | Whether to enable vivid. |

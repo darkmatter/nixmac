@@ -5,7 +5,7 @@
 All options under `programs.macos-terminal`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `programs.macos-terminal.enable` | | |
 | `programs.macos-terminal.preferences` | | |
 | `programs.macos-terminal.profiles` | | |

@@ -3,11 +3,12 @@
  * Exposed on window.__testWidget so WDIO tests can call them via browser.execute.
  */
 
-import { refreshGitStatus } from "@/hooks/use-git-operations";
-import { loadEvolveState } from "@/hooks/use-widget-initialization";
-import { useViewModel } from "@/stores/view-model";
-import { useWidgetStore } from "@/stores/widget-store";
-import { mirrorChangeMapState } from "@/viewmodel/change-map";
+import { uiActions, useUiState, viewModelActions } from "@nixmac/state";
+import { clearChangeMap } from "@/viewmodel/change-map";
+import { clearEvolveEvents } from "@/viewmodel/evolution";
+import { refreshEvolveSnapshot } from "@/viewmodel/evolve";
+import { refreshGitSnapshot } from "@/viewmodel/git";
+import { clearRebuildLog } from "@/viewmodel/rebuild";
 
 interface WidgetTestHelpers {
   /**
@@ -47,33 +48,35 @@ export function setupWidgetTestHelpers() {
 
   const helpers: WidgetTestHelpers = {
     setEvolvePrompt: (value: string) => {
-      useWidgetStore.getState().setEvolvePrompt(value);
+      uiActions.setEvolvePrompt(value);
     },
     isEvolveProcessing: () => {
-      const state = useWidgetStore.getState();
+      const state = useUiState.getState();
       return state.isProcessing && state.processingAction === "evolve";
     },
     getPromptHistory: () => {
-      return [...(useWidgetStore.getState().promptHistory ?? [])];
+      return [...viewModelActions.getState().promptHistory];
     },
     getChangeMap: () => {
-      return JSON.stringify(useViewModel.getState().changeMap);
+      return JSON.stringify(viewModelActions.getState().changeMap);
     },
     resetForTest: () => {
-      const state = useWidgetStore.getState();
-      state.setEvolvePrompt("");
-      state.setPromptHistory([]);
-      state.clearLogs();
-      state.clearEvolveEvents();
-      state.setConversationalResponse(null);
-      state.setCommitMessageSuggestion(null);
-      mirrorChangeMapState(null);
-      state.setError(null);
-      state.clearRebuild();
+      uiActions.setEvolvePrompt("");
+      uiActions.clearLogs();
+      clearEvolveEvents();
+      uiActions.setConversationalResponse(null);
+      uiActions.setCommitMessageSuggestion(null);
+      clearChangeMap();
+      uiActions.setError(null);
+      clearRebuildLog();
+      uiActions.setRebuildPanelDismissed(false);
+      uiActions.setRebuildContext("apply");
     },
     refreshGitStatus: async () => {
-      await refreshGitStatus();
-      await loadEvolveState();
+      // Best-effort, like the rest of the reset helpers: a refresh failure
+      // should surface in assertions, not crash the browser.execute call.
+      await refreshGitSnapshot().catch(console.error);
+      await refreshEvolveSnapshot().catch(console.error);
     },
   };
 

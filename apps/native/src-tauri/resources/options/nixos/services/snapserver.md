@@ -5,7 +5,7 @@
 All options under `services.snapserver`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.snapserver.buffer` | | |
 | `services.snapserver.codec` | | |
 | `services.snapserver.controlPort` | | |

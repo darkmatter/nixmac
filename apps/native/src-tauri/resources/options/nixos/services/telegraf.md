@@ -5,7 +5,7 @@
 All options under `services.telegraf`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.telegraf.enable` | | |
 | `services.telegraf.environmentFiles` | | |
 | `services.telegraf.extraConfig` | | |

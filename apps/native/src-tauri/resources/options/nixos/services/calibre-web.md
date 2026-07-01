@@ -5,7 +5,7 @@
 All options under `services.calibre-web`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------ | ---- | ----------- |
 | `services.calibre-web.calibrePackage` | | |
 | `services.calibre-web.dataDir` | | |
 | `services.calibre-web.enable` | | |

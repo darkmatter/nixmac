@@ -71,7 +71,7 @@ rm -f "$RW_DMG"
 
 echo "Verifying signed app inside re-packed DMG..."
 hdiutil attach -readonly -nobrowse -noautoopen -mountpoint "$MOUNT_POINT" "$DMG_PATH"
-codesign --verify --verbose "$MOUNT_POINT/$APP_NAME"
+codesign --verify --deep --strict --verbose=4 "$MOUNT_POINT/$APP_NAME"
 detach_with_retry "$MOUNT_POINT"
 
 echo "Done: $DMG_PATH now contains the signed app with the preserved Finder layout."

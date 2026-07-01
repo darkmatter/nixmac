@@ -5,7 +5,7 @@
 All options under `services.phylactery`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.phylactery.enable` | | |
 | `services.phylactery.host` | | |
 | `services.phylactery.library` | | |

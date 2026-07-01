@@ -5,7 +5,7 @@
 All options under `services.tabbyapi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.tabbyapi.enable` | | |
 | `services.tabbyapi.openFirewall` | | |
 | `services.tabbyapi.package` | | |

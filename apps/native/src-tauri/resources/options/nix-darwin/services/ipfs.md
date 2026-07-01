@@ -5,7 +5,7 @@
 All options under `services.ipfs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `services.ipfs.enable` | `boolean` | Whether to enable the ipfs daemon. |
 | `services.ipfs.enableGarbageCollection` | `boolean` | Passes --enable-gc flag to ipfs daemon. |
 | `services.ipfs.ipfsPath` | `null or absolute path` | Set the IPFS_PATH environment variable. |

@@ -5,7 +5,7 @@
 All options under `services.linkding`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.linkding.address` | | |
 | `services.linkding.contextPath` | | |
 | `services.linkding.dataDir` | | |

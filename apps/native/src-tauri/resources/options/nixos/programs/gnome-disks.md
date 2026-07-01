@@ -5,5 +5,5 @@
 All options under `programs.gnome-disks`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `programs.gnome-disks.enable` | | |

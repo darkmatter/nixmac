@@ -5,7 +5,7 @@
 All options under `services.cockpit`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.cockpit.allowed-origins` | | |
 | `services.cockpit.enable` | | |
 | `services.cockpit.openFirewall` | | |

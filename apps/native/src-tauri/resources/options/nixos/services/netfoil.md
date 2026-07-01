@@ -5,7 +5,7 @@
 All options under `services.netfoil`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.netfoil.config` | | |
 | `services.netfoil.doHIPs` | | |
 | `services.netfoil.doHUrl` | | |

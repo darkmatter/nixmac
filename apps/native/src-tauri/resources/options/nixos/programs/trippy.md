@@ -5,5 +5,5 @@
 All options under `programs.trippy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `programs.trippy.enable` | | |

@@ -12,7 +12,11 @@ import { useHistoryCard } from "@/hooks/use-history-card";
 import { cn } from "@/lib/utils";
 import type { HistoryItem } from "@/ipc/types";
 import type { TimelineContext } from "@/components/widget/history/timeline-connector";
-import { HistoryItemTimeline, TimeLineConnector, TimelineDot } from "@/components/widget/history/timeline-connector";
+import {
+  HistoryItemTimeline,
+  TimeLineConnector,
+  TimelineDot,
+} from "@/components/widget/history/timeline-connector";
 
 interface HistoryItemCardProps {
   item: HistoryItem;
@@ -37,14 +41,21 @@ export function HistoryItemCard({
   onConfirmRestore,
   onCancelRestore,
 }: HistoryItemCardProps) {
-  const { expanded, colorMap, cardClassName, actionType, handleCardClick, handleKeyDown } = useHistoryCard(item, isPreview);
+  const { expanded, colorMap, cardClassName, actionType, handleCardClick, handleKeyDown } =
+    useHistoryCard(item, isPreview);
   const { isUndone } = timeline;
   const isCardInteractive = !!item.changeMap && !isPreview;
 
   const getActionOrBadge = () => {
     switch (actionType) {
       case "preview":
-        return <HistoryConfirmRestoreButton deactivateCount={deactivateCount} onConfirm={onConfirmRestore} onCancel={onCancelRestore} />;
+        return (
+          <HistoryConfirmRestoreButton
+            deactivateCount={deactivateCount}
+            onConfirm={onConfirmRestore}
+            onCancel={onCancelRestore}
+          />
+        );
       case "current":
         return <HistoryCurrentItemBadge isDimmed={isPreviewActive} />;
       case "base":
@@ -68,13 +79,18 @@ export function HistoryItemCard({
 
       <div className="group flex items-start gap-0">
         <TimelineDot isUndone={isUndone} />
-        <TimeLineConnector isUndone={isUndone} isInteractive={!!item.changeMap} isPreviewActive={isPreviewActive} />
+        <TimeLineConnector
+          isUndone={isUndone}
+          isInteractive={!!item.changeMap}
+          isPreviewActive={isPreviewActive}
+        />
         <div
           className={cn(
             cardClassName,
             "flex-1",
-            isPreview && "border-teal-400/40 group-hover:border-teal-400/50 group-hover:bg-[#111111]",
-            item.isBuilt && isPreviewActive && "border-white/[0.12]",
+            isPreview &&
+              "border-teal-400/40 group-hover:border-teal-400/50 group-hover:bg-[#111111]",
+            item.isBuilt && isPreviewActive && "border-white/12",
           )}
           onClick={isCardInteractive ? handleCardClick : undefined}
           onKeyDown={isCardInteractive ? handleKeyDown : undefined}
@@ -82,11 +98,21 @@ export function HistoryItemCard({
           tabIndex={isCardInteractive ? 0 : undefined}
         >
           <HistoryCommitInfo
-            header={<CommitMessage hash={item.hash} message={item.message} originMessage={item.originMessage ?? undefined} />}
+            header={
+              <CommitMessage
+                hash={item.hash}
+                message={item.message}
+                originMessage={item.originMessage ?? undefined}
+              />
+            }
             actions={getActionOrBadge()}
           >
             <HistoryItemMeta item={item} isPreview={isPreview} />
-            <ChangeBadges changeMap={item.changeMap} colorMap={colorMap} rawChanges={item.rawChanges} />
+            <ChangeBadges
+              changeMap={item.changeMap}
+              colorMap={colorMap}
+              rawChanges={item.rawChanges}
+            />
           </HistoryCommitInfo>
           <HistoryDetailedChangeInfo item={item} colorMap={colorMap} expanded={expanded} />
         </div>

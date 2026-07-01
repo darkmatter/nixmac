@@ -5,7 +5,7 @@
 All options under `services.dkimproxy-out`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.dkimproxy-out.domains` | | |
 | `services.dkimproxy-out.enable` | | |
 | `services.dkimproxy-out.keySize` | | |

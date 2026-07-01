@@ -1,13 +1,12 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { useWidgetStore } from "@/stores/widget-store";
+import { uiActions, useUiState } from "@nixmac/state";
 import { Bot, X } from "lucide-react";
 
 export function ConversationalResponse() {
-  const response = useWidgetStore((s) => s.conversationalResponse);
-  const setConversationalResponse = useWidgetStore((s) => s.setConversationalResponse);
-
+  const response = useUiState((s) => s.conversationalResponse);
+  
   if (!response) return null;
 
   return (
@@ -21,7 +20,7 @@ export function ConversationalResponse() {
       {/* Dismiss button */}
       <button
         type="button"
-        onClick={() => setConversationalResponse(null)}
+        onClick={() => uiActions.setConversationalResponse(null)}
         className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground/50 transition-colors hover:bg-muted/40 hover:text-muted-foreground"
         aria-label="Dismiss"
       >

@@ -5,7 +5,7 @@
 All options under `services.cgminer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.cgminer.config` | | |
 | `services.cgminer.enable` | | |
 | `services.cgminer.hardware` | | |

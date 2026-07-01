@@ -5,7 +5,7 @@
 All options under `services.vlagent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------------- | ---- | ----------- |
 | `services.vlagent.enable` | | |
 | `services.vlagent.extraArgs` | | |
 | `services.vlagent.openFirewall` | | |

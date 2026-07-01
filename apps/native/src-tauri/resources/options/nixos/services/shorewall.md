@@ -5,7 +5,7 @@
 All options under `services.shorewall`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.shorewall.configs` | | |
 | `services.shorewall.enable` | | |
 | `services.shorewall.package` | | |

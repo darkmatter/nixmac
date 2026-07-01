@@ -5,5 +5,5 @@
 All options under `services.consul-template`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.consul-template.instances` | | |

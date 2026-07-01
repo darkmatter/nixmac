@@ -5,7 +5,7 @@
 All options under `services.rustus`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.rustus.cors` | | |
 | `services.rustus.disable_health_access_logs` | | |
 | `services.rustus.enable` | | |

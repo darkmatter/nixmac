@@ -5,7 +5,7 @@
 All options under `programs.gamescope`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `programs.gamescope.args` | | |
 | `programs.gamescope.capSysNice` | | |
 | `programs.gamescope.enable` | | |

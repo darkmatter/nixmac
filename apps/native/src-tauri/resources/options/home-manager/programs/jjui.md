@@ -5,7 +5,7 @@
 All options under `programs.jjui`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------- |
 | `programs.jjui.configDir` | `string` | The directory to contain jjui configuration files. |
 | `programs.jjui.configLua` | | |
 | `programs.jjui.enable` | `boolean` | Whether to enable jjui - A terminal user interface for jujutsu. |

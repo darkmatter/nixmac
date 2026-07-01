@@ -1,16 +1,10 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "tags": [
-    "-lintignore"
-  ],
+  "tags": ["-lintignore"],
   "workspaces": {
     ".": {},
     "apps/native": {
-      "ignoreDependencies": [
-        "@wdio/local-runner",
-        "@wdio/mocha-framework",
-        "@wdio/spec-reporter"
-      ]
+      "ignoreDependencies": ["@wdio/local-runner", "@wdio/mocha-framework", "@wdio/spec-reporter"]
     }
   }
 }

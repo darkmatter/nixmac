@@ -5,7 +5,7 @@
 All options under `programs.alvr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `programs.alvr.enable` | | |
 | `programs.alvr.openFirewall` | | |
 | `programs.alvr.package` | | |

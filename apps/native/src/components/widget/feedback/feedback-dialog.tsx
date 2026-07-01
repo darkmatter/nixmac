@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
-import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
+import { uiActions, useUiState } from "@nixmac/state";
+import { useCurrentStep } from "@/hooks/use-current-step";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +28,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Feedback as FeedbackModel, FeedbackType, ShareOptions } from "@/types/feedback";
 import { tauriAPI } from "@/ipc/api";
 import { toast } from "sonner";
+import { getTelemetry } from "@/lib/telemetry/instance";
 
 const DEFAULT_SHARE_OPTIONS: ShareOptions = {
   currentAppState: true,
@@ -273,14 +275,12 @@ function shouldShowAppLogs(
 }
 
 export function FeedbackDialog() {
-  const feedbackOpen = useWidgetStore((s) => s.feedbackOpen);
-  const setFeedbackOpen = useWidgetStore((s) => s.setFeedbackOpen);
-  const feedbackTypeOverride = useWidgetStore((s) => s.feedbackTypeOverride);
-  const feedbackInitialText = useWidgetStore((s) => s.feedbackInitialText);
-  const panicDetails = useWidgetStore((s) => s.panicDetails);
-  const setFeedbackTypeOverride = useWidgetStore((s) => s.setFeedbackTypeOverride);
-  const step = useCurrentStep();
-  const mainWindowError = useWidgetStore((s) => s.error) ?? undefined;
+  const feedbackOpen = useUiState((s) => s.feedbackOpen);
+    const feedbackTypeOverride = useUiState((s) => s.feedbackTypeOverride);
+  const feedbackInitialText = useUiState((s) => s.feedbackInitialText);
+  const panicDetails = useUiState((s) => s.panicDetails);
+    const step = useCurrentStep();
+  const mainWindowError = useUiState((s) => s.error) ?? undefined;
 
   const [feedbackType, setFeedbackType] = useState<FeedbackType>(FeedbackType.Suggestion);
   const [feedbackText, setFeedbackText] = useState("");
@@ -298,6 +298,7 @@ export function FeedbackDialog() {
       return;
     }
 
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     tauriAPI.promptHistory.get().then(setPromptHistory).catch(console.error);
   }, [feedbackOpen]);
 
@@ -342,7 +343,7 @@ export function FeedbackDialog() {
   }, [feedbackType, feedbackOpen]);
 
   const handleClose = () => {
-    setFeedbackOpen(false);
+    uiActions.setFeedbackOpen(false);
     // Reset state
     setFeedbackType(FeedbackType.Suggestion);
     setFeedbackText("");
@@ -352,13 +353,14 @@ export function FeedbackDialog() {
     setShareOptions(DEFAULT_SHARE_OPTIONS);
     setIsPreviewingReport(false);
     setPreviewReportText("");
-    setFeedbackTypeOverride(null);
-    useWidgetStore.setState({ feedbackInitialText: null, panicDetails: null });
+    uiActions.setFeedbackTypeOverride(null);
+    uiActions.setState({ feedbackInitialText: null, panicDetails: null });
   };
 
   const buildFeedbackPayload = async () => {
     let metadata: Awaited<ReturnType<typeof tauriAPI.feedback.gatherMetadata>> | null = null;
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       metadata = await tauriAPI.feedback.gatherMetadata(feedbackType, shareOptions);
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -401,9 +403,11 @@ export function FeedbackDialog() {
   };
 
   const submitPayload = async (payload: string) => {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     const sent = await tauriAPI.feedback.submit(payload);
 
     if (sent) {
+      getTelemetry().captureEvent({ name: "feedback_submitted", props: { type: feedbackType } });
       toast.success("Thanks — feedback sent");
     } else {
       toast.info("Failed to send, we'll try again next time you open the app.");
@@ -474,7 +478,7 @@ export function FeedbackDialog() {
           handleClose();
           return;
         }
-        setFeedbackOpen(true);
+        uiActions.setFeedbackOpen(true);
       }}
     >
       <DialogContent className="max-w-2xl h-[85vh] flex flex-col">
@@ -648,7 +652,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -683,7 +687,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -718,7 +722,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -753,7 +757,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -788,7 +792,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -823,7 +827,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -858,7 +862,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -893,7 +897,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -928,7 +932,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -942,7 +946,6 @@ export function FeedbackDialog() {
                   )}
                 </div>
               </div>
-
             </>
           )}
         </div>

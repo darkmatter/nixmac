@@ -5,7 +5,7 @@
 All options under `programs.btop`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `programs.btop.enable` | `boolean` | Whether to enable btop. |
 | `programs.btop.extraConfig` | `strings concatenated with “\n”` | Extra lines added to the btop.conf file. |
 | `programs.btop.package` | `null or package` | The btop package to use. |

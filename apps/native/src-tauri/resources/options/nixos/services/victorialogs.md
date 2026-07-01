@@ -5,7 +5,7 @@
 All options under `services.victorialogs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.victorialogs.basicAuthPasswordFile` | | |
 | `services.victorialogs.basicAuthUsername` | | |
 | `services.victorialogs.enable` | | |

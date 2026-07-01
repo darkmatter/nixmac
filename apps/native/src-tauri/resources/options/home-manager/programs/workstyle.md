@@ -5,7 +5,7 @@
 All options under `programs.workstyle`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ------------ | ----------------------------------------------------------------------- |
 | `programs.workstyle.enable` | `boolean` | Whether to enable Workstyle. |
 | `programs.workstyle.package` | `package` | The workstyle package to use. |
 | `programs.workstyle.settings` | `TOML value` | Configuration for workstyle |

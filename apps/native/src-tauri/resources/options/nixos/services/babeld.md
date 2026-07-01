@@ -5,7 +5,7 @@
 All options under `services.babeld`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.babeld.enable` | | |
 | `services.babeld.extraConfig` | | |
 | `services.babeld.interfaceDefaults` | | |

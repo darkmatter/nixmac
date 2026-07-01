@@ -5,7 +5,7 @@
 All options under `programs.nm-applet`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `programs.nm-applet.enable` | | |
 | `programs.nm-applet.indicator` | | |
 | `programs.nm-applet.package` | | |

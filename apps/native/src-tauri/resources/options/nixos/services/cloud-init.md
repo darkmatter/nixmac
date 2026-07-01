@@ -5,7 +5,7 @@
 All options under `services.cloud-init`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.cloud-init.btrfs.enable` | | |
 | `services.cloud-init.config` | | |
 | `services.cloud-init.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.vsftpd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.vsftpd.allowWriteableChroot` | | |
 | `services.vsftpd.anonymousMkdirEnable` | | |
 | `services.vsftpd.anonymousUmask` | | |

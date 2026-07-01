@@ -5,7 +5,7 @@
 All options under `services.twmn`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.twmn.duration` | `unsigned integer, meaning >=0` | The time each notification remains visible, in milliseconds. |
 | `services.twmn.enable` | `boolean` | Whether to enable twmn, a tiling window manager notification daemon. |
 | `services.twmn.extraConfig` | `attribute set` | Extra configuration options to add to the twmnd config file. See https://github.com/sboli/twmn/blob/master/README.md for details. |

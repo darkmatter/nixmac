@@ -1,15 +1,16 @@
-import { useWidgetStore } from "@/stores/widget-store";
+import { uiActions, useUiState } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import { useEffect } from "react";
 
 export function useRecommendedPrompt() {
-  const recommendation = useWidgetStore((s) => s.recommendedPrompt);
+  const recommendation = useUiState((s) => s.recommendedPrompt);
 
   const refresh = () => {
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     tauriAPI.scanner
       .getRecommendedPrompt()
       .then((result) => {
-        useWidgetStore.getState().setRecommendedPrompt(result);
+        uiActions.setRecommendedPrompt(result);
       })
       .catch(() => {});
   };

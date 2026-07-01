@@ -62,16 +62,10 @@ const sanitizeString = (value: string): string => {
   sanitized = sanitized.replace(OPENAI_TOKEN_PATTERN, REDACTED);
   sanitized = sanitized.replace(ANTHROPIC_TOKEN_PATTERN, REDACTED);
   sanitized = sanitized.replace(PRIVATE_KEY_BLOCK_PATTERN, REDACTED);
-  sanitized = sanitized.replace(
-    HOME_DIR_PATH_PATTERN,
-    "/Users/[REDACTED_USER]",
-  );
-  sanitized = sanitized.replace(
-    NIX_SECRET_ASSIGNMENT_PATTERN,
-    (_, key: string) => {
-      return `${key} = ${REDACTED}`;
-    },
-  );
+  sanitized = sanitized.replace(HOME_DIR_PATH_PATTERN, "/Users/[REDACTED_USER]");
+  sanitized = sanitized.replace(NIX_SECRET_ASSIGNMENT_PATTERN, (_, key: string) => {
+    return `${key} = ${REDACTED}`;
+  });
 
   return sanitizeUrl(sanitized);
 };
@@ -135,9 +129,7 @@ export function sanitizeDiagnosticText(value: string): string {
  * Sanitize a flat property bag before sending to PostHog.
  * String values are scrubbed; non-string values pass through unchanged.
  */
-export function sanitizeProps(
-  props: Record<string, unknown>,
-): Record<string, unknown> {
+export function sanitizeProps(props: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(props)) {
     out[k] = typeof v === "string" ? sanitizeDiagnosticText(v) : v;

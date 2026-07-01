@@ -5,7 +5,7 @@
 All options under `services.ddns-updater`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.ddns-updater.enable` | | |
 | `services.ddns-updater.environment` | | |
 | `services.ddns-updater.package` | | |

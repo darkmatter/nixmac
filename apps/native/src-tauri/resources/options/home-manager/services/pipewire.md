@@ -5,7 +5,7 @@
 All options under `services.pipewire`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.pipewire.clientConfigs` | | |
 | `services.pipewire.configPackages` | | |
 | `services.pipewire.configs` | | |

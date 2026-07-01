@@ -6,7 +6,6 @@
 //! installed and [`init_telemetry`] returns an inert guard.
 
 use std::collections::HashMap;
-use std::env;
 
 use opentelemetry::KeyValue;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
@@ -138,25 +137,14 @@ fn build_providers(
 
 /// Initializes the OTEL pipeline.
 ///
-/// Reads `SENTRY_DSN`, `NIXMAC_ENV`, and `NIXMAC_VERSION` from compile-time env
-/// (with runtime env fallback). When `send_diagnostics` is true and a DSN is
-/// present, installs OTLP providers exporting to Sentry and registers the
+/// Reads `SENTRY_DSN`, `NIXMAC_ENV`, and `NIXMAC_VERSION` via [`crate::env`].
+/// When `send_diagnostics` is true and a DSN is present, installs OTLP providers exporting to Sentry and registers the
 /// tracer provider globally. Otherwise returns an inert guard.
 #[must_use]
 pub fn init_telemetry(send_diagnostics: bool) -> TelemetryGuard {
-    let sentry_dsn = option_env!("SENTRY_DSN")
-        .map(|s| s.to_string())
-        .or_else(|| env::var("SENTRY_DSN").ok());
-
-    let nixmac_env = option_env!("NIXMAC_ENV")
-        .map(|s| s.to_string())
-        .or_else(|| env::var("NIXMAC_ENV").ok())
-        .unwrap_or_else(|| "prod".to_string());
-
-    let nixmac_version = option_env!("NIXMAC_VERSION")
-        .map(|s| s.to_string())
-        .or_else(|| env::var("NIXMAC_VERSION").ok())
-        .unwrap_or_else(|| "unknown".to_string());
+    let sentry_dsn = crate::env::sentry_dsn();
+    let nixmac_env = crate::env::nixmac_env();
+    let nixmac_version = crate::env::nixmac_version();
 
     if !send_diagnostics {
         log::info!("OTEL telemetry disabled by user preference; using inert providers");

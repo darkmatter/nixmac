@@ -5,7 +5,7 @@
 All options under `services.emacs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.emacs.defaultEditor` | | |
 | `services.emacs.enable` | | |
 | `services.emacs.install` | | |

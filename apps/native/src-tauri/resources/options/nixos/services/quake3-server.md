@@ -5,7 +5,7 @@
 All options under `services.quake3-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.quake3-server.baseq3` | | |
 | `services.quake3-server.enable` | | |
 | `services.quake3-server.extraConfig` | | |

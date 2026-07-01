@@ -5,7 +5,7 @@
 All options under `services.mtr-exporter`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.mtr-exporter.address` | | |
 | `services.mtr-exporter.enable` | | |
 | `services.mtr-exporter.extraFlags` | | |

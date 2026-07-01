@@ -1,7 +1,4 @@
 {
   "files": [],
-  "references": [
-    { "path": "apps/native" },
-    { "path": "packages/ui" }
-  ]
+  "references": [{ "path": "apps/native" }, { "path": "packages/ui" }]
 }

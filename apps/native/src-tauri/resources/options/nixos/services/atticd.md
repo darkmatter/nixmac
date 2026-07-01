@@ -5,7 +5,7 @@
 All options under `services.atticd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.atticd.enable` | | |
 | `services.atticd.environmentFile` | | |
 | `services.atticd.group` | | |

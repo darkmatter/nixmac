@@ -5,7 +5,7 @@
 All options under `services.polybar`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.polybar.config` | `(attribute set of attribute set of (string or boolean or signed integer or list of string)) or absolute path convertible to it` | Polybar configuration. Can be either path to a file, or set of attributes that will be used to create the final configuration. See also services.polybar.settings for a more nix-friendly format. |
 | `services.polybar.enable` | `boolean` | Whether to enable Polybar status bar. |
 | `services.polybar.extraConfig` | `strings concatenated with “\n”` | Additional configuration to add. |

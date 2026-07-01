@@ -5,7 +5,7 @@
 All options under `programs.bemenu`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------- |
 | `programs.bemenu.enable` | `boolean` | Whether to enable bemenu. |
 | `programs.bemenu.package` | `null or package` | The bemenu package to use. |
 | `programs.bemenu.settings` | `attribute set of (string or signed integer or floating point number or boolean)` | Configuration options for bemenu. See bemenu (1) . |

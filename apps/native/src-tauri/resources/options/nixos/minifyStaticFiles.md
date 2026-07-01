@@ -5,7 +5,7 @@
 All options under `minifyStaticFiles`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `minifyStaticFiles.script.package` | | |
 | `minifyStaticFiles.style.package` | | |
 | `minifyStaticFiles.svg.package` | | |

@@ -5,7 +5,7 @@
 All options under `programs.sapling`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | --------------------------- | -------------------------------- |
 | `programs.sapling.aliases` | `attribute set of string` | Sapling aliases to define. |
 | `programs.sapling.enable` | `boolean` | Whether to enable Sapling. |
 | `programs.sapling.extraConfig` | `attribute set of anything` | Additional configuration to add. |

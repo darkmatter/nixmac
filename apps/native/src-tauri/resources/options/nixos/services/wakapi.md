@@ -5,7 +5,7 @@
 All options under `services.wakapi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.wakapi.database.createLocally` | | |
 | `services.wakapi.database.dialect` | | |
 | `services.wakapi.database.name` | | |

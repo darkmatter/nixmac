@@ -5,7 +5,7 @@
 All options under `services.pdns-recursor`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.pdns-recursor.api.address` | | |
 | `services.pdns-recursor.api.allowFrom` | | |
 | `services.pdns-recursor.api.port` | | |

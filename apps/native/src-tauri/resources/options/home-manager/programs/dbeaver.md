@@ -5,7 +5,7 @@
 All options under `programs.dbeaver`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.dbeaver.dataSourcesSettings` | `JSON value` | Configuration for DBeaver’s data-sources.json . This file stores database connection definitions and is located at General/.dbeaver/data-sources.json in the DBeaver workspace. |
 | `programs.dbeaver.enable` | `boolean` | Whether to enable DBeaver, a universal database management tool. |
 | `programs.dbeaver.package` | `null or package` | The dbeaver-bin package to use. |

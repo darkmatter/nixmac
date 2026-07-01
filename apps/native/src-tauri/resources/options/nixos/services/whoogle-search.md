@@ -5,7 +5,7 @@
 All options under `services.whoogle-search`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.whoogle-search.enable` | | |
 | `services.whoogle-search.extraEnv` | | |
 | `services.whoogle-search.listenAddress` | | |

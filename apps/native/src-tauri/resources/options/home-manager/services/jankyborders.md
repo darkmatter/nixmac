@@ -5,7 +5,7 @@
 All options under `services.jankyborders`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.jankyborders.enable` | `boolean` | Whether to enable jankyborders. |
 | `services.jankyborders.errorLogFile` | `null or absolute path or string` | Absolute path to log all stderr output. |
 | `services.jankyborders.outLogFile` | `null or absolute path or string` | Absolute path to log all stdout output. |

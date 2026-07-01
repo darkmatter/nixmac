@@ -5,7 +5,7 @@
 All options under `services.mosquitto`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.mosquitto.bridges` | | |
 | `services.mosquitto.dataDir` | | |
 | `services.mosquitto.enable` | | |

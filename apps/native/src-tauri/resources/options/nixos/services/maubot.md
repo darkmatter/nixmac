@@ -5,7 +5,7 @@
 All options under `services.maubot`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.maubot.configMutable` | | |
 | `services.maubot.dataDir` | | |
 | `services.maubot.enable` | | |

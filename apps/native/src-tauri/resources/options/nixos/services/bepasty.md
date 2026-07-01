@@ -5,6 +5,6 @@
 All options under `services.bepasty`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.bepasty.enable` | | |
 | `services.bepasty.servers` | | |

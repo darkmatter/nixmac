@@ -5,7 +5,7 @@
 All options under `services.sonarr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.sonarr.dataDir` | | |
 | `services.sonarr.enable` | | |
 | `services.sonarr.environmentFiles` | | |

@@ -5,7 +5,7 @@
 All options under `services.rumno`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.rumno.enable` | | |
 | `services.rumno.extraArgs` | | |
 | `services.rumno.package` | | |

@@ -5,7 +5,7 @@
 All options under `programs.nix-ld`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `programs.nix-ld.enable` | | |
 | `programs.nix-ld.libraries` | | |
 | `programs.nix-ld.package` | | |

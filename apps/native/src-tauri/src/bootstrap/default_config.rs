@@ -4,14 +4,106 @@
 //! bundled templates. It copies the template files, processes placeholders,
 //! and initializes a git repository with the initial commit.
 
+use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::path::Path;
 use std::process::Command;
 use tauri::{AppHandle, Manager};
 
+use crate::bootstrap::is_nix_file;
 use crate::git;
 use crate::storage::store;
 use crate::system::nix;
+
+const DEFAULT_TEMPLATE_ID: &str = "nix-darwin-determinate";
+
+fn template_dir_for_id(template_id: Option<&str>) -> Result<&'static str, String> {
+    let id = template_id
+        .map(str::trim)
+        .filter(|id| !id.is_empty())
+        .unwrap_or(DEFAULT_TEMPLATE_ID);
+
+    match id {
+        "nix-darwin-determinate" => Ok("nix-darwin-determinate"),
+        "nixos-unified" => Ok("nixos-unified"),
+        "flake-parts" => Ok("base"),
+        other => Err(format!("Unknown starter template '{}'", other)),
+    }
+}
+
+fn render_template_file_name(
+    file_name: &OsStr,
+    hostname: &str,
+    platform: &str,
+    username: &str,
+) -> OsString {
+    let Some(file_name) = file_name.to_str() else {
+        return file_name.to_os_string();
+    };
+
+    OsString::from(
+        file_name
+            .replace("{{hostname}}", hostname)
+            .replace("HOSTNAME_PLACEHOLDER", hostname)
+            .replace("PLATFORM_PLACEHOLDER", platform)
+            .replace("USERNAME_PLACEHOLDER", username),
+    )
+}
+
+/// Strips whitespace and the mDNS `.local` suffix so the result is usable as a
+/// nix-darwin configuration attribute name.
+fn sanitize_hostname(raw: &str) -> String {
+    let trimmed = raw.trim();
+    trimmed
+        .strip_suffix(".local")
+        .unwrap_or(trimmed)
+        .to_string()
+}
+
+/// Gets the hostname that we're running on.
+pub fn detect_hostname() -> Result<String, String> {
+    // Prefer `scutil --get LocalHostName`: unlike `hostname`, it never carries
+    // the `.local` suffix, which would otherwise end up in the generated
+    // darwinConfigurations."<hostname>" flake attribute.
+    if let Ok(output) = std::process::Command::new("scutil")
+        .args(["--get", "LocalHostName"])
+        .output()
+    {
+        if output.status.success() {
+            let name = sanitize_hostname(&String::from_utf8_lossy(&output.stdout));
+            if !name.is_empty() {
+                return Ok(name);
+            }
+        }
+    }
+
+    let output = std::process::Command::new("hostname")
+        .output()
+        .map_err(|e| format!("Failed to execute hostname command: {}", e))?;
+    if !output.status.success() {
+        return Err(format!(
+            "Failed to get hostname: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    let hostname = sanitize_hostname(&String::from_utf8_lossy(&output.stdout));
+    if hostname.is_empty() {
+        return Err("Hostname is empty".to_string());
+    }
+    Ok(hostname)
+}
+
+/// Detects the current macOS username from the environment, defaulting to "unknown" if not found.
+pub fn detect_username() -> String {
+    let username = whoami::username().unwrap();
+
+    // If we didn't get a user name from this, try the USER environment variable as a fallback before giving up entirely.
+    if !username.is_empty() {
+        return username;
+    }
+
+    std::env::var("USER").unwrap_or_else(|_| "unknown".to_string())
+}
 
 /// Detects the Darwin platform architecture.
 pub fn detect_darwin_platform() -> &'static str {
@@ -46,7 +138,7 @@ fn copy_template_dir(
     {
         let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
         let src_path = entry.path();
-        let file_name = entry.file_name();
+        let file_name = render_template_file_name(&entry.file_name(), hostname, platform, username);
         let dest_path = dest.join(&file_name);
 
         if src_path.is_dir() {
@@ -54,20 +146,12 @@ fn copy_template_dir(
             copy_template_dir(&src_path, &dest_path, hostname, platform, username)?;
         } else if src_path.is_file() {
             // Check if it's a .nix file that needs template processing
-            let is_nix_file = src_path
-                .extension()
-                .map(|ext| ext == "nix")
-                .unwrap_or(false);
-
-            if is_nix_file {
-                // Read and process template placeholders
-                let content = fs::read_to_string(&src_path)
-                    .map_err(|e| format!("Failed to read {}: {}", src_path.display(), e))?;
-
-                let processed = content
-                    .replace("HOSTNAME_PLACEHOLDER", hostname)
-                    .replace("PLATFORM_PLACEHOLDER", platform)
-                    .replace("USERNAME_PLACEHOLDER", username);
+            if is_nix_file(&src_path) {
+                // Read and process template placeholders using apply_template_placeholders.
+                let processed = crate::bootstrap::template::apply_template_placeholders(
+                    &src_path, hostname, platform, username,
+                )
+                .map_err(|e| format!("Failed to process template {}: {}", src_path.display(), e))?;
 
                 fs::write(&dest_path, processed)
                     .map_err(|e| format!("Failed to write {}: {}", dest_path.display(), e))?;
@@ -109,13 +193,17 @@ fn is_dir_safe_for_bootstrap(path: &Path) -> Result<bool, String> {
     Ok(false)
 }
 
-/// Resolves the path to the bundled template directory.
+/// Resolves the path to the selected bundled template directory.
 ///
 /// Searches in order:
-/// 1. Production bundle: `resource_dir/nix-darwin-determinate`
-/// 2. Alternative structure: `resource_dir/templates/nix-darwin-determinate`
-/// 3. Development fallback: `CARGO_MANIFEST_DIR/../templates/nix-darwin-determinate`
-fn resolve_template_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
+/// 1. Production bundle: `resource_dir/<template_dir>`
+/// 2. Alternative structure: `resource_dir/templates/<template_dir>`
+/// 3. Legacy Tauri resource path: `resource_dir/_up_/templates/<template_dir>`
+/// 4. Development fallback: `CARGO_MANIFEST_DIR/../templates/<template_dir>`
+fn resolve_template_path(
+    app: &AppHandle,
+    template_dir: &str,
+) -> Result<std::path::PathBuf, String> {
     let resource_dir = app
         .path()
         .resource_dir()
@@ -137,17 +225,17 @@ fn resolve_template_path(app: &AppHandle) -> Result<std::path::PathBuf, String> 
 
     #[allow(unused_mut)]
     let mut candidates = vec![
-        resource_dir.join("nix-darwin-determinate"),
-        resource_dir.join("templates/nix-darwin-determinate"),
+        resource_dir.join(template_dir),
+        resource_dir.join(format!("templates/{template_dir}")),
         // Legacy bundling path (Tauri encodes `../` as `_up_/`)
-        resource_dir.join("_up_/templates/nix-darwin-determinate"),
+        resource_dir.join(format!("_up_/templates/{template_dir}")),
     ];
 
     // Dev fallback: only available in debug builds to avoid masking bundling issues
     #[cfg(debug_assertions)]
     candidates.push(
         Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../templates/nix-darwin-determinate")
+            .join(format!("../templates/{template_dir}"))
             .to_path_buf(),
     );
 
@@ -156,8 +244,8 @@ fn resolve_template_path(app: &AppHandle) -> Result<std::path::PathBuf, String> 
         .find(|p| p.exists() && p.join("flake.nix").exists())
         .ok_or_else(|| {
             format!(
-                "Template directory not found. Searched in: {:?}",
-                resource_dir
+                "Template directory '{}' not found. Searched in: {:?}",
+                template_dir, resource_dir
             )
         })
 }
@@ -182,7 +270,11 @@ fn resolve_template_path(app: &AppHandle) -> Result<std::path::PathBuf, String> 
 /// - Template directory cannot be found
 /// - File operations fail
 /// - Git commands fail
-pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
+pub fn bootstrap_with_template(
+    app: &AppHandle,
+    hostname: &str,
+    template_id: Option<&str>,
+) -> Result<(), String> {
     let dir = store::ensure_config_dir_exists(app)
         .map_err(|e| format!("Failed to ensure config dir: {}", e))?;
     let dest_path = Path::new(&dir);
@@ -216,8 +308,9 @@ pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
     }
 
     let platform = detect_darwin_platform();
-    let username = std::env::var("USER").unwrap_or_else(|_| "unknown".to_string());
-    let template_path = resolve_template_path(app)?;
+    let username = detect_username();
+    let template_dir = template_dir_for_id(template_id)?;
+    let template_path = resolve_template_path(app, template_dir)?;
 
     log::info!("Using template from: {}", template_path.display());
 
@@ -310,5 +403,93 @@ mod tests {
         fs::write(temp.path().join(".DS_Store"), "").expect("create finder metadata");
 
         assert!(is_dir_safe_for_bootstrap(temp.path()).expect("check directory"));
+    }
+
+    #[test]
+    fn sanitize_hostname_strips_local_suffix_and_whitespace() {
+        assert_eq!(
+            sanitize_hostname("Coopers-MacBook-Pro.local\n"),
+            "Coopers-MacBook-Pro"
+        );
+        assert_eq!(
+            sanitize_hostname("Coopers-MacBook-Pro"),
+            "Coopers-MacBook-Pro"
+        );
+        assert_eq!(sanitize_hostname("  \n"), "");
+    }
+
+    #[test]
+    fn template_dir_for_id_defaults_to_embedded_template() {
+        assert_eq!(
+            template_dir_for_id(None).expect("default template"),
+            "nix-darwin-determinate"
+        );
+    }
+
+    #[test]
+    fn template_dir_for_id_maps_supported_starter_templates() {
+        assert_eq!(
+            template_dir_for_id(Some("nixos-unified")).expect("nixos-unified template"),
+            "nixos-unified"
+        );
+        assert_eq!(
+            template_dir_for_id(Some("flake-parts")).expect("flake-parts template"),
+            "base"
+        );
+    }
+
+    #[test]
+    fn template_dir_for_id_rejects_unknown_template_ids() {
+        let err = template_dir_for_id(Some("dotfiles")).expect_err("unknown template id");
+
+        assert!(err.contains("Unknown starter template"));
+    }
+
+    #[test]
+    fn render_template_file_name_replaces_supported_placeholders() {
+        let rendered = render_template_file_name(
+            std::ffi::OsStr::new("{{hostname}}-HOSTNAME_PLACEHOLDER-USERNAME_PLACEHOLDER.nix"),
+            "macbook",
+            "aarch64-darwin",
+            "cooper",
+        );
+
+        assert_eq!(
+            rendered,
+            std::ffi::OsString::from("macbook-macbook-cooper.nix")
+        );
+    }
+
+    #[test]
+    fn copy_template_dir_renders_real_starter_template_host_paths() {
+        let temp = tempfile::tempdir().expect("create temp dir");
+        let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("../templates/base");
+        let dest = temp.path().join("base");
+
+        copy_template_dir(&source, &dest, "macbook", "aarch64-darwin", "cooper")
+            .expect("copy base starter");
+
+        let darwin_module =
+            fs::read_to_string(dest.join("flake-modules/darwin.nix")).expect("read darwin module");
+        assert!(dest.join("hosts/macbook/default.nix").exists());
+        assert!(darwin_module.contains("darwinConfigurations = {"));
+        assert!(darwin_module.contains("\"macbook\" = inputs.darwin.lib.darwinSystem"));
+        assert!(!darwin_module.contains("HOSTNAME_PLACEHOLDER"));
+    }
+
+    #[test]
+    fn copy_template_dir_renders_real_nixos_unified_host_paths() {
+        let temp = tempfile::tempdir().expect("create temp dir");
+        let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("../templates/nixos-unified");
+        let dest = temp.path().join("nixos-unified");
+
+        copy_template_dir(&source, &dest, "macbook", "aarch64-darwin", "cooper")
+            .expect("copy nixos-unified starter");
+
+        let darwin_config = fs::read_to_string(dest.join("configurations/darwin/macbook.nix"))
+            .expect("read rendered darwin config");
+        assert!(darwin_config.contains("networking.hostName = \"macbook\";"));
+        assert!(darwin_config.contains("system.primaryUser = \"cooper\";"));
+        assert!(!darwin_config.contains("HOSTNAME_PLACEHOLDER"));
     }
 }

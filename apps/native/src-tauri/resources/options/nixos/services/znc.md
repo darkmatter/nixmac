@@ -5,7 +5,7 @@
 All options under `services.znc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.znc.confOptions.extraZncConf` | | |
 | `services.znc.confOptions.modules` | | |
 | `services.znc.confOptions.networks` | | |

@@ -5,7 +5,7 @@
 All options under `services.oxidized`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.oxidized.configFile` | | |
 | `services.oxidized.dataDir` | | |
 | `services.oxidized.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.sxhkd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---------------------------------------------------- | --------------------------------------------------------- |
 | `services.sxhkd.enable` | `boolean` | Whether to enable simple X hotkey daemon. |
 | `services.sxhkd.extraConfig` | `strings concatenated with “\n”` | Additional configuration to add. |
 | `services.sxhkd.extraOptions` | `list of string` | Command line arguments to invoke sxhkd with. |

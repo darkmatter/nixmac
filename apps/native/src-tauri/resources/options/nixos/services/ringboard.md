@@ -5,7 +5,7 @@
 All options under `services.ringboard`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.ringboard.wayland.enable` | | |
 | `services.ringboard.wayland.package` | | |
 | `services.ringboard.x11.enable` | | |

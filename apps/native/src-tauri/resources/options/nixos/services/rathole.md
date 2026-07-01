@@ -5,7 +5,7 @@
 All options under `services.rathole`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.rathole.credentialsFile` | | |
 | `services.rathole.enable` | | |
 | `services.rathole.package` | | |

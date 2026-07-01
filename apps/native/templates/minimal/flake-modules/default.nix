@@ -7,4 +7,3 @@
     ./dev-shells.nix
   ];
 }
-

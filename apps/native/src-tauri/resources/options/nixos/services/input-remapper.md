@@ -5,7 +5,7 @@
 All options under `services.input-remapper`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.input-remapper.enable` | | |
 | `services.input-remapper.enableUdevRules` | | |
 | `services.input-remapper.package` | | |

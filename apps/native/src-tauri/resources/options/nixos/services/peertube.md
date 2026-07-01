@@ -5,7 +5,7 @@
 All options under `services.peertube`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.peertube.configureNginx` | | |
 | `services.peertube.dataDirs` | | |
 | `services.peertube.database.createLocally` | | |

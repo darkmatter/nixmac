@@ -5,6 +5,6 @@
 All options under `services.doh-proxy-rust`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.doh-proxy-rust.enable` | | |
 | `services.doh-proxy-rust.flags` | | |

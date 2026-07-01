@@ -5,7 +5,7 @@
 All options under `services.corosync`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.corosync.clusterName` | | |
 | `services.corosync.enable` | | |
 | `services.corosync.extraOptions` | | |

@@ -5,7 +5,7 @@
 All options under `programs.gemini-cli`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.gemini-cli.commands` | `attribute set of (open submodule of string)` | An attribute set of custom commands that will be globally available. The name of the attribute set will be the name of each command. You may use subdirectories to create namespaced commands, such as git/fix becoming /git:fix . See https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/commands.md#custom-commands for more information. |
 | `programs.gemini-cli.context` | `attribute set of (strings concatenated with “\n” or absolute path)` | An attribute set of context files to create in ~/.gemini/ . The attribute name becomes the filename with .md extension automatically added. The value is either inline content or a path to a file. |
 | `programs.gemini-cli.defaultModel` | `null or string` | The default model to use for the CLI. Will be set as $GEMINI_MODEL when configured. |

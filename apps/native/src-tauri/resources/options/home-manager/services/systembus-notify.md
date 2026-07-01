@@ -5,6 +5,6 @@
 All options under `services.systembus-notify`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | --------- | -------------------------------------------------------------------- |
 | `services.systembus-notify.enable` | `boolean` | Whether to enable systembus-notify - system bus notification daemon. |
 | `services.systembus-notify.package` | `package` | The systembus-notify package to use. |

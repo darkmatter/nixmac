@@ -5,7 +5,7 @@
 All options under `services.lasuite-drive`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------- | ---- | ----------- |
 | `services.lasuite-drive.bind` | | |
 | `services.lasuite-drive.celery.extraArgs` | | |
 | `services.lasuite-drive.domain` | | |

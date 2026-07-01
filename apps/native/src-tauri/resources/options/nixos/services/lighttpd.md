@@ -5,7 +5,7 @@
 All options under `services.lighttpd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.lighttpd.cgit.configText` | | |
 | `services.lighttpd.cgit.enable` | | |
 | `services.lighttpd.cgit.subdir` | | |

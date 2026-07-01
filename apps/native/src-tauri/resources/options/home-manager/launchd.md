@@ -5,6 +5,6 @@
 All options under `launchd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------- | ------------------------------ | -------------------------------------------------------------------------------------------------- |
 | `launchd.agents` | `attribute set of (submodule)` | Define LaunchAgents. |
 | `launchd.enable` | `boolean` | Whether to enable Home Manager to define per-user daemons by making use of launchd’s LaunchAgents. |

@@ -5,7 +5,7 @@
 All options under `services.skhd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | -------------------------------- | ---------------------------------------------- |
 | `services.skhd.enable` | `boolean` | Whether to enable the skhd hotkey daemon. |
 | `services.skhd.package` | `package` | This option specifies the skhd package to use. |
 | `services.skhd.skhdConfig` | `strings concatenated with “\n”` | Config to use for skhdrc . |

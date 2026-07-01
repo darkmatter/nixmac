@@ -5,7 +5,7 @@
 All options under `services.usbmuxd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.usbmuxd.enable` | | |
 | `services.usbmuxd.group` | | |
 | `services.usbmuxd.package` | | |

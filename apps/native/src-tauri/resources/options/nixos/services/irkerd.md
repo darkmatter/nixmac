@@ -5,7 +5,7 @@
 All options under `services.irkerd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.irkerd.enable` | | |
 | `services.irkerd.listenAddress` | | |
 | `services.irkerd.nick` | | |

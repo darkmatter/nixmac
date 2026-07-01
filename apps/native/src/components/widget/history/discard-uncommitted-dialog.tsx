@@ -8,8 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { ConfigDirBadge } from "@/components/widget/badges/config-dir-badge";
 import { useRollback } from "@/hooks/use-rollback";
-import { useViewModel } from "@/stores/view-model";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel, viewModelActions } from "@nixmac/state";
 import { toast } from "sonner";
 
 interface DiscardUncommittedDialogProps {
@@ -19,13 +18,13 @@ interface DiscardUncommittedDialogProps {
 
 export function DiscardUncommittedDialog({ open, onOpenChange }: DiscardUncommittedDialogProps) {
   const gitStatus = useViewModel((s) => s.git);
-  const configDir = useWidgetStore((s) => s.configDir);
+  const configDir = useViewModel((s) => s.preferences?.configDir ?? "");
   const files = gitStatus?.files ?? [];
   const { handleRollback } = useRollback();
 
   const handleDiscard = async () => {
     await handleRollback();
-    const remaining = useViewModel.getState().git?.files?.length ?? 1;
+    const remaining = viewModelActions.getState().git?.files?.length ?? 1;
     if (remaining === 0) {
       toast.success("Changes discarded");
       onOpenChange(false);
@@ -51,9 +50,7 @@ export function DiscardUncommittedDialog({ open, onOpenChange }: DiscardUncommit
                       <span className="shrink-0 opacity-60">({f.changeType})</span>
                     </li>
                   ))}
-                  {files.length > 5 && (
-                    <li className="opacity-60">…and {files.length - 5} more</li>
-                  )}
+                  {files.length > 5 && <li className="opacity-60">…and {files.length - 5} more</li>}
                 </ul>
               )}
             </div>

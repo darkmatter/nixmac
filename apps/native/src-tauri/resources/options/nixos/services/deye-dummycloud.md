@@ -5,7 +5,7 @@
 All options under `services.deye-dummycloud`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.deye-dummycloud.enable` | | |
 | `services.deye-dummycloud.mqttBrokerUrl` | | |
 | `services.deye-dummycloud.mqttPassword` | | |

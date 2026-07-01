@@ -5,7 +5,7 @@
 All options under `services.self-deploy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.self-deploy.branch` | | |
 | `services.self-deploy.enable` | | |
 | `services.self-deploy.nixArgs` | | |

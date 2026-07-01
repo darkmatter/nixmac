@@ -5,7 +5,7 @@
 All options under `services.jigasi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.jigasi.bridgeMuc` | | |
 | `services.jigasi.componentPasswordFile` | | |
 | `services.jigasi.config` | | |

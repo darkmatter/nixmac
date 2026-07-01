@@ -5,7 +5,7 @@
 All options under `services.searx`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.searx.configFile` | | |
 | `services.searx.configureNginx` | | |
 | `services.searx.configureUwsgi` | | |

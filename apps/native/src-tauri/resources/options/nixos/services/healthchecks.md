@@ -5,7 +5,7 @@
 All options under `services.healthchecks`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.healthchecks.dataDir` | | |
 | `services.healthchecks.enable` | | |
 | `services.healthchecks.group` | | |

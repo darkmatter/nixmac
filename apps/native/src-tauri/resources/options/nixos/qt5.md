@@ -5,7 +5,7 @@
 All options under `qt5`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------- | ---- | ----------- |
 | `qt5.enable` | | |
 | `qt5.platformTheme` | | |
 | `qt5.style` | | |

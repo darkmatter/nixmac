@@ -5,7 +5,7 @@
 All options under `services.pdfding`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.pdfding.allowedHosts` | | |
 | `services.pdfding.backup.enable` | | |
 | `services.pdfding.backup.endpoint` | | |

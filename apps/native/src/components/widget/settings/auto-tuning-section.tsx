@@ -18,7 +18,9 @@ export function AutoTuningSection() {
   const refresh = useCallback(async () => {
     try {
       const [nextSchemas, nextValues] = await Promise.all([
+        // deprecated(orpc): replace with client/orpc from @/lib/orpc
         tauriAPI.devConfigs.schemas(),
+        // deprecated(orpc): replace with client/orpc from @/lib/orpc
         tauriAPI.devConfigs.values(),
       ]);
       // In environments where the Tauri command isn't registered (Storybook,
@@ -129,6 +131,7 @@ async function commitField(
 ): Promise<Record<string, JsonValue>> {
   const currentStruct = readStructValues(values, structName);
   const nextStruct = { ...currentStruct, [key]: value as JsonValue };
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
   await tauriAPI.devConfigs.set(structName, nextStruct);
   return { ...values, [structName]: nextStruct };
 }

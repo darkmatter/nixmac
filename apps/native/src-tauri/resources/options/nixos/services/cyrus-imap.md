@@ -5,7 +5,7 @@
 All options under `services.cyrus-imap`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.cyrus-imap.cyrusConfigFile` | | |
 | `services.cyrus-imap.cyrusSettings` | | |
 | `services.cyrus-imap.debug` | | |

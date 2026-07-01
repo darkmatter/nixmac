@@ -5,7 +5,7 @@
 All options under `services.printing`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.printing.allowFrom` | | |
 | `services.printing.bindirCmds` | | |
 | `services.printing.browsed.enable` | | |

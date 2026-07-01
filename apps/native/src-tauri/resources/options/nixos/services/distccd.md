@@ -5,7 +5,7 @@
 All options under `services.distccd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.distccd.allowedClients` | | |
 | `services.distccd.enable` | | |
 | `services.distccd.jobTimeout` | | |

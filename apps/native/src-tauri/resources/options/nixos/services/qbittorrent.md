@@ -5,7 +5,7 @@
 All options under `services.qbittorrent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.qbittorrent.enable` | | |
 | `services.qbittorrent.extraArgs` | | |
 | `services.qbittorrent.group` | | |

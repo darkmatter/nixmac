@@ -5,7 +5,7 @@
 All options under `services.xray`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.xray.enable` | | |
 | `services.xray.package` | | |
 | `services.xray.settings` | | |

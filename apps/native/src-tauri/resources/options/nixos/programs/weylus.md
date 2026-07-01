@@ -5,7 +5,7 @@
 All options under `programs.weylus`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `programs.weylus.enable` | | |
 | `programs.weylus.openFirewall` | | |
 | `programs.weylus.package` | | |

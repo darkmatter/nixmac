@@ -5,7 +5,7 @@
 All options under `services.surrealdb`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.surrealdb.dbPath` | | |
 | `services.surrealdb.enable` | | |
 | `services.surrealdb.extraFlags` | | |

@@ -5,7 +5,7 @@
 All options under `services.scrutiny`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.scrutiny.collector.enable` | | |
 | `services.scrutiny.collector.package` | | |
 | `services.scrutiny.collector.schedule` | | |

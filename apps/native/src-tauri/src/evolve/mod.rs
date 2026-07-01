@@ -68,13 +68,12 @@ enum MemoryStrategy {
 
 impl MemoryStrategy {
     fn from_env() -> Self {
-        match std::env::var("NIXMAC_EVOLUTION_MEMORY_STRATEGY")
-            .ok()
-            .as_deref()
-            .map(|s| s.trim())
+        match crate::env::settings(None)
+            .evolution_memory_strategy
+            .as_str()
         {
-            None | Some("") | Some("none") => MemoryStrategy::None,
-            Some("retention") => MemoryStrategy::Retention,
+            "" | "none" => MemoryStrategy::None,
+            "retention" => MemoryStrategy::Retention,
             _ => MemoryStrategy::None,
         }
     }
@@ -107,8 +106,6 @@ fn normalize_openai_max_output_tokens(model: &str, value: usize) -> u32 {
     // keep their provider-level behavior even when the slug contains gpt-4o.
     capabilities_for_model(model).clamp_max_completion_tokens(normalized)
 }
-
-/// Return short hex prefix for correlation of error messages without risking sensitive content exposure.
 
 impl EvolutionMessage {
     fn permanent(message: Message, iteration: usize, key: Option<String>) -> Self {
@@ -335,14 +332,13 @@ const BUILD_OUTPUT_TAIL_LINES: usize = 80;
 
 const SYSTEM_PROMPT: &str = include_str!("../../prompts/system.md");
 
-fn configured_model(store_model: Option<String>, env_var: &str) -> Option<String> {
+fn configured_model(
+    store_model: Option<String>,
+    env_model: impl Fn() -> Option<String>,
+) -> Option<String> {
     store_model
         .and_then(global_utils::non_empty_trimmed_string)
-        .or_else(|| {
-            std::env::var(env_var)
-                .ok()
-                .and_then(global_utils::non_empty_trimmed_string)
-        })
+        .or_else(env_model)
 }
 
 fn require_local_model(
@@ -350,7 +346,7 @@ fn require_local_model(
     store_model: Option<String>,
     env_var: &str,
 ) -> Result<String> {
-    configured_model(store_model, env_var).ok_or_else(|| {
+    configured_model(store_model, crate::env::default_evolve_model).ok_or_else(|| {
         anyhow!("No {provider_name} model configured. Please select a model in Settings or set {env_var}.")
     })
 }
@@ -731,11 +727,12 @@ fn finish_after_limit_stop<R: Runtime>(
 ) {
     let summary = limit_kind.stop_summary(attempts);
     info!("{}", summary);
+    // The terminal `Complete` event is emitted by the lifecycle after all
+    // state cells are updated; only the informational stop notice goes out here.
     emit_evolve_event(
         app,
         EvolveEvent::info(start_time, Some(iteration), &summary),
     );
-    emit_evolve_event(app, EvolveEvent::complete(start_time, iteration, &summary));
 
     evolution.summary = Some(summary);
     evolution.state = EvolutionState::LimitReached;
@@ -756,10 +753,14 @@ pub async fn generate_evolution<R: Runtime>(
     let repo_root = repo_root(config_dir);
 
     // Determine provider
+    let env_settings = crate::env::settings_from_app(Some(app));
     let store_provider = store::get_evolve_provider(app).ok().flatten();
-    let requested_provider_type = store_provider.or_else(|| std::env::var("EVOLVE_PROVIDER").ok());
+    let requested_provider_type = store_provider
+        .or_else(|| crate::env::optional(env_settings.default_evolve_provider.clone()));
     let store_model = store::get_evolve_model(app).ok().flatten();
-    let configured_evolve_model = configured_model(store_model.clone(), "EVOLVE_MODEL");
+    let configured_evolve_model = configured_model(store_model.clone(), || {
+        crate::env::optional(env_settings.default_evolve_model.clone())
+    });
     let (provider_type, used_legacy_openai_fallback) = if let Some(provider) =
         requested_provider_type
     {
@@ -817,11 +818,11 @@ pub async fn generate_evolution<R: Runtime>(
 
     // Select provider implementation
     let provider: Arc<dyn AiProvider> = if provider_type == "ollama" {
-        let model = require_local_model("Ollama", store_model, "EVOLVE_MODEL")?;
+        let model = require_local_model("Ollama", store_model, crate::env::keys::EVOLVE_MODEL)?;
         let base_url = store::get_ollama_api_base_url(app)
             .ok()
             .flatten()
-            .or_else(|| std::env::var("OLLAMA_API_BASE").ok())
+            .or_else(|| crate::env::optional(env_settings.ollama_api_base.clone()))
             .unwrap_or_else(|| DEFAULT_OLLAMA_API_BASE.to_string());
         info!(
             "Using Ollama provider | Model: {} | URL: {} | Max output tokens: {}",
@@ -842,16 +843,32 @@ pub async fn generate_evolution<R: Runtime>(
         info!("Using CLI provider: {} | Model: {}", provider_type, model);
         Arc::new(CliProvider::new(tool, model))
     } else if provider_type == "vllm" {
-        let model = require_local_model("vLLM", store_model, "EVOLVE_MODEL")?;
+        let model = require_local_model("vLLM", store_model, crate::env::keys::EVOLVE_MODEL)?;
         let base_url = store::get_vllm_api_base_url(app)
             .ok()
             .flatten()
-            .or_else(|| std::env::var("VLLM_API_BASE").ok())
+            .or_else(|| crate::env::optional(env_settings.vllm_api_base.clone()))
             .ok_or_else(|| anyhow!("No vLLM base URL configured. Please set it in Settings."))?;
         let api_key = store::get_effective_vllm_api_key(app)?.unwrap_or_else(|| "none".to_string());
         info!(
             "Using vLLM provider | Model: {} | URL: {} | Max output tokens: {}",
             model, base_url, max_output_tokens_for_request
+        );
+        Arc::new(OpenAIProvider::new(
+            api_key,
+            base_url,
+            model,
+            max_output_tokens_for_request,
+        ))
+    } else if provider_type == crate::ai::providers::NIXMAC_PROVIDER {
+        let api_key = store::get_device_api_key(app)?
+            .ok_or_else(|| anyhow!("Sign in to nixmac hosted inference first."))?;
+        let base_url = crate::ai::providers::nixmac_llm_api_base(&store::get_web_server_url()?);
+        let model = configured_evolve_model
+            .unwrap_or_else(|| crate::ai::providers::DEFAULT_NIXMAC_MODEL.to_string());
+        info!(
+            "Using nixmac hosted provider | Model: {} | Max output tokens: {}",
+            model, max_output_tokens_for_request
         );
         Arc::new(OpenAIProvider::new(
             api_key,
@@ -927,15 +944,18 @@ pub async fn generate_evolution<R: Runtime>(
     // every run). `app.state` panics if the observable isn't managed; that is
     // intentional — it surfaces a startup misconfiguration immediately
     // instead of silently swapping in field defaults.
-    let config::EvolutionLimits {
+    let config::UserPreferences {
         mut max_build_attempts,
-        mut max_token_budget,
+        max_token_budget: configured_max_token_budget,
         mut max_iterations,
         ..
     } = app
-        .state::<crate::observable::Observable<config::EvolutionLimits>>()
+        .state::<crate::observable::Observable<config::UserPreferences>>()
         .read_sync()
         .clone();
+    let auto_format_nix_files = crate::state::ui_prefs::auto_format_nix_files(app);
+    let mut max_token_budget =
+        config::effective_max_token_budget(&provider_type, configured_max_token_budget);
 
     let mut max_iterations_before_edit = std::cmp::max(
         1,
@@ -1297,6 +1317,7 @@ pub async fn generate_evolution<R: Runtime>(
                         host_attr.as_str(),
                         tool_name,
                         &args,
+                        auto_format_nix_files,
                         gitignore_matcher.as_ref(),
                     );
 
@@ -1413,10 +1434,10 @@ pub async fn generate_evolution<R: Runtime>(
                                     }
                                 }
                                 ToolResult::Done(summary_text) => {
-                                    emit_evolve_event(
-                                        app,
-                                        EvolveEvent::complete(start_time, iteration, summary_text),
-                                    );
+                                    // The terminal `Complete` event is emitted by the
+                                    // lifecycle once all state cells are updated; the
+                                    // agent summary travels with it via `evolution.summary`.
+                                    info!("Agent signalled done: {}", summary_text);
                                 }
                                 ToolResult::Question { question, choices } => {
                                     emit_evolve_event(
@@ -1581,10 +1602,10 @@ Do not invent tool names and do not place tool invocations in assistant content.
             {
                 if evolution.edits.is_empty() {
                     // No files were changed — this is a conversational reply (e.g. "hi").
-                    // Emit the content as the completion event so the UI shows it,
-                    // and mark the state so the caller can skip the review workflow.
+                    // The lifecycle emits the terminal `Complete` event carrying the
+                    // content as `conversational_response`; mark the state so the
+                    // caller can skip the review workflow.
                     info!("Conversational response (no edits made)");
-                    emit_evolve_event(app, EvolveEvent::complete(start_time, iteration, &content));
                     evolution.summary = Some(content);
                     evolution.state = EvolutionState::Conversational;
                 } else {
@@ -2329,7 +2350,7 @@ mod tests {
         let lock = crate::test_support::e2e_env_lock();
         let restore =
             crate::test_support::EnvVarRestore::capture(&["NIXMAC_EVOLUTION_MEMORY_STRATEGY"]);
-        std::env::set_var("NIXMAC_EVOLUTION_MEMORY_STRATEGY", value);
+        unsafe { std::env::set_var("NIXMAC_EVOLUTION_MEMORY_STRATEGY", value) };
         (lock, restore)
     }
 
@@ -2614,10 +2635,10 @@ mod tests {
         let filtered = filter_evolution_messages(&messages, 3, true);
         // The think before the build check should be filtered out, but the one after should be kept.
         assert!(filtered.iter().any(
-            |m| matches!(&m.message, Message::Tool { ref tool_call_id, .. } if tool_call_id == "think-2")
+            |m| matches!(&m.message, Message::Tool { tool_call_id, .. } if tool_call_id == "think-2")
         ));
         assert!(filtered.iter().all(
-            |m| !matches!(&m.message, Message::Tool { ref tool_call_id, .. } if tool_call_id == "think-1")
+            |m| !matches!(&m.message, Message::Tool { tool_call_id, .. } if tool_call_id == "think-1")
         ));
     }
 

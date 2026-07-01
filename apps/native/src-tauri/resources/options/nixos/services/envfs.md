@@ -5,7 +5,7 @@
 All options under `services.envfs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.envfs.enable` | | |
 | `services.envfs.extraFallbackPathCommands` | | |
 | `services.envfs.package` | | |

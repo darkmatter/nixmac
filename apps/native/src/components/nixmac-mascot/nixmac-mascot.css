@@ -42,7 +42,6 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-
   .nixmac-mascot #eye-left,
   .nixmac-mascot #eye-right {
     transform-box: fill-box;
@@ -78,7 +77,6 @@
 }
 
 @keyframes nixmac-blink {
-
   0%,
   88%,
   100% {
@@ -91,7 +89,6 @@
 }
 
 @keyframes nixmac-smile {
-
   0%,
   100% {
     transform: translateY(0) scaleX(1);
@@ -103,7 +100,6 @@
 }
 
 @keyframes nixmac-blush {
-
   0%,
   100% {
     opacity: 0.8;
@@ -115,7 +111,6 @@
 }
 
 @keyframes nixmac-pulse {
-
   0%,
   100% {
     opacity: var(--pulse-dim);
@@ -129,7 +124,6 @@
 /* translateY is in % so the hop height scales with the rendered size.
    Ends on rotate(360deg); the loop's reset to 0deg is visually identical. */
 @keyframes nixmac-hop {
-
   0%,
   68% {
     transform: translateY(0) rotate(0) scale(1, 1);

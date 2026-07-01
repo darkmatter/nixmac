@@ -5,7 +5,7 @@
 All options under `programs.i3lock`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `programs.i3lock.enable` | | |
 | `programs.i3lock.package` | | |
 | `programs.i3lock.u2fSupport` | | |

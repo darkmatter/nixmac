@@ -5,7 +5,7 @@
 All options under `services.hyprlauncher`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `services.hyprlauncher.enable` | `boolean` | Whether to enable hyprlauncher. |
 | `services.hyprlauncher.package` | `null or package` | The hyprlauncher package to use. |
 | `services.hyprlauncher.settings` | `Hyprland configuration value` | Configuration settings for hyprlauncher. All the available options can be found here: https://wiki.hypr.land/Hypr-Ecosystem/hyprlauncher/#config |

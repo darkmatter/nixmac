@@ -5,6 +5,6 @@
 All options under `services.gpm`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `services.gpm.enable` | | |
 | `services.gpm.protocol` | | |

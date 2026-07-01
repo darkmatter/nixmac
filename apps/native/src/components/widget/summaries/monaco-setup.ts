@@ -28,7 +28,8 @@ export const FILE_VIEW_OPTIONS: editor.IStandaloneEditorConstructionOptions = {
   },
   wordWrap: "off",
   fontSize: 12,
-  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+  fontFamily:
+    'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
   smoothScrolling: true,
   scrollBeyondLastLine: false,
   folding: false,
@@ -71,9 +72,20 @@ export const DIFF_EDITOR_OPTIONS = {
 };
 
 const EXT_TO_LANGUAGE: Record<string, string> = {
-  nix: "nix", json: "json", yaml: "yaml", yml: "yaml", toml: "toml",
-  md: "markdown", sh: "shell", ts: "typescript", js: "javascript",
-  tsx: "typescript", jsx: "javascript", css: "css", html: "html", xml: "xml",
+  nix: "nix",
+  json: "json",
+  yaml: "yaml",
+  yml: "yaml",
+  toml: "toml",
+  md: "markdown",
+  sh: "shell",
+  ts: "typescript",
+  js: "javascript",
+  tsx: "typescript",
+  jsx: "javascript",
+  css: "css",
+  html: "html",
+  xml: "xml",
 };
 
 export function languageFromFilename(filename: string): string {

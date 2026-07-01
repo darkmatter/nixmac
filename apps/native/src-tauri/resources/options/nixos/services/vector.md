@@ -5,7 +5,7 @@
 All options under `services.vector`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.vector.enable` | | |
 | `services.vector.gracefulShutdownLimitSecs` | | |
 | `services.vector.journaldAccess` | | |

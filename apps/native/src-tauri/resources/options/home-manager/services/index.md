@@ -5,7 +5,7 @@
 Subcategories of `services`.
 
 | Key | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------- | -------- | --------------------------- |
 | [`activitywatch`](activitywatch.md) | category | 5 options |
 | [`amberol`](amberol.md) | category | 4 options |
 | [`arrpc`](arrpc.md) | category | 3 options |

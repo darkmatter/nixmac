@@ -5,7 +5,7 @@
 All options under `services.kubernetes`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------------- | ---- | ----------- |
 | `services.kubernetes.addonManager.addons` | | |
 | `services.kubernetes.addonManager.bootstrapAddons` | | |
 | `services.kubernetes.addonManager.enable` | | |

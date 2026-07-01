@@ -1,10 +1,19 @@
 import { Button } from "@/components/ui/button";
+import { EtcClobberConflictList } from "@/components/widget/overlays/etc-clobber-conflict-list";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useRollback } from "@/hooks/use-rollback";
+import { tauriAPI } from "@/ipc/api";
+import {
+  getRebuildErrorSuggestion,
+  getRebuildErrorTitle,
+  getRebuildSystemSafetyMessage,
+} from "@/lib/errors";
 import { cn } from "@/lib/utils";
-import { useWidgetStore, type RebuildErrorType, type RebuildLine } from "@/stores/widget-store";
+import type { RebuildErrorType, RebuildLine, RebuildNotice } from "@/types/rebuild";
+import { uiActions, useUiState, useViewModel } from "@nixmac/state";
 import {
   AlertTriangle,
+  AppWindow,
   Brain,
   CheckCircle,
   Download,
@@ -18,61 +27,6 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { Activity, useEffect, useRef, useState } from "react";
-
-/** Get a user-friendly title for the error type */
-function getErrorTitle(errorType: RebuildErrorType | undefined): string {
-  switch (errorType) {
-    case "infinite_recursion":
-      return "Infinite Recursion Detected";
-    case "evaluation_error":
-      return "Nix Evaluation Error";
-    case "build_error":
-      return "Build Failed";
-    case "full_disk_access":
-      return "Full Disk Access Required";
-    case "user_cancelled":
-      return "Activation Cancelled";
-    case "authorization_denied":
-      return "Authorization Denied";
-    default:
-      return "Build Failed";
-  }
-}
-
-/** Get helpful suggestion text for the error type */
-function getErrorSuggestion(errorType: RebuildErrorType | undefined): string {
-  switch (errorType) {
-    case "infinite_recursion":
-      return "Your configuration has a circular dependency. Rolling back will restore your previous working configuration.";
-    case "evaluation_error":
-      return "There's a syntax or evaluation error in your Nix files. Check the error message for details.";
-    case "build_error":
-      return "A package failed to build. You may need to update your flake or fix the package configuration.";
-    case "full_disk_access":
-      return "darwin-rebuild requires Full Disk Access. Make sure nixmac is in your Applications folder (not running from the install disk image), then grant access in System Settings → Privacy & Security → Full Disk Access.";
-    case "user_cancelled":
-      return "The activation was cancelled. You can retry the operation.";
-    case "authorization_denied":
-      return "The activation was denied due to insufficient permissions. You can adjust your settings and retry.";
-    default:
-      return "The build encountered an error. You can rollback to your previous configuration or dismiss to investigate.";
-  }
-}
-
-function getSystemSafetyMessage(
-  systemUntouched: boolean | undefined,
-  context: "apply" | "rollback",
-): string | null {
-  if (context !== "apply") {
-    return null;
-  }
-
-  if (systemUntouched === true) {
-    return "No changes were made to your system.";
-  }
-
-  return null;
-}
 
 /** Map backend emoji to icon component and strip from text */
 const EMOJI_MAP: Record<string, (className: string) => React.ReactNode> = {
@@ -153,16 +107,7 @@ function LoaderCore({
   pendingCount?: number;
   children?: React.ReactNode;
 }) {
-  const skeletonWidths = [
-    "w-24",
-    "w-32",
-    "w-28",
-    "w-20",
-    "w-36",
-    "w-30",
-    "w-22",
-    "w-40",
-  ];
+  const skeletonWidths = ["w-24", "w-32", "w-28", "w-20", "w-36", "w-30", "w-22", "w-40"];
   const itemHeight = 36;
 
   // Find the index of the most recently completed step (one before current)
@@ -265,7 +210,7 @@ function LoaderCore({
                           <span
                             className={cn(
                               textClass,
-                              "block whitespace-pre-wrap break-words text-sm font-normal transition-colors duration-500",
+                              "block whitespace-pre-wrap wrap-break-word text-sm font-normal transition-colors duration-500",
                             )}
                           >
                             {cleanText}
@@ -287,7 +232,7 @@ function LoaderCore({
                 return (
                   <motion.div
                     animate={{ opacity, y }}
-                      className="absolute left-0 right-0 flex items-center gap-3 px-6"
+                    className="absolute left-0 right-0 flex items-center gap-3 px-6"
                     initial={{ opacity: 0, y: y + 8 }}
                     key={`skeleton-${width}`}
                     transition={{
@@ -314,6 +259,61 @@ function LoaderCore({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function RebuildNoticeList({ notices }: { notices: RebuildNotice[] }) {
+  const [requestingPermission, setRequestingPermission] = useState<string | null>(null);
+
+  if (notices.length === 0) {
+    return null;
+  }
+
+  async function handlePermissionAction(permissionId: string) {
+    setRequestingPermission(permissionId);
+    try {
+      await tauriAPI.permissions.request(permissionId);
+      await tauriAPI.permissions.refresh();
+    } finally {
+      setRequestingPermission(null);
+    }
+  }
+
+  return (
+    <div className="mb-4 flex flex-col gap-3">
+      {notices.map((notice) => {
+        const permissionId = notice.permissionId;
+        const isRequestingPermission = requestingPermission === permissionId;
+
+        return (
+          <div
+            key={notice.id}
+            className="rounded-xl border border-amber-300/30 bg-amber-300/10 p-4 text-amber-50 shadow-lg shadow-amber-950/20"
+          >
+            <div className="flex gap-3">
+              <AppWindow className="mt-0.5 size-5 shrink-0 text-amber-200" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-sm text-amber-100">{notice.title}</p>
+                <p className="mt-1 text-amber-50/85 text-xs leading-relaxed">{notice.body}</p>
+                {permissionId ? (
+                  <Button
+                    className="mt-3 border-amber-200/30 text-amber-50 hover:bg-amber-200/10"
+                    disabled={isRequestingPermission}
+                    onClick={() => handlePermissionAction(permissionId)}
+                    size="sm"
+                    variant="outline"
+                  >
+                    {isRequestingPermission
+                      ? "Opening…"
+                      : (notice.actionLabel ?? "Open System Settings")}
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -357,18 +357,30 @@ function RawConsoleOutput({ lines, children }: { lines: string[]; children?: Rea
 export function RebuildOverlayPanel() {
   const { handleRollback } = useRollback();
   const { triggerRebuild } = useRebuildStream();
-  const { isRunning, lines, rawLines, success, errorType, errorMessage, context, systemUntouched } =
-    useWidgetStore((state) => state.rebuild);
+  const status = useViewModel((state) => state.rebuildStatus);
+  const lines = useViewModel((state) => state.rebuildLog.lines);
+  const rawLines = useViewModel((state) => state.rebuildLog.rawLines);
+  const notices = useViewModel((state) => state.rebuildLog.notices);
+  const context = useUiState((state) => state.rebuildContext);
+  const dismissed = useUiState((state) => state.rebuildPanelDismissed);
+  const etcClobber = useUiState((state) => state.etcClobber);
+
+  const isRunning = status?.isRunning ?? false;
+  const success = status?.success ?? undefined;
+  const errorType = (status?.errorType ?? undefined) as RebuildErrorType | undefined;
+  const errorMessage = status?.errorMessage ?? undefined;
+  const systemUntouched = status?.systemUntouched ?? undefined;
+
   const isRollback = context === "rollback";
-  const systemSafetyMessage = getSystemSafetyMessage(systemUntouched, context);
+  const systemSafetyMessage = getRebuildSystemSafetyMessage(systemUntouched, context);
 
   const handleRetry = async () => {
-    useWidgetStore.getState().setProcessing(true, "cancel");
+    uiActions.setProcessing(true, "cancel");
     await triggerRebuild({ context: "rollback" });
   };
 
   const handleDismiss = () => {
-    useWidgetStore.getState().clearRebuild();
+    uiActions.setRebuildPanelDismissed(true);
   };
 
   const [showConsole, setShowConsole] = useState(false);
@@ -393,20 +405,21 @@ export function RebuildOverlayPanel() {
     lines.length > 0
       ? lines
       : [
-          {
-            id: 0,
-            text: isRollback ? "Rolling back..." : "Starting rebuild...",
-            type: "info" as const,
-          },
-        ];
+        {
+          id: 0,
+          text: isRollback ? "Rolling back..." : "Starting rebuild...",
+          type: "info" as const,
+        },
+      ];
 
   // Step points to the current (most recent) line
   // - While running: last line is "in progress", previous lines are "completed"
   // - When complete: all lines are "completed" (step past the end)
   const step = isRunning ? Math.max(0, displayLines.length - 1) : displayLines.length;
 
-  // Only show when rebuild is running or has completed
-  const isVisible = isRunning || success !== undefined;
+  // Only show when rebuild is running or has completed (and the completed
+  // run's panel hasn't been dismissed)
+  const isVisible = isRunning || (success !== undefined && !dismissed);
   if (!isVisible) {
     return null;
   }
@@ -423,6 +436,10 @@ export function RebuildOverlayPanel() {
         >
           {/* Main content */}
           <div className="min-h-0 flex-1">
+            {/* Build-log-triggered guidance lives above the active running view;
+                failure panels render it inline to avoid duplicate mounted copies. */}
+            {(!showErrorPanel || showConsole) && <RebuildNoticeList notices={notices} />}
+
             {/* Error panel - conditional, only on failure when not viewing console */}
             <AnimatePresence>
               {showErrorPanel && !showConsole && (
@@ -440,8 +457,12 @@ export function RebuildOverlayPanel() {
 
                   {/* Error Title */}
                   <h2 className="text-center font-semibold text-white text-lg">
-                    {getErrorTitle(errorType)}
+                    {getRebuildErrorTitle(errorType)}
                   </h2>
+
+                  <div className="w-full max-w-xl">
+                    <RebuildNoticeList notices={notices} />
+                  </div>
 
                   {systemSafetyMessage && (
                     <p className="max-w-xl rounded-lg border border-teal-400/30 bg-teal-400/10 px-4 py-2 text-center font-medium text-sm text-teal-200">
@@ -449,16 +470,20 @@ export function RebuildOverlayPanel() {
                     </p>
                   )}
 
+                  {errorType === "etc_clobber" && etcClobber && (
+                    <EtcClobberConflictList result={etcClobber} />
+                  )}
+
                   {/* Error Message */}
-                  {errorMessage && (
-                      <p className="max-h-48 w-full max-w-xl overflow-y-auto rounded-lg bg-black/30 px-6 py-3 text-center font-mono text-xs text-zinc-400">
+                  {errorMessage && errorType !== "etc_clobber" && (
+                    <p className="max-h-48 w-full max-w-xl overflow-y-auto rounded-lg bg-black/30 px-6 py-3 text-center font-mono text-xs text-zinc-400">
                       {errorMessage}
                     </p>
                   )}
 
                   {/* Suggestion */}
                   <p className="max-w-xl text-center text-sm text-zinc-300">
-                    {getErrorSuggestion(errorType)}
+                    {getRebuildErrorSuggestion(errorType)}
                   </p>
                 </motion.div>
               )}

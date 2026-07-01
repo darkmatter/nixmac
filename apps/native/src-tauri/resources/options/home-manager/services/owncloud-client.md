@@ -5,6 +5,6 @@
 All options under `services.owncloud-client`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | --------- | ----------------------------------- |
 | `services.owncloud-client.enable` | `boolean` | Whether to enable Owncloud Client. |
 | `services.owncloud-client.package` | `package` | The owncloud-client package to use. |

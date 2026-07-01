@@ -5,7 +5,7 @@
 All options under `services._3proxy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services._3proxy.confFile` | | |
 | `services._3proxy.denyPrivate` | | |
 | `services._3proxy.enable` | | |

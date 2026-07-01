@@ -110,10 +110,10 @@ By giving each suite its own config file (and thus its own process), we ensure:
 1. Add a per-suite config in this folder, e.g. `wdio.my-feature.conf.mjs`:
 
    ```js
-   import { createWdioConfig } from './wdio.conf.base.mjs';
+   import { createWdioConfig } from "./wdio.conf.base.mjs";
 
    export const config = createWdioConfig({
-     specs: ['../dist-e2e/tests/wdio/my-feature.spec.js'],
+     specs: ["../dist-e2e/tests/wdio/my-feature.spec.js"],
      setupOptions: { initializeConfigRepo: true }, // customize per-suite
    });
    ```
@@ -134,13 +134,13 @@ By giving each suite its own config file (and thus its own process), we ensure:
 
    ```js
    const suites = [
-     'test:wdio:smoke',
-     'test:wdio:basic-prompts',
-     'test:wdio:conversational',
-     'test:wdio:discard',
-     'test:wdio:modify',
-     'test:wdio:my-feature',  // ← add your new suite here
-     'test:wdio:onboarding',
+     "test:wdio:smoke",
+     "test:wdio:basic-prompts",
+     "test:wdio:conversational",
+     "test:wdio:discard",
+     "test:wdio:modify",
+     "test:wdio:my-feature", // ← add your new suite here
+     "test:wdio:onboarding",
    ];
    ```
 
@@ -211,7 +211,7 @@ When adding new interactive elements you plan to target from E2E tests, add a `d
 Then target it from WDIO:
 
 ```js
-await $(('[data-testid="my-action-button"]')).click();
+await $('[data-testid="my-action-button"]').click();
 ```
 
 This keeps selectors stable and readable as component markup changes.
@@ -235,8 +235,8 @@ Named presets live in `tests/wdio/helpers/mock-vllm-presets.ts`:
 
 ```js
 const MOCK_VLLM_FIXTURE_PRESETS = Object.freeze({
-  basicPromptsAddFont: ['add-font.jsonl'],
-  modifySequentialPrompts: ['add-font-add-another.jsonl'],
+  basicPromptsAddFont: ["add-font.jsonl"],
+  modifySequentialPrompts: ["add-font-add-another.jsonl"],
 });
 ```
 
@@ -247,10 +247,10 @@ Add new presets there as you add new fixture files.
 Enable the mock server for a suite by passing `mockVllm: {}` in `setupOptions`. No fixture files need to be specified here — individual tests pick their own responses at runtime:
 
 ```js
-import { createWdioConfig } from './wdio.conf.base.mjs';
+import { createWdioConfig } from "./wdio.conf.base.mjs";
 
 export const config = createWdioConfig({
-  specs: ['../dist-e2e/tests/wdio/my-feature.spec.js'],
+  specs: ["../dist-e2e/tests/wdio/my-feature.spec.js"],
   setupOptions: {
     initializeConfigRepo: true,
     mockVllm: {},
@@ -263,12 +263,12 @@ export const config = createWdioConfig({
 For single-test suites, load responses at the top of each `it` block before triggering any UI action that will cause the app to call the LLM:
 
 ```js
-import { setMockVllmResponses } from './helpers/test-env.js';
-import { getMockVllmFixturePreset } from './helpers/mock-vllm-presets.js';
+import { setMockVllmResponses } from "./helpers/test-env.js";
+import { getMockVllmFixturePreset } from "./helpers/mock-vllm-presets.js";
 
-it('does something with the LLM', async () => {
+it("does something with the LLM", async () => {
   await setMockVllmResponses({
-    responseFiles: getMockVllmFixturePreset('basicPromptsAddFont'),
+    responseFiles: getMockVllmFixturePreset("basicPromptsAddFont"),
   });
 
   // now drive the app...
@@ -278,7 +278,11 @@ it('does something with the LLM', async () => {
 You can also pass raw response objects instead of files (but this isn't recommended):
 
 ```js
-await setMockVllmResponses({ responses: [/* ...objects... */] });
+await setMockVllmResponses({
+  responses: [
+    /* ...objects... */
+  ],
+});
 ```
 
 ### Multi-test case suite pattern (recommended)
@@ -286,26 +290,23 @@ await setMockVllmResponses({ responses: [/* ...objects... */] });
 Use one `describe` with a fixture map so each test gets clean state and its own mock queue:
 
 ```js
-import {
-  registerPromptSuiteBeforeEach,
-  submitPromptMessage,
-} from './helpers/app-ui.js';
-import { getMockVllmFixturePreset } from './helpers/mock-vllm-presets.js';
+import { registerPromptSuiteBeforeEach, submitPromptMessage } from "./helpers/app-ui.js";
+import { getMockVllmFixturePreset } from "./helpers/mock-vllm-presets.js";
 
-describe('my prompt suite', () => {
+describe("my prompt suite", () => {
   registerPromptSuiteBeforeEach({
     fixtureByTestTitle: {
-      'test A': getMockVllmFixturePreset('basicPromptsAddFont'),
-      'test B': getMockVllmFixturePreset('basicPromptsConfigureScreenshots'),
+      "test A": getMockVllmFixturePreset("basicPromptsAddFont"),
+      "test B": getMockVllmFixturePreset("basicPromptsConfigureScreenshots"),
     },
   });
 
-  it('test A', async () => {
-    await submitPromptMessage('...');
+  it("test A", async () => {
+    await submitPromptMessage("...");
   });
 
-  it('test B', async () => {
-    await submitPromptMessage('...');
+  it("test B", async () => {
+    await submitPromptMessage("...");
   });
 });
 ```
@@ -398,4 +399,4 @@ Fix: helper uses selector re-query + click retry instead of brittle `waitForClic
 
 Important: for reliable native/webview interaction on macOS the app window should be visible and in the foreground. If the window is minimized, fully occluded, or not focused, webviews and native rendering may be throttled or stop painting which can cause click/read failures in tests.
 
-Recommendation: *Keep the app window un-minimized and focused while running tests locally.*
+Recommendation: _Keep the app window un-minimized and focused while running tests locally._

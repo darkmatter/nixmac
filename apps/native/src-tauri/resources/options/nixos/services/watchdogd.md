@@ -5,7 +5,7 @@
 All options under `services.watchdogd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.watchdogd.enable` | | |
 | `services.watchdogd.package` | | |
 | `services.watchdogd.settings` | | |

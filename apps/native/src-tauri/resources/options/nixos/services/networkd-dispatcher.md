@@ -5,7 +5,7 @@
 All options under `services.networkd-dispatcher`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.networkd-dispatcher.enable` | | |
 | `services.networkd-dispatcher.extraArgs` | | |
 | `services.networkd-dispatcher.rules` | | |

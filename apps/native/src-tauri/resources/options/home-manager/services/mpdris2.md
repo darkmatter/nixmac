@@ -5,7 +5,7 @@
 All options under `services.mpdris2`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------- |
 | `services.mpdris2.enable` | `boolean` | Whether to enable mpDris2 the MPD to MPRIS2 bridge. |
 | `services.mpdris2.mpd.host` | `string` | The address where MPD is listening for connections. |
 | `services.mpdris2.mpd.musicDirectory` | `null or absolute path` | If set, mpDris2 will use this directory to access music artwork. |

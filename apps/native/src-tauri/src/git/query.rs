@@ -51,18 +51,18 @@ fn map_change_type(delta: git2::Delta) -> ChangeType {
     }
 }
 
-/// Git query layer (SAFE)
-///
-/// This module uses git2 exclusively.
-///
-/// Rules:
-/// - NO filesystem modification
-/// - NO index mutation
-/// - NO working tree changes
-/// - ONLY Git object graph inspection
-///
-/// Basically, only things that don't depend on git porcelain output and/or
-/// git CLI semantics.
+// Git query layer (SAFE)
+//
+// This module uses git2 exclusively.
+//
+// Rules:
+// - NO filesystem modification
+// - NO index mutation
+// - NO working tree changes
+// - ONLY Git object graph inspection
+//
+// Basically, only things that don't depend on git porcelain output and/or
+// git CLI semantics.
 
 /// Gets the git repository root directory for `dir`, or `dir` if not in a repo.
 /// Used for resolving file paths for the benefit of tools and git operations.
@@ -114,6 +114,23 @@ pub fn get_ref_sha(dir: &str, ref_name: &str) -> Option<String> {
 
     // id is the sha that we want.
     Some(obj.id().to_string())
+}
+
+/// Returns the commit a nixmac backup branch was snapshotted from — the
+/// backup commit's first parent (`create_evolution_backup` commits the
+/// snapshot with HEAD as its sole parent). `None` when the branch is missing
+/// or doesn't point at a commit with a parent.
+///
+/// A session's backup is only meaningful while HEAD still equals this
+/// anchor: once the repository gains commits nixmac didn't make, restoring
+/// the snapshot would silently revert them.
+pub fn backup_anchor_commit(dir: &str, branch_name: &str) -> Option<String> {
+    let repo = git2::Repository::discover(dir).ok()?;
+    let obj = repo
+        .revparse_single(&format!("refs/heads/{branch_name}"))
+        .ok()?;
+    let commit = obj.peel_to_commit().ok()?;
+    commit.parent(0).ok().map(|parent| parent.id().to_string())
 }
 
 /// Returns true if HEAD can be resolved to a commit object.
@@ -253,8 +270,7 @@ pub fn status(dir: &str) -> Result<GitStatus> {
         .head()
         .ok()
         .and_then(|h| h.peel_to_commit().ok())
-        .map(|c| c.tree().ok())
-        .flatten();
+        .and_then(|c| c.tree().ok());
 
     // ------------------------------------------------------------
     // Get the raw diff object for HEAD vs working directory, including untracked files.
@@ -298,6 +314,13 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     // ------------------------------------------------------------
     let mut diff_string = String::new();
     diff.print(git2::DiffFormat::Patch, |_d, _h, line| {
+        // Prepend the +/-/space origin marker for body lines. File ('F') and
+        // hunk ('H') headers already carry their prefix in `line.content()`,
+        // so they fall through without an added char — matching `git diff`.
+        match line.origin() {
+            '+' | '-' | ' ' => diff_string.push(line.origin()),
+            _ => {}
+        }
         diff_string.push_str(std::str::from_utf8(line.content()).unwrap_or_default());
         true
     })?;
@@ -327,15 +350,11 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     })
 }
 
-/// Gets status and caches it to loop in watcher
+/// Gets status and records it in the git-state cell (which notifies the frontend).
 pub fn status_and_cache<R: tauri::Runtime>(dir: &str, app: &AppHandle<R>) -> Result<GitStatus> {
     let status = status(dir)?;
-    cache_status(app, &status)?;
+    crate::state::git_state::update_status(app, status.clone());
     Ok(status)
-}
-
-pub fn cache_status<R: tauri::Runtime>(app: &AppHandle<R>, status: &GitStatus) -> Result<()> {
-    crate::storage::store::set_cached_git_status(app, status)
 }
 
 /// Gets the FileDiffs that represent the evolution results between two commits.
@@ -354,7 +373,7 @@ pub fn commit_diff(dir: &str, parent_hash: &str, commit_hash: &str) -> Result<Ve
         Some(&mut default_diff_opts()),
     )?;
 
-    return run_diff_engine(diff);
+    run_diff_engine(diff)
 }
 
 /// Internal helper function to run the "diff engine" (delta + patch parsing) and produce structured FileDiffs.
@@ -803,6 +822,47 @@ mod tests {
         let status = status(&repo_dir_str).unwrap();
         assert!(!status.files.is_empty());
         assert!(status.branch.is_some());
+    }
+
+    #[test]
+    fn test_status_diff_preserves_line_origin_markers() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        // Commit a known three-line file.
+        fs::write(repo_dir.join("file.txt"), "line1\nline2\nline3\n").unwrap();
+        crate::git::commit_all(&repo_dir_str, "chore: initial").unwrap();
+
+        // Change the middle line and stage it.
+        fs::write(repo_dir.join("file.txt"), "line1\nLINE2\nline3\n").unwrap();
+        let repo = git2::Repository::open(&repo_dir).unwrap();
+        let mut index = repo.index().unwrap();
+        index.add_path(Path::new("file.txt")).unwrap();
+        index.write().unwrap();
+
+        let status = status(&repo_dir_str).unwrap();
+
+        // Body lines must carry their +/- origin marker so consumers can tell
+        // additions from deletions (regression: markers were being dropped).
+        assert!(
+            status.diff.contains("-line2\n"),
+            "diff should mark the deleted line with '-':\n{}",
+            status.diff
+        );
+        assert!(
+            status.diff.contains("+LINE2\n"),
+            "diff should mark the added line with '+':\n{}",
+            status.diff
+        );
+        // Context lines keep their leading space; the bare, unmarked deleted
+        // line must not appear.
+        assert!(
+            !status.diff.contains("\nline2\n"),
+            "deleted line must not appear without an origin marker:\n{}",
+            status.diff
+        );
     }
 
     #[test]

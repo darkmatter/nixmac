@@ -5,7 +5,7 @@
 All options under `services.saslauthd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.saslauthd.config` | | |
 | `services.saslauthd.enable` | | |
 | `services.saslauthd.mechanism` | | |

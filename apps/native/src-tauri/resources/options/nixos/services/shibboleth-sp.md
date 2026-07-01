@@ -5,7 +5,7 @@
 All options under `services.shibboleth-sp`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------------- | ---- | ----------- |
 | `services.shibboleth-sp.configFile` | | |
 | `services.shibboleth-sp.enable` | | |
 | `services.shibboleth-sp.fastcgi.enable` | | |

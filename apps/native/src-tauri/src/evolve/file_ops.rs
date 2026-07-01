@@ -310,10 +310,10 @@ fn validate_nix_syntax(content: &str, file_path: &str) -> anyhow::Result<()> {
     if in_block_comment {
         return Err(err("unclosed block comment /*...*/".to_string()));
     }
-    if stack.iter().any(|f| *f == Frame::Str) {
+    if stack.contains(&Frame::Str) {
         return Err(err("unclosed string literal".to_string()));
     }
-    if stack.iter().any(|f| *f == Frame::Indented) {
+    if stack.contains(&Frame::Indented) {
         return Err(err("unclosed multiline string ''...''".to_string()));
     }
 

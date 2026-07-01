@@ -43,7 +43,10 @@ export const SinglePush = meta.story({
     <SeedDisplay>
       {(push) => (
         <div className="flex h-32 items-center justify-center">
-          <Button size="sm" onClick={() => push("Change modules/darwin/homebrew.nix: install Slack")}>
+          <Button
+            size="sm"
+            onClick={() => push("Change modules/darwin/homebrew.nix: install Slack")}
+          >
             Push a seed
           </Button>
         </div>

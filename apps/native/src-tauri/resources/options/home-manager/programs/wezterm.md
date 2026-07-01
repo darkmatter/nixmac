@@ -5,7 +5,7 @@
 All options under `programs.wezterm`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.wezterm.colorSchemes` | `attribute set of (TOML value)` | Attribute set of additional color schemes to be written to $XDG_CONFIG_HOME/wezterm/colors , where each key is taken as the name of the corresponding color scheme. See https://wezfurlong.org/wezterm/config/appearance.html#defining-a-color-scheme-in-a-separate-file for more details of the TOML color scheme format. |
 | `programs.wezterm.enable` | `boolean` | Whether to enable wezterm. |
 | `programs.wezterm.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |

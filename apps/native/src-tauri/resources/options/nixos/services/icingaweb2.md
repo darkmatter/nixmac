@@ -5,7 +5,7 @@
 All options under `services.icingaweb2`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------------------------- | ---- | ----------- |
 | `services.icingaweb2.authentications` | | |
 | `services.icingaweb2.enable` | | |
 | `services.icingaweb2.generalConfig` | | |

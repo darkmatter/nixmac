@@ -6,15 +6,15 @@ import { MarkdownDescription } from "@/components/widget/summaries/markdown-desc
 import { commitMessageBody } from "@/components/widget/summaries/markdown-utils";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useSummary } from "@/hooks/use-summary";
-import { useViewModel } from "@/stores/view-model";
-import { useWidgetStore } from "@/stores/widget-store";
+import { uiActions, useViewModel } from "@nixmac/state";
+import { useUiState } from "@nixmac/state";
 import { GitMerge, Loader2 } from "lucide-react";
 import { useEffect } from "react";
 
 export function MergeSection() {
-  const isProcessing = useWidgetStore((s) => s.isProcessing);
-  const processingAction = useWidgetStore((s) => s.processingAction);
-  const commitMessageSuggestion = useWidgetStore((s) => s.commitMessageSuggestion);
+  const isProcessing = useUiState((s) => s.isProcessing);
+  const processingAction = useUiState((s) => s.processingAction);
+  const commitMessageSuggestion = useUiState((s) => s.commitMessageSuggestion);
   const changeMap = useViewModel((s) => s.changeMap);
 
   const { handleCommit } = useGitOperations();
@@ -26,12 +26,11 @@ export function MergeSection() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const subject =
-      new FormData(e.currentTarget).get("commitMsg")?.toString() ?? "";
+    const subject = new FormData(e.currentTarget).get("commitMsg")?.toString() ?? "";
     const body = commitMessageBody(commitMessageSuggestion ?? "");
     const message = body ? `${subject}\n\n${body}` : subject;
     await handleCommit({ message });
-    useWidgetStore.getState().setEvolvePrompt("");
+    uiActions.setEvolvePrompt("");
   }
 
   const commitSubject = (commitMessageSuggestion ?? "").split(/\r?\n/)[0] ?? "";
@@ -51,14 +50,12 @@ export function MergeSection() {
           <Input
             key={commitMessageSuggestion}
             className="border-border bg-background mb-2"
-            defaultValue={commitSubject || commitMessageSuggestion || ''}
+            defaultValue={commitSubject || commitMessageSuggestion || ""}
             disabled={isProcessing}
             name="commitMsg"
             placeholder="Loading..."
           />
-          {commitBody && (
-            <MarkdownDescription modalTitle={commitSubject} text={commitBody} />
-          )}
+          {commitBody && <MarkdownDescription modalTitle={commitSubject} text={commitBody} />}
         </div>
 
         <Button

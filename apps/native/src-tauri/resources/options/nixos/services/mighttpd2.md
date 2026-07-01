@@ -5,7 +5,7 @@
 All options under `services.mighttpd2`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.mighttpd2.config` | | |
 | `services.mighttpd2.cores` | | |
 | `services.mighttpd2.enable` | | |

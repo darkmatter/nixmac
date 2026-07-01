@@ -63,7 +63,7 @@ struct HeadResponse {
 /// Thin async client bound to one sync server base URL.
 pub struct SyncClient {
     base_url: String,
-    http: reqwest::Client,
+    http: reqwest_middleware::ClientWithMiddleware,
 }
 
 impl SyncClient {
@@ -71,7 +71,7 @@ impl SyncClient {
     pub fn new(base_url: impl Into<String>) -> Self {
         Self {
             base_url: base_url.into().trim_end_matches('/').to_string(),
-            http: reqwest::Client::new(),
+            http: crate::http_client::logged(),
         }
     }
 
@@ -89,7 +89,7 @@ impl SyncClient {
         path: &str,
         creds: &SyncCredentials,
         body: Vec<u8>,
-    ) -> reqwest::RequestBuilder {
+    ) -> reqwest_middleware::RequestBuilder {
         let timestamp = unix_now_secs();
         let header = authorization_header(
             &creds.key_id,

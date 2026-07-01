@@ -1,7 +1,14 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { initialRebuildState, useWidgetStore } from "@/stores/widget-store";
+import { uiActions, viewModelActions } from "@nixmac/state";
 import { useEvolveMascot } from "./use-evolve-mascot";
+import { makeGlobalPreferences as makePrefs, makeRebuildStatus } from "@/utils/test-fixtures";
+
+function setSpinningMascot(enabled: boolean) {
+  viewModelActions.setState({
+    preferences: makePrefs({ experimentalSpinningMascot: enabled }),
+  });
+}
 
 const mocks = vi.hoisted(() => ({
   show: vi.fn().mockResolvedValue(undefined),
@@ -20,11 +27,9 @@ vi.mock("@/ipc/api", () => ({
 describe("useEvolveMascot", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    useWidgetStore.setState({
-      experimentalSpinningMascot: false,
-      isGenerating: false,
-      rebuild: initialRebuildState,
-    });
+    setSpinningMascot(false);
+    viewModelActions.setState({ rebuildStatus: null });
+    uiActions.setState({ isGenerating: false });
   });
 
   it("shows the mascot only when the experimental flag and active evolve state are both enabled", async () => {
@@ -34,14 +39,14 @@ describe("useEvolveMascot", () => {
     expect(mocks.show).not.toHaveBeenCalled();
 
     act(() => {
-      useWidgetStore.getState().setBoolPref("experimentalSpinningMascot", true);
-      useWidgetStore.getState().setGenerating(true);
+      setSpinningMascot(true);
+      uiActions.setGenerating(true);
     });
 
     await waitFor(() => expect(mocks.show).toHaveBeenCalledTimes(1));
 
     act(() => {
-      useWidgetStore.getState().setGenerating(false);
+      uiActions.setGenerating(false);
     });
 
     await waitFor(() => expect(mocks.hide).toHaveBeenCalledTimes(2));
@@ -51,8 +56,8 @@ describe("useEvolveMascot", () => {
     const { unmount } = renderHook(() => useEvolveMascot());
 
     act(() => {
-      useWidgetStore.getState().setBoolPref("experimentalSpinningMascot", true);
-      useWidgetStore.getState().startRebuild("apply");
+      setSpinningMascot(true);
+      viewModelActions.setState({ rebuildStatus: makeRebuildStatus({ isRunning: true }) });
     });
 
     await waitFor(() => expect(mocks.show).toHaveBeenCalledTimes(1));

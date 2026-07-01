@@ -75,13 +75,13 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$REPORT_ROOT"
-          node tools/computer-use-e2e/workflow-timing.mjs init --file "$NIXMAC_E2E_WORKFLOW_TIMINGS"
+          node tests/e2e/computer-use/workflow-timing.mjs init --file "$NIXMAC_E2E_WORKFLOW_TIMINGS"
           run_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" 2>/dev/null || true)"
           created_at="$(jq -r '.created_at // ""' <<<"$run_json" 2>/dev/null || true)"
           run_started_at="$(jq -r '.run_started_at // ""' <<<"$run_json" 2>/dev/null || true)"
           if [[ -n "$created_at" && -n "$run_started_at" ]]; then
             queue_ms="$(jq -r '((.run_started_at | fromdateiso8601) - (.created_at | fromdateiso8601)) * 1000 | floor' <<<"$run_json")"
-            node tools/computer-use-e2e/workflow-timing.mjs record --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            node tests/e2e/computer-use/workflow-timing.mjs record --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
               --id queue-lock-wait \
               --label "Queue / concurrency lock wait" \
               --category workflow \
@@ -91,7 +91,7 @@ jobs:
               --ended-at "$run_started_at" \
               --duration-ms "$queue_ms" \
               --note "Derived from GitHub Actions workflow_run created_at and run_started_at."
-            node tools/computer-use-e2e/workflow-timing.mjs record --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            node tests/e2e/computer-use/workflow-timing.mjs record --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
               --id hosted-runner-setup \
               --label "Hosted runner setup" \
               --category workflow \
@@ -100,7 +100,7 @@ jobs:
               --started-at "$run_started_at" \
               --note "Started when GitHub marked the prepare job run as started; ends after checkout, Node setup, and media dependency install."
           else
-            node tools/computer-use-e2e/workflow-timing.mjs record --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            node tests/e2e/computer-use/workflow-timing.mjs record --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
               --id queue-lock-wait \
               --label "Queue / concurrency lock wait" \
               --category workflow \
@@ -108,7 +108,7 @@ jobs:
               --status unavailable \
               --observable false \
               --note "GitHub workflow_run timing metadata was unavailable to this run."
-            node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            node tests/e2e/computer-use/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
               --id hosted-runner-setup \
               --label "Hosted runner setup" \
               --category workflow \
@@ -117,7 +117,7 @@ jobs:
           for phase in report-upload:"Report upload artifact" report-publish:"Report publish" report-comment:"Report PR comment"; do
             id="${phase%%:*}"
             label="${phase#*:}"
-            node tools/computer-use-e2e/workflow-timing.mjs record --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            node tests/e2e/computer-use/workflow-timing.mjs record --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
               --id "$id" \
               --label "$label" \
               --category reporting \
@@ -132,35 +132,35 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
-          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id hosted-runner-setup \
             --status success \
             --note "Checkout, Node setup, and ffmpeg dependency install completed."
 
       - name: Validate runner syntax
         run: |
-          node --check tools/computer-use-e2e/run-remote-cua.mjs
-          node --check tools/computer-use-e2e/check-remote.mjs
-          node --check tools/computer-use-e2e/check-stale-run.mjs
-          node --check tools/computer-use-e2e/storybook-preview.mjs
-          node tools/computer-use-e2e/storybook-preview.mjs self-test
-          node --check tools/computer-use-e2e/workflow-contract-self-test.mjs
-          node tools/computer-use-e2e/run-remote-cua.mjs self-test
-          node tools/computer-use-e2e/check-stale-run.mjs self-test
-          node tools/computer-use-e2e/workflow-contract-self-test.mjs
-          if node tools/computer-use-e2e/check-remote.mjs --host example.com --require-app-server nope >/tmp/check-remote-invalid.out 2>&1; then
+          node --check tests/e2e/computer-use/run-remote-cua.mjs
+          node --check tests/e2e/computer-use/check-remote.mjs
+          node --check tests/e2e/computer-use/check-stale-run.mjs
+          node --check tests/e2e/computer-use/storybook-preview.mjs
+          node tests/e2e/computer-use/storybook-preview.mjs self-test
+          node --check tests/e2e/computer-use/workflow-contract-self-test.mjs
+          node tests/e2e/computer-use/run-remote-cua.mjs self-test
+          node tests/e2e/computer-use/check-stale-run.mjs self-test
+          node tests/e2e/computer-use/workflow-contract-self-test.mjs
+          if node tests/e2e/computer-use/check-remote.mjs --host example.com --require-app-server nope >/tmp/check-remote-invalid.out 2>&1; then
             cat /tmp/check-remote-invalid.out
             echo "Expected invalid --require-app-server to fail"
             exit 1
           fi
           grep -q "Invalid --require-app-server" /tmp/check-remote-invalid.out
-          if node tools/computer-use-e2e/check-remote.mjs --host example.com --check-codex-binary >/tmp/check-remote-missing-user.out 2>&1; then
+          if node tests/e2e/computer-use/check-remote.mjs --host example.com --check-codex-binary >/tmp/check-remote-missing-user.out 2>&1; then
             cat /tmp/check-remote-missing-user.out
             echo "Expected SSH-dependent checks without --user to fail"
             exit 1
           fi
           grep -q "SSH-dependent checks require --user" /tmp/check-remote-missing-user.out
-          if node tools/computer-use-e2e/check-remote.mjs --host 127.0.0.1 --port 1 --json /tmp/check-remote-tcp-fail.json >/tmp/check-remote-tcp-fail.out 2>&1; then
+          if node tests/e2e/computer-use/check-remote.mjs --host 127.0.0.1 --port 1 --json /tmp/check-remote-tcp-fail.json >/tmp/check-remote-tcp-fail.out 2>&1; then
             cat /tmp/check-remote-tcp-fail.out
             echo "Expected closed TCP readiness check to fail"
             exit 1
@@ -202,7 +202,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p artifacts/computer-use-storybook
-          node tools/computer-use-e2e/storybook-preview.mjs plan \
+          node tests/e2e/computer-use/storybook-preview.mjs plan \
             --static-dir apps/native/storybook-static \
             --base-url storybook/ \
             --workflow-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
@@ -237,7 +237,7 @@ jobs:
               cp -a apps/native/storybook-static artifacts/computer-use-storybook/storybook-static
             fi
           fi
-          node tools/computer-use-e2e/storybook-preview.mjs plan \
+          node tests/e2e/computer-use/storybook-preview.mjs plan \
             --static-dir apps/native/storybook-static \
             --base-url storybook/ \
             --build-status "$build_status" \
@@ -270,7 +270,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node tools/computer-use-e2e/check-stale-run.mjs
+        run: node tests/e2e/computer-use/check-stale-run.mjs
 
       - name: Render UI-only Storybook report
         if: steps.stale-run.outputs.stale != 'true' && steps.storybook-preview.outputs.storybook_ui_only == 'true'
@@ -283,15 +283,15 @@ jobs:
             storybook_note="storybook-ui-only-unhealthy: native Computer Use was not required because changed files are UI-only, but Storybook status is ${{ steps.storybook-preview.outputs.storybook_status }}. Fix missing coverage or build/index metadata before relying on this gate."
             timing_note="UI-only Storybook report rendered an unhealthy preview state; native Computer Use remained not required."
           fi
-          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id report-render-storybook-ui-only \
             --label "UI-only Storybook report render" \
             --category reporting \
             --note "$timing_note"
-          node tools/computer-use-e2e/run-remote-cua.mjs render-storybook-only \
+          node tests/e2e/computer-use/run-remote-cua.mjs render-storybook-only \
             --workflow-timings "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --note "$storybook_note"
-          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id report-render-storybook-ui-only \
             --status success
 
@@ -304,14 +304,14 @@ jobs:
           STALE_EVENT_HEAD_SHA: ${{ steps.stale-run.outputs.event_head_sha }}
           STALE_CURRENT_HEAD_SHA: ${{ steps.stale-run.outputs.current_head_sha }}
         run: |
-          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id report-render-stale \
             --label "Stale queued report render" \
             --category reporting
-          node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable \
+          node tests/e2e/computer-use/run-remote-cua.mjs render-unavailable \
             --workflow-timings "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --note "stale-queued-run: skipped during prepare because ${STALE_REASON}. PR #${STALE_PR_NUMBER}; queued head ${STALE_EVENT_HEAD_SHA}; current head ${STALE_CURRENT_HEAD_SHA}. No app state, secrets, SSH, readiness, artifact wait, remote staging, or cleanup was touched."
-          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id report-render-stale \
             --status success
 
@@ -336,14 +336,14 @@ jobs:
       - name: Render unavailable report
         if: steps.stale-run.outputs.stale != 'true' && steps.storybook-preview.outputs.storybook_ui_only != 'true' && steps.remote-secrets.outputs.available != 'true'
         run: |
-          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id report-render-unavailable \
             --label "Unavailable report render" \
             --category reporting
-          node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable \
+          node tests/e2e/computer-use/run-remote-cua.mjs render-unavailable \
             --workflow-timings "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --note "Remote Computer Use secrets are not fully configured for this repository. Missing: ${{ steps.remote-secrets.outputs.missing }}. The workflow triggered quietly and produced an inconclusive report without touching app state."
-          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id report-render-unavailable \
             --status success
 
@@ -386,7 +386,7 @@ jobs:
             echo "Invalid BUILD_ARTIFACT_SLEEP_SECONDS: $sleep_seconds" >&2
             exit 1
           fi
-          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id build-artifact-readiness-wait \
             --label "Build/artifact readiness wait" \
             --category workflow \
@@ -423,7 +423,7 @@ jobs:
             write_output "ready" "false"
             write_output "build_gate_status" "not_ready"
             write_output "reason" "$gate_reason"
-            node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
               --id build-artifact-readiness-wait \
               --status unavailable \
               --note "$gate_reason"
@@ -438,7 +438,7 @@ jobs:
             write_output "build_gate_status" "artifact_download_failed"
             write_output "build_run_id" "$build_run_id"
             write_output "reason" "$gate_reason"
-            node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
               --id build-artifact-readiness-wait \
               --status failure \
               --note "$gate_reason"
@@ -454,7 +454,7 @@ jobs:
             write_output "build_gate_status" "artifact_invalid"
             write_output "build_run_id" "$build_run_id"
             write_output "reason" "$gate_reason"
-            node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
               --id build-artifact-readiness-wait \
               --status failure \
               --note "$gate_reason"
@@ -467,7 +467,7 @@ jobs:
           write_output "build_run_id" "$build_run_id"
           write_output "reason" "same-head-build-artifact-ready"
           write_output "app_tar" "$tar_path"
-          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id build-artifact-readiness-wait \
             --status success \
             --note "Downloaded app artifact from build workflow run $build_run_id."
@@ -483,14 +483,14 @@ jobs:
           NIXMAC_E2E_BUILD_RUN_ID: ${{ steps.pr-app.outputs.build_run_id }}
           NIXMAC_E2E_BUILD_LATEST_RUN: ${{ steps.pr-app.outputs.latest_build }}
         run: |
-          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id report-render-build-gate \
             --label "Build gate report render" \
             --category reporting
-          node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable \
+          node tests/e2e/computer-use/run-remote-cua.mjs render-unavailable \
             --workflow-timings "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --note "same-head-build-gate: skipped before DXU preflight or remote setup because no usable successful Build macOS App artifact was available for head ${NIXMAC_E2E_BUILD_ARTIFACT_SHA:-unknown}. Reason: ${NIXMAC_E2E_BUILD_GATE_REASON:-artifact setup failed}. Latest build: ${NIXMAC_E2E_BUILD_LATEST_RUN:-none}. No remote app state, SSH readiness, app staging, tunnel setup, or cleanup was touched."
-          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id report-render-build-gate \
             --status success
 
@@ -670,7 +670,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node tools/computer-use-e2e/check-stale-run.mjs
+        run: node tests/e2e/computer-use/check-stale-run.mjs
 
       - name: Render stale queued report
         if: steps.stale-run.outputs.stale == 'true'
@@ -682,15 +682,15 @@ jobs:
           STALE_CURRENT_HEAD_SHA: ${{ steps.stale-run.outputs.current_head_sha }}
         run: |
           mkdir -p "$REPORT_ROOT"
-          node tools/computer-use-e2e/workflow-timing.mjs init --file "$NIXMAC_E2E_WORKFLOW_TIMINGS"
-          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs init --file "$NIXMAC_E2E_WORKFLOW_TIMINGS"
+          node tests/e2e/computer-use/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id report-render-stale-before-remote \
             --label "Stale queued report render before remote" \
             --category reporting
-          node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable \
+          node tests/e2e/computer-use/run-remote-cua.mjs render-unavailable \
             --workflow-timings "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --note "stale-queued-run: skipped immediately before remote work because ${STALE_REASON}. PR #${STALE_PR_NUMBER}; queued head ${STALE_EVENT_HEAD_SHA}; current head ${STALE_CURRENT_HEAD_SHA}. No remote app state, SSH readiness, app staging, tunnel setup, or cleanup was touched."
-          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id report-render-stale-before-remote \
             --status success
 
@@ -716,8 +716,8 @@ jobs:
           if [[ -f artifacts/computer-use-app/workflow-timing.json ]]; then
             cp artifacts/computer-use-app/workflow-timing.json "$NIXMAC_E2E_WORKFLOW_TIMINGS"
           else
-            node tools/computer-use-e2e/workflow-timing.mjs init --file "$NIXMAC_E2E_WORKFLOW_TIMINGS"
-            node tools/computer-use-e2e/workflow-timing.mjs record --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            node tests/e2e/computer-use/workflow-timing.mjs init --file "$NIXMAC_E2E_WORKFLOW_TIMINGS"
+            node tests/e2e/computer-use/workflow-timing.mjs record --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
               --id prepare-timing-artifact \
               --label "Prepare timing artifact" \
               --category workflow \
@@ -744,13 +744,13 @@ jobs:
         shell: bash
         run: |
           mkdir -p artifacts/computer-use-remote/readiness
-          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id remote-preflight \
             --label "Remote preflight" \
             --category remote \
             --note "Checking SSH, expected host identity, and remote Codex binary readiness."
           readiness_json="artifacts/computer-use-remote/readiness/remote-readiness-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
-          node tools/computer-use-e2e/check-remote.mjs \
+          node tests/e2e/computer-use/check-remote.mjs \
             --host "$REMOTE_HOST" \
             --user "$REMOTE_USER" \
             --key ~/.ssh/nixmac-e2e \
@@ -758,7 +758,7 @@ jobs:
             --expected-local-hostname "${REMOTE_EXPECTED_LOCAL_HOSTNAME:-DXU97120}" \
             --check-codex-binary \
             --json "$readiness_json"
-          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id remote-preflight \
             --status success
 
@@ -770,7 +770,7 @@ jobs:
           SSH_DEST: ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}
         run: |
           set -euo pipefail
-          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id remote-staging-app-launch \
             --label "Remote staging/app launch" \
             --category remote \
@@ -940,7 +940,7 @@ jobs:
           fi
           sleep 4
           REMOTE
-          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id remote-staging-app-launch \
             --status success
 
@@ -950,7 +950,7 @@ jobs:
         env:
           SSH_DEST: ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}
         run: |
-          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id remote-app-server-tunnel \
             --label "Remote app-server tunnel" \
             --category remote \
@@ -977,14 +977,14 @@ jobs:
             sleep 1
           done
           if [[ "$tunnel_ready" != "true" ]]; then
-            node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
               --id remote-app-server-tunnel \
               --status failure \
               --note "Tunnel did not become reachable on localhost:18790."
             cat /tmp/nixmac-e2e-tunnel.log
             exit 1
           fi
-          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id remote-app-server-tunnel \
             --status success
 
@@ -1007,16 +1007,16 @@ jobs:
           NIXMAC_E2E_ALLOW_BUILD_CONFIRM: "true"
           NIXMAC_E2E_ALLOW_DISCARD_CONFIRM: "true"
         run: |
-          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id computer-use-run \
             --label "Computer Use run" \
             --category computer-use \
             --note "Running the calibrated remote Computer Use E2E suite."
           set +e
-          node tools/computer-use-e2e/run-remote-cua.mjs run
+          node tests/e2e/computer-use/run-remote-cua.mjs run
           status=$?
           set -e
-          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id computer-use-run \
             --status "$([[ "$status" -eq 0 ]] && echo success || echo failure)" \
             --note "Computer Use runner exited with status $status."
@@ -1039,7 +1039,7 @@ jobs:
               note="$note Readiness failures: $readiness_failures"
             fi
           fi
-          node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable \
+          node tests/e2e/computer-use/run-remote-cua.mjs render-unavailable \
             --workflow-timings "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --note "$note"
 
@@ -1055,7 +1055,7 @@ jobs:
           REMOTE_APP_STAGE: ${{ steps.remote-start.outputs.remote_app_stage }}
         run: |
           set +e
-          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id cleanup \
             --label "Cleanup" \
             --category cleanup \
@@ -1065,7 +1065,7 @@ jobs:
           fi
           if [[ -z "${REMOTE_BACKUP:-}" ]]; then
             echo "remote-start outputs are unset; skipping remote cleanup."
-            node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
               --id cleanup \
               --status skipped \
               --note "remote-start outputs were unset; no remote cleanup was possible."
@@ -1152,7 +1152,7 @@ jobs:
           exit "$cleanup_status"
           REMOTE
           cleanup_status=$?
-          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id cleanup \
             --status "$([[ "$cleanup_status" -eq 0 ]] && echo success || echo failure)" \
             --note "Remote cleanup exited with status $cleanup_status."
@@ -1167,14 +1167,14 @@ jobs:
             echo "No report found to refresh with workflow timing metadata."
             exit 0
           fi
-          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id timing-report-refresh \
             --label "Timing report refresh" \
             --category reporting
-          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+          node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id timing-report-refresh \
             --status success
-          node tools/computer-use-e2e/run-remote-cua.mjs render-existing \
+          node tests/e2e/computer-use/run-remote-cua.mjs render-existing \
             --run-dir "$latest_report" \
             --workflow-timings "$NIXMAC_E2E_WORKFLOW_TIMINGS"
 
@@ -1235,7 +1235,7 @@ jobs:
             fi
             if [[ -f "$NIXMAC_E2E_WORKFLOW_TIMINGS" ]]; then
               echo
-              node tools/computer-use-e2e/workflow-timing.mjs markdown --file "$NIXMAC_E2E_WORKFLOW_TIMINGS"
+              node tests/e2e/computer-use/workflow-timing.mjs markdown --file "$NIXMAC_E2E_WORKFLOW_TIMINGS"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -1391,7 +1391,7 @@ jobs:
           esac
           storybook_block=""
           if [[ -f "$STORYBOOK_PLAN_PATH" ]]; then
-            storybook_block="$(node tools/computer-use-e2e/storybook-preview.mjs comment --plan "$STORYBOOK_PLAN_PATH" --base-url "$STORYBOOK_URL" || true)"
+            storybook_block="$(node tests/e2e/computer-use/storybook-preview.mjs comment --plan "$STORYBOOK_PLAN_PATH" --base-url "$STORYBOOK_URL" || true)"
           fi
           body_file="$(mktemp)"
           cat > "$body_file" <<EOF

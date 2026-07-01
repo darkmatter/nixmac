@@ -5,7 +5,7 @@
 All options under `services.headplane`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.headplane.agent.package` | | |
 | `services.headplane.debug` | | |
 | `services.headplane.enable` | | |

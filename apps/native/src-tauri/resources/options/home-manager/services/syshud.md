@@ -5,7 +5,7 @@
 All options under `services.syshud`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.syshud.enable` | | |
 | `services.syshud.package` | | |
 | `services.syshud.settings` | | |

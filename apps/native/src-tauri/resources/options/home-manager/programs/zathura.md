@@ -5,7 +5,7 @@
 All options under `programs.zathura`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `programs.zathura.enable` | `boolean` | Whether to enable Zathura, a highly customizable and functional document viewer focused on keyboard interaction. |
 | `programs.zathura.extraConfig` | `strings concatenated with “\n”` | Additional commands for zathura that will be added to the zathurarc file. |
 | `programs.zathura.mappings` | `attribute set of string` | Add :map mappings to zathura and make them permanent. See zathurarc (5) for the full list of possible mappings. |

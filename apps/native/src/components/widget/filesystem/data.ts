@@ -1,9 +1,12 @@
 import type {
   HomebrewItemType,
   HomebrewState,
+  LaunchdItem,
+  LaunchdItemType,
   SystemDefault,
   SystemDefaultsScan,
 } from "@/ipc/types";
+import { filesystemSectionEnabled, FilesystemSectionFlag } from "@/lib/flags";
 
 export type FileTone = "teal" | "amber" | "rose" | "blue" | "muted";
 export type FileStatus = "managed" | "changed" | "candidate";
@@ -24,6 +27,10 @@ export type CandidateItem =
   | (BaseCandidateItem & {
       source: "system";
       systemDefault: SystemDefault;
+    })
+  | (BaseCandidateItem & {
+      source: "launchd";
+      launchdItem: LaunchdItem;
     })
   | (BaseCandidateItem & {
       source: "other";
@@ -61,6 +68,7 @@ export type Section = {
   id: SectionId;
   label: string;
   hint: string;
+  flagValue: FilesystemSectionFlag;
 };
 
 export type FsIconName =
@@ -78,13 +86,16 @@ export type FsIconName =
   | "settings"
   | "warn";
 
-export const SECTIONS: Section[] = [
-  { id: "entry", label: "Setup", hint: "Flake & host wiring" },
-  { id: "darwin", label: "System", hint: "macOS, packages, services" },
-  { id: "home", label: "Personal", hint: "Dotfiles & app prefs" },
-  { id: "support", label: "Secrets", hint: "Sops, overlays, scripts" },
-  { id: "manage", label: "Untracked", hint: "Machine state not yet in your config" },
+
+const allSections: Section[] = [
+  { id: "entry", label: "Setup", hint: "Flake & host wiring", flagValue: FilesystemSectionFlag.Entry },
+  { id: "darwin", label: "System", hint: "macOS, packages, services", flagValue: FilesystemSectionFlag.Darwin },
+  { id: "home", label: "Personal", hint: "Dotfiles & app prefs", flagValue: FilesystemSectionFlag.Home },
+  { id: "support", label: "Secrets", hint: "Sops, overlays, scripts", flagValue: FilesystemSectionFlag.Support },
+  { id: "manage", label: "Untracked", hint: "Machine state not yet in your config", flagValue: FilesystemSectionFlag.Manage },
 ];
+
+export const SECTIONS = allSections.filter((section) =>  filesystemSectionEnabled(section.flagValue));
 
 export const FILES: Record<SectionId, FsFile[]> = {
   entry: [
@@ -306,8 +317,7 @@ creation_rules:
       id: "untracked-homebrew-casks",
       path: "Untracked Homebrew casks",
       title: "Scanning Homebrew casks",
-      description:
-        "Homebrew casks installed on this Mac but not declared in your flake.",
+      description: "Homebrew casks installed on this Mac but not declared in your flake.",
       iconName: "warn",
       tone: "amber",
       status: "candidate",
@@ -320,8 +330,7 @@ creation_rules:
       id: "untracked-homebrew-taps",
       path: "Untracked Homebrew taps",
       title: "Scanning Homebrew taps",
-      description:
-        "Homebrew taps configured on this Mac but not declared in your flake.",
+      description: "Homebrew taps configured on this Mac but not declared in your flake.",
       iconName: "warn",
       tone: "amber",
       status: "candidate",
@@ -334,8 +343,7 @@ creation_rules:
       id: "untracked-homebrew-brews",
       path: "Untracked Homebrew brews",
       title: "Scanning Homebrew brews",
-      description:
-        "Homebrew brews installed on this Mac but not declared in your flake.",
+      description: "Homebrew brews installed on this Mac but not declared in your flake.",
       iconName: "warn",
       tone: "amber",
       status: "candidate",
@@ -346,21 +354,17 @@ creation_rules:
     },
     {
       id: "login-items",
-      path: "Login items",
-      title: "4 apps auto-start at login",
-      description: "Move them into your config so new machines launch the same set.",
+      path: "Untracked launchd items",
+      title: "Scanning launchd items",
+      description:
+        "Started Homebrew services that launchd runs today but nix-darwin does not declare.",
       iconName: "warn",
       tone: "amber",
       status: "candidate",
       destination: "modules/darwin/services.nix",
-      scanCommand: "osascript · System Events get login items",
-      scannedAt: "scanned 14 min ago",
-      items: [
-        { name: "Rectangle", detail: "/Applications/Rectangle.app", installedAt: "since Dec 2024", attr: "launchd.user.agents.rectangle = { ... };", source: "other" },
-        { name: "Raycast", detail: "/Applications/Raycast.app", installedAt: "since Dec 2024", attr: "launchd.user.agents.raycast   = { ... };", source: "other" },
-        { name: "1Password", detail: "/Applications/1Password.app", installedAt: "since Jan 2025", attr: 'launchd.user.agents."1password" = { ... };', source: "other" },
-        { name: "Hammerspoon", detail: "/Applications/Hammerspoon.app", installedAt: "since Feb 2025", attr: "launchd.user.agents.hammerspoon = { ... };", source: "other" },
-      ],
+      scanCommand: "scan_launchd_items",
+      scannedAt: "not scanned yet",
+      items: [],
     },
   ],
 };
@@ -368,6 +372,8 @@ creation_rules:
 const HOMEBREW_FILE_DESTINATION = ".nixmac/homebrew/data.json";
 const SYSTEM_DEFAULTS_FILE_DESTINATION = "modules/darwin/defaults.nix";
 const SYSTEM_DEFAULTS_ID = "custom-defaults";
+const LAUNCHD_FILE_DESTINATION = "modules/darwin/services.nix";
+const LAUNCHD_ID = "login-items";
 
 type HomebrewSectionDefinition = {
   id: string;
@@ -446,17 +452,38 @@ function homebrewItems(names: string[], itemType: HomebrewItemType): CandidateIt
 }
 
 function systemDefaultsFallback(): FsFile {
-  return FILES.manage.find((file) => file.id === SYSTEM_DEFAULTS_ID) ?? {
-    id: SYSTEM_DEFAULTS_ID,
-    path: "Custom macOS defaults",
-    title: "Scanning macOS defaults",
-    description:
-      "Preferences you've changed in System Settings. Capture them as code so a fresh install matches.",
-    iconName: "settings" as const,
-    tone: "blue" as const,
-    status: "candidate" as const,
-    destination: SYSTEM_DEFAULTS_FILE_DESTINATION,
-  };
+  return (
+    FILES.manage.find((file) => file.id === SYSTEM_DEFAULTS_ID) ?? {
+      id: SYSTEM_DEFAULTS_ID,
+      path: "Custom macOS defaults",
+      title: "Scanning macOS defaults",
+      description:
+        "Preferences you've changed in System Settings. Capture them as code so a fresh install matches.",
+      iconName: "settings" as const,
+      tone: "blue" as const,
+      status: "candidate" as const,
+      destination: SYSTEM_DEFAULTS_FILE_DESTINATION,
+    }
+  );
+}
+
+function launchdFallback(): FsFile {
+  return (
+    FILES.manage.find((file) => file.id === LAUNCHD_ID) ?? {
+      id: LAUNCHD_ID,
+      path: "Untracked launchd items",
+      title: "Scanning launchd items",
+      description:
+        "Started Homebrew services that launchd runs today but nix-darwin does not declare.",
+      iconName: "warn" as const,
+      tone: "amber" as const,
+      status: "candidate" as const,
+      destination: LAUNCHD_FILE_DESTINATION,
+      scanCommand: "scan_launchd_items",
+      scannedAt: "not scanned yet",
+      items: [],
+    }
+  );
 }
 
 function nixValue(setting: SystemDefault) {
@@ -485,6 +512,115 @@ function systemDefaultItems(defaults: SystemDefault[]): CandidateItem[] {
       systemDefault: setting,
     };
   });
+}
+
+function launchdAttrScope(scope: LaunchdItemType) {
+  switch (scope) {
+    case "LaunchAgent":
+      return "launchd.agents";
+    case "LaunchDaemon":
+      return "launchd.daemons";
+    case "LaunchdUserAgent":
+      return "launchd.user.agents";
+  }
+}
+
+function nixString(value: string) {
+  return JSON.stringify(value);
+}
+
+function nixAttrName(value: string) {
+  return /^[A-Za-z_][A-Za-z0-9_-]*$/.test(value) ? value : nixString(value);
+}
+
+function launchdAttr(item: LaunchdItem) {
+  const lines = [
+    `${launchdAttrScope(item.scope)}.${nixAttrName(item.name)} = {`,
+    "  serviceConfig = {",
+    `    Label = ${nixString(item.label)};`,
+  ];
+
+  if (item.programArguments.length > 0) {
+    lines.push(`    ProgramArguments = [ ${item.programArguments.map(nixString).join(" ")} ];`);
+  }
+
+  lines.push(`    RunAtLoad = ${item.runAtLoad ? "true" : "false"};`);
+  lines.push(`    KeepAlive = ${item.keepAlive ? "true" : "false"};`);
+
+  if (item.standardOutPath) {
+    lines.push(`    StandardOutPath = ${nixString(item.standardOutPath)};`);
+  }
+  if (item.standardErrorPath) {
+    lines.push(`    StandardErrorPath = ${nixString(item.standardErrorPath)};`);
+  }
+  if (item.workingDirectory) {
+    lines.push(`    WorkingDirectory = ${nixString(item.workingDirectory)};`);
+  }
+  if (Object.keys(item.environmentVariables).length > 0) {
+    lines.push("    EnvironmentVariables = {");
+    for (const [key, value] of Object.entries(item.environmentVariables)) {
+      if (typeof value === "string") lines.push(`      ${nixAttrName(key)} = ${nixString(value)};`);
+    }
+    lines.push("    };");
+  }
+
+  lines.push("  };");
+  lines.push("};");
+  return lines.join("\n");
+}
+
+function launchdItems(items: LaunchdItem[]): CandidateItem[] {
+  return items.map((item) => ({
+    name: item.name,
+    detail: item.programArguments.length > 0 ? item.programArguments.join(" ") : item.label,
+    installedAt: launchdAttrScope(item.scope),
+    attr: launchdAttr(item),
+    source: "launchd",
+    launchdItem: item,
+  }));
+}
+
+export function launchdItemsFileFromScan(
+  launchdScan: LaunchdItem[] | null,
+  error?: string | null,
+): FsFile {
+  const fallback = launchdFallback();
+
+  if (error) {
+    return {
+      ...fallback,
+      title: "launchd scan failed",
+      description: error,
+      scanCommand: "scan_launchd_items",
+      scannedAt: "scan failed",
+      items: [],
+    };
+  }
+
+  if (!launchdScan) return fallback;
+
+  const items = launchdItems(launchdScan);
+  const count = items.length;
+
+  return {
+    ...fallback,
+    title:
+      count === 0
+        ? "No untracked launchd items"
+        : `${count} untracked launchd ${pluralize(count, "item")}`,
+    description:
+      count === 0
+        ? "Every started Homebrew-managed launchd item is already declared in nix-darwin."
+        : "Started Homebrew services that launchd runs today but nix-darwin does not declare.",
+    destination: LAUNCHD_FILE_DESTINATION,
+    scanCommand: "brew services list",
+    scannedAt: "scanned just now",
+    items,
+  };
+}
+
+export function replaceLaunchdPlaceholder(files: FsFile[], replacement: FsFile) {
+  return files.map((file) => (file.id === LAUNCHD_ID ? replacement : file));
 }
 
 export function systemDefaultsFileFromScan(
@@ -535,16 +671,18 @@ export function untrackedCandidateItemCount(files: FsFile[]) {
 
 function homebrewFallback(section: HomebrewSectionDefinition): FsFile {
   const base = FILES.manage.find((file) => file.id === section.id);
-  return base ?? {
-    id: section.id,
-    path: `Untracked Homebrew ${section.plural}`,
-    title: `Untracked Homebrew ${section.plural}`,
-    description: `Homebrew ${section.plural} installed on this Mac but not declared in your flake.`,
-    iconName: "warn" as const,
-    tone: "amber" as const,
-    status: "candidate" as const,
-    destination: HOMEBREW_FILE_DESTINATION,
-  };
+  return (
+    base ?? {
+      id: section.id,
+      path: `Untracked Homebrew ${section.plural}`,
+      title: `Untracked Homebrew ${section.plural}`,
+      description: `Homebrew ${section.plural} installed on this Mac but not declared in your flake.`,
+      iconName: "warn" as const,
+      tone: "amber" as const,
+      status: "candidate" as const,
+      destination: HOMEBREW_FILE_DESTINATION,
+    }
+  );
 }
 
 function homebrewFileForSection(
@@ -605,6 +743,10 @@ export function isHomebrewCandidateFile(file: FsFile) {
 
 export function isSystemDefaultsCandidateFile(file: FsFile) {
   return file.id === SYSTEM_DEFAULTS_ID;
+}
+
+export function isLaunchdCandidateFile(file: FsFile) {
+  return file.id === LAUNCHD_ID;
 }
 
 function isHomebrewPlaceholder(file: FsFile) {

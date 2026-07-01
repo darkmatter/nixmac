@@ -5,7 +5,7 @@
 All options under `services.hyprpaper`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.hyprpaper.enable` | `boolean` | Whether to enable Hyprpaper, Hyprland’s wallpaper daemon. |
 | `services.hyprpaper.importantPrefixes` | `list of string` | List of prefix of attributes to source at the top of the config. |
 | `services.hyprpaper.package` | `null or package` | The hyprpaper package to use. |

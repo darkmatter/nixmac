@@ -5,7 +5,7 @@
 All options under `services.grocy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------- | ---- | ----------- |
 | `services.grocy.dataDir` | | |
 | `services.grocy.enable` | | |
 | `services.grocy.extraConfig` | | |

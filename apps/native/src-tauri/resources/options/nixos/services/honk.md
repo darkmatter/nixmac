@@ -5,7 +5,7 @@
 All options under `services.honk`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.honk.enable` | | |
 | `services.honk.extraCSS` | | |
 | `services.honk.extraJS` | | |

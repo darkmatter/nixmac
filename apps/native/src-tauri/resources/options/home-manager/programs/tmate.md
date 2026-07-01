@@ -5,7 +5,7 @@
 All options under `programs.tmate`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------- |
 | `programs.tmate.dsaFingerprint` | `null or string` | Tmate server EdDSA key fingerprint. |
 | `programs.tmate.enable` | `boolean` | Whether to enable tmate. |
 | `programs.tmate.extraConfig` | `strings concatenated with “\n”` | Additional content written at the end of ~/.tmate.conf . |

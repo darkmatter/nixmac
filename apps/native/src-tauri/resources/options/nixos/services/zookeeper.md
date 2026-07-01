@@ -5,7 +5,7 @@
 All options under `services.zookeeper`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.zookeeper.dataDir` | | |
 | `services.zookeeper.enable` | | |
 | `services.zookeeper.extraCmdLineOptions` | | |

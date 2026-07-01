@@ -5,7 +5,7 @@
 All options under `programs.fish`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `programs.fish.enable` | | |
 | `programs.fish.extraCompletionPackages` | | |
 | `programs.fish.generateCompletions` | | |

@@ -5,7 +5,7 @@
 All options under `services.rsync`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.rsync.enable` | | |
 | `services.rsync.jobs` | | |
 | `services.rsync.package` | | |

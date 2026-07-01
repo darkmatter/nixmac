@@ -5,7 +5,7 @@
 All options under `services.beszel`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.beszel.agent.enable` | | |
 | `services.beszel.agent.environment` | | |
 | `services.beszel.agent.environmentFile` | | |

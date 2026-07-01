@@ -5,7 +5,7 @@
 All options under `services.hadoop`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------------------- | ---- | ----------- |
 | `services.hadoop.containerExecutorCfg` | | |
 | `services.hadoop.coreSite` | | |
 | `services.hadoop.coreSiteInternal` | | |

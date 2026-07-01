@@ -5,7 +5,7 @@
 All options under `services.spacebar`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | --------------- | ---------------------------------------------------------------------------------- |
 | `services.spacebar.config` | `attribute set` | Key/Value pairs to pass to spacebar’s ‘config’ domain, via the configuration file. |
 | `services.spacebar.enable` | `boolean` | Whether to enable the spacebar. |
 | `services.spacebar.extraConfig` | `string` | Extra arbitrary configuration to append to the configuration file. |

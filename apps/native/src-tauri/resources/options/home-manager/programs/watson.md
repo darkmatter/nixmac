@@ -5,7 +5,7 @@
 All options under `programs.watson`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | `programs.watson.enable` | `boolean` | Whether to enable watson, a wonderful CLI to track your time. |
 | `programs.watson.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.watson.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |

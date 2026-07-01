@@ -5,7 +5,7 @@
 All options under `services.postsrsd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.postsrsd.configurePostfix` | | |
 | `services.postsrsd.domain` | | |
 | `services.postsrsd.domains` | | |

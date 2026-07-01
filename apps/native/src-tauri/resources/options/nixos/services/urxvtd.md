@@ -5,6 +5,6 @@
 All options under `services.urxvtd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.urxvtd.enable` | | |
 | `services.urxvtd.package` | | |

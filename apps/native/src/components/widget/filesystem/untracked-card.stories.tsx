@@ -1,6 +1,10 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
-import { FILES, homebrewFilesFromDiff, systemDefaultsFileFromScan } from "./data";
+import {
+  homebrewFilesFromDiff,
+  launchdItemsFileFromScan,
+  systemDefaultsFileFromScan,
+} from "./data";
 import { SeedDisplay } from "./seed-display";
 import { UntrackedCard } from "./untracked-card";
 
@@ -40,13 +44,48 @@ const defaults = systemDefaultsFileFromScan({
     },
   ],
 });
-const login = FILES.manage.find((f) => f.id === "login-items")!;
+const launchd = launchdItemsFileFromScan([
+  {
+    label: "homebrew.mxcl.redis",
+    scope: "LaunchdUserAgent",
+    name: "redis",
+    programArguments: ["/opt/homebrew/opt/redis/bin/redis-server", "/opt/homebrew/etc/redis.conf"],
+    runAtLoad: true,
+    keepAlive: true,
+    environmentVariables: {},
+    standardOutPath: "/opt/homebrew/var/log/redis.log",
+    standardErrorPath: "/opt/homebrew/var/log/redis.log",
+    workingDirectory: "/opt/homebrew/var",
+  },
+  {
+    label: "homebrew.mxcl.postgresql@14",
+    scope: "LaunchDaemon",
+    name: "postgresql@14",
+    programArguments: [
+      "/opt/homebrew/opt/postgresql@14/bin/postgres",
+      "-D",
+      "/opt/homebrew/var/postgresql@14",
+    ],
+    runAtLoad: true,
+    keepAlive: true,
+    environmentVariables: {},
+    standardOutPath: "/opt/homebrew/var/log/postgresql@14.log",
+    standardErrorPath: "/opt/homebrew/var/log/postgresql@14.log",
+    workingDirectory: "/opt/homebrew",
+  },
+]);
+
+const trackingHandler =
+  (push) =>
+  (items): void => {
+    push(`Tracked ${items.map((item) => item.name).join(", ")}`);
+  };
 
 export const HomebrewCasks = meta.story({
   render: () => (
     <div className="w-[640px]">
-      <SeedDisplay title="Tracking seed">
-        {(push) => <UntrackedCard file={casks} onTrack={push} />}
+      <SeedDisplay title="Tracking action">
+        {(push) => <UntrackedCard file={casks} onTrackHomebrewItems={trackingHandler(push)} />}
       </SeedDisplay>
     </div>
   ),
@@ -55,8 +94,8 @@ export const HomebrewCasks = meta.story({
 export const HomebrewTaps = meta.story({
   render: () => (
     <div className="w-[640px]">
-      <SeedDisplay title="Tracking seed">
-        {(push) => <UntrackedCard file={taps} onTrack={push} />}
+      <SeedDisplay title="Tracking action">
+        {(push) => <UntrackedCard file={taps} onTrackHomebrewItems={trackingHandler(push)} />}
       </SeedDisplay>
     </div>
   ),
@@ -65,8 +104,8 @@ export const HomebrewTaps = meta.story({
 export const HomebrewBrews = meta.story({
   render: () => (
     <div className="w-[640px]">
-      <SeedDisplay title="Tracking seed">
-        {(push) => <UntrackedCard file={brews} onTrack={push} />}
+      <SeedDisplay title="Tracking action">
+        {(push) => <UntrackedCard file={brews} onTrackHomebrewItems={trackingHandler(push)} />}
       </SeedDisplay>
     </div>
   ),
@@ -75,8 +114,8 @@ export const HomebrewBrews = meta.story({
 export const CustomDefaults = meta.story({
   render: () => (
     <div className="w-[640px]">
-      <SeedDisplay title="Tracking seed">
-        {(push) => <UntrackedCard file={defaults} onTrack={push} />}
+      <SeedDisplay title="Tracking action">
+        {(push) => <UntrackedCard file={defaults} onTrackSystemDefaults={trackingHandler(push)} />}
       </SeedDisplay>
     </div>
   ),
@@ -85,8 +124,8 @@ export const CustomDefaults = meta.story({
 export const LoginItems = meta.story({
   render: () => (
     <div className="w-[640px]">
-      <SeedDisplay title="Tracking seed">
-        {(push) => <UntrackedCard file={login} onTrack={push} />}
+      <SeedDisplay title="Tracking action">
+        {(push) => <UntrackedCard file={launchd} onTrackLaunchdItems={trackingHandler(push)} />}
       </SeedDisplay>
     </div>
   ),

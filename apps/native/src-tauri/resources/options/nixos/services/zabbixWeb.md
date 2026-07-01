@@ -5,7 +5,7 @@
 All options under `services.zabbixWeb`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.zabbixWeb.database.host` | | |
 | `services.zabbixWeb.database.name` | | |
 | `services.zabbixWeb.database.passwordFile` | | |

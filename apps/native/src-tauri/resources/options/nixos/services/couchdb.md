@@ -5,7 +5,7 @@
 All options under `services.couchdb`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.couchdb.adminPass` | | |
 | `services.couchdb.adminUser` | | |
 | `services.couchdb.argsFile` | | |

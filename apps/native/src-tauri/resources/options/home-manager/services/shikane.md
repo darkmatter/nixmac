@@ -5,7 +5,7 @@
 All options under `services.shikane`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.shikane.enable` | `boolean` | Whether to enable shikane, A dynamic output configuration tool that automatically detects and configures connected outputs based on a set of profiles… |
 | `services.shikane.package` | `package` | The shikane package to use. |
 | `services.shikane.settings` | `TOML value` | Configuration written to <filename>$XDG_CONFIG_HOME/shikane/config.toml</filename>. </para><para> See <link xlink:href=“https://gitlab.com/w0lff/shikane/-/blob/master/docs/shikane.5.man.md” /> for more information. |

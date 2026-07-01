@@ -1,45 +1,40 @@
-import { useWidgetStore } from "@/stores/widget-store";
-import { tauriAPI } from "@/ipc/api";
-import { mirrorChangeMapState } from "@/viewmodel/change-map";
+import { uiActions, viewModelActions } from "@nixmac/state";
+import { client } from "@/lib/orpc";
 
 /**
  * Hook for fetching and managing the AI-generated summary of changes.
+ * The backend commands record the recomputed map in the change-map cell;
+ * `change_map_changed` mirrors it into the ViewModel.
  */
 const findChangeMap = async (): Promise<void> => {
   try {
-    const map = await tauriAPI.summarizedChanges.findChangeMap();
-    if (map) {
-      mirrorChangeMapState(map);
-    }
+    await client.summarizedChanges.findChangeMap();
   } catch (e) {
     console.error("[SemanticChangeMap] error", e);
   }
 };
 
 const generateCommitMessage = async () => {
-  const { setCommitMessageSuggestion } = useWidgetStore.getState();
-  setCommitMessageSuggestion(null);
+  uiActions.setCommitMessageSuggestion(null);
   try {
-    const message = await tauriAPI.summarizedChanges.generateCommitMessage();
-    setCommitMessageSuggestion(message);
+    const message = await client.summarizedChanges.generateCommitMessage();
+    uiActions.setCommitMessageSuggestion(message);
   } catch {
     // Keep null on error — user can type manually
   }
 };
 
 const generateCurrentSummary = async () => {
-  const { setSummarizing } = useWidgetStore.getState();
-  setSummarizing(true);
+  uiActions.setSummarizing(true);
   try {
-    const map = await tauriAPI.summarizedChanges.summarizeCurrent();
-    mirrorChangeMapState(map);
+    await client.summarizedChanges.summarizeCurrent();
   } finally {
-    setSummarizing(false);
+    uiActions.setSummarizing(false);
   }
 };
 
 const summarizeOnFocus = () => {
-  if (useWidgetStore.getState().autoSummarizeOnFocus) {
+  if (viewModelActions.getState().preferences?.autoSummarizeOnFocus) {
     generateCurrentSummary();
   }
 };

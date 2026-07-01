@@ -5,5 +5,5 @@
 All options under `programs.haguichi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `programs.haguichi.enable` | | |

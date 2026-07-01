@@ -5,7 +5,7 @@
 All options under `services.espanso`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `services.espanso.configs` | `YAML 1.1 value` | The Espanso configuration to use. See https://espanso.org/docs/configuration/basics/ for a description of available options. |
 | `services.espanso.enable` | `boolean` | Whether to enable Espanso: cross platform text expander in Rust. |
 | `services.espanso.matches` | `YAML 1.1 value` | The Espanso matches to use. See https://espanso.org/docs/matches/basics/ for a description of available options. |

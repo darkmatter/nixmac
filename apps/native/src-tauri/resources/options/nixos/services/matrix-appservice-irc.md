@@ -5,7 +5,7 @@
 All options under `services.matrix-appservice-irc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------------ | ---- | ----------- |
 | `services.matrix-appservice-irc.enable` | | |
 | `services.matrix-appservice-irc.localpart` | | |
 | `services.matrix-appservice-irc.needBindingCap` | | |

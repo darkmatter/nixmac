@@ -5,6 +5,6 @@
 All options under `services.xbanish`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.xbanish.arguments` | | |
 | `services.xbanish.enable` | | |

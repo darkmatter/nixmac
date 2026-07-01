@@ -5,6 +5,6 @@
 All options under `services.persistent-evdev`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.persistent-evdev.devices` | | |
 | `services.persistent-evdev.enable` | | |

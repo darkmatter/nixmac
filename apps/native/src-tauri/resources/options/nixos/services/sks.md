@@ -5,7 +5,7 @@
 All options under `services.sks`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.sks.dataDir` | | |
 | `services.sks.enable` | | |
 | `services.sks.extraDbConfig` | | |

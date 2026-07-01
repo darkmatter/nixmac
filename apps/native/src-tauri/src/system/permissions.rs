@@ -7,6 +7,7 @@
 //! - Desktop folder access
 //! - Documents folder access
 //! - Full Disk Access (FDA) - required for darwin-rebuild over SSH
+//! - App Management - recommended so activation can update managed apps
 //! - Administrator privileges (sudo access)
 
 pub(crate) use crate::shared_types::{Permission, PermissionStatus, PermissionsState};
@@ -70,6 +71,11 @@ fn get_default_permissions() -> Vec<Permission> {
                     .to_string(),
             ),
         },
+        app_management_permission(PermissionStatus::Pending),
+        privileged_helper_permission(
+            PermissionStatus::Pending,
+            "Enable this once per device to allow nixmac to activate already-built system generations unattended.",
+        ),
     ]
 }
 
@@ -80,11 +86,7 @@ fn e2e_skip_permissions_enabled() -> bool {
 
 #[cfg(debug_assertions)]
 fn vite_skip_permissions_enabled() -> bool {
-    cfg!(debug_assertions)
-        && std::env::var("VITE_NIXMAC_SKIP_PERMISSIONS")
-            .ok()
-            .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
-            .unwrap_or(false)
+    crate::env::vite_skip_permissions()
 }
 
 #[cfg(not(debug_assertions))]
@@ -95,6 +97,22 @@ fn e2e_skip_permissions_enabled() -> bool {
 #[cfg(not(debug_assertions))]
 fn vite_skip_permissions_enabled() -> bool {
     false
+}
+
+fn skip_permissions_enabled() -> bool {
+    vite_skip_permissions_enabled() || e2e_skip_permissions_enabled()
+}
+
+fn granted_permissions_state() -> PermissionsState {
+    let mut permissions = get_default_permissions();
+    for perm in &mut permissions {
+        perm.status = PermissionStatus::Granted;
+    }
+    PermissionsState {
+        permissions,
+        all_required_granted: true,
+        checked_at: Some(chrono::Utc::now().timestamp()),
+    }
 }
 
 fn granted_folder_permission(id: &str, name: &str, description: &str) -> Permission {
@@ -106,6 +124,56 @@ fn granted_folder_permission(id: &str, name: &str, description: &str) -> Permiss
         can_request_programmatically: true,
         status: PermissionStatus::Granted,
         instructions: None,
+    }
+}
+
+fn privileged_helper_permission(status: PermissionStatus, instructions: &str) -> Permission {
+    Permission {
+        id: "privileged-helper".to_string(),
+        name: "Unattended Sync Helper".to_string(),
+        description:
+            "Required for unattended device sync to activate builds without a password prompt"
+                .to_string(),
+        required: true,
+        can_request_programmatically: true,
+        status,
+        instructions: Some(instructions.to_string()),
+    }
+}
+
+/// App Management (`kTCCServiceSystemPolicyAppBundles`).
+///
+/// macOS gates modifying another app's signed bundle behind this permission.
+/// nix-darwin / home-manager activation trips it whenever it links or copies
+/// macOS apps into `/Applications` (e.g. `targets.darwin.copyApps`,
+/// `homebrew` casks, or any `system.activationScripts.applications` step), so
+/// a build that manages apps fails with the "updating apps over SSH" error
+/// without it.
+///
+/// It is `required: false` (Recommended) on purpose:
+/// 1. macOS exposes no public API to probe this service, and the bundled
+///    `tauri-plugin-macos-permissions` (2.3.0) has no App Management command,
+///    so we cannot reliably observe it being granted. Marking it required
+///    would make `all_required_granted` impossible to satisfy and deadlock
+///    the onboarding permissions gate forever.
+/// 2. Full Disk Access may cover the underlying bundle-modification operation,
+///    but the App Management row describes the explicit App Management TCC
+///    service. Inferring this row from FDA makes the permissions screen report
+///    a false grant.
+fn app_management_permission(status: PermissionStatus) -> Permission {
+    Permission {
+        id: "app-management".to_string(),
+        name: "App Management".to_string(),
+        description:
+            "Recommended so darwin-rebuild can update apps it manages (e.g. linking apps into /Applications)"
+                .to_string(),
+        required: false,
+        can_request_programmatically: false,
+        status,
+        instructions: Some(
+            "Open System Settings → Privacy & Security → App Management and enable nixmac. macOS does not expose a reliable way for nixmac to verify this grant."
+                .to_string(),
+        ),
     }
 }
 
@@ -248,19 +316,11 @@ fn check_admin_privileges() -> PermissionStatus {
 
 /// Check all permissions and return the current state
 pub fn check_all_permissions() -> PermissionsState {
-    // In CI/E2E mode, skip all permission checks and report everything as granted.
-    // The E2E test environment may not have FDA granted and can't obtain it programmatically.
-    if e2e_skip_permissions_enabled() {
-        info!("NIXMAC_SKIP_PERMISSIONS=1: reporting all permissions as granted");
-        let mut permissions = get_default_permissions();
-        for perm in &mut permissions {
-            perm.status = PermissionStatus::Granted;
-        }
-        return PermissionsState {
-            permissions,
-            all_required_granted: true,
-            checked_at: Some(chrono::Utc::now().timestamp()),
-        };
+    // Debug/test environments may not have TCC permissions granted and cannot
+    // obtain them programmatically, so the skip flags satisfy the whole gate.
+    if skip_permissions_enabled() {
+        info!("permission skip enabled: reporting all permissions as granted");
+        return granted_permissions_state();
     }
 
     let mut permissions = get_default_permissions();
@@ -273,6 +333,8 @@ pub fn check_all_permissions() -> PermissionsState {
             "documents" => check_documents_access(),
             "admin" => check_admin_privileges(),
             "full-disk" => check_full_disk_access(),
+            "app-management" => check_app_management(),
+            "privileged-helper" => check_privileged_helper(),
             _ => PermissionStatus::Unknown,
         };
 
@@ -422,7 +484,7 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
                 id: "full-disk".to_string(),
                 name: "Full Disk Access".to_string(),
                 description: "Required for darwin-rebuild to apply system changes".to_string(),
-                required: false,
+                required: true,
                 can_request_programmatically: false,
                 status: check_full_disk_access(),
                 instructions: Some(
@@ -431,8 +493,86 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
                 ),
             })
         }
+        "app-management" => {
+            // Deep-link to the App Management privacy pane. macOS cannot grant
+            // this programmatically, so we mirror the Full Disk Access flow:
+            // open the exact Settings anchor and re-probe afterwards.
+            // fire-and-forget: `open` spawn failure is not actionable here.
+            let _ = Command::new("open")
+                .args([
+                    "x-apple.systempreferences:com.apple.preference.security?Privacy_AppBundles",
+                ])
+                .spawn();
+
+            Ok(app_management_permission(check_app_management()))
+        }
+        "privileged-helper" => {
+            // SMAppService registration requires the helper binary and its
+            // LaunchDaemon plist to be embedded inside the .app bundle
+            // (Contents/MacOS/nixmac-helper and
+            // Contents/Library/LaunchDaemons/com.darkmatter.nixmac.helper.plist).
+            // Those assets are only staged by `bun run desktop:build[:local]`
+            // (externalBin in package.json). Under `tauri dev` the app runs as
+            // a bare binary from target/debug with no bundle, so
+            // registerAndReturnError: fails with an opaque "Operation not
+            // permitted". Detect that up front and surface a clear Pending
+            // state instead of propagating the OS error to the UI.
+            let bundle_present = crate::system::install_location::check_install_location()
+                .bundle_path
+                .is_some();
+
+            let (status, instructions) = if !bundle_present {
+                warn!(
+                    "privileged helper registration skipped: nixmac is not running from a .app bundle"
+                );
+                (
+                    PermissionStatus::Pending,
+                    "Build a signed .app with `bun run desktop:build:local`, drag it into /Applications, and launch it from there to install the unattended sync helper. It cannot be installed from a dev build.",
+                )
+            } else {
+                let status = match crate::privileged_helper::service::register() {
+                    Ok(status) if status.authorized => PermissionStatus::Granted,
+                    Ok(_) => {
+                        crate::privileged_helper::service::open_login_items_settings();
+                        PermissionStatus::Pending
+                    }
+                    Err(error) => {
+                        warn!("privileged helper registration failed: {error:#}");
+                        crate::privileged_helper::service::open_login_items_settings();
+                        PermissionStatus::Pending
+                    }
+                };
+                (
+                    status,
+                    "Approve nixmac in System Settings → General → Login Items & Extensions if macOS asks for background item approval.",
+                )
+            };
+            Ok(privileged_helper_permission(status, instructions))
+        }
         _ => Err(anyhow::anyhow!("Unknown permission: {}", permission_id)),
     }
+}
+
+fn check_privileged_helper() -> PermissionStatus {
+    let status = crate::privileged_helper::service::status();
+    if status.authorized {
+        PermissionStatus::Granted
+    } else if status.available {
+        PermissionStatus::Pending
+    } else {
+        PermissionStatus::Unknown
+    }
+}
+
+/// Best-effort App Management status.
+///
+/// macOS provides no public API to read `kTCCServiceSystemPolicyAppBundles`,
+/// and the bundled permissions plugin has no command for it. Full Disk Access
+/// can authorize the same underlying app-bundle updates, but it is a different
+/// TCC service and does not mean App Management itself is granted. Keep this as
+/// `Pending` so the UI never displays a false positive.
+fn check_app_management() -> PermissionStatus {
+    PermissionStatus::Pending
 }
 
 #[cfg(test)]
@@ -446,7 +586,7 @@ mod tests {
         let _env_restore =
             crate::test_support::EnvVarRestore::capture(&["NIXMAC_SKIP_PERMISSIONS"]);
 
-        std::env::set_var("NIXMAC_SKIP_PERMISSIONS", "true");
+        unsafe { std::env::set_var("NIXMAC_SKIP_PERMISSIONS", "true") };
 
         assert!(e2e_skip_permissions_enabled());
     }
@@ -458,7 +598,7 @@ mod tests {
         let _env_restore =
             crate::test_support::EnvVarRestore::capture(&["NIXMAC_SKIP_PERMISSIONS"]);
 
-        std::env::set_var("NIXMAC_SKIP_PERMISSIONS", "true");
+        unsafe { std::env::set_var("NIXMAC_SKIP_PERMISSIONS", "true") };
 
         assert!(!e2e_skip_permissions_enabled());
     }
@@ -470,7 +610,7 @@ mod tests {
         let _env_restore =
             crate::test_support::EnvVarRestore::capture(&["VITE_NIXMAC_SKIP_PERMISSIONS"]);
 
-        std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true");
+        unsafe { std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true") };
 
         assert!(vite_skip_permissions_enabled());
     }
@@ -482,9 +622,37 @@ mod tests {
         let _env_restore =
             crate::test_support::EnvVarRestore::capture(&["VITE_NIXMAC_SKIP_PERMISSIONS"]);
 
-        std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true");
+        unsafe { std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true") };
 
         assert!(!vite_skip_permissions_enabled());
+    }
+
+    #[test]
+    fn app_management_is_present_and_recommended_not_required() {
+        let perms = get_default_permissions();
+        let app_mgmt = perms
+            .iter()
+            .find(|p| p.id == "app-management")
+            .expect("app-management permission should be registered");
+
+        // Recommended, not required: macOS exposes no reliable probe for App
+        // Management, so requiring it would deadlock the onboarding gate
+        // (all_required_granted could never become true).
+        assert!(!app_mgmt.required);
+        assert!(!app_mgmt.can_request_programmatically);
+
+        // It must not count toward the required-permission gate.
+        assert!(
+            !perms
+                .iter()
+                .filter(|p| p.required)
+                .any(|p| p.id == "app-management")
+        );
+    }
+
+    #[test]
+    fn app_management_is_not_inferred_from_full_disk_access() {
+        assert_eq!(check_app_management(), PermissionStatus::Pending);
     }
 
     #[test]
@@ -507,16 +675,62 @@ mod tests {
         let _env_restore =
             crate::test_support::EnvVarRestore::capture(&["VITE_NIXMAC_SKIP_PERMISSIONS"]);
 
-        std::env::remove_var("VITE_NIXMAC_SKIP_PERMISSIONS");
+        unsafe { std::env::remove_var("VITE_NIXMAC_SKIP_PERMISSIONS") };
         assert!(!vite_skip_permissions_enabled());
 
-        std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "0");
+        unsafe { std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "0") };
         assert!(!vite_skip_permissions_enabled());
 
-        std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "false");
+        unsafe { std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "false") };
         assert!(!vite_skip_permissions_enabled());
 
-        std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true");
+        unsafe { std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true") };
         assert_eq!(vite_skip_permissions_enabled(), cfg!(debug_assertions));
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn vite_permission_skip_reports_all_permissions_granted() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore = crate::test_support::EnvVarRestore::capture(&[
+            "NIXMAC_SKIP_PERMISSIONS",
+            "VITE_NIXMAC_SKIP_PERMISSIONS",
+        ]);
+
+        unsafe { std::env::remove_var("NIXMAC_SKIP_PERMISSIONS") };
+        unsafe { std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true") };
+
+        let state = check_all_permissions();
+
+        assert!(state.all_required_granted);
+        assert!(
+            state
+                .permissions
+                .iter()
+                .all(|permission| permission.status == PermissionStatus::Granted)
+        );
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn nixmac_permission_skip_reports_all_permissions_granted() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore = crate::test_support::EnvVarRestore::capture(&[
+            "NIXMAC_SKIP_PERMISSIONS",
+            "VITE_NIXMAC_SKIP_PERMISSIONS",
+        ]);
+
+        unsafe { std::env::set_var("NIXMAC_SKIP_PERMISSIONS", "true") };
+        unsafe { std::env::remove_var("VITE_NIXMAC_SKIP_PERMISSIONS") };
+
+        let state = check_all_permissions();
+
+        assert!(state.all_required_granted);
+        assert!(
+            state
+                .permissions
+                .iter()
+                .all(|permission| permission.status == PermissionStatus::Granted)
+        );
     }
 }

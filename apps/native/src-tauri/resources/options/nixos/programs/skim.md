@@ -5,7 +5,7 @@
 All options under `programs.skim`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `programs.skim.enable` | | |
 | `programs.skim.fuzzyCompletion` | | |
 | `programs.skim.keybindings` | | |

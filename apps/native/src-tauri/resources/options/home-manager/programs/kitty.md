@@ -5,7 +5,7 @@
 All options under `programs.kitty`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.kitty.actionAliases` | `attribute set of string` | Define action aliases. |
 | `programs.kitty.autoThemeFiles` | `null or (submodule)` | Configure Kitty automatic color themes. This creates $XDG_CONFIG_HOME/kitty/light-theme.auto.conf , $XDG_CONFIG_HOME/kitty/dark-theme.auto.conf , and $XDG_CONFIG_HOME/kitty/no-preference-theme.auto.conf . Kitty applies these based on the OS color scheme, and they override other color and background image settings. |
 | `programs.kitty.darwinLaunchOptions` | `null or (list of string)` | Command-line options to use when launched by Mac OS GUI |

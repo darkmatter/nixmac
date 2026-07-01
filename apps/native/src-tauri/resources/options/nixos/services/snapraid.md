@@ -5,7 +5,7 @@
 All options under `services.snapraid`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.snapraid.contentFiles` | | |
 | `services.snapraid.dataDisks` | | |
 | `services.snapraid.enable` | | |

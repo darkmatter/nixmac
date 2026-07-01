@@ -5,5 +5,5 @@
 All options under `services.safeeyes`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.safeeyes.enable` | | |

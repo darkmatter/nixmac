@@ -22,13 +22,20 @@
     ],
     "resources": [
       "../templates/nix-darwin-determinate/",
-      "resources/gitleaks.toml"
+      "../templates/nixos-unified/",
+      "../templates/base/",
+      "resources/gitleaks.toml",
+      "resources/launchd/com.darkmatter.nixmac.helper.plist",
+      "resources/launchd/com.darkmatter.nixmac.sync-agent.plist"
     ],
     "macOS": {
       "minimumSystemVersion": "10.13",
       "entitlements": "entitlements.plist",
       "infoPlist": "Info.plist",
       "frameworks": [],
+      "files": {
+        "Library/LaunchDaemons/com.darkmatter.nixmac.helper.plist": "resources/launchd/com.darkmatter.nixmac.helper.plist"
+      },
       "dmg": {
         "background": "icons/dmg-background.png",
         "windowSize": {
@@ -52,9 +59,7 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": [
-          "$APPDATA/**"
-        ]
+        "scope": ["$APPDATA/**"]
       }
     },
     "macOSPrivateApi": true
@@ -63,10 +68,13 @@
     "shell": {
       "open": true
     },
+    "deep-link": {
+      "desktop": {
+        "schemes": ["nixmac"]
+      }
+    },
     "updater": {
-      "endpoints": [
-        "https://releases.nixmac.com/latest.json"
-      ],
+      "endpoints": ["https://releases.nixmac.com/latest.json"],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDEyQ0ZGMjJEOTNBMDUxQ0IKUldUTFVhQ1RMZkxQRXNDYXVyblBpa3BVbVdUK3QwUFpzaXl0MVVoQThjcjJkU3hkYlBwNHo1L3cK",
       "dangerousInsecureTransportProtocol": true
     }

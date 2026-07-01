@@ -5,7 +5,7 @@
 All options under `services.jupyterhub`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.jupyterhub.authentication` | | |
 | `services.jupyterhub.enable` | | |
 | `services.jupyterhub.extraConfig` | | |

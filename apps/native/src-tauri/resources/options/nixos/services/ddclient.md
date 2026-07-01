@@ -5,7 +5,7 @@
 All options under `services.ddclient`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.ddclient.configFile` | | |
 | `services.ddclient.domain` | | |
 | `services.ddclient.domains` | | |

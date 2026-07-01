@@ -31,7 +31,6 @@ fn find_meta(struct_name: &str) -> Option<&'static ConfigurableMeta> {
 #[tauri::command]
 pub async fn dev_configs_schemas(_app: AppHandle) -> Result<Vec<ConfigurableSchema>, String> {
     Ok(inventory::iter::<ConfigurableMeta>()
-        .into_iter()
         .map(|meta| (meta.schema_fn)())
         .collect())
 }
@@ -43,7 +42,6 @@ pub async fn dev_configs_values(
     app: AppHandle,
 ) -> Result<HashMap<String, serde_json::Value>, String> {
     inventory::iter::<ConfigurableMeta>()
-        .into_iter()
         .map(|meta| (meta.load_fn)(&app).map(|v| (meta.name.to_string(), v)))
         .collect::<anyhow::Result<HashMap<_, _>>>()
         .map_err(|e| capture_err("dev_configs_values", e))
@@ -100,11 +98,16 @@ mod tests {
     }
 
     #[test]
-    fn evolution_limits_is_registered_via_inventory() {
-        // Verifies the link-time submit! actually wires EvolutionLimits into
+    fn user_preferences_is_registered_via_inventory() {
+        // Verifies the link-time submit! actually wires UserPreferences into
         // the static collection. If inventory's linker tricks regress on a
         // future toolchain, this test catches it before the dev settings UI
         // silently goes empty.
-        assert!(find_meta("EvolutionLimits").is_some());
+        assert!(find_meta("UserPreferences").is_some());
+    }
+
+    #[test]
+    fn nixmac_env_settings_is_registered_via_inventory() {
+        assert!(find_meta("NixmacEnvSettings").is_some());
     }
 }

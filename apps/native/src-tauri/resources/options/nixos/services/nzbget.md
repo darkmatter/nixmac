@@ -5,7 +5,7 @@
 All options under `services.nzbget`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.nzbget.enable` | | |
 | `services.nzbget.group` | | |
 | `services.nzbget.package` | | |

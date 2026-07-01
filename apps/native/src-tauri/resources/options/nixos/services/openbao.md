@@ -5,7 +5,7 @@
 All options under `services.openbao`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.openbao.enable` | | |
 | `services.openbao.extraArgs` | | |
 | `services.openbao.package` | | |

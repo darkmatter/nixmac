@@ -5,7 +5,7 @@
 All options under `services.rspamd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.rspamd.bindSocket` | | |
 | `services.rspamd.bindUISocket` | | |
 | `services.rspamd.debug` | | |

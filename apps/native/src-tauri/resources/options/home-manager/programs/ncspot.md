@@ -5,7 +5,7 @@
 All options under `programs.ncspot`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ----------------- | -------------------------------------------------------------- |
 | `programs.ncspot.enable` | `boolean` | Whether to enable ncspot. |
 | `programs.ncspot.package` | `null or package` | The ncspot package to use. |
 | `programs.ncspot.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/ncspot/config.toml . |

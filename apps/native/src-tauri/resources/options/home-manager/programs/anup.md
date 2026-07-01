@@ -5,7 +5,7 @@
 All options under `programs.anup`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.anup.config` | `string or absolute path` | Config file for anup in RON (Rusty Object Notation) format. Available options can be found by looking at ~/.config/anup/config.ron. |
 | `programs.anup.enable` | `boolean` | Whether to enable anup. |
 | `programs.anup.package` | `null or package` | The anup package to use. |

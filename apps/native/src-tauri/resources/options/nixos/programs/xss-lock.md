@@ -5,7 +5,7 @@
 All options under `programs.xss-lock`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `programs.xss-lock.enable` | | |
 | `programs.xss-lock.extraOptions` | | |
 | `programs.xss-lock.lockerCommand` | | |

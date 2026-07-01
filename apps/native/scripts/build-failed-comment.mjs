@@ -57,10 +57,10 @@ if (manifest.length > 0) {
   lines.push(
     "---",
     "",
-    `### ❌ Failed snapshots (${manifest.length})`,
+    `### ⚠️ Detected UI changes (${manifest.length})`,
     "",
-    "These stories' HTML snapshots changed. [Update snapshots ↗](https://github.com/darkmatter/nixmac/actions/workflows/update-snapshots.yaml) to regenerate baselines and open a PR:",
-    ""
+    "These stories' HTML snapshots changed. I've added screenshots + links to the changed stories below. Review them carefully then accept the changes to regenerate baselines and include them in this PR:",
+    "",
   );
   for (const story of manifest) {
     const label = `${story.title} › ${story.name}`;
@@ -70,6 +70,37 @@ if (manifest.length > 0) {
       lines.push(`![${label}](${shotsBaseUrl}/${story.file})`, "");
     }
   }
+  lines.push(
+    "---",
+    "",
+    "### Accept UI changes",
+    "",
+    "- [ ] Click here to accept these changes",
+    "",
+    "Alternatively, you can run `bun run test:update-snapshots` locally to re-generate the baselines and then push the changes to this PR.",
+    "",
+    "<details>",
+    "<summary>What does this do?</summary>",
+    "",
+    "The screenshots above show UI changes detected by the Storybook",
+    "snapshot tests run on this PR. Each image is the rendered output of",
+    "a Storybook story from the code in this PR branch; the snapshot",
+    "test compared it against the committed baseline in",
+    "`__snapshots__/` and flagged the difference.",
+    "",
+    "Checking the box tells the `darkmatter[bot]` to regenerate the",
+    "baselines from this PR's current code and commit them directly to",
+    "this branch. The new baselines become the source of truth for",
+    "future runs — only accept after confirming the visual changes are",
+    "intentional.",
+    "",
+    "Comparison baseline: the committed `__snapshots__/` files on this",
+    "PR branch (carried forward from develop). Accept updates them in",
+    "place on this branch.",
+    "",
+    "</details>",
+    "",
+  );
 }
 
 process.stdout.write(lines.join("\n"));

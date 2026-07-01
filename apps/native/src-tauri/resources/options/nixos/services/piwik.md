@@ -5,7 +5,7 @@
 All options under `services.piwik`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.piwik.enable` | | |
 | `services.piwik.nginx` | | |
 | `services.piwik.phpfpmProcessManagerConfig` | | |

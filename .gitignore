@@ -13,6 +13,7 @@ dist-ssr/
 target/
 src-tauri/target/
 src-tauri/gen/
+apps/native/src-tauri/binaries/
 .doltcfg
 # Rust/Cargo files cache
 .cargo/
@@ -81,12 +82,7 @@ build
 # Testing
 coverage
 .nyc_output
-artifacts/computer-use-local/
-artifacts/computer-use-real/
-artifacts/computer-use-remote/
-artifacts/computer-use-adversarial/
-artifacts/computer-use-historical-validation/
-artifacts/computer-use-summary/
+artifacts/
 .scratch/
 .claude-review/
 
@@ -154,3 +150,13 @@ playwright-report/
 test-results/
 .playwright/
 blob-report/
+
+# Beads / Dolt files (added by bd init)
+.beads/proxieddb/
+
+# Playwright MCP scratch (screenshots, console logs)
+.playwright-mcp/
+**/.playwright-mcp/
+.claude
+.agents
+.codex

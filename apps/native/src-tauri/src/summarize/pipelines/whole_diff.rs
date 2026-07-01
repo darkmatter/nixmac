@@ -1,7 +1,7 @@
 //! Whole-diff pipeline — one model call on the full diff, one summary message.
 
 use anyhow::Result;
-use tauri::{AppHandle, Emitter, Manager, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 
 use crate::db::DbPool;
 use crate::sqlite_types::Change;
@@ -82,6 +82,7 @@ fn emit_update<R: Runtime>(
         let change_sets = crate::summarize::find_existing::for_current_state(pool, &config_dir)?;
         crate::summarize::group_existing::from_change_sets(change_sets)
     };
-    app.emit("change_map_changed", semantic_map)?;
+    // The cell write emits `change_map_changed`.
+    crate::state::change_map::update(app, semantic_map);
     Ok(())
 }

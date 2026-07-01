@@ -5,7 +5,7 @@
 All options under `programs.ssh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `programs.ssh.agentPKCS11Whitelist` | | |
 | `programs.ssh.agentTimeout` | | |
 | `programs.ssh.askPassword` | | |

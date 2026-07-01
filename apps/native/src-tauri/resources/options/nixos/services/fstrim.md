@@ -5,6 +5,6 @@
 All options under `services.fstrim`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.fstrim.enable` | | |
 | `services.fstrim.interval` | | |

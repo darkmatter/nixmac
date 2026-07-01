@@ -1,6 +1,11 @@
 # Karabiner-Elements configuration
 # Config is COPIED (not symlinked) via files.nix because Karabiner needs write access
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 {
   # Karabiner config is managed in files.nix using home.activation

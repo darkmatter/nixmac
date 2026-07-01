@@ -102,7 +102,7 @@ for (let i = 0; i < fields.length; ) {
   }
 }
 const snapEntries = diffEntries.filter(
-  (entry) => entry.path.includes("/__snapshots__/") && entry.path.endsWith(".snap")
+  (entry) => entry.path.includes("/__snapshots__/") && entry.path.endsWith(".snap"),
 );
 
 const added = [];
@@ -110,12 +110,8 @@ const removed = [];
 const changed = [];
 
 for (const entry of snapEntries) {
-  const baseStories = parseSnapshots(
-    entry.status === "A" ? "" : tryGitShow(mergeBase, entry.path)
-  );
-  const headStories = parseSnapshots(
-    entry.status === "D" ? "" : tryGitShow("HEAD", entry.path)
-  );
+  const baseStories = parseSnapshots(entry.status === "A" ? "" : tryGitShow(mergeBase, entry.path));
+  const headStories = parseSnapshots(entry.status === "D" ? "" : tryGitShow("HEAD", entry.path));
   const storiesFile = storiesPathForSnap(entry.path);
 
   for (const [name, body] of headStories) {
@@ -139,15 +135,13 @@ if (added.length + removed.length + changed.length === 0) {
 }
 
 const index = await readJsonOrDefault(indexFile, { entries: {} });
-const storyEntries = Object.values(index.entries ?? {}).filter(
-  (entry) => entry.type === "story"
-);
+const storyEntries = Object.values(index.entries ?? {}).filter((entry) => entry.type === "story");
 
 // Falls back to the stories filename when the story is absent from the built
 // index (always the case for removed stories).
 function describe(story) {
   const match = storyEntries.find(
-    (entry) => entry.name === story.name && pathsMatch(entry.importPath, story.storiesFile)
+    (entry) => entry.name === story.name && pathsMatch(entry.importPath, story.storiesFile),
   );
   const label = match
     ? `${match.title} › ${match.name}`
@@ -193,5 +187,5 @@ await writeFile(outputFile, digest);
 
 console.log(
   `Story digest: ${added.length} new, ${changed.length} changed, ` +
-    `${removed.length} removed -> ${path.relative(appRoot, outputFile)}`
+    `${removed.length} removed -> ${path.relative(appRoot, outputFile)}`,
 );

@@ -5,7 +5,7 @@
 All options under `services.mchprs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.mchprs.dataDir` | | |
 | `services.mchprs.declarativeSettings` | | |
 | `services.mchprs.declarativeWhitelist` | | |

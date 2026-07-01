@@ -5,7 +5,7 @@
 All options under `services.speedtest-tracker`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.speedtest-tracker.dataDir` | | |
 | `services.speedtest-tracker.enable` | | |
 | `services.speedtest-tracker.enableNginx` | | |

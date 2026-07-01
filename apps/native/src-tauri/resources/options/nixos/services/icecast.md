@@ -5,7 +5,7 @@
 All options under `services.icecast`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.icecast.admin.password` | | |
 | `services.icecast.admin.user` | | |
 | `services.icecast.enable` | | |

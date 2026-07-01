@@ -1,38 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
-import { tauriAPI } from "@/ipc/api";
-import type { SystemDefaultsScan } from "@/ipc/types";
+import { orpc } from "@/lib/orpc";
 
 export function useSystemDefaultsScan(enabled = true) {
-  const [scan, setScan] = useState<SystemDefaultsScan | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { data, error, refetch } = useQuery(orpc.scanner.scanDefaults.queryOptions({ enabled }));
 
-  const refresh = useCallback(async (isCancelled: () => boolean = () => false) => {
-    setError(null);
-    try {
-      const result = await tauriAPI.scanner.scanDefaults();
-      if (!isCancelled()) setScan(result);
-    } catch (e: unknown) {
-      if (!isCancelled()) setError(String(e));
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!enabled) {
-      setScan(null);
-      setError(null);
-      return;
-    }
-
-    let cancelled = false;
-    void refresh(() => cancelled);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [enabled, refresh]);
-
-  return { scan, error, refresh };
+  return {
+    scan: enabled ? (data ?? null) : null,
+    error: error ? String(error) : null,
+    refresh: refetch,
+  };
 }

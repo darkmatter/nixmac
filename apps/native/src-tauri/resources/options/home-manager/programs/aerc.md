@@ -5,7 +5,7 @@
 All options under `programs.aerc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | `programs.aerc.enable` | `boolean` | Whether to enable aerc. |
 | `programs.aerc.extraAccounts` | `strings concatenated with “\n” or attribute set of (strings concatenated with “\n” or attribute set of (values (null, bool, int, string, or float) or a list of values, that will be joined with a comma))` | Extra lines added to $HOME/.config/aerc/accounts.conf . |
 | `programs.aerc.extraBinds` | `strings concatenated with “\n” or attribute set of (strings concatenated with “\n” or attribute set of (values (null, bool, int, string, or float) or a list of values, that will be joined with a comma))` | Extra lines added to $HOME/.config/aerc/binds.conf . Global keybindings can be set in the global section. |

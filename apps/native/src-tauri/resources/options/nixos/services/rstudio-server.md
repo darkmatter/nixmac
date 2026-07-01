@@ -5,7 +5,7 @@
 All options under `services.rstudio-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | ---- | ----------- |
 | `services.rstudio-server.enable` | | |
 | `services.rstudio-server.listenAddr` | | |
 | `services.rstudio-server.package` | | |

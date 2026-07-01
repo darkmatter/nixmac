@@ -5,7 +5,7 @@
 All options under `services.aesmd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.aesmd.debug` | | |
 | `services.aesmd.enable` | | |
 | `services.aesmd.environment` | | |

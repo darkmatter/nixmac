@@ -5,7 +5,7 @@
 All options under `krb5`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------- | ---- | ----------- |
 | `krb5.appdefaults` | | |
 | `krb5.capaths` | | |
 | `krb5.config` | | |

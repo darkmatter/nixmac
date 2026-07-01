@@ -5,7 +5,7 @@
 All options under `services.rss2email`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.rss2email.config` | | |
 | `services.rss2email.enable` | | |
 | `services.rss2email.feeds` | | |

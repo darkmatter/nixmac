@@ -5,7 +5,7 @@
 All options under `services.g3proxy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.g3proxy.enable` | | |
 | `services.g3proxy.package` | | |
 | `services.g3proxy.settings` | | |

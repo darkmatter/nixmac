@@ -5,7 +5,7 @@
 All options under `programs.nom`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | --------------------------- | ----------------------------------------------------------------------------------- |
 | `programs.nom.enable` | `boolean` | Whether to enable nom a terminal, rss feed reader… |
 | `programs.nom.package` | `null or package` | The nom package to use. |
 | `programs.nom.settings` | `attribute set of anything` | Settings for nom including themes, rss feeds, and openers for specific url regexes. |

@@ -13,6 +13,12 @@ use async_trait::async_trait;
 const DEFAULT_SUMMARY_MODEL: &str = "openai/gpt-4o-mini";
 const DEFAULT_OPENAI_SUMMARY_MODEL: &str = "gpt-4o-mini";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
+pub(crate) const NIXMAC_PROVIDER: &str = "nixmac";
+pub(crate) const DEFAULT_NIXMAC_MODEL: &str = "auto";
+
+pub(crate) fn nixmac_llm_api_base(web_server_url: &str) -> String {
+    format!("{}/api/llm/v1", web_server_url.trim_end_matches('/'))
+}
 
 /// Token consumption reported by a provider for a single completion call.
 #[derive(Debug, Default, Clone)]
@@ -63,14 +69,13 @@ pub trait ChatCompletionProvider: Send + Sync {
     }
 }
 
-fn configured_model(store_model: Option<String>, env_var: &str) -> Option<String> {
+fn configured_model(
+    store_model: Option<String>,
+    env_model: impl Fn() -> Option<String>,
+) -> Option<String> {
     store_model
         .and_then(crate::utils::non_empty_trimmed_string)
-        .or_else(|| {
-            std::env::var(env_var)
-                .ok()
-                .and_then(crate::utils::non_empty_trimmed_string)
-        })
+        .or_else(env_model)
 }
 
 fn require_local_model(
@@ -78,7 +83,7 @@ fn require_local_model(
     store_model: Option<String>,
     env_var: &str,
 ) -> Result<String> {
-    configured_model(store_model, env_var).ok_or_else(|| {
+    configured_model(store_model, crate::env::default_summary_model).ok_or_else(|| {
         anyhow::anyhow!(
             "No {provider_name} model configured. Please select a model in Settings or set {env_var}."
         )
@@ -189,11 +194,15 @@ pub fn create_provider<R: Runtime>(
         .and_then(|app| crate::storage::store::get_summary_provider(app).ok())
         .flatten();
 
-    let configured_provider = store_provider.or_else(|| std::env::var("SUMMARY_AI_PROVIDER").ok());
+    let env_settings = crate::env::settings_from_app(app_handle);
+    let configured_provider = store_provider
+        .or_else(|| crate::env::optional(env_settings.default_summary_provider.clone()));
     let store_model = app_handle
         .and_then(|app| crate::storage::store::get_summary_model(app).ok())
         .flatten();
-    let configured_summary_model = configured_model(store_model.clone(), "SUMMARY_MODEL");
+    let configured_summary_model = configured_model(store_model.clone(), || {
+        crate::env::optional(env_settings.default_summary_model.clone())
+    });
     let (provider, used_legacy_openai_fallback) = resolve_summary_provider(
         app_handle,
         configured_provider,
@@ -211,22 +220,23 @@ pub fn create_provider<R: Runtime>(
             Ok(Box::new(CliCompletionClient::new(tool, model)))
         }
         "ollama" => {
-            let model = require_local_model("Ollama", store_model, "SUMMARY_MODEL")?;
+            let model =
+                require_local_model("Ollama", store_model, crate::env::keys::SUMMARY_MODEL)?;
 
             let base_url = app_handle
                 .and_then(|app| crate::storage::store::get_ollama_api_base_url(app).ok())
                 .flatten()
-                .or_else(|| std::env::var("OLLAMA_API_BASE").ok())
+                .or_else(|| crate::env::optional(env_settings.ollama_api_base.clone()))
                 .unwrap_or_else(|| DEFAULT_OLLAMA_API_BASE.to_string());
             Ok(Box::new(OllamaClient::new(&base_url, &model)))
         }
         "vllm" => {
-            let model = require_local_model("vLLM", store_model, "SUMMARY_MODEL")?;
+            let model = require_local_model("vLLM", store_model, crate::env::keys::SUMMARY_MODEL)?;
 
             let base_url = app_handle
                 .and_then(|app| crate::storage::store::get_vllm_api_base_url(app).ok())
                 .flatten()
-                .or_else(|| std::env::var("VLLM_API_BASE").ok())
+                .or_else(|| crate::env::optional(env_settings.vllm_api_base.clone()))
                 .ok_or_else(|| {
                     anyhow::anyhow!("No vLLM base URL configured. Please set it in Settings.")
                 })?;
@@ -236,6 +246,18 @@ pub fn create_provider<R: Runtime>(
                 .transpose()?
                 .flatten()
                 .unwrap_or_else(|| "none".to_string());
+
+            Ok(Box::new(OpenAIClient::new(&api_key, &base_url, &model)))
+        }
+        NIXMAC_PROVIDER => {
+            let app = app_handle.ok_or_else(|| {
+                anyhow::anyhow!("The nixmac hosted provider requires the desktop app context.")
+            })?;
+            let api_key = crate::storage::store::get_device_api_key(app)?
+                .ok_or_else(|| anyhow::anyhow!("Sign in to nixmac hosted inference first."))?;
+            let base_url = nixmac_llm_api_base(&crate::storage::store::get_web_server_url()?);
+            let model =
+                configured_summary_model.unwrap_or_else(|| DEFAULT_NIXMAC_MODEL.to_string());
 
             Ok(Box::new(OpenAIClient::new(&api_key, &base_url, &model)))
         }

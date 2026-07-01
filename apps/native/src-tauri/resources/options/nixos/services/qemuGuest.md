@@ -5,6 +5,6 @@
 All options under `services.qemuGuest`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.qemuGuest.enable` | | |
 | `services.qemuGuest.package` | | |

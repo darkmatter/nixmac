@@ -5,7 +5,7 @@
 All options under `services.selfoss`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.selfoss.database.host` | | |
 | `services.selfoss.database.name` | | |
 | `services.selfoss.database.password` | | |

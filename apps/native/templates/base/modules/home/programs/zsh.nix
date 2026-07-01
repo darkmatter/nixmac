@@ -1,5 +1,10 @@
 # Zsh shell configuration
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 {
   programs.zsh = {
@@ -82,7 +87,13 @@
 
     oh-my-zsh = {
       enable = true;
-      plugins = [ "git" "docker" "aws" "colored-man-pages" "fzf" ];
+      plugins = [
+        "git"
+        "docker"
+        "aws"
+        "colored-man-pages"
+        "fzf"
+      ];
       theme = "robbyrussell";
     };
 
@@ -175,4 +186,3 @@
     '';
   };
 }
-

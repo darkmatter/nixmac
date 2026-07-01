@@ -5,7 +5,7 @@
 All options under `services.leaps`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.leaps.address` | | |
 | `services.leaps.enable` | | |
 | `services.leaps.path` | | |

@@ -134,6 +134,14 @@ make_app() {
 	chmod +x "$app/Contents/MacOS/$executable_name"
 }
 
+add_helper_bins() {
+	local app="$1"
+	for helper in nixmac-helper nixmac-sync-agent; do
+		printf 'fake mach-o\n' >"$app/Contents/MacOS/$helper"
+		chmod +x "$app/Contents/MacOS/$helper"
+	done
+}
+
 run_normalizer() {
 	local target="$1"
 	PATH="$FAKE_BIN:$PATH" "$SCRIPT" "$target" >"$TMP_DIR/normalizer.out" 2>&1
@@ -171,6 +179,7 @@ fi
 : >"$INSTALL_NAME_TOOL_LOG"
 : >"$CODESIGN_LOG"
 make_app "$TMP_DIR/NixIconvUpdater.app" nix-iconv-updater
+add_helper_bins "$TMP_DIR/NixIconvUpdater.app"
 tar -czf "$TMP_DIR/nixmac.app.tar.gz" -C "$TMP_DIR" NixIconvUpdater.app
 printf '%s\n' "stale signature" >"$TMP_DIR/nixmac.app.tar.gz.sig"
 ABS_TAR_PATH="$(cd "$TMP_DIR" && pwd -P)/nixmac.app.tar.gz"
@@ -190,6 +199,13 @@ fi
 
 if ! grep -F "NixIconvUpdater.app" "$CODESIGN_LOG" >/dev/null; then
 	echo "expected updater tarball app to be code signed after normalization" >&2
+	cat "$CODESIGN_LOG" >&2
+	exit 1
+fi
+
+if ! grep -F "NixIconvUpdater.app/Contents/MacOS/nixmac-helper" "$CODESIGN_LOG" >/dev/null ||
+	! grep -F "NixIconvUpdater.app/Contents/MacOS/nixmac-sync-agent" "$CODESIGN_LOG" >/dev/null; then
+	echo "expected nested helper binaries to be signed before sealing the app" >&2
 	cat "$CODESIGN_LOG" >&2
 	exit 1
 fi

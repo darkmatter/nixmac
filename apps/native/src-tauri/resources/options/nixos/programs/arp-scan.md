@@ -5,5 +5,5 @@
 All options under `programs.arp-scan`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `programs.arp-scan.enable` | | |

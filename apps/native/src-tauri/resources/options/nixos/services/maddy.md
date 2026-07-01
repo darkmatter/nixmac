@@ -5,7 +5,7 @@
 All options under `services.maddy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.maddy.config` | | |
 | `services.maddy.enable` | | |
 | `services.maddy.ensureAccounts` | | |

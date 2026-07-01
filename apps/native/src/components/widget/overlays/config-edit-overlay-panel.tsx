@@ -1,6 +1,7 @@
 "use client";
 
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiState } from "@nixmac/state";
+import { useViewModel } from "@nixmac/state";
 import { Loader2 } from "lucide-react";
 
 /**
@@ -9,9 +10,9 @@ import { Loader2 } from "lucide-react";
  * `rebuild.isRunning` takes over with richer progress UI.
  */
 export function ConfigEditOverlayPanel() {
-  const isProcessing = useWidgetStore((s) => s.isProcessing);
-  const processingAction = useWidgetStore((s) => s.processingAction);
-  const rebuildRunning = useWidgetStore((s) => s.rebuild.isRunning);
+  const isProcessing = useUiState((s) => s.isProcessing);
+  const processingAction = useUiState((s) => s.processingAction);
+  const rebuildRunning = useViewModel((s) => s.rebuildStatus?.isRunning ?? false);
 
   if (!(isProcessing && processingAction === "apply") || rebuildRunning) {
     return null;

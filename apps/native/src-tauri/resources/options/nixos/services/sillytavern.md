@@ -5,7 +5,7 @@
 All options under `services.sillytavern`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.sillytavern.configFile` | | |
 | `services.sillytavern.enable` | | |
 | `services.sillytavern.group` | | |

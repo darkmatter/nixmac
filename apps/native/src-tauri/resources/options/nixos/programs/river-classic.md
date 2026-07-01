@@ -5,7 +5,7 @@
 All options under `programs.river-classic`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `programs.river-classic.enable` | | |
 | `programs.river-classic.extraPackages` | | |
 | `programs.river-classic.package` | | |

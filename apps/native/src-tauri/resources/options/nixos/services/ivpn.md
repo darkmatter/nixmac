@@ -5,5 +5,5 @@
 All options under `services.ivpn`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------- | ---- | ----------- |
 | `services.ivpn.enable` | | |

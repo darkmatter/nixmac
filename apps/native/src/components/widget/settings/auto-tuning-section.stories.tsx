@@ -45,9 +45,7 @@ const values: Record<string, JsonValue> = {
   },
 };
 
-function installDevConfigMock(
-  schemasOrError: ConfigurableSchema[] | Error,
-) {
+function installDevConfigMock(schemasOrError: ConfigurableSchema[] | Error) {
   tauriAPI.devConfigs = {
     schemas: async () => {
       if (schemasOrError instanceof Error) {

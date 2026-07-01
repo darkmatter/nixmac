@@ -5,7 +5,7 @@
 All options under `programs.eza`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------- |
 | `programs.eza.colors` | `one of <null>, “auto”, “always”, “never”` | Use terminal colors in output ( --color argument). |
 | `programs.eza.enable` | `boolean` | Whether to enable eza, a modern replacement for ls . |
 | `programs.eza.enableAliases` | | |

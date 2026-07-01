@@ -5,7 +5,7 @@
 All options under `services.fail2ban`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------- | ---- | ----------- |
 | `services.fail2ban.banaction` | | |
 | `services.fail2ban.banaction-allports` | | |
 | `services.fail2ban.bantime` | | |

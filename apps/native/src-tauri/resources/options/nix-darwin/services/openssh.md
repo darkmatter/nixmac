@@ -5,7 +5,7 @@
 All options under `services.openssh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.openssh.authorizedKeysFiles` | | |
 | `services.openssh.enable` | `null or boolean` | Whether to enable Apple’s built-in OpenSSH server. |
 | `services.openssh.extraConfig` | `strings concatenated with “\n”` | Extra configuration text loaded in sshd_config . See sshd_config (5) for help. |

@@ -5,7 +5,7 @@
 All options under `xdg`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `xdg.autostart.enable` | `boolean` | Whether to enable creation of XDG autostart entries. |
 | `xdg.autostart.entries` | `list of absolute path` | Paths to desktop files that should be linked to XDG_CONFIG_HOME/autostart |
 | `xdg.autostart.readOnly` | `boolean` | Make XDG_CONFIG_HOME/autostart a symlink to a readonly directory so that programs cannot install arbitrary autostart services. |

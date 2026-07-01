@@ -5,7 +5,7 @@
 All options under `services.copyq`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | --------- | -------------------------------------------------------------------- |
 | `services.copyq.enable` | `boolean` | Whether to enable CopyQ, a clipboard manager with advanced features. |
 | `services.copyq.forceXWayland` | `boolean` | Force the CopyQ to use the X backend on wayland |
 | `services.copyq.package` | `package` | The copyq package to use. |

@@ -5,7 +5,7 @@
 All options under `services.mealie`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.mealie.credentialsFile` | | |
 | `services.mealie.database.createLocally` | | |
 | `services.mealie.enable` | | |

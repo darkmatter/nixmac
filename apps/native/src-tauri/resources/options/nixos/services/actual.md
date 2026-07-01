@@ -5,7 +5,7 @@
 All options under `services.actual`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.actual.enable` | | |
 | `services.actual.group` | | |
 | `services.actual.openFirewall` | | |

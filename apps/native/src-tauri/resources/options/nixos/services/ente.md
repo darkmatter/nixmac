@@ -5,7 +5,7 @@
 All options under `services.ente`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.ente.api.domain` | | |
 | `services.ente.api.enable` | | |
 | `services.ente.api.enableLocalDB` | | |

@@ -5,7 +5,7 @@
 All options under `services.nezha-agent`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.nezha-agent.clientSecretFile` | | |
 | `services.nezha-agent.debug` | | |
 | `services.nezha-agent.disableCommandExecute` | | |

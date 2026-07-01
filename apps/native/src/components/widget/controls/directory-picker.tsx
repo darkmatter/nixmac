@@ -3,14 +3,15 @@
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@nixmac/state";
 import { HoverClickPopoverIcon } from "@/components/ui/hover-click-popover-icon";
 import { ConfigDirBadge } from "@/components/widget/badges/config-dir-badge";
 import { GitignoreBadge } from "@/components/widget/badges/gitignore-badge";
 import { RepoImport } from "@/components/widget/controls/repo-import";
 import { FolderOpen, FolderPlus } from "lucide-react";
 import { useEffect, useState } from "react";
-import { tauriAPI } from "@/ipc/api";
+import { CANONICAL_CONFIG_DIR } from "@/components/widget/onboarding/lib/flake-ref";
+import { client } from "@/lib/orpc";
 
 type DirectoryPickerProps = {
   label: string;
@@ -21,12 +22,12 @@ type DirectoryPickerProps = {
 
 type SetupChoice = "new" | "existing" | "import";
 
-const INITIAL_HINT =
-  "Select your own, or proceed below for defaults";
+const INITIAL_HINT = "Select your own, or proceed below for defaults";
 
 function getDirectoryName(path: string | undefined): string {
-  if (!path) return ".darwin";
-  return path.split("/").filter(Boolean).pop() || ".darwin";
+  if (!path) return "nix-darwin";
+  if (path === CANONICAL_CONFIG_DIR) return "nix-darwin";
+  return path.split("/").filter(Boolean).pop() || "nix-darwin";
 }
 
 export function DirectoryPicker({
@@ -35,7 +36,7 @@ export function DirectoryPicker({
   flow = "existing",
   onConfigured,
 }: DirectoryPickerProps) {
-  const configDir = useWidgetStore((state) => state.configDir);
+  const configDir = useViewModel((state) => state.preferences?.configDir ?? "");
   const { pickDir, prepareNewDir, setDir } = useDarwinConfig();
   const isSetupFlow = flow === "setup";
 
@@ -46,7 +47,7 @@ export function DirectoryPicker({
   const [showPrivacyNote, setShowPrivacyNote] = useState(false);
 
   useEffect(() => {
-    setShowPrivacyNote(Boolean(configDir && !configDir.endsWith("/.darwin")));
+    setShowPrivacyNote(Boolean(configDir && configDir !== CANONICAL_CONFIG_DIR));
   }, [configDir]);
 
   useEffect(() => {
@@ -117,7 +118,9 @@ export function DirectoryPicker({
     }
   };
 
-  const onBlur = () => { submit(); };
+  const onBlur = () => {
+    submit();
+  };
   const onKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Enter") return;
     const target = e.currentTarget;
@@ -144,7 +147,7 @@ export function DirectoryPicker({
     }
 
     try {
-      const normalized = await tauriAPI.path.normalize(trimmedInput);
+      const normalized = await client.path.normalize({ input: trimmedInput });
       if (!normalized) {
         setValidationMessage("Directory path is required");
         return null;
@@ -164,7 +167,7 @@ export function DirectoryPicker({
 
   async function validateDirectoryExists(path: string): Promise<boolean> {
     try {
-      const exists = await tauriAPI.path.exists(path);
+      const exists = await client.path.exists({ dir: path });
       if (!exists) {
         validateOrInitial(path, `Directory does not exist: ${path}`);
         return false;
@@ -180,7 +183,9 @@ export function DirectoryPicker({
 
   async function validateFlakeExists(path?: string): Promise<boolean> {
     try {
-      const hasFlake = path ? await tauriAPI.flake.existsAt(path) : await tauriAPI.flake.exists();
+      const hasFlake = path
+        ? await client.flake.existsAt({ dir: path })
+        : await client.flake.exists();
       if (hasFlake) {
         setValidationMessage(null);
         return true;
@@ -247,7 +252,8 @@ export function DirectoryPicker({
               </Button>
             </div>
             <p className="text-muted-foreground text-xs">
-              Creates an empty folder in your home directory, then nixmac can generate a default flake.
+              Creates an empty folder in your home directory, then nixmac can generate a default
+              flake.
             </p>
           </div>
         ) : (
@@ -268,7 +274,9 @@ export function DirectoryPicker({
           </div>
         )}
         {validationMessage && (
-          <p className={`text-xs ${validationMessage === INITIAL_HINT ? "text-teal-300" : "text-rose-300"}`}>
+          <p
+            className={`text-xs ${validationMessage === INITIAL_HINT ? "text-teal-300" : "text-rose-300"}`}
+          >
             {validationMessage}
           </p>
         )}

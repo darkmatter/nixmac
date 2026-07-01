@@ -5,7 +5,7 @@
 All options under `services.qui`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.qui.enable` | | |
 | `services.qui.group` | | |
 | `services.qui.openFirewall` | | |

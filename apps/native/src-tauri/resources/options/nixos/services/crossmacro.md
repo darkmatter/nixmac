@@ -5,7 +5,7 @@
 All options under `services.crossmacro`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.crossmacro.daemonPackage` | | |
 | `services.crossmacro.enable` | | |
 | `services.crossmacro.package` | | |

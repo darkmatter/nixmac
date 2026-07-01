@@ -5,7 +5,7 @@
 All options under `services.networking`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.networking.websockify.enable` | | |
 | `services.networking.websockify.portMap` | | |
 | `services.networking.websockify.sslCert` | | |

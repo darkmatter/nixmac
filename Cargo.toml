@@ -1,10 +1,14 @@
 [workspace]
 members = [
-    "apps/native/src-tauri",
-    "apps/native/src-tauri/configurable",
-    "apps/native/src-tauri/configurable-derive",
+  "apps/native/src-tauri",
+  "apps/native/src-tauri/configurable",
+  "apps/native/src-tauri/configurable-derive",
 ]
 resolver = "2"
+
+[workspace.lints.rust]
+unused = "deny"
+unexpected_cfgs = { level = "allow" }
 
 [profile.profiling]
 inherits = "release"

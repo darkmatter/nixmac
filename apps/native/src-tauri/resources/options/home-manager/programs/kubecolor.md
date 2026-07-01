@@ -5,7 +5,7 @@
 All options under `programs.kubecolor`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `programs.kubecolor.enable` | `boolean` | Whether to enable kubecolor - Colorize your kubectl output. |
 | `programs.kubecolor.enableAlias` | `boolean` | When set to true, it will create an alias for kubectl pointing to kubecolor, thus making kubecolor the default kubectl client. |
 | `programs.kubecolor.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |

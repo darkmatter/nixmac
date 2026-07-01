@@ -5,5 +5,5 @@
 All options under `services.rpcbind`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.rpcbind.enable` | | |

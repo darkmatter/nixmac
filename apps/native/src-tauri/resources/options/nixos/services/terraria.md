@@ -5,7 +5,7 @@
 All options under `services.terraria`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.terraria.autoCreatedWorldSize` | | |
 | `services.terraria.banListPath` | | |
 | `services.terraria.dataDir` | | |

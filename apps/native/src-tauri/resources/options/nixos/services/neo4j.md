@@ -5,7 +5,7 @@
 All options under `services.neo4j`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.neo4j.bolt.advertisedAddress` | | |
 | `services.neo4j.bolt.enable` | | |
 | `services.neo4j.bolt.listenAddress` | | |

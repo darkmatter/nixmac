@@ -5,7 +5,7 @@
 All options under `services.autosuspend`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.autosuspend.checks` | | |
 | `services.autosuspend.enable` | | |
 | `services.autosuspend.package` | | |

@@ -5,5 +5,5 @@
 All options under `programs.nethoscope`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `programs.nethoscope.enable` | | |

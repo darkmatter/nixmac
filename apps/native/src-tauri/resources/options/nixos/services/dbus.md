@@ -5,7 +5,7 @@
 All options under `services.dbus`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.dbus.apparmor` | | |
 | `services.dbus.brokerPackage` | | |
 | `services.dbus.dbusPackage` | | |

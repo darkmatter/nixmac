@@ -5,7 +5,7 @@
 All options under `services.geoclue2`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.geoclue2.appConfig` | | |
 | `services.geoclue2.enable` | | |
 | `services.geoclue2.enable3G` | | |

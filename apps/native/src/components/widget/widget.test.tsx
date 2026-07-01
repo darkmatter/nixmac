@@ -1,8 +1,15 @@
-import { useViewModel } from "@/stores/view-model";
-import { useWidgetStore } from "@/stores/widget-store";
+import { RouterProvider, nav, router } from "@/router";
+import { makeGlobalPreferences as makePrefs } from "@/utils/test-fixtures";
+import { initialUiState, uiActions, viewModelActions } from "@nixmac/state";
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DarwinWidget } from "./widget";
+
+// DarwinWidget now reads router state (useIsOverlayActive), so tests must wrap
+// it in the router provider. The router's root layout renders DarwinWidget
+// itself, so we just render the provider.
+function withRouter() {
+  return <RouterProvider router={router} />;
+}
 
 // Mock Tauri API
 vi.mock("@/ipc/api", () => ({
@@ -22,13 +29,20 @@ vi.mock("@/ipc/api", () => ({
       show: vi.fn().mockResolvedValue(undefined),
       hide: vi.fn().mockResolvedValue(undefined),
     },
+    nix: {
+      check: vi.fn().mockResolvedValue(undefined),
+      installState: vi.fn().mockResolvedValue(undefined),
+    },
   },
   ipcRenderer: {
-    on: vi.fn().mockReturnValue(Promise.resolve(() => {})),
+    on: vi.fn().mockReturnValue(Promise.resolve(() => { })),
   },
 }));
 
 vi.mock("@/components/editor-panel", () => ({
+  EditorPanel: () => null,
+}));
+vi.mock("@/components/widget/overlays/editor-panel", () => ({
   EditorPanel: () => null,
 }));
 
@@ -38,9 +52,7 @@ vi.mock("@/components/widget/summaries/diff-section", () => ({
 
 // Mock hooks
 vi.mock("@/hooks/use-widget-initialization", () => ({
-  loadConfig: vi.fn().mockResolvedValue(undefined),
-  loadHosts: vi.fn().mockResolvedValue(undefined),
-  recoverFromGitState: vi.fn().mockResolvedValue(undefined),
+  loadEvolveState: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/hooks/use-git-operations", () => ({
@@ -64,35 +76,37 @@ vi.mock("@/hooks/use-summary", () => ({
 describe("DarwinWidget", () => {
   beforeEach(() => {
     // Reset store to initial state before each test
-    const store = useWidgetStore.getState();
-    store.setConfigDir("/Users/test/nixmac");
-    store.setHosts(["Test-MacBook"]);
-    store.setHost("Test-MacBook");
-    useViewModel.setState({ git: null });
-    store.setEvolvePrompt("");
-    store.setProcessing(false);
-    store.setGenerating(false);
-    store.setError(null);
-    store.clearEvolveEvents();
-    store.clearLogs();
+    viewModelActions.setState({
+      git: null,
+      preferences: makePrefs({
+        configDir: "/Users/test/nixmac",
+        hostAttr: "Test-MacBook",
+      }),
+      hosts: ["Test-MacBook"],
+      evolveEvents: [],
+    });
+    uiActions.setState({ ...initialUiState });
+    // Reset router to the index route so no overlay is active
+    nav.goHome();
   });
 
   it("renders without crashing", () => {
-    const { container } = render(<DarwinWidget />);
+    const { container } = render(withRouter());
     expect(container).toBeTruthy();
   });
 
   it("renders setup step when no config", () => {
-    const store = useWidgetStore.getState();
-    store.setConfigDir("");
-    store.setHost("");
+    viewModelActions.setState({
+      preferences: makePrefs({ configDir: null, hostAttr: null }),
+      hosts: [],
+    });
 
-    const { container } = render(<DarwinWidget />);
+    const { container } = render(withRouter());
     expect(container).toBeTruthy();
   });
 
   it("renders evolving step with git changes", () => {
-    useViewModel.setState({
+    viewModelActions.setState({
       git: {
         files: [{ path: "test.nix", changeType: "edited" }],
         branch: null,
@@ -105,15 +119,8 @@ describe("DarwinWidget", () => {
       },
     });
 
-    const { container } = render(<DarwinWidget />);
+    const { container } = render(withRouter());
     expect(container).toBeTruthy();
   });
 
-  it("renders with error message", () => {
-    const store = useWidgetStore.getState();
-    store.setError("Test error message");
-
-    const { container } = render(<DarwinWidget />);
-    expect(container).toBeTruthy();
-  });
 });

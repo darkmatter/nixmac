@@ -5,7 +5,7 @@
 All options under `programs.nh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `programs.nh.clean.dates` | | |
 | `programs.nh.clean.enable` | | |
 | `programs.nh.clean.extraArgs` | | |

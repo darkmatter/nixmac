@@ -5,7 +5,7 @@
 All options under `services.infinoted`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.infinoted.certificateChain` | | |
 | `services.infinoted.certificateFile` | | |
 | `services.infinoted.enable` | | |

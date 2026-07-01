@@ -5,7 +5,7 @@
 All options under `services.jankyborders`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.jankyborders.active_color` | `string` | Sets the border color for the focused window (format: 0xAARRGGBB). For instance, active_color=“0xff00ff00” creates a green border. For Gradient Border : active_color=“gradient(top_right=0x9992B3F5,bottom_left=0x9992B3F5)” |
 | `services.jankyborders.ax_focus` | `boolean` | If set to true, the (slower) accessibility API is used to resolve the focused window. |
 | `services.jankyborders.background_color` | `string` | Sets the background fill color for all windows (only 0xAARRGGBB arguments supported). |

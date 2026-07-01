@@ -5,7 +5,7 @@
 All options under `services.lighthouse`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.lighthouse.beacon` | | |
 | `services.lighthouse.extraArgs` | | |
 | `services.lighthouse.network` | | |

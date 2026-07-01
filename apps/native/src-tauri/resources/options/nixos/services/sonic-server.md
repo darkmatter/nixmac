@@ -5,7 +5,7 @@
 All options under `services.sonic-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.sonic-server.enable` | | |
 | `services.sonic-server.package` | | |
 | `services.sonic-server.settings` | | |

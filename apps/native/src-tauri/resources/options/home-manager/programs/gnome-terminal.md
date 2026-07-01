@@ -5,7 +5,7 @@
 All options under `programs.gnome-terminal`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.gnome-terminal.enable` | `boolean` | Whether to enable Gnome Terminal. |
 | `programs.gnome-terminal.package` | `null or package` | The gnome-terminal package to use. |
 | `programs.gnome-terminal.profile` | `attribute set of (submodule)` | A set of Gnome Terminal profiles. Note, the name of a profile must be a UUID. You can generate one, for example, using uuidgen (from util-linux ). |

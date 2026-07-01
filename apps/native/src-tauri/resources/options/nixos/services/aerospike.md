@@ -5,7 +5,7 @@
 All options under `services.aerospike`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.aerospike.enable` | | |
 | `services.aerospike.extraConfig` | | |
 | `services.aerospike.networkConfig` | | |

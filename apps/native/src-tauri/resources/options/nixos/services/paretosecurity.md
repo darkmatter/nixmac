@@ -5,7 +5,7 @@
 All options under `services.paretosecurity`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.paretosecurity.enable` | | |
 | `services.paretosecurity.package` | | |
 | `services.paretosecurity.trayIcon` | | |

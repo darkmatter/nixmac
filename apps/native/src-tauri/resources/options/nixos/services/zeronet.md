@@ -5,7 +5,7 @@
 All options under `services.zeronet`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.zeronet.dataDir` | | |
 | `services.zeronet.enable` | | |
 | `services.zeronet.fileserverPort` | | |

@@ -5,7 +5,7 @@
 All options under `services.mopidy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.mopidy.enable` | `boolean` | Whether to enable Mopidy music player daemon. |
 | `services.mopidy.extensionPackages` | `list of package` | Mopidy extensions that should be loaded by the service. |
 | `services.mopidy.extraConfigFiles` | `list of absolute path` | Extra configuration files read by Mopidy when the service starts. Later files in the list override earlier configuration files and structured settings. |

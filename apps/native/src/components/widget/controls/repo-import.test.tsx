@@ -1,28 +1,30 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useWidgetStore } from "@/stores/widget-store";
 import { RepoImport } from "@/components/widget/controls/repo-import";
+import { viewModelActions } from "@nixmac/state";
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
-type SetDirResult = { dir: string; evolveState: never; hosts: string[] | null };
+type SetDirResult = { dir: string; changed: boolean };
 
 const mockImportGithub = vi.fn<(ref: string, dir?: string) => Promise<SetDirResult>>();
 const mockImportZip = vi.fn<(zip: string, dir?: string) => Promise<SetDirResult>>();
 const mockPickZip = vi.fn<() => Promise<string | null>>();
 const mockSetHostAttr = vi.fn<(h: string) => Promise<void>>();
 
-vi.mock("@/ipc/api", () => ({
-  tauriAPI: {
+vi.mock("@/lib/orpc", () => ({
+  client: {
     config: {
-      importGithub: (ref: string, dir?: string) => mockImportGithub(ref, dir),
-      importZip: (zip: string, dir?: string) => mockImportZip(zip, dir),
+      importGithub: ({ repoRef, dirName }: { repoRef: string; dirName: string | null }) =>
+        mockImportGithub(repoRef, dirName ?? undefined),
+      importZip: ({ zipPath, dirName }: { zipPath: string; dirName: string | null }) =>
+        mockImportZip(zipPath, dirName ?? undefined),
       pickZip: () => mockPickZip(),
-      setHostAttr: (h: string) => mockSetHostAttr(h),
+      setHostAttr: ({ host }: { host: string }) => mockSetHostAttr(host),
     },
   },
 }));
@@ -35,13 +37,11 @@ function resetMocks() {
 
   mockImportGithub.mockImplementation(async (_ref, dir) => ({
     dir: `/home/user/${dir ?? ".darwin"}`,
-    evolveState: {} as never,
-    hosts: [],
+    changed: true,
   }));
   mockImportZip.mockImplementation(async (_zip, dir) => ({
     dir: `/home/user/${dir ?? ".darwin"}`,
-    evolveState: {} as never,
-    hosts: [],
+    changed: true,
   }));
   mockPickZip.mockResolvedValue(null);
   mockSetHostAttr.mockResolvedValue();
@@ -49,9 +49,7 @@ function resetMocks() {
 
 beforeEach(() => {
   resetMocks();
-  const s = useWidgetStore.getState();
-  s.setConfigDir("");
-  s.setHosts([]);
+  viewModelActions.setState({ preferences: null, hosts: [] });
 });
 
 afterEach(() => {

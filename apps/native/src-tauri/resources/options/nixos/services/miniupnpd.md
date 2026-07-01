@@ -5,7 +5,7 @@
 All options under `services.miniupnpd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.miniupnpd.appendConfig` | | |
 | `services.miniupnpd.enable` | | |
 | `services.miniupnpd.externalInterface` | | |

@@ -1,0 +1,13 @@
+---
+description: Where TypeScript state and data-fetching code lives
+globs: apps/native/**/*.ts,apps/native/**/*.tsx,packages/state/**/*
+alwaysApply: false
+---
+
+# State and data fetching — `packages/state`
+
+TypeScript code for **state, data fetching, storage, and cache** belongs in **`packages/state`** (import: `@nixmac/state`).
+
+- Query hooks, selectors, and client-side projections live here — not scattered in `apps/native/src/components/`.
+- Server/async data from Rust: use oRPC + React Query (see `native-orpc` rule); wire hooks in `packages/state` when shared across views.
+- Existing Zustand slices (`viewmodel`, `ui`, `onboarding`) hold **client-side** and **event-projected** state only — do not extend them for new IPC fetch paths.

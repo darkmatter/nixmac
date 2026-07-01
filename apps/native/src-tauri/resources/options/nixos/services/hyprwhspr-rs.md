@@ -5,7 +5,7 @@
 All options under `services.hyprwhspr-rs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.hyprwhspr-rs.enable` | | |
 | `services.hyprwhspr-rs.environmentFile` | | |
 | `services.hyprwhspr-rs.package` | | |

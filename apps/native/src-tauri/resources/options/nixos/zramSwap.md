@@ -5,7 +5,7 @@
 All options under `zramSwap`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `zramSwap.algorithm` | | |
 | `zramSwap.enable` | | |
 | `zramSwap.memoryMax` | | |

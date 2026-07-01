@@ -5,6 +5,6 @@
 All options under `services.isso`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.isso.enable` | | |
 | `services.isso.settings` | | |

@@ -5,6 +5,6 @@
 All options under `programs._1password-gui`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | --------- | ------------------------------------------------ |
 | `programs._1password-gui.enable` | `boolean` | Whether to enable the 1Password GUI application. |
 | `programs._1password-gui.package` | `package` | The 1Password GUI package to use. |

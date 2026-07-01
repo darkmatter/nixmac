@@ -5,7 +5,7 @@
 All options under `services.beanstalkd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.beanstalkd.enable` | | |
 | `services.beanstalkd.listen.address` | | |
 | `services.beanstalkd.listen.port` | | |

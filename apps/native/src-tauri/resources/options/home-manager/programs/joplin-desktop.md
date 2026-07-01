@@ -5,7 +5,7 @@
 All options under `programs.joplin-desktop`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.joplin-desktop.enable` | `boolean` | Whether to enable joplin-desktop. |
 | `programs.joplin-desktop.extraConfig` | `attribute set` | Use this to add other options to the Joplin config file. Settings are written in JSON, so "sync.interval": 600 would be written as "sync.interval" = 600 . |
 | `programs.joplin-desktop.general.editor` | `null or string` | The editor command (may include arguments) that will be used to open a note. If none is provided Joplin will try to auto-detect the default editor. |

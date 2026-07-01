@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-use super::evolve::EvolveState;
 use crate::sqlite_types::{Change, ChangeSet, ChangeSummary};
 
 /// HEAD content vs working-tree content for a file, used by the diff tab Monaco DiffEditor.
@@ -27,7 +26,7 @@ pub enum ChangeType {
 }
 
 /// Individual file status parsed from diff headers.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct GitFileStatus {
     /// Repository-relative file path.
@@ -37,7 +36,7 @@ pub struct GitFileStatus {
 }
 
 /// Comprehensive git repository status.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct GitStatus {
     /// Changed files parsed from git status/diff output.
@@ -59,7 +58,7 @@ pub struct GitStatus {
 }
 
 /// Payload emitted on `git_state_changed` by the git status watcher.
-#[derive(Debug, Clone, Serialize, Type)]
+#[derive(Debug, Clone, Serialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct GitState {
     /// Latest git status snapshot, if it could be read.
@@ -68,20 +67,20 @@ pub struct GitState {
     pub external_build_detected: bool,
 }
 
-/// Result of a successful `git_commit` command.
+/// Result of a successful `git_commit` command. State mirrors (git, evolve,
+/// change map) flow through the `*_changed` events.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CommitResult {
     /// Hash of the commit that was created.
     pub hash: String,
-    /// Evolve state after committing.
-    pub evolve_state: EvolveState,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangeWithSummary {
     /// Change row identifier.
+    #[specta(type = f64)]
     pub id: i64,
     /// Stable content hash for the change.
     pub hash: String,
@@ -90,10 +89,13 @@ pub struct ChangeWithSummary {
     /// Unified diff content for this change.
     pub diff: String,
     /// Number of lines in the change diff.
+    #[specta(type = f64)]
     pub line_count: i64,
     /// Unix timestamp when the change was recorded.
+    #[specta(type = f64)]
     pub created_at: i64,
     /// Direct summary row id assigned to this change, if any.
+    #[specta(type = f64)]
     pub own_summary_id: Option<i64>,
     /// Summary title used for display.
     pub title: String,
@@ -101,7 +103,7 @@ pub struct ChangeWithSummary {
     pub description: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SemanticChangeGroup {
     /// Shared summary describing the grouped changes.
@@ -110,7 +112,7 @@ pub struct SemanticChangeGroup {
     pub changes: Vec<ChangeWithSummary>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SemanticChangeMap {
     /// Groups of changes that share a generated semantic summary.
@@ -152,6 +154,7 @@ pub struct HistoryItem {
     /// Commit message, if available from git or local metadata.
     pub message: Option<String>,
     /// Commit timestamp.
+    #[specta(type = f64)]
     pub created_at: i64,
     /// Whether this commit corresponds to the active build record.
     pub is_built: bool,
@@ -160,6 +163,7 @@ pub struct HistoryItem {
     /// Whether this commit was created outside nixmac.
     pub is_external: bool,
     /// Number of files changed in this commit.
+    #[specta(type = f64)]
     pub file_count: usize,
     /// Matching persisted commit row, if one exists.
     pub commit: Option<crate::sqlite_types::Commit>,

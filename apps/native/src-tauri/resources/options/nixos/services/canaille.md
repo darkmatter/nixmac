@@ -5,7 +5,7 @@
 All options under `services.canaille`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.canaille.enable` | | |
 | `services.canaille.jwtPrivateKeyFile` | | |
 | `services.canaille.ldapBindPasswordFile` | | |

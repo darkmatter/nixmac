@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.darkmatter.nixmac.helper</string>
+  <key>BundleProgram</key>
+  <string>Contents/MacOS/nixmac-helper</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>AssociatedBundleIdentifiers</key>
+  <array>
+    <string>com.darkmatter.nixmac</string>
+    <string>com.darkmatter.nixmac.dev</string>
+  </array>
+  <key>StandardOutPath</key>
+  <string>/Library/Logs/nixmac-helper.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Library/Logs/nixmac-helper.err.log</string>
+</dict>
+</plist>

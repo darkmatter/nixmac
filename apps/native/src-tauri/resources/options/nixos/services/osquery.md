@@ -5,7 +5,7 @@
 All options under `services.osquery`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.osquery.enable` | | |
 | `services.osquery.flags` | | |
 | `services.osquery.package` | | |

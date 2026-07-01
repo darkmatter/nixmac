@@ -5,7 +5,7 @@
 All options under `services.redmine`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------- | ---- | ----------- |
 | `services.redmine.address` | | |
 | `services.redmine.components.breezy` | | |
 | `services.redmine.components.cvs` | | |

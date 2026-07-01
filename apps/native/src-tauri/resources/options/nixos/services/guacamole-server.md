@@ -5,7 +5,7 @@
 All options under `services.guacamole-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.guacamole-server.enable` | | |
 | `services.guacamole-server.extraEnvironment` | | |
 | `services.guacamole-server.host` | | |

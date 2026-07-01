@@ -5,7 +5,7 @@
 All options under `services.bacula-dir`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.bacula-dir.enable` | | |
 | `services.bacula-dir.extraConfig` | | |
 | `services.bacula-dir.extraDirectorConfig` | | |

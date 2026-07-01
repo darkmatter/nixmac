@@ -5,7 +5,7 @@
 All options under `services.gonic`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.gonic.enable` | | |
 | `services.gonic.package` | | |
 | `services.gonic.settings` | | |

@@ -5,7 +5,7 @@
 All options under `services.hans`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.hans.clients` | | |
 | `services.hans.server.enable` | | |
 | `services.hans.server.extraConfig` | | |

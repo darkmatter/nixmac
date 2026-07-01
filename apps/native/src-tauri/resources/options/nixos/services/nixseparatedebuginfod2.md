@@ -5,7 +5,7 @@
 All options under `services.nixseparatedebuginfod2`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------ | ---- | ----------- |
 | `services.nixseparatedebuginfod2.cacheExpirationDelay` | | |
 | `services.nixseparatedebuginfod2.enable` | | |
 | `services.nixseparatedebuginfod2.package` | | |

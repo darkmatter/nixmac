@@ -5,7 +5,7 @@
 All options under `services.tigerbeetle`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.tigerbeetle.addresses` | | |
 | `services.tigerbeetle.cacheGridSize` | | |
 | `services.tigerbeetle.clusterId` | | |

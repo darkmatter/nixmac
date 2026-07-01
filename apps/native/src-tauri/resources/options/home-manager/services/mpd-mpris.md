@@ -5,7 +5,7 @@
 All options under `services.mpd-mpris`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `services.mpd-mpris.enable` | `boolean` | Whether to enable mpd-mpris: An implementation of the MPRIS protocol for MPD. |
 | `services.mpd-mpris.mpd.host` | `null or string` | The address where MPD is listening for connections. |
 | `services.mpd-mpris.mpd.network` | `null or string` | The network used to dial to the MPD server. Check https://golang.org/pkg/net/#Dial for available values (most common are “tcp” and “unix”) |

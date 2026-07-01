@@ -5,7 +5,7 @@
 All options under `services.unifi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.unifi.dataDir` | | |
 | `services.unifi.enable` | | |
 | `services.unifi.extraJvmOptions` | | |

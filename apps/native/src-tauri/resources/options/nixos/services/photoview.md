@@ -5,7 +5,7 @@
 All options under `services.photoview`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------------- | ---- | ----------- |
 | `services.photoview.dataDir` | | |
 | `services.photoview.database.host` | | |
 | `services.photoview.database.name` | | |

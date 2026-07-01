@@ -5,7 +5,7 @@
 All options under `services.nntp-proxy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.nntp-proxy.enable` | | |
 | `services.nntp-proxy.listenAddress` | | |
 | `services.nntp-proxy.port` | | |

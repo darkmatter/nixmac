@@ -5,7 +5,7 @@
 All options under `services.ostinato`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.ostinato.enable` | | |
 | `services.ostinato.port` | | |
 | `services.ostinato.portList.exclude` | | |

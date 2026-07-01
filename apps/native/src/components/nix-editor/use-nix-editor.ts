@@ -4,6 +4,7 @@ import { initNixGrammar } from "@/lib/nix-grammar";
 import { lspClient } from "@/lib/lsp-client";
 import { bridgeMonacoToLsp } from "@/lib/lsp-monaco-bridge";
 import { tauriAPI } from "@/ipc/api";
+import { client } from "@/lib/orpc";
 import { NIXMAC_THEME, NIXMAC_THEME_DATA } from "@/components/widget/summaries/monaco-theme";
 
 interface UseNixEditorOptions {
@@ -13,7 +14,12 @@ interface UseNixEditorOptions {
   disabled?: boolean;
 }
 
-export function useNixEditor({ filePath, containerRef, onSave, disabled = false }: UseNixEditorOptions) {
+export function useNixEditor({
+  filePath,
+  containerRef,
+  onSave,
+  disabled = false,
+}: UseNixEditorOptions) {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const [isLoading, setIsLoading] = useState(!disabled);
   const [isDirty, setIsDirty] = useState(false);
@@ -26,6 +32,7 @@ export function useNixEditor({ filePath, containerRef, onSave, disabled = false 
     if (!editor) return;
     const content = editor.getValue();
     try {
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.editor.writeFile(filePath, content);
       originalContentRef.current = content;
       setIsDirty(false);
@@ -50,11 +57,10 @@ export function useNixEditor({ filePath, containerRef, onSave, disabled = false 
       try {
         // Load file content (and config dir when not disabled)
         const [content, config] = disabled
+          // deprecated(orpc): replace with client/orpc from @/lib/orpc
           ? [await tauriAPI.editor.readFile(filePath), null as { configDir: string } | null]
-          : await Promise.all([
-              tauriAPI.editor.readFile(filePath),
-              tauriAPI.config.get(),
-            ]);
+          // deprecated(orpc): replace with client/orpc from @/lib/orpc
+          : await Promise.all([tauriAPI.editor.readFile(filePath), client.config.get()]);
         if (disposed) return;
 
         originalContentRef.current = content;
@@ -110,11 +116,15 @@ export function useNixEditor({ filePath, containerRef, onSave, disabled = false 
           // Cmd+S to save
           editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
             const content = editor!.getValue();
-            tauriAPI.editor.writeFile(filePath, content).then(() => {
-              originalContentRef.current = content;
-              setIsDirty(false);
-              onSave?.(content);
-            }).catch((e) => setError(String(e)));
+            // deprecated(orpc): replace with client/orpc from @/lib/orpc
+            tauriAPI.editor
+              .writeFile(filePath, content)
+              .then(() => {
+                originalContentRef.current = content;
+                setIsDirty(false);
+                onSave?.(content);
+              })
+              .catch((e) => setError(String(e)));
           });
         }
 

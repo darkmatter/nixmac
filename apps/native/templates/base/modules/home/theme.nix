@@ -1,5 +1,10 @@
 # Theme configuration (Catppuccin is configured in default.nix)
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 {
   # Additional theming options can go here
@@ -9,4 +14,3 @@
   # gtk = { ... };
   # qt = { ... };
 }
-

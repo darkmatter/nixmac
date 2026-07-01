@@ -5,7 +5,7 @@
 All options under `services.tp-auto-kbbl`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.tp-auto-kbbl.arguments` | | |
 | `services.tp-auto-kbbl.device` | | |
 | `services.tp-auto-kbbl.enable` | | |

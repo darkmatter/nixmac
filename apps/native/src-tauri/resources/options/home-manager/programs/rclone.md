@@ -5,7 +5,7 @@
 All options under `programs.rclone`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
 | `programs.rclone.enable` | `boolean` | Whether to enable rclone. |
 | `programs.rclone.package` | `package` | The rclone package to use. |
 | `programs.rclone.remotes` | `attribute set of (submodule)` | An attribute set of remote configurations. Each remote consists of regular configuration options and optional secrets. |

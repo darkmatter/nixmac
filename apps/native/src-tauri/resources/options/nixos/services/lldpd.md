@@ -5,6 +5,6 @@
 All options under `services.lldpd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.lldpd.enable` | | |
 | `services.lldpd.extraArgs` | | |

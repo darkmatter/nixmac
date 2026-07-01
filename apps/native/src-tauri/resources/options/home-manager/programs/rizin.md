@@ -5,7 +5,7 @@
 All options under `programs.rizin`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.rizin.enable` | `boolean` | Whether to enable Rizin. |
 | `programs.rizin.extraConfig` | `strings concatenated with “\n”` | Extra run configuration written to rizinrc . See https://book.rizin.re/src/configuration/initial_scripts.html for more information. |
 | `programs.rizin.package` | `null or package` | The rizin package to use. |

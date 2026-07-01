@@ -5,7 +5,7 @@
 All options under `services.misskey`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.misskey.database.createLocally` | | |
 | `services.misskey.database.passwordFile` | | |
 | `services.misskey.enable` | | |

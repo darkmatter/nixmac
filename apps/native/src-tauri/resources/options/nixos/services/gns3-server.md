@@ -5,7 +5,7 @@
 All options under `services.gns3-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.gns3-server.auth.enable` | | |
 | `services.gns3-server.auth.passwordFile` | | |
 | `services.gns3-server.auth.user` | | |

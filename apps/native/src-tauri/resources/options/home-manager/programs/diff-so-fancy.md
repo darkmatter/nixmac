@@ -5,7 +5,7 @@
 All options under `programs.diff-so-fancy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `programs.diff-so-fancy.changeHunkIndicators` | | |
 | `programs.diff-so-fancy.enable` | `boolean` | Whether to enable diff-so-fancy, a diff colorizer. |
 | `programs.diff-so-fancy.enableGitIntegration` | `boolean` | Whether to enable git integration for diff-so-fancy. |

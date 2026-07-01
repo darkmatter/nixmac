@@ -5,7 +5,7 @@
 All options under `services.swayidle`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ------------------------------------------------------------ | ------------------------------------------- |
 | `services.swayidle.enable` | `boolean` | Whether to enable idle manager for Wayland. |
 | `services.swayidle.events` | `(submodule) or (list of (attribute set)) convertible to it` | Run command on occurrence of a event. |
 | `services.swayidle.extraArgs` | `list of string` | Extra arguments to pass to swayidle. |

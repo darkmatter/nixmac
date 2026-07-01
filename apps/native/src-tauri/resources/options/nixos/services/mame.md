@@ -5,7 +5,7 @@
 All options under `services.mame`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `services.mame.emuAddr` | | |
 | `services.mame.enable` | | |
 | `services.mame.hostAddr` | | |

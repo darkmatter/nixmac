@@ -5,7 +5,7 @@
 All options under `programs.localsend`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `programs.localsend.enable` | | |
 | `programs.localsend.openFirewall` | | |
 | `programs.localsend.package` | | |

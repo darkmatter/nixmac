@@ -5,7 +5,7 @@
 All options under `services.knot-resolver`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.knot-resolver.enable` | | |
 | `services.knot-resolver.managerPackage` | | |
 | `services.knot-resolver.settings` | | |

@@ -5,7 +5,7 @@
 All options under `services.v2raya`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.v2raya.cliPackage` | | |
 | `services.v2raya.enable` | | |
 | `services.v2raya.package` | | |

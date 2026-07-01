@@ -5,6 +5,6 @@
 All options under `services.switcherooControl`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.switcherooControl.enable` | | |
 | `services.switcherooControl.package` | | |

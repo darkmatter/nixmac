@@ -5,7 +5,7 @@
 All options under `services.minecraft-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.minecraft-server.dataDir` | | |
 | `services.minecraft-server.declarative` | | |
 | `services.minecraft-server.enable` | | |

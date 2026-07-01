@@ -5,7 +5,7 @@
 All options under `services.ananicy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.ananicy.enable` | | |
 | `services.ananicy.extraCgroups` | | |
 | `services.ananicy.extraRules` | | |

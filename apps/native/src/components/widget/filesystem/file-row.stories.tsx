@@ -25,7 +25,9 @@ const findFile = (id: string): FsFile => {
 export const Managed = meta.story({
   render: () => (
     <SeedDisplay>
-      {(push) => <FileRow file={findFile("packages")} onEditWithPrompt={(f) => push(`change ${f.path}`)} />}
+      {(push) => (
+        <FileRow file={findFile("packages")} onEditWithPrompt={(f) => push(`change ${f.path}`)} />
+      )}
     </SeedDisplay>
   ),
 });
@@ -33,7 +35,9 @@ export const Managed = meta.story({
 export const Changed = meta.story({
   render: () => (
     <SeedDisplay>
-      {(push) => <FileRow file={findFile("homebrew")} onEditWithPrompt={(f) => push(`change ${f.path}`)} />}
+      {(push) => (
+        <FileRow file={findFile("homebrew")} onEditWithPrompt={(f) => push(`change ${f.path}`)} />
+      )}
     </SeedDisplay>
   ),
 });
@@ -41,7 +45,9 @@ export const Changed = meta.story({
 export const Readonly = meta.story({
   render: () => (
     <SeedDisplay>
-      {(push) => <FileRow file={findFile("lock")} onEditWithPrompt={(f) => push(`change ${f.path}`)} />}
+      {(push) => (
+        <FileRow file={findFile("lock")} onEditWithPrompt={(f) => push(`change ${f.path}`)} />
+      )}
     </SeedDisplay>
   ),
 });
@@ -53,7 +59,9 @@ export const Readonly = meta.story({
 export const PeekableNixSource = meta.story({
   render: () => (
     <SeedDisplay>
-      {(push) => <FileRow file={findFile("flake")} onEditWithPrompt={(f) => push(`change ${f.path}`)} />}
+      {(push) => (
+        <FileRow file={findFile("flake")} onEditWithPrompt={(f) => push(`change ${f.path}`)} />
+      )}
     </SeedDisplay>
   ),
 });

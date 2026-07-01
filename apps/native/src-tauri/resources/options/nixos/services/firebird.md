@@ -5,7 +5,7 @@
 All options under `services.firebird`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.firebird.baseDir` | | |
 | `services.firebird.enable` | | |
 | `services.firebird.package` | | |

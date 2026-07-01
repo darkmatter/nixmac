@@ -5,7 +5,7 @@
 All options under `services.varnish`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.varnish.config` | | |
 | `services.varnish.enable` | | |
 | `services.varnish.enableConfigCheck` | | |

@@ -5,7 +5,7 @@
 All options under `programs.zsh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `programs.zsh.autosuggestions.async` | | |
 | `programs.zsh.autosuggestions.enable` | | |
 | `programs.zsh.autosuggestions.extraConfig` | | |

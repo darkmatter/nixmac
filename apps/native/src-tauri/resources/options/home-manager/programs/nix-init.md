@@ -5,7 +5,7 @@
 All options under `programs.nix-init`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.nix-init.enable` | `boolean` | Whether to enable nix-init. |
 | `programs.nix-init.package` | `null or package` | The nix-init package to use. |
 | `programs.nix-init.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/nix-init/config.toml . See https://github.com/nix-community/nix-init#configuration for the full list of options. |

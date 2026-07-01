@@ -5,7 +5,7 @@
 All options under `services.mjolnir`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.mjolnir.accessTokenFile` | | |
 | `services.mjolnir.dataPath` | | |
 | `services.mjolnir.enable` | | |

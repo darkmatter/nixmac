@@ -5,7 +5,7 @@
 All options under `programs.microsoft-edge`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `programs.microsoft-edge.commandLineArgs` | | |
 | `programs.microsoft-edge.dictionaries` | | |
 | `programs.microsoft-edge.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.nix-serve`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.nix-serve.bindAddress` | | |
 | `services.nix-serve.enable` | | |
 | `services.nix-serve.extraParams` | | |

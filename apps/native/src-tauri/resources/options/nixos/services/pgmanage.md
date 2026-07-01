@@ -5,7 +5,7 @@
 All options under `services.pgmanage`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.pgmanage.allowCustomConnections` | | |
 | `services.pgmanage.connections` | | |
 | `services.pgmanage.enable` | | |

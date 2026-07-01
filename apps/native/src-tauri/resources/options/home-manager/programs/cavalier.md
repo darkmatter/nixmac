@@ -5,7 +5,7 @@
 All options under `programs.cavalier`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `programs.cavalier.enable` | `boolean` | Whether to enable Cava audio visualizer GUI. |
 | `programs.cavalier.package` | `null or package` | The cavalier package to use. |
 | `programs.cavalier.settings.cava` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Settings to be written to the underlying Cava configuration file. See https://github.com/karlstav/cava/blob/master/example_files/config for all available options. |

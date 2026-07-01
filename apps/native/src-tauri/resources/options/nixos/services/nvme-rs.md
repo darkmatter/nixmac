@@ -5,7 +5,7 @@
 All options under `services.nvme-rs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.nvme-rs.enable` | | |
 | `services.nvme-rs.package` | | |
 | `services.nvme-rs.settings` | | |

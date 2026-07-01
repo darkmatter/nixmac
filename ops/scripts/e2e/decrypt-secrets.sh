@@ -10,7 +10,7 @@ set -euo pipefail
 #   MAC_E2E_HOST, MAC_E2E_USER, MAC_E2E_ADMIN_PW
 # Also writes /tmp/e2e_ssh_key with mode 600.
 
-SECRETS_FILE="ops/secrets/e2e.enc.yaml"
+SECRETS_FILE="ops/secrets/e2e.sops.json"
 if [ ! -f "$SECRETS_FILE" ]; then
 	echo "::error::SOPS secrets file not found at $SECRETS_FILE"
 	exit 1

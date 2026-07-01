@@ -5,5 +5,5 @@
 All options under `services.logmein-hamachi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.logmein-hamachi.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.metabase`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.metabase.enable` | | |
 | `services.metabase.listen.ip` | | |
 | `services.metabase.listen.port` | | |

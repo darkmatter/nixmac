@@ -5,7 +5,7 @@
 All options under `services.mjpg-streamer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.mjpg-streamer.enable` | | |
 | `services.mjpg-streamer.group` | | |
 | `services.mjpg-streamer.inputPlugin` | | |

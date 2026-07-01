@@ -5,7 +5,7 @@
 All options under `services.ombi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.ombi.dataDir` | | |
 | `services.ombi.enable` | | |
 | `services.ombi.group` | | |

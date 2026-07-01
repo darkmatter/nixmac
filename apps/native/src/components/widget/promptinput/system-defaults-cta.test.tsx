@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { mirrorEvolveState } from "@/viewmodel/evolve";
+import { viewModelActions } from "@nixmac/state";
 import { SystemDefaultsCTA } from "./system-defaults-cta";
 
 const { scanDefaults } = vi.hoisted(() => ({
@@ -41,7 +41,7 @@ describe("SystemDefaultsCTA", () => {
   beforeEach(() => {
     scanDefaults.mockReset();
     localStorage.clear();
-    mirrorEvolveState(beginState);
+    viewModelActions.setState({ evolve: beginState });
   });
 
   it("shows plural untracked settings copy without a warning icon", async () => {

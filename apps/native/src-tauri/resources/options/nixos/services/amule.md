@@ -5,7 +5,7 @@
 All options under `services.amule`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.amule.ExternalConnectPasswordFile` | | |
 | `services.amule.WebServerPasswordFile` | | |
 | `services.amule.amuleWebPackage` | | |

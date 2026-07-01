@@ -5,7 +5,7 @@
 All options under `services.bluemap`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.bluemap.addons` | | |
 | `services.bluemap.coreSettings` | | |
 | `services.bluemap.defaultWorld` | | |

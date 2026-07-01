@@ -5,7 +5,7 @@
 All options under `services.cook-cli`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.cook-cli.autoStart` | | |
 | `services.cook-cli.basePath` | | |
 | `services.cook-cli.enable` | | |

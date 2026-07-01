@@ -5,7 +5,7 @@
 All options under `services.influxdb2`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------------------- | ---- | ----------- |
 | `services.influxdb2.enable` | | |
 | `services.influxdb2.package` | | |
 | `services.influxdb2.provision.enable` | | |

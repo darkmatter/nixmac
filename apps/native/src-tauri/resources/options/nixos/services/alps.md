@@ -5,7 +5,7 @@
 All options under `services.alps`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.alps.args` | | |
 | `services.alps.bindIP` | | |
 | `services.alps.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.matrix-continuwuity`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.matrix-continuwuity.admin.enable` | | |
 | `services.matrix-continuwuity.enable` | | |
 | `services.matrix-continuwuity.extraEnvironment` | | |

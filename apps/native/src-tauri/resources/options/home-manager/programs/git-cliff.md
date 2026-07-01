@@ -5,7 +5,7 @@
 All options under `programs.git-cliff`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `programs.git-cliff.enable` | `boolean` | Whether to enable git-cliff changelog generator. |
 | `programs.git-cliff.package` | `null or package` | The git-cliff package to use. |
 | `programs.git-cliff.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/git-cliff/cliff.toml . See https://git-cliff.org/docs/configuration for the documentation. |

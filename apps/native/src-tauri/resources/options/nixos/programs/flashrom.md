@@ -5,6 +5,6 @@
 All options under `programs.flashrom`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `programs.flashrom.enable` | | |
 | `programs.flashrom.package` | | |

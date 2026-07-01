@@ -5,7 +5,7 @@
 All options under `services.system76-scheduler`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------------------------------------------- | ---- | ----------- |
 | `services.system76-scheduler.assignments` | | |
 | `services.system76-scheduler.enable` | | |
 | `services.system76-scheduler.exceptions` | | |

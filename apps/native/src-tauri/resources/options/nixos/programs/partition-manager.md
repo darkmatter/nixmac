@@ -5,6 +5,6 @@
 All options under `programs.partition-manager`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `programs.partition-manager.enable` | | |
 | `programs.partition-manager.package` | | |

@@ -5,7 +5,7 @@
 All options under `services.nats`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.nats.dataDir` | | |
 | `services.nats.enable` | | |
 | `services.nats.group` | | |

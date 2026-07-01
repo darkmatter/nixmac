@@ -5,7 +5,7 @@
 All options under `programs.qcal`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---------------------------------------------------- | --------------------------------------------------- |
 | `programs.qcal.defaultNumDays` | `positive integer, meaning >0` | Default number of days to show calendar entries for |
 | `programs.qcal.enable` | `boolean` | Whether to enable qcal, a CLI calendar application. |
 | `programs.qcal.package` | `null or package` | The qcal package to use. |

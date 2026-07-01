@@ -5,7 +5,7 @@
 All options under `services.hitch`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.hitch.backend` | | |
 | `services.hitch.ciphers` | | |
 | `services.hitch.enable` | | |

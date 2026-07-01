@@ -5,7 +5,7 @@
 All options under `programs.alistral`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.alistral.enable` | `boolean` | Whether to enable alistral. |
 | `programs.alistral.package` | `null or package` | The alistral package to use. |
 | `programs.alistral.settings` | `JSON value` | Configuration settings for alistral. You can see the details here: https://rustynova016.github.io/Alistral/config/config.html . |

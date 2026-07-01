@@ -5,7 +5,7 @@
 All options under `services.foldingathome`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.foldingathome.config` | | |
 | `services.foldingathome.daemonNiceLevel` | | |
 | `services.foldingathome.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.crossfire-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.crossfire-server.configFiles` | | |
 | `services.crossfire-server.dataDir` | | |
 | `services.crossfire-server.enable` | | |

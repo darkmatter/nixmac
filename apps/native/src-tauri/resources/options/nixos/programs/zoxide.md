@@ -5,7 +5,7 @@
 All options under `programs.zoxide`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `programs.zoxide.enable` | | |
 | `programs.zoxide.enableBashIntegration` | | |
 | `programs.zoxide.enableFishIntegration` | | |

@@ -5,7 +5,7 @@
 All options under `services.walker`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.walker.enable` | `boolean` | Whether to enable walker. |
 | `services.walker.enableElephantIntegration` | | |
 | `services.walker.package` | `null or package` | The walker package to use. |

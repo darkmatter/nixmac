@@ -5,7 +5,7 @@
 All options under `programs.npm`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------- | ---- | ----------- |
 | `programs.npm.enable` | | |
 | `programs.npm.npmrc` | | |
 | `programs.npm.package` | | |

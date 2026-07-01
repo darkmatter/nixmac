@@ -5,7 +5,7 @@
 All options under `services.kiwix-serve`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.kiwix-serve.address` | | |
 | `services.kiwix-serve.enable` | | |
 | `services.kiwix-serve.extraArgs` | | |

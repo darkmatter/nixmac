@@ -5,7 +5,7 @@
 All options under `services.mediawiki`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ---- | ----------- |
 | `services.mediawiki.database.createLocally` | | |
 | `services.mediawiki.database.host` | | |
 | `services.mediawiki.database.name` | | |

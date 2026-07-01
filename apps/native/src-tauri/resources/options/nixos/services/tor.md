@@ -5,7 +5,7 @@
 All options under `services.tor`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------- | ---- | ----------- |
 | `services.tor.client.dns.automapHostsSuffixes` | | |
 | `services.tor.client.dns.enable` | | |
 | `services.tor.client.dns.isolationOptions` | | |

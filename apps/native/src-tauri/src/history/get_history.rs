@@ -166,7 +166,7 @@ fn populate_restore_history_items(
     // history is newest-first: restore at index i, origin at index j where j > i.
     let mut undone_indices = HashSet::new();
     for (i, oh) in origin_hashes.iter().enumerate() {
-        if let Some(ref oh_str) = oh {
+        if let Some(oh_str) = oh {
             if let Some(&origin_idx) = hash_to_idx.get(oh_str.as_str()) {
                 for k in (i + 1)..origin_idx {
                     undone_indices.insert(k);

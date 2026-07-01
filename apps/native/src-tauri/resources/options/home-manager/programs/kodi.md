@@ -5,7 +5,7 @@
 All options under `programs.kodi`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.kodi.addonSettings` | `null or (attribute set of attribute set of string)` | Attribute set with the plugin namespace as toplevel key and the plugins settings as lower level key/value pairs. |
 | `programs.kodi.datadir` | `absolute path` | Directory to store configuration and metadata. |
 | `programs.kodi.enable` | `boolean` | Whether to enable Kodi. |

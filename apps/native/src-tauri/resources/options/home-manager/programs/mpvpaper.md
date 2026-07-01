@@ -5,7 +5,7 @@
 All options under `programs.mpvpaper`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `programs.mpvpaper.enable` | `boolean` | Whether to enable mpvpaper. |
 | `programs.mpvpaper.package` | `null or package` | The mpvpaper package to use. |
 | `programs.mpvpaper.pauseList` | `strings concatenated with “\n”` | List of program names that will cause mpvpaper to pause. Programs must be separated by spaces or newlines. |

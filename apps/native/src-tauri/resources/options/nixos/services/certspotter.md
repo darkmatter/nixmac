@@ -5,7 +5,7 @@
 All options under `services.certspotter`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.certspotter.emailRecipients` | | |
 | `services.certspotter.enable` | | |
 | `services.certspotter.extraFlags` | | |

@@ -5,7 +5,7 @@
 All options under `targets`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `targets.darwin.copyApps.directory` | `string` | Path to link apps relative to the home directory. |
 | `targets.darwin.copyApps.enable` | `boolean` | Whether to enable copying macOS applications to the user environment (works with Spotlight). |
 | `targets.darwin.copyApps.enableChecks` | `boolean` | Whether to enable enable App Management checks. |

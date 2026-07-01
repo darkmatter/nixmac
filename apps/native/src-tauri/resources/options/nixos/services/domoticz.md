@@ -5,7 +5,7 @@
 All options under `services.domoticz`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.domoticz.bind` | | |
 | `services.domoticz.enable` | | |
 | `services.domoticz.port` | | |

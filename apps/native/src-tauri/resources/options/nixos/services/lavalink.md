@@ -5,7 +5,7 @@
 All options under `services.lavalink`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.lavalink.address` | | |
 | `services.lavalink.enable` | | |
 | `services.lavalink.enableHttp2` | | |

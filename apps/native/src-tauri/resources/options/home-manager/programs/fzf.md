@@ -5,7 +5,7 @@
 All options under `programs.fzf`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.fzf.changeDirWidgetCommand` | `null or string` | The command that gets executed as the source for fzf for the ALT-C keybinding. |
 | `programs.fzf.changeDirWidgetOptions` | `list of string` | Command line options for the ALT-C keybinding. |
 | `programs.fzf.colors` | `attribute set of string` | Color scheme options added to FZF_DEFAULT_OPTS . See https://github.com/junegunn/fzf/wiki/Color-schemes for documentation. |

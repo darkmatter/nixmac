@@ -5,5 +5,5 @@
 All options under `services.urserver`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.urserver.enable` | | |

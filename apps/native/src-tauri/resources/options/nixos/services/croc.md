@@ -5,7 +5,7 @@
 All options under `services.croc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.croc.debug` | | |
 | `services.croc.enable` | | |
 | `services.croc.openFirewall` | | |

@@ -1,11 +1,8 @@
 "use client";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  enrichChanges,
-  type ChangeWithRichType,
-} from "@/components/widget/utils";
-import { useWidgetStore } from "@/stores/widget-store";
+import { enrichChanges, type ChangeWithRichType } from "@/components/widget/utils";
+import { useUiState } from "@nixmac/state";
 import type { Change } from "@/ipc/types";
 import { useMemo } from "react";
 import { FullFileDiffEditor } from "./full-file-diff-editor";
@@ -25,7 +22,7 @@ export function DiffSection({
   includedFiles,
   onIncludedFilesChange,
 }: DiffSectionProps) {
-  const fileContents = useWidgetStore((s) => s.fileDiffContents);
+  const fileContents = useUiState((s) => s.fileDiffContents);
 
   const byFile = useMemo(() => {
     const map = new Map<string, ChangeWithRichType[]>();
@@ -55,9 +52,7 @@ export function DiffSection({
             changes={fileChanges}
             contents={fileContents[filename]}
             isOpen={openFiles[filename] ?? false}
-            onOpenChange={(open) =>
-              onOpenFilesChange({ ...openFiles, [filename]: open })
-            }
+            onOpenChange={(open) => onOpenFilesChange({ ...openFiles, [filename]: open })}
             included={includedFiles[filename] ?? true}
             onIncludedChange={(included) =>
               onIncludedFilesChange({ ...includedFiles, [filename]: included })

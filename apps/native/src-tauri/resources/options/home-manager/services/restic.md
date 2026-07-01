@@ -5,6 +5,6 @@
 All options under `services.restic`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ------------------------------ | --------------------------------- |
 | `services.restic.backups` | `attribute set of (submodule)` | Backup configurations for Restic. |
 | `services.restic.enable` | `boolean` | Whether to enable restic. |

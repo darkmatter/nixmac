@@ -5,7 +5,7 @@
 All options under `services.c2fmzq-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.c2fmzq-server.bindIP` | | |
 | `services.c2fmzq-server.enable` | | |
 | `services.c2fmzq-server.package` | | |

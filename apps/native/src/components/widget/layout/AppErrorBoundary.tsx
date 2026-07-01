@@ -16,10 +16,7 @@ type AppErrorBoundaryState = {
  * Sentry.ErrorBoundary: render errors are logged and routed through the
  * unified telemetry pipeline (OTEL → Rust backend) via getTelemetry().
  */
-export class AppErrorBoundary extends Component<
-  AppErrorBoundaryProps,
-  AppErrorBoundaryState
-> {
+export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorBoundaryState> {
   state: AppErrorBoundaryState = { error: null };
 
   static getDerivedStateFromError(error: Error): AppErrorBoundaryState {
@@ -34,11 +31,7 @@ export class AppErrorBoundary extends Component<
   render() {
     const { error } = this.state;
     if (error) {
-      return this.props.fallback ? (
-        this.props.fallback(error)
-      ) : (
-        <AppFatalFallback error={error} />
-      );
+      return this.props.fallback ? this.props.fallback(error) : <AppFatalFallback error={error} />;
     }
     return this.props.children;
   }

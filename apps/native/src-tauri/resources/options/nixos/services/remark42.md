@@ -5,7 +5,7 @@
 All options under `services.remark42`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.remark42.dataDir` | | |
 | `services.remark42.enable` | | |
 | `services.remark42.environmentFile` | | |

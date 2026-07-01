@@ -5,7 +5,7 @@
 All options under `services.nohang`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.nohang.configPath` | | |
 | `services.nohang.enable` | | |
 | `services.nohang.package` | | |

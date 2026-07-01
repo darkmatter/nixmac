@@ -5,7 +5,7 @@
 All options under `services.grav`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.grav.enable` | | |
 | `services.grav.maxUploadSize` | | |
 | `services.grav.package` | | |

@@ -5,7 +5,7 @@
 All options under `meta`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `meta.buildDocsInSandbox` | | |
 | `meta.doc` | | |
 | `meta.maintainers` | | |

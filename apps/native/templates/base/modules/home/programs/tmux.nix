@@ -1,5 +1,10 @@
 # Tmux configuration
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 {
   programs.tmux = {
@@ -103,4 +108,3 @@
 
   xdg.configFile."tmux/.keep".text = "";
 }
-

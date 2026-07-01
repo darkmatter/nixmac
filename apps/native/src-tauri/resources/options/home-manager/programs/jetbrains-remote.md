@@ -5,6 +5,6 @@
 All options under `programs.jetbrains-remote`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ----------------- | ----------------------------------------------------------- |
 | `programs.jetbrains-remote.enable` | `boolean` | Whether to enable JetBrains remote development system. |
 | `programs.jetbrains-remote.ides` | `list of package` | IDEs accessible to the JetBrains remote development system. |

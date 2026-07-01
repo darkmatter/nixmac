@@ -5,7 +5,7 @@
 All options under `services.trilium-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.trilium-server.dataDir` | | |
 | `services.trilium-server.enable` | | |
 | `services.trilium-server.environmentFile` | | |

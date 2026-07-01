@@ -5,7 +5,7 @@
 All options under `programs.htop`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | `programs.htop.enable` | `boolean` | Whether to enable htop. |
 | `programs.htop.package` | `package` | The htop package to use. |
 | `programs.htop.settings` | `attribute set of (boolean or signed integer or string or list of (signed integer or string))` | Configuration options to add to $XDG_CONFIG_HOME/htop/htoprc . |

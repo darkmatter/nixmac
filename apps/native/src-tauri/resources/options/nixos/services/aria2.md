@@ -5,7 +5,7 @@
 All options under `services.aria2`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.aria2.downloadDir` | | |
 | `services.aria2.downloadDirPermission` | | |
 | `services.aria2.enable` | | |

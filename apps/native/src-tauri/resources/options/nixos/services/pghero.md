@@ -5,7 +5,7 @@
 All options under `services.pghero`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.pghero.enable` | | |
 | `services.pghero.environment` | | |
 | `services.pghero.environmentFiles` | | |

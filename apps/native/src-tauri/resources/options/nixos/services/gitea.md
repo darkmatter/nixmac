@@ -5,7 +5,7 @@
 All options under `services.gitea`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------- | ---- | ----------- |
 | `services.gitea.appName` | | |
 | `services.gitea.camoHmacKeyFile` | | |
 | `services.gitea.captcha.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.gitDaemon`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.gitDaemon.basePath` | | |
 | `services.gitDaemon.enable` | | |
 | `services.gitDaemon.exportAll` | | |

@@ -5,7 +5,7 @@
 All options under `services.recyclarr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.recyclarr.command` | | |
 | `services.recyclarr.configuration` | | |
 | `services.recyclarr.enable` | | |

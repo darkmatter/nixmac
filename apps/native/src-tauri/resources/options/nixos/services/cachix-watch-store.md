@@ -5,7 +5,7 @@
 All options under `services.cachix-watch-store`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.cachix-watch-store.cacheName` | | |
 | `services.cachix-watch-store.cachixTokenFile` | | |
 | `services.cachix-watch-store.compressionLevel` | | |

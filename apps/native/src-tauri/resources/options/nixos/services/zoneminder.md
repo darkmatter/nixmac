@@ -5,7 +5,7 @@
 All options under `services.zoneminder`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.zoneminder.cameras` | | |
 | `services.zoneminder.database.createLocally` | | |
 | `services.zoneminder.database.host` | | |

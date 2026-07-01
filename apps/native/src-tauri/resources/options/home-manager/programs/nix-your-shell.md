@@ -5,7 +5,7 @@
 All options under `programs.nix-your-shell`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.nix-your-shell.enable` | `boolean` | Whether to enable nix-your-shell , a wrapper for nix develop or nix-shell to retain the same shell inside the new environment. |
 | `programs.nix-your-shell.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
 | `programs.nix-your-shell.enableNushellIntegration` | `boolean` | Whether to enable Nushell integration. |

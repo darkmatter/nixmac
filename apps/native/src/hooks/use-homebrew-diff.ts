@@ -1,78 +1,70 @@
 "use client";
 
-import { tauriAPI } from "@/ipc/api";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
+
+import { orpc } from "@/lib/orpc";
+import { uiActions } from "@nixmac/state";
 import type { HomebrewState } from "@/ipc/types";
-import { mirrorChangeMapState } from "@/viewmodel/change-map";
-import { mirrorEvolveState } from "@/viewmodel/evolve";
-import { mirrorGitState } from "@/viewmodel/git";
-import { useCallback, useEffect, useState } from "react";
 
-const TWENTY_MINUTES_SECS = 20 * 60;
-
-function hasDiffItems(diff: HomebrewState): boolean {
-  return diff.casks.length > 0 || diff.brews.length > 0 || diff.taps.length > 0;
-}
-
-function isStale(diff: HomebrewState): boolean {
-  const nowSecs = Math.floor(Date.now() / 1000);
-  return nowSecs - diff.lastChecked > TWENTY_MINUTES_SECS;
-}
+// Homebrew scans are cached this long before React Query refetches on mount.
+const TWENTY_MINUTES_MS = 20 * 60 * 1000;
 
 export function countDiffItems(diff: HomebrewState): number {
   return diff.casks.length + diff.brews.length + diff.taps.length;
 }
 
 export function useHomebrewDiff(enabled = true) {
-  const [diff, setDiff] = useState<HomebrewState | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isApplying, setIsApplying] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const refresh = useCallback(() => {
-    setIsLoading(true);
-    setError(null);
-    tauriAPI.homebrew
-      .getStateDiff()
-      .then(setDiff)
-      .catch((e: unknown) => setError(String(e)))
-      .finally(() => setIsLoading(false));
-  }, []);
+  const query = useQuery(
+    orpc.homebrew.getStateDiff.queryOptions({ enabled, staleTime: TWENTY_MINUTES_MS }),
+  );
+  const diff = enabled ? (query.data ?? null) : null;
 
-  useEffect(() => {
-    if (!enabled) {
-      setDiff(null);
-      setIsLoading(false);
-      return;
-    }
+  const {
+    mutateAsync: applyStateDiff,
+    isPending: isApplying,
+    error: applyError,
+  } = useMutation(
+    orpc.homebrew.applyDiff.mutationOptions({
+      onSuccess: () => {
+        uiActions.setRecommendedPrompt(undefined);
+        queryClient.invalidateQueries({ queryKey: orpc.homebrew.getStateDiff.key() });
+      },
+    }),
+  );
 
-    if (diff === null || isStale(diff)) {
-      refresh();
-    }
-  }, [diff, enabled, refresh]);
+  // Apply the full scanned diff by default, or a caller-supplied subset (e.g.
+  // when the user has unchecked some items in the Homebrew badge popover).
+  const applyDiff = useCallback(
+    async (override?: HomebrewState) => {
+      const target = override ?? diff;
+      if (!target || countDiffItems(target) === 0) return;
+      uiActions.setProcessing(true, "apply");
+      try {
+        await applyStateDiff({ diff: target });
+      } finally {
+        uiActions.setProcessing(false);
+      }
+    },
+    [diff, applyStateDiff],
+  );
 
-  const applyDiff = useCallback(async () => {
-    if (!diff || !hasDiffItems(diff)) return;
-    const store = useWidgetStore.getState();
-    setIsApplying(true);
-    store.setProcessing(true, "apply");
-    try {
-      const result = await tauriAPI.homebrew.applyDiff(diff);
-      mirrorEvolveState(result.evolveState);
-      mirrorChangeMapState(result.changeMap);
-      mirrorGitState(result.gitStatus);
-      store.setRecommendedPrompt(undefined);
-      // Clear so we re-fetch on next render (the watcher will also advance the step).
-      setDiff(null);
-    } catch (e: unknown) {
-      setError(String(e));
-    } finally {
-      setIsApplying(false);
-      store.setProcessing(false);
-    }
-  }, [diff]);
+  const hasDiff = enabled && diff !== null && diff.isInstalled && countDiffItems(diff) > 0;
+  const error = query.error
+    ? String(query.error)
+    : applyError
+      ? String(applyError)
+      : null;
 
-  const hasDiff = enabled && diff !== null && diff.isInstalled && hasDiffItems(diff);
-
-  return { diff, hasDiff, isLoading, isApplying, error, refresh, applyDiff };
+  return {
+    diff,
+    hasDiff,
+    isLoading: query.isLoading,
+    isApplying,
+    error,
+    refresh: query.refetch,
+    applyDiff,
+  };
 }

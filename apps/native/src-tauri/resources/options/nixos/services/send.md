@@ -5,7 +5,7 @@
 All options under `services.send`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.send.baseUrl` | | |
 | `services.send.dataDir` | | |
 | `services.send.enable` | | |

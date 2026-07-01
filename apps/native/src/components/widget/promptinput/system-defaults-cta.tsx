@@ -1,26 +1,17 @@
 "use client";
 
 import { BadgeButton } from "@/components/ui/badge-button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { useWidgetStore } from "@/stores/widget-store";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { uiActions } from "@nixmac/state";
 import type { SystemDefault, SystemDefaultsScan } from "@/ipc/types";
 import { tauriAPI } from "@/ipc/api";
-import { useViewModel } from "@/stores/view-model";
-import { mirrorChangeMapState } from "@/viewmodel/change-map";
-import { mirrorEvolveState } from "@/viewmodel/evolve";
-import { mirrorGitState } from "@/viewmodel/git";
+import { useViewModel } from "@nixmac/state";
 import { Settings2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const DISMISS_KEY = "nixmac:system-defaults-dismissed";
 
-function groupByCategory(
-  defaults: SystemDefault[],
-): Map<string, SystemDefault[]> {
+function groupByCategory(defaults: SystemDefault[]): Map<string, SystemDefault[]> {
   const map = new Map<string, SystemDefault[]>();
   for (const d of defaults) {
     const group = map.get(d.category);
@@ -54,9 +45,7 @@ export function SystemDefaultsCTA() {
   const [scan, setScan] = useState<SystemDefaultsScan | null>(null);
   const [applying, setApplying] = useState(false);
   const [open, setOpen] = useState(false);
-  const [dismissed, setDismissed] = useState(
-    () => localStorage.getItem(DISMISS_KEY) === "true",
-  );
+  const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISS_KEY) === "true");
 
   const eligible = evolveState?.step === "begin";
 
@@ -69,6 +58,7 @@ export function SystemDefaultsCTA() {
     }
 
     let cancelled = false;
+    // deprecated(orpc): replace with client/orpc from @/lib/orpc
     tauriAPI.scanner
       .scanDefaults()
       .then((result) => {
@@ -81,24 +71,23 @@ export function SystemDefaultsCTA() {
   }, [eligible]);
 
   const handleApply = async (defaults: SystemDefault[]) => {
-    const store = useWidgetStore.getState();
     setApplying(true);
-    store.setProcessing(true, "apply");
+    uiActions.setProcessing(true, "apply");
 
     try {
-      const result = await tauriAPI.scanner.applyDefaults(defaults);
-      mirrorEvolveState(result.evolveState);
-      mirrorChangeMapState(result.changeMap);
-      mirrorGitState(result.gitStatus);
+      // The backend records the resulting evolve/change-map/git state in the
+      // cells; the `*_changed` events mirror it into the ViewModel.
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
+      await tauriAPI.scanner.applyDefaults(defaults);
       // Invalidate recommended prompt — settings changed
-      useWidgetStore.getState().setRecommendedPrompt(undefined);
+      uiActions.setRecommendedPrompt(undefined);
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
       console.error("[SystemDefaultsCTA] apply failed:", msg);
     } finally {
       setApplying(false);
       setOpen(false);
-      useWidgetStore.getState().setProcessing(false);
+      uiActions.setProcessing(false);
     }
   };
 
@@ -154,13 +143,8 @@ export function SystemDefaultsCTA() {
               </div>
               <div className="space-y-0.5">
                 {items.map((d) => (
-                  <div
-                    key={d.nixKey}
-                    className="flex items-center justify-between text-xs"
-                  >
-                    <span className="truncate text-foreground/80">
-                      {d.label}
-                    </span>
+                  <div key={d.nixKey} className="flex items-center justify-between text-xs">
+                    <span className="truncate text-foreground/80">{d.label}</span>
                     <span className="ml-2 shrink-0 text-muted-foreground">
                       {formatValue(d.currentValue)}
                     </span>

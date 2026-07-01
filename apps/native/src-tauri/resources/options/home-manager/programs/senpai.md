@@ -5,7 +5,7 @@
 All options under `programs.senpai`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | --------------------------------------------- | -------------------------------------------------------------------------- |
 | `programs.senpai.config` | `open submodule of attribute set of anything` | Configuration for senpai. For a complete list of options, see senpai (5) . |
 | `programs.senpai.enable` | `boolean` | Whether to enable senpai. |
 | `programs.senpai.package` | `package` | The senpai package to use. |

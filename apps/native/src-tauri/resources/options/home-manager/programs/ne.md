@@ -5,7 +5,7 @@
 All options under `programs.ne`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ------------------------------------------------- | --------------------------------------------- |
 | `programs.ne.automaticPreferences` | `attribute set of strings concatenated with “\n”` | Automatic preferences files for ne. |
 | `programs.ne.defaultPreferences` | `strings concatenated with “\n”` | Default preferences for ne. |
 | `programs.ne.enable` | `boolean` | Whether to enable ne. |

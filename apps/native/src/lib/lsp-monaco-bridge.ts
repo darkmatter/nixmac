@@ -150,9 +150,7 @@ export function bridgeMonacoToLsp(
         if (!result) return null;
 
         const contents =
-          typeof result.contents === "string"
-            ? result.contents
-            : result.contents.value;
+          typeof result.contents === "string" ? result.contents : result.contents.value;
 
         return {
           range: result.range ? lspToMonacoRange(result.range) : undefined,
@@ -178,14 +176,12 @@ export function bridgeMonacoToLsp(
 
         if (!result) return { suggestions: [] };
 
-        const items = Array.isArray(result) ? result : result.items ?? [];
+        const items = Array.isArray(result) ? result : (result.items ?? []);
         const word = _model.getWordUntilPosition(position);
 
         const suggestions: monacoNs.languages.CompletionItem[] = items.map((item) => {
           const doc =
-            typeof item.documentation === "string"
-              ? item.documentation
-              : item.documentation?.value;
+            typeof item.documentation === "string" ? item.documentation : item.documentation?.value;
 
           return {
             label: item.label,

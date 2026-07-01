@@ -5,7 +5,7 @@
 All options under `services.dnsmasq`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.dnsmasq.alwaysKeepRunning` | | |
 | `services.dnsmasq.configFile` | | |
 | `services.dnsmasq.enable` | | |

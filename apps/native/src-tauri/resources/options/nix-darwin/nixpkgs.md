@@ -5,7 +5,7 @@
 All options under `nixpkgs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `nixpkgs.buildPlatform` | `string or (attribute set)` | Specifies the platform on which nix-darwin should be built. By default, nix-darwin is built on the system where it runs, but you can change where it’s built. Setting this option will cause nix-darwin to be cross-compiled. |
 | `nixpkgs.config` | `nixpkgs config` | Global configuration for Nixpkgs. The complete list of Nixpkgs configuration options is in the Nixpkgs manual section on global configuration . |
 | `nixpkgs.constructedByUs` | | |

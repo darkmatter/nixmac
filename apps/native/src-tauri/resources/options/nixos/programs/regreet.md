@@ -5,7 +5,7 @@
 All options under `programs.regreet`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `programs.regreet.cageArgs` | | |
 | `programs.regreet.cursorTheme.name` | | |
 | `programs.regreet.cursorTheme.package` | | |

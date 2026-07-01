@@ -5,7 +5,7 @@
 All options under `programs.atool`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | --------------------------------------------- | ------------------------------------------------------ |
 | `programs.atool.enable` | `boolean` | Whether to enable atool a commandline archive manager… |
 | `programs.atool.extraPackages` | `list of package` | Extra packages for atool. |
 | `programs.atool.finalPackage` | `package (read only)` | Final atool package bundled with extraPackages. |

@@ -5,6 +5,6 @@
 All options under `programs.virt-manager`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `programs.virt-manager.enable` | | |
 | `programs.virt-manager.package` | | |

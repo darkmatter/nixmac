@@ -5,7 +5,7 @@
 All options under `services.protonmail-bridge`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.protonmail-bridge.enable` | | |
 | `services.protonmail-bridge.logLevel` | | |
 | `services.protonmail-bridge.package` | | |

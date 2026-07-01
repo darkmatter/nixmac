@@ -5,7 +5,7 @@
 All options under `services.devpi-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.devpi-server.enable` | | |
 | `services.devpi-server.extraPackages` | | |
 | `services.devpi-server.host` | | |

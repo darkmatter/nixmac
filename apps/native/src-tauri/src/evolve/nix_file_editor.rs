@@ -1,6 +1,7 @@
 //! `nix_file_editor`: Apply "smart"" edits to Nix files, such as adding/removing packages from a list or setting scalar values.
 
 use crate::evolve::types::SemanticFileEdit;
+use crate::system::nix::nix_format;
 use anyhow::{Context, Result};
 use log::{debug, info};
 use rnix::SyntaxNode;
@@ -337,6 +338,7 @@ fn render_nix_expression_literal(
 pub fn apply_semantic_edit(
     base: &Path,
     edit: &SemanticFileEdit,
+    auto_format: bool,
     gitignore_matcher: Option<&Gitignore>,
 ) -> anyhow::Result<()> {
     rewrite_existing_file_in_dir(
@@ -371,6 +373,22 @@ pub fn apply_semantic_edit(
         },
     )?;
 
+    // Format the file conditionally.
+    if auto_format {
+        log::debug!(
+            "apply_semantic_edit: auto_format is enabled, running nix-format on {}",
+            edit.path
+        );
+        // If the formatting fails for some reason, allow the edit to be successful (but warn).
+        let config_dir = base.to_string_lossy();
+        let format_result = nix_format(&config_dir, &edit.path);
+        if let Err(e) = format_result {
+            log::warn!(
+                "apply_semantic_edit succeeded but nixfmt failed: {}. The file may be left in an unformatted state; run nixfmt manually to fix formatting issues.",
+                e
+            );
+        }
+    }
     Ok(())
 }
 
@@ -1060,6 +1078,26 @@ fn infer_inner_indent(attrset_text: &str) -> String {
     "    ".to_string() // default: 4 spaces
 }
 
+/// Escape a string for safe insertion into a Nix string literal.
+pub(crate) fn escape_nix_string(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    let mut chars = value.chars().peekable();
+    while let Some(ch) = chars.next() {
+        match ch {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            '\t' => out.push_str("\\t"),
+            '$' if chars.peek() == Some(&'{') => {
+                out.push_str("\\${");
+                chars.next(); // consume '{'
+            }
+            _ => out.push(ch),
+        }
+    }
+    out
+}
+
 /// Quote and escape a list of string values for safe insertion into Nix list literals.
 ///
 /// This escapes backslashes, double quotes and dollar signs, and wraps each value
@@ -1693,5 +1731,41 @@ environment.systemPackages = with pkgs; [
         let input: Vec<String> = vec![];
         let quoted = nix_quote_values(&input);
         assert!(quoted.is_empty());
+    }
+
+    #[test]
+    fn test_escape_nix_string() {
+        let input = "This is a \"test\" string with \\ backslashes and ${dollar} signs.";
+        let escaped = escape_nix_string(input);
+        assert_eq!(
+            escaped,
+            "This is a \\\"test\\\" string with \\\\ backslashes and \\${dollar} signs."
+        );
+    }
+
+    #[test]
+    fn escape_nix_string_only_escapes_interpolation_start() {
+        let cases = [
+            ("$HOME", "$HOME"),
+            ("${name}", "\\${name}"),
+            (
+                "prefix ${one}${two} suffix",
+                "prefix \\${one}\\${two} suffix",
+            ),
+            ("unterminated ${", "unterminated \\${"),
+            ("just $ and { braces }", "just $ and { braces }"),
+            ("$x{not-interpolation}", "$x{not-interpolation}"),
+        ];
+
+        for (input, expected) in cases {
+            assert_eq!(escape_nix_string(input), expected, "input: {input}");
+        }
+    }
+
+    #[test]
+    fn escape_nix_string_handles_backslash_before_interpolation() {
+        let escaped = escape_nix_string(r"\${already-looking-escaped}");
+
+        assert_eq!(escaped, r"\\\${already-looking-escaped}");
     }
 }

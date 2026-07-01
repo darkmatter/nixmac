@@ -5,6 +5,6 @@
 All options under `programs.cpu-energy-meter`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `programs.cpu-energy-meter.enable` | | |
 | `programs.cpu-energy-meter.package` | | |

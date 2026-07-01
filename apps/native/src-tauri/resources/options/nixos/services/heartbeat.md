@@ -5,7 +5,7 @@
 All options under `services.heartbeat`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.heartbeat.enable` | | |
 | `services.heartbeat.extraConfig` | | |
 | `services.heartbeat.name` | | |

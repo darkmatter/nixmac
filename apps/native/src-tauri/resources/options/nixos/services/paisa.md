@@ -5,7 +5,7 @@
 All options under `services.paisa`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.paisa.enable` | | |
 | `services.paisa.host` | | |
 | `services.paisa.mutableSettings` | | |

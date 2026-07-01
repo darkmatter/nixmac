@@ -5,7 +5,7 @@
 All options under `programs.screen`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `programs.screen.enable` | | |
 | `programs.screen.package` | | |
 | `programs.screen.screenrc` | | |

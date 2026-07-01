@@ -5,7 +5,7 @@
 All options under `services.fwupd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.fwupd.blacklistDevices` | | |
 | `services.fwupd.blacklistPlugins` | | |
 | `services.fwupd.daemonSettings` | | |

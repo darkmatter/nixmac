@@ -5,7 +5,7 @@
 All options under `programs.nix-index`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `programs.nix-index.enable` | | |
 | `programs.nix-index.enableBashIntegration` | | |
 | `programs.nix-index.enableFishIntegration` | | |

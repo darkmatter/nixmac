@@ -85,6 +85,15 @@ pub struct EvolveEvent {
     pub iteration: Option<usize>,
     /// Milliseconds elapsed since the evolution started.
     pub timestamp_ms: i64,
+    /// Telemetry collected during the run; only on the terminal `Complete` event.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[specta(optional)]
+    pub telemetry: Option<EvolutionTelemetry>,
+    /// Assistant response when no environment changes were produced; only on
+    /// the terminal `Complete` event.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[specta(optional)]
+    pub conversational_response: Option<String>,
 }
 
 /// Types of evolve events for UI rendering.
@@ -145,13 +154,52 @@ pub enum EvolveStep {
     ManualCommit,
 }
 
-/// Persisted evolve state stored in `evolve-state.json`.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct EvolveState {
+/// The owned, persisted unit of an evolve session, stored in
+/// `evolve-state.json`.
+///
+/// This is the source of truth: the identity of an active evolution and the
+/// bookkeeping needed to roll it back. It deliberately holds NO derived
+/// fields — the UI `step` and the `committable` flag are pure functions of
+/// this session plus live build/git state, computed on demand by
+/// `state::evolve_state::project` and never stored.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct EvolveSession {
     /// Active evolution database id.
     pub evolution_id: Option<i64>,
     /// Active changeset id for the current repo state.
+    pub current_changeset_id: Option<i64>,
+    /// Branch used to reset repo state on evolve failure.
+    pub backup_branch: Option<String>,
+    /// Branch used to recover repo state during rollback.
+    pub rollback_branch: Option<String>,
+    /// Nix store path that should be reactivated during rollback.
+    pub rollback_store_path: Option<String>,
+    /// Changeset id associated with the rollback target.
+    pub rollback_changeset_id: Option<i64>,
+    /// Last terminal state observed for this routing session.
+    ///
+    /// This supports transition-sensitive behavior when returning to Begin
+    /// and maybe some other useful things in the future.
+    pub last_evolution_state: Option<EvolutionState>,
+}
+
+/// The evolve routing state as projected for the frontend: the owned
+/// [`EvolveSession`] fields joined with the two derived values (`step`,
+/// `committable`).
+///
+/// This is the wire/event type — it is computed by
+/// `state::evolve_state::project` and is never persisted or treated as a
+/// source of truth on its own. `step` and `committable` are always recomputed
+/// from live build/git state, so a value of this type is only a snapshot.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct EvolveState {
+    /// Active evolution database id.
+    #[specta(type = Option<f64>)]
+    pub evolution_id: Option<i64>,
+    /// Active changeset id for the current repo state.
+    #[specta(type = Option<f64>)]
     pub current_changeset_id: Option<i64>,
     /// Whether the current state has been successfully built and can be committed.
     pub committable: bool,
@@ -162,13 +210,11 @@ pub struct EvolveState {
     /// Nix store path that should be reactivated during rollback.
     pub rollback_store_path: Option<String>,
     /// Changeset id associated with the rollback target.
+    #[specta(type = Option<f64>)]
     pub rollback_changeset_id: Option<i64>,
-    /// UI step derived from the routing state.
+    /// UI step derived from the session plus live build/git state.
     pub step: EvolveStep,
     /// Last terminal state observed for this routing session.
-    ///
-    /// This supports transition-sensitive behavior when returning to Begin
-    /// and maybe some other useful things in the future.
     #[serde(default)]
     pub last_evolution_state: Option<EvolutionState>,
 }
@@ -271,14 +317,4 @@ pub struct EvolveCancelResult {
     pub ok: bool,
     /// Human-readable cancellation result.
     pub message: String,
-}
-
-/// Result of a successful `finalize_apply` or `finalize_rollback` command.
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct FinalizeApplyResult {
-    /// Git status after finalization.
-    pub git_status: GitStatus,
-    /// Evolve state after finalization.
-    pub evolve_state: EvolveState,
 }

@@ -5,7 +5,7 @@
 All options under `programs.wallust`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.wallust.enable` | `boolean` | Whether to enable Wallust color scheme generator. |
 | `programs.wallust.package` | `null or package` | The wallust package to use. |
 | `programs.wallust.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/wallust/wallust.toml . See https://explosion-mental.codeberg.page/wallust/config/ for documentation. |

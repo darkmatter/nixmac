@@ -5,7 +5,7 @@
 All options under `programs.sagemath`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.sagemath.configDir` | `string` | Directory where the sage.init file will be stored. Note that the upstream default is ~/.sage , but our default is to follow XDG. |
 | `programs.sagemath.dataDir` | `string` | Location for DOT_SAGE . Note that the upstream default is ~/.sage , but our default is to follow XDG. |
 | `programs.sagemath.enable` | `boolean` | Whether to enable SageMath, a mathematics software system. |

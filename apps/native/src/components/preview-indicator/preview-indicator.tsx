@@ -82,7 +82,7 @@ export function PreviewIndicator({
   };
 
   return (
-    <div className="fixed right-4 bottom-4 z-[100]">
+    <div className="fixed right-4 bottom-4 z-100">
       {/* Expanded panel */}
       {isExpanded && (
         <div className="fade-in slide-in-from-bottom-2 mb-3 w-80 animate-in duration-200">
@@ -90,9 +90,7 @@ export function PreviewIndicator({
             {/* Header */}
             <div className="flex items-center gap-2 border-amber-500/20 border-b bg-amber-500/10 px-4 py-3">
               <Eye className="h-4 w-4 text-amber-400" />
-              <span className="font-medium text-amber-200 text-sm">
-                Preview Mode
-              </span>
+              <span className="font-medium text-amber-200 text-sm">Preview Mode</span>
               <span className="ml-auto rounded-full bg-amber-500/20 px-2 py-0.5 text-amber-300 text-xs">
                 {filesChanged} file{filesChanged !== 1 ? "s" : ""} changed
               </span>
@@ -101,18 +99,13 @@ export function PreviewIndicator({
             {/* Summary */}
             {summary && (
               <div className="border-zinc-700/50 border-b px-4 py-3">
-                <p className="text-sm text-zinc-300 leading-relaxed">
-                  {summary}
-                </p>
+                <p className="text-sm text-zinc-300 leading-relaxed">{summary}</p>
               </div>
             )}
 
             {/* Commit message input */}
             <div className="space-y-2 px-4 py-3">
-              <label
-                className="font-medium text-xs text-zinc-400"
-                htmlFor="commit-msg"
-              >
+              <label className="font-medium text-xs text-zinc-400" htmlFor="commit-msg">
                 Commit message
               </label>
               <input
@@ -138,7 +131,7 @@ export function PreviewIndicator({
                 className={cn(
                   "flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 font-medium text-sm transition-colors",
                   "bg-amber-500/20 text-amber-200 hover:bg-amber-500/30",
-                  isLoading && "cursor-not-allowed opacity-50"
+                  isLoading && "cursor-not-allowed opacity-50",
                 )}
                 disabled={isLoading || !editedMessage.trim()}
                 onClick={handleCommit}
@@ -151,7 +144,7 @@ export function PreviewIndicator({
                 className={cn(
                   "flex items-center justify-center gap-2 rounded-lg px-3 py-2 font-medium text-sm transition-colors",
                   "bg-zinc-700/50 text-zinc-300 hover:bg-zinc-700/70",
-                  isLoading && "cursor-not-allowed opacity-50"
+                  isLoading && "cursor-not-allowed opacity-50",
                 )}
                 disabled={isLoading}
                 onClick={handleDiscard}
@@ -166,7 +159,7 @@ export function PreviewIndicator({
       )}
 
       <button
-        className="relative inline-flex h-12 overflow-hidden rounded-full p-[1px] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-slate-50"
+        className="relative inline-flex h-12 overflow-hidden rounded-full p-px focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-slate-50"
         onClick={handleClick}
         type="button"
       >
@@ -176,12 +169,8 @@ export function PreviewIndicator({
           {/* <img src="/icon.png" alt="Preview Active" width={20} height={20} /> */}
           {(additions !== undefined || deletions !== undefined) && (
             <span className="flex items-center gap-1.5 font-mono text-xs">
-              {additions !== undefined && (
-                <span className="text-green-400">+{additions}</span>
-              )}
-              {deletions !== undefined && (
-                <span className="text-red-400">-{deletions}</span>
-              )}
+              {additions !== undefined && <span className="text-green-400">+{additions}</span>}
+              {deletions !== undefined && <span className="text-red-400">-{deletions}</span>}
             </span>
           )}
         </span>
@@ -191,4 +180,3 @@ export function PreviewIndicator({
 }
 
 // Export for Storybook
-;

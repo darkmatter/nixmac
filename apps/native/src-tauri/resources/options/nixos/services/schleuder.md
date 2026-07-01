@@ -5,7 +5,7 @@
 All options under `services.schleuder`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.schleuder.enable` | | |
 | `services.schleuder.enablePostfix` | | |
 | `services.schleuder.extraSettingsFile` | | |

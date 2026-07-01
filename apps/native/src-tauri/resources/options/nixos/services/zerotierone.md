@@ -5,7 +5,7 @@
 All options under `services.zerotierone`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.zerotierone.enable` | | |
 | `services.zerotierone.joinNetworks` | | |
 | `services.zerotierone.localConf` | | |

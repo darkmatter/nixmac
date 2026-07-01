@@ -5,7 +5,7 @@
 All options under `programs.vdirsyncer`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | --------- | ------------------------------------------------------------------------------- |
 | `programs.vdirsyncer.enable` | `boolean` | Whether to enable vdirsyncer. |
 | `programs.vdirsyncer.package` | `package` | The vdirsyncer package to use. |
 | `programs.vdirsyncer.statusPath` | `string` | A directory where vdirsyncer will store some additional data for the next sync. |

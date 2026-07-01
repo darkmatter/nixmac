@@ -5,7 +5,7 @@
 All options under `services.graylog`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.graylog.dataDir` | | |
 | `services.graylog.elasticsearchHosts` | | |
 | `services.graylog.enable` | | |

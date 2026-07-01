@@ -5,7 +5,7 @@
 All options under `services.drupal`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.drupal.enable` | | |
 | `services.drupal.package` | | |
 | `services.drupal.sites` | | |

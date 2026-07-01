@@ -5,7 +5,7 @@
 All options under `services.local-ai`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ------------------------- | ----------------------------------------------------------------------------- |
 | `services.local-ai.enable` | `boolean` | Whether to enable LocalAI is the free, Open Source OpenAI alternative… |
 | `services.local-ai.environment` | `attribute set of string` | Additional environment passed to local-ai service. Used to configure local-ai |
 | `services.local-ai.package` | `package` | The local-ai package to use. |

@@ -5,7 +5,7 @@
 All options under `services.envoy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.envoy.enable` | | |
 | `services.envoy.package` | | |
 | `services.envoy.requireValidConfig` | | |

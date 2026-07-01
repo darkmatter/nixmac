@@ -5,7 +5,7 @@
 All options under `services.flaresolverr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.flaresolverr.enable` | | |
 | `services.flaresolverr.openFirewall` | | |
 | `services.flaresolverr.package` | | |

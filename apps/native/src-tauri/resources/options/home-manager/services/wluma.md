@@ -5,7 +5,7 @@
 All options under `services.wluma`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `services.wluma.enable` | `boolean` | Whether to enable Enable wluma, a service for automatic brightness adjustment. |
 | `services.wluma.package` | `package` | The wluma package to use. |
 | `services.wluma.settings` | `TOML value` | Configuration to use for wluma. See https://github.com/maximbaz/wluma/blob/main/config.toml for available options. |

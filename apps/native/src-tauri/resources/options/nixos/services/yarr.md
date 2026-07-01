@@ -5,7 +5,7 @@
 All options under `services.yarr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.yarr.address` | | |
 | `services.yarr.authFilePath` | | |
 | `services.yarr.baseUrl` | | |

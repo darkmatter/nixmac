@@ -5,5 +5,5 @@
 All options under `services.beesd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.beesd.filesystems` | | |

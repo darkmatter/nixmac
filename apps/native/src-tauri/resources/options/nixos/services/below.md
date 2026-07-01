@@ -5,7 +5,7 @@
 All options under `services.below`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.below.cgroupFilterOut` | | |
 | `services.below.collect.diskStats` | | |
 | `services.below.collect.exitStats` | | |

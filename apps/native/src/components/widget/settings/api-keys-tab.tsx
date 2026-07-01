@@ -1,8 +1,9 @@
-import React, { useState } from "react";
-import { Check, Loader2, X, Eye, EyeOff } from "lucide-react";
-import type { ApiKeyStatus } from "@/lib/api-key-verification";
+import { ProviderIcon } from "@/components/widget/controls/provider-icons/provider-icon";
+import type { ApiKeyStatus } from "@/lib/providers/api-key-verification";
 import { cn } from "@/lib/utils";
 import type { AnyFieldApi, AnyFormApi } from "@tanstack/react-form";
+import { Check, Eye, EyeOff, Loader2, X } from "lucide-react";
+import React, { useState } from "react";
 
 interface ApiKeysTabProps {
   // OpenRouter
@@ -236,8 +237,8 @@ export function ApiKeysTab({
           {/* OpenRouter API Key */}
           <div className="rounded-lg border border-border p-4">
             <div className="mb-3 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-purple-500 to-pink-500">
-                <span className="font-bold text-white text-xs">OR</span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-linear-to-br from-purple-500 to-pink-500 text-white">
+                <ProviderIcon provider="openrouter" size={18} />
               </div>
               <div>
                 <h3 className="font-medium text-sm">OpenRouter</h3>
@@ -264,8 +265,8 @@ export function ApiKeysTab({
           {/* OpenAI API Key */}
           <div className="rounded-lg border border-border p-4">
             <div className="mb-3 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-emerald-500 to-teal-500">
-                <span className="font-bold text-white text-xs">OA</span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-linear-to-br from-emerald-500 to-teal-500 text-white">
+                <ProviderIcon provider="openai" size={22} />
               </div>
               <div>
                 <h3 className="font-medium text-sm">OpenAI</h3>
@@ -292,8 +293,8 @@ export function ApiKeysTab({
           {/* Ollama API Base URL */}
           <div className="rounded-lg border border-border p-4">
             <div className="mb-3 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-amber-500 to-orange-500">
-                <span className="font-bold text-white text-xs">OL</span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-linear-to-br from-amber-500 to-orange-500 text-white pl-1.5">
+                <ProviderIcon provider="ollama" size={22} />
               </div>
               <div>
                 <h3 className="font-medium text-sm">Ollama</h3>
@@ -316,8 +317,8 @@ export function ApiKeysTab({
           {/* OpenAI Compatible */}
           <div className="rounded-lg border border-border p-4">
             <div className="mb-3 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-cyan-500">
-                <span className="font-bold text-white text-xs">OC</span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-linear-to-br from-blue-500 to-cyan-500 text-white">
+                <ProviderIcon provider="vllm" size={18} />
               </div>
               <div>
                 <h3 className="font-medium text-sm">OpenAI Compatible</h3>

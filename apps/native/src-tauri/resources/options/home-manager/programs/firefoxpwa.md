@@ -5,7 +5,7 @@
 All options under `programs.firefoxpwa`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.firefoxpwa.enable` | `boolean` | Whether to enable Progressive Web Apps for Firefox. |
 | `programs.firefoxpwa.package` | `null or package` | The firefoxpwa package to use. |
 | `programs.firefoxpwa.profiles` | `attribute set of (submodule)` | Attribute set of profile options. The keys of that attribute set consist of ULIDs. A ULID is made of 26 characters, each of which is one of ‘0123456789ABCDEFGHJKMNPQRSTVWXYZ’ (Excluding I, L, O and U). See https://github.com/ulid/spec?tab=readme-ov-file#canonical-string-representation . |

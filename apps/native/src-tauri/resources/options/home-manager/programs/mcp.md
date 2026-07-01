@@ -5,6 +5,6 @@
 All options under `programs.mcp`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------- | ------------ | ----------------------------------------------------------------- |
 | `programs.mcp.enable` | `boolean` | Whether to enable mcp. |
 | `programs.mcp.servers` | `JSON value` | MCP server configurations written to XDG_CONFIG_HOME/mcp/mcp.json |

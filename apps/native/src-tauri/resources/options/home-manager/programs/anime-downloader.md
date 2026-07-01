@@ -5,7 +5,7 @@
 All options under `programs.anime-downloader`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.anime-downloader.enable` | `boolean` | Whether to enable anime-downloader. |
 | `programs.anime-downloader.package` | `null or package` | The anime-downloader package to use. |
 | `programs.anime-downloader.settings` | `JSON value` | Configuration settings for anime-downloader. All available options can be found here: https://anime-downlader.readthedocs.io/en/latest/usage/config.html#config-json . |

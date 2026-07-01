@@ -5,7 +5,7 @@
 All options under `services.klipper`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.klipper.apiSocket` | | |
 | `services.klipper.configDir` | | |
 | `services.klipper.configFile` | | |

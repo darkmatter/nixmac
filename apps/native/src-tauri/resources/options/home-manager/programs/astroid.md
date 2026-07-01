@@ -5,7 +5,7 @@
 All options under `programs.astroid`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ----------------- | ----------------------------------------------------------------- |
 | `programs.astroid.enable` | `boolean` | Whether to enable Astroid. |
 | `programs.astroid.externalEditor` | `null or string` | You can use the following variables: |
 | `programs.astroid.extraConfig` | `JSON value` | JSON config that will override the default Astroid configuration. |

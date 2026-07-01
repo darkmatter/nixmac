@@ -5,7 +5,7 @@
 All options under `programs.lazydocker`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `programs.lazydocker.enable` | `boolean` | Whether to enable lazydocker, a simple terminal UI for both docker and docker compose. |
 | `programs.lazydocker.package` | `null or package` | The lazydocker package to use. |
 | `programs.lazydocker.settings` | `YAML 1.1 value` | Configuration written to $XDG_CONFIG_HOME/lazydocker/config.yml on Linux or on Darwin if xdg.enable is set, otherwise ~/Library/Application Support/jesseduffield/lazydocker/config.yml . See https://github.com/jesseduffield/lazydocker/blob/master/docs/Config.md for supported values. |

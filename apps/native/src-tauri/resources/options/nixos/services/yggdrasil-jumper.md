@@ -5,7 +5,7 @@
 All options under `services.yggdrasil-jumper`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------------- | ---- | ----------- |
 | `services.yggdrasil-jumper.appendListenAddresses` | | |
 | `services.yggdrasil-jumper.detectWireguard` | | |
 | `services.yggdrasil-jumper.enable` | | |

@@ -5,6 +5,6 @@
 All options under `services.svnserve`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.svnserve.enable` | | |
 | `services.svnserve.svnBaseDir` | | |

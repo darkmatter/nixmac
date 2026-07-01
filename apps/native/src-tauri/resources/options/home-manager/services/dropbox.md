@@ -5,7 +5,7 @@
 All options under `services.dropbox`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | --------------- | ----------------------------------- |
 | `services.dropbox.enable` | `boolean` | Whether to enable Dropbox daemon. |
 | `services.dropbox.package` | `package` | The dropbox-cli package to use. |
 | `services.dropbox.path` | `absolute path` | Where to put the Dropbox directory. |

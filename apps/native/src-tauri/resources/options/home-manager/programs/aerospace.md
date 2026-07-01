@@ -5,7 +5,7 @@
 All options under `programs.aerospace`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `programs.aerospace.enable` | `boolean` | Whether to enable AeroSpace window manager. |
 | `programs.aerospace.extraConfig` | | |
 | `programs.aerospace.launchd.enable` | `boolean` | Configure the launchd agent to manage the AeroSpace process. |

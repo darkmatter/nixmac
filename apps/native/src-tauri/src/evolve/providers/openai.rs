@@ -16,11 +16,13 @@ use async_openai::{
     },
 };
 use async_trait::async_trait;
+use log::{info, warn};
 use reqwest::StatusCode;
 
 pub struct OpenAIProvider {
     client: Client<OpenAIConfig>,
     model: String,
+    chat_completions_url: String,
     max_output_tokens: u32,
 
     record_chat_logs: bool,
@@ -28,6 +30,7 @@ pub struct OpenAIProvider {
 
 impl OpenAIProvider {
     pub fn new(api_key: String, api_base: String, model: String, max_output_tokens: u32) -> Self {
+        let chat_completions_url = chat_completions_url(&api_base);
         let config = OpenAIConfig::new()
             .with_api_key(api_key)
             .with_api_base(api_base);
@@ -37,9 +40,66 @@ impl OpenAIProvider {
         Self {
             client,
             model,
+            chat_completions_url,
             max_output_tokens,
             record_chat_logs,
         }
+    }
+}
+
+fn log_provider_request_start(kind: &str, url: &str, model: &str) -> std::time::Instant {
+    info!("→ AI {kind} POST {url} model={model}");
+    std::time::Instant::now()
+}
+
+fn log_provider_request_ok(kind: &str, url: &str, model: &str, start: std::time::Instant) {
+    info!(
+        "← AI {kind} POST {url} model={model} ok ({})",
+        format_elapsed(start)
+    );
+}
+
+fn log_provider_request_err(
+    kind: &str,
+    url: &str,
+    model: &str,
+    start: std::time::Instant,
+    error: &OpenAIError,
+) {
+    if let Some((status, _)) = classify_openai_error(error) {
+        warn!(
+            "✗ AI {kind} POST {url} model={model} failed status={status} ({})",
+            format_elapsed(start)
+        );
+    } else {
+        warn!(
+            "✗ AI {kind} POST {url} model={model} failed: {error} ({})",
+            format_elapsed(start)
+        );
+    }
+}
+
+fn chat_completions_url(base_url: &str) -> String {
+    let url = format!("{}/chat/completions", base_url.trim_end_matches('/'));
+    remove_credentials(&url)
+}
+
+fn remove_credentials(url: &str) -> String {
+    let Ok(mut parsed) = reqwest::Url::parse(url) else {
+        return url.to_string();
+    };
+    parsed.set_password(None).ok();
+    parsed.set_username("").ok();
+    parsed.to_string()
+}
+
+fn format_elapsed(start: std::time::Instant) -> String {
+    let elapsed = start.elapsed();
+    let ms = elapsed.as_millis();
+    if ms < 1000 {
+        format!("{ms}ms")
+    } else {
+        format!("{:.2}s", elapsed.as_secs_f64())
     }
 }
 
@@ -82,12 +142,23 @@ impl AiProvider for OpenAIProvider {
         )
         .await;
 
-        let response = self
-            .client
-            .chat()
-            .create(request)
-            .await
-            .map_err(normalize_openai_error)?;
+        let start = log_provider_request_start("chat", &self.chat_completions_url, &self.model);
+        let response = match self.client.chat().create(request).await {
+            Ok(response) => {
+                log_provider_request_ok("chat", &self.chat_completions_url, &self.model, start);
+                response
+            }
+            Err(error) => {
+                log_provider_request_err(
+                    "chat",
+                    &self.chat_completions_url,
+                    &self.model,
+                    start,
+                    &error,
+                );
+                return Err(normalize_openai_error(error));
+            }
+        };
 
         crate::state::completion_log::append_event_jsonl(
             self.record_chat_logs,

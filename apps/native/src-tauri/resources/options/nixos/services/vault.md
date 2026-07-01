@@ -5,7 +5,7 @@
 All options under `services.vault`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.vault.address` | | |
 | `services.vault.dev` | | |
 | `services.vault.devRootTokenID` | | |

@@ -5,7 +5,7 @@
 All options under `services.zfs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.zfs.autoReplication.enable` | | |
 | `services.zfs.autoReplication.followDelete` | | |
 | `services.zfs.autoReplication.host` | | |

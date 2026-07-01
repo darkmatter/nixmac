@@ -5,7 +5,7 @@
 All options under `services.kmonad`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.kmonad.enable` | | |
 | `services.kmonad.extraArgs` | | |
 | `services.kmonad.keyboards` | | |

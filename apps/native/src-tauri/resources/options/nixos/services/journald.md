@@ -5,7 +5,7 @@
 All options under `services.journald`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.journald.audit` | | |
 | `services.journald.console` | | |
 | `services.journald.enableHttpGateway` | | |

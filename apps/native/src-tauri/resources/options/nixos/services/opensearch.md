@@ -5,7 +5,7 @@
 All options under `services.opensearch`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.opensearch.dataDir` | | |
 | `services.opensearch.enable` | | |
 | `services.opensearch.extraCmdLineOptions` | | |

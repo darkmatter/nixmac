@@ -5,7 +5,7 @@
 All options under `programs.hyprpanel`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------------- | ------------ | ----------------------------------------------------------------- |
 | `programs.hyprpanel."dontAssertNotificationDaemons "` | | |
 | `programs.hyprpanel.enable` | `boolean` | Whether to enable HyprPanel. |
 | `programs.hyprpanel.package` | `package` | The hyprpanel package to use. |

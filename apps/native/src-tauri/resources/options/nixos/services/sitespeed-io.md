@@ -5,7 +5,7 @@
 All options under `services.sitespeed-io`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.sitespeed-io.dataDir` | | |
 | `services.sitespeed-io.enable` | | |
 | `services.sitespeed-io.package` | | |

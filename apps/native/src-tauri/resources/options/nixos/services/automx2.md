@@ -5,7 +5,7 @@
 All options under `services.automx2`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.automx2.domain` | | |
 | `services.automx2.enable` | | |
 | `services.automx2.package` | | |

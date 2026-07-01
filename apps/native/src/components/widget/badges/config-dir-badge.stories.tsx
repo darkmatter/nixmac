@@ -23,7 +23,8 @@ export const CustomDir = meta.story({
 export const InlineInText = meta.story({
   render: () => (
     <p className="text-muted-foreground text-xs flex items-center gap-1 flex-wrap">
-      Content of <ConfigDirBadge configDir="/Users/alice/.darwin" /> may be seen by your AI provider.
+      Content of <ConfigDirBadge configDir="/Users/alice/.darwin" /> may be seen by your AI
+      provider.
     </p>
   ),
 });

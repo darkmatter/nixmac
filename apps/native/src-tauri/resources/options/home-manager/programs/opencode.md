@@ -5,7 +5,7 @@
 All options under `programs.opencode`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.opencode.agents` | `(attribute set of (strings concatenated with “\n” or absolute path)) or absolute path` | Custom agents for opencode. |
 | `programs.opencode.commands` | `(attribute set of (strings concatenated with “\n” or absolute path)) or absolute path` | Custom commands for opencode. |
 | `programs.opencode.context` | | |

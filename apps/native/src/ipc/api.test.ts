@@ -49,6 +49,7 @@ const prefs = (overrides: Partial<UiPrefs> = {}): UiPrefs =>
     developerMode: false,
     pinnedVersion: null,
     updateChannel: "stable",
+    featureFlagOverrides: null,
     ...overrides,
   }) as UiPrefs;
 

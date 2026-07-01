@@ -5,7 +5,7 @@
 All options under `security`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `security.acme.acceptTerms` | | |
 | `security.acme.activationDelay` | | |
 | `security.acme.certs` | | |

@@ -8,7 +8,7 @@ const DEFAULT_RETRY_ATTEMPTS: usize = 1;
 const RETRY_GUIDANCE: &str = "Retry the previous step. Return either valid structured tool_calls or concise assistant content. Do not emit empty content with no tool_calls. If using tool_calls, keep arguments as strict JSON only.";
 
 pub struct OllamaProvider {
-    client: reqwest::Client,
+    client: reqwest_middleware::ClientWithMiddleware,
     base_url: String,
     model: String,
     max_output_tokens: u32,
@@ -20,7 +20,7 @@ impl OllamaProvider {
         let record_chat_logs =
             crate::state::completion_log::init_recording("evolve_provider_chat", "evolve provider");
         Self {
-            client: reqwest::Client::new(),
+            client: crate::http_client::logged(),
             base_url: base_url.trim_end_matches('/').to_string(),
             model,
             max_output_tokens,

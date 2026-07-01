@@ -5,5 +5,5 @@
 All options under `services.nebula`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.nebula.networks` | | |

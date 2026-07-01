@@ -5,7 +5,7 @@
 All options under `services.livebook`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.livebook.enableUserService` | | |
 | `services.livebook.environment` | | |
 | `services.livebook.environmentFile` | | |

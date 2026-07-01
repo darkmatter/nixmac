@@ -5,7 +5,7 @@
 All options under `services.xrdp`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.xrdp.audio.enable` | | |
 | `services.xrdp.audio.package` | | |
 | `services.xrdp.confDir` | | |

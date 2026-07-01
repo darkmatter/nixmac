@@ -5,7 +5,7 @@
 All options under `services.crab-hole`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.crab-hole.configFile` | | |
 | `services.crab-hole.enable` | | |
 | `services.crab-hole.package` | | |

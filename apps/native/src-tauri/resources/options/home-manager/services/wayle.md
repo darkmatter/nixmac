@@ -5,7 +5,7 @@
 All options under `services.wayle`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.wayle.autoInstallDependencies` | | |
 | `services.wayle.enable` | | |
 | `services.wayle.package` | | |

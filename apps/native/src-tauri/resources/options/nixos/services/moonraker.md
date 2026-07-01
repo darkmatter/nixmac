@@ -5,7 +5,7 @@
 All options under `services.moonraker`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.moonraker.address` | | |
 | `services.moonraker.allowSystemControl` | | |
 | `services.moonraker.analysis.enable` | | |

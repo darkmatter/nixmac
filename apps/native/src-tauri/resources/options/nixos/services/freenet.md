@@ -5,6 +5,6 @@
 All options under `services.freenet`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.freenet.enable` | | |
 | `services.freenet.nice` | | |

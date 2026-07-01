@@ -5,7 +5,7 @@
 All options under `services.easyeffects`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.easyeffects.enable` | `boolean` | Whether to enable Easyeffects daemon. Note, it is necessary to add |
 | `services.easyeffects.extraPresets` | `null or (attribute set of attribute set of (JSON value))` | List of presets to import to easyeffects. Presets are written to input and output folder in $XDG_DATA_HOME/easyeffects . Top level block (input/output) determines the folder the file is written to. |
 | `services.easyeffects.package` | `package` | The easyeffects package to use. |

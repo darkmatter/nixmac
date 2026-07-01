@@ -5,7 +5,7 @@
 All options under `services.agate`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------- | ---- | ----------- |
 | `services.agate.addresses` | | |
 | `services.agate.certificatesDir` | | |
 | `services.agate.contentDir` | | |

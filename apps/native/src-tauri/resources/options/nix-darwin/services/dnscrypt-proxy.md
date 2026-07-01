@@ -5,7 +5,7 @@
 All options under `services.dnscrypt-proxy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.dnscrypt-proxy.enable` | `boolean` | Whether to enable the dnscrypt-proxy service… |
 | `services.dnscrypt-proxy.package` | `package` | The dnscrypt-proxy package to use. |
 | `services.dnscrypt-proxy.settings` | `TOML value` | Attrset that is converted and passed as TOML config file. For available params, see: https://github.com/DNSCrypt/dnscrypt-proxy/blob/2.1.15/dnscrypt-proxy/example-dnscrypt-proxy.toml |

@@ -5,5 +5,5 @@
 All options under `programs.nxdumpclient`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `programs.nxdumpclient.enable` | | |

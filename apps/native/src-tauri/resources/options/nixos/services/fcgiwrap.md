@@ -5,7 +5,7 @@
 All options under `services.fcgiwrap`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.fcgiwrap.enable` | | |
 | `services.fcgiwrap.group` | | |
 | `services.fcgiwrap.instances` | | |

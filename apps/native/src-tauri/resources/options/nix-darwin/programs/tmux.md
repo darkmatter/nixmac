@@ -5,7 +5,7 @@
 All options under `programs.tmux`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | -------------------------------- | ---------------------------------------------------------------------------------------- |
 | `programs.tmux.defaultCommand` | | |
 | `programs.tmux.enable` | `boolean` | Whether to configure tmux. |
 | `programs.tmux.enableFzf` | `boolean` | Enable fzf keybindings for selecting tmux sessions and panes. |

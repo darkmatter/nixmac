@@ -5,7 +5,7 @@
 All options under `services.bacula-sd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.bacula-sd.autochanger` | | |
 | `services.bacula-sd.device` | | |
 | `services.bacula-sd.director` | | |

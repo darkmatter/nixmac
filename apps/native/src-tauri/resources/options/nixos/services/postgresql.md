@@ -5,7 +5,7 @@
 All options under `services.postgresql`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.postgresql.authentication` | | |
 | `services.postgresql.checkConfig` | | |
 | `services.postgresql.dataDir` | | |

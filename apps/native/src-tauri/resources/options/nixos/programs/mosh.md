@@ -5,7 +5,7 @@
 All options under `programs.mosh`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `programs.mosh.enable` | | |
 | `programs.mosh.openFirewall` | | |
 | `programs.mosh.package` | | |

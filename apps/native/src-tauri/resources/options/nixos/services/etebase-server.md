@@ -5,7 +5,7 @@
 All options under `services.etebase-server`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------- | ---- | ----------- |
 | `services.etebase-server.customIni` | | |
 | `services.etebase-server.dataDir` | | |
 | `services.etebase-server.database` | | |

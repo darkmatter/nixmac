@@ -5,6 +5,6 @@
 All options under `programs.ryzen-monitor-ng`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `programs.ryzen-monitor-ng.enable` | | |
 | `programs.ryzen-monitor-ng.package` | | |

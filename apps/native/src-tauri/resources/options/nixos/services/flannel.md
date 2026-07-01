@@ -5,7 +5,7 @@
 All options under `services.flannel`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `services.flannel.backend` | | |
 | `services.flannel.enable` | | |
 | `services.flannel.etcd.caFile` | | |

@@ -5,7 +5,7 @@
 All options under `programs.password-store`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ------------------------- | ----------------------------------------------------------- |
 | `programs.password-store.enable` | `boolean` | Whether to enable Password store. |
 | `programs.password-store.package` | `package` | The pass package to use. Can be used to specify extensions. |
 | `programs.password-store.settings` | `attribute set of string` | The pass environment variables dictionary. |

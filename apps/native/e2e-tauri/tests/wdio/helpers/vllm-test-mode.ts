@@ -1,18 +1,20 @@
-import { getMockVllmFixturePreset } from './mock-vllm-presets.js';
+import { getMockVllmFixturePreset } from "./mock-vllm-presets.js";
 
-const WDIO_VLLM_MODE_ENV = 'NIXMAC_WDIO_VLLM_MODE';
-const VALID_VLLM_TEST_MODES = new Set(['playback', 'real']);
+const WDIO_VLLM_MODE_ENV = "NIXMAC_WDIO_VLLM_MODE";
+const VALID_VLLM_TEST_MODES = new Set(["playback", "real"]);
 
 function normalizeMode(mode: string | undefined | null): string {
-  return String(mode ?? '').trim().toLowerCase();
+  return String(mode ?? "")
+    .trim()
+    .toLowerCase();
 }
 
 function getWdioVllmMode(): string {
-  const rawMode = process.env[WDIO_VLLM_MODE_ENV] ?? 'playback';
+  const rawMode = process.env[WDIO_VLLM_MODE_ENV] ?? "playback";
   const mode = normalizeMode(rawMode);
 
   if (!VALID_VLLM_TEST_MODES.has(mode)) {
-    const availableModes = Array.from(VALID_VLLM_TEST_MODES).join(', ');
+    const availableModes = Array.from(VALID_VLLM_TEST_MODES).join(", ");
     throw new Error(
       `[wdio:test-env] Invalid ${WDIO_VLLM_MODE_ENV}=${rawMode}. Expected one of: ${availableModes}`,
     );
@@ -22,7 +24,7 @@ function getWdioVllmMode(): string {
 }
 
 export function isPlaybackMode(): boolean {
-  return getWdioVllmMode() === 'playback';
+  return getWdioVllmMode() === "playback";
 }
 
 interface VllmSetupOptions {
@@ -43,11 +45,11 @@ export function createVllmSetupOptionsForSuite({
     initializeConfigRepo,
   };
 
-  if (mode === 'real') {
+  if (mode === "real") {
     return setupOptions;
   }
 
-  if (mode === 'playback') {
+  if (mode === "playback") {
     setupOptions.mockVllm = playbackPreset
       ? { responseFiles: getMockVllmFixturePreset(playbackPreset) }
       : {};

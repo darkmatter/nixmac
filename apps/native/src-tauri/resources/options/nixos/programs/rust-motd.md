@@ -5,7 +5,7 @@
 All options under `programs.rust-motd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `programs.rust-motd.enable` | | |
 | `programs.rust-motd.enableMotdInSSHD` | | |
 | `programs.rust-motd.order` | | |

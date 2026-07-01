@@ -14,14 +14,14 @@ pub fn unix_now() -> i64 {
         .as_secs() as i64
 }
 
-/// Normalize a user-provided directory path for backend path operations
+/// Normalize a user-provided file or directory path for backend path operations
 /// particularly pertaining to the config dir.
 ///
 /// Behavior:
 /// - trims surrounding whitespace
 /// - expands leading `~`/`~/...` to the current user's home directory
 /// - resolves relative paths against the current working directory
-pub fn normalize_dir_input(input: &str) -> Result<std::path::PathBuf, String> {
+pub fn normalize_path_input(input: &str) -> Result<std::path::PathBuf, String> {
     let trimmed = input.trim();
     if trimmed.is_empty() {
         return Err("Directory path is required".to_string());
@@ -81,17 +81,17 @@ pub fn truncate_with_ellipsis(s: &str, max: usize) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{non_empty_trimmed_string, normalize_dir_input};
+    use super::{non_empty_trimmed_string, normalize_path_input};
 
     #[test]
     fn test_empty_input_returns_err() {
-        assert!(normalize_dir_input("").is_err());
+        assert!(normalize_path_input("").is_err());
     }
 
     #[test]
     fn test_whitespace_only_returns_err() {
-        assert!(normalize_dir_input("   ").is_err());
-        assert!(normalize_dir_input("\t\n").is_err());
+        assert!(normalize_path_input("   ").is_err());
+        assert!(normalize_path_input("\t\n").is_err());
     }
 
     #[test]
@@ -108,7 +108,7 @@ mod tests {
     fn test_tilde_expands_to_absolute() {
         // Rather than mocking HOME (which dirs crate doesn't reliably use),
         // just verify that ~ expands to an absolute path
-        let got = normalize_dir_input("~").expect("normalize ~");
+        let got = normalize_path_input("~").expect("normalize ~");
         assert!(
             got.is_absolute(),
             "~ should expand to absolute path, got: {}",
@@ -124,9 +124,9 @@ mod tests {
 
         let tmp = tempfile::tempdir().expect("create tempdir");
         let home = tmp.path().to_path_buf();
-        std::env::set_var("HOME", &home);
+        unsafe { std::env::set_var("HOME", &home) };
 
-        let got = normalize_dir_input("~/my/config/dir").expect("normalize ~/my/config/dir");
+        let got = normalize_path_input("~/my/config/dir").expect("normalize ~/my/config/dir");
         assert!(
             got.ends_with("my/config/dir"),
             "~/my/config/dir should resolve to home/my/config/dir, got: {}",
@@ -141,7 +141,7 @@ mod tests {
         let orig_cwd = std::env::current_dir().ok();
         std::env::set_current_dir(tmp.path()).expect("chdir");
 
-        let got = normalize_dir_input("foo/bar").expect("normalize relative");
+        let got = normalize_path_input("foo/bar").expect("normalize relative");
         assert!(
             got.is_absolute(),
             "relative path should resolve to absolute"
@@ -166,7 +166,7 @@ mod tests {
         let abs_path = tmp.path().join("config");
         let abs_str = abs_path.to_string_lossy().into_owned();
 
-        let got = normalize_dir_input(&abs_str).expect("normalize absolute");
+        let got = normalize_path_input(&abs_str).expect("normalize absolute");
         assert_eq!(got, abs_path, "absolute path should be unchanged");
     }
 
@@ -177,7 +177,7 @@ mod tests {
         let orig_cwd = std::env::current_dir().ok();
         std::env::set_current_dir(tmp.path()).expect("chdir");
 
-        let got = normalize_dir_input("  my_config  ").expect("normalize with whitespace");
+        let got = normalize_path_input("  my_config  ").expect("normalize with whitespace");
         assert!(
             got.ends_with("my_config"),
             "should trim whitespace and resolve relative, got: {}",
@@ -199,7 +199,7 @@ mod tests {
         let orig_cwd = std::env::current_dir().ok();
         std::env::set_current_dir(tmp.path()).expect("chdir");
 
-        let got = normalize_dir_input("foo//bar///baz").expect("normalize multiple slashes");
+        let got = normalize_path_input("foo//bar///baz").expect("normalize multiple slashes");
         // PathBuf normalizes consecutive slashes, so the result should contain the path
         assert!(got.is_absolute(), "should resolve to absolute path");
 
@@ -222,7 +222,7 @@ mod tests {
         std::env::set_current_dir(tmp.path().join("subdir")).expect("chdir");
 
         // . references current directory
-        let got_dot = normalize_dir_input(".").expect("normalize .");
+        let got_dot = normalize_path_input(".").expect("normalize .");
         assert!(got_dot.is_absolute(), "dot should resolve to absolute");
         // The result may have extra dots or other quirks, just check it's within the temp dir
         assert!(
@@ -232,7 +232,7 @@ mod tests {
         );
 
         // .. references parent directory
-        let got_dotdot = normalize_dir_input("..").expect("normalize ..");
+        let got_dotdot = normalize_path_input("..").expect("normalize ..");
         assert!(got_dotdot.is_absolute(), ".. should resolve to absolute");
         // Just verify it's different from the dot result and is absolute
         assert_ne!(

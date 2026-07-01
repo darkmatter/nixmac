@@ -5,7 +5,7 @@
 All options under `services.heapster`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.heapster.enable` | | |
 | `services.heapster.extraOpts` | | |
 | `services.heapster.package` | | |

@@ -5,6 +5,6 @@
 All options under `services.atd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.atd.allowEveryone` | | |
 | `services.atd.enable` | | |

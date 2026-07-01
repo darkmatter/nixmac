@@ -3,19 +3,20 @@
 import { useEffect, useState } from "react";
 
 import { tauriAPI } from "@/ipc/api";
+import { useLaunchdItems } from "@/hooks/use-launchd-items";
 import { useSystemDefaultsScan } from "@/hooks/use-system-defaults-scan";
-import { useWidgetStore } from "@/stores/widget-store";
-import { mirrorChangeMapState } from "@/viewmodel/change-map";
-import { mirrorEvolveState } from "@/viewmodel/evolve";
-import { mirrorGitState } from "@/viewmodel/git";
+import { useHomebrewDiff } from "@/hooks/use-homebrew-diff";
+import { uiActions, useUiState } from "@nixmac/state";
 
-import type { ConfigEditApplyResult, HomebrewItem, HomebrewState, SystemDefault } from "@/ipc/types";
+import type { HomebrewItem, LaunchdItem, SystemDefault } from "@/ipc/types";
 
 import {
   FILES,
   SECTIONS,
   homebrewFilesFromDiff,
+  launchdItemsFileFromScan,
   replaceHomebrewPlaceholders,
+  replaceLaunchdPlaceholder,
   replaceSystemDefaultsPlaceholder,
   systemDefaultsFileFromScan,
   type CandidateItem,
@@ -37,9 +38,7 @@ interface FilesystemStepProps {
 }
 
 export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
-  const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
-  const setShowFilesystem = useWidgetStore((s) => s.setShowFilesystem);
-  const targetSection = useWidgetStore((s) => s.filesystemTargetSection);
+      const targetSection = useUiState((s) => s.filesystemTargetSection);
 
   // Honor an upstream "open at section X" intent (e.g. the Untracked
   // banner's View button passes "manage"). Default to System.
@@ -49,49 +48,36 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
       : "darwin";
 
   const [activeSection, setActiveSection] = useState<SectionId>(initialSection);
-  const [homebrewDiff, setHomebrewDiff] = useState<HomebrewState | null>(null);
-  const [homebrewError, setHomebrewError] = useState<string | null>(null);
+  const {
+    diff: homebrewDiff,
+    error: homebrewError,
+    refresh: refreshHomebrew,
+  } = useHomebrewDiff();
   const {
     scan: systemDefaultsScan,
     error: systemDefaultsError,
     refresh: refreshSystemDefaults,
   } = useSystemDefaultsScan();
+  const {
+    items: launchdItems,
+    error: launchdError,
+    refresh: refreshLaunchdItems,
+  } = useLaunchdItems();
 
   // Clear the target on mount so a subsequent toggle from the header
   // (which passes no section) returns to the user's last view.
   useEffect(() => {
     if (targetSection) {
-      useWidgetStore.setState({ filesystemTargetSection: null });
+      uiActions.setState({ filesystemTargetSection: null });
     }
   }, [targetSection]);
 
-  useEffect(() => {
-    let cancelled = false;
-    tauriAPI.homebrew
-      .getStateDiff()
-      .then((diff) => {
-        if (!cancelled) {
-          setHomebrewDiff(diff);
-          setHomebrewError(null);
-        }
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setHomebrewError(String(error));
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const manageFiles = replaceSystemDefaultsPlaceholder(
-    replaceHomebrewPlaceholders(
-      FILES.manage,
-      homebrewFilesFromDiff(homebrewDiff, homebrewError),
+  const manageFiles = replaceLaunchdPlaceholder(
+    replaceSystemDefaultsPlaceholder(
+      replaceHomebrewPlaceholders(FILES.manage, homebrewFilesFromDiff(homebrewDiff, homebrewError)),
+      systemDefaultsFileFromScan(systemDefaultsScan, systemDefaultsError),
     ),
-    systemDefaultsFileFromScan(systemDefaultsScan, systemDefaultsError),
+    launchdItemsFileFromScan(launchdItems, launchdError),
   );
 
   const filesBySection = {
@@ -106,25 +92,20 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
       onSeedPrompt(text);
       return;
     }
-    setEvolvePrompt(text);
-    setShowFilesystem(false);
+    uiActions.setEvolvePrompt(text);
+    uiActions.setShowFilesystem(false);
   };
 
-  const mirrorApplyResult = (result: ConfigEditApplyResult) => {
-    const store = useWidgetStore.getState();
-    mirrorEvolveState(result.evolveState);
-    mirrorChangeMapState(result.changeMap);
-    mirrorGitState(result.gitStatus);
-    store.setRecommendedPrompt(undefined);
+  // The managed-edit apply path updates the git/evolve/change-map cells on
+  // the backend, which emit their change events; the viewmodel sync modules
+  // mirror them. We only invalidate the now-stale recommended prompt.
+  const invalidateRecommendation = () => {
+    uiActions.setRecommendedPrompt(undefined);
   };
 
   const onEditWithPrompt = (file: FsFile) => seed(seedForFile(file));
-  const onTrack = (text: string) => seed(text);
-  // Add future direct managed-edit trackers here (for example, system defaults)
-  // and pass them down alongside the fallback prompt seeding handler.
   const onTrackHomebrewItems = async (items: CandidateItem[]) => {
-    const store = useWidgetStore.getState();
-    store.setProcessing(true, "apply");
+    uiActions.setProcessing(true, "apply");
     try {
       const homebrewItems: HomebrewItem[] = items.map((item) => {
         if (item.source !== "homebrew" || !item.itemType) {
@@ -136,20 +117,18 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
           itemType: item.itemType,
         };
       });
-      const result = await tauriAPI.homebrew.addItems(
-        homebrewItems,
-      );
-      mirrorApplyResult(result);
-      setShowFilesystem(false);
-      setHomebrewDiff(null);
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
+      await tauriAPI.homebrew.addItems(homebrewItems);
+      invalidateRecommendation();
+      uiActions.setShowFilesystem(false);
+      await refreshHomebrew();
     } finally {
-      store.setProcessing(false);
+      uiActions.setProcessing(false);
     }
   };
 
   const onTrackSystemDefaults = async (items: CandidateItem[]) => {
-    const store = useWidgetStore.getState();
-    store.setProcessing(true, "apply");
+    uiActions.setProcessing(true, "apply");
     try {
       const defaults: SystemDefault[] = items.map((item) => {
         if (item.source !== "system") {
@@ -157,12 +136,32 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
         }
         return item.systemDefault;
       });
-      const result = await tauriAPI.scanner.applyDefaults(defaults);
-      mirrorApplyResult(result);
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
+      await tauriAPI.scanner.applyDefaults(defaults);
+      invalidateRecommendation();
       await refreshSystemDefaults();
-      setShowFilesystem(false);
+      uiActions.setShowFilesystem(false);
     } finally {
-      store.setProcessing(false);
+      uiActions.setProcessing(false);
+    }
+  };
+
+  const onTrackLaunchdItems = async (items: CandidateItem[]) => {
+    uiActions.setProcessing(true, "apply");
+    try {
+      const launchdItemsToApply: LaunchdItem[] = items.map((item) => {
+        if (item.source !== "launchd") {
+          throw new Error(`Cannot track ${item.name}: missing launchd payload.`);
+        }
+        return item.launchdItem;
+      });
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
+      await tauriAPI.launchd.applyLaunchdItems(launchdItemsToApply);
+      invalidateRecommendation();
+      await refreshLaunchdItems();
+      uiActions.setShowFilesystem(false);
+    } finally {
+      uiActions.setProcessing(false);
     }
   };
 
@@ -178,12 +177,13 @@ export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
         key={activeSection}
         files={files}
         onEditWithPrompt={onEditWithPrompt}
-        onTrack={onTrack}
         onTrackHomebrewItems={onTrackHomebrewItems}
         onTrackSystemDefaults={onTrackSystemDefaults}
+        onTrackLaunchdItems={onTrackLaunchdItems}
       />
       <div className="shrink-0 border-border/50 border-t bg-card/40 px-3 py-1.5 text-[10.5px] text-muted-foreground">
-        Use these as starting points — every change goes through the standard plan → review → save flow.
+        Use these as starting points — every change goes through the standard plan → review → save
+        flow.
       </div>
     </div>
   );

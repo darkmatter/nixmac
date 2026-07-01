@@ -5,6 +5,6 @@
 All options under `services.ratbagd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `services.ratbagd.enable` | | |
 | `services.ratbagd.package` | | |

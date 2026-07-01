@@ -18,8 +18,7 @@ function stashErrorForRecovery(error: Error | null | undefined): void {
         timestamp: new Date().toISOString(),
       }),
     );
-  } catch {
-  }
+  } catch {}
 }
 
 export function AppFatalFallback({ error }: AppFatalFallbackProps) {

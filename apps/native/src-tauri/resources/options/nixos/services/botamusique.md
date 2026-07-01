@@ -5,7 +5,7 @@
 All options under `services.botamusique`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ---- | ----------- |
 | `services.botamusique.enable` | | |
 | `services.botamusique.package` | | |
 | `services.botamusique.settings` | | |

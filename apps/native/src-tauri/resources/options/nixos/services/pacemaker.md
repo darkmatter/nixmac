@@ -5,6 +5,6 @@
 All options under `services.pacemaker`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.pacemaker.enable` | | |
 | `services.pacemaker.package` | | |

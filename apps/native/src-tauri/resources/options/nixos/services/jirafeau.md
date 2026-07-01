@@ -5,7 +5,7 @@
 All options under `services.jirafeau`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.jirafeau.adminPasswordSha256` | | |
 | `services.jirafeau.dataDir` | | |
 | `services.jirafeau.enable` | | |

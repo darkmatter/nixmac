@@ -5,7 +5,7 @@
 All options under `programs.mc`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
 | `programs.mc.enable` | `boolean` | Whether to enable Midnight Commander. |
 | `programs.mc.extensionSettings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Settings for mc/mc.ext.ini file. This setting completely replaces the default /etc/mc/mc.ext.ini . |
 | `programs.mc.fileHighlightSettings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Settings for mc/filehighlight.ini file. This setting completely replaces the default /etc/mc/filehighlight.ini . |

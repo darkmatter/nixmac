@@ -5,7 +5,7 @@
 All options under `services.duplicity`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.duplicity.cleanup.maxAge` | | |
 | `services.duplicity.cleanup.maxFull` | | |
 | `services.duplicity.cleanup.maxIncr` | | |

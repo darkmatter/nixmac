@@ -5,7 +5,7 @@
 All options under `services.hatsu`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.hatsu.enable` | | |
 | `services.hatsu.package` | | |
 | `services.hatsu.settings` | | |

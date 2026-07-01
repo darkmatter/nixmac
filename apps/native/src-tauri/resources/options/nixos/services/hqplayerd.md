@@ -5,7 +5,7 @@
 All options under `services.hqplayerd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.hqplayerd.auth.password` | | |
 | `services.hqplayerd.auth.username` | | |
 | `services.hqplayerd.config` | | |

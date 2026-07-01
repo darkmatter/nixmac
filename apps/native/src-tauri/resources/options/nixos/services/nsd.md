@@ -5,7 +5,7 @@
 All options under `services.nsd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------------------------- | ---- | ----------- |
 | `services.nsd.bind8Stats` | | |
 | `services.nsd.dnssecInterval` | | |
 | `services.nsd.enable` | | |

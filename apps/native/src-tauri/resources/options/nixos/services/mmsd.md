@@ -5,6 +5,6 @@
 All options under `services.mmsd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------- | ---- | ----------- |
 | `services.mmsd.enable` | | |
 | `services.mmsd.extraArgs` | | |

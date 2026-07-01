@@ -5,5 +5,5 @@
 All options under `programs.liboping`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `programs.liboping.enable` | | |

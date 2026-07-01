@@ -220,7 +220,7 @@ pub fn execute_search_docs(
     let entries: Vec<&DocsOptionEntry> = index
         .entries
         .iter()
-        .filter(|e| source_filter.map_or(true, |s| e.source == s))
+        .filter(|e| source_filter.is_none_or(|s| e.source == s))
         .collect();
 
     let max_results = limit.clamp(1, MAX_RESULT_LIMIT);
@@ -285,7 +285,7 @@ fn read_doc(index: &DocsIndex, requested: &str, source_filter: Option<DocsSource
     for entry in index
         .entries
         .iter()
-        .filter(|e| source_filter.map_or(true, |s| e.source == s))
+        .filter(|e| source_filter.is_none_or(|s| e.source == s))
     {
         let key = doc_key_for(entry.source, &entry.option_path);
         let key_norm = normalize_doc_path(&key);
@@ -395,15 +395,12 @@ fn rank_doc_keys(entries: &[&DocsOptionEntry], query: &str) -> Vec<(String, DocG
 /// e.g. `programs/git`.
 fn score_doc_key(doc_key: &str, query: &str, tokens: &[&str]) -> i32 {
     let label = doc_key
-        .splitn(2, '/')
-        .nth(1)
+        .split_once('/')
+        .map(|(_, rest)| rest)
         .unwrap_or(doc_key)
         .trim_end_matches(".md")
         .to_ascii_lowercase();
-    let segments: Vec<&str> = label
-        .split(|c| c == '/' || c == '.')
-        .filter(|s| !s.is_empty())
-        .collect();
+    let segments: Vec<&str> = label.split(['/', '.']).filter(|s| !s.is_empty()).collect();
 
     let mut score = 0;
     if label == query {

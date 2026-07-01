@@ -5,7 +5,7 @@
 All options under `programs.i3bar-river`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.i3bar-river.enable` | `boolean` | Whether to enable i3bar-river. |
 | `programs.i3bar-river.package` | `null or package` | The i3bar-river package to use. |
 | `programs.i3bar-river.settings` | `TOML value` | Configuration settings for i3bar-river. All available options can be found here: https://github.com/MaxVerevkin/i3bar-river?tab=readme-ov-file#configuration . |

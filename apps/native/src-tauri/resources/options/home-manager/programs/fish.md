@@ -5,7 +5,7 @@
 All options under `programs.fish`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.fish.binds` | `attribute set of (submodule)` | Manage key bindings |
 | `programs.fish.completions` | `attribute set of (strings concatenated with “\n” or (submodule))` | Custom fish completions. For more information see https://fishshell.com/docs/current/completions.html . |
 | `programs.fish.enable` | `boolean` | Whether to enable fish, the friendly interactive shell. |

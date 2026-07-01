@@ -5,5 +5,5 @@
 All options under `programs.info`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------- | ---- | ----------- |
 | `programs.info.enable` | | |

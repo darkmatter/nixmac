@@ -5,7 +5,7 @@
 All options under `services.bitwarden-directory-connector-cli`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------------------------------------------------- | ---- | ----------- |
 | `services.bitwarden-directory-connector-cli.domain` | | |
 | `services.bitwarden-directory-connector-cli.enable` | | |
 | `services.bitwarden-directory-connector-cli.interval` | | |

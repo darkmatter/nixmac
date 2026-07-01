@@ -1,9 +1,5 @@
 import type { Context } from "@opentelemetry/api";
-import type {
-  ReadableSpan,
-  Span,
-  SpanProcessor,
-} from "@opentelemetry/sdk-trace-web";
+import type { ReadableSpan, Span, SpanProcessor } from "@opentelemetry/sdk-trace-web";
 import { invoke } from "@tauri-apps/api/core";
 
 interface SerializedSpan {
@@ -19,8 +15,7 @@ interface SerializedSpan {
 }
 
 // ReadableSpan.startTime/endTime are HrTime — a [seconds, nanoseconds] tuple.
-const hrTimeToUnixNano = (time: [number, number]): number =>
-  time[0] * 1e9 + time[1];
+const hrTimeToUnixNano = (time: [number, number]): number => time[0] * 1e9 + time[1];
 
 function serializeSpan(span: ReadableSpan): SerializedSpan {
   return {

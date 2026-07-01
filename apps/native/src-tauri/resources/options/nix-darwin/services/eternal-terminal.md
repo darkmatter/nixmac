@@ -5,7 +5,7 @@
 All options under `services.eternal-terminal`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | `services.eternal-terminal.enable` | `boolean` | Whether to enable Eternal Terminal server. |
 | `services.eternal-terminal.logSize` | `signed integer` | The maximum log size. |
 | `services.eternal-terminal.package` | `absolute path` | This option specifies the eternal-terminal package to use. |

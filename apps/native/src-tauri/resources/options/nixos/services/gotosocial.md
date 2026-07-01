@@ -5,7 +5,7 @@
 All options under `services.gotosocial`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.gotosocial.enable` | | |
 | `services.gotosocial.environmentFile` | | |
 | `services.gotosocial.openFirewall` | | |

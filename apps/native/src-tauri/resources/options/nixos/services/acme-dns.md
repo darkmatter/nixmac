@@ -5,7 +5,7 @@
 All options under `services.acme-dns`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.acme-dns.enable` | | |
 | `services.acme-dns.package` | | |
 | `services.acme-dns.settings` | | |

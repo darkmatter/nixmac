@@ -5,7 +5,7 @@
 All options under `programs.sway-easyfocus`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.sway-easyfocus.enable` | `boolean` | Whether to enable sway-easyfocus. |
 | `programs.sway-easyfocus.package` | `null or package` | The sway-easyfocus package to use. |
 | `programs.sway-easyfocus.settings` | `YAML 1.1 value` | Configuration settings for sway-easyfocus. All available options can be found here: https://github.com/edzdez/sway-easyfocus?tab=readme-ov-file#config-file . |

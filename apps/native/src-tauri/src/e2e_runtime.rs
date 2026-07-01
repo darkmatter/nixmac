@@ -100,7 +100,7 @@ mod tests {
     fn release_or_missing_file_returns_none() {
         let _env_lock = crate::test_support::e2e_env_lock();
         let _env_restore = crate::test_support::EnvVarRestore::capture(&["NIXMAC_E2E_SAMPLE"]);
-        std::env::remove_var("NIXMAC_E2E_SAMPLE");
+        unsafe { std::env::remove_var("NIXMAC_E2E_SAMPLE") };
         assert_eq!(value("NIXMAC_E2E_SAMPLE"), None);
     }
 
@@ -108,7 +108,7 @@ mod tests {
     fn env_value_takes_precedence() {
         let _env_lock = crate::test_support::e2e_env_lock();
         let _env_restore = crate::test_support::EnvVarRestore::capture(&["NIXMAC_E2E_SAMPLE"]);
-        std::env::set_var("NIXMAC_E2E_SAMPLE", " env-value ");
+        unsafe { std::env::set_var("NIXMAC_E2E_SAMPLE", " env-value ") };
         assert_eq!(value("NIXMAC_E2E_SAMPLE").as_deref(), Some("env-value"));
     }
 

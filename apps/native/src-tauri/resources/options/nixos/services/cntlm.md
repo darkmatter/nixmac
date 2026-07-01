@@ -5,7 +5,7 @@
 All options under `services.cntlm`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.cntlm.configText` | | |
 | `services.cntlm.domain` | | |
 | `services.cntlm.enable` | | |

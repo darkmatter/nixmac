@@ -5,7 +5,7 @@
 All options under `services.xserver`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------------------------------ | ---- | ----------- |
 | `services.xserver.autoRepeatDelay` | | |
 | `services.xserver.autoRepeatInterval` | | |
 | `services.xserver.autorun` | | |

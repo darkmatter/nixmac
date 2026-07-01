@@ -5,7 +5,7 @@
 All options under `services.wl-clip-persist`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------ |
 | `services.wl-clip-persist.clipboardType` | `one of “regular”, “primary”, “both”` | The clipboard type to persist. |
 | `services.wl-clip-persist.enable` | `boolean` | Whether to enable wl-clip-persist, a Wayland clipboard persistence tool. |
 | `services.wl-clip-persist.extraOptions` | `list of string` | Extra command-line arguments to pass to wl-clip-persist. |

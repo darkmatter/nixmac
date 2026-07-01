@@ -1,5 +1,12 @@
 import { afterEach, beforeAll, expect } from "vitest";
 
+// Marker so stories can tell they're running under the headless Vitest snapshot
+// runner (this setup file is NOT loaded by the interactive Storybook dev
+// server). Stories use it to disable interaction-only behaviour — e.g. the
+// DarwinWidget controls' store→args subscription — that would otherwise race
+// the async widget mount and make snapshots non-deterministic.
+(globalThis as { __STORYBOOK_VITEST__?: boolean }).__STORYBOOK_VITEST__ = true;
+
 type MonacoEnvironment = {
   getWorker: (workerId: string, label: string) => Worker;
 };
@@ -12,9 +19,10 @@ declare global {
 
 window.MonacoEnvironment = {
   getWorker(_workerId, label) {
-    const workerUrl = label === "json"
-      ? new URL("monaco-editor/esm/vs/language/json/json.worker.js", import.meta.url)
-      : new URL("monaco-editor/esm/vs/editor/editor.worker.js", import.meta.url);
+    const workerUrl =
+      label === "json"
+        ? new URL("monaco-editor/esm/vs/language/json/json.worker.js", import.meta.url)
+        : new URL("monaco-editor/esm/vs/editor/editor.worker.js", import.meta.url);
 
     return new Worker(workerUrl, { type: "module" });
   },
@@ -25,23 +33,29 @@ const preview = await import("./preview");
 beforeAll(preview.default.composed.beforeAll);
 
 function normalizeAnimations(html: string): string {
-  return html
-    .replace(/transform:\s*[^;"]+/g, "transform: MOTION")
-    .replace(/opacity:\s*[^;"]+/g, "opacity: MOTION")
-    .replace(/translateY\(([^)]+)\)/g, (_match, val) => {
-      const rounded = Math.round(Number.parseFloat(val));
-      const stableOffset = rounded >= 9 && rounded <= 11 ? 10 : rounded;
-      return `translateY(${stableOffset}px)`;
-    })
-    .replace(/translateX\(([^)]+)\)/g, (_match, val) => {
-      return `translateX(${Math.round(Number.parseFloat(val))}px)`;
-    })
-    .replace(/scale\(([^)]+)\)/g, (_match, val) => {
-      return `scale(${Math.round(Number.parseFloat(val) * 100) / 100})`;
-    })
-    .replace(/opacity:\s*([\d.]+)/g, (_match, val) => {
-      return `opacity: ${Math.round(Number.parseFloat(val) * 100) / 100}`;
-    });
+  return (
+    html
+      .replace(/transform:\s*[^;"]+/g, "transform: MOTION")
+      .replace(/opacity:\s*[^;"]+/g, "opacity: MOTION")
+      // Animated gradients (e.g. the evolve/processing shimmer) sweep their
+      // `circle at <x>px <y>px` center every frame — stabilize the coordinates
+      // (the swept x can go negative, hence the optional sign).
+      .replace(/circle at -?[\d.]+px -?[\d.]+px/g, "circle at MOTIONpx MOTIONpx")
+      .replace(/translateY\(([^)]+)\)/g, (_match, val) => {
+        const rounded = Math.round(Number.parseFloat(val));
+        const stableOffset = rounded >= 9 && rounded <= 11 ? 10 : rounded;
+        return `translateY(${stableOffset}px)`;
+      })
+      .replace(/translateX\(([^)]+)\)/g, (_match, val) => {
+        return `translateX(${Math.round(Number.parseFloat(val))}px)`;
+      })
+      .replace(/scale\(([^)]+)\)/g, (_match, val) => {
+        return `scale(${Math.round(Number.parseFloat(val) * 100) / 100})`;
+      })
+      .replace(/opacity:\s*([\d.]+)/g, (_match, val) => {
+        return `opacity: ${Math.round(Number.parseFloat(val) * 100) / 100}`;
+      })
+  );
 }
 
 function normalizeSnapshotRoot(root: Element): string {
@@ -77,7 +91,7 @@ function normalizeSnapshotRoot(root: Element): string {
         "style",
         style
           .replace(/width:\s*[^;"]+/g, "width: MONACO")
-          .replace(/height:\s*[^;"]+/g, "height: MONACO")
+          .replace(/height:\s*[^;"]+/g, "height: MONACO"),
       );
     }
 
@@ -94,7 +108,7 @@ function normalizeSnapshotRoot(root: Element): string {
   // Monaco can emit these attributes in either order across runs.
   html = html.replace(
     /<div style="([^"]*)" data-keybinding-context="N">/g,
-    '<div data-keybinding-context="N" style="$1">'
+    '<div data-keybinding-context="N" style="$1">',
   );
   html = html.replace(/ style="--cmdk-list-height:[^"]*"/g, "");
   return html;
@@ -102,7 +116,7 @@ function normalizeSnapshotRoot(root: Element): string {
 
 function cleanupMonacoAccessibilityContainers(): void {
   for (const container of document.body.querySelectorAll(
-    ":scope > .monaco-alert, :scope > .monaco-status"
+    ":scope > .monaco-alert, :scope > .monaco-status",
   )) {
     container.remove();
   }
@@ -111,9 +125,7 @@ function cleanupMonacoAccessibilityContainers(): void {
 // Automatically snapshot every story after it renders
 afterEach(() => {
   try {
-    const containers = document.body.querySelectorAll(
-      ":scope > div:not(.sb-wrapper)"
-    );
+    const containers = document.body.querySelectorAll(":scope > div:not(.sb-wrapper)");
     const root = containers[containers.length - 1];
     if (root?.innerHTML) {
       expect(normalizeSnapshotRoot(root)).toMatchSnapshot();

@@ -5,7 +5,7 @@
 All options under `programs.rbw`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------- |
 | `programs.rbw.enable` | `boolean` | Whether to enable rbw, a CLI Bitwarden client. |
 | `programs.rbw.package` | `package` | The rbw package to use. Package providing the rbw tool and its rbw-agent daemon. |
 | `programs.rbw.settings` | `null or (open submodule of (JSON value))` | rbw configuration, if not defined the configuration will not be managed by Home Manager. |

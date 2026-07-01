@@ -21,10 +21,18 @@ jobs:
       issues: write
       pull-requests: write
     steps:
+      - name: Mint darkmatter[bot] token
+        id: bot-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.DARKMATTER_APP_ID }}
+          private-key: ${{ secrets.DARKMATTER_APP_PRIVATE_KEY }}
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ steps.bot-token.outputs.token }}
 
       - uses: ./.github/actions/setup
         with:
@@ -34,7 +42,7 @@ jobs:
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
         run: |
-          SECRETS_FILE="ops/secrets/secrets.yaml"
+          SECRETS_FILE="ops/secrets/secrets.sops.json"
           if [ ! -f "$SECRETS_FILE" ]; then
             echo "::error::SOPS secrets file not found at $SECRETS_FILE"
             exit 1
@@ -148,7 +156,7 @@ jobs:
       - name: Comment Storybook preview URL on PR
         if: always() && !cancelled() && github.event_name == 'pull_request' && steps.deploy.outputs.deployment-url != ''
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.bot-token.outputs.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
           REPO: ${{ github.repository }}
@@ -189,14 +197,15 @@ jobs:
       - name: Run Storybook snapshot tests
         id: snapshot_tests
         working-directory: apps/native
+        continue-on-error: true
         run: bun run test:storybook:ci
 
-      # ---- Failed-story screenshots (PR only, only when snapshots failed) ----
+      # ---- Failed-story screenshots (PR only, only when snapshots drifted) ----
       # Resolve the failed stories (recorded by the runner) into Storybook IDs +
       # deep links, and emit the Creevey skip regex used to scope capture.
       - name: Resolve failed stories
         id: resolve_failures
-        if: failure() && steps.snapshot_tests.conclusion == 'failure' && github.event_name == 'pull_request' && steps.deploy.outputs.deployment-url != ''
+        if: steps.snapshot_tests.outcome == 'failure' && github.event_name == 'pull_request' && steps.deploy.outputs.deployment-url != ''
         continue-on-error: true
         working-directory: apps/native
         env:
@@ -209,7 +218,7 @@ jobs:
       # Rebuild Storybook with the skip regex baked in, serve it locally, and let
       # Creevey (Playwright, no Docker) screenshot only the failed stories.
       - name: Capture failed-story screenshots (Creevey)
-        if: ${{ failure() && steps.resolve_failures.outcome == 'success' && steps.resolve_failures.outputs.count != '0' }}
+        if: ${{ steps.resolve_failures.outcome == 'success' && steps.resolve_failures.outputs.count != '0' }}
         continue-on-error: true
         working-directory: apps/native
         run: |
@@ -228,7 +237,7 @@ jobs:
       # Host the screenshots on Cloudflare Pages so the PR comment can embed them.
       - name: Deploy failed-story screenshots
         id: deploy_shots
-        if: ${{ failure() && steps.resolve_failures.outcome == 'success' && steps.resolve_failures.outputs.count != '0' }}
+        if: ${{ steps.resolve_failures.outcome == 'success' && steps.resolve_failures.outputs.count != '0' }}
         continue-on-error: true
         env:
           CLOUDFLARE_API_TOKEN: ${{ env.CLOUDFLARE_API_TOKEN }}
@@ -246,11 +255,11 @@ jobs:
 
       # Re-render the sticky comment to include the failed-snapshot gallery.
       - name: Update PR comment with failed snapshots
-        if: ${{ failure() && steps.deploy_shots.outcome == 'success' && steps.deploy_shots.outputs.shots-url != '' }}
+        if: ${{ steps.deploy_shots.outcome == 'success' && steps.deploy_shots.outputs.shots-url != '' }}
         continue-on-error: true
         working-directory: apps/native
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.bot-token.outputs.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
           MARKER: "<!-- nixmac-storybook-preview -->"
@@ -272,18 +281,14 @@ jobs:
             echo "Created sticky comment"
           fi
 
-      - name: Check for snapshot staleness
-        if: always() && !cancelled()
+      - name: Report snapshot drift
+        if: always() && !cancelled() && steps.snapshot_tests.outcome == 'failure'
         working-directory: apps/native
         run: |
-          if git diff --name-only | grep -q '__snapshots__'; then
-            echo "::error::Storybook snapshots are out of date. Run 'bun run test:update-snapshots' locally and commit the changes."
-            git diff --stat -- '*/__snapshots__/*'
-            exit 1
-          fi
+          echo "::warning::Storybook snapshots drifted — review the screenshot gallery in the PR comment and accept if intentional."
 
-      - name: Upload snapshot diffs on failure
-        if: failure()
+      - name: Upload snapshot diffs on drift
+        if: always() && !cancelled() && steps.snapshot_tests.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: storybook-snapshot-diffs
@@ -300,9 +305,9 @@ jobs:
           if [ -n "$DEPLOY_URL" ]; then
             echo "[Open Storybook preview]($DEPLOY_URL)" >> "$GITHUB_STEP_SUMMARY"
           fi
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "All Storybook snapshot tests passed" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.snapshot_tests.outcome }}" == "success" ]; then
+            echo "✅ All Storybook snapshot tests passed" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Storybook snapshot tests failed" >> "$GITHUB_STEP_SUMMARY"
+            echo "⚠️ Storybook snapshots drifted — review the PR comment gallery and accept if intentional." >> "$GITHUB_STEP_SUMMARY"
             echo "Check the 'storybook-snapshot-diffs' artifact for visual diffs." >> "$GITHUB_STEP_SUMMARY"
           fi

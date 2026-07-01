@@ -5,7 +5,7 @@
 All options under `services.spamassassin`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.spamassassin.config` | | |
 | `services.spamassassin.debug` | | |
 | `services.spamassassin.enable` | | |

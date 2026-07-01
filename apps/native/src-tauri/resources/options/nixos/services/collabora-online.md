@@ -5,7 +5,7 @@
 All options under `services.collabora-online`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------------- | ---- | ----------- |
 | `services.collabora-online.aliasGroups` | | |
 | `services.collabora-online.enable` | | |
 | `services.collabora-online.extraArgs` | | |

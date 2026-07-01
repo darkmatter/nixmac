@@ -5,5 +5,5 @@
 All options under `programs.pulseview`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `programs.pulseview.enable` | | |

@@ -5,7 +5,7 @@
 All options under `services.bcg`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.bcg.automaticRemoveKitFromNames` | | |
 | `services.bcg.automaticRenameGenericNodes` | | |
 | `services.bcg.automaticRenameKitNodes` | | |

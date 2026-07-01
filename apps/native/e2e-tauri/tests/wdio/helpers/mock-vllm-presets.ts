@@ -1,10 +1,10 @@
 const MOCK_VLLM_FIXTURE_PRESETS: Record<string, string[]> = Object.freeze({
-  basicPromptsAddFont: ['add-font.jsonl'],
-  basicPromptsConfigureScreenshots: ['configure-screenshots.jsonl'],
-  modifySequentialPrompts: ['add-font-add-another.jsonl'],
-  askQuestionPrompts: ['ask-question.jsonl', 'add-font.jsonl'],
-  conversationalPromptsOnBegin: ['conversational.jsonl'],
-  conversationalPromptsOnEvolve: ['add-font.jsonl', 'conversational.jsonl'],
+  basicPromptsAddFont: ["add-font.jsonl"],
+  basicPromptsConfigureScreenshots: ["configure-screenshots.jsonl"],
+  modifySequentialPrompts: ["add-font-add-another.jsonl"],
+  askQuestionPrompts: ["ask-question.jsonl", "add-font.jsonl"],
+  conversationalPromptsOnBegin: ["conversational.jsonl"],
+  conversationalPromptsOnEvolve: ["add-font.jsonl", "conversational.jsonl"],
 });
 
 function listMockVllmFixturePresetNames(): string[] {
@@ -14,7 +14,7 @@ function listMockVllmFixturePresetNames(): string[] {
 export function getMockVllmFixturePreset(presetName: string): string[] {
   const files = MOCK_VLLM_FIXTURE_PRESETS[presetName];
   if (!files) {
-    const available = listMockVllmFixturePresetNames().join(', ');
+    const available = listMockVllmFixturePresetNames().join(", ");
     throw new Error(
       `[wdio:test-env] Unknown mock vLLM fixture preset: ${presetName}. Available presets: ${available}`,
     );

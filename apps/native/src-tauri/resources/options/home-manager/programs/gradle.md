@@ -5,7 +5,7 @@
 All options under `programs.gradle`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | `programs.gradle.enable` | `boolean` | Whether to enable Gradle Build Tool. |
 | `programs.gradle.home` | `string` | The Gradle home directory, relative to home.homeDirectory . |
 | `programs.gradle.initScripts` | `attribute set of (submodule)` | Definition of init scripts to link into the Gradle home directory. |

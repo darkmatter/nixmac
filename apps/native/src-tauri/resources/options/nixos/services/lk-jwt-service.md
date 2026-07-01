@@ -5,7 +5,7 @@
 All options under `services.lk-jwt-service`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.lk-jwt-service.enable` | | |
 | `services.lk-jwt-service.keyFile` | | |
 | `services.lk-jwt-service.livekitUrl` | | |

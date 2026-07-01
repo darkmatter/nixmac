@@ -5,7 +5,7 @@
 All options under `services.borgbackup`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.borgbackup.jobs` | | |
 | `services.borgbackup.package` | | |
 | `services.borgbackup.repos` | | |

@@ -5,7 +5,7 @@
 All options under `services.tranquil-pds`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------------- | ---- | ----------- |
 | `services.tranquil-pds.dataDir` | | |
 | `services.tranquil-pds.database.createLocally` | | |
 | `services.tranquil-pds.enable` | | |

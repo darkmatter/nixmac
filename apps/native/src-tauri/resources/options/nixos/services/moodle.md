@@ -5,7 +5,7 @@
 All options under `services.moodle`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.moodle.database.createLocally` | | |
 | `services.moodle.database.host` | | |
 | `services.moodle.database.name` | | |

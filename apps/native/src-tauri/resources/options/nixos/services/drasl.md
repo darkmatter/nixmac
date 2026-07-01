@@ -5,7 +5,7 @@
 All options under `services.drasl`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.drasl.enable` | | |
 | `services.drasl.enableDebug` | | |
 | `services.drasl.package` | | |

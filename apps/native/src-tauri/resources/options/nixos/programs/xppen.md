@@ -5,6 +5,6 @@
 All options under `programs.xppen`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------ | ---- | ----------- |
 | `programs.xppen.enable` | | |
 | `programs.xppen.package` | | |

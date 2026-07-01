@@ -5,7 +5,7 @@ use log::debug;
 use serde::{Deserialize, Serialize};
 
 pub struct OllamaClient {
-    client: reqwest::Client,
+    client: reqwest_middleware::ClientWithMiddleware,
     base_url: String,
     model: String,
     record_chat_logs: bool,
@@ -18,7 +18,7 @@ impl OllamaClient {
             "summary provider",
         );
         Self {
-            client: reqwest::Client::new(),
+            client: crate::http_client::logged(),
             base_url: base_url.to_string(),
             model: model.to_string(),
             record_chat_logs,

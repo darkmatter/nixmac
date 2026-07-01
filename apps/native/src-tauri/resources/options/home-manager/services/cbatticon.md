@@ -5,7 +5,7 @@
 All options under `services.cbatticon`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | `services.cbatticon.batteryId` | `null or string` | ID of the battery to monitor. List with cbatticon -p . Defaults to the first entry in the list. |
 | `services.cbatticon.commandCriticalLevel` | `null or strings concatenated with “\n”` | Command to execute when the critical battery level is reached. |
 | `services.cbatticon.commandLeftClick` | `null or strings concatenated with “\n”` | Command to execute when left clicking on the tray icon. |

@@ -5,7 +5,7 @@
 All options under `services.autotierfs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | ---- | ----------- |
 | `services.autotierfs.enable` | | |
 | `services.autotierfs.package` | | |
 | `services.autotierfs.settings` | | |

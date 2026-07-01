@@ -5,7 +5,7 @@
 All options under `programs.alacritty`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.alacritty.enable` | `boolean` | Whether to enable Alacritty. |
 | `programs.alacritty.package` | `null or package` | The alacritty package to use. |
 | `programs.alacritty.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/alacritty/alacritty.yml or $XDG_CONFIG_HOME/alacritty/alacritty.toml (the latter being used for alacritty 0.13 and later). See https://github.com/alacritty/alacritty/tree/master#configuration for more info. |

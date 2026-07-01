@@ -5,7 +5,7 @@
 All options under `services.swapspace`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.swapspace.enable` | | |
 | `services.swapspace.extraArgs` | | |
 | `services.swapspace.installWrapper` | | |

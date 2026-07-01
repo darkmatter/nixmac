@@ -5,5 +5,5 @@
 All options under `programs.qt5ct`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------- | ---- | ----------- |
 | `programs.qt5ct.enable` | | |

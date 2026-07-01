@@ -5,6 +5,6 @@
 All options under `services.supergfxd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.supergfxd.enable` | | |
 | `services.supergfxd.settings` | | |

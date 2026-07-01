@@ -139,10 +139,10 @@ fn collect_file_paths(
                 entry.path.display()
             )
         })?;
-        let rendered_path = format!(
-            "{}",
-            relative_for_output.to_string_lossy().replace('\\', "/")
-        );
+        let rendered_path = relative_for_output
+            .to_string_lossy()
+            .replace('\\', "/")
+            .to_string();
         output_paths.push(rendered_path);
         *rendered_entries += 1;
 

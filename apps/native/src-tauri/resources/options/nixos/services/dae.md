@@ -5,7 +5,7 @@
 All options under `services.dae`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.dae.assets` | | |
 | `services.dae.assetsPath` | | |
 | `services.dae.config` | | |

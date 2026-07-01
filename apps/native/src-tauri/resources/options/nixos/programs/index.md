@@ -5,7 +5,7 @@
 Subcategories of `programs`.
 
 | Key | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------------------------- | -------- | --------------------------- |
 | [`_1password`](_1password.md) | category | 3 options |
 | [`_1password-gui`](_1password-gui.md) | category | 4 options |
 | `adb` | option | |

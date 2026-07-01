@@ -1,14 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect } from "react";
 import { waitFor } from "storybook/test";
-import { useWidgetStore } from "@/stores/widget-store";
+import { uiActions } from "@nixmac/state";
 import { EditorPanel } from "@/components/widget/overlays/editor-panel";
 
 function EditorPanelWithState({ filePath }: { filePath: string }) {
   useEffect(() => {
-    useWidgetStore.setState({ editingFile: filePath });
+    uiActions.setState({ editingFile: filePath });
     return () => {
-      useWidgetStore.setState({ editingFile: null });
+      uiActions.setState({ editingFile: null });
     };
   }, [filePath]);
 

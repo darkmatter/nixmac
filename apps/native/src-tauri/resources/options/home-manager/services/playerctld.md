@@ -5,6 +5,6 @@
 All options under `services.playerctld`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | --------- | ------------------------------------ |
 | `services.playerctld.enable` | `boolean` | Whether to enable playerctld daemon. |
 | `services.playerctld.package` | `package` | The playerctl package to use. |

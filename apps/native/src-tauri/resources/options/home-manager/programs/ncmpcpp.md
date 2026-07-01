@@ -5,7 +5,7 @@
 All options under `programs.ncmpcpp`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `programs.ncmpcpp.bindings` | `list of (submodule)` | List of keybindings. |
 | `programs.ncmpcpp.enable` | `boolean` | Whether to enable ncmpcpp - an ncurses Music Player Daemon (MPD) client. |
 | `programs.ncmpcpp.mpdMusicDir` | `null or (string or absolute path convertible to it)` | Value of the mpd_music_dir setting. On Linux platforms the value of services.mpd.musicDirectory is used as the default if services.mpd.enable is true . |

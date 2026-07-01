@@ -5,7 +5,7 @@
 All options under `services.gitweb`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.gitweb.extraConfig` | | |
 | `services.gitweb.gitwebConfigFile` | | |
 | `services.gitweb.gitwebTheme` | | |

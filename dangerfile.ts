@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
 import { danger, fail, markdown, message, warn } from "danger";
+import { existsSync, readFileSync } from "node:fs";
 
 // Danger should point reviewers at useful context without becoming the most
 // brittle required check in the stack. Keep subjective process checks advisory
@@ -23,7 +23,7 @@ const touched = [...modified, ...created];
 //
 // Only apps/native exists in this repo — the web app lives in
 // darkmatter/nixmac-web. No packages/ workspace, no DB migrations,
-// no infra/ dir. Secrets are sops-encrypted at ops/secrets/secrets.yaml.
+// no infra/ dir. Secrets are sops-encrypted at ops/secrets/secrets.sops.json.
 
 const UI_COMPONENT_RE = /^apps\/native\/src\/components\/.+\.tsx$/;
 const STORY_RE = /\.stories\.tsx?$/;
@@ -42,7 +42,7 @@ const isTsSource = (file: string): boolean =>
   TS_LIB_SOURCE_RE.test(file) &&
   !STORY_RE.test(file) &&
   !TS_TEST_RE.test(file) &&
-  !/\.d\.ts$/.test(file) &&
+  !file.endsWith('.d.ts') &&
   !/\/(tests?|__tests__|__mocks__)\//.test(file);
 
 const isRustSource = (file: string): boolean =>
@@ -51,15 +51,11 @@ const isRustSource = (file: string): boolean =>
 const matches = (predicate: (file: string) => boolean) => (files: readonly string[]) =>
   files.filter(predicate);
 
-const codeBlock = (files: readonly string[]): string =>
-  files.map((f) => `- \`${f}\``).join("\n");
+const codeBlock = (files: readonly string[]): string => files.map((f) => `- \`${f}\``).join("\n");
 
-const TEST_PLAN_HEADING_RE =
-  /(^|\n)#{2,3}\s*(test plan|testing instructions|how to test)\b/i;
-const NO_TEST_PLAN_NEEDED_RE =
-  /^\s*-\s*\[[xX]\]\s*No test plan needed\b/im;
-const TEST_PLAN_PLACEHOLDER_RE =
-  /^\s*-\s*\[[ xX]\]\s*No test plan needed\b.*$/gim;
+const TEST_PLAN_HEADING_RE = /(^|\n)#{2,3}\s*(test plan|testing instructions|how to test)\b/i;
+const NO_TEST_PLAN_NEEDED_RE = /^\s*-\s*\[[xX]\]\s*No test plan needed\b/im;
+const TEST_PLAN_PLACEHOLDER_RE = /^\s*-\s*\[[ xX]\]\s*No test plan needed\b.*$/gim;
 
 function getTestPlanSection(): string {
   if (!TEST_PLAN_HEADING_RE.test(body)) {
@@ -111,10 +107,8 @@ const flags = {
   touchesLockfile: touched.some((f) => /(^|\/)bun\.lock$/.test(f)),
   touchesCargo: touched.some((f) => /(^|\/)Cargo\.toml$/.test(f)),
   touchesCargoLock: touched.some((f) => /(^|\/)Cargo\.lock$/.test(f)),
-  touchesInfra: touched.some(
-    (f) => f.startsWith(".github/workflows/") || f.startsWith("ops/"),
-  ),
-  touchesSecrets: touched.some((f) => f === "ops/secrets/secrets.yaml"),
+  touchesInfra: touched.some((f) => f.startsWith(".github/workflows/") || f.startsWith("ops/")),
+  touchesSecrets: touched.some((f) => f === "ops/secrets/secrets.sops.json"),
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -165,9 +159,7 @@ function checkUiComponentStories(): void {
     const hasMatchingStory =
       newStories.includes(expectedStory) ||
       (baseName !== undefined &&
-        newStories.some((story) =>
-          story.toLowerCase().includes(baseName.toLowerCase()),
-        ));
+        newStories.some((story) => story.toLowerCase().includes(baseName.toLowerCase())));
 
     if (!hasMatchingStory) {
       missing.push(componentPath);
@@ -205,11 +197,7 @@ function checkRustModuleTests(): void {
       const moduleName = modulePath.split("/").pop()?.replace(/\.rs$/, "");
       if (
         moduleName !== undefined &&
-        touched.some(
-          (f) =>
-            f.startsWith("apps/native/src-tauri/tests/") &&
-            f.includes(moduleName),
-        )
+        touched.some((f) => f.startsWith("apps/native/src-tauri/tests/") && f.includes(moduleName))
       ) {
         hasTests = true;
       }
@@ -241,9 +229,7 @@ function checkNewTsTests(): void {
     return;
   }
 
-  warn(
-    `New TypeScript source files were added without any new tests:\n${codeBlock(uncovered)}`,
-  );
+  warn(`New TypeScript source files were added without any new tests:\n${codeBlock(uncovered)}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -315,7 +301,7 @@ function checkTestPlan(): void {
   if (!flags.hasTestPlanSection) {
     warn(
       "PR description is missing a `## Test Plan` (or `## Testing Instructions`) section. " +
-        "Add one describing how a reviewer can verify your change, or check `No test plan needed` if no testing is needed.",
+      "Add one describing how a reviewer can verify your change, or check `No test plan needed` if no testing is needed.",
     );
     return;
   }
@@ -323,7 +309,7 @@ function checkTestPlan(): void {
   if (!flags.hasTestPlan) {
     warn(
       "Your `## Test Plan` section is empty or only contains placeholder text. " +
-        "Describe the steps a reviewer should take to verify this change, or check `No test plan needed`.",
+      "Describe the steps a reviewer should take to verify this change, or check `No test plan needed`.",
     );
   }
 }
@@ -366,7 +352,7 @@ function flagInfraAndSecrets(): void {
   }
   if (flags.touchesSecrets) {
     warn(
-      ":lock: This PR touches `ops/secrets/secrets.yaml`. Confirm the change was made via `sops` and not by hand.",
+      ":lock: This PR touches `ops/secrets/secrets.sops.json`. Confirm the change was made via `sops` and not by hand.",
     );
   }
 }
@@ -419,10 +405,10 @@ function checkDocsDrift(): void {
   if (!docsUpdated && !noDocsNeeded) {
     warn(
       "This PR touches behavior-sensitive code that is documented in " +
-        "[darkmatter/nixmac-web](https://github.com/darkmatter/nixmac-web). " +
-        "Please either:\n" +
-        "- Open a companion docs PR and check **Docs updated** in the PR description, or\n" +
-        "- Check **No docs update needed** if the change doesn't affect user-facing behavior.",
+      "[darkmatter/nixmac-web](https://github.com/darkmatter/nixmac-web). " +
+      "Please either:\n" +
+      "- Open a companion docs PR and check **Docs updated** in the PR description, or\n" +
+      "- Check **No docs update needed** if the change doesn't affect user-facing behavior.",
     );
   } else if (docsUpdated) {
     message("Docs companion PR linked — thank you.");

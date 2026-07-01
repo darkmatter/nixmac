@@ -5,7 +5,7 @@
 All options under `services.marytts`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------- | ---- | ----------- |
 | `services.marytts.basePath` | | |
 | `services.marytts.enable` | | |
 | `services.marytts.openFirewall` | | |

@@ -5,7 +5,7 @@
 All options under `services.mysqlBackup`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.mysqlBackup.calendar` | | |
 | `services.mysqlBackup.compressionAlg` | | |
 | `services.mysqlBackup.compressionLevel` | | |

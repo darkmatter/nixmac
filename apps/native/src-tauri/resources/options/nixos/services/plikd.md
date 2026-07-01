@@ -5,7 +5,7 @@
 All options under `services.plikd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.plikd.enable` | | |
 | `services.plikd.openFirewall` | | |
 | `services.plikd.settings` | | |

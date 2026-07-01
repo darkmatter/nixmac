@@ -5,7 +5,7 @@
 All options under `services.nscd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.nscd.config` | | |
 | `services.nscd.enable` | | |
 | `services.nscd.enableNsncd` | | |

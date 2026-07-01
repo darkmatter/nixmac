@@ -5,7 +5,7 @@
 All options under `services.dashy`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.dashy.enable` | | |
 | `services.dashy.finalDrv` | | |
 | `services.dashy.package` | | |

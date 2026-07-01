@@ -5,7 +5,7 @@
 All options under `services.upower`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------- | ---- | ----------- |
 | `services.upower.allowRiskyCriticalPowerAction` | | |
 | `services.upower.criticalPowerAction` | | |
 | `services.upower.enable` | | |

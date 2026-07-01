@@ -5,5 +5,5 @@
 All options under `programs.sniffnet`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| -------------------------- | ---- | ----------- |
 | `programs.sniffnet.enable` | | |

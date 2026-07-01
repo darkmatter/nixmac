@@ -24,13 +24,18 @@
 //!
 //! See: <https://github.com/NixOS/nixpkgs/issues/376958>
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use log::{error, info};
+use serde::Deserialize;
 
+use std::collections::BTreeMap;
 use std::io::{Read as _, Write as _};
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 use tauri::{AppHandle, Emitter};
+
+use crate::shared_types::LaunchdItemType;
+use crate::utils::normalize_path_input;
 
 const NIX_PATHS_FALLBACK: &[&str] = &[
     "/run/current-system/sw/bin",
@@ -40,7 +45,254 @@ const NIX_PATHS_FALLBACK: &[&str] = &[
     "/opt/homebrew/bin",
 ];
 
+#[derive(Debug)]
+#[allow(dead_code)]
+pub struct NixLaunchdItem {
+    pub label: String,
+    pub program_arguments: Vec<String>,
+    pub item_type: LaunchdItemType,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct NixLaunchdEvalItem {
+    label: String,
+    #[serde(default)]
+    program_arguments: Vec<String>,
+}
+
+/// A single enabled `environment.etc.<name>` entry, reduced to the fields the
+/// `/etc` clobber preflight needs. `target` is the path relative to `/etc`;
+/// `known_sha256_hashes` is nix-darwin's allow-list of safe-to-overwrite hashes
+/// (empty for most generated files and secrets).
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NixEnvironmentEtcEntry {
+    pub target: String,
+    #[serde(default)]
+    pub known_sha256_hashes: Vec<String>,
+}
+
+/// A single enabled Home Manager `xdg.configFile.<name>` entry, reduced to the
+/// fields needed for preflight collision warnings.
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NixHomeManagerXdgConfigFileEntry {
+    pub user: String,
+    pub target: String,
+    pub xdg_config_home: String,
+    pub source: Option<String>,
+    pub force: bool,
+    pub backup_file_extension: Option<String>,
+}
+
+/// Raw `nix eval` shape including `enable`, which we filter on before exposing
+/// the trimmed [`NixEnvironmentEtcEntry`] (nix-darwin skips disabled entries).
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct NixEnvironmentEtcEvalEntry {
+    target: String,
+    enable: bool,
+    #[serde(default)]
+    known_sha256_hashes: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct NixHomeManagerXdgConfigFileEvalEntry {
+    user: String,
+    target: String,
+    xdg_config_home: String,
+    source: Option<String>,
+    enable: bool,
+    force: bool,
+    backup_file_extension: Option<String>,
+}
+
 static NIX_PATH_CACHE: OnceLock<String> = OnceLock::new();
+
+/// Gets a command with our typical setup to execute `nix`.
+fn nix_command(config_dir: &str) -> Command {
+    let mut cmd = Command::new("nix");
+    let normalized_config_dir =
+        normalize_path_input(config_dir).unwrap_or_else(|_| config_dir.into());
+    cmd.env("PATH", get_nix_path())
+        .env("NIX_CONFIG", "experimental-features = nix-command flakes")
+        .current_dir(normalized_config_dir);
+    cmd
+}
+
+fn nix_eval_value_to_string(value: serde_json::Value) -> String {
+    match value {
+        serde_json::Value::String(value) => value,
+        serde_json::Value::Bool(value) => value.to_string(),
+        serde_json::Value::Number(value) => value.to_string(),
+        value => value.to_string(),
+    }
+}
+
+/// Gets the `system.primaryUser` for the given host by running `nix eval` if it's
+/// defined. This is required for (for example) setting system.defaults.
+pub fn get_system_primary_user(hostname: &str, config_dir: &str) -> Option<String> {
+    let host_attr = serde_json::to_string(hostname).ok()?;
+    let flake_attr = format!(
+        ".#darwinConfigurations.{}.config.system.primaryUser",
+        host_attr
+    );
+
+    let output = nix_command(config_dir)
+        .args(["eval", "--json", &flake_attr])
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        log::debug!(
+            "Failed to evaluate system.primaryUser for host {}: {}",
+            hostname,
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return None;
+    }
+
+    let stdout = String::from_utf8(output.stdout).ok()?;
+    let primary_user: Option<String> = serde_json::from_str(&stdout).ok()?;
+    primary_user
+}
+
+/// Gets the current system.defaults values for a given host by running `nix eval`.
+/// NOTE that this only returns key entries for non-null values since `nix eval` always
+/// lists all available keys regardless of whether they are "set" in a flake or not.
+pub fn get_nix_system_defaults_for_domain(
+    hostname: &str,
+    config_dir: &str,
+    domain: &str,
+) -> Result<BTreeMap<String, String>> {
+    // nix eval ~{config_dir}/#darwinConfigurations.<hostname>.config.system.defaults --json
+    let host_attr = serde_json::to_string(hostname)?;
+    let flake_attr = format!(
+        ".#darwinConfigurations.{}.config.system.defaults.{}",
+        host_attr, domain
+    );
+
+    let output = nix_command(config_dir)
+        .args(["eval", "--json", &flake_attr])
+        .output()
+        .with_context(|| {
+            format!(
+                "Failed to run nix eval for system.defaults using domain {} and attr {}",
+                domain, flake_attr
+            )
+        })?;
+
+    // Read the JSON into the result map, omitting keys with null values.
+    if !output.status.success() {
+        anyhow::bail!(
+            "Failed to evaluate system.defaults for host {}: {}",
+            hostname,
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    let stdout = String::from_utf8(output.stdout)
+        .with_context(|| "nix eval for system.defaults returned invalid UTF-8".to_string())?;
+    let evaluated_items: BTreeMap<String, Option<serde_json::Value>> =
+        serde_json::from_str(&stdout)
+            .with_context(|| "Failed to parse nix eval JSON for system.defaults".to_string())?;
+
+    let non_null_items = evaluated_items
+        .into_iter()
+        .filter_map(|(k, v)| v.map(|val| (k, nix_eval_value_to_string(val))))
+        .collect::<BTreeMap<String, String>>();
+
+    Ok(non_null_items)
+}
+
+/// Gets short info on all the nix-managed launchd items using `nix eval --json`.
+pub fn get_nix_launchd_items(hostname: &str, config_dir: &str) -> Result<Vec<NixLaunchdItem>> {
+    let mut items = Vec::new();
+
+    // 1. nix eval ~{config_dir}/#darwinConfigurations.<hostname>.config.launchd.user.agents --json
+    items.extend(eval_nix_launchd_items(
+        config_dir,
+        hostname,
+        "launchd.user.agents",
+        LaunchdItemType::LaunchdUserAgent,
+    )?);
+
+    // 2. nix eval ~{config_dir}/#darwinConfigurations.<hostname>.config.launchd.agents --json
+    items.extend(eval_nix_launchd_items(
+        config_dir,
+        hostname,
+        "launchd.agents",
+        LaunchdItemType::LaunchAgent,
+    )?);
+
+    // 3. nix eval ~{config_dir}/#darwinConfigurations.<hostname>.config.launchd.daemons --json
+    items.extend(eval_nix_launchd_items(
+        config_dir,
+        hostname,
+        "launchd.daemons",
+        LaunchdItemType::LaunchDaemon,
+    )?);
+
+    Ok(items)
+}
+
+/// Helper to run `nix eval` for a specific launchd item type and parse the results.
+fn eval_nix_launchd_items(
+    config_dir: &str,
+    hostname: &str,
+    option_path: &str,
+    item_type: LaunchdItemType,
+) -> Result<Vec<NixLaunchdItem>> {
+    let host_attr = serde_json::to_string(hostname)?;
+    let flake_attr = format!(
+        ".#darwinConfigurations.{}.config.{}",
+        host_attr, option_path
+    );
+
+    let output = nix_command(config_dir)
+        .args([
+            "eval",
+            "--json",
+            &flake_attr,
+            "--apply",
+            r#"builtins.mapAttrs (name: value:
+              let cfg = value.config or {};
+              in {
+                label = cfg.Label or name;
+                programArguments =
+                  if cfg ? ProgramArguments then cfg.ProgramArguments
+                  else if cfg ? Program then [ cfg.Program ]
+                  else [];
+              })"#,
+        ])
+        .output()
+        .with_context(|| format!("Failed to run nix eval for {}", option_path))?;
+
+    if !output.status.success() {
+        anyhow::bail!(
+            "Failed to evaluate {} for host {}: {}",
+            option_path,
+            hostname,
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    let stdout = String::from_utf8(output.stdout)
+        .with_context(|| format!("nix eval for {} returned invalid UTF-8", option_path))?;
+    let evaluated_items: BTreeMap<String, NixLaunchdEvalItem> = serde_json::from_str(&stdout)
+        .with_context(|| format!("Failed to parse nix eval JSON for {}", option_path))?;
+
+    Ok(evaluated_items
+        .into_values()
+        .map(|item| NixLaunchdItem {
+            label: item.label,
+            program_arguments: item.program_arguments,
+            item_type,
+        })
+        .collect())
+}
 
 /// Resolves PATH for Nix commands by prepending known Nix paths to the current environment.
 ///
@@ -94,7 +346,7 @@ pub fn determine_host_attr<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Opti
 }
 
 pub fn list_darwin_hosts(config_dir: &str) -> Result<Vec<String>> {
-    let output = Command::new("nix")
+    let output = nix_command(config_dir)
         .args([
             "eval",
             "--json",
@@ -102,9 +354,6 @@ pub fn list_darwin_hosts(config_dir: &str) -> Result<Vec<String>> {
             "--apply",
             "builtins.attrNames",
         ])
-        .current_dir(config_dir)
-        .env("PATH", get_nix_path())
-        .env("NIX_CONFIG", "experimental-features = nix-command flakes")
         .output()?;
 
     if !output.status.success() {
@@ -117,6 +366,126 @@ pub fn list_darwin_hosts(config_dir: &str) -> Result<Vec<String>> {
     let stdout = String::from_utf8(output.stdout)?;
     let hosts: Vec<String> = serde_json::from_str(&stdout)?;
     Ok(hosts)
+}
+
+/// Gets enabled nix-darwin `environment.etc` targets and safe hashes.
+///
+/// This is the structured-data source for the `/etc` clobber preflight: instead
+/// of parsing activation logs, we read the same `environment.etc` attrset
+/// nix-darwin consumes. The `--apply` projection keeps only the three fields we
+/// need so the JSON stays small and stable across nix-darwin versions.
+pub fn get_nix_environment_etc_entries(
+    hostname: &str,
+    config_dir: &str,
+) -> Result<Vec<NixEnvironmentEtcEntry>> {
+    // Serialize via serde_json so an unusual hostname can't break out of the
+    // flake attribute path (e.g. embedded quotes).
+    let host_attr = serde_json::to_string(hostname)?;
+    let flake_attr = format!(
+        ".#darwinConfigurations.{}.config.environment.etc",
+        host_attr
+    );
+
+    let output = nix_command(config_dir)
+        .args([
+            "eval",
+            "--json",
+            &flake_attr,
+            "--apply",
+            r#"builtins.mapAttrs (_name: value: {
+              target = value.target;
+              enable = value.enable;
+              knownSha256Hashes = value.knownSha256Hashes;
+            })"#,
+        ])
+        .output()
+        .with_context(|| "Failed to run nix eval for environment.etc".to_string())?;
+
+    if !output.status.success() {
+        anyhow::bail!(
+            "Failed to evaluate environment.etc for host {}: {}",
+            hostname,
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    let stdout = String::from_utf8(output.stdout)
+        .with_context(|| "nix eval for environment.etc returned invalid UTF-8".to_string())?;
+    let evaluated_items: BTreeMap<String, NixEnvironmentEtcEvalEntry> =
+        serde_json::from_str(&stdout)
+            .with_context(|| "Failed to parse nix eval JSON for environment.etc".to_string())?;
+
+    Ok(evaluated_items
+        .into_values()
+        .filter(|entry| entry.enable)
+        .map(|entry| NixEnvironmentEtcEntry {
+            target: entry.target,
+            known_sha256_hashes: entry.known_sha256_hashes,
+        })
+        .collect())
+}
+
+/// Gets enabled Home Manager `xdg.configFile` targets managed by nix-darwin.
+pub fn get_nix_home_manager_xdg_config_file_entries(
+    hostname: &str,
+    config_dir: &str,
+) -> Result<Vec<NixHomeManagerXdgConfigFileEntry>> {
+    let host_attr = serde_json::to_string(hostname)?;
+    let flake_attr = format!(".#darwinConfigurations.{}.config", host_attr);
+
+    let output = nix_command(config_dir)
+        .args([
+            "eval",
+            "--json",
+            &flake_attr,
+            "--apply",
+            r#"config:
+              let
+                users = config.home-manager.users or {};
+                backupFileExtension = config.home-manager.backupFileExtension or null;
+              in builtins.concatLists (builtins.attrValues (builtins.mapAttrs (user: userConfig:
+                builtins.attrValues (builtins.mapAttrs (_name: value: {
+                  inherit user;
+                  target = value.target;
+                  xdgConfigHome = userConfig.xdg.configHome;
+                  source = if value ? source && value.source != null then toString value.source else null;
+                  enable = value.enable;
+                  force = value.force or false;
+                  inherit backupFileExtension;
+                }) (userConfig.xdg.configFile or {}))
+              ) users))"#,
+        ])
+        .output()
+        .with_context(|| "Failed to run nix eval for home-manager xdg.configFile".to_string())?;
+
+    if !output.status.success() {
+        anyhow::bail!(
+            "Failed to evaluate home-manager xdg.configFile for host {}: {}",
+            hostname,
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    let stdout = String::from_utf8(output.stdout).with_context(|| {
+        "nix eval for home-manager xdg.configFile returned invalid UTF-8".to_string()
+    })?;
+    let evaluated_items: Vec<NixHomeManagerXdgConfigFileEvalEntry> = serde_json::from_str(&stdout)
+        .with_context(|| {
+            "Failed to parse nix eval JSON for home-manager xdg.configFile".to_string()
+        })?;
+
+    Ok(evaluated_items
+        .into_iter()
+        .filter(|entry| entry.enable)
+        .map(|entry| NixHomeManagerXdgConfigFileEntry {
+            user: entry.user,
+            target: entry.target,
+            xdg_config_home: entry.xdg_config_home,
+            source: entry.source,
+            force: entry.force,
+            backup_file_extension: entry.backup_file_extension,
+        })
+        .collect())
 }
 
 /// Checks if Nix is installed by attempting to run `nix --version`.
@@ -158,6 +527,26 @@ pub fn get_nix_version() -> Option<String> {
     }
 }
 
+/// Runs `nixfmt` (from nixpkgs via `nix run`) against the provided file in `config_dir`.
+/// Executes the command:
+/// `nix run nixpkgs#nixfmt -- <file>`
+pub fn nix_format(config_dir: &str, file: &str) -> Result<String> {
+    log::debug!("Running nix format on file: {}", file);
+
+    let output = nix_command(config_dir)
+        .args(["run", "nixpkgs#nixfmt", "--", file])
+        .output()?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        anyhow::bail!(
+            "Failed to format with nixfmt: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+}
+
 /// Prefetches darwin-rebuild by running `nix build --no-link nix-darwin/master#darwin-rebuild`.
 /// This caches the derivation in the nix store so the `nix run` fallback in darwin.rs is fast.
 /// Emits `nix:darwin-rebuild:end` with `{ ok: bool, error?: string }` on completion.
@@ -168,7 +557,9 @@ pub fn prefetch_darwin_rebuild_stream(app: &AppHandle) -> Result<()> {
 
     // All emit calls below are fire-and-forget: background thread; window may not be
     // listening. Tauri emit returns Err only when no listeners are registered.
+    // Intentionall doesn't use `nix_command` in order to use get_nix_path_with_login_shell.
     std::thread::spawn(move || {
+        crate::state::nix_install_state::update(&app_handle, |state| state.prefetching = true);
         let result = Command::new("nix")
             .args(["build", "--no-link", "nix-darwin/master#darwin-rebuild"])
             .env("PATH", get_nix_path_with_login_shell())
@@ -180,12 +571,21 @@ pub fn prefetch_darwin_rebuild_stream(app: &AppHandle) -> Result<()> {
         match result {
             Ok(output) if output.status.success() => {
                 info!("[nix] darwin-rebuild prefetch succeeded");
+                crate::state::nix_install_state::update(&app_handle, |state| {
+                    state.prefetching = false;
+                    state.darwin_rebuild_available = Some(true);
+                    state.last_error = None;
+                });
                 let _ =
                     app_handle.emit("nix:darwin-rebuild:end", serde_json::json!({ "ok": true }));
             }
             Ok(output) => {
                 let stderr = String::from_utf8_lossy(&output.stderr).to_string();
                 error!("[nix] darwin-rebuild prefetch failed: {}", stderr);
+                crate::state::nix_install_state::update(&app_handle, |state| {
+                    state.prefetching = false;
+                    state.last_error = Some(stderr.clone());
+                });
                 let _ = app_handle.emit(
                     "nix:darwin-rebuild:end",
                     serde_json::json!({ "ok": false, "error": stderr }),
@@ -193,6 +593,10 @@ pub fn prefetch_darwin_rebuild_stream(app: &AppHandle) -> Result<()> {
             }
             Err(e) => {
                 error!("[nix] darwin-rebuild prefetch error: {}", e);
+                crate::state::nix_install_state::update(&app_handle, |state| {
+                    state.prefetching = false;
+                    state.last_error = Some(e.to_string());
+                });
                 let _ = app_handle.emit(
                     "nix:darwin-rebuild:end",
                     serde_json::json!({ "ok": false, "error": e.to_string() }),
@@ -213,6 +617,12 @@ pub fn install_nix_stream(app: &AppHandle) -> Result<()> {
     std::thread::spawn(move || {
         if let Err(e) = run_nix_install(&app_handle) {
             error!("[nix] install failed: {}", e);
+            crate::state::nix_install_state::record_install_end(
+                &app_handle,
+                false,
+                None,
+                Some(e.to_string()),
+            );
             let _ = app_handle.emit(
                 "nix:install:end",
                 serde_json::json!({
@@ -239,8 +649,8 @@ const PKG_DOWNLOAD_URL: &str =
 fn download_nix_pkg(app: &AppHandle) -> Result<std::path::PathBuf> {
     info!("[nix] Downloading .pkg from {}", PKG_DOWNLOAD_URL);
 
-    let client = reqwest::blocking::Client::new();
-    let mut response = client.get(PKG_DOWNLOAD_URL).send()?;
+    let client = crate::http_client::logged_blocking();
+    let mut response = client.get(PKG_DOWNLOAD_URL)?;
 
     if !response.status().is_success() {
         anyhow::bail!("Download failed with status {}", response.status());
@@ -295,6 +705,12 @@ const INSTALL_PHASE_TIMEOUT: std::time::Duration = std::time::Duration::from_sec
 fn run_nix_install(app: &AppHandle) -> Result<()> {
     let nix_installed = is_nix_installed();
     let dr_available = nix_installed && is_darwin_rebuild_available();
+    crate::state::nix_install_state::update(app, |state| {
+        state.installing = true;
+        state.installed = Some(nix_installed);
+        state.darwin_rebuild_available = Some(dr_available);
+        state.last_error = None;
+    });
     // Each phase gets its own 5-minute deadline.
     let mut deadline;
 
@@ -305,6 +721,7 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
             "[nix] already installed, darwin-rebuild available: {}",
             version
         );
+        crate::state::nix_install_state::record_install_end(app, true, Some(true), None);
         app.emit(
             "nix:install:end",
             serde_json::json!({
@@ -319,6 +736,9 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
 
     if !nix_installed {
         // Phase 1: Download .pkg and open with macOS Installer.app
+        crate::state::nix_install_state::update(app, |state| {
+            state.install_phase = Some("downloading".to_string());
+        });
         let _ = app.emit(
             "nix:install:progress",
             serde_json::json!({ "phase": "downloading", "downloaded": 0, "total": 0 }),
@@ -327,6 +747,12 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
         let pkg_path = match download_nix_pkg(app) {
             Ok(path) => path,
             Err(e) => {
+                crate::state::nix_install_state::record_install_end(
+                    app,
+                    false,
+                    None,
+                    Some(format!("Failed to download Nix installer: {}", e)),
+                );
                 app.emit(
                     "nix:install:end",
                     serde_json::json!({
@@ -342,6 +768,9 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
 
         // Open the .pkg with macOS Installer.app
         info!("[nix] Opening .pkg with macOS Installer: {:?}", pkg_path);
+        crate::state::nix_install_state::update(app, |state| {
+            state.install_phase = Some("waiting-for-installer".to_string());
+        });
         let _ = app.emit(
             "nix:install:progress",
             serde_json::json!({ "phase": "waiting-for-installer" }),
@@ -350,6 +779,12 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
         if let Err(e) = Command::new("open").arg(&pkg_path).status() {
             // fire-and-forget cleanup: temp pkg may not exist if open() aborted early.
             let _ = std::fs::remove_file(&pkg_path);
+            crate::state::nix_install_state::record_install_end(
+                app,
+                false,
+                None,
+                Some(format!("Failed to open installer: {}", e)),
+            );
             app.emit(
                 "nix:install:end",
                 serde_json::json!({
@@ -390,6 +825,12 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
             if std::time::Instant::now() >= deadline {
                 // fire-and-forget cleanup on timeout path.
                 let _ = std::fs::remove_file(&pkg_path);
+                crate::state::nix_install_state::record_install_end(
+                    app,
+                    false,
+                    None,
+                    Some(("Installation timed out after 5 minutes. Please try again.").to_string()),
+                );
                 app.emit(
                     "nix:install:end",
                     serde_json::json!({
@@ -408,6 +849,10 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
     // Fresh 5-minute deadline for this phase
     deadline = std::time::Instant::now() + INSTALL_PHASE_TIMEOUT;
     // fire-and-forget: progress event; non-fatal if no listener.
+    crate::state::nix_install_state::update(app, |state| {
+        state.installed = Some(true);
+        state.install_phase = Some("prefetching".to_string());
+    });
     let _ = app.emit(
         "nix:install:progress",
         serde_json::json!({ "phase": "prefetching" }),
@@ -425,6 +870,12 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
         Ok(child) => child,
         Err(e) => {
             error!("[nix] darwin-rebuild prefetch error: {}", e);
+            crate::state::nix_install_state::record_install_end(
+                app,
+                false,
+                None,
+                Some(format!("Failed to set up nix-darwin: {}", e)),
+            );
             app.emit(
                 "nix:install:end",
                 serde_json::json!({
@@ -466,6 +917,12 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
         }
         Ok(_) => {
             error!("[nix] darwin-rebuild prefetch failed");
+            crate::state::nix_install_state::record_install_end(
+                app,
+                false,
+                None,
+                Some(("Failed to set up nix-darwin. Please try again.").to_string()),
+            );
             app.emit(
                 "nix:install:end",
                 serde_json::json!({
@@ -479,6 +936,12 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
         }
         Err(_) => {
             error!("[nix] darwin-rebuild prefetch timed out");
+            crate::state::nix_install_state::record_install_end(
+                app,
+                false,
+                None,
+                Some(("Installation timed out after 5 minutes. Please try again.").to_string()),
+            );
             app.emit(
                 "nix:install:end",
                 serde_json::json!({
@@ -498,6 +961,7 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
         "[nix] Setup complete: nix={}, darwin-rebuild cached",
         version
     );
+    crate::state::nix_install_state::record_install_end(app, true, Some(true), None);
     app.emit(
         "nix:install:end",
         serde_json::json!({
@@ -508,4 +972,62 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
         }),
     )?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    // Create a test that runs the launchd eval on the current system and prints the results.
+    // Leave it off by default.
+    #[test]
+    #[ignore = "Runs against the local system; enable explicitly when debugging the nix launchd eval."]
+    #[cfg(target_os = "macos")]
+    fn test_get_nix_launchd_items() {
+        use crate::bootstrap::default_config::detect_hostname;
+
+        let this_host_name = detect_hostname().expect("failed to get hostname");
+        const CONFIG_DIR: &str = "~/.darwin";
+        let items = get_nix_launchd_items(&this_host_name, CONFIG_DIR);
+        match items {
+            Ok(items) => {
+                for item in items {
+                    println!("{:#?}", item);
+                }
+            }
+            Err(err) => {
+                eprintln!("Error evaluating nix launchd items: {}", err);
+            }
+        }
+    }
+
+    #[test]
+    #[ignore = "Runs against the local system; enable explicitly when debugging the nix system defaults."]
+    #[cfg(target_os = "macos")]
+    fn test_get_nix_system_defaults_for_domain() -> Result<()> {
+        use crate::bootstrap::default_config::detect_hostname;
+
+        let this_host_name = detect_hostname().expect("failed to get hostname");
+        const CONFIG_DIR: &str = "~/.darwin";
+        let domain = "finder";
+
+        let defaults = get_nix_system_defaults_for_domain(&this_host_name, CONFIG_DIR, domain)?;
+        println!("System defaults for domain {}: {:#?}", domain, defaults);
+
+        Ok(())
+    }
+
+    #[ignore = "Runs against the local system; enable explicitly when debugging the nix system defaults."]
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_get_system_primary_user() {
+        use crate::bootstrap::default_config::detect_hostname;
+
+        let this_host_name = detect_hostname().expect("failed to get hostname");
+        const CONFIG_DIR: &str = "~/.darwin";
+
+        match get_system_primary_user(&this_host_name, CONFIG_DIR) {
+            Some(user) => println!("Primary user for host {}: {}", this_host_name, user),
+            None => println!("No primary user defined for host {}", this_host_name),
+        }
+    }
 }

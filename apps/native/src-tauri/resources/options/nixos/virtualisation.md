@@ -5,7 +5,7 @@
 All options under `virtualisation`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------------------- | ---- | ----------- |
 | `virtualisation.appvm.enable` | | |
 | `virtualisation.appvm.user` | | |
 | `virtualisation.containerd.args` | | |

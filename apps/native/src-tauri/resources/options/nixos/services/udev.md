@@ -5,7 +5,7 @@
 All options under `services.udev`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------- | ---- | ----------- |
 | `services.udev.enable` | | |
 | `services.udev.extraHwdb` | | |
 | `services.udev.extraRules` | | |

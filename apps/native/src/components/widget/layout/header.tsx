@@ -4,27 +4,35 @@ import { filesystemViewEnabled } from "@/lib/flags";
 import { cn } from "@/lib/utils";
 import { Clock, FolderTree, Settings, MessageSquarePlus } from "lucide-react";
 import { APP_NAME } from "../../../../shared/constants";
-import { useWidgetStore } from "@/stores/widget-store";
+import { uiActions, useUiState, viewModelActions } from "@nixmac/state";
+import { nav } from "@/router";
 import { computeCurrentStep } from "@/components/widget/utils";
-import { useViewModel } from "@/stores/view-model";
 
 export function Header() {
-  const setSettingsOpen = useWidgetStore((s) => s.setSettingsOpen);
-  const setFeedbackOpen = useWidgetStore((s) => s.setFeedbackOpen);
-  const showHistory = useWidgetStore((s) => s.showHistory);
-  const setShowHistory = useWidgetStore((s) => s.setShowHistory);
-  const showFilesystem = useWidgetStore((s) => s.showFilesystem);
-  const setShowFilesystem = useWidgetStore((s) => s.setShowFilesystem);
-  const isProcessing = useWidgetStore((s) => s.isProcessing);
-  const isGenerating = useWidgetStore((s) => s.isGenerating);
+  const showHistory = useUiState((s) => s.showHistory);
+  const showFilesystem = useUiState((s) => s.showFilesystem);
+  const isProcessing = useUiState((s) => s.isProcessing);
+  const isGenerating = useUiState((s) => s.isGenerating);
   const [isPulsing, setIsPulsing] = useState(false);
 
   // Flash the feedback icon when an error occurs (subscribe to detect all changes)
   useEffect(() => {
-    return useWidgetStore.subscribe((state, prevState) => {
+    return useUiState.subscribe((state, prevState) => {
+      const viewModel = viewModelActions.getState();
       const step = computeCurrentStep({
-        ...state,
-        evolveState: useViewModel.getState().evolve,
+        nixInstalled: viewModel.nixInstall?.installed ?? null,
+        darwinRebuildAvailable: viewModel.nixInstall?.darwinRebuildAvailable ?? null,
+        configDir: viewModel.preferences?.configDir ?? "",
+        host: viewModel.preferences?.hostAttr ?? "",
+        hosts: viewModel.hosts,
+        permissionsState: viewModel.permissions,
+        permissionsChecked: viewModel.permissionsHydrated,
+        evolveState: viewModel.evolve,
+        showHistory: state.showHistory,
+        showFilesystem: state.showFilesystem,
+        isBootstrapping: state.isBootstrapping,
+        activeStepOverride: state.activeStepOverride,
+        hasChanges: (viewModel.git?.changes.length ?? 0) > 0,
       });
       if (step !== "setup" && state.error && state.error !== prevState.error) {
         setIsPulsing(true);
@@ -35,10 +43,10 @@ export function Header() {
 
   return (
     <div
-      className="relative flex flex-shrink-0 cursor-move select-none items-center justify-center border-border border-b bg-card/50 px-3 pt-3 pb-3"
+      className="relative flex shrink-0 cursor-move select-none items-center justify-center border-border border-b bg-card/50 px-3 pt-3 pb-3"
       data-tauri-drag-region
     >
-      <div className="absolute top-2 left-0 h-4 w-16 z-[9999] cursor-default" />
+      <div className="absolute top-2 left-0 h-4 w-16 z-9999 cursor-default" />
 
       <h3 className="font-medium text-muted-foreground text-xs" data-tauri-drag-region>
         {APP_NAME}
@@ -48,15 +56,16 @@ export function Header() {
           <Button
             className={cn(
               "h-6 w-6 p-0 mr-[2px]",
-              showFilesystem && "border border-teal-500/50 text-teal-400 hover:text-teal-300 hover:border-teal-500/70",
+              showFilesystem &&
+                "border border-teal-500/50 text-teal-400 hover:text-teal-300 hover:border-teal-500/70",
             )}
             size="sm"
             variant="ghost"
             onClick={() => {
               if (isProcessing || isGenerating) return;
               const next = !showFilesystem;
-              setShowFilesystem(next);
-              if (next && showHistory) setShowHistory(false);
+              uiActions.setShowFilesystem(next);
+              if (next && showHistory) uiActions.setShowHistory(false);
             }}
             aria-label="Filesystem"
             title="Filesystem"
@@ -67,15 +76,16 @@ export function Header() {
         <Button
           className={cn(
             "h-6 w-6 p-0 mr-[2px]",
-            showHistory && "border border-teal-500/50 text-teal-400 hover:text-teal-300 hover:border-teal-500/70",
+            showHistory &&
+              "border border-teal-500/50 text-teal-400 hover:text-teal-300 hover:border-teal-500/70",
           )}
           size="sm"
           variant="ghost"
           onClick={() => {
             if (isProcessing || isGenerating) return;
             const next = !showHistory;
-            setShowHistory(next);
-            if (next && showFilesystem) setShowFilesystem(false);
+            uiActions.setShowHistory(next);
+            if (next && showFilesystem) uiActions.setShowFilesystem(false);
           }}
           aria-label="History"
           title="History"
@@ -86,7 +96,7 @@ export function Header() {
           className="h-6 w-6 p-0"
           size="sm"
           variant="ghost"
-          onClick={() => setFeedbackOpen(true)}
+          onClick={() => uiActions.setFeedbackOpen(true)}
           aria-label="Give feedback"
           title="Give feedback"
         >
@@ -98,7 +108,7 @@ export function Header() {
           className="h-6 w-6 p-0"
           size="sm"
           variant="ghost"
-          onClick={() => setSettingsOpen(true)}
+          onClick={() => nav.openSettings()}
           aria-label="Settings"
           title="Settings"
         >

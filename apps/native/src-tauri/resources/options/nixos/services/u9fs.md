@@ -5,7 +5,7 @@
 All options under `services.u9fs`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.u9fs.enable` | | |
 | `services.u9fs.extraArgs` | | |
 | `services.u9fs.listenStreams` | | |

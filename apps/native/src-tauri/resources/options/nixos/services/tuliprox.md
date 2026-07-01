@@ -5,7 +5,7 @@
 All options under `services.tuliprox`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------ | ---- | ----------- |
 | `services.tuliprox.apiProxySettings` | | |
 | `services.tuliprox.enable` | | |
 | `services.tuliprox.extraArgs` | | |

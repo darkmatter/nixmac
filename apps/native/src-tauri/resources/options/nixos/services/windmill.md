@@ -5,7 +5,7 @@
 All options under `services.windmill`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------------ | ---- | ----------- |
 | `services.windmill.baseUrl` | | |
 | `services.windmill.database.createLocally` | | |
 | `services.windmill.database.name` | | |

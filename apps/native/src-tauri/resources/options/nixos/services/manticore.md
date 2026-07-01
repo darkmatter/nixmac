@@ -5,6 +5,6 @@
 All options under `services.manticore`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------- | ---- | ----------- |
 | `services.manticore.enable` | | |
 | `services.manticore.settings` | | |

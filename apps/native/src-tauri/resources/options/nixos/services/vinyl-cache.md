@@ -5,7 +5,7 @@
 All options under `services.vinyl-cache`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------------- | ---- | ----------- |
 | `services.vinyl-cache.config` | | |
 | `services.vinyl-cache.enable` | | |
 | `services.vinyl-cache.enableConfigCheck` | | |

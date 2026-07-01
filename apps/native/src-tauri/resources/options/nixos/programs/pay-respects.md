@@ -5,7 +5,7 @@
 All options under `programs.pay-respects`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ------------------------------------- | ---- | ----------- |
 | `programs.pay-respects.aiIntegration` | | |
 | `programs.pay-respects.alias` | | |
 | `programs.pay-respects.enable` | | |

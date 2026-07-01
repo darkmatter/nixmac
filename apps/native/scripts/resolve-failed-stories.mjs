@@ -50,9 +50,7 @@ async function readJsonOrDefault(file, fallback) {
 
 const failed = await readJsonOrDefault(failedStoriesFile, []);
 const index = await readJsonOrDefault(indexFile, { entries: {} });
-const storyEntries = Object.values(index.entries ?? {}).filter(
-  (entry) => entry.type === "story"
-);
+const storyEntries = Object.values(index.entries ?? {}).filter((entry) => entry.type === "story");
 
 const resolved = [];
 const seen = new Set();
@@ -89,14 +87,12 @@ await writeFile(outputFile, JSON.stringify(resolved, null, 2));
 
 // Emit the skip regex (empty when nothing to capture, so callers can no-op).
 const keepNames = [...new Set(resolved.map((entry) => entry.name))];
-const skipRegex = keepNames.length
-  ? `^(?!(?:${keepNames.map(escapeRegex).join("|")})$).*$`
-  : "";
+const skipRegex = keepNames.length ? `^(?!(?:${keepNames.map(escapeRegex).join("|")})$).*$` : "";
 await writeFile(skipRegexFile, skipRegex);
 
 console.log(
   `Resolved ${resolved.length} failed stor${resolved.length === 1 ? "y" : "ies"} ` +
-    `(of ${failed.length} recorded) to ${path.relative(appRoot, outputFile)}.`
+    `(of ${failed.length} recorded) to ${path.relative(appRoot, outputFile)}.`,
 );
 for (const entry of resolved) {
   console.log(`  - ${entry.title} › ${entry.name} (${entry.id})`);

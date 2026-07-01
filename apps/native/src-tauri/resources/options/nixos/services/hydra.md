@@ -5,7 +5,7 @@
 All options under `services.hydra`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ----------------------------------------- | ---- | ----------- |
 | `services.hydra.buildMachinesFiles` | | |
 | `services.hydra.dbi` | | |
 | `services.hydra.debugServer` | | |

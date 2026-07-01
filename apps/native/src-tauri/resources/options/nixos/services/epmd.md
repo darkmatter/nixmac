@@ -5,7 +5,7 @@
 All options under `services.epmd`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------- | ---- | ----------- |
 | `services.epmd.enable` | | |
 | `services.epmd.listenStream` | | |
 | `services.epmd.package` | | |

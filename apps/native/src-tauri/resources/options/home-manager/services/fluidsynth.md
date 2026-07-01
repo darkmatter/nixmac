@@ -5,7 +5,7 @@
 All options under `services.fluidsynth`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------ |
 | `services.fluidsynth.enable` | `boolean` | Whether to enable fluidsynth midi synthesizer. |
 | `services.fluidsynth.extraOptions` | `list of string` | Extra arguments, added verbatim to the fluidsynth command. See fluidsynth.conf (1) . |
 | `services.fluidsynth.package` | `package` | The fluidsynth package to use. |

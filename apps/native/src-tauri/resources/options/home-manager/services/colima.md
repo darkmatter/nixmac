@@ -5,7 +5,7 @@
 All options under `services.colima`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.colima.bashPackage` | `package` | The bashNonInteractive package to use. Used by colima’s internal scripts. |
 | `services.colima.colimaHomeDir` | `string` | Directory to store colima configuration. This also sets $COLIMA_HOME. |
 | `services.colima.coreutilsPackage` | `package` | The coreutils package to use. Used in various ways by colima. |

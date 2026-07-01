@@ -5,7 +5,7 @@
 All options under `services.certmgr`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| --------------------------------- | ---- | ----------- |
 | `services.certmgr.defaultRemote` | | |
 | `services.certmgr.enable` | | |
 | `services.certmgr.metricsAddress` | | |

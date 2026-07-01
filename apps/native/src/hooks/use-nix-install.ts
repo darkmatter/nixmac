@@ -1,15 +1,11 @@
-import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 
 const checkNix = async () => {
-  try {
-    const result = await tauriAPI.nix.check();
-    const store = useWidgetStore.getState();
-    store.setNixInstalled(result.installed);
-    store.setDarwinRebuildAvailable(result.installed ? result.darwinRebuildAvailable : null);
-  } catch {
-    useWidgetStore.getState().setNixInstalled(false);
-  }
+  // nix_check writes the NixInstallState cell and emits
+  // nix_install_state_changed; viewmodel/nix-install.ts mirrors it into the
+  // ViewModel. External nix setup means there is no in-app install flow.
+  // deprecated(orpc): replace with client/orpc from @/lib/orpc
+  await tauriAPI.nix.check().catch(() => {});
 };
 
 export function useNixInstall() {

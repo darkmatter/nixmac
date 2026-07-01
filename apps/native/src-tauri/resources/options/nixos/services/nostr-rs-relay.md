@@ -5,7 +5,7 @@
 All options under `services.nostr-rs-relay`.
 
 | Option | Type | Description |
-| --- | --- | --- |
+| ---------------------------------- | ---- | ----------- |
 | `services.nostr-rs-relay.dataDir` | | |
 | `services.nostr-rs-relay.enable` | | |
 | `services.nostr-rs-relay.package` | | |

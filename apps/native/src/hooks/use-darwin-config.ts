@@ -1,102 +1,112 @@
-import { useWidgetStore } from "@/stores/widget-store";
+import { uiActions, useUiState } from "@nixmac/state";
+import type { SetDirResult } from "@/ipc/orpc-bindings";
+import type { StarterTemplateId } from "@/components/widget/onboarding/lib/flake-ref";
 import { tauriAPI } from "@/ipc/api";
-import type { SetDirResult } from "@/ipc/types";
-import { mirrorEvolveState } from "@/viewmodel/evolve";
-import { mirrorGitState } from "@/viewmodel/git";
+import { client } from "@/lib/orpc";
 
+interface DarwinConfigActions {
+  setDir: (dir: string) => Promise<SetDirResult>;
+  prepareNewDir: (dir: string) => Promise<SetDirResult>;
+  pickDir: () => Promise<SetDirResult | undefined>;
+  saveHost: (host: string) => Promise<void>;
+  bootstrap: (hostname: string, templateId?: StarterTemplateId) => Promise<void>;
+  isBootstrapping: boolean;
+  importGithub: (repoRef: string, dirName?: string) => Promise<SetDirResult>;
+  importZip: (zipPath: string, dirName?: string) => Promise<SetDirResult>;
+  pickZip: () => Promise<string | null>;
+}
+
+// Config dir/host/hosts and the evolve/git mirrors are no longer written
+// locally: the backend emits `*_changed` events after these mutations and the
+// sync modules mirror the new values (and re-list hosts) into the ViewModel.
 const applyDirResult = async (result: SetDirResult) => {
-  const store = useWidgetStore.getState();
-  store.setConfigDir(result.dir);
-  if (result.evolveState) {
-    mirrorEvolveState(result.evolveState);
-    mirrorGitState(null);
-    store.setHost("");
+  if (result.changed) {
     try {
-      await tauriAPI.config.setHostAttr("");
+      await client.config.setHostAttr({ host: "" });
     } catch {}
-    store.setHosts(result.hosts ?? []);
   }
 };
 
 const setDir = async (dir: string) => {
-  const result = await tauriAPI.config.setDir(dir);
+  const result = await client.config.setDir({ dir });
   await applyDirResult(result);
   return result;
 };
 
 const prepareNewDir = async (dir: string) => {
-  const result = await tauriAPI.config.prepareNewDir(dir);
+  const result = await client.config.prepareNewDir({ dir });
   await applyDirResult(result);
   return result;
 };
 
 const pickDir = async () => {
-  const result = await tauriAPI.config.pickDir();
+  const result = await client.config.pickDir();
   if (!result) return;
   await applyDirResult(result);
   return result;
 };
 
 const importGithub = async (repoRef: string, dirName?: string) => {
-  const result = await tauriAPI.config.importGithub(repoRef, dirName);
+  const result = await client.config.importGithub({
+    repoRef,
+    dirName: dirName ?? null,
+  });
   await applyDirResult(result);
   return result;
 };
 
 const importZip = async (zipPath: string, dirName?: string) => {
-  const result = await tauriAPI.config.importZip(zipPath, dirName);
+  const result = await client.config.importZip({
+    zipPath,
+    dirName: dirName ?? null,
+  });
   await applyDirResult(result);
   return result;
 };
 
-const pickZip = () => tauriAPI.config.pickZip();
+const pickZip = () => client.config.pickZip();
 
 const saveHost = async (host: string) => {
-  const store = useWidgetStore.getState();
-
   try {
-    await tauriAPI.config.setHostAttr(host);
-    store.setHost(host);
+    await client.config.setHostAttr({ host });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    store.setError(`Failed to save host: ${message}`);
+    uiActions.setError(`Failed to save host: ${message}`);
   }
 };
 
-const bootstrap = async (hostname: string) => {
+const bootstrap = async (hostname: string, templateId?: StarterTemplateId) => {
   const commitExisting = !hostname.trim();
-  const store = useWidgetStore.getState();
-  store.setError(null);
-  store.setBootstrapping(true);
+  uiActions.setError(null);
+  uiActions.setBootstrapping(true);
 
   try {
-    await tauriAPI.flake.bootstrapDefault(hostname);
+    await client.flake.bootstrapDefault({
+      hostname,
+      templateId: templateId ?? null,
+    });
 
     if (commitExisting) {
       const hosts = await tauriAPI.flake.listHosts();
-      store.setHosts(hosts);
       if (hosts.length === 1) {
-        await tauriAPI.config.setHostAttr(hosts[0]);
-        store.setHost(hosts[0]);
+        await client.config.setHostAttr({ host: hosts[0] });
       }
     } else {
       // Set the host directly from the hostname used for bootstrap.
       // We can't call listHosts() here because Nix may not be installed yet
       // (listHosts requires `nix eval` which needs Nix).
-      store.setHosts([hostname]);
-      await tauriAPI.config.setHostAttr(hostname);
-      store.setHost(hostname);
+      await client.config.setHostAttr({ host: hostname });
     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    store.setError(`Failed to create configuration: ${message}`);
+    uiActions.setError(`Failed to create configuration: ${message}`);
   } finally {
-    store.setBootstrapping(false);
+    uiActions.setBootstrapping(false);
   }
 };
 
-export function useDarwinConfig() {
-  const isBootstrapping = useWidgetStore((state) => state.isBootstrapping);
+export function useDarwinConfig(): DarwinConfigActions {
+  const isBootstrapping = useUiState((state) => state.isBootstrapping);
 
   return {
     setDir,

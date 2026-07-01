@@ -30,6 +30,11 @@ pub struct AuthStatus {
     pub key_id: Option<String>,
     /// Base URL of the sync server this device is configured to talk to.
     pub server_url: String,
+    /// Whether this device can call server-brokered GitHub endpoints (has a
+    /// minted Better Auth api-key for the web origin).
+    pub github_ready: bool,
+    /// The web-origin account used for GitHub, when `github_ready` is true.
+    pub web_account: Option<AuthAccount>,
 }
 
 /// Remote sync state for the current account, returned by `sync_status`.
@@ -56,4 +61,33 @@ pub struct SyncResult {
     pub head_commit_hash: Option<String>,
     /// Human-readable status detail for display in the UI.
     pub message: String,
+}
+
+/// Hosted inference usage for the signed-in web account.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct BillingUsage {
+    pub currency: String,
+    pub spent_usd: f64,
+}
+
+/// Active Polar subscription mapped to a known nixmac product slug.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct BillingSubscription {
+    pub id: String,
+    pub slug: String,
+    pub product_id: String,
+    pub status: String,
+}
+
+/// Billing snapshot returned by `/api/billing/state` for onboarding and account UI.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountBilling {
+    pub usage: BillingUsage,
+    pub subscriptions: Vec<BillingSubscription>,
+    pub has_payment_method: bool,
+    pub can_use_hosted_inference: bool,
+    pub can_use_device_sync: bool,
 }
