@@ -21,7 +21,6 @@
     "keyring:allow-delete-password",
     "keyring:allow-ping",
     "macos-permissions:default",
-    "macos-passkey:default",
     "http:default",
     "updater:default",
     "updater:allow-check",
