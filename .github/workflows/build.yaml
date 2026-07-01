@@ -63,6 +63,7 @@ jobs:
         working-directory: apps/native
         run: bun run desktop:test
         env:
+          NIXMAC_ENV: production
           VITE_NIXMAC_SKIP_PERMISSIONS: "false"
 
   build:
