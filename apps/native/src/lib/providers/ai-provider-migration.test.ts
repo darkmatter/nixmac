@@ -28,6 +28,7 @@ const PREFS: UiPrefs = {
 	pinnedVersion: null,
 	updateChannel: "stable",
 	featureFlagOverrides: null,
+	autoFormatNixFiles: false,
 };
 
 describe("migrateLegacyOpenaiProviderPrefs", () => {
