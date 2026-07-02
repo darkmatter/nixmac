@@ -191,10 +191,7 @@ jobs:
       # The normalizer needs this keychain to re-sign updater archives after
       # install-name rewrites mutate the embedded app bundle.
       - name: Import Apple Developer certificate
-        if: (steps.release-version.outputs.mode == 'tag' ||
-          steps.release-version.outputs.mode == 'release' ||
-          steps.release-version.outputs.mode == 'develop') &&
-          steps.check-secrets.outputs.has_certificate == 'true'
+        if: steps.check-secrets.outputs.has_certificate == 'true'
         shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         run: bash ops/scripts/release/import-certificate.sh
       - name: Normalize macOS system install names
@@ -215,10 +212,6 @@ jobs:
 
       # Sign the app bundle (required for notarization)
       - name: Sign app bundle
-        if: (steps.release-version.outputs.mode == 'tag' ||
-          steps.release-version.outputs.mode == 'release' ||
-          steps.release-version.outputs.mode == 'develop') &&
-          steps.check-secrets.outputs.has_certificate == 'true'
         run: bash ops/scripts/release/sign-app.sh
       # Replace unsigned app inside the Tauri-built DMG with the signed one.
       # We mount the DMG read-write, swap the .app in place, and re-compress so
@@ -227,17 +220,10 @@ jobs:
       # Previously this step deleted the DMG and called `hdiutil create`, which
       # shipped a bare DMG without the drag-to-Applications affordance.
       - name: Swap signed app into Tauri DMG
-        if: (steps.release-version.outputs.mode == 'tag' ||
-          steps.release-version.outputs.mode == 'release' ||
-          steps.release-version.outputs.mode == 'develop') &&
-          steps.check-secrets.outputs.has_certificate == 'true'
+        if: steps.check-secrets.outputs.has_certificate == 'true'
         run: bash ops/scripts/release/swap-signed-dmg.sh
       # Notarize the app (requires Apple Developer account)
       - name: Notarize app
-        if: (steps.release-version.outputs.mode == 'tag' ||
-          steps.release-version.outputs.mode == 'release' ||
-          steps.release-version.outputs.mode == 'develop') &&
-          steps.check-secrets.outputs.has_notarization == 'true'
         shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         run: bash ops/scripts/release/notarize.sh
       - name: Check macOS app portability
