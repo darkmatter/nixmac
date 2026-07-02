@@ -211,6 +211,11 @@ export const orpcHandlers: Record<string, OrpcHandler> = {
   "config.pickZip": async () => "/Users/demo/Downloads/nix-darwin.zip",
   "config.importGithub": async () => baseSetDirResult(),
   "config.importZip": async () => baseSetDirResult(),
+  "flake.listHosts": async () => {
+    const { viewModelActions } = await import("@nixmac/state");
+    const hosts = viewModelActions.getState().hosts;
+    return hosts?.length ? [...hosts] : [...defaultHosts];
+  },
   "flake.exists": async () => true,
   "flake.existsAt": async () => true,
   "flake.bootstrapDefault": async () => undefined,
@@ -240,9 +245,65 @@ export const orpcHandlers: Record<string, OrpcHandler> = {
   "github.listRepos": async () => [],
   "github.import": async () => baseSetDirResult(),
   "github.disconnect": async () => undefined,
-  "evolveState.get": async () => baseEvolveState(),
+  "evolveState.get": async () => {
+    const { viewModelActions } = await import("@nixmac/state");
+    return viewModelActions.getState().evolve ?? baseEvolveState();
+  },
   "evolveState.clear": async () => baseEvolveState(),
-  "git.state": async () => baseGitState(baseGitStatus()),
+  "git.state": async () => {
+    const { viewModelActions } = await import("@nixmac/state");
+    const vm = viewModelActions.getState();
+    return baseGitState(vm.git, vm.build?.externalBuildDetected ?? false);
+  },
+  "git.status": async () => {
+    const { viewModelActions } = await import("@nixmac/state");
+    return viewModelActions.getState().git;
+  },
+  "git.statusAndCache": async () => {
+    const { viewModelActions } = await import("@nixmac/state");
+    return viewModelActions.getState().git;
+  },
+  "nix.check": async () => {
+    const { viewModelActions } = await import("@nixmac/state");
+    return viewModelActions.getState().nixInstall ?? baseNixInstallState();
+  },
+  "nix.installState": async () => {
+    const { viewModelActions } = await import("@nixmac/state");
+    return viewModelActions.getState().nixInstall ?? baseNixInstallState();
+  },
+  "darwin.rebuildStatus": async () => {
+    const { viewModelActions } = await import("@nixmac/state");
+    return viewModelActions.getState().rebuildStatus ?? baseRebuildStatus();
+  },
+  "permissions.get": async () => {
+    const { viewModelActions } = await import("@nixmac/state");
+    return viewModelActions.getState().permissions ?? basePermissionsState();
+  },
+  "permissions.refresh": async () => {
+    const { viewModelActions } = await import("@nixmac/state");
+    return viewModelActions.getState().permissions ?? basePermissionsState();
+  },
+  "permissions.request": async () => {
+    const { viewModelActions } = await import("@nixmac/state");
+    return viewModelActions.getState().permissions ?? basePermissionsState();
+  },
+  "promptHistory.get": async () => {
+    const { viewModelActions } = await import("@nixmac/state");
+    return [...(viewModelActions.getState().promptHistory ?? [])];
+  },
+  "promptHistory.add": async (input) => {
+    const prompt = typeof input === "string" ? input : (input as { prompt?: string } | undefined)?.prompt;
+    if (prompt) {
+      promptHistory.unshift(prompt);
+    }
+    return okResult();
+  },
+  "evolveMascot.show": async () => okResult(),
+  "evolveMascot.hide": async () => okResult(),
+  "history.get": async () => {
+    const { viewModelActions } = await import("@nixmac/state");
+    return viewModelActions.getState().history ?? [];
+  },
   "homebrew.getStateDiff": async () => ({
     isInstalled: true,
     casks: [],
@@ -279,6 +340,30 @@ export const orpcHandlers: Record<string, OrpcHandler> = {
   ],
   "billing.checkout": async () => ({ url: "https://polar.sh/demo-checkout" }),
   "billing.portal": async () => ({ url: "https://polar.sh/demo-portal" }),
+  "preferences.get": async () => {
+    const { viewModelActions } = await import("@nixmac/state");
+    return viewModelActions.getState().preferences;
+  },
+  "summarizedChanges.getChangeMap": async () => {
+    const { viewModelActions } = await import("@nixmac/state");
+    return viewModelActions.getState().changeMap ?? baseSemanticChangeMap();
+  },
+  "summarizedChanges.findChangeMap": async () => {
+    const { viewModelActions } = await import("@nixmac/state");
+    return viewModelActions.getState().changeMap ?? baseSemanticChangeMap();
+  },
+  "summarizedChanges.summarizeCurrent": async () => baseSemanticChangeMap(),
+  "summarizedChanges.generateCommitMessage": async () => "feat: update mac defaults",
+  "updater.checkUpdate": async () => null,
+  "updater.installUpdate": async () => undefined,
+  "updater.installVersion": async () => undefined,
+  "updater.relaunch": async () => undefined,
+  "updater.clearPinnedVersion": async () => undefined,
+  "editor.readFile": async (input) => {
+    const relPath = (input as { relPath?: string } | undefined)?.relPath ?? "";
+    return mockEditorReadFile(relPath);
+  },
+  "editor.writeFile": async () => undefined,
 };
 
 async function handleOrpcInvoke(args?: Record<string, unknown>) {

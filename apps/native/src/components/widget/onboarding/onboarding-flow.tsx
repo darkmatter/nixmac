@@ -17,12 +17,12 @@ export function OnboardingFlow() {
 
   return (
     <div
-      className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-y-auto px-4 py-8 sm:px-6"
+      className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden px-4 py-8 sm:px-6"
       data-testid="onboarding-flow"
     >
       <OnboardingHeader title={`Step ${stepIndex(activeStep) + 1} of ${STEPS.length}`} />
 
-      <div className="grid flex-1 gap-8 md:grid-cols-[220px_1fr]">
+      <div className="grid min-h-0 flex-1 gap-8 md:grid-cols-[220px_1fr]">
         <OnboardingSidebar
 
           activeStep={activeStep}

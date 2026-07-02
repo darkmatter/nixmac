@@ -26,7 +26,7 @@ export function OnboardingStepContent({ currentStep, title }: OnboardingStepCont
   const { markMacScanned, markLoginDecided } = useOnboardingProgress();
 
   return (
-    <main className="min-w-0">
+    <main className="min-h-0 min-w-0 overflow-y-auto pr-1">
       <h1 className="text-2xl font-bold">{title}</h1>
       <div key={currentStep} className="fade-in slide-in-from-bottom-2 animate-in duration-300">
         {currentStep === "permissions" && <PermissionsStep />}
