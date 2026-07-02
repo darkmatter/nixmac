@@ -1,3 +1,4 @@
+import { useUiState, useViewModel, viewModelActions } from "@nixmac/state";
 
 const defaultHosts = ["Demo-MacBook-Pro", "Work-MacBook"];
 let nextCallbackId = 1;
@@ -358,7 +359,6 @@ export async function invoke(command: string, args?: Record<string, unknown>) {
   // mounting the widget would clobber the state a story/its controls just
   // applied (or crash on a `null` payload the mirrors don't expect). This
   // mirrors the unidirectional-sync contract: hydrate = read the latest cell.
-  const { useViewModel } = await import("@nixmac/state");
   const vm = useViewModel.getState();
 
   switch (command) {
@@ -450,10 +450,7 @@ export const storybookTauriAPI = {
   },
   git: {
     status: async () => baseGitStatus(),
-    statusAndCache: async () => {
-      const { useViewModel, viewModelActions } = await import("@nixmac/state");
-      return viewModelActions.getState().git ?? baseGitStatus();
-    },
+    statusAndCache: async () => viewModelActions.getState().git ?? baseGitStatus(),
     cached: async () => baseGitStatus(),
     commit: async () => ({ hash: "mock123", evolveState: baseEvolveState() }),
     fileDiffContents: async (_filenames: string[]) => ({}),
@@ -528,15 +525,10 @@ export const storybookTauriAPI = {
     normalize: async (input: string) => input,
   },
   summarizedChanges: {
-    findChangeMap: async () => {
-      const { viewModelActions } = await import("@nixmac/state");
-      return viewModelActions.getState().changeMap ?? baseSemanticChangeMap();
-    },
+    findChangeMap: async () => viewModelActions.getState().changeMap ?? baseSemanticChangeMap(),
     summarizeCurrent: async () => baseSemanticChangeMap(),
-    generateCommitMessage: async () => {
-      const { useUiState } = await import("@nixmac/state");
-      return useUiState.getState().commitMessageSuggestion ?? "chore: mock commit message";
-    },
+    generateCommitMessage: async () =>
+      useUiState.getState().commitMessageSuggestion ?? "chore: mock commit message",
   },
   summary: {
     find: async () => null,
@@ -602,9 +594,6 @@ export const storybookTauriAPI = {
   evolveState: {
     get: async () => {
       // Return the store's current evolve state so init doesn't overwrite story state.
-      // Dynamic import avoids circular dep at module-evaluation time; by the time
-      // this async method is called the store module is fully initialized.
-      const { viewModelActions } = await import("@nixmac/state");
       return viewModelActions.getState().evolve ?? baseEvolveState();
     },
     clear: async () => baseEvolveState(),
@@ -691,25 +680,20 @@ export const storybookTauriAPI = {
 };
 
 
-declare global {
-  interface Window {
-    __NIXMAC__?: typeof storybookTauriAPI;
-  }
-}
+type StorybookWindow = {
+  __NIXMAC__?: typeof storybookTauriAPI;
+  tauriAPI?: typeof storybookTauriAPI;
+  __TAURI_INTERNALS__?: {
+    invoke: typeof invoke;
+    transformCallback: typeof transformCallback;
+  };
+};
 
 if (typeof window !== "undefined") {
-  type StorybookTauriAPI = NonNullable<Window["__NIXMAC__"]>;
-  const storybookWindow = window as Window & {
-    __NIXMAC__?: StorybookTauriAPI;
-    tauriAPI?: StorybookTauriAPI;
-    __TAURI_INTERNALS__?: {
-      invoke: typeof invoke;
-      transformCallback: typeof transformCallback;
-    };
-  };
+  const storybookWindow = window as unknown as StorybookWindow;
 
-  storybookWindow.__NIXMAC__ = storybookTauriAPI as StorybookTauriAPI;
-  storybookWindow.tauriAPI = storybookTauriAPI as StorybookTauriAPI;
+  storybookWindow.__NIXMAC__ = storybookTauriAPI;
+  storybookWindow.tauriAPI = storybookTauriAPI;
   storybookWindow.__TAURI_INTERNALS__ = {
     invoke,
     transformCallback,
