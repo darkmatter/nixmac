@@ -60,8 +60,6 @@ runs:
     - name: Setup Rust
       if: inputs.setup-rust == 'true'
       uses: ./.github/actions/setup-rust
-      with:
-        rust-cache-workspaces: ${{ inputs.rust-cache-workspaces }}
 
     - name: Install frontend dependencies
       if: inputs.install-bun-deps == 'true'

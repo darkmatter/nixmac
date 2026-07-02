@@ -1,20 +1,8 @@
 name: "Setup Rust"
-description: "Install the stable Rust toolchain and optionally cache Rust artifacts."
-
-inputs:
-  rust-cache-workspaces:
-    description: "Workspace paths for rust-cache (comma-separated)."
-    required: false
-    default: ""
+description: "Install the stable Rust toolchain."
 
 runs:
   using: "composite"
   steps:
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
-
-    - name: Cache Rust artifacts
-      if: inputs.rust-cache-workspaces != ''
-      uses: Swatinem/rust-cache@v2
-      with:
-        workspaces: ${{ inputs.rust-cache-workspaces }}
