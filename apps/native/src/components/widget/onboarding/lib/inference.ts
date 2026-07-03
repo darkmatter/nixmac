@@ -15,34 +15,6 @@ interface ApiKeyProviderLike {
 	};
 }
 
-/**
- * Bring-your-own-key providers, aligned to what the native backend actually
- * supports (OpenRouter + OpenAI direct). Keys persist to UiPrefs and the
- * selection is written to evolveProvider/evolveModel — exactly like the
- * Settings → AI Models tab. Local providers (Ollama/OpenAI-compatible) are configured in
- * Settings instead.
- */
-export const BYOK_PROVIDERS: InferenceProvider[] = [
-	{
-		id: "openrouter",
-		name: "OpenRouter",
-		defaultModel: "anthropic/claude-sonnet-4",
-		prefsKeyField: "openrouterApiKey",
-		keyPrefix: "sk-or-",
-		keyPlaceholder: "sk-or-v1-…",
-		docsHint: "openrouter.ai → Keys",
-	},
-	{
-		id: "openai",
-		name: "OpenAI",
-		defaultModel: "gpt-4o",
-		prefsKeyField: "openaiApiKey",
-		keyPrefix: "sk-",
-		keyPlaceholder: "sk-…",
-		docsHint: "platform.openai.com → API Keys",
-	},
-];
-
 export interface KeyValidation {
 	valid: boolean;
 	hint: string;
