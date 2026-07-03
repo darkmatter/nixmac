@@ -84,7 +84,9 @@ jobs:
     # ARC pods have no Docker socket, so the nixmac-ci `container:` is gone;
     # the setup-nix + setup-devenv steps below provide the same toolchain.
     runs-on: arc
-    timeout-minutes: 20
+    # Ephemeral pod: cold Nix + devenv bootstrap needs headroom (was 20m
+    # when the prebaked nixmac-ci container provided the toolchain).
+    timeout-minutes: 60
     # The MacInCloud host is a single shared mutable desktop. Serialize remote
     # E2E jobs across workflows; keep stale-run cancellation at workflow level.
     concurrency:

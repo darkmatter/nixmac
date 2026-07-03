@@ -14,7 +14,9 @@ jobs:
   storybook-tests:
     name: Storybook Snapshot Tests
     runs-on: arc
-    timeout-minutes: 25
+    # ARC runner pods are ephemeral: every run bootstraps Nix + the devenv
+    # profile from caches, which alone can exceed the old 25m budget.
+    timeout-minutes: 60
     permissions:
       contents: read
       deployments: write
