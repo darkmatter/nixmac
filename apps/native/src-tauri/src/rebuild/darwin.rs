@@ -67,9 +67,10 @@ pub fn dry_run_build_check(
     crate::git::intent_add_untracked(config_dir)?;
 
     let mut command = Command::new("nix");
+    let safe_host_attr = serde_json::to_string(host_attr)?;
     command
         .arg("build")
-        .arg(format!(".#darwinConfigurations.{}.system", host_attr))
+        .arg(format!(".#darwinConfigurations.{}.system", safe_host_attr))
         .arg("--dry-run");
 
     if show_trace {
