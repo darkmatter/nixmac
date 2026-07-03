@@ -24,13 +24,14 @@ export function OnboardingFlow() {
 
       <div className="grid min-h-0 flex-1 gap-8 md:grid-cols-[220px_1fr]">
         <OnboardingSidebar
-
           activeStep={activeStep}
           furthestStep={furthestStep}
           progress={progress}
           onStepSelect={goToStep}
         />
-        <OnboardingStepContent currentStep={activeStep} title={stepLabel(activeStep)} />
+        <div className="min-h-0 overflow-y-auto pb-4 pr-1">
+          <OnboardingStepContent currentStep={activeStep} title={stepLabel(activeStep)} />
+        </div>
       </div>
     </div>
   );

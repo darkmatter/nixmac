@@ -44,7 +44,7 @@ pub struct PreviewIndicatorState {
 }
 
 /// Permission status.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Type, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum PermissionStatus {
     /// Permission has been granted.

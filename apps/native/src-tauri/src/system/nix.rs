@@ -132,7 +132,7 @@ struct NixHomeManagerCopyAppsEvalEntry {
 static NIX_PATH_CACHE: OnceLock<String> = OnceLock::new();
 
 /// Gets a command with our typical setup to execute `nix`.
-fn nix_command(config_dir: &str) -> Command {
+pub fn nix_command(config_dir: &str) -> Command {
     let mut cmd = Command::new("nix");
     let normalized_config_dir =
         normalize_path_input(config_dir).unwrap_or_else(|_| config_dir.into());
