@@ -15,7 +15,7 @@ export function OnboardingSidebar({
   onStepSelect,
 }: OnboardingSidebarProps) {
   return (
-    <aside className="md:border-border md:border-r md:pr-6">
+    <aside className="md:sticky md:top-0 md:self-start md:border-border md:border-r md:pr-6">
       <div className="mb-4 md:hidden">
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <div
