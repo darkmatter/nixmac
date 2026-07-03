@@ -1,0 +1,69 @@
+name: "Setup Nix and caches"
+description: "Install Determinate Nix when needed and configure Cachix caches."
+
+inputs:
+  install-devenv:
+    description: "Whether later steps will need the devenv binary caches."
+    required: false
+    default: "true"
+  extra-nix-conf:
+    description: "Extra lines for /etc/nix/nix.conf (newline-separated)."
+    required: false
+    default: ""
+  darkmatter-cachix-auth-token:
+    description: "Cachix auth token for the darkmatter binary cache."
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check if Nix is already installed
+      id: nix-check
+      shell: bash
+      run: |
+        if command -v nix &>/dev/null; then
+          echo "installed=true" >> "$GITHUB_OUTPUT"
+          echo "Nix already installed — skipping nix-installer."
+        else
+          echo "installed=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Install Nix
+      if: steps.nix-check.outputs.installed != 'true'
+      uses: DeterminateSystems/nix-installer-action@v22
+      with:
+        extra-conf: ${{ inputs.extra-nix-conf }}
+
+    # continue-on-error on the cachix steps: some persistent self-hosted
+    # runners have a Nix install whose runner user is not in trusted-users,
+    # so `cachix use` cannot add substituters and exits 1. Degrading to
+    # "build without binary caches" beats failing the whole job there.
+    - name: Configure darkmatter Cachix cache
+      if: ${{ inputs.darkmatter-cachix-auth-token != '' }}
+      continue-on-error: true
+      uses: cachix/cachix-action@v17
+      with:
+        name: darkmatter
+        authToken: ${{ inputs.darkmatter-cachix-auth-token }}
+
+    # Pull pre-built devenv packages from devenv.cachix.org (free, no auth).
+    # This avoids building devenv and its deps from source.
+    - name: Configure devenv Cachix cache
+      if: ${{ inputs.install-devenv == 'true' }}
+      continue-on-error: true
+      uses: cachix/cachix-action@v17
+      with:
+        name: devenv
+        skipPush: true
+
+    # languages.python uses nixpkgs-python, whose builds are NOT on
+    # cache.nixos.org. Without this cache, CI compiles CPython from source
+    # (~10 minutes of gcc on GitHub-hosted runners).
+    - name: Configure nixpkgs-python Cachix cache
+      if: ${{ inputs.install-devenv == 'true' }}
+      continue-on-error: true
+      uses: cachix/cachix-action@v17
+      with:
+        name: nixpkgs-python
+        skipPush: true

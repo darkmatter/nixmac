@@ -7,11 +7,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
-import { ProviderIcon, type ProviderIconId } from "@/components/widget/controls/provider-icons/provider-icon";
-import { DEFAULT_NIXMAC_MODEL, NIXMAC_PROVIDER } from "@/components/widget/onboarding/lib/inference";
+import { ProviderIcon } from "@/components/widget/controls/provider-icons/provider-icon";
+import { DEFAULT_NIXMAC_MODEL, DEFAULT_NIXMAC_SUMMARY_MODEL, NIXMAC_PROVIDER } from "@/components/widget/onboarding/lib/inference";
 import { tauriAPI } from "@/ipc/api";
 import type { CliToolsState } from "@/ipc/types";
 import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/providers/ai-provider-validation";
+import {
+  AI_MODEL_PROVIDERS,
+} from "@/lib/providers/ai-models";
 import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
 import { useEffect, useState } from "react";
 
@@ -43,18 +46,18 @@ const DEFAULT_EVOLVE_MODEL: Record<string, string> = {
   openrouter: "anthropic/claude-sonnet-4",
   openai: "gpt-4o",
   ollama: "",
-  vllm: "gpt-oss-120b",
+  openai_compatible: "",
   claude: "",
   codex: "",
   opencode: "",
 };
 
 const DEFAULT_SUMMARY_MODEL: Record<string, string> = {
-  [NIXMAC_PROVIDER]: DEFAULT_NIXMAC_MODEL,
+  [NIXMAC_PROVIDER]: DEFAULT_NIXMAC_SUMMARY_MODEL,
   openrouter: "openai/gpt-4o-mini",
   openai: "gpt-4o-mini",
   ollama: "llama3.1",
-  vllm: "gpt-oss-120b",
+  openai_compatible: "",
   claude: "",
   codex: "",
   opencode: "",
@@ -70,7 +73,7 @@ function modelPlaceholder(provider: string, fallback: string): string {
   if (provider === "ollama") {
     return fallback === "gpt-4o" ? "" : "llama3.1";
   }
-  if (provider === "vllm") {
+  if (provider === "openai_compatible") {
     return "gpt-oss-120b";
   }
   if (provider === "opencode") {
@@ -95,7 +98,7 @@ function useProviderPrefs(form: AiModelsTabProps["form"]) {
   const [prefs, setPrefs] = useState({
     openrouterApiKey: "",
     openaiApiKey: "",
-    vllmApiBaseUrl: "",
+    openaiCompatibleApiBaseUrl: "",
   });
 
   useEffect(() => {
@@ -104,7 +107,7 @@ function useProviderPrefs(form: AiModelsTabProps["form"]) {
       setPrefs({
         openrouterApiKey: v.openrouterApiKey ?? "",
         openaiApiKey: v.openaiApiKey ?? "",
-        vllmApiBaseUrl: v.vllmApiBaseUrl ?? "",
+        openaiCompatibleApiBaseUrl: v.openaiCompatibleApiBaseUrl ?? "",
       });
     });
 
@@ -113,7 +116,7 @@ function useProviderPrefs(form: AiModelsTabProps["form"]) {
     setPrefs({
       openrouterApiKey: v.openrouterApiKey ?? "",
       openaiApiKey: v.openaiApiKey ?? "",
-      vllmApiBaseUrl: v.vllmApiBaseUrl ?? "",
+      openaiCompatibleApiBaseUrl: v.openaiCompatibleApiBaseUrl ?? "",
     });
 
     return () => subscription.unsubscribe();
@@ -132,28 +135,13 @@ export function AiModelsTab({
   const providerPrefs = useProviderPrefs(form);
 
   const renderProviderItems = () => {
-    const providers: ReadonlyArray<{ value: string; label: string; icon: ProviderIconId }> = [
-      { value: NIXMAC_PROVIDER, label: "nixmac hosted", icon: "nixmac" },
-      { value: "openrouter", label: "OpenRouter", icon: "openrouter" },
-      { value: "openai", label: "OpenAI", icon: "openai" },
-      { value: "ollama", label: "Ollama", icon: "ollama" },
-      { value: "vllm", label: "OpenAI Compatible", icon: "vllm" },
-    ];
     return (
       <>
-        {providers.map(({ value, label, icon }) => (
-          <SelectItem key={value} value={value}>
+        {AI_MODEL_PROVIDERS.map((provider) => (
+          <SelectItem key={provider.id} value={provider.id}>
             <span className="flex items-center gap-2">
-              <ProviderIcon provider={icon} size={14} />
-              {label}
-            </span>
-          </SelectItem>
-        ))}
-        {CLI_PROVIDERS.map(({ value, label }) => (
-          <SelectItem key={value} value={value}>
-            <span className="flex items-center gap-2">
-              <ProviderIcon provider={value as ProviderIconId} size={14} />
-              {label}
+              <ProviderIcon provider={provider.icon} size={14} />
+              {provider.name}
             </span>
           </SelectItem>
         ))}
@@ -165,11 +153,13 @@ export function AiModelsTab({
     evolveProviderField.state.value,
     providerPrefs,
     cliStatus,
+    evolveModelField.state.value,
   );
   const summaryProviderError = getProviderConfigInvalidReason(
     summaryProviderField.state.value,
     providerPrefs,
     cliStatus,
+    summaryModelField.state.value,
   );
 
   return (
@@ -223,6 +213,7 @@ export function AiModelsTab({
                   selector={(state: any) => [
                     state.values.evolveProvider,
                     state.values.openaiApiKey,
+                    state.values.vllmApiBaseUrl,
                   ]}
                 >
                   {([evolveProvider]: any[]) => (
@@ -253,7 +244,7 @@ export function AiModelsTab({
                             | "openrouter"
                             | "openai"
                             | "ollama"
-                            | "vllm"
+                            | "openai_compatible"
                             | "opencode"
                           }
                           value={evolveModelField.state.value}
@@ -316,6 +307,7 @@ export function AiModelsTab({
                   selector={(state: any) => [
                     state.values.summaryProvider,
                     state.values.openaiApiKey,
+                    state.values.vllmApiBaseUrl,
                   ]}
                 >
                   {([summaryProvider]: any[]) => (
@@ -346,7 +338,7 @@ export function AiModelsTab({
                             | "openrouter"
                             | "openai"
                             | "ollama"
-                            | "vllm"
+                            | "openai_compatible"
                             | "opencode"
                           }
                           value={summaryModelField.state.value}

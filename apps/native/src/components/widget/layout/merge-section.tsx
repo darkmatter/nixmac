@@ -6,10 +6,9 @@ import { MarkdownDescription } from "@/components/widget/summaries/markdown-desc
 import { commitMessageBody } from "@/components/widget/summaries/markdown-utils";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useSummary } from "@/hooks/use-summary";
-import { uiActions, useViewModel } from "@nixmac/state";
-import { useUiState } from "@nixmac/state";
-import { GitMerge, Loader2 } from "lucide-react";
-import { useEffect } from "react";
+import { uiActions, useUiState, useViewModel } from "@nixmac/state";
+import { GitMerge, Loader2, Pencil, RotateCw } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export function MergeSection() {
   const isProcessing = useUiState((s) => s.isProcessing);
@@ -20,9 +19,27 @@ export function MergeSection() {
   const { handleCommit } = useGitOperations();
   const { generateCommitMessage } = useSummary();
 
+  const [isGenerating, setIsGenerating] = useState(false);
+
   useEffect(() => {
-    generateCommitMessage();
+    let cancelled = false;
+    setIsGenerating(true);
+    generateCommitMessage().finally(() => {
+      if (!cancelled) setIsGenerating(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [generateCommitMessage, changeMap]);
+
+  async function handleRegenerate() {
+    setIsGenerating(true);
+    try {
+      await generateCommitMessage();
+    } finally {
+      setIsGenerating(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -40,21 +57,39 @@ export function MergeSection() {
     <div className="flex flex-col">
       <div className="flex shrink-0 items-center justify-between gap-2 border-border/50 border-b py-2">
         <div className="flex items-center gap-2">
-          <GitMerge className="h-4 w-4 text-primary" />
-          <h2 className="font-medium text-sm">Commit Changes</h2>
+          <Pencil className="h-4 w-4 text-primary" />
+          <h2 className="font-medium text-sm">
+            Additional Description
+            <span className="text-muted-foreground text-xs pl-2">
+              (Stored in your version history)
+            </span>
+          </h2>
         </div>
       </div>
 
       <form className="pt-4" onSubmit={handleSubmit}>
         <div className="mb-4">
-          <Input
-            key={commitMessageSuggestion}
-            className="border-border bg-background mb-2"
-            defaultValue={commitSubject || commitMessageSuggestion || ""}
-            disabled={isProcessing}
-            name="commitMsg"
-            placeholder="Loading..."
-          />
+          <div className="flex gap-2">
+            <Input
+              key={commitMessageSuggestion}
+              className="border-border bg-background mb-2 flex-1"
+              defaultValue={commitSubject || commitMessageSuggestion || ""}
+              disabled={isProcessing}
+              name="commitMsg"
+              placeholder="Commit message…"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="mb-2 h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+              disabled={isProcessing || isGenerating}
+              onClick={handleRegenerate}
+              title="Regenerate commit message"
+            >
+              <RotateCw className={isGenerating ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} />
+            </Button>
+          </div>
           {commitBody && <MarkdownDescription modalTitle={commitSubject} text={commitBody} />}
         </div>
 

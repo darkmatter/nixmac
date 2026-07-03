@@ -17,7 +17,48 @@ env:
   CARGO_TERM_COLOR: always
   SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 jobs:
+  rust-tests:
+    name: Rust Tests (Linux)
+    runs-on: arc
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Linux Tauri dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            pkg-config \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libxdo-dev \
+            patchelf
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/native/src-tauri
+
+      - name: Patch passkey Swift package
+        working-directory: apps/native/src-tauri
+        run: |
+          cargo fetch --locked
+          bash "$GITHUB_WORKSPACE/ops/scripts/ci/patch-passkey-swift.sh"
+
+      - name: Rust unit tests
+        working-directory: apps/native
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+        env:
+          NIXMAC_ENV: production
   build:
+    needs: rust-tests
     runs-on: [self-hosted, macOS]
     permissions:
       contents: write
@@ -35,11 +76,25 @@ jobs:
           git reset --hard
           git clean -ffdx -e .devenv/ -e .devenv-ci/
 
-      - uses: ./.github/actions/setup
+      - name: Setup Nix and caches
+        uses: ./.github/actions/setup-nix
         with:
           darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
-          setup-rust: true
-          rust-cache-workspaces: ""
+
+      - name: Setup devenv profile
+        uses: ./.github/actions/setup-devenv
+        with:
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+
+      - name: Setup Xcode Swift toolchain
+        uses: ./.github/actions/setup-xcode
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+
+      - name: Install frontend dependencies
+        run: bun install
+
       # tauri-plugin-macos-passkey 0.1.0 ships a Swift package declaring
       # swift-tools-version 6.1, but the self-hosted runner has Swift 6.0.2
       # (Xcode 16.1). Fetch crates and lower the declared tools version before
@@ -127,8 +182,10 @@ jobs:
           NIXMAC_VERSION: ${{ steps.sync-version.outputs.build_version }}
           VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
           SUBMITTED_FEEDBACK_DSN: ${{ secrets.SUBMITTED_FEEDBACK_DSN }}
-      - name: Unit Test Tauri app
-        run: bun run desktop:test
+
+      - name: Unit Test frontend
+        working-directory: apps/native
+        run: bun run test:unit
 
       - name: Save sccache
         if: always()
@@ -143,10 +200,7 @@ jobs:
       # The normalizer needs this keychain to re-sign updater archives after
       # install-name rewrites mutate the embedded app bundle.
       - name: Import Apple Developer certificate
-        if: (steps.release-version.outputs.mode == 'tag' ||
-          steps.release-version.outputs.mode == 'release' ||
-          steps.release-version.outputs.mode == 'develop') &&
-          steps.check-secrets.outputs.has_certificate == 'true'
+        if: steps.check-secrets.outputs.has_certificate == 'true'
         shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         run: bash ops/scripts/release/import-certificate.sh
       - name: Normalize macOS system install names
@@ -167,10 +221,6 @@ jobs:
 
       # Sign the app bundle (required for notarization)
       - name: Sign app bundle
-        if: (steps.release-version.outputs.mode == 'tag' ||
-          steps.release-version.outputs.mode == 'release' ||
-          steps.release-version.outputs.mode == 'develop') &&
-          steps.check-secrets.outputs.has_certificate == 'true'
         run: bash ops/scripts/release/sign-app.sh
       # Replace unsigned app inside the Tauri-built DMG with the signed one.
       # We mount the DMG read-write, swap the .app in place, and re-compress so
@@ -179,17 +229,10 @@ jobs:
       # Previously this step deleted the DMG and called `hdiutil create`, which
       # shipped a bare DMG without the drag-to-Applications affordance.
       - name: Swap signed app into Tauri DMG
-        if: (steps.release-version.outputs.mode == 'tag' ||
-          steps.release-version.outputs.mode == 'release' ||
-          steps.release-version.outputs.mode == 'develop') &&
-          steps.check-secrets.outputs.has_certificate == 'true'
+        if: steps.check-secrets.outputs.has_certificate == 'true'
         run: bash ops/scripts/release/swap-signed-dmg.sh
       # Notarize the app (requires Apple Developer account)
       - name: Notarize app
-        if: (steps.release-version.outputs.mode == 'tag' ||
-          steps.release-version.outputs.mode == 'release' ||
-          steps.release-version.outputs.mode == 'develop') &&
-          steps.check-secrets.outputs.has_notarization == 'true'
         shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
         run: bash ops/scripts/release/notarize.sh
       - name: Check macOS app portability

@@ -46,8 +46,10 @@ pub struct GitStatus {
     /// Unified diff for the current working tree/index changes.
     pub diff: String,
     /// Total added lines in `diff`.
+    #[specta(type = f64)]
     pub additions: usize,
     /// Total removed lines in `diff`.
+    #[specta(type = f64)]
     pub deletions: usize,
     /// Current HEAD commit hash, when available.
     pub head_commit_hash: Option<String>,
@@ -58,7 +60,7 @@ pub struct GitStatus {
 }
 
 /// Payload emitted on `git_state_changed` by the git status watcher.
-#[derive(Debug, Clone, Serialize, Type, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct GitState {
     /// Latest git status snapshot, if it could be read.

@@ -1,16 +1,9 @@
+import { execFile } from "node:child_process";
+import { constants as fsConstants } from "node:fs";
+import { access, copyFile, mkdir, readFile, rm, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { access, copyFile, mkdir, readFile, rm, unlink, writeFile } from "node:fs/promises";
-import { constants as fsConstants } from "node:fs";
-import {
-  startMockVllmServer,
-  stopMockVllmServer,
-  type MockVllmServerContext,
-  type MockVllmOptions,
-} from "./mock-vllm-server.js";
-import { isPlaybackMode } from "./vllm-test-mode.js";
 import {
   assertConfigRepoClean,
   assertConfigRepoFileExists,
@@ -24,12 +17,19 @@ import {
   waitForConfigRepoFileExists,
   waitForConfigRepoInitialized,
 } from "./config-repo.js";
+import {
+  startMockOpenAiCompatibleServer,
+  stopMockOpenAiCompatibleServer,
+  type MockOpenAiCompatibleOptions,
+  type MockOpenAiCompatibleServerContext,
+} from "./mock-openai-compatible-server.js";
+import { isPlaybackMode } from "./openai-compatible-test-mode.js";
 
 export {
   getConfigRepoGitDiff,
   waitForConfigRepoClean,
   waitForConfigRepoFileExists,
-  waitForConfigRepoInitialized,
+  waitForConfigRepoInitialized
 };
 
 const execFileAsync = promisify(execFile);
@@ -51,7 +51,7 @@ interface NixmacTestEnvironmentContext {
   buildBackupPath: string | null;
   dbBackupPath: string | null;
   configDir: string | null;
-  mockVllmServer: MockVllmServerContext | null;
+  mockOpenAiCompatibleServer: MockOpenAiCompatibleServerContext | null;
   hostAttr: string;
 }
 
@@ -59,9 +59,9 @@ interface SetupOptions {
   initializeConfigRepo?: boolean;
   initializeEmptyConfigDir?: boolean;
   host?: string;
-  mockVllm?: MockVllmOptions;
-  vllmApiBaseUrl?: string | null;
-  vllmApiKey?: string | null;
+  mockOpenAiCompatible?: MockOpenAiCompatibleOptions;
+  openaiCompatibleApiBaseUrl?: string | null;
+  openaiCompatibleApiKey?: string | null;
 }
 
 async function pathExists(filePath: string): Promise<boolean> {
@@ -148,21 +148,21 @@ async function restoreStatefulFile(
 async function generateNixmacSettings({
   host,
   configDir,
-  vllmApiBaseUrl,
-  vllmApiKey,
+  openaiCompatibleApiBaseUrl,
+  openaiCompatibleApiKey,
 }: {
   host: string;
   configDir: string | null;
-  vllmApiBaseUrl: string | null;
-  vllmApiKey: string | null;
+  openaiCompatibleApiBaseUrl: string | null;
+  openaiCompatibleApiKey: string | null;
 }): Promise<void> {
   const settings = {
     hostAttr: host,
     configDir,
-    vllmApiBaseUrl: vllmApiBaseUrl ?? null,
-    vllmApiKey: vllmApiKey ?? null,
-    evolveProvider: "vllm",
-    summaryProvider: "vllm",
+    openaiCompatibleApiBaseUrl: openaiCompatibleApiBaseUrl ?? null,
+    openaiCompatibleApiKey: openaiCompatibleApiKey ?? null,
+    evolveProvider: "openai_compatible",
+    summaryProvider: "openai_compatible",
   };
 
   await mkdir(path.dirname(NIXMAC_SETTINGS_PATH), { recursive: true });
@@ -210,7 +210,7 @@ export async function loadBuildState(): Promise<Record<string, unknown> | null> 
   return (parsed["buildState"] as Record<string, unknown>) ?? parsed;
 }
 
-export async function setMockVllmResponses({
+export async function setMockOpenAiCompatibleResponses({
   responseFiles = [],
   responses = null,
 }: {
@@ -218,25 +218,25 @@ export async function setMockVllmResponses({
   responses?: unknown[] | null;
 } = {}): Promise<unknown> {
   if (!isPlaybackMode()) {
-    console.log("[wdio:test-env] Skipping setMockVllmResponses because playback mode is disabled");
+    console.log("[wdio:test-env] Skipping setMockOpenAiCompatibleResponses because playback mode is disabled");
     return { skipped: true, reason: "playback-mode-disabled" };
   }
 
   const settings = await readJsonFileOrThrow(NIXMAC_SETTINGS_PATH, "settings");
-  const vllmApiBaseUrl = settings?.["vllmApiBaseUrl"] as string | undefined;
+  const openaiCompatibleApiBaseUrl = settings?.["openaiCompatibleApiBaseUrl"] as string | undefined;
 
-  if (!vllmApiBaseUrl) {
+  if (!openaiCompatibleApiBaseUrl) {
     throw new Error(
-      "[wdio:test-env] settings.vllmApiBaseUrl is missing; mock server may not be enabled",
+      "[wdio:test-env] settings.openaiCompatibleApiBaseUrl is missing; mock server may not be enabled",
     );
   }
 
   let adminUrl: string;
   try {
-    adminUrl = new URL("/__admin/mock-responses", vllmApiBaseUrl).toString();
+    adminUrl = new URL("/__admin/mock-responses", openaiCompatibleApiBaseUrl).toString();
   } catch (error) {
     throw new Error(
-      `[wdio:test-env] Invalid vLLM base URL in settings (${String(vllmApiBaseUrl)}): ${error instanceof Error ? error.message : String(error)}`,
+      `[wdio:test-env] Invalid OpenAI-compatible base URL in settings (${String(openaiCompatibleApiBaseUrl)}): ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 
@@ -265,9 +265,9 @@ export async function setupNixmacTestEnvironment(
     initializeConfigRepo = false,
     initializeEmptyConfigDir = false,
     host,
-    mockVllm,
-    vllmApiBaseUrl = process.env["VLLM_API_BASE_URL"] ?? null,
-    vllmApiKey = process.env["VLLM_API_KEY"] ?? null,
+    mockOpenAiCompatible,
+    openaiCompatibleApiBaseUrl = process.env["VLLM_API_BASE_URL"] ?? null,
+    openaiCompatibleApiKey = process.env["VLLM_API_KEY"] ?? null,
   } = options;
 
   if (initializeConfigRepo && initializeEmptyConfigDir) {
@@ -282,12 +282,12 @@ export async function setupNixmacTestEnvironment(
   const dbBackupPath = await backupStatefulFile(NIXMAC_DB_PATH, "nixmac.db");
   const evalHostname = host || (await getEvalHostname());
   let configDir: string | null = null;
-  let mockVllmServer: MockVllmServerContext | null = null;
-  let resolvedVllmApiBaseUrl: string | null = vllmApiBaseUrl;
+  let mockOpenAiCompatibleServer: MockOpenAiCompatibleServerContext | null = null;
+  let resolvedOpenAiCompatibleApiBaseUrl: string | null = openaiCompatibleApiBaseUrl;
 
-  if (mockVllm) {
-    mockVllmServer = await startMockVllmServer(mockVllm);
-    resolvedVllmApiBaseUrl = mockVllmServer.baseUrl;
+  if (mockOpenAiCompatible) {
+    mockOpenAiCompatibleServer = await startMockOpenAiCompatibleServer(mockOpenAiCompatible);
+    resolvedOpenAiCompatibleApiBaseUrl = mockOpenAiCompatibleServer.baseUrl;
   }
 
   if (initializeConfigRepo) {
@@ -303,8 +303,8 @@ export async function setupNixmacTestEnvironment(
   await generateNixmacSettings({
     host: evalHostname,
     configDir,
-    vllmApiBaseUrl: resolvedVllmApiBaseUrl,
-    vllmApiKey,
+    openaiCompatibleApiBaseUrl: resolvedOpenAiCompatibleApiBaseUrl,
+    openaiCompatibleApiKey,
   });
 
   if (await pathExists(NIXMAC_EVOLVE_STATE_PATH)) {
@@ -328,7 +328,7 @@ export async function setupNixmacTestEnvironment(
     buildBackupPath,
     dbBackupPath,
     configDir,
-    mockVllmServer,
+    mockOpenAiCompatibleServer,
     hostAttr: evalHostname,
   };
 }
@@ -354,7 +354,7 @@ export async function teardownNixmacTestEnvironment(
   );
   await restoreStatefulFile(context?.dbBackupPath ?? null, NIXMAC_DB_PATH, "nixmac.db");
 
-  if (context?.mockVllmServer) {
-    await stopMockVllmServer(context.mockVllmServer);
+  if (context?.mockOpenAiCompatibleServer) {
+    await stopMockOpenAiCompatibleServer(context.mockOpenAiCompatibleServer);
   }
 }

@@ -53,6 +53,12 @@ const matches = (predicate: (file: string) => boolean) => (files: readonly strin
 
 const codeBlock = (files: readonly string[]): string => files.map((f) => `- \`${f}\``).join("\n");
 
+// Linear issue ID — established convention is `ENG-<n>` (e.g. `ENG-502`, `ENG-277`),
+// referenced in PR titles, bodies, and branch names like `fkb/eng-494-...`. Match
+// any uppercase team prefix so the check survives a future team rename.
+const LINEAR_ISSUE_RE = /\b[A-Z]{2,}-\d+\b/;
+const NO_LINEAR_NEEDED_RE = /#no-linear\b/i;
+
 const TEST_PLAN_HEADING_RE = /(^|\n)#{2,3}\s*(test plan|testing instructions|how to test)\b/i;
 const NO_TEST_PLAN_NEEDED_RE = /^\s*-\s*\[[xX]\]\s*No test plan needed\b/im;
 const TEST_PLAN_PLACEHOLDER_RE = /^\s*-\s*\[[ xX]\]\s*No test plan needed\b.*$/gim;
@@ -98,6 +104,11 @@ const flags = {
   hasTestPlanSection: TEST_PLAN_HEADING_RE.test(body),
   hasTestPlan: substantiveTestPlan.length >= 10,
   noTestPlanNeeded: NO_TEST_PLAN_NEEDED_RE.test(testPlanSection),
+  hasLinearIssue:
+    LINEAR_ISSUE_RE.test(title) ||
+    LINEAR_ISSUE_RE.test(body) ||
+    LINEAR_ISSUE_RE.test(pr.head.ref ?? ""),
+  noLinearNeeded: NO_LINEAR_NEEDED_RE.test(body),
   hasNewUiComponents: newUiComponents.length > 0,
   hasNewStories: newStories.length > 0,
   hasNewRustModules: newRustModules.length > 0,
@@ -127,6 +138,7 @@ function postOverview(): void {
 | Files | ${created.length} added, ${modified.length} modified, ${deleted.length} deleted |
 | Draft / WIP | ${tick(flags.isDraft || flags.isWip)} |
 | Has Test Plan | ${tick(flags.hasTestPlan)} |
+| Linear issue | ${tick(flags.hasLinearIssue)} |
 | No Test Plan Needed | ${tick(flags.noTestPlanNeeded)} |
 | New UI components | ${tick(flags.hasNewUiComponents)} ${flags.hasNewUiComponents ? `(${newUiComponents.length})` : ""} |
 | New Storybook stories | ${tick(flags.hasNewStories)} ${flags.hasNewStories ? `(${newStories.length})` : ""} |
@@ -293,6 +305,18 @@ ${rows}
 // 6. Test-plan / hygiene / lockfile / debug
 // ---------------------------------------------------------------------------
 
+function checkLinearIssue(): void {
+  if (flags.isTrivial || flags.noLinearNeeded || flags.hasLinearIssue) {
+    return;
+  }
+
+  warn(
+    "No Linear issue ID found in this PR's title, description, or branch name " +
+    "(expected something like `ENG-123`). Add one so this work is traceable in Linear, " +
+    "or add `#no-linear` to the PR description to acknowledge it's intentionally untracked.",
+  );
+}
+
 function checkTestPlan(): void {
   if (flags.isTrivial || flags.noTestPlanNeeded) {
     return;
@@ -424,6 +448,7 @@ function checkDocsDrift(): void {
 (async () => {
   postOverview();
   checkTestPlan();
+  checkLinearIssue();
   checkPrHygiene();
   checkUiComponentStories();
   checkRustModuleTests();

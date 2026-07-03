@@ -10,9 +10,72 @@ export type AccountBilling = { usage: BillingUsage; subscriptions: BillingSubscr
 
 export type ActivateStorePathInput = { storePath: string }
 
+export type AddInput = { prompt: string }
+
+export type AddItemsInput = { items: HomebrewItem[] }
+
 export type AdoptManualChangesResult = { evolutionId: number }
 
+/**
+ * Result of proactively checking App Management-sensitive copyApps targets.
+ */
+export type AppManagementCheckResult = { 
+/**
+ * True when every existing managed app bundle accepted the update probe.
+ */
+ok: boolean; 
+/**
+ * Number of existing app bundles inspected.
+ */
+checked: number; 
+/**
+ * Target directories with existing app bundles that were inspected.
+ */
+targets: AppManagementPermissionTarget[]; 
+/**
+ * Existing app bundles that could not be updated.
+ */
+failures: AppManagementProbeFailure[] }
+
+/**
+ * Home Manager copyApps target that requires App Management-sensitive probing.
+ */
+export type AppManagementPermissionTarget = { 
+/**
+ * Home Manager user that owns the target directory.
+ */
+user: string; 
+/**
+ * Absolute copyApps target directory.
+ */
+directory: string; 
+/**
+ * Existing app bundles inspected under the target directory.
+ */
+appBundles: string[] }
+
+/**
+ * An existing app bundle that could not be updated during the preflight probe.
+ */
+export type AppManagementProbeFailure = { 
+/**
+ * Home Manager user that owns the app bundle target.
+ */
+user: string; 
+/**
+ * Existing app bundle that macOS blocked nixmac from updating.
+ */
+appBundle: string; 
+/**
+ * OS error returned by the harmless `.DS_Store` update probe.
+ */
+error: string }
+
+export type ApplyDefaultsInput = { defaults: SystemDefault[] }
+
 export type ApplyDiffInput = { diff: HomebrewState }
+
+export type ApplyItemsInput = { items: LaunchdItem[] }
 
 export type ApplyStreamStartInput = { hostOverride: string | null }
 
@@ -28,6 +91,37 @@ id: string;
  * Account email address used to sign in.
  */
 email: string }
+
+/**
+ * Snapshot of the desktop client's authentication state, returned by
+ * `account_status`. The HMAC secret is never included.
+ */
+export type AuthStatus = { 
+/**
+ * Whether a usable account credential is stored on this device.
+ */
+signedIn: boolean; 
+/**
+ * The signed-in account, when `signed_in` is true.
+ */
+account: AuthAccount | null; 
+/**
+ * Public credential/key identifier sent in the `Authorization` header.
+ */
+keyId: string | null; 
+/**
+ * Base URL of the sync server this device is configured to talk to.
+ */
+serverUrl: string; 
+/**
+ * Whether this device can call server-brokered GitHub endpoints (has a
+ * minted Better Auth api-key for the web origin).
+ */
+githubReady: boolean; 
+/**
+ * The web-origin account used for GitHub, when `github_ready` is true.
+ */
+webAccount: AuthAccount | null }
 
 /**
  * A billing product offered to customers, mirrored from `/api/billing/products`.
@@ -66,6 +160,27 @@ export type ChangeSummary = { id: number; title: string; description: string;
  * One of `"QUEUED"`, `"DONE"`, `"FAILED"`, `"CANCELLED"`.
  */
 status: string; createdAt: number }
+
+/**
+ * Type of change for a file in git status.
+ */
+export type ChangeType = 
+/**
+ * File was added.
+ */
+"new" | 
+/**
+ * File contents changed.
+ */
+"edited" | 
+/**
+ * File was deleted.
+ */
+"removed" | 
+/**
+ * File was renamed or moved.
+ */
+"renamed"
 
 export type ChangeWithSummary = { 
 /**
@@ -109,6 +224,23 @@ export type CheckoutInput = { product: string }
 
 export type CheckoutUrl = { url: string }
 
+/**
+ * Availability of known AI CLI tools.
+ */
+export type CliToolsState = { 
+/**
+ * Whether the Claude CLI is installed.
+ */
+claude: boolean; 
+/**
+ * Whether the Codex CLI is installed.
+ */
+codex: boolean; 
+/**
+ * Whether the OpenCode CLI is installed.
+ */
+opencode: boolean }
+
 export type Commit = { id: number; hash: string; treeHash: string; message: string | null; createdAt: number }
 
 /**
@@ -147,6 +279,34 @@ ok: boolean;
  */
 count: number }
 
+/**
+ * Static description of one Configurable field.
+ * 
+ * Produced by the derive macro with no runtime context; the same value every
+ * call. Joined with the current store-backed value by `key` at render time.
+ */
+export type ConfigFieldSchema = { 
+/**
+ * Key as written to the underlying store (typically camelCase).
+ */
+key: string; 
+/**
+ * Human-readable label rendered above the input.
+ */
+label: string; 
+/**
+ * Optional help text (rendered as a tooltip / "info" icon).
+ */
+help?: string | null; 
+/**
+ * What control to render.
+ */
+ty: FieldType; 
+/**
+ * Default if the store has no value yet.
+ */
+default: JsonValue }
+
 export type ConfigImportGithubInput = { repoRef: string; dirName: string | null }
 
 export type ConfigImportZipInput = { zipPath: string; dirName: string | null }
@@ -154,6 +314,129 @@ export type ConfigImportZipInput = { zipPath: string; dirName: string | null }
 export type ConfigSetDirInput = { dir: string }
 
 export type ConfigSetHostAttrInput = { host: string }
+
+/**
+ * One section in the auto-rendered settings panel — corresponds to one
+ * `#[derive(Configurable)]` struct. Static metadata only; current values are
+ * fetched separately and joined by struct name + field key on the frontend.
+ */
+export type ConfigurableSchema = { 
+/**
+ * Unique stable identifier (struct's Rust name). Used by the setter to
+ * dispatch to the right registered configurable.
+ */
+name: string; 
+/**
+ * Title shown above the section in the UI.
+ */
+displayName: string; 
+/**
+ * Optional one-line description shown under the title.
+ */
+description?: string | null; fields: ConfigFieldSchema[] }
+
+export type EnumVariant = { value: string; label: string }
+
+/**
+ * Result of proactively checking managed-file overwrite safety.
+ */
+export type EtcClobberCheckResult = { 
+/**
+ * True when no hard conflicts were detected.
+ */
+ok: boolean; 
+/**
+ * Number of enabled managed-file entries inspected.
+ */
+checked: number; 
+/**
+ * Conflicts that would make nix-darwin abort activation.
+ */
+conflicts: EtcClobberConflict[]; 
+/**
+ * Non-blocking managed-file collisions that activation will back up.
+ */
+warnings: ManagedFileWarning[] }
+
+/**
+ * A single `/etc` path that nix-darwin would refuse to overwrite.
+ */
+export type EtcClobberConflict = { 
+/**
+ * Absolute path under `/etc` that would be clobbered.
+ */
+path: string; 
+/**
+ * nix-darwin `environment.etc.<name>.target` value.
+ */
+target: string; 
+/**
+ * Symlink target nix-darwin expects for an already-managed file.
+ */
+expectedStaticPath: string; 
+/**
+ * Existing symlink target, if the path is currently a symlink.
+ */
+currentLinkTarget: string | null; 
+/**
+ * Safe hashes advertised by nix-darwin for this entry.
+ */
+knownSha256Hashes: string[]; 
+/**
+ * Reason this path is considered unsafe to overwrite.
+ */
+kind: EtcClobberConflictKind }
+
+/**
+ * Kind of `/etc` clobber conflict detected before nix-darwin activation.
+ */
+export type EtcClobberConflictKind = 
+/**
+ * Existing file content does not match any nix-darwin known safe hash.
+ */
+"unrecognized_content" | 
+/**
+ * Existing path is not a regular file, so nix-darwin cannot hash/adopt it.
+ */
+"non_regular_target" | 
+/**
+ * Existing path could not be inspected or hashed by nixmac.
+ */
+"unreadable"
+
+export type Evolution = { id: string; createdAt: number; state: EvolutionState; prompt: string; edits: FileEdit[]; commitHash: string | null; summary: string | null; 
+/**
+ * Full message history for context
+ */
+messages: JsonValue[]; 
+/**
+ * Agent's thinking/reasoning log
+ */
+thinking: ThinkingEntry[]; 
+/**
+ * Tool call activity log
+ */
+toolCalls: ToolCallRecord[]; 
+/**
+ * Total tokens used
+ */
+totalTokens: number; 
+/**
+ * Number of iterations
+ */
+iterations: number; 
+/**
+ * Number of build attempts
+ */
+buildAttempts: number; 
+/**
+ * AI-generated summary of changes for preview
+ */
+changesSummary: string | null; 
+/**
+ * AI-generated commit message suggestion
+ */
+suggestedCommitMessage: string | null }
 
 /**
  * Evolution lifecycle state.
@@ -285,14 +568,298 @@ export type EvolveStep =
  */
 "manualCommit"
 
+export type ExportInput = { includeSecrets: boolean }
+
+/**
+ * Result of a successful settings export. Returned to the frontend so it can
+ * show the file path and the count of skipped sensitive keys.
+ */
+export type ExportResult = { path: string; keysWritten: number; keysSkipped: string[] }
+
+/**
+ * AI provider/model info and usage signals.
+ */
+export type FeedbackAiProviderModelInfo = { 
+/**
+ * Provider used for evolution requests.
+ */
+evolveProvider: string | null; 
+/**
+ * Model used for evolution requests.
+ */
+evolveModel: string | null; 
+/**
+ * Provider used for summary requests.
+ */
+summaryProvider: string | null; 
+/**
+ * Model used for summary requests.
+ */
+summaryModel: string | null; 
+/**
+ * Token count reported for the related AI run.
+ */
+totalTokens: number | null; 
+/**
+ * Latency in milliseconds for the related AI run.
+ */
+latencyMs: number; 
+/**
+ * Iterations completed by the related evolution.
+ */
+iterations: number | null; 
+/**
+ * Build attempts completed by the related evolution.
+ */
+buildAttempts: number | null }
+
+/**
+ * Flake input metadata captured from flake.lock.
+ */
+export type FeedbackFlakeInputEntry = { 
+/**
+ * Git revision for the flake input.
+ */
+rev: string | null; 
+/**
+ * Flake input last-modified timestamp from `flake.lock`.
+ */
+lastModified: number; 
+/**
+ * Store hash for the locked input.
+ */
+narHash: string | null }
+
+/**
+ * Snapshot of selected flake inputs.
+ */
+export type FeedbackFlakeInputsSnapshot = { 
+/**
+ * Locked `nixpkgs` input metadata.
+ */
+nixpkgs: FeedbackFlakeInputEntry | null; 
+/**
+ * Locked `nix-darwin` input metadata.
+ */
+"nix-darwin": FeedbackFlakeInputEntry | null; 
+/**
+ * Locked `home-manager` input metadata.
+ */
+"home-manager": FeedbackFlakeInputEntry | null }
+
+/**
+ * Metadata collected for feedback submission based on user opt-in.
+ */
+export type FeedbackMetadata = { 
+/**
+ * Current frontend/store snapshot, represented as arbitrary JSON.
+ */
+currentAppStateSnapshot: JsonValue | null; 
+/**
+ * Runtime system information.
+ */
+systemInfo: FeedbackSystemInfo | null; 
+/**
+ * Aggregated local usage statistics.
+ */
+usageStats: FeedbackUsageStats | null; 
+/**
+ * Captured evolution log content.
+ */
+evolutionLogContent: Evolution | null; 
+/**
+ * Diff for changed Nix files at submission time.
+ */
+changedNixFilesDiff: string | null; 
+/**
+ * AI provider/model metadata for the related run.
+ */
+aiProviderModelInfo: FeedbackAiProviderModelInfo | null; 
+/**
+ * Latest build error output.
+ */
+buildErrorOutput: string | null; 
+/**
+ * Selected locked flake input metadata.
+ */
+flakeInputsSnapshot: FeedbackFlakeInputsSnapshot | null; 
+/**
+ * Recent application log content.
+ */
+appLogsContent: string | null; 
+/**
+ * Panic details when feedback is submitted after a crash.
+ */
+panicDetails: FeedbackPanicDetails | null }
+
+/**
+ * Request payload for gathering feedback metadata.
+ */
+export type FeedbackMetadataRequest = { 
+/**
+ * Feedback category selected by the user.
+ */
+feedbackType: string; 
+/**
+ * User opt-in flags controlling which artifacts may be gathered.
+ */
+share: FeedbackShareOptions }
+
+/**
+ * Panic/crash information captured when a Rust panic occurs.
+ */
+export type FeedbackPanicDetails = { 
+/**
+ * Panic message captured by the panic hook.
+ */
+message: string; 
+/**
+ * Source location reported by Rust, when available.
+ */
+location: string | null; 
+/**
+ * Captured backtrace, when available.
+ */
+backtrace: string | null; 
+/**
+ * UTC timestamp when the panic was captured.
+ */
+timestamp: string }
+
+/**
+ * Options indicating which feedback artifacts the user allows sharing.
+ */
+export type FeedbackShareOptions = { 
+/**
+ * Include the current widget/store state snapshot.
+ */
+currentAppState: boolean; 
+/**
+ * Include OS, architecture, Nix, and app version details.
+ */
+systemInfo: boolean; 
+/**
+ * Include aggregated usage statistics.
+ */
+usageStats: boolean; 
+/**
+ * Include the active evolution log.
+ */
+evolutionLog: boolean; 
+/**
+ * Include the current diff for changed Nix files.
+ */
+changedNixFiles: boolean; 
+/**
+ * Include selected AI provider/model and usage details.
+ */
+aiProviderModelInfo: boolean; 
+/**
+ * Include the latest build error output, if any.
+ */
+buildErrorOutput: boolean; 
+/**
+ * Include selected `flake.lock` input metadata.
+ */
+flakeInputsSnapshot: boolean; 
+/**
+ * Include recent application logs.
+ */
+appLogs: boolean }
+
+/**
+ * System information captured from the runtime.
+ */
+export type FeedbackSystemInfo = { 
+/**
+ * Operating system name, e.g. `macOS`.
+ */
+osName: string | null; 
+/**
+ * Operating system version string.
+ */
+osVersion: string | null; 
+/**
+ * Hardware/system architecture, e.g. `aarch64-darwin`.
+ */
+arch: string | null; 
+/**
+ * Installed Nix version, when detected.
+ */
+nixVersion: string | null; 
+/**
+ * nixmac application version.
+ */
+appVersion: string | null }
+
+/**
+ * Aggregated usage stats for feedback.
+ */
+export type FeedbackUsageStats = { 
+/**
+ * Number of evolutions recorded locally.
+ */
+totalEvolutions: number | null; 
+/**
+ * Percentage of evolutions that completed successfully.
+ */
+successRate: number | null; 
+/**
+ * Average number of agent iterations per evolution.
+ */
+avgIterations: number | null; 
+/**
+ * Timestamp when the stats were computed.
+ */
+lastComputedAt: string | null; 
+/**
+ * Additional structured usage fields that are not part of the stable contract.
+ */
+extra: JsonValue | null }
+
+/**
+ * What kind of control should render this field.
+ */
+export type FieldType = 
+/**
+ * Numeric input with optional min/max/step.
+ */
+{ kind: "number"; min?: number | null; max?: number | null; step?: number | null } | 
+/**
+ * Toggle / checkbox.
+ */
+{ kind: "boolean" } | 
+/**
+ * Single-line text or multi-line textarea when `multiline = true`.
+ */
+{ kind: "string"; multiline: boolean } | 
+/**
+ * Select / dropdown of pre-declared options.
+ */
+{ kind: "enum"; variants: EnumVariant[] }
+
 /**
  * HEAD content vs working-tree content for a file, used by the diff tab Monaco DiffEditor.
  */
 export type FileDiffContents = { original: string; modified: string }
 
+export type FileEdit = { path: string; search: string; replace: string }
+
 export type FinalizeRollbackInput = { storePath: string | null; changesetId: number | null }
 
+export type FixWithAiInput = { 
+/**
+ * The failing log line (or error message) the user asked to fix.
+ */
+error: string; 
+/**
+ * Backend error classification (`RebuildErrorType`), when known.
+ */
+errorType: string | null }
+
 export type FlakeExistsAtInput = { dir: string }
+
+export type GatherMetadataInput = { request: FeedbackMetadataRequest }
 
 export type GenerateHistoryFromInput = { commitHash: string; number: number }
 
@@ -303,6 +870,69 @@ export type GitCommitInput = { message: string }
 export type GitDiscardFileInput = { filename: string }
 
 export type GitFileDiffContentsInput = { filenames: string[] }
+
+/**
+ * Individual file status parsed from diff headers.
+ */
+export type GitFileStatus = { 
+/**
+ * Repository-relative file path.
+ */
+path: string; 
+/**
+ * Parsed status category for this file.
+ */
+changeType: ChangeType }
+
+/**
+ * Payload emitted on `git_state_changed` by the git status watcher.
+ */
+export type GitState = { 
+/**
+ * Latest git status snapshot, if it could be read.
+ */
+gitStatus: GitStatus | null; 
+/**
+ * True when a build outside nixmac was detected.
+ */
+externalBuildDetected: boolean }
+
+/**
+ * Comprehensive git repository status.
+ */
+export type GitStatus = { 
+/**
+ * Changed files parsed from git status/diff output.
+ */
+files: GitFileStatus[]; 
+/**
+ * Current branch name, when the repository has one checked out.
+ */
+branch: string | null; 
+/**
+ * Unified diff for the current working tree/index changes.
+ */
+diff: string; 
+/**
+ * Total added lines in `diff`.
+ */
+additions: number; 
+/**
+ * Total removed lines in `diff`.
+ */
+deletions: number; 
+/**
+ * Current HEAD commit hash, when available.
+ */
+headCommitHash: string | null; 
+/**
+ * Whether HEAD is known to be clean relative to tracked changes.
+ */
+cleanHead: boolean; 
+/**
+ * Raw change rows associated with the current diff.
+ */
+changes: Change[] }
 
 /**
  * Current state of a GitHub-first desktop bootstrap flow.
@@ -441,6 +1071,30 @@ login: string | null;
  */
 installationId: number }
 
+/**
+ * Preferences local to this app installation.
+ * 
+ * Hydrated via `get_global_preferences`; every mutation emits
+ * `global_preferences_changed` with the full struct as payload.
+ */
+export type GlobalPreferences = { hostAttr: string | null; configDir: string | null; repoRoot: string | null; sendDiagnostics: boolean; evolveProvider: string | null; evolveModel: string | null; summaryProvider: string | null; summaryModel: string | null; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
+/**
+ * Timestamp (unix secs) of the last onboarding "scan this Mac" / customizations review.
+ */
+onboardingMacScannedAt: number | null; 
+/**
+ * True once the user logged in or explicitly chose bring-your-own-key during onboarding.
+ */
+onboardingLoginDecided: boolean; 
+/**
+ * Timestamp (unix secs) of the last successful build/evolution apply. Set by `finalize_apply`.
+ */
+onboardingLastBuildAt: number | null; 
+/**
+ * Whether or not to auto-format Nix files when making changes to the flakes.
+ */
+autoFormatNixFiles: boolean }
+
 export type HelperServiceStatus = { label: string; available: boolean; registered: boolean; authorized: boolean; socketAvailable: boolean; detail: string | null }
 
 /**
@@ -508,6 +1162,10 @@ isOrphanedRestore: boolean;
  */
 isUndone: boolean }
 
+export type HomebrewItem = { name: string; version: string | null; itemType: HomebrewItemType }
+
+export type HomebrewItemType = "tap" | "cask" | "brew"
+
 /**
  * Current Homebrew package state detected on the machine.
  */
@@ -537,7 +1195,37 @@ source: string | null;
  */
 lastChecked: number }
 
+/**
+ * Result of a successful settings import.
+ */
+export type ImportResult = { path: string; keysImported: number }
+
+/**
+ * Result of inspecting the running app's install location.
+ * 
+ * The UI surfaces a "move to /Applications" warning when the app is running
+ * from a `.app` bundle that is not in `/Applications` (e.g. still on the
+ * mounted DMG). When `bundle_path` is `None` the process is not running from
+ * a bundle at all (e.g. `tauri dev`, cargo test, e2e runners); the UI must
+ * treat that as "check not applicable" rather than "misplaced" so dev and
+ * test runs don't show a false warning.
+ */
+export type InstallLocationState = { 
+/**
+ * True when the `.app` bundle's parent directory is `/Applications`.
+ */
+inApplicationsDir: boolean; 
+/**
+ * Absolute path to the detected `.app` bundle, or `None` when the process
+ * is not running from inside a bundle.
+ */
+bundlePath?: string | null }
+
 export type InstallSyncAgentInput = { config: SyncAgentLaunchConfig | null }
+
+export type InstallVersionInput = { version: string }
+
+export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
 
 export type LaunchdItem = { 
 /**
@@ -576,6 +1264,101 @@ workingDirectory: string | null }
 
 export type LaunchdItemType = "LaunchAgent" | "LaunchDaemon" | "LaunchdUserAgent"
 
+export type ListModelsInput = { tool: string }
+
+/**
+ * Managed file root inspected by the clobber preflight.
+ */
+export type ManagedFileRoot = 
+/**
+ * nix-darwin `environment.etc`, rooted at `/etc`.
+ */
+"etc" | 
+/**
+ * Home Manager `xdg.configFile`, rooted at `$XDG_CONFIG_HOME`.
+ */
+"xdg_config"
+
+/**
+ * A managed file that will be moved aside before activation continues.
+ */
+export type ManagedFileWarning = { 
+/**
+ * Absolute path that will be moved aside or replaced by activation.
+ */
+path: string; 
+/**
+ * Managed-file target relative to its root.
+ */
+target: string; 
+/**
+ * Root and option family that owns this target.
+ */
+managedRoot: ManagedFileRoot; 
+/**
+ * Home Manager user that owns the file, when known.
+ */
+user: string | null; 
+/**
+ * Existing symlink target, if the path is currently a symlink.
+ */
+currentLinkTarget: string | null; 
+/**
+ * Expected symlink target, when the configuration exposes a concrete source.
+ */
+expectedLinkTarget: string | null; 
+/**
+ * Backup suffix activation will append before linking the generated file.
+ */
+backupExtension: string | null }
+
+/**
+ * Result of `nix_check` — reports whether Nix and darwin-rebuild are available.
+ */
+export type NixCheckResult = { 
+/**
+ * Whether Nix is installed.
+ */
+installed: boolean; 
+/**
+ * Installed Nix version string, when available.
+ */
+version: string | null; 
+/**
+ * Whether `darwin-rebuild` is available.
+ */
+darwinRebuildAvailable: boolean }
+
+/**
+ * Status of the nix / darwin-rebuild installation flow.
+ */
+export type NixInstallState = { 
+/**
+ * Whether nix is installed; `None` until first checked.
+ */
+installed: boolean | null; 
+/**
+ * Whether darwin-rebuild is available; `None` until first checked.
+ */
+darwinRebuildAvailable: boolean | null; 
+/**
+ * True while an install run is in flight.
+ */
+installing: boolean; 
+/**
+ * Current installer phase ("downloading", "waiting-for-installer",
+ * "prefetching"); `None` when idle.
+ */
+installPhase: string | null; 
+/**
+ * True while the standalone darwin-rebuild prefetch is in flight.
+ */
+prefetching: boolean; 
+/**
+ * Error from the last finished run, if it failed.
+ */
+lastError: string | null }
+
 /**
  * Generic acknowledgement returned by fire-and-forget commands.
  */
@@ -588,6 +1371,77 @@ ok: boolean }
 export type PathExistsInput = { dir: string }
 
 export type PathNormalizeInput = { input: string }
+
+/**
+ * Individual permission state.
+ */
+export type Permission = { 
+/**
+ * Stable permission identifier.
+ */
+id: string; 
+/**
+ * Human-readable permission name.
+ */
+name: string; 
+/**
+ * Why nixmac needs this permission.
+ */
+description: string; 
+/**
+ * Whether onboarding requires this permission.
+ */
+required: boolean; 
+/**
+ * Whether the app can trigger the system prompt directly.
+ */
+canRequestProgrammatically: boolean; 
+/**
+ * Current permission status.
+ */
+status: PermissionStatus; 
+/**
+ * Manual instructions for permissions that cannot be requested programmatically.
+ */
+instructions?: string | null }
+
+/**
+ * Permission status.
+ */
+export type PermissionStatus = 
+/**
+ * Permission has been granted.
+ */
+"granted" | 
+/**
+ * Permission was checked and denied.
+ */
+"denied" | 
+/**
+ * Permission has not been resolved yet.
+ */
+"pending" | 
+/**
+ * Permission state could not be determined.
+ */
+"unknown"
+
+/**
+ * All permissions state.
+ */
+export type PermissionsState = { 
+/**
+ * Individual permission states.
+ */
+permissions: Permission[]; 
+/**
+ * True when every required permission is granted.
+ */
+allRequiredGranted: boolean; 
+/**
+ * Unix timestamp when permissions were last checked.
+ */
+checkedAt: number | null }
 
 /**
  * State sent to the preview indicator window.
@@ -618,6 +1472,10 @@ deletions: number | null;
  */
 isLoading: boolean }
 
+export type ProviderInput = { provider: string }
+
+export type ReadFileInput = { relPath: string }
+
 /**
  * Lifecycle status of the darwin-rebuild apply/activate streams.
  */
@@ -646,6 +1504,21 @@ errorMessage: string | null;
  * Whether the failure left the system untouched.
  */
 systemUntouched: boolean | null }
+
+/**
+ * A recommended prompt based on the user's current macOS settings.
+ */
+export type RecommendedPrompt = { 
+/**
+ * Stable prompt identifier.
+ */
+id: string; 
+/**
+ * Prompt text suggested to the user.
+ */
+promptText: string }
+
+export type RequestInput = { permissionId: string }
 
 export type RestoreTargetInput = { targetHash: string }
 
@@ -687,6 +1560,12 @@ singles: ChangeWithSummary[];
  */
 unsummarizedHashes: string[] }
 
+export type SendInput = { message: string }
+
+export type SendOtpInput = { email: string }
+
+export type SetCachedInput = { provider: string; models: string[] }
+
 /**
  * Result returned when the config directory is set (typed or picked).
  * State mirrors (evolve state, git state, hosts) flow through the
@@ -702,9 +1581,55 @@ dir: string;
  */
 changed: boolean }
 
+export type SetInput = { structName: string; value: JsonValue }
+
+export type SetServerUrlInput = { url: string }
+
+export type SignInInput = { email: string; password: string }
+
+export type SignUpWebInput = { name: string; email: string; password: string }
+
 export type SyncAgentLaunchConfig = { configDir: string | null; hostAttr: string | null; syncPull: boolean; unattendedApply: boolean; startIntervalSeconds: number | null }
 
 export type SyncAgentStatus = { label: string; installed: boolean; loaded: boolean; plistPath: string; detail: string | null }
+
+/**
+ * Remote sync state for the current account, returned by `sync_status`.
+ */
+export type SyncRemoteStatus = { 
+/**
+ * Whether the server has a stored configuration snapshot for this account.
+ */
+configured: boolean; 
+/**
+ * Commit hash of the latest snapshot the server holds, if any.
+ */
+headCommitHash: string | null; 
+/**
+ * Unix timestamp (seconds) of the latest server-side snapshot, if any.
+ */
+updatedAt: number | null; 
+/**
+ * Number of devices currently registered to the account.
+ */
+deviceCount: number }
+
+/**
+ * Result of a `sync_push` or `sync_pull` operation.
+ */
+export type SyncResult = { 
+/**
+ * Whether the operation succeeded end-to-end.
+ */
+ok: boolean; 
+/**
+ * Commit hash that is now current after the operation, when known.
+ */
+headCommitHash: string | null; 
+/**
+ * Human-readable status detail for display in the UI.
+ */
+message: string }
 
 /**
  * A single macOS system default that differs from the factory value.
@@ -744,12 +1669,102 @@ defaults: SystemDefault[];
  */
 totalScanned: number }
 
+/**
+ * A single thinking entry from the agent's reasoning process
+ */
+export type ThinkingEntry = { 
+/**
+ * When this thought occurred (ms since evolution start)
+ */
+timestampMs: number; 
+/**
+ * The iteration number when this thought occurred
+ */
+iteration: number; 
+/**
+ * Category of thinking (planning, analysis, debugging, etc.)
+ */
+category: string; 
+/**
+ * The actual thought content
+ */
+content: string }
+
+/**
+ * A tool call record for the activity log
+ */
+export type ToolCallRecord = { 
+/**
+ * When this tool was called (ms since evolution start)
+ */
+timestampMs: number; 
+/**
+ * The iteration number
+ */
+iteration: number; 
+/**
+ * Tool name
+ */
+tool: string; 
+/**
+ * Tool arguments (simplified)
+ */
+argsSummary: string; 
+/**
+ * Result summary
+ */
+resultSummary: string; 
+/**
+ * Whether the call succeeded
+ */
+success: boolean }
+
+/**
+ * Auto-update channel selected for release-mode builds.
+ */
+export type UpdateChannel = "stable" | "develop"
+
+/**
+ * Lightweight update metadata returned by the channel-aware updater command.
+ */
+export type UpdateInfo = { 
+/**
+ * Channel whose manifest produced this update.
+ */
+channel: UpdateChannel; 
+/**
+ * Version advertised by the channel manifest.
+ */
+version: string; 
+/**
+ * Release notes from the channel manifest, when available.
+ */
+notes: string | null }
+
+export type VerifyOtpInput = { email: string; otp: string; name: string }
+
+export type WriteFileInput = { relPath: string; content: string }
+
 export type Procedures = {
+  account: {
+    sendOtp: Client<Record<never, never>, SendOtpInput, void, Error>
+    setServerUrl: Client<Record<never, never>, SetServerUrlInput, AuthStatus, Error>
+    signIn: Client<Record<never, never>, SignInInput, AuthStatus, Error>
+    signInWeb: Client<Record<never, never>, SignInInput, AuthStatus, Error>
+    signOut: Client<Record<never, never>, void, AuthStatus, Error>
+    signUpWeb: Client<Record<never, never>, SignUpWebInput, AuthStatus, Error>
+    status: Client<Record<never, never>, void, AuthStatus, Error>
+    verifyOtp: Client<Record<never, never>, VerifyOtpInput, AuthStatus, Error>
+  }
   billing: {
     checkout: Client<Record<never, never>, CheckoutInput, CheckoutUrl, Error>
     portal: Client<Record<never, never>, void, CheckoutUrl, Error>
     products: Client<Record<never, never>, void, BillingProductInfo[], Error>
     state: Client<Record<never, never>, void, AccountBilling, Error>
+  }
+  cli: {
+    checkTools: Client<Record<never, never>, void, CliToolsState, Error>
+    listModels: Client<Record<never, never>, ListModelsInput, string[], Error>
   }
   config: {
     get: Client<Record<never, never>, void, Config, Error>
@@ -767,6 +1782,8 @@ export type Procedures = {
     activateStorePath: Client<Record<never, never>, ActivateStorePathInput, OkResult, Error>
     applyStreamStart: Client<Record<never, never>, ApplyStreamStartInput, OkResult, Error>
     buildCheck: Client<Record<never, never>, void, BuildCheckResult, Error>
+    checkAppManagement: Client<Record<never, never>, void, AppManagementCheckResult, Error>
+    checkEtcClobber: Client<Record<never, never>, void, EtcClobberCheckResult, Error>
     evolve: Client<Record<never, never>, EvolveInput, void, Error>
     evolveAnswer: Client<Record<never, never>, EvolveAnswerInput, OkResult, Error>
     evolveCancel: Client<Record<never, never>, void, EvolveCancelResult, Error>
@@ -774,6 +1791,7 @@ export type Procedures = {
     finalizeApply: Client<Record<never, never>, void, void, Error>
     finalizeRestore: Client<Record<never, never>, RestoreTargetInput, void, Error>
     finalizeRollback: Client<Record<never, never>, FinalizeRollbackInput, void, Error>
+    fixWithAi: Client<Record<never, never>, FixWithAiInput, void, Error>
     helperRegister: Client<Record<never, never>, void, HelperServiceStatus, Error>
     helperStatus: Client<Record<never, never>, void, HelperServiceStatus, Error>
     helperUnregister: Client<Record<never, never>, void, HelperServiceStatus, Error>
@@ -784,20 +1802,41 @@ export type Procedures = {
     syncAgentStatus: Client<Record<never, never>, void, SyncAgentStatus, Error>
     syncAgentUninstall: Client<Record<never, never>, void, SyncAgentStatus, Error>
   }
+  devConfigs: {
+    schemas: Client<Record<never, never>, void, ConfigurableSchema[], Error>
+    set: Client<Record<never, never>, SetInput, void, Error>
+    values: Client<Record<never, never>, void, Partial<{ [key in string]: JsonValue }>, Error>
+  }
+  editor: {
+    readFile: Client<Record<never, never>, ReadFileInput, string, Error>
+    writeFile: Client<Record<never, never>, WriteFileInput, void, Error>
+  }
+  evolveMascot: {
+    hide: Client<Record<never, never>, void, OkResult, Error>
+    show: Client<Record<never, never>, void, OkResult, Error>
+  }
   evolveState: {
     clear: Client<Record<never, never>, void, EvolveState, Error>
     get: Client<Record<never, never>, void, EvolveState, Error>
+  }
+  feedback: {
+    gatherMetadata: Client<Record<never, never>, GatherMetadataInput, FeedbackMetadata, Error>
+    submit: Client<Record<never, never>, string, boolean, Error>
   }
   flake: {
     bootstrapDefault: Client<Record<never, never>, BootstrapDefaultConfigInput, void, Error>
     exists: Client<Record<never, never>, void, boolean, Error>
     existsAt: Client<Record<never, never>, FlakeExistsAtInput, boolean, Error>
+    listHosts: Client<Record<never, never>, void, string[], Error>
   }
   git: {
     commit: Client<Record<never, never>, GitCommitInput, CommitResult, Error>
     commitFile: Client<Record<never, never>, GitCommitFileInput, CommitResult, Error>
     discardFile: Client<Record<never, never>, GitDiscardFileInput, OkResult, Error>
     fileDiffContents: Client<Record<never, never>, GitFileDiffContentsInput, Partial<{ [key in string]: FileDiffContents }>, Error>
+    state: Client<Record<never, never>, void, GitState, Error>
+    status: Client<Record<never, never>, void, GitStatus, Error>
+    statusAndCache: Client<Record<never, never>, void, GitStatus, Error>
   }
   github: {
     bootstrapStart: Client<Record<never, never>, void, GithubConnectStart, Error>
@@ -813,15 +1852,39 @@ export type Procedures = {
     get: Client<Record<never, never>, void, HistoryItem[], Error>
   }
   homebrew: {
+    addItems: Client<Record<never, never>, AddItemsInput, ConfigEditApplyResult, Error>
     applyDiff: Client<Record<never, never>, ApplyDiffInput, ConfigEditApplyResult, Error>
     getStateDiff: Client<Record<never, never>, void, HomebrewState, Error>
   }
   launchd: {
+    applyItems: Client<Record<never, never>, ApplyItemsInput, ConfigEditApplyResult, Error>
     scanItems: Client<Record<never, never>, void, LaunchdItem[], Error>
+  }
+  lsp: {
+    send: Client<Record<never, never>, SendInput, void, Error>
+    start: Client<Record<never, never>, void, void, Error>
+    stop: Client<Record<never, never>, void, void, Error>
+  }
+  models: {
+    clearCached: Client<Record<never, never>, ProviderInput, OkResult, Error>
+    getCached: Client<Record<never, never>, ProviderInput, string[] | null, Error>
+    setCached: Client<Record<never, never>, SetCachedInput, OkResult, Error>
+  }
+  nix: {
+    check: Client<Record<never, never>, void, NixCheckResult, Error>
+    installState: Client<Record<never, never>, void, NixInstallState, Error>
   }
   path: {
     exists: Client<Record<never, never>, PathExistsInput, boolean, Error>
     normalize: Client<Record<never, never>, PathNormalizeInput, string, Error>
+  }
+  permissions: {
+    get: Client<Record<never, never>, void, PermissionsState | null, Error>
+    refresh: Client<Record<never, never>, void, void, Error>
+    request: Client<Record<never, never>, RequestInput, Permission, Error>
+  }
+  preferences: {
+    get: Client<Record<never, never>, void, GlobalPreferences, Error>
   }
   previewIndicator: {
     getState: Client<Record<never, never>, void, PreviewIndicatorState, Error>
@@ -829,13 +1892,38 @@ export type Procedures = {
     show: Client<Record<never, never>, void, OkResult, Error>
     update: Client<Record<never, never>, PreviewIndicatorState, OkResult, Error>
   }
+  promptHistory: {
+    add: Client<Record<never, never>, AddInput, OkResult, Error>
+    get: Client<Record<never, never>, void, string[], Error>
+  }
   scanner: {
+    applyDefaults: Client<Record<never, never>, ApplyDefaultsInput, ConfigEditApplyResult, Error>
+    getRecommendedPrompt: Client<Record<never, never>, void, RecommendedPrompt | null, Error>
     scanDefaults: Client<Record<never, never>, void, SystemDefaultsScan, Error>
+  }
+  settings: {
+    export: Client<Record<never, never>, ExportInput, ExportResult | null, Error>
+    import: Client<Record<never, never>, void, ImportResult | null, Error>
   }
   summarizedChanges: {
     findChangeMap: Client<Record<never, never>, void, SemanticChangeMap, Error>
     generateCommitMessage: Client<Record<never, never>, void, string, Error>
     getChangeMap: Client<Record<never, never>, void, SemanticChangeMap, Error>
     summarizeCurrent: Client<Record<never, never>, void, SemanticChangeMap, Error>
+  }
+  sync: {
+    pull: Client<Record<never, never>, void, SyncResult, Error>
+    push: Client<Record<never, never>, void, SyncResult, Error>
+    status: Client<Record<never, never>, void, SyncRemoteStatus, Error>
+  }
+  system: {
+    installLocation: Client<Record<never, never>, void, InstallLocationState, Error>
+  }
+  updater: {
+    checkUpdate: Client<Record<never, never>, void, UpdateInfo | null, Error>
+    clearPinnedVersion: Client<Record<never, never>, void, void, Error>
+    installUpdate: Client<Record<never, never>, void, void, Error>
+    installVersion: Client<Record<never, never>, InstallVersionInput, void, Error>
+    relaunch: Client<Record<never, never>, void, void, Error>
   }
 }

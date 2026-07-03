@@ -8,7 +8,7 @@ import {
   submitPromptMessage,
 } from "./helpers/app-ui.js";
 import { getConfigRepoGitDiff } from "./helpers/test-env.js";
-import { getMockVllmFixturePreset } from "./helpers/mock-vllm-presets.js";
+import { getMockOpenAiCompatibleFixturePreset } from "./helpers/mock-openai-compatible-presets.js";
 import { expect, use } from "chai";
 import chaiAsPromised from "chai-as-promised";
 
@@ -18,9 +18,9 @@ describe("discard", () => {
   registerPromptSuiteBeforeEach({
     fixtureByTestTitle: {
       "submits a prompt, reaches evolve review, then discards and returns to initial state":
-        getMockVllmFixturePreset("basicPromptsAddFont"),
+        getMockOpenAiCompatibleFixturePreset("basicPromptsAddFont"),
       "submits a prompt, reaches evolve review, then cancels discard and stays on review":
-        getMockVllmFixturePreset("basicPromptsAddFont"),
+        getMockOpenAiCompatibleFixturePreset("basicPromptsAddFont"),
     },
   });
 

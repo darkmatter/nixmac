@@ -159,7 +159,7 @@ mod tests {
             "summaryProvider": "openai",
             "summaryModel": "gpt-5-mini",
             "ollamaApiBaseUrl": "http://localhost:11434",
-            "vllmApiBaseUrl": "http://localhost:8000",
+            "openaiCompatibleApiBaseUrl": "http://localhost:8000",
             "confirmBuild": false,
             "confirmClear": false,
             "confirmRollback": false,
@@ -171,7 +171,7 @@ mod tests {
             "updateChannel": "develop"
         }));
 
-        let prefs = load_or_default::<GlobalPreferences>(&persistence).unwrap();
+        let prefs: GlobalPreferences = load_or_default::<GlobalPreferences>(&persistence).unwrap();
 
         assert_eq!(prefs.host_attr.as_deref(), Some("macbook"));
         assert_eq!(prefs.config_dir.as_deref(), Some("/Users/cm/.darwin"));

@@ -7,22 +7,21 @@ import type {
   PermissionsState,
   SemanticChangeMap,
 } from "@/ipc/types";
-import { uiActions, useUiState, viewModelActions } from "@nixmac/state";
-import { useViewModel } from "@nixmac/state";
 import {
   makeGlobalPreferences,
   makeGrantedPermissions,
   makeNixInstallState,
   makeRebuildStatus,
 } from "@/utils/test-fixtures";
+import { uiActions, useUiState, useViewModel, viewModelActions } from "@nixmac/state";
 import type { Decorator } from "@storybook/react-vite";
 import type React from "react";
 // NOTE: these are Storybook's preview hooks, NOT React's. Mixing `useArgs`
 // with React hooks in the same story/decorator throws "preview hooks can only
 // be called inside decorators and story functions".
+import { RouterProvider, nav, router } from "@/router";
 import { useArgs, useEffect } from "storybook/preview-api";
 import { DarwinWidget } from "./widget";
-import { RouterProvider, nav, router } from "@/router";
 
 // =============================================================================
 // Fixtures
@@ -60,7 +59,7 @@ function makeIncompletePermissions(): PermissionsState {
       {
         id: "full-disk",
         name: "Full Disk Access",
-        description: "Recommended for complete system management capabilities",
+        description: "Required for darwin-rebuild to apply system changes",
         required: true,
         canRequestProgrammatically: false,
         status: "pending",
@@ -334,7 +333,7 @@ function applyArgsToStores(a: Record<string, any>): void {
     evolveEvents: [...(EVOLVE_EVENT_PRESETS[a.evolveEvents] ?? [])],
     promptHistory: [],
     rebuildStatus: makeRebuildStatus(),
-    rebuildLog: { lines: [], rawLines: [] },
+    rebuildLog: { lines: [], rawLines: [], notices: [] },
     history: [],
   });
 

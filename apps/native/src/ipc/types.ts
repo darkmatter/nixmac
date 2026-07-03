@@ -8,6 +8,61 @@
 export type AccountBilling = { usage: BillingUsage; subscriptions: BillingSubscription[]; hasPaymentMethod: boolean; canUseHostedInference: boolean; canUseDeviceSync: boolean }
 
 /**
+ * Result of proactively checking App Management-sensitive copyApps targets.
+ */
+export type AppManagementCheckResult = { 
+/**
+ * True when every existing managed app bundle accepted the update probe.
+ */
+ok: boolean; 
+/**
+ * Number of existing app bundles inspected.
+ */
+checked: number; 
+/**
+ * Target directories with existing app bundles that were inspected.
+ */
+targets: AppManagementPermissionTarget[]; 
+/**
+ * Existing app bundles that could not be updated.
+ */
+failures: AppManagementProbeFailure[] }
+
+/**
+ * Home Manager copyApps target that requires App Management-sensitive probing.
+ */
+export type AppManagementPermissionTarget = { 
+/**
+ * Home Manager user that owns the target directory.
+ */
+user: string; 
+/**
+ * Absolute copyApps target directory.
+ */
+directory: string; 
+/**
+ * Existing app bundles inspected under the target directory.
+ */
+appBundles: string[] }
+
+/**
+ * An existing app bundle that could not be updated during the preflight probe.
+ */
+export type AppManagementProbeFailure = { 
+/**
+ * Home Manager user that owns the app bundle target.
+ */
+user: string; 
+/**
+ * Existing app bundle that macOS blocked nixmac from updating.
+ */
+appBundle: string; 
+/**
+ * OS error returned by the harmless `.DS_Store` update probe.
+ */
+error: string }
+
+/**
  * The signed-in nixmac account, minus any secret material.
  */
 export type AuthAccount = { 
@@ -295,7 +350,15 @@ system_untouched: boolean | null;
 /**
  * Path to the captured rebuild log, when available.
  */
-log_file: string | null }
+log_file: string | null; 
+/**
+ * Structured `/etc` clobber conflicts when `error_type` is `etc_clobber`.
+ */
+etc_clobber: EtcClobberCheckResult | null; 
+/**
+ * Structured App Management probe failures when `error_type` is `app_management`.
+ */
+app_management: AppManagementCheckResult | null }
 
 /**
  * Payload for `darwin:apply:summary`.
@@ -323,6 +386,73 @@ error: boolean | null;
 error_type: RebuildErrorType | null }
 
 export type EnumVariant = { value: string; label: string }
+
+/**
+ * Result of proactively checking managed-file overwrite safety.
+ */
+export type EtcClobberCheckResult = { 
+/**
+ * True when no hard conflicts were detected.
+ */
+ok: boolean; 
+/**
+ * Number of enabled managed-file entries inspected.
+ */
+checked: number; 
+/**
+ * Conflicts that would make nix-darwin abort activation.
+ */
+conflicts: EtcClobberConflict[]; 
+/**
+ * Non-blocking managed-file collisions that activation will back up.
+ */
+warnings: ManagedFileWarning[] }
+
+/**
+ * A single `/etc` path that nix-darwin would refuse to overwrite.
+ */
+export type EtcClobberConflict = { 
+/**
+ * Absolute path under `/etc` that would be clobbered.
+ */
+path: string; 
+/**
+ * nix-darwin `environment.etc.<name>.target` value.
+ */
+target: string; 
+/**
+ * Symlink target nix-darwin expects for an already-managed file.
+ */
+expectedStaticPath: string; 
+/**
+ * Existing symlink target, if the path is currently a symlink.
+ */
+currentLinkTarget: string | null; 
+/**
+ * Safe hashes advertised by nix-darwin for this entry.
+ */
+knownSha256Hashes: string[]; 
+/**
+ * Reason this path is considered unsafe to overwrite.
+ */
+kind: EtcClobberConflictKind }
+
+/**
+ * Kind of `/etc` clobber conflict detected before nix-darwin activation.
+ */
+export type EtcClobberConflictKind = 
+/**
+ * Existing file content does not match any nix-darwin known safe hash.
+ */
+"unrecognized_content" | 
+/**
+ * Existing path is not a regular file, so nix-darwin cannot hash/adopt it.
+ */
+"non_regular_target" | 
+/**
+ * Existing path could not be inspected or hashed by nixmac.
+ */
+"unreadable"
 
 export type Evolution = { id: string; createdAt: number; state: EvolutionState; prompt: string; edits: FileEdit[]; commitHash: string | null; summary: string | null; 
 /**
@@ -657,7 +787,7 @@ totalTokens: number | null;
 /**
  * Latency in milliseconds for the related AI run.
  */
-latencyMs: number | null; 
+latencyMs: number; 
 /**
  * Iterations completed by the related evolution.
  */
@@ -678,7 +808,7 @@ rev: string | null;
 /**
  * Flake input last-modified timestamp from `flake.lock`.
  */
-lastModified: number | null; 
+lastModified: number; 
 /**
  * Store hash for the locked input.
  */
@@ -1101,7 +1231,7 @@ installationId: number }
  * Hydrated via `get_global_preferences`; every mutation emits
  * `global_preferences_changed` with the full struct as payload.
  */
-export type GlobalPreferences = { hostAttr: string | null; configDir: string | null; repoRoot: string | null; sendDiagnostics: boolean; evolveProvider: string | null; evolveModel: string | null; summaryProvider: string | null; summaryModel: string | null; ollamaApiBaseUrl: string | null; vllmApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
+export type GlobalPreferences = { hostAttr: string | null; configDir: string | null; repoRoot: string | null; sendDiagnostics: boolean; evolveProvider: string | null; evolveModel: string | null; summaryProvider: string | null; summaryModel: string | null; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
 /**
  * Timestamp (unix secs) of the last onboarding "scan this Mac" / customizations review.
  */
@@ -1113,7 +1243,11 @@ onboardingLoginDecided: boolean;
 /**
  * Timestamp (unix secs) of the last successful build/evolution apply. Set by `finalize_apply`.
  */
-onboardingLastBuildAt: number | null }
+onboardingLastBuildAt: number | null; 
+/**
+ * Whether or not to auto-format Nix files when making changes to the flakes.
+ */
+autoFormatNixFiles: boolean }
 
 /**
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
@@ -1256,6 +1390,52 @@ standardOutPath: string | null; standardErrorPath: string | null;
 workingDirectory: string | null }
 
 export type LaunchdItemType = "LaunchAgent" | "LaunchDaemon" | "LaunchdUserAgent"
+
+/**
+ * Managed file root inspected by the clobber preflight.
+ */
+export type ManagedFileRoot = 
+/**
+ * nix-darwin `environment.etc`, rooted at `/etc`.
+ */
+"etc" | 
+/**
+ * Home Manager `xdg.configFile`, rooted at `$XDG_CONFIG_HOME`.
+ */
+"xdg_config"
+
+/**
+ * A managed file that will be moved aside before activation continues.
+ */
+export type ManagedFileWarning = { 
+/**
+ * Absolute path that will be moved aside or replaced by activation.
+ */
+path: string; 
+/**
+ * Managed-file target relative to its root.
+ */
+target: string; 
+/**
+ * Root and option family that owns this target.
+ */
+managedRoot: ManagedFileRoot; 
+/**
+ * Home Manager user that owns the file, when known.
+ */
+user: string | null; 
+/**
+ * Existing symlink target, if the path is currently a symlink.
+ */
+currentLinkTarget: string | null; 
+/**
+ * Expected symlink target, when the configuration exposes a concrete source.
+ */
+expectedLinkTarget: string | null; 
+/**
+ * Backup suffix activation will append before linking the generated file.
+ */
+backupExtension: string | null }
 
 /**
  * Result of `nix_check` — reports whether Nix and darwin-rebuild are available.
@@ -1535,6 +1715,10 @@ export type RebuildErrorType =
  */
 "full_disk_access" | 
 /**
+ * App Management is missing for managed app bundle updates.
+ */
+"app_management" | 
+/**
  * User cancelled the privileged activation prompt.
  */
 "user_cancelled" | 
@@ -1542,6 +1726,10 @@ export type RebuildErrorType =
  * Administrator authorization failed.
  */
 "authorization_denied" | 
+/**
+ * nix-darwin would overwrite unmanaged files in /etc.
+ */
+"etc_clobber" | 
 /**
  * Fallback for uncategorized failures.
  */
@@ -1834,13 +2022,13 @@ openaiApiKey: string | null;
  */
 ollamaApiBaseUrl: string | null; 
 /**
- * Base URL for vLLM-compatible model servers.
+ * Base URL for OpenAI-compatible model servers.
  */
-vllmApiBaseUrl: string | null; 
+openaiCompatibleApiBaseUrl: string | null; 
 /**
- * API key for vLLM-compatible model servers.
+ * API key for OpenAI-compatible model servers.
  */
-vllmApiKey: string | null; 
+openaiCompatibleApiKey: string | null; 
 /**
  * Provider used for change summaries.
  */
@@ -1922,7 +2110,11 @@ updateChannel: UpdateChannel;
  * Developer-only feature flag overrides (flag key → variant string).
  * `None` or missing key = use PostHog default.
  */
-featureFlagOverrides: Partial<{ [key in string]: string }> | null }
+featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
+/**
+ * Whether or not to auto-format Nix files when making changes to the flakes.
+ */
+autoFormatNixFiles: boolean }
 
 /**
  * Partial update to UI preferences — every field is optional so the caller
@@ -1974,13 +2166,13 @@ maxOutputTokens: number | null;
  */
 ollamaApiBaseUrl: string | null; 
 /**
- * vLLM base URL update.
+ * OpenAI-compatible base URL update.
  */
-vllmApiBaseUrl: string | null; 
+openaiCompatibleApiBaseUrl: string | null; 
 /**
- * vLLM API key update.
+ * OpenAI-compatible API key update.
  */
-vllmApiKey: string | null; 
+openaiCompatibleApiKey: string | null; 
 /**
  * Diagnostics sharing preference update.
  */
@@ -2037,7 +2229,11 @@ onboardingMacScannedAt: number | null;
 /**
  * Set true once the user logged in or explicitly chose bring-your-own-key.
  */
-onboardingLoginDecided: boolean | null }
+onboardingLoginDecided: boolean | null; 
+/**
+ * Auto-format Nix files after smart edits.
+ */
+autoFormatNixFiles: boolean | null }
 
 /**
  * Auto-update channel selected for release-mode builds.

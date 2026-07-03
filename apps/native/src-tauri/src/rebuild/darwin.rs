@@ -40,6 +40,42 @@ fn create_log_file() -> anyhow::Result<(File, PathBuf)> {
     Ok((file, log_path))
 }
 
+/// Read the tail (last `max_lines` lines) of the most-recently-modified
+/// `darwin-rebuild_*.log`, for feeding build-failure context to the "Fix with
+/// AI" evolve run.
+///
+/// The frontend never receives a durable log path (`log_file` lives only on the
+/// transient `darwin:apply:end` event and `RebuildStatus` has no such field), so
+/// the current run's transcript is rediscovered here by modification time.
+/// Returns `None` when the log dir is unreadable or holds no rebuild logs.
+pub fn read_latest_rebuild_log_tail(max_lines: usize) -> Option<String> {
+    let log_dir = get_log_dir().ok()?;
+
+    let mut newest: Option<(std::time::SystemTime, PathBuf)> = None;
+    for entry in fs::read_dir(&log_dir).ok()?.flatten() {
+        let path = entry.path();
+        let is_rebuild_log = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.starts_with("darwin-rebuild_") && name.ends_with(".log"));
+        if !is_rebuild_log {
+            continue;
+        }
+        let Some(modified) = entry.metadata().ok().and_then(|meta| meta.modified().ok()) else {
+            continue;
+        };
+        if newest.as_ref().is_none_or(|(best, _)| modified > *best) {
+            newest = Some((modified, path));
+        }
+    }
+
+    let (_, path) = newest?;
+    let contents = fs::read_to_string(&path).ok()?;
+    let lines: Vec<&str> = contents.lines().collect();
+    let start = lines.len().saturating_sub(max_lines);
+    Some(lines[start..].join("\n"))
+}
+
 /// Run a dry-run nix build check against the current working tree.
 ///
 /// Returns `(passed, stdout, stderr)`. No build artefacts are produced.
@@ -87,6 +123,82 @@ pub fn dry_run_build_check(
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
     Ok((output.status.success(), stdout, stderr))
+}
+
+/// Thin re-export of the `/etc` clobber preflight so callers in this module (and
+/// the rebuild flow) don't reach across into `system::etc_preflight` directly.
+pub fn preflight_etc_clobber(
+    config_dir: &str,
+    host_attr: &str,
+) -> Result<crate::shared_types::EtcClobberCheckResult, anyhow::Error> {
+    crate::system::etc_preflight::check_etc_clobber(config_dir, host_attr)
+}
+
+/// Thin re-export of the App Management preflight. This mirrors Home Manager's
+/// `targets.darwin.copyApps` permission probe before activation asks for admin
+/// rights.
+pub fn preflight_app_management(
+    config_dir: &str,
+    host_attr: &str,
+) -> Result<crate::shared_types::AppManagementCheckResult, anyhow::Error> {
+    crate::system::app_management_preflight::check_app_management(config_dir, host_attr)
+}
+
+/// Build the `darwin:apply:end` payload for an aborted-before-activation clobber.
+///
+/// `system_untouched: true` is the key signal to the UI: because we bail before
+/// the activation step (and before the admin prompt), nothing on the system has
+/// changed and the user can safely rename the listed files and retry.
+fn etc_clobber_error_payload(
+    result: crate::shared_types::EtcClobberCheckResult,
+    log_path: &Path,
+) -> serde_json::Value {
+    let paths = result
+        .conflicts
+        .iter()
+        .map(|conflict| format!("  {}", conflict.path))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    serde_json::json!({
+        "ok": false,
+        "code": 2,
+        "log_file": log_path.to_string_lossy(),
+        "error_type": "etc_clobber",
+        "system_untouched": true,
+        "etc_clobber": result,
+        "error": format!(
+            "Unexpected files in /etc would be overwritten:\n{}\n\nPlease check there is nothing critical in these files, rename them by adding .before-nix-darwin to the end, and then try again.",
+            paths
+        ),
+    })
+}
+
+/// Build the `darwin:apply:end` payload for an App Management denial caught
+/// before activation.
+fn app_management_error_payload(
+    result: crate::shared_types::AppManagementCheckResult,
+    log_path: &Path,
+) -> serde_json::Value {
+    let app_bundles = result
+        .failures
+        .iter()
+        .map(|failure| format!("  {}", failure.app_bundle))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    serde_json::json!({
+        "ok": false,
+        "code": 3,
+        "log_file": log_path.to_string_lossy(),
+        "error_type": "app_management",
+        "system_untouched": true,
+        "app_management": result,
+        "error": format!(
+            "App Management permission is required to update managed app bundles:\n{}\n\nOpen System Settings > Privacy & Security > App Management and enable nixmac, then retry.",
+            app_bundles
+        ),
+    })
 }
 
 /// Runs `darwin-rebuild switch` with streaming output in two steps:
@@ -354,23 +466,42 @@ fn run_build_step(
 ///   A temporary NOPASSWD sudoers rule is created for the exact, content-
 ///   addressed, immutable nix store activate path and is removed via a shell
 ///   trap — no persistent system configuration is required.
-fn run_activate_step(config_dir: &str) -> Result<ActivateResult, anyhow::Error> {
+fn run_activate_step(
+    config_dir: &str,
+    allow_helper: bool,
+) -> Result<ActivateResult, anyhow::Error> {
     let activate_path = format!("{}/result/activate", config_dir);
-    run_activate_with_path(&activate_path)
+    run_activate_with_path(&activate_path, allow_helper)
 }
 
 /// Activate a specific nix store path directly
 fn activate_store_path(store_path: &str) -> Result<ActivateResult, anyhow::Error> {
     let activate_path = format!("{}/activate", store_path);
-    run_activate_with_path(&activate_path)
+    run_activate_with_path(&activate_path, true)
 }
 
 /// Classify an activation failure into (error_type, error_message).
 fn classify_activate_error(result: &ActivateResult) -> (&'static str, String) {
-    let stderr_lower = result.stderr.to_lowercase();
-    if stderr_lower.contains("user canceled") {
+    let output_lower = format!("{}\n{}", result.stderr, result.stdout).to_lowercase();
+    if output_lower.contains("user canceled") {
         return ("user_cancelled", "Activation cancelled by user".to_string());
     }
+    const APP_MANAGEMENT_PHRASES: &[&str] = &[
+        "permission denied when trying to update apps",
+        "requires permission to update your apps",
+        "grant the permission for your terminal emulator in system settings",
+        "privacy & security > app management",
+    ];
+    if APP_MANAGEMENT_PHRASES
+        .iter()
+        .any(|p| output_lower.contains(p))
+    {
+        return (
+            "app_management",
+            "App Management permission is required to update managed app bundles.".to_string(),
+        );
+    }
+
     const AUTH_PHRASES: &[&str] = &[
         "authorization failed",
         "not authorized",
@@ -380,7 +511,7 @@ fn classify_activate_error(result: &ActivateResult) -> (&'static str, String) {
         "authentication failed",
         "is not an administrator",
     ];
-    if AUTH_PHRASES.iter().any(|p| stderr_lower.contains(p)) {
+    if AUTH_PHRASES.iter().any(|p| output_lower.contains(p)) {
         return (
             "authorization_denied",
             "Authorization denied — administrator credentials required.".to_string(),
@@ -467,7 +598,10 @@ pub fn activate_store_path_stream(
     Ok(())
 }
 
-fn run_activate_with_path(activate_path: &str) -> Result<ActivateResult, anyhow::Error> {
+fn run_activate_with_path(
+    activate_path: &str,
+    allow_helper: bool,
+) -> Result<ActivateResult, anyhow::Error> {
     let nix_path = crate::system::nix::get_nix_path();
     let home = std::env::var("HOME").unwrap_or_default();
     let ssh_sock = std::env::var("SSH_AUTH_SOCK").unwrap_or_default();
@@ -479,8 +613,12 @@ fn run_activate_with_path(activate_path: &str) -> Result<ActivateResult, anyhow:
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|_| activate_path.to_owned());
 
-    if let Some(result) = try_activate_with_helper(&real_activate) {
-        return result;
+    if allow_helper {
+        if let Some(result) = try_activate_with_helper(&real_activate) {
+            return result;
+        }
+    } else {
+        info!("[darwin] Skipping privileged helper for App Management-sensitive activation");
     }
 
     // Escape a value for safe embedding inside a shell single-quoted string.
@@ -575,21 +713,34 @@ fn try_activate_with_helper(activate_path: &str) -> Option<Result<ActivateResult
             stderr: response.error.unwrap_or(response.stderr),
         })),
         Err(error) => {
-            info!(
-                "[darwin] privileged helper unavailable during activation; falling back to osascript: {}",
-                error
-            );
-            None
+            if error
+                .to_string()
+                .contains("failed to connect to /var/run/nixmac/helper.sock")
+            {
+                info!(
+                    "[darwin] privileged helper socket was stale; falling back to osascript: {error:#}"
+                );
+                return None;
+            }
+
+            Some(Ok(ActivateResult {
+                success: false,
+                code: -1,
+                stdout: String::new(),
+                stderr: format!(
+                    "Privileged helper activation did not return a response: {error:#}. Activation may still be running; nixmac did not fall back to the password prompt."
+                ),
+            }))
         }
     }
 }
 
 /// Handle activation failures and determine the appropriate error response.
 fn handle_activation_error(result: &ActivateResult, log_path: &Path) -> serde_json::Value {
-    let stderr_lower = result.stderr.to_lowercase();
+    let (error_type, friendly_error) = classify_activate_error(result);
 
     // AppleScript cancellation (-128)
-    if stderr_lower.contains("user canceled") {
+    if error_type == "user_cancelled" {
         info!("[darwin] Activation cancelled by user");
         error!("[darwin] osascript stderr: {}", result.stderr);
         return serde_json::json!({
@@ -601,18 +752,20 @@ fn handle_activation_error(result: &ActivateResult, log_path: &Path) -> serde_js
         });
     }
 
-    // Authorization / privilege failure
-    const AUTH_DENIED_PHRASES: &[&str] = &[
-        "authorization failed",
-        "not authorized",
-        "authorization denied",
-        "not permitted",
-        "you do not have permission",
-        "authentication failed",
-        "is not an administrator",
-    ];
+    if error_type == "app_management" {
+        error!("[darwin] Activation failed: {friendly_error}");
+        return serde_json::json!({
+            "ok": false,
+            "code": result.code,
+            "log_file": log_path.to_string_lossy(),
+            "error_type": error_type,
+            "system_untouched": false,
+            "error": friendly_error,
+        });
+    }
 
-    if AUTH_DENIED_PHRASES.iter().any(|p| stderr_lower.contains(p)) {
+    // Authorization / privilege failure
+    if error_type == "authorization_denied" {
         let details = result
             .stderr
             .lines()
@@ -679,7 +832,43 @@ fn activation_failure_left_system_untouched(error_type: &str) -> bool {
 
 #[cfg(test)]
 mod activation_safety_tests {
-    use super::activation_failure_left_system_untouched;
+    use super::{
+        ActivateResult, activation_failure_left_system_untouched, classify_activate_error,
+    };
+
+    fn failed_activation(stdout: &str, stderr: &str) -> ActivateResult {
+        ActivateResult {
+            success: false,
+            code: 1,
+            stdout: stdout.to_string(),
+            stderr: stderr.to_string(),
+        }
+    }
+
+    #[test]
+    fn app_management_failure_is_classified_from_activation_stdout() {
+        let result = failed_activation(
+            "error: permission denied when trying to update apps, aborting activation\nhome-manager requires permission to update your apps",
+            "",
+        );
+
+        let (error_type, message) = classify_activate_error(&result);
+
+        assert_eq!(error_type, "app_management");
+        assert!(message.contains("App Management"));
+    }
+
+    #[test]
+    fn app_management_failure_takes_precedence_over_generic_not_permitted_text() {
+        let result = failed_activation(
+            "Operation not permitted\nIf you did not get a notification, navigate to System Settings > Privacy & Security > App Management.",
+            "",
+        );
+
+        let (error_type, _) = classify_activate_error(&result);
+
+        assert_eq!(error_type, "app_management");
+    }
 
     #[test]
     fn only_explicit_cancellation_is_known_untouched() {
@@ -794,11 +983,77 @@ fn run_darwin_rebuild(
     log_and_emit!("darwin-rebuild build completed successfully.");
 
     // =========================================================================
+    // Step 1b: proactively detect /etc files nix-darwin would refuse to
+    // overwrite. We mirror nix-darwin's own etc.nix check (compare each
+    // managed target against its knownSha256Hashes) using structured data
+    // from `nix eval`, so we can fail *before* prompting for admin rights and
+    // leave the system untouched. A check failure (e.g. nix eval error) is
+    // non-fatal: we fall through and let activation surface the real error.
+    // =========================================================================
+    match preflight_etc_clobber(config_dir, host_attr) {
+        Ok(result) if !result.ok => {
+            log_and_emit!(format!(
+                "Preflight: {} file(s) in /etc would be overwritten; aborting before activation.",
+                result.conflicts.len()
+            ));
+            summarizer.complete(false);
+            return Err(etc_clobber_error_payload(result, &log_path));
+        }
+        Ok(result) => {
+            if result.warnings.is_empty() {
+                log_and_emit!("Preflight: no /etc conflicts detected.");
+            } else {
+                log_and_emit!(format!(
+                    "Preflight: no /etc conflicts detected; {} managed file(s) will be backed up before activation.",
+                    result.warnings.len()
+                ));
+            }
+        }
+        Err(error) => {
+            log_and_emit!(format!("Preflight: /etc conflict check skipped ({error}).",));
+        }
+    }
+
+    // =========================================================================
+    // Step 1c: proactively detect App Management denial for Home Manager
+    // copyApps. This mirrors Home Manager's own harmless `.DS_Store` update
+    // probe, but does it before the admin activation prompt. When existing app
+    // bundles are involved, avoid the unattended helper path so macOS attributes
+    // the TCC decision to the foreground app flow more consistently.
+    // =========================================================================
+    let mut allow_activation_helper = true;
+    match preflight_app_management(config_dir, host_attr) {
+        Ok(result) if !result.ok => {
+            log_and_emit!(
+                "Preflight: App Management permission is required to update managed app bundles. Open System Settings > Privacy & Security > App Management and enable nixmac, then retry."
+            );
+            summarizer.complete(false);
+            return Err(app_management_error_payload(result, &log_path));
+        }
+        Ok(result) => {
+            if result.checked > 0 {
+                allow_activation_helper = false;
+                log_and_emit!(format!(
+                    "Preflight: App Management check passed for {} managed app bundle(s).",
+                    result.checked
+                ));
+            } else {
+                log_and_emit!("Preflight: no managed app bundles require App Management.");
+            }
+        }
+        Err(error) => {
+            log_and_emit!(format!(
+                "Preflight: App Management check skipped ({error}).",
+            ));
+        }
+    }
+
+    // =========================================================================
     // Step 2: activate as root via native macOS authentication dialog
     // =========================================================================
     log_and_emit!("Requesting admin privileges for activation...");
 
-    let activate_result = run_activate_step(config_dir).map_err(|e| {
+    let activate_result = run_activate_step(config_dir, allow_activation_helper).map_err(|e| {
         serde_json::json!({
             "ok": false,
             "code": -1,

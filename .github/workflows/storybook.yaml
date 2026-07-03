@@ -34,9 +34,21 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.bot-token.outputs.token }}
 
-      - uses: ./.github/actions/setup
+      - name: Setup Nix and caches
+        uses: ./.github/actions/setup-nix
         with:
           darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+
+      - name: Setup devenv profile
+        uses: ./.github/actions/setup-devenv
+        with:
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
+
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
 
       - name: Resolve secrets
         env:

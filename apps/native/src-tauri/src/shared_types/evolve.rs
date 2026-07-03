@@ -16,8 +16,10 @@ pub struct FileEdit {
 #[serde(rename_all = "camelCase")]
 pub struct ThinkingEntry {
     /// When this thought occurred (ms since evolution start)
+    #[specta(type = f64)]
     pub timestamp_ms: i64,
     /// The iteration number when this thought occurred
+    #[specta(type = f64)]
     pub iteration: usize,
     /// Category of thinking (planning, analysis, debugging, etc.)
     pub category: String,
@@ -30,8 +32,10 @@ pub struct ThinkingEntry {
 #[serde(rename_all = "camelCase")]
 pub struct ToolCallRecord {
     /// When this tool was called (ms since evolution start)
+    #[specta(type = f64)]
     pub timestamp_ms: i64,
     /// The iteration number
+    #[specta(type = f64)]
     pub iteration: usize,
     /// Tool name
     pub tool: String,
@@ -47,6 +51,7 @@ pub struct ToolCallRecord {
 #[serde(rename_all = "camelCase")]
 pub struct Evolution {
     pub id: String,
+    #[specta(type = f64)]
     pub created_at: i64,
     pub state: EvolutionState,
     pub prompt: String,
@@ -62,8 +67,10 @@ pub struct Evolution {
     /// Total tokens used
     pub total_tokens: u32,
     /// Number of iterations
+    #[specta(type = f64)]
     pub iterations: usize,
     /// Number of build attempts
+    #[specta(type = f64)]
     pub build_attempts: usize,
     /// AI-generated summary of changes for preview
     pub changes_summary: Option<String>,

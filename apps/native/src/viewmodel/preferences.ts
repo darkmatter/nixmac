@@ -12,9 +12,11 @@ export function mirrorPreferences(preferences: GlobalPreferences): void {
  * derived query (no backend change event), refreshed whenever preferences
  * change. On failure the previous hosts are kept.
  */
-export async function refreshHostsSnapshot(): Promise<void> {
+export async function refreshHostsSnapshot({
+  force = false,
+}: { force?: boolean } = {}): Promise<void> {
   const preferences = viewModelActions.getState().preferences;
-  if (!preferences?.configDir) return;
+  if (!force && !preferences?.configDir) return;
   try {
     // deprecated(orpc): replace with client/orpc from @/lib/orpc
     const hosts = await tauriAPI.flake.listHosts();

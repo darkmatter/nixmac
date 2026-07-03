@@ -5,9 +5,11 @@ import { stepEyebrow } from "@/components/widget/onboarding/lib/onboarding";
 import { StepShell } from "@/components/widget/onboarding/step-shell";
 import { tauriAPI } from "@/ipc/api";
 import type { Permission } from "@/ipc/types";
+import { orpc } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 import { useViewModel } from "@nixmac/state";
-import { Check, ExternalLink, Folder, HardDrive, KeyRound, Loader2, ShieldCheck, Terminal } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { AppWindow, Check, ExternalLink, Folder, HardDrive, KeyRound, Loader2, ShieldCheck, Terminal } from "lucide-react";
 import { useEffect, useState } from "react";
 
 /**
@@ -29,6 +31,16 @@ export function PermissionsStep() {
     });
   }, []);
 
+  // Detect whether nixmac is running from /Applications. macOS TCC services
+  // (Full Disk Access especially) key off the bundle's location, so an app
+  // launched from the mounted DMG or a download folder will not match the TCC
+  // entry and grants silently fail. Only warn when we are actually inside a
+  // bundle but misplaced — `bundlePath` is null under `tauri dev` / tests, and
+  // we must not surface a false warning there.
+  const { data: installLocation } = useQuery(orpc.system.installLocation.queryOptions());
+  const showMisplacedWarning =
+    installLocation?.bundlePath != null && !installLocation.inApplicationsDir;
+
   async function handleGrant(permission: Permission) {
     setRequesting(permission.id);
     setNotice(null);
@@ -36,6 +48,19 @@ export function PermissionsStep() {
       if (permission.id === "full-disk") {
         await tauriAPI.permissions.requestFullDiskAccess();
         // Give the user a beat to grant access in System Settings, then re-probe.
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      } else if (permission.id === "app-management") {
+        // Opens System Settings → Privacy & Security → App Management. macOS
+        // can't grant this programmatically and exposes no probe, so we can
+        // only deep-link and let the user toggle it. Give them a beat, then
+        // re-probe; the backend will keep this row pending rather than report
+        // a false grant.
+        await tauriAPI.permissions.request(permission.id);
+        setNotice({
+          tone: "info",
+          message:
+            "nixmac opened System Settings → Privacy & Security → App Management. Enable nixmac there, then return here. macOS does not let nixmac verify this permission, so this recommended row may remain pending.",
+        });
         await new Promise((resolve) => setTimeout(resolve, 1000));
       } else if (permission.id === "privileged-helper") {
         // Registers the bundled SMAppService LaunchDaemon. macOS may require
@@ -75,6 +100,20 @@ export function PermissionsStep() {
       title="System Permissions"
       description="nixmac needs a few macOS permissions before it can read your configuration and apply changes. Grant the required ones to continue — we’ll move on automatically."
     >
+      {showMisplacedWarning ? (
+        <p className="mb-4 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
+          nixmac is running from{" "}
+          <span className="font-mono text-xs">
+            {installLocation?.bundlePath}
+          </span>
+          , not from <span className="font-mono text-xs">/Applications</span>. macOS
+          permissions like Full Disk Access are tied to the app’s location, so grants
+          won’t take effect here. Quit nixmac, drag it into{" "}
+          <span className="font-mono text-xs">/Applications</span>, and launch it from
+          there before granting permissions.
+        </p>
+      ) : null}
+
       {notice ? (
         <p
           className={cn(
@@ -106,6 +145,8 @@ export function PermissionsStep() {
                 return <Terminal className="size-5" />;
               case "full-disk":
                 return <HardDrive className="size-5" />;
+              case "app-management":
+                return <AppWindow className="size-5" />;
               case "privileged-helper":
                 return <KeyRound className="size-5" />;
               default:
@@ -194,7 +235,8 @@ export function PermissionsStep() {
 
       <p className="mt-5 text-muted-foreground/70 text-xs leading-relaxed">
         The unattended sync helper is installed once during onboarding so later builds can activate
-        without repeated password prompts. Full Disk Access is recommended for the smoothest experience.
+        without repeated password prompts. Full Disk Access is required for reliable activation; App
+        Management is recommended for managed app updates, but macOS does not let nixmac verify it.
       </p>
     </StepShell>
   );

@@ -8,7 +8,8 @@ use crate::privileged_helper::{
     sync_agent::{self, SyncAgentStatus},
 };
 use crate::shared_types::{
-    BuildCheckResult, EvolveCancelResult, OkResult, RebuildStatus, RollbackResult,
+    AppManagementCheckResult, BuildCheckResult, EtcClobberCheckResult, EvolveCancelResult,
+    OkResult, RebuildStatus, RollbackResult,
 };
 use orpc::*;
 use serde::{Deserialize, Serialize};
@@ -24,6 +25,15 @@ struct EvolveInput {
 #[serde(rename_all = "camelCase")]
 struct EvolveAnswerInput {
     answer: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+struct FixWithAiInput {
+    /// The failing log line (or error message) the user asked to fix.
+    error: String,
+    /// Backend error classification (`RebuildErrorType`), when known.
+    error_type: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Type)]
@@ -71,6 +81,12 @@ async fn evolve_handler(ctx: OrpcCtx, input: EvolveInput) -> Result<(), ORPCErro
         .map_err(|error| internal_err("darwin.evolve", error))
 }
 
+async fn fix_with_ai(ctx: OrpcCtx, input: FixWithAiInput) -> Result<(), ORPCError> {
+    evolve::run_fix(ctx.app, input.error, input.error_type)
+        .await
+        .map_err(|error| internal_err("darwin.fixWithAi", error))
+}
+
 async fn evolve_cancel(_ctx: OrpcCtx, _input: ()) -> Result<EvolveCancelResult, ORPCError> {
     evolve::cancel_evolve()
         .await
@@ -106,6 +122,21 @@ async fn apply_stream_start(
     apply::start_apply_stream(ctx.app, input.host_override)
         .await
         .map_err(|error| internal_err("darwin.applyStreamStart", error))
+}
+
+async fn check_etc_clobber(ctx: OrpcCtx, _input: ()) -> Result<EtcClobberCheckResult, ORPCError> {
+    apply::check_etc_clobber(ctx.app)
+        .await
+        .map_err(|error| internal_err("darwin.checkEtcClobber", error))
+}
+
+async fn check_app_management(
+    ctx: OrpcCtx,
+    _input: (),
+) -> Result<AppManagementCheckResult, ORPCError> {
+    apply::check_app_management(ctx.app)
+        .await
+        .map_err(|error| internal_err("darwin.checkAppManagement", error))
 }
 
 async fn activate_store_path(
@@ -197,6 +228,9 @@ pub fn routes() -> Router<OrpcCtx> {
         "evolve" => os::<OrpcCtx>()
             .input(orpc_specta::specta::<EvolveInput>())
             .handler(evolve_handler),
+        "fixWithAi" => os::<OrpcCtx>()
+            .input(orpc_specta::specta::<FixWithAiInput>())
+            .handler(fix_with_ai),
         "evolveCancel" => os::<OrpcCtx>()
             .output(orpc_specta::specta::<EvolveCancelResult>())
             .handler(evolve_cancel),
@@ -214,6 +248,12 @@ pub fn routes() -> Router<OrpcCtx> {
             .input(orpc_specta::specta::<ApplyStreamStartInput>())
             .output(orpc_specta::specta::<OkResult>())
             .handler(apply_stream_start),
+        "checkEtcClobber" => os::<OrpcCtx>()
+            .output(orpc_specta::specta::<EtcClobberCheckResult>())
+            .handler(check_etc_clobber),
+        "checkAppManagement" => os::<OrpcCtx>()
+            .output(orpc_specta::specta::<AppManagementCheckResult>())
+            .handler(check_app_management),
         "activateStorePath" => os::<OrpcCtx>()
             .input(orpc_specta::specta::<ActivateStorePathInput>())
             .output(orpc_specta::specta::<OkResult>())

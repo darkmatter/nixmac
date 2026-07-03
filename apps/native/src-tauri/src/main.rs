@@ -830,6 +830,7 @@ fn run_gui_mode(
                     .decorations(true)
                     .transparent(!e2e_opaque_window)
                     .visible(true)
+                    .background_color(tauri::utils::config::Color(0, 0, 0, 235))
                     .always_on_top(false)
                     .visible_on_all_workspaces(true)
                     .on_page_load(move |window, payload| {
@@ -898,10 +899,10 @@ fn run_gui_mode(
             // Skipped in e2e capture modes, which rely on a solid/opaque backing.
             #[cfg(target_os = "macos")]
             if !e2e_css_capture {
-                use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectState};
+use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectState};
                 if let Err(error) = apply_vibrancy(
                     &main_window,
-                    NSVisualEffectMaterial::HudWindow,
+                    NSVisualEffectMaterial::UnderWindowBackground,
                     Some(NSVisualEffectState::Active),
                     None,
                 ) {

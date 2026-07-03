@@ -29,7 +29,7 @@ export function resolveOpenAiCompatibleProvider(
 
 export function getProviderConfigInvalidReason(
   provider: string | null | undefined,
-  prefs: Pick<DarwinPrefs, "openrouterApiKey" | "openaiApiKey" | "vllmApiBaseUrl">,
+  prefs: Pick<DarwinPrefs, "openrouterApiKey" | "openaiApiKey" | "openaiCompatibleApiBaseUrl">,
   cliStatus: CliToolsState | null | undefined,
   model?: string | null,
 ): string | null {
@@ -54,8 +54,8 @@ export function getProviderConfigInvalidReason(
     return prefs.openaiApiKey?.trim() ? null : "No OpenAI API key set";
   }
 
-  if (provider === "vllm") {
-    if (!prefs.vllmApiBaseUrl?.trim()) {
+  if (provider === "openai_compatible") {
+    if (!prefs.openaiCompatibleApiBaseUrl?.trim()) {
       return "No base URL set";
     }
     return model?.trim() ? null : "No model set";

@@ -10,7 +10,7 @@ type ModelValues = {
   summaryModel: string;
   openrouterApiKey: string;
   openaiApiKey: string;
-  vllmApiBaseUrl: string;
+  openaiCompatibleApiBaseUrl: string;
 };
 
 function AiModelsTabFixture() {
@@ -21,7 +21,7 @@ function AiModelsTabFixture() {
     summaryModel: "",
     openrouterApiKey: "",
     openaiApiKey: "",
-    vllmApiBaseUrl: "",
+    openaiCompatibleApiBaseUrl: "",
   });
 
   const field = (name: keyof ModelValues) => ({

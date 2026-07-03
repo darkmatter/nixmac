@@ -76,6 +76,21 @@ describe("deriveDriftFiles", () => {
     expect(rows[0].oldFilename).toBe("old/name.nix");
   });
 
+  it("carries the single hunk's diff as the row's diff text", () => {
+    const rows = deriveDriftFiles([change("configuration.nix", EDITED)]);
+    expect(rows[0].diffText).toBe(EDITED);
+  });
+
+  it("concatenates every hunk of a file into the row's diff text", () => {
+    const rows = deriveDriftFiles([
+      change("configuration.nix", EDITED),
+      change("configuration.nix", ADDED),
+    ]);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].diffText).toBe(`${EDITED}\n${ADDED}`);
+  });
+
   it("returns nothing for an empty change set", () => {
     expect(deriveDriftFiles([])).toEqual([]);
   });

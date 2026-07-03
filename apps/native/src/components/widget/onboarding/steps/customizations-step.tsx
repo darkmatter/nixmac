@@ -8,6 +8,8 @@ import {
   MOCK_CUSTOMIZATION_GROUPS,
   totalCustomizations,
   type CustomizationGroup,
+  type CustomizationItem,
+  type CustomizationSource,
 } from "@/components/widget/onboarding/lib/customizations";
 import { stepEyebrow } from "@/components/widget/onboarding/lib/onboarding";
 import { StepShell } from "@/components/widget/onboarding/step-shell";
@@ -20,8 +22,10 @@ import {
   Braces,
   Check,
   ChevronDown,
+  CircleDashed,
+  CornerDownRight,
+  Info,
   Loader2,
-  Plus,
   Radar,
   SkipForward,
 } from "lucide-react";
@@ -39,7 +43,8 @@ const SCAN_TARGETS = [
 
 interface CustomizationsStepProps {
   tracked: string[];
-  onSetTracked: (ids: string[]) => void;
+  trackedSources: Record<string, CustomizationSource>;
+  onSetTracked: (ids: string[], sources: Record<string, CustomizationSource>) => void;
   onContinue: () => void;
 }
 
@@ -63,19 +68,35 @@ async function runScan(): Promise<CustomizationGroup[]> {
   return buildCustomizationGroups({ defaults, homebrew, launchd });
 }
 
-export function CustomizationsStep({ tracked, onSetTracked, onContinue }: CustomizationsStepProps) {
+export function CustomizationsStep({
+  tracked,
+  trackedSources,
+  onSetTracked,
+  onContinue,
+}: CustomizationsStepProps) {
   const [scanState, setScanState] = useState<ScanState>("idle");
   const [groups, setGroups] = useState<CustomizationGroup[] | null>(null);
   const [animationDone, setAnimationDone] = useState(false);
   const trackedSet = new Set(tracked);
 
-  function track(ids: string[]) {
-    onSetTracked([...new Set([...tracked, ...ids])]);
+  function sourceMapForItems(items: CustomizationItem[]): Record<string, CustomizationSource> {
+    return Object.fromEntries(items.map((item) => [item.id, item.source]));
+  }
+
+  function track(items: CustomizationItem[]) {
+    const ids = items.map((item) => item.id);
+    const nextSources = { ...trackedSources, ...sourceMapForItems(items) };
+    const nextTracked = [...new Set([...tracked, ...ids])];
+    onSetTracked(nextTracked, nextSources);
   }
 
   function untrack(ids: string[]) {
     const remove = new Set(ids);
-    onSetTracked(tracked.filter((id) => !remove.has(id)));
+    const nextTracked = tracked.filter((id) => !remove.has(id));
+    const nextSources = Object.fromEntries(
+      Object.entries(trackedSources).filter(([id]) => !remove.has(id)),
+    );
+    onSetTracked(nextTracked, nextSources);
   }
 
   const trackedCount = tracked.length;
@@ -106,6 +127,7 @@ export function CustomizationsStep({ tracked, onSetTracked, onContinue }: Custom
   function startScan() {
     setGroups(null);
     setAnimationDone(false);
+    onSetTracked([], {});
     getTelemetry().captureEvent({ name: "customizations_scanned" });
     setScanState("scanning");
   }
@@ -116,58 +138,87 @@ export function CustomizationsStep({ tracked, onSetTracked, onContinue }: Custom
       <StepShell
         eyebrow={stepEyebrow("customizations")}
         title="Import your customizations"
-        description="Already set this Mac up by hand? nixmac can scan for tweaks that aren't in your flake yet — macOS preferences, Homebrew casks and taps, launch agents — and turn them into code."
+        description="You only need this if you've set up this Mac by hand and don't want those tweaks overwritten when your flake is applied. If your config already reflects how you like things, skip it."
       >
-        <div className="relative flex flex-col overflow-hidden rounded-2xl rounded-tl-3xl rounded-br-3xl rounded-bl-3xl border border-transparent shadow ring-1 shadow-black/10 ring-white/5">
-          <DottedGlowBackground
-            className="pointer-events-none mask-radial-to-90% mask-radial-at-center"
-            opacity={0.5}
-            gap={10}
-            radius={1.6}
-            color="rgba(115, 115, 115, 0.55)"
-            darkColor="rgba(115, 115, 115, 0.55)"
-            glowColor="rgba(115, 115, 115, 0.85)"
-            darkGlowColor="rgba(45, 212, 191, 0.85)"
-            backgroundOpacity={1}
-            speedMin={0.1}
-            speedMax={1}
-            speedScale={.8}
-          />
-
-
-
-          <span
-            className="relative z-20 mx-auto mt-8 flex size-16 items-center justify-center rounded-2xl bg-brand/10 text-brand ring-1 ring-brand/30"
-            aria-hidden="true"
-          >
-            <Radar className="size-8" />
+        <div className="mb-4 flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 font-medium text-primary text-xs">
+            <CircleDashed className="size-3.5" aria-hidden="true" />
+            Optional step
           </span>
+        </div>
 
-          <div className="relative z-20 flex flex-1 flex-col items-center px-6 pt-6 pb-8 text-center">
-            <h3 className="text-balance font-semibold text-xl">
-              Scan this Mac for untracked settings
-            </h3>
-            <p className="mt-2 max-w-md text-pretty text-muted-foreground text-sm leading-relaxed">
-              Already set this Mac up by hand? We&apos;ll run a few read-only commands to detect what
-              you&apos;ve customized and turn it into code. Nothing changes on your system — you
-              choose what to track afterward.
-            </p>
+        <div className="flex flex-col gap-3">
+          {/* Scan — the emphasized path for people who customized by hand. */}
+          <div className="relative flex flex-col overflow-hidden rounded-2xl rounded-tl-3xl rounded-br-3xl rounded-bl-3xl border border-transparent shadow ring-1 shadow-black/10 ring-white/5">
+            <DottedGlowBackground
+              className="pointer-events-none mask-radial-to-90% mask-radial-at-center"
+              opacity={0.5}
+              gap={10}
+              radius={1.6}
+              color="rgba(115, 115, 115, 0.55)"
+              darkColor="rgba(115, 115, 115, 0.55)"
+              glowColor="rgba(115, 115, 115, 0.85)"
+              darkGlowColor="rgba(45, 212, 191, 0.85)"
+              backgroundOpacity={1}
+              speedMin={0.1}
+              speedMax={1}
+              speedScale={0.8}
+            />
 
-            <div className="relative z-20 mt-7">
-              <ButtonGlow className="bg-slate-900" active onClick={startScan}>
-                <Radar className="size-4" aria-hidden="true" />
-                Scan this Mac
-              </ButtonGlow>
+            <span
+              className="relative z-20 mx-auto mt-8 flex size-16 items-center justify-center rounded-2xl bg-brand/10 text-brand ring-1 ring-brand/30"
+              aria-hidden="true"
+            >
+              <Radar className="size-8" />
+            </span>
+
+            <div className="relative z-20 flex flex-1 flex-col items-center px-6 pt-6 pb-8 text-center">
+              <h3 className="text-balance font-semibold text-xl">
+                Scan this Mac for untracked settings
+              </h3>
+              <p className="mt-2 max-w-md text-pretty text-muted-foreground text-sm leading-relaxed">
+                A few read-only commands detect your tweaks and turn them into code. Nothing changes
+                — you choose what to track.
+              </p>
+
+              <div className="relative z-20 mt-7">
+                <ButtonGlow className="bg-slate-900" active onClick={startScan}>
+                  <Radar className="size-4" aria-hidden="true" />
+                  Scan this Mac
+                </ButtonGlow>
+              </div>
+            </div>
+          </div>
+
+          {/* Skip — a first-class, safe choice for fresh setups. */}
+          <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5">
+            <span
+              className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"
+              aria-hidden="true"
+            >
+              <SkipForward className="size-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-base">Skip for now</h3>
+              <p className="mt-1 text-pretty text-muted-foreground text-sm leading-relaxed">
+                Recommended if you&apos;re starting fresh or your flake is already your source of
+                truth. You can import anytime later from the Untracked tab.
+              </p>
+            </div>
+            <div className="shrink-0">
+              <Button variant="outline" onClick={onContinue}>
+                Skip
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </Button>
             </div>
           </div>
         </div>
 
-        <div className="mt-6 flex items-center justify-end">
-          <Button variant="ghost" onClick={onContinue}>
-            <SkipForward className="size-4" aria-hidden="true" />
-            Skip — I&apos;ll import later
-          </Button>
-        </div>
+        <p className="mt-4 flex items-center gap-2 text-muted-foreground/70 text-xs">
+          <Info className="size-3.5 shrink-0" aria-hidden="true" />
+          Skipping never loses anything — untracked settings stay on disk and can be captured
+          whenever you want.
+        </p>
       </StepShell>
     );
   }
@@ -340,16 +391,15 @@ function GroupCard({
 }: {
   group: CustomizationGroup;
   trackedSet: Set<string>;
-  onTrack: (ids: string[]) => void;
+  onTrack: (items: CustomizationItem[]) => void;
   onUntrack: (ids: string[]) => void;
 }) {
-  const [expanded, setExpanded] = useState(group.severity === "info");
+  const [expanded, setExpanded] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
   const ids = group.items.map((i) => i.id);
   const trackedIds = ids.filter((id) => trackedSet.has(id));
   const allTracked = trackedIds.length === ids.length;
-  const someTracked = trackedIds.length > 0;
   const isWarning = group.severity === "warning";
 
   return (
@@ -359,103 +409,89 @@ function GroupCard({
         isWarning ? "border-warning/30" : "border-border",
       )}
     >
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-start gap-3 p-4 text-left"
-      >
+      <div className="flex w-full items-start gap-3 p-4 text-left">
         <Checkbox
           checked={allTracked}
-          onCheckedChange={() => onTrack(ids)}
-          className={cn("size-4 border-none", allTracked ? "bg-white" : "bg-zinc-700")}
+          onCheckedChange={(checked) => (checked === true ? onTrack(group.items) : onUntrack(ids))}
+          aria-label={`Track all ${group.title}`}
+          className={cn("mt-1 size-4 border-none", allTracked ? "bg-white" : "bg-zinc-700")}
         />
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2 font-semibold text-sm">
-            {group.items.length} {group.title}
-            {allTracked ? <Check className="size-4 text-success" aria-hidden="true" /> : null}
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex min-w-0 flex-1 items-start gap-3 text-left"
+        >
+          <span className="min-w-0 flex-1">
+            <span className="font-semibold text-sm">
+              {group.items.length} {group.title}
+            </span>
+            <span className="mt-1 block text-pretty text-muted-foreground text-xs leading-relaxed">
+              {group.description}
+            </span>
+            <span className="mt-2 flex items-center gap-1.5 text-muted-foreground/70 text-xs">
+              <CornerDownRight className="size-3 shrink-0" aria-hidden="true" />
+              <span className="truncate font-mono">{group.landingPath}</span>
+            </span>
           </span>
-          <span className="mt-1 block text-pretty text-muted-foreground text-xs leading-relaxed">
-            {group.description}
-          </span>
-          <span className="mt-2 block font-mono text-muted-foreground/80 text-xs">
-            <span className="text-muted-foreground">$ {group.command}</span>
-            {group.commandNote ? ` (${group.commandNote})` : ""} · scanned just now · would land in{" "}
-            <span className="text-foreground">{group.landingPath}</span>
-          </span>
-        </span>
-        <ChevronDown
-          className={cn(
-            "mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform",
-            expanded && "rotate-180",
-          )}
-          aria-hidden="true"
-        />
-      </button>
+          {trackedIds.length > 0 && !allTracked ? (
+            <span className="mt-0.5 shrink-0 font-medium text-success text-xs tabular-nums">
+              {trackedIds.length}/{ids.length}
+            </span>
+          ) : null}
+          <ChevronDown
+            className={cn(
+              "mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform",
+              expanded && "rotate-180",
+            )}
+            aria-hidden="true"
+          />
+        </button>
+      </div>
 
       {expanded ? (
         <>
-          <div className="flex flex-wrap items-center gap-2 border-border border-t bg-background/40 px-4 py-3">
-            {allTracked ? (
-              <Button size="sm" variant="secondary" onClick={() => onUntrack(ids)}>
-                <Check className="size-4 text-success" aria-hidden="true" />
-                Tracking all {ids.length}
-              </Button>
-            ) : (
-              <Button size="sm" onClick={() => onTrack(ids)}>
-                <Plus className="size-4" aria-hidden="true" />
-                Track{" "}
-                {someTracked
-                  ? `remaining ${ids.length - trackedIds.length}`
-                  : `these ${ids.length}`}
-              </Button>
-            )}
-            <Button size="sm" variant="ghost" onClick={() => setShowPreview((v) => !v)}>
-              <Braces className="size-4" aria-hidden="true" />
-              {showPreview ? "Hide additions" : "Preview additions"}
-            </Button>
-          </div>
-
-          <p className="px-4 pt-3 font-mono text-[11px] text-muted-foreground/70 uppercase tracking-wider">
-            · Found · {group.items.length}
-          </p>
-          <ul className="divide-y divide-border/60">
+          <ul className="divide-y divide-border/60 border-border border-t">
             {group.items.map((item) => {
               const isTracked = trackedSet.has(item.id);
               return (
-                <li key={item.id} className="flex items-start justify-between gap-4 px-4 py-3">
-                  <div className="min-w-0">
+                <li key={item.id} className="flex items-start gap-3 px-4 py-2.5">
+                  <Checkbox
+                    checked={isTracked}
+                    onCheckedChange={(checked) =>
+                      checked === true ? onTrack([item]) : onUntrack([item.id])
+                    }
+                    aria-label={`Track ${item.label}`}
+                    className={cn(
+                      "mt-0.5 size-4 border-none",
+                      isTracked ? "bg-white" : "bg-zinc-700",
+                    )}
+                  />
+                  <div className="min-w-0 flex-1">
                     <p className="text-pretty font-medium text-sm">{item.label}</p>
                     <p className="mt-0.5 break-all font-mono text-muted-foreground text-xs">
                       {item.detail}
                     </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <span className="hidden font-mono text-muted-foreground/70 text-xs sm:inline">
+                  {item.meta ? (
+                    <span className="mt-0.5 hidden shrink-0 font-mono text-muted-foreground/60 text-xs sm:inline">
                       {item.meta}
                     </span>
-                    {isTracked ? (
-                      <button
-                        type="button"
-                        onClick={() => onUntrack([item.id])}
-                        className="inline-flex items-center gap-1 font-medium text-success text-xs hover:underline"
-                      >
-                        <Check className="size-3.5" aria-hidden="true" />
-                        Tracked
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => onTrack([item.id])}
-                        className="font-medium text-primary text-xs hover:underline"
-                      >
-                        Track
-                      </button>
-                    )}
-                  </div>
+                  ) : null}
                 </li>
               );
             })}
           </ul>
+
+          <div className="border-border border-t bg-background/40 px-4 py-2.5">
+            <button
+              type="button"
+              onClick={() => setShowPreview((v) => !v)}
+              className="inline-flex items-center gap-1.5 text-muted-foreground text-xs transition-colors hover:text-foreground"
+            >
+              <Braces className="size-3.5" aria-hidden="true" />
+              {showPreview ? "Hide additions" : "Preview additions"}
+            </button>
+          </div>
 
           {showPreview ? (
             <div className="border-border border-t bg-background/60 p-4">

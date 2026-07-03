@@ -40,6 +40,12 @@ async fn bootstrap_default(
         .map_err(|error| internal_err("flake.bootstrapDefault", error))
 }
 
+async fn list_hosts(ctx: OrpcCtx, _input: ()) -> Result<Vec<String>, ORPCError> {
+    crate::commands::apply::flake_list_hosts(ctx.app)
+        .await
+        .map_err(|error| internal_err("flake.listHosts", error))
+}
+
 pub fn routes() -> Router<OrpcCtx> {
     router! {
         "exists" => os::<OrpcCtx>()
@@ -52,5 +58,8 @@ pub fn routes() -> Router<OrpcCtx> {
         "bootstrapDefault" => os::<OrpcCtx>()
             .input(orpc_specta::specta::<BootstrapDefaultConfigInput>())
             .handler(bootstrap_default),
+        "listHosts" => os::<OrpcCtx>()
+            .output(orpc_specta::specta::<Vec<String>>())
+            .handler(list_hosts),
     }
 }

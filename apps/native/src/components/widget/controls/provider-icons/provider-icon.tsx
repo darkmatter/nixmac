@@ -17,7 +17,7 @@ export type ProviderIconId =
   | "openai"
   | "openrouter"
   | "ollama"
-  | "vllm"
+  | "openai_compatible"
   | "claude"
   | "codex"
   | "opencode"
@@ -43,7 +43,7 @@ const DEFAULT_LABELS: Record<ProviderIconId, string> = {
   openai: "OpenAI",
   openrouter: "OpenRouter",
   ollama: "Ollama",
-  vllm: "OpenAI Compatible",
+  openai_compatible: "OpenAI Compatible",
   claude: "Claude CLI",
   codex: "Codex CLI",
   opencode: "OpenCode CLI",

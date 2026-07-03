@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "macos-passkey",
+  "description": "macOS-only passkey capability for app windows",
+  "windows": ["main", "preview-indicator", "peek-icon", "evolve-mascot"],
+  "platforms": ["macOS"],
+  "permissions": ["macos-passkey:default"]
+}

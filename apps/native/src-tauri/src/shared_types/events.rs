@@ -11,6 +11,8 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+use super::system::{AppManagementCheckResult, EtcClobberCheckResult};
+
 /// Phase emitted during Nix installation/setup.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "kebab-case")]
@@ -91,10 +93,14 @@ pub enum RebuildErrorType {
     BuildError,
     /// Full Disk Access is missing for activation.
     FullDiskAccess,
+    /// App Management is missing for managed app bundle updates.
+    AppManagement,
     /// User cancelled the privileged activation prompt.
     UserCancelled,
     /// Administrator authorization failed.
     AuthorizationDenied,
+    /// nix-darwin would overwrite unmanaged files in /etc.
+    EtcClobber,
     /// Fallback for uncategorized failures.
     GenericError,
 }
@@ -138,6 +144,10 @@ pub struct DarwinApplyEndEvent {
     pub system_untouched: Option<bool>,
     /// Path to the captured rebuild log, when available.
     pub log_file: Option<String>,
+    /// Structured `/etc` clobber conflicts when `error_type` is `etc_clobber`.
+    pub etc_clobber: Option<EtcClobberCheckResult>,
+    /// Structured App Management probe failures when `error_type` is `app_management`.
+    pub app_management: Option<AppManagementCheckResult>,
 }
 
 /// Payload for `rust:panic`.

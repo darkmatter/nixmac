@@ -98,12 +98,12 @@ mod tests {
     }
 
     #[test]
-    fn evolution_limits_is_registered_via_inventory() {
-        // Verifies the link-time submit! actually wires EvolutionLimits into
+    fn user_preferences_is_registered_via_inventory() {
+        // Verifies the link-time submit! actually wires UserPreferences into
         // the static collection. If inventory's linker tricks regress on a
         // future toolchain, this test catches it before the dev settings UI
         // silently goes empty.
-        assert!(find_meta("EvolutionLimits").is_some());
+        assert!(find_meta("UserPreferences").is_some());
     }
 
     #[test]

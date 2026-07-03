@@ -8,7 +8,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { tauriAPI } from "@/ipc/api";
 import type { GithubRepo } from "@/ipc/types";
 import { auth as authClient } from "@/lib/auth";
 import {
@@ -20,9 +19,9 @@ import { client, orpc } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 import { signInSocial } from "@daveyplate/better-auth-tauri";
 import { GitHubLogoIcon } from "@radix-ui/react-icons";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-shell";
-import { Check, FileWarning, Globe, Loader2, Lock, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import { Check, Copy, FileWarning, Globe, Loader2, Lock, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 interface GitHubSourceProps {
@@ -31,6 +30,7 @@ interface GitHubSourceProps {
 
 type AuthState = "checking" | "disconnected" | "connecting" | "connected";
 type ConnectMode = "bootstrap" | "authed";
+type DeviceCode = { userCode: string | null; verificationUri: string | null };
 
 const DEFAULT_DIR = ".darwin";
 const REPOS_PER_PAGE = 3;
@@ -38,6 +38,13 @@ const EMAIL_FALLBACK_MESSAGE =
   "GitHub could not finish account setup. Use an email code to continue, then reconnect GitHub.";
 
 const DEFAULT_BOOTSTRAP_POLL_MS = 5000;
+
+/**
+ * When true, the primary "Connect" button runs the server bootstrap (device
+ * code) flow, and the browser OAuth (`signInSocial`) flow moves to the
+ * secondary link. Flip to false to restore OAuth as the default for testing.
+ */
+const USE_SERVER_BOOTSTRAP_DEFAULT = true;
 
 async function openExternal(url: string) {
   try {
@@ -139,19 +146,31 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
   const [otpSent, setOtpSent] = useState(false);
   const [showEmailFallback, setShowEmailFallback] = useState(false);
   const [connectMode, setConnectMode] = useState<ConnectMode | null>(null);
-  const [bootstrapUserCode, setBootstrapUserCode] = useState<string | null>(null);
-  const [bootstrapVerificationUri, setBootstrapVerificationUri] = useState<string | null>(null);
-  const [bootstrapPollIntervalMs, setBootstrapPollIntervalMs] = useState(DEFAULT_BOOTSTRAP_POLL_MS);
-  const [accountWorking, setAccountWorking] = useState(false);
+  // The device-code prompt shown during bootstrap: user code + where to enter
+  // it. Set and cleared as a unit; null when no device flow is in progress.
+  const [deviceCode, setDeviceCode] = useState<DeviceCode | null>(null);
   const [login, setLogin] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const [repoQuery, setRepoQuery] = useState("");
   const [repoPage, setRepoPage] = useState(0);
-  const [importingRef, setImportingRef] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
   const cancelled = useRef(false);
   const bootstrapResolved = useRef(false);
   const bootstrapStateRef = useRef<string | null>(null);
+  // The poll cadence is only read inside the polling loop, so a ref (not state)
+  // avoids re-renders and lets the loop pick up server-requested changes without
+  // tearing down its timer.
+  const bootstrapPollIntervalRef = useRef(DEFAULT_BOOTSTRAP_POLL_MS);
+
+  // Clears all in-flight device-code/bootstrap state back to its idle baseline.
+  const clearBootstrap = useCallback(() => {
+    setConnectMode(null);
+    setDeviceCode(null);
+    bootstrapStateRef.current = null;
+    bootstrapResolved.current = false;
+    bootstrapPollIntervalRef.current = DEFAULT_BOOTSTRAP_POLL_MS;
+  }, []);
 
   const resetRejectedSession = useCallback((error: unknown): boolean => {
     if (!isUnauthorizedSession(error)) return false;
@@ -159,27 +178,17 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     setAuth("disconnected");
     setLogin(null);
     queryClient.removeQueries({ queryKey: orpc.github.key() });
-    setConnectMode(null);
-    setBootstrapUserCode(null);
-    setBootstrapVerificationUri(null);
-    setBootstrapPollIntervalMs(DEFAULT_BOOTSTRAP_POLL_MS);
-    bootstrapStateRef.current = null;
-    bootstrapResolved.current = false;
+    clearBootstrap();
     return true;
-  }, [queryClient]);
+  }, [queryClient, clearBootstrap]);
 
   const requireEmailFallback = useCallback((message?: string | null) => {
     setShowEmailFallback(true);
     setGithubReady(false);
-    setConnectMode(null);
-    setBootstrapUserCode(null);
-    setBootstrapVerificationUri(null);
-    setBootstrapPollIntervalMs(DEFAULT_BOOTSTRAP_POLL_MS);
-    bootstrapStateRef.current = null;
-    bootstrapResolved.current = false;
+    clearBootstrap();
     setAuth("disconnected");
     setError(message?.trim() || EMAIL_FALLBACK_MESSAGE);
-  }, []);
+  }, [clearBootstrap]);
 
   useEffect(() => {
     cancelled.current = false;
@@ -190,8 +199,7 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
 
   // Probe account + GitHub linkage on mount.
   useEffect(() => {
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    tauriAPI.account
+    client.account
       .status()
       .then(async (accountStatus) => {
         if (cancelled.current) return;
@@ -216,18 +224,18 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
       });
   }, [resetRejectedSession]);
 
-  const markBootstrapConnected = useCallback((loginValue: string | null) => {
-    bootstrapResolved.current = true;
-    setGithubReady(true);
-    setShowEmailFallback(false);
-    setConnectMode(null);
-    bootstrapStateRef.current = null;
-    setBootstrapUserCode(null);
-    setBootstrapVerificationUri(null);
-    setBootstrapPollIntervalMs(DEFAULT_BOOTSTRAP_POLL_MS);
-    setLogin(loginValue);
-    setAuth("connected");
-  }, []);
+  const markBootstrapConnected = useCallback(
+    (loginValue: string | null) => {
+      setGithubReady(true);
+      setShowEmailFallback(false);
+      clearBootstrap();
+      // Keep the loop from polling again after we've resolved.
+      bootstrapResolved.current = true;
+      setLogin(loginValue);
+      setAuth("connected");
+    },
+    [clearBootstrap],
+  );
 
   // Poll for linkage while the browser install is in progress.
   const pollGitHubConnection = useCallback(async () => {
@@ -239,7 +247,10 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
         const s = await client.github.bootstrapStatus({ state });
         if (cancelled.current || bootstrapResolved.current) return;
         if (s.pollIntervalSeconds) {
-          setBootstrapPollIntervalMs(Math.max(s.pollIntervalSeconds * 1000, DEFAULT_BOOTSTRAP_POLL_MS));
+          bootstrapPollIntervalRef.current = Math.max(
+            s.pollIntervalSeconds * 1000,
+            DEFAULT_BOOTSTRAP_POLL_MS,
+          );
         }
         if (s.connected || s.state === "complete") {
           markBootstrapConnected(s.login ?? null);
@@ -261,7 +272,7 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
       if (connectMode === "bootstrap") {
         const message = errorMessage(e);
         if (/rate_limited|429/i.test(message)) {
-          setBootstrapPollIntervalMs((current) => Math.max(current, 10_000));
+          bootstrapPollIntervalRef.current = Math.max(bootstrapPollIntervalRef.current, 10_000);
           return;
         }
         requireEmailFallback(message);
@@ -290,18 +301,28 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     };
   }, [pollGitHubConnection]);
 
+  // Poll while connecting. A self-scheduling timeout (rather than setInterval
+  // with the interval in the dep array) means a mid-flight cadence change never
+  // resets the countdown, so authorization is always eventually detected.
   useEffect(() => {
     if (auth !== "connecting") return;
-    const intervalMs =
-      connectMode === "bootstrap"
-        ? Math.max(bootstrapPollIntervalMs, DEFAULT_BOOTSTRAP_POLL_MS)
-        : 2500;
-    void pollGitHubConnection();
-    const id = setInterval(() => {
-      void pollGitHubConnection();
-    }, intervalMs);
-    return () => clearInterval(id);
-  }, [auth, bootstrapPollIntervalMs, connectMode, pollGitHubConnection]);
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = async () => {
+      await pollGitHubConnection();
+      if (stopped) return;
+      const delay =
+        connectMode === "bootstrap"
+          ? Math.max(bootstrapPollIntervalRef.current, DEFAULT_BOOTSTRAP_POLL_MS)
+          : 2500;
+      timer = setTimeout(() => void tick(), delay);
+    };
+    void tick();
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+    };
+  }, [auth, connectMode, pollGitHubConnection]);
 
   // Repos shown after connecting; cached + deduped via React Query.
   const reposQuery = useQuery(
@@ -321,28 +342,15 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     setRepoPage(0);
   }, [repoQuery]);
 
-  async function sendOtp() {
-    setError(null);
-    setAccountWorking(true);
-    try {
-      // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      await tauriAPI.account.sendOtp(email);
-      if (cancelled.current) return;
-      setOtp("");
-      setOtpSent(true);
-    } catch (e: unknown) {
-      setError(errorMessage(e));
-    } finally {
-      if (!cancelled.current) setAccountWorking(false);
-    }
-  }
-
   function changeEmail() {
     setOtp("");
     setOtpSent(false);
     setError(null);
   }
 
+  // Drives the GitHub connect handshake and flips the state machine into the
+  // "connecting" polling phase. Bootstrap uses device code; authed uses the App
+  // install URL. Callers wrap this in a mutation for pending/error bookkeeping.
   async function startGitHubConnect(mode: ConnectMode) {
     bootstrapResolved.current = false;
     setAuth("connecting");
@@ -351,95 +359,140 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
       const { installUrl, state, userCode, verificationUri, interval } =
         await client.github.bootstrapStart();
       bootstrapStateRef.current = state;
-      setBootstrapUserCode(userCode);
-      setBootstrapVerificationUri(verificationUri ?? installUrl);
-      setBootstrapPollIntervalMs(Math.max((interval ?? 5) * 1000, DEFAULT_BOOTSTRAP_POLL_MS));
+      setDeviceCode({ userCode, verificationUri: verificationUri ?? installUrl });
+      bootstrapPollIntervalRef.current = Math.max((interval ?? 5) * 1000, DEFAULT_BOOTSTRAP_POLL_MS);
       await openExternal(verificationUri ?? installUrl);
       return;
     }
 
     bootstrapStateRef.current = null;
-    setBootstrapUserCode(null);
-    setBootstrapVerificationUri(null);
-    setBootstrapPollIntervalMs(DEFAULT_BOOTSTRAP_POLL_MS);
+    setDeviceCode(null);
+    bootstrapPollIntervalRef.current = DEFAULT_BOOTSTRAP_POLL_MS;
     const { installUrl } = await client.github.connectStart();
     await openExternal(installUrl);
   }
 
-  async function verifyOtpAndConnect() {
-    setError(null);
-    setAccountWorking(true);
-    try {
-      // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      await tauriAPI.account.verifyOtp(email, otp, accountNameFromEmail(email));
-      if (cancelled.current) return;
+  const sendOtpMutation = useMutation({
+    mutationFn: (vars: { email: string }) => client.account.sendOtp(vars),
+    onSuccess: () => {
+      setOtp("");
+      setOtpSent(true);
+    },
+    onError: (e) => setError(errorMessage(e)),
+  });
+
+  const verifyOtpMutation = useMutation({
+    mutationFn: async () => {
+      await client.account.verifyOtp({ email, otp, name: accountNameFromEmail(email) });
       setGithubReady(true);
       setShowEmailFallback(false);
       setOtpSent(false);
       setOtp("");
       await startGitHubConnect("authed");
-    } catch (e: unknown) {
+    },
+    onError: (e) => {
       resetRejectedSession(e);
       setError(otpErrorMessage(e));
       setAuth("disconnected");
-    } finally {
-      if (!cancelled.current) setAccountWorking(false);
-    }
-  }
+    },
+  });
 
-  async function connect() {
-    setError(null);
-    setAccountWorking(true);
-    const mode: ConnectMode = githubReady ? "authed" : "bootstrap";
-    try {
-      await signInSocial({
-        authClient,
-        provider: "github",
-      });
-    } catch (e: unknown) {
-      if (mode === "bootstrap") {
-        requireEmailFallback(errorMessage(e));
-      } else {
+  const connectMutation = useMutation({
+    mutationFn: () => signInSocial({ authClient, provider: "github" }),
+    onError: (e) => {
+      // No account yet → fall back to email OTP; an authed session reset instead.
+      if (githubReady) {
         resetRejectedSession(e);
         setError(errorMessage(e));
         setAuth("disconnected");
+      } else {
+        requireEmailFallback(errorMessage(e));
       }
-    } finally {
-      if (!cancelled.current) setAccountWorking(false);
-    }
+    },
+  });
+
+  const bootstrapConnectMutation = useMutation({
+    mutationFn: () => startGitHubConnect("bootstrap"),
+    onError: (e) => requireEmailFallback(errorMessage(e)),
+  });
+
+  const disconnectMutation = useMutation({
+    mutationFn: () => client.github.disconnect(),
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: orpc.github.key() });
+      setLogin(null);
+      setConnectMode(null);
+      bootstrapResolved.current = false;
+      setAuth("disconnected");
+    },
+    onError: (e) => setError(errorMessage(e)),
+  });
+
+  const importMutation = useMutation({
+    // TODO: support the richer repo-ref format (ref + subdir) the backend accepts.
+    mutationFn: (repo: GithubRepo) =>
+      client.github.import({ repoRef: repoRef(repo), dirName: DEFAULT_DIR }),
+    onSuccess: () => onImported?.(),
+    onError: (e) => {
+      resetRejectedSession(e);
+      setError(errorMessage(e));
+    },
+  });
+
+  // Any account/connect action in flight — drives the connect screen's busy UI.
+  const accountWorking =
+    sendOtpMutation.isPending ||
+    verifyOtpMutation.isPending ||
+    connectMutation.isPending ||
+    bootstrapConnectMutation.isPending;
+  const disconnecting = disconnectMutation.isPending;
+  const importingRef =
+    importMutation.isPending && importMutation.variables ? repoRef(importMutation.variables) : null;
+
+  function sendOtp() {
+    setError(null);
+    sendOtpMutation.mutate({ email });
   }
 
-  async function connectWithServerBootstrap() {
+  function verifyOtpAndConnect() {
     setError(null);
-    setAccountWorking(true);
-    try {
-      await startGitHubConnect("bootstrap");
-    } catch (e: unknown) {
-      requireEmailFallback(errorMessage(e));
-    } finally {
-      if (!cancelled.current) setAccountWorking(false);
-    }
+    verifyOtpMutation.mutate();
+  }
+
+  function connect() {
+    setError(null);
+    connectMutation.mutate();
+  }
+
+  function connectWithServerBootstrap() {
+    setError(null);
+    bootstrapConnectMutation.mutate();
+  }
+
+  function disconnectGitHub() {
+    setError(null);
+    disconnectMutation.mutate();
+  }
+
+  function chooseRepo(repo: GithubRepo) {
+    setError(null);
+    importMutation.mutate(repo);
   }
 
   async function checkNow() {
     await pollGitHubConnection();
   }
 
-  async function chooseRepo(repo: GithubRepo) {
-    if (!repo.hasFlake) return;
-    const repoRef = `${repo.owner}/${repo.name}`;
-    setError(null);
-    setImportingRef(repoRef);
+  async function copyDeviceCode(code: string) {
     try {
-      // TODO: The UI needs updating to support the more extensive format that we support for repo references
-      // including the ref and subdir.
-      await client.github.import({ repoRef: repoRef, dirName: DEFAULT_DIR });
-      onImported?.();
-    } catch (e: unknown) {
-      resetRejectedSession(e);
-      setError(errorMessage(e));
-    } finally {
-      if (!cancelled.current) setImportingRef(null);
+      await navigator.clipboard.writeText(code);
+      if (cancelled.current) return;
+      setCodeCopied(true);
+      setTimeout(() => {
+        if (!cancelled.current) setCodeCopied(false);
+      }, 2000);
+    } catch {
+      // Clipboard can be unavailable/denied; the code is still shown to type.
     }
   }
 
@@ -480,7 +533,13 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     const emailValid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
     const accountFormReady = emailValid && (!otpSent || otp.trim().length > 0);
     const canContinue = usingEmailFallback ? accountFormReady : true;
-    const primaryAction = usingEmailFallback ? (otpSent ? verifyOtpAndConnect : sendOtp) : connect;
+    // The default GitHub connect action is toggled by USE_SERVER_BOOTSTRAP_DEFAULT.
+    const defaultConnect = USE_SERVER_BOOTSTRAP_DEFAULT ? connectWithServerBootstrap : connect;
+    const primaryAction = usingEmailFallback
+      ? otpSent
+        ? verifyOtpAndConnect
+        : sendOtp
+      : defaultConnect;
     const primaryLabel = usingEmailFallback
       ? otpSent
         ? "Verify code and connect"
@@ -583,34 +642,39 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
             </>
           )}
         </Button>
-        {connecting && connectMode === "bootstrap" && bootstrapUserCode ? (
+        {connecting && connectMode === "bootstrap" && deviceCode?.userCode ? (
           <div className="mt-4 w-full max-w-sm rounded-lg border border-border bg-muted/30 p-3 text-left">
             <p className="font-medium text-sm">Enter this code on GitHub</p>
-            <p className="mt-2 rounded-md bg-background px-3 py-2 text-center font-mono font-semibold text-lg tracking-widest">
-              {bootstrapUserCode}
-            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <p className="flex-1 rounded-md bg-background px-3 py-2 text-center font-mono font-semibold text-lg tracking-widest">
+                {deviceCode.userCode}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => copyDeviceCode(deviceCode.userCode ?? "")}
+                aria-label={codeCopied ? "Code copied" : "Copy code"}
+              >
+                {codeCopied ? (
+                  <Check className="size-4 text-success" aria-hidden="true" />
+                ) : (
+                  <Copy className="size-4" aria-hidden="true" />
+                )}
+              </Button>
+            </div>
             <p className="mt-2 text-muted-foreground text-xs">
               We opened{" "}
               <button
                 type="button"
                 className="text-primary hover:underline"
-                onClick={() => openExternal(bootstrapVerificationUri ?? "https://github.com/login/device")}
+                onClick={() => openExternal(deviceCode.verificationUri ?? "https://github.com/login/device")}
               >
-                {bootstrapVerificationUri ?? "https://github.com/login/device"}
+                {deviceCode.verificationUri ?? "https://github.com/login/device"}
               </button>
               . After approving the device, nixmac will link the existing GitHub App installation.
             </p>
           </div>
-        ) : null}
-        {!usingEmailFallback && !connecting ? (
-          <button
-            type="button"
-            onClick={connectWithServerBootstrap}
-            disabled={connectBusy}
-            className="mt-3 text-muted-foreground text-xs hover:underline disabled:pointer-events-none disabled:opacity-50"
-          >
-            Try server bootstrap flow
-          </button>
         ) : null}
         {connecting ? (
           <div className="mt-3 flex flex-col items-center gap-1.5">
@@ -624,7 +688,7 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
             </button>
             <button
               type="button"
-              onClick={connect}
+              onClick={connectMode === "bootstrap" ? connectWithServerBootstrap : connect}
               className="text-muted-foreground text-xs hover:underline"
             >
               Re-open GitHub
@@ -653,7 +717,14 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
           </span>
           Connected{login ? <> as <span className="font-medium">@{login}</span></> : null}
         </span>
-        <span className="text-muted-foreground text-xs">Read-only</span>
+        <button
+          type="button"
+          onClick={disconnectGitHub}
+          disabled={disconnecting}
+          className="text-muted-foreground text-xs transition-colors hover:text-destructive hover:underline disabled:pointer-events-none disabled:opacity-50"
+        >
+          {disconnecting ? "Disconnecting…" : "Disconnect"}
+        </button>
       </div>
 
       {error ? (
@@ -710,13 +781,13 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
                         <button
                           type="button"
                           onClick={() => chooseRepo(repo)}
-                          disabled={!repo.hasFlake || importingRef !== null}
+                          disabled={importingRef !== null}
                           data-testid="import-repo-button"
                           className={cn(
-                            "flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
+                            "flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors hover:border-primary/50",
                             repo.hasFlake
-                              ? "border-border bg-card hover:border-primary/50"
-                              : "cursor-not-allowed border-border/60 bg-card/50 opacity-70",
+                              ? "border-border bg-card"
+                              : "border-border/60 bg-card/50 opacity-70 hover:opacity-100",
                             isImporting && "border-primary ring-1 ring-primary",
                           )}
                         >

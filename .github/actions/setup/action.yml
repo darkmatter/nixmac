@@ -1,12 +1,8 @@
 name: "Setup nixmac CI"
 description: >
-  Install Determinate Nix (skips if already installed), provide the devenv
-  profile (bun/node/rust/sops/age/etc. on PATH), and install JS deps.
-  The devenv profile's store path is cached via actions/cache keyed on the
-  devenv inputs; warm runs substitute the profile from binary caches instead
-  of re-evaluating devenv, which costs 5-10 minutes on ephemeral runners.
-  NOTE: You MUST run actions/checkout before this action — local composite
-  actions need the repo on disk before they can be resolved.
+  Compatibility wrapper around phase-level setup actions. New workflow callsites
+  should call setup-nix/setup-devenv/setup-xcode/setup-bun/setup-rust directly
+  so GitHub logs show the expensive phases as separate steps.
 
 inputs:
   install-bun-deps:
@@ -39,306 +35,31 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Check if Nix is already installed
-      id: nix-check
-      shell: bash
-      run: |
-        if command -v nix &>/dev/null; then
-          echo "installed=true" >> "$GITHUB_OUTPUT"
-          echo "Nix already installed — skipping nix-installer."
-        else
-          echo "installed=false" >> "$GITHUB_OUTPUT"
-        fi
-
-    - name: Install Nix
-      if: steps.nix-check.outputs.installed != 'true'
-      uses: DeterminateSystems/nix-installer-action@v22
+    - name: Setup Nix and caches
+      uses: ./.github/actions/setup-nix
       with:
-        extra-conf: ${{ inputs.extra-nix-conf }}
+        install-devenv: ${{ inputs.install-devenv }}
+        extra-nix-conf: ${{ inputs.extra-nix-conf }}
+        darkmatter-cachix-auth-token: ${{ inputs.darkmatter-cachix-auth-token }}
 
-    # continue-on-error on the cachix steps: some persistent self-hosted
-    # runners have a Nix install whose runner user is not in trusted-users,
-    # so `cachix use` cannot add substituters and exits 1. Degrading to
-    # "build without binary caches" beats failing the whole job there.
-    - name: Configure darkmatter Cachix cache
-      if: ${{ inputs.darkmatter-cachix-auth-token != '' }}
-      continue-on-error: true
-      uses: cachix/cachix-action@v17
+    - name: Setup devenv profile
+      if: inputs.install-devenv == 'true'
+      uses: ./.github/actions/setup-devenv
       with:
-        name: darkmatter
-        authToken: ${{ inputs.darkmatter-cachix-auth-token }}
+        install-devenv: ${{ inputs.install-devenv }}
+        darkmatter-cachix-auth-token: ${{ inputs.darkmatter-cachix-auth-token }}
 
-    # Pull pre-built devenv packages from devenv.cachix.org (free, no auth).
-    # This avoids building devenv and its deps from source.
-    - name: Configure devenv Cachix cache
-      if: ${{ inputs.install-devenv == 'true' }}
-      continue-on-error: true
-      uses: cachix/cachix-action@v17
-      with:
-        name: devenv
-        skipPush: true
+    - name: Setup Xcode Swift toolchain
+      if: inputs.install-devenv == 'true'
+      uses: ./.github/actions/setup-xcode
 
-    # languages.python uses nixpkgs-python, whose builds are NOT on
-    # cache.nixos.org. Without this cache, CI compiles CPython from source
-    # (~10 minutes of gcc on GitHub-hosted runners).
-    - name: Configure nixpkgs-python Cachix cache
-      if: ${{ inputs.install-devenv == 'true' }}
-      continue-on-error: true
-      uses: cachix/cachix-action@v17
-      with:
-        name: nixpkgs-python
-        skipPush: true
-
-    # The devenv profile is a plain store path. Caching that path (plus the
-    # env vars devenv exports) lets warm runs skip installing the devenv CLI
-    # and evaluating devenv entirely — `nix build <path>` just substitutes the
-    # closure from the configured binary caches. The pointer is only saved
-    # after the closure has verifiably been pushed to the darkmatter cache
-    # (see "Push devenv profile" below), so a cache hit implies the profile
-    # is downloadable.
-    # Key namespace v2: v1 pointers were saved while cachix pushes were
-    # silently failing (403), so they reference paths no cache can serve.
-    # Fast path: on self-hosted runners with clean:false, .devenv/profile
-    # persists between runs. If the symlink resolves to a valid nix store
-    # path, skip the entire cache restore + substitute + build chain.
-    - name: Check existing devenv profile
-      if: ${{ inputs.install-devenv == 'true' }}
-      id: devenv-existing
-      shell: bash
-      run: |
-        set -euo pipefail
-        if [[ -L .devenv/profile ]]; then
-          profile_path="$(readlink -f .devenv/profile)"
-          if nix path-info "$profile_path" >/dev/null 2>&1; then
-            echo "ok=true" >> "$GITHUB_OUTPUT"
-            echo "profile_path=$profile_path" >> "$GITHUB_OUTPUT"
-            echo "✓ Existing devenv profile is valid: $profile_path"
-          else
-            echo "ok=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::devenv/profile store path is gone; rebuilding."
-          fi
-        else
-          echo "ok=false" >> "$GITHUB_OUTPUT"
-        fi
-
-    - name: Restore devenv profile pointer
-      if: ${{ inputs.install-devenv == 'true' && steps.devenv-existing.outputs.ok != 'true' }}
-      id: devenv-cache
-      uses: actions/cache/restore@v4
-      with:
-        path: .devenv-ci
-        key: devenv-profile-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.nix', 'devenv.yaml', 'devenv.lock', 'flake.nix', 'flake.lock', 'treefmt.nix', 'nix/**') }}
-
-    - name: Substitute cached devenv profile
-      if: ${{ inputs.install-devenv == 'true' && steps.devenv-existing.outputs.ok != 'true' && steps.devenv-cache.outputs.cache-hit == 'true' }}
-      id: devenv-realise
-      shell: bash
-      run: |
-        set -euo pipefail
-
-        profile_path="$(cat .devenv-ci/profile-path)"
-        ok=true
-
-        mkdir -p .devenv
-        if nix path-info "$profile_path" >/dev/null 2>&1; then
-          ln -sfn "$profile_path" .devenv/profile
-          echo "Profile already in local nix store; linked without download."
-        elif ! nix build "$profile_path" --out-link .devenv/profile; then
-          ok=false
-        fi
-
-        # Realise store paths referenced only by exported env vars (e.g.
-        # PLAYWRIGHT_BROWSERS_PATH) that may live outside the profile closure.
-        if [ "$ok" = "true" ] && [ -s .devenv-ci/extra-paths ]; then
-          if ! xargs nix-store --realise < .devenv-ci/extra-paths > /dev/null; then
-            ok=false
-          fi
-        fi
-
-        if [ "$ok" != "true" ]; then
-          echo "Cached devenv profile is not substitutable; falling back to a full devenv build."
-          rm -f .devenv/profile
-        fi
-        echo "ok=$ok" >> "$GITHUB_OUTPUT"
-
-    # `nix build` instead of `nix profile install`: no profile manifest
-    # locking (concurrent jobs on shared runners contend on it), and the
-    # version is pinned so a new devenv release can't change CI behavior
-    # underneath us.
-    - name: Install devenv
-      if: ${{ inputs.install-devenv == 'true' && steps.devenv-existing.outputs.ok != 'true' && steps.devenv-realise.outputs.ok != 'true' }}
-      shell: bash
-      run: nix build github:cachix/devenv/v2.1.2 --out-link "${RUNNER_TEMP}/devenv-cli"
-
-    - name: Build devenv profile
-      if: ${{ inputs.install-devenv == 'true' && steps.devenv-existing.outputs.ok != 'true' && steps.devenv-realise.outputs.ok != 'true' }}
-      shell: bash
-      env:
-        NIXPKGS_ALLOW_UNFREE: 1
-        XDG_DATA_HOME: ${{ runner.temp }}/devenv-xdg-data
-      run: |
-        set -euo pipefail
-        "${RUNNER_TEMP}/devenv-cli/bin/devenv" shell --impure -- echo ready
-
-    - name: Record devenv profile pointer
-      if: ${{ inputs.install-devenv == 'true' && steps.devenv-existing.outputs.ok != 'true' && steps.devenv-realise.outputs.ok != 'true' }}
-      shell: bash
-      env:
-        NIXPKGS_ALLOW_UNFREE: 1
-        # Must match the Build step so devenv reuses the same state dir.
-        XDG_DATA_HOME: ${{ runner.temp }}/devenv-xdg-data
-      run: |
-        set -euo pipefail
-
-        mkdir -p .devenv-ci
-        readlink -f .devenv/profile > .devenv-ci/profile-path
-
-        "${RUNNER_TEMP}/devenv-cli/bin/devenv" shell --impure -- bash -c '
-          for name in \
-            LD_LIBRARY_PATH \
-            LIBRARY_PATH \
-            PLAYWRIGHT_BROWSERS_PATH \
-            PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD \
-            RUSTFLAGS
-          do
-            value="${!name:-}"
-            if [ -n "$value" ]; then
-              printf "%s=%s\n" "$name" "$value"
-            fi
-          done
-        ' > .devenv-ci/env 2>/dev/null
-
-        # Trim env values like /nix/store/<hash>-pkg/lib down to the top-level
-        # store path — nix-store --realise only accepts store path roots.
-        grep -oE '/nix/store/[a-z0-9]{32}-[^:/" ]+' .devenv-ci/env | sort -u > .devenv-ci/extra-paths || true
-
-    # Push the profile closure synchronously and verify it is actually
-    # downloadable before trusting it. cachix-action's post-job push is not
-    # enough: it swallows per-path API errors (e.g. 403 from a token without
-    # write permission) and reports success, which would poison the pointer
-    # cache with paths nothing can serve.
-    - name: Push devenv profile to darkmatter Cachix
-      if: ${{ inputs.install-devenv == 'true' && steps.devenv-existing.outputs.ok != 'true' && steps.devenv-realise.outputs.ok != 'true' }}
-      id: devenv-push
-      shell: bash
-      env:
-        CACHIX_AUTH_TOKEN: ${{ inputs.darkmatter-cachix-auth-token }}
-      run: |
-        set -euo pipefail
-
-        ok=false
-        profile_path="$(cat .devenv-ci/profile-path)"
-
-        if [ -z "${CACHIX_AUTH_TOKEN:-}" ]; then
-          echo "::notice::No darkmatter Cachix auth token; skipping push. Pointer will still be saved for self-hosted runners."
-        elif ! command -v cachix > /dev/null; then
-          echo "::notice::cachix is not on PATH; skipping push. Pointer will still be saved for self-hosted runners."
-        else
-          if { echo "$profile_path"; cat .devenv-ci/extra-paths; } | xargs cachix push darkmatter; then
-            if nix path-info --store https://darkmatter.cachix.org "$profile_path" > /dev/null 2>&1; then
-              ok=true
-            else
-              echo "::warning::devenv profile push reported success but ${profile_path} is not downloadable from darkmatter.cachix.org."
-            fi
-          else
-            echo "::warning::cachix push to darkmatter failed."
-          fi
-        fi
-
-        echo "ok=$ok" >> "$GITHUB_OUTPUT"
-
-    # Save the pointer unconditionally after a build — on self-hosted runners
-    # the nix store persists locally, so the path is valid even without cachix.
-    # The cachix push is only needed for ephemeral (GitHub-hosted) runners.
-    - name: Save devenv profile pointer
-      if: ${{ inputs.install-devenv == 'true' && steps.devenv-existing.outputs.ok != 'true' && steps.devenv-realise.outputs.ok != 'true' && steps.devenv-cache.outputs.cache-hit != 'true' }}
-      uses: actions/cache/save@v4
-      with:
-        path: .devenv-ci
-        key: ${{ steps.devenv-cache.outputs.cache-primary-key }}
-
-    - name: Add devenv tools to PATH
-      if: ${{ inputs.install-devenv == 'true' }}
-      shell: bash
-      run: |
-        set -euo pipefail
-
-        # .devenv/profile is a symlink to the nix store path containing all
-        # packages (bun, node, sops, age, rust, etc.)
-        if [[ -L .devenv/profile ]]; then
-          profile_path="$(readlink -f .devenv/profile)"
-          echo "${profile_path}/bin" >> "$GITHUB_PATH"
-        else
-          echo "ERROR: .devenv/profile symlink not found"
-          exit 1
-        fi
-
-    - name: Configure Xcode swift toolchain
-      if: runner.os == 'macOS'
-      shell: bash
-      run: |
-        set -euo pipefail
-
-        developer_dir="$(env -u DEVELOPER_DIR /usr/bin/xcode-select -p 2>/dev/null || true)"
-        if [ -z "$developer_dir" ]; then
-          developer_dir="/Applications/Xcode.app/Contents/Developer"
-        fi
-
-        swift_bin="$developer_dir/Toolchains/XcodeDefault.xctoolchain/usr/bin"
-        if [ -x "$swift_bin/swift" ]; then
-          echo "DEVELOPER_DIR=$developer_dir" >> "$GITHUB_ENV"
-          sdk_root="$(env -u SDKROOT DEVELOPER_DIR="$developer_dir" /usr/bin/xcrun --sdk macosx --show-sdk-path 2>/dev/null || true)"
-          if [ -n "$sdk_root" ]; then
-            echo "SDKROOT=$sdk_root" >> "$GITHUB_ENV"
-          fi
-          # GITHUB_PATH prepends — adding after devenv profile bin means
-          # Xcode's swift takes precedence over devenv's standalone swift,
-          # which lacks swift-build (SPM) required by swift-rs.
-          echo "$swift_bin" >> "$GITHUB_PATH"
-          unset NIX_SWIFTFLAGS_COMPILE NIX_SWIFTFLAGS_LINK 2>/dev/null || true
-        fi
-
-    - name: Export devenv environment
-      if: ${{ inputs.install-devenv == 'true' }}
-      shell: bash
-      run: |
-        set -euo pipefail
-        if [[ -f .devenv-ci/env ]]; then
-          cat .devenv-ci/env >> "$GITHUB_ENV"
-        fi
-
-    - name: Align Bun with packageManager
+    - name: Setup Bun
       if: inputs.install-bun-deps == 'true'
-      shell: bash
-      run: |
-        set -euo pipefail
+      uses: ./.github/actions/setup-bun
 
-        expected="$(jq -r '.packageManager // empty' package.json | sed -n 's/^bun@//p')"
-        if [ -z "$expected" ]; then
-          echo "No bun packageManager version pinned; using bun from PATH."
-          exit 0
-        fi
-
-        current="$(bun --version 2>/dev/null || true)"
-        if [ "$current" = "$expected" ]; then
-          echo "Bun $current matches packageManager."
-          exit 0
-        fi
-
-        echo "Bun version mismatch: PATH has '${current:-missing}', packageManager requires '$expected'. Installing bun-v$expected."
-        curl -fsSL https://bun.sh/install | bash -s -- "bun-v$expected"
-        echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
-        "$HOME/.bun/bin/bun" --version
-
-    - name: Install Rust toolchain
+    - name: Setup Rust
       if: inputs.setup-rust == 'true'
-      uses: dtolnay/rust-toolchain@stable
-
-    - name: Cache Rust artifacts
-      if: inputs.setup-rust == 'true' && inputs.rust-cache-workspaces != ''
-      uses: Swatinem/rust-cache@v2
-      with:
-        workspaces: ${{ inputs.rust-cache-workspaces }}
+      uses: ./.github/actions/setup-rust
 
     - name: Install frontend dependencies
       if: inputs.install-bun-deps == 'true'

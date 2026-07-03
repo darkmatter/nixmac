@@ -88,11 +88,11 @@ pub fn model_context_window(model: &str) -> u32 {
 const COMMIT_MESSAGE_MAX_OUTPUT_TOKENS: u32 = 600;
 
 pub fn commit_message_budget(prompt: &str, model: &str) -> TokenAllocation {
-    compute_token_allocation(
-        prompt,
+    let requested_output = crate::ai::model_capabilities::scale_output_tokens_for_model(
+        model,
         COMMIT_MESSAGE_MAX_OUTPUT_TOKENS,
-        model_context_window(model),
-    )
+    );
+    compute_token_allocation(prompt, requested_output, model_context_window(model))
 }
 
 #[cfg(test)]

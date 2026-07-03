@@ -1,6 +1,6 @@
 import { ipcRenderer } from "@/ipc/api";
 import type { DarwinApplyEndEvent } from "@/ipc/types";
-import { REBUILD_ERROR_CODES } from "@/lib/errors";
+import { isProbeablePermissionRebuildError } from "@/lib/errors";
 import { client } from "@/lib/orpc";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import type { RebuildContext } from "@/types/rebuild";
@@ -23,13 +23,14 @@ interface RebuildOptions {
  * Only per-invocation orchestration lives here (context, success/failure
  * callbacks). Output folding and status mirroring are owned by
  * `viewmodel/rebuild.ts`, which also releases the processing flag and
- * re-probes permissions on Full Disk Access failures when the run ends.
+ * re-probes permissions on permission failures when the run ends.
  */
 export function useRebuildStream() {
   const { refreshGitStatus } = useGitOperations();
 
   const triggerRebuild = async (options: RebuildOptions) => {
     uiActions.setRebuildContext(options.context);
+    uiActions.setEtcClobber(null);
     // Store-path activation has no log summarizer; let the rebuild slice
     // echo raw output into the summary lines.
     setRebuildRawLineEcho(options.storePath != null);
@@ -39,9 +40,15 @@ export function useRebuildStream() {
       async (event) => {
         unlistenEnd();
 
-        // Full Disk Access error: the rebuild slice re-probes permissions;
+        // Stash the structured /etc clobber conflicts (if any) so the error
+        // overlay can render the per-file list instead of only the flat string.
+        // Only `etc_clobber` failures carry this payload; clear it otherwise so
+        // a later unrelated failure doesn't show stale conflicts.
+        uiActions.setEtcClobber(event.payload.etc_clobber ?? null);
+
+        // Probeable permission errors: the rebuild slice re-probes permissions;
         // dismiss the panel so the UI can route to the permissions step.
-        if (event.payload.error_type === REBUILD_ERROR_CODES.FULL_DISK_ACCESS) {
+        if (isProbeablePermissionRebuildError(event.payload.error_type)) {
           uiActions.setRebuildPanelDismissed(true);
           await refreshGitStatus();
           return;

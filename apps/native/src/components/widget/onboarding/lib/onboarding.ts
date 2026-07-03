@@ -1,6 +1,7 @@
 export type StepId =
   | "permissions"
   | "nix-setup"
+  | "config-dir"
   | "setup"
   | "customizations"
   | "inference"
@@ -8,8 +9,9 @@ export type StepId =
 
 export const STEPS: { id: StepId; label: string; description: string }[] = [
   { id: "permissions", label: "Permissions", description: "Grant macOS access" },
-  { id: "nix-setup", label: "System Setup", description: "Install Nix & nix-darwin" },
-  { id: "setup", label: "Import Flake", description: "Import your configuration" },
+  { id: "nix-setup", label: "System Setup", description: "Install Nix" },
+  { id: "config-dir", label: "Config Directory", description: "Import or create your flake" },
+  { id: "setup", label: "Choose Machine", description: "Pick your host configuration" },
   { id: "customizations", label: "Import Customizations", description: "Capture existing tweaks" },
   { id: "inference", label: "AI Inference", description: "Hosted or your own key" },
   { id: "build", label: "First Build", description: "Apply your configuration" },
@@ -50,9 +52,12 @@ export function resolveOnboardingStep(furthestStep: StepId, viewingStep: StepId 
 export interface OnboardingStepInputs {
   /** All required macOS permissions granted. */
   permissionsReady: boolean;
-  /** Nix and darwin-rebuild both detected (or test override). */
+  /** The Nix package manager is detected (or test override). nix-darwin is not
+   * required here — the first build runs it via `nix run nix-darwin`. */
   nixReady: boolean;
-  /** A config dir + a valid host attribute are set. */
+  /** A config directory has been chosen/imported. */
+  configDirReady: boolean;
+  /** A valid host attribute is set for the chosen config dir. */
   flakeReady: boolean;
   /** The user has run the "scan this Mac" customizations pass at least once. */
   macScanned: boolean;
@@ -76,6 +81,7 @@ export interface OnboardingStepInputs {
 export function computeOnboardingStep(inputs: OnboardingStepInputs): StepId | null {
   if (!inputs.permissionsReady) return "permissions";
   if (!inputs.nixReady) return "nix-setup";
+  if (!inputs.configDirReady) return "config-dir";
   if (!inputs.flakeReady) return "setup";
   // Importing existing customizations is optional, but the user must run the
   // scan once before moving on.

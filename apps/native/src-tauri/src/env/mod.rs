@@ -147,8 +147,8 @@ pub fn ollama_api_base() -> Option<String> {
 }
 
 #[allow(dead_code)]
-pub fn vllm_api_base() -> Option<String> {
-    non_empty(settings(None).vllm_api_base)
+pub fn openai_compatible_api_base() -> Option<String> {
+    non_empty(settings(None).openai_compatible_api_base)
 }
 
 pub fn openai_api_key() -> Option<String> {
@@ -160,8 +160,8 @@ pub fn openrouter_api_key() -> Option<String> {
 }
 
 #[allow(dead_code)]
-pub fn vllm_api_key() -> Option<String> {
-    non_empty(settings(None).vllm_api_key)
+pub fn openai_compatible_api_key() -> Option<String> {
+    non_empty(settings(None).openai_compatible_api_key)
 }
 
 pub fn openai_api_key_for_app<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
@@ -172,8 +172,8 @@ pub fn openrouter_api_key_for_app<R: Runtime>(app: &AppHandle<R>) -> Option<Stri
     non_empty(settings_for_app(app).openrouter_api_key)
 }
 
-pub fn vllm_api_key_for_app<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
-    non_empty(settings_for_app(app).vllm_api_key)
+pub fn openai_compatible_api_key_for_app<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
+    non_empty(settings_for_app(app).openai_compatible_api_key)
 }
 
 /// Non-empty trimmed value from runtime env or the E2E runtime file.

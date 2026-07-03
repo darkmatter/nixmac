@@ -79,6 +79,11 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
         ensure_nixmac_edit_allowed("ensure_secret", inject_file)?;
     }
 
-    let result = execute_ensure_secret(ctx.repo_root, ctx.args, ctx.gitignore_matcher)?;
+    let result = execute_ensure_secret(
+        ctx.repo_root,
+        ctx.args,
+        ctx.auto_format,
+        ctx.gitignore_matcher,
+    )?;
     Ok(ToolResult::EnsureSecret(result))
 }

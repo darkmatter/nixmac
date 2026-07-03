@@ -17,23 +17,9 @@ const mockBootstrapStatus = vi.fn<(input: { state: string }) => Promise<GithubBo
 const mockConnectStart = vi.fn<() => Promise<GithubStart>>();
 const mockGitHubStatus = vi.fn<() => Promise<GithubStatus>>();
 const mockListRepos = vi.fn<() => Promise<never[]>>();
-const mockImport = vi.fn<(owner: string, repo: string, dirName?: string) => Promise<void>>();
 const mockOpen = vi.fn<(url: string) => Promise<void>>();
 const mockSignInSocial = vi.fn<(input: SignInSocialInput) => Promise<void>>();
 const mockAuthClient = vi.hoisted(() => ({}));
-
-vi.mock("@/ipc/api", () => ({
-  tauriAPI: {
-    account: {
-      status: () => mockAccountStatus(),
-      sendOtp: vi.fn<() => void>(),
-      verifyOtp: vi.fn<() => void>(),
-    },
-    github: {
-      import: (owner: string, repo: string, dirName?: string) => mockImport(owner, repo, dirName),
-    },
-  },
-}));
 
 vi.mock("@/lib/auth", () => ({
   auth: mockAuthClient,
@@ -42,6 +28,9 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/orpc", async () => {
   const { createTanstackQueryUtils } = await import("@orpc/tanstack-query");
   const client = {
+    account: {
+      status: () => mockAccountStatus(),
+    },
     github: {
       bootstrapStart: () => mockBootstrapStart(),
       bootstrapStatus: (input: { state: string }) => mockBootstrapStatus(input),
@@ -87,12 +76,13 @@ describe("GitHubSource", () => {
     });
     mockGitHubStatus.mockResolvedValue({ connected: false, login: null, installationId: null });
     mockListRepos.mockResolvedValue([]);
-    mockImport.mockResolvedValue(undefined);
     mockOpen.mockResolvedValue(undefined);
     mockSignInSocial.mockResolvedValue(undefined);
   });
 
-  it("starts GitHub auth through Better Auth Tauri social sign-in", async () => {
+  // The primary button runs the server bootstrap (device code) flow by default;
+  // see USE_SERVER_BOOTSTRAP_DEFAULT in github-source.tsx.
+  it("starts GitHub auth through the server bootstrap device flow", async () => {
     renderGitHubSource();
 
     const connectButton = await screen.findByTestId("github-connect-button");
@@ -100,13 +90,10 @@ describe("GitHubSource", () => {
       fireEvent.click(connectButton);
     });
 
-    await waitFor(() =>
-      expect(mockSignInSocial).toHaveBeenCalledWith({
-        authClient: mockAuthClient,
-        provider: "github",
-      }),
+    await waitFor(() => expect(mockBootstrapStart).toHaveBeenCalled());
+    expect(mockOpen).toHaveBeenCalledWith(
+      "https://github.com/apps/nixmac/installations/new?state=state-1",
     );
-    expect(mockBootstrapStart).not.toHaveBeenCalled();
-    expect(mockOpen).not.toHaveBeenCalled();
+    expect(mockSignInSocial).not.toHaveBeenCalled();
   });
 });

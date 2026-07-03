@@ -152,7 +152,7 @@ scenario_test() {
 
     phase "Prove Settings API Keys with shared redaction gate"
     scenario_click_settings_tab "API Keys" || die "API Keys tab did not open"
-    if ! scenario_capture_and_assert_text "settings-api-keys-text" "API Keys|OpenRouter|OpenAI|API Key|Base URL|vLLM"; then
+    if ! scenario_capture_and_assert_text "settings-api-keys-text" "API Keys|OpenRouter|OpenAI|API Key|Base URL|OpenAI Compatible"; then
         nixmac_screenshot "settings-api-keys-missing"
         die "Settings API Keys content did not render or redaction gate failed"
     fi

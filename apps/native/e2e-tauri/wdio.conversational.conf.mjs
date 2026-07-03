@@ -1,9 +1,9 @@
 import { createWdioConfig } from "./wdio.conf.base.mjs";
-import { createVllmSetupOptionsForSuite } from "../dist-e2e/tests/wdio/helpers/vllm-test-mode.js";
+import { createOpenAiCompatibleSetupOptionsForSuite } from "../dist-e2e/tests/wdio/helpers/openai-compatible-test-mode.js";
 
 export const config = createWdioConfig({
   specs: ["../dist-e2e/tests/wdio/conversational.spec.js"],
-  setupOptions: createVllmSetupOptionsForSuite({
+  setupOptions: createOpenAiCompatibleSetupOptionsForSuite({
     initializeConfigRepo: true,
   }),
 });

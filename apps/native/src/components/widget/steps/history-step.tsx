@@ -1,15 +1,15 @@
-import { useEffect, useRef, useState } from "react";
-import { useHistory } from "@/hooks/use-history";
-import { useViewModel } from "@nixmac/state";
-import { useHistoryRestore, PREVIEW_ITEM_HASH } from "@/hooks/use-history-restore";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { DiscardUncommittedDialog } from "@/components/widget/history/discard-uncommitted-dialog";
 import { HistoryDayLabel } from "@/components/widget/history/history-day-label";
 import { HistoryHeader } from "@/components/widget/history/history-header";
 import { HistoryItemCard } from "@/components/widget/history/history-item-card";
 import { UncommittedChangesDetected } from "@/components/widget/notifications/uncommitted-changes-detected";
-import { DiscardUncommittedDialog } from "@/components/widget/history/discard-uncommitted-dialog";
+import { useHistory } from "@/hooks/use-history";
+import { PREVIEW_ITEM_HASH, useHistoryRestore } from "@/hooks/use-history-restore";
+import { useViewModel } from "@nixmac/state";
+import { useEffect, useRef, useState } from "react";
 
-export function HistoryStep() {
+export function HistoryScreen() {
   const { loadHistory } = useHistory();
   const history = useViewModel((state) => state.history);
   const scrollAreaRef = useRef<HTMLDivElement>(null);

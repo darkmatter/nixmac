@@ -49,6 +49,7 @@ pub struct FeedbackSystemInfo {
 #[serde(rename_all = "camelCase")]
 pub struct FeedbackUsageStats {
     /// Number of evolutions recorded locally.
+    #[specta(type = Option<f64>)]
     pub total_evolutions: Option<u64>,
     /// Percentage of evolutions that completed successfully.
     pub success_rate: Option<f64>,
@@ -75,10 +76,13 @@ pub struct FeedbackAiProviderModelInfo {
     /// Token count reported for the related AI run.
     pub total_tokens: Option<u32>,
     /// Latency in milliseconds for the related AI run.
+    #[specta(type = f64)]
     pub latency_ms: Option<i64>,
     /// Iterations completed by the related evolution.
+    #[specta(type = Option<f64>)]
     pub iterations: Option<usize>,
     /// Build attempts completed by the related evolution.
+    #[specta(type = Option<f64>)]
     pub build_attempts: Option<usize>,
 }
 
@@ -89,6 +93,7 @@ pub struct FeedbackFlakeInputEntry {
     /// Git revision for the flake input.
     pub rev: Option<String>,
     /// Flake input last-modified timestamp from `flake.lock`.
+    #[specta(type = f64)]
     pub last_modified: Option<i64>,
     /// Store hash for the locked input.
     pub nar_hash: Option<String>,

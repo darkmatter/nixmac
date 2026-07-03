@@ -132,7 +132,7 @@ async fn json_completion(&self, ...) -> Result<(String, TokenUsage)>
 
 - `max_tokens` — maximum output tokens (all providers).
 - `context_window_tokens` — optional override for the total context window. For **Ollama** this maps to `num_ctx`; OpenAI-compatible providers ignore it.
-- Supported providers: `openrouter` (default), `openai`, `ollama`, `vllm`, `claude` (CLI), `codex` (CLI), `opencode` (CLI).
+- Supported providers: `openrouter` (default), `openai`, `ollama`, `openai_compatible`, `claude` (CLI), `codex` (CLI), `opencode` (CLI).
 
 ## Key domain concepts
 

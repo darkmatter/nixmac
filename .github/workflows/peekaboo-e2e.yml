@@ -64,10 +64,15 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: ./.github/actions/setup
+      - name: Setup Nix and caches
+        uses: ./.github/actions/setup-nix
         with:
           darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
-          install-bun-deps: false
+
+      - name: Setup devenv profile
+        uses: ./.github/actions/setup-devenv
+        with:
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
 
       - name: Check report transport dependencies
         shell: bash
@@ -676,7 +681,7 @@ jobs:
     name: Peekaboo E2E Result
     needs: [peekaboo-product-proof, publish-peekaboo-report]
     if: always()
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: arc
     steps:
       - name: Enforce final workflow result
         shell: bash

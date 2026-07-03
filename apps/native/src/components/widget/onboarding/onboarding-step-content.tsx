@@ -1,5 +1,6 @@
 import type { StepId } from "@/components/widget/onboarding/lib/onboarding";
 import { BuildStep } from "@/components/widget/onboarding/steps/build-step";
+import { ConfigDirStep } from "@/components/widget/onboarding/steps/config-dir-step";
 import { CustomizationsStep } from "@/components/widget/onboarding/steps/customizations-step";
 import { InferenceStep } from "@/components/widget/onboarding/steps/inference-step";
 import { NixSetupStep } from "@/components/widget/onboarding/steps/nix-setup-step";
@@ -15,6 +16,7 @@ interface OnboardingStepContentProps {
 
 export function OnboardingStepContent({ currentStep, title }: OnboardingStepContentProps) {
   const trackedCustomizations = useOnboarding((s) => s.trackedCustomizations);
+  const trackedCustomizationSources = useOnboarding((s) => s.trackedCustomizationSources);
   // Inference readiness is a durable fact: provider + model are persisted to
   // GlobalPreferences by InferenceSetup, and the login decision is recorded
   // separately. The build step only needs to know inference is configured.
@@ -24,15 +26,17 @@ export function OnboardingStepContent({ currentStep, title }: OnboardingStepCont
   const { markMacScanned, markLoginDecided } = useOnboardingProgress();
 
   return (
-    <main className="min-w-0">
+    <main className="min-h-0 min-w-0 overflow-y-auto pr-1">
       <h1 className="text-2xl font-bold">{title}</h1>
       <div key={currentStep} className="fade-in slide-in-from-bottom-2 animate-in duration-300">
         {currentStep === "permissions" && <PermissionsStep />}
         {currentStep === "nix-setup" && <NixSetupStep />}
+        {currentStep === "config-dir" && <ConfigDirStep />}
         {currentStep === "setup" && <SetupStep />}
         {currentStep === "customizations" && (
           <CustomizationsStep
             tracked={trackedCustomizations}
+            trackedSources={trackedCustomizationSources}
             onSetTracked={onboardingActions.setTrackedCustomizations}
             onContinue={markMacScanned}
           />

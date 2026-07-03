@@ -23,7 +23,7 @@ import { startEvolveSync } from "./evolve";
 import { startGitSync } from "./git";
 import { startNixInstallSync } from "./nix-install";
 import { startPermissionsSync } from "./permissions";
-import { startPreferencesSync } from "./preferences";
+import { refreshHostsSnapshot, startPreferencesSync } from "./preferences";
 import { startPromptHistorySync } from "./prompt-history";
 import { startRebuildSync } from "./rebuild";
 
@@ -149,7 +149,7 @@ describe("view model sync", () => {
       promptHistory: [],
       nixInstall: null,
       rebuildStatus: null,
-      rebuildLog: { lines: [], rawLines: [] },
+      rebuildLog: { lines: [], rawLines: [], notices: [] },
       evolveEvents: [],
     });
     uiActions.setState({ ...initialUiState });
@@ -247,6 +247,14 @@ describe("view model sync", () => {
     stop();
   });
 
+  it("can force a hosts refresh before mirrored preferences include a configDir", async () => {
+    apiMocks.hosts = ["mbp"];
+    await refreshHostsSnapshot({ force: true });
+
+    expect(apiMocks.listHosts).toHaveBeenCalledTimes(1);
+    expect(viewModelActions.getState().hosts).toEqual(["mbp"]);
+  });
+
   it("keeps previous hosts when listing fails or configDir is unset", async () => {
     // No configDir -> listHosts is never queried.
     const stop = await startPreferencesSync();
@@ -320,7 +328,17 @@ describe("view model sync", () => {
 
     // A new run resets the fold and seeds the preparing line.
     viewModelActions.setState({
-      rebuildLog: { lines: [{ id: 7, text: "stale", type: "info" }], rawLines: ["stale"] },
+      rebuildLog: {
+        lines: [{ id: 7, text: "stale", type: "info" }],
+        rawLines: ["stale"],
+        notices: [
+          {
+            id: "stale-notice",
+            title: "Stale notice",
+            body: "This should be cleared when a new run starts.",
+          },
+        ],
+      },
     });
     uiActions.setRebuildPanelDismissed(true);
     const running = makeRebuildStatus({ isRunning: true });
@@ -331,11 +349,19 @@ describe("view model sync", () => {
       { id: 0, text: "Preparing rebuild...", type: "info" },
     ]);
     expect(viewModelActions.getState().rebuildLog.rawLines).toEqual([]);
+    expect(viewModelActions.getState().rebuildLog.notices).toEqual([]);
     expect(useUiState.getState().rebuildPanelDismissed).toBe(false);
 
     // Output streams fold into the log.
     apiMocks.listeners.get("darwin:apply:data")?.({ payload: { chunk: "raw a\nraw b\n" } });
     expect(viewModelActions.getState().rebuildLog.rawLines).toEqual(["raw a", "raw b"]);
+
+    apiMocks.listeners.get("darwin:apply:data")?.({
+      payload: { chunk: "`darwin-rebuild` requires permission to update your apps\n" },
+    });
+    expect(viewModelActions.getState().rebuildLog.notices).toEqual([
+      expect.objectContaining({ id: "app-management-permission" }),
+    ]);
 
     apiMocks.listeners.get("darwin:apply:summary")?.({ payload: { text: "Building..." } });
     apiMocks.listeners.get("darwin:apply:summary")?.({
@@ -359,6 +385,36 @@ describe("view model sync", () => {
     expect(apiMocks.unlisten).toHaveBeenCalledTimes(3);
   });
 
+  it("keeps the rebuild panel dismissed when hydrating a finished run from a prior UI session", async () => {
+    // The rebuild-status cell lives on the long-lived backend process; a
+    // reopened webview must not resurrect the previous run's panel.
+    apiMocks.rebuildStatus = makeRebuildStatus({ success: true, exitCode: 0 });
+    uiActions.setRebuildPanelDismissed(false);
+
+    const stop = await startRebuildSync();
+
+    expect(viewModelActions.getState().rebuildStatus).toBe(apiMocks.rebuildStatus);
+    expect(useUiState.getState().rebuildPanelDismissed).toBe(true);
+    // No log lines are seeded for a stale finished run (nothing to show).
+    expect(viewModelActions.getState().rebuildLog.lines).toEqual([]);
+
+    stop();
+  });
+
+  it("opens the rebuild panel when hydrating a run that is still in flight", async () => {
+    apiMocks.rebuildStatus = makeRebuildStatus({ isRunning: true });
+    uiActions.setRebuildPanelDismissed(true);
+
+    const stop = await startRebuildSync();
+
+    expect(useUiState.getState().rebuildPanelDismissed).toBe(false);
+    expect(viewModelActions.getState().rebuildLog.lines).toEqual([
+      { id: 0, text: "Preparing rebuild...", type: "info" },
+    ]);
+
+    stop();
+  });
+
   it("re-probes permissions when a rebuild fails with full_disk_access", async () => {
     const stop = await startRebuildSync();
 
@@ -374,6 +430,25 @@ describe("view model sync", () => {
     });
 
     expect(apiMocks.refreshPermissions).toHaveBeenCalledTimes(1);
+
+    stop();
+  });
+
+  it("keeps App Management failures in the rebuild error panel instead of re-probing permissions", async () => {
+    const stop = await startRebuildSync();
+
+    apiMocks.listeners.get("rebuild_status_changed")?.({
+      payload: makeRebuildStatus({ isRunning: true }),
+    });
+    apiMocks.listeners.get("rebuild_status_changed")?.({
+      payload: makeRebuildStatus({
+        success: false,
+        errorType: REBUILD_ERROR_CODES.APP_MANAGEMENT,
+        errorMessage: "needs App Management",
+      }),
+    });
+
+    expect(apiMocks.refreshPermissions).not.toHaveBeenCalled();
 
     stop();
   });

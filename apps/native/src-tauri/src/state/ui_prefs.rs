@@ -15,7 +15,7 @@ pub fn assemble_ui_prefs<R: Runtime>(app: &AppHandle<R>) -> Result<UiPrefs> {
 
     prefs.openrouter_api_key = secrets::get_effective_openrouter_api_key(app)?;
     prefs.openai_api_key = secrets::get_effective_openai_api_key(app)?;
-    prefs.vllm_api_key = secrets::get_effective_vllm_api_key(app)?;
+    prefs.openai_compatible_api_key = secrets::get_effective_openai_compatible_api_key(app)?;
 
     prefs.max_iterations = Some(limits.max_iterations);
     prefs.max_token_budget = Some(limits.max_token_budget);
@@ -46,6 +46,10 @@ fn needs_limits_update(update: &UiPrefsUpdate) -> bool {
         || update.max_output_tokens.is_some()
 }
 
+pub fn auto_format_nix_files<R: Runtime>(app: &AppHandle<R>) -> bool {
+    preferences::try_read(app).is_some_and(|prefs| prefs.auto_format_nix_files)
+}
+
 fn apply_secret_updates<R: Runtime>(app: &AppHandle<R>, update: &UiPrefsUpdate) -> Result<()> {
     if let Some(key) = &update.openrouter_api_key {
         secrets::set_openrouter_api_key(app, key)?;
@@ -53,8 +57,8 @@ fn apply_secret_updates<R: Runtime>(app: &AppHandle<R>, update: &UiPrefsUpdate) 
     if let Some(key) = &update.openai_api_key {
         secrets::set_openai_api_key(app, key)?;
     }
-    if let Some(key) = &update.vllm_api_key {
-        secrets::set_vllm_api_key(app, key)?;
+    if let Some(key) = &update.openai_compatible_api_key {
+        secrets::set_openai_compatible_api_key(app, key)?;
     }
     Ok(())
 }
@@ -83,8 +87,8 @@ pub fn ollama_api_base_url<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
     preferences::try_read(app).and_then(|prefs| prefs.ollama_api_base_url)
 }
 
-pub fn vllm_api_base_url<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
-    preferences::try_read(app).and_then(|prefs| prefs.vllm_api_base_url)
+pub fn openai_compatible_api_base_url<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
+    preferences::try_read(app).and_then(|prefs| prefs.openai_compatible_api_base_url)
 }
 
 pub fn send_diagnostics<R: Runtime>(app: &AppHandle<R>) -> bool {
@@ -100,8 +104,10 @@ pub fn experimental_spinning_mascot<R: Runtime>(app: &AppHandle<R>) -> bool {
 }
 
 pub fn set_host_attr<R: Runtime>(app: &AppHandle<R>, attr: &str) -> Result<()> {
-    let attr = attr.to_string();
-    preferences::write(app, move |prefs| prefs.host_attr = Some(attr))
+    let attr = attr.trim().to_string();
+    preferences::write(app, move |prefs| {
+        prefs.host_attr = if attr.is_empty() { None } else { Some(attr) }
+    })
 }
 
 pub fn set_evolve_provider<R: Runtime>(app: &AppHandle<R>, provider: &str) -> Result<()> {
@@ -165,6 +171,10 @@ mod tests {
         }));
         assert!(needs_limits_update(&UiPrefsUpdate {
             max_iterations: Some(10),
+            ..Default::default()
+        }));
+        assert!(!needs_limits_update(&UiPrefsUpdate {
+            auto_format_nix_files: Some(true),
             ..Default::default()
         }));
     }
