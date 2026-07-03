@@ -11,7 +11,6 @@ use shared_types::HomebrewItem;
 use tauri::AppHandle;
 
 const NIXMAC_HOMEBREW_DATA_PATH: &str = ".nixmac/homebrew/data.json";
-const NIXMAC_HOMEBREW_NIX_EVAL: &str = "nix eval";
 const LEGACY_HOMEBREW_NIX_TEMPLATE: &str = r#"{ config, pkgs, ... }:
 
 {
@@ -285,7 +284,8 @@ fn load_nix_eval_homebrew(config_dir: &std::path::Path, hostname: &str) -> Resul
         .to_str()
         .ok_or_else(|| anyhow::anyhow!("invalid config dir path"))?;
 
-    let attr = NIX_EVAL_HOMEBREW_ATTR_TEMPLATE.replace("{hostname}", &hostname);
+    let safe_host_attr = serde_json::to_string(hostname)?;
+    let attr = NIX_EVAL_HOMEBREW_ATTR_TEMPLATE.replace("{hostname}", &safe_host_attr);
     let output = nix_command(path)
         .args(["eval", "--json", "--apply", NIX_EVAL_HOMEBREW_APPLY, &attr])
         .output()?;
@@ -308,10 +308,7 @@ fn load_nix_eval_homebrew(config_dir: &std::path::Path, hostname: &str) -> Resul
          "taps": []
          }
     */
-    let mut state = make_homebrew_state(
-        is_homebrew_installed(),
-        Some(NIXMAC_HOMEBREW_NIX_EVAL.to_string()),
-    );
+    let mut state = make_homebrew_state(is_homebrew_installed(), None);
     state.brews = json
         .get("brews")
         .and_then(|v| v.as_array())
@@ -421,7 +418,12 @@ fn load_nix_config_homebrew(config_dir: &std::path::Path) -> Result<HomebrewStat
 /// Reads the homebrew state first by using nix-eval and if that fails by falling
 /// back to some heuristic evaluation of likely flake files.
 fn load_nix_homebrew(config_dir: &std::path::Path, hostname: &str) -> Result<HomebrewState> {
-    load_nix_eval_homebrew(config_dir, hostname).or_else(|_| load_nix_config_homebrew(config_dir))
+    load_nix_eval_homebrew(config_dir, hostname).or_else(|e| {
+        log::warn!(
+            "load_nix_homebrew: nix eval failed, falling back to heuristic config parse: {e}"
+        );
+        load_nix_config_homebrew(config_dir)
+    })
 }
 
 /// Finds what's missing from the config compared to the installed state,
