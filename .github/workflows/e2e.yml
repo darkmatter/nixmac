@@ -41,7 +41,7 @@ jobs:
   # --- Determine which scenarios to run ---
   resolve-scenarios:
     name: Resolve scenarios
-    runs-on: [self-hosted, linux]
+    runs-on: arc
     outputs:
       scenarios: ${{ steps.resolve.outputs.scenarios }}
       branch: ${{ steps.ref.outputs.branch }}
@@ -81,12 +81,9 @@ jobs:
   e2e-test:
     name: "E2E: ${{ matrix.scenario }}"
     needs: resolve-scenarios
-    runs-on: blacksmith-4vcpu-ubuntu-2404
-    container:
-      image: ghcr.io/darkmatter/nixmac-ci:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+    # ARC pods have no Docker socket, so the nixmac-ci `container:` is gone;
+    # the setup-nix + setup-devenv steps below provide the same toolchain.
+    runs-on: arc
     timeout-minutes: 20
     # The MacInCloud host is a single shared mutable desktop. Serialize remote
     # E2E jobs across workflows; keep stale-run cancellation at workflow level.

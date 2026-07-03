@@ -20,7 +20,7 @@ jobs:
   peekaboo-product-proof:
     name: Peekaboo Product Proof
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, linux]
+    runs-on: arc
     timeout-minutes: 150
     # The MacInCloud host is a single shared mutable desktop. Serialize remote
     # E2E jobs across workflows; keep stale-run cancellation at workflow level.
@@ -543,7 +543,7 @@ jobs:
     name: Publish Peekaboo E2E Report
     needs: peekaboo-product-proof
     if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && needs.peekaboo-product-proof.outputs.has_report == 'true' && needs.peekaboo-product-proof.outputs.secret_scan_passed == 'true'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: arc
     timeout-minutes: 20
     permissions:
       contents: write

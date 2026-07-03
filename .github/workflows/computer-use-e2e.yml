@@ -17,7 +17,7 @@ permissions:
 jobs:
   prepare:
     name: Prepare Computer Use E2E
-    runs-on: [self-hosted, linux]
+    runs-on: arc
     timeout-minutes: 60
     env:
       REMOTE_HOST: ${{ secrets.NIXMAC_E2E_REMOTE_HOST }}
@@ -587,7 +587,7 @@ jobs:
     name: Remote Computer Use E2E
     needs: prepare
     if: needs.prepare.outputs.remote_ready == 'true' && needs.prepare.outputs.storybook_ui_only != 'true'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: arc
     timeout-minutes: 120
     # The MacInCloud host is a single shared mutable desktop. Serialize remote
     # E2E jobs across workflows; keep stale-run cancellation at workflow level.
@@ -1263,7 +1263,7 @@ jobs:
     name: Publish Computer Use E2E Report
     needs: [prepare, remote-computer-use]
     if: always() && (needs.prepare.outputs.has_report == 'true' || needs.remote-computer-use.outputs.has_report == 'true')
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: arc
     timeout-minutes: 20
     concurrency:
       group: computer-use-e2e-gh-pages-publish
