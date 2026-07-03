@@ -52,6 +52,12 @@ jobs:
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
 
+      # nixpkgs' playwright browsers can ship a different revision than the
+      # bun-installed playwright-core expects; alias the registry dir names.
+      - name: Align Playwright browsers with node_modules
+        working-directory: apps/native
+        run: node scripts/align-playwright-browsers.mjs
+
       - name: Resolve secrets
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
