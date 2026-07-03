@@ -2,6 +2,7 @@ use crate::evolve::file_ops::resolve_path_in_dir_allow_create;
 use crate::evolve::nix_file_editor::{apply_semantic_edit, nix_quote_values};
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
 use crate::shared_types::{HomebrewItemType, HomebrewState};
+use crate::system::nix::nix_command;
 use crate::system::nix_ast_lists::parse_string_lists_by_attrpath;
 use crate::{managed_edits::managed_edit, shared_types};
 use anyhow::{Context, Result};
@@ -10,6 +11,7 @@ use shared_types::HomebrewItem;
 use tauri::AppHandle;
 
 const NIXMAC_HOMEBREW_DATA_PATH: &str = ".nixmac/homebrew/data.json";
+const NIXMAC_HOMEBREW_NIX_EVAL: &str = "nix eval";
 const LEGACY_HOMEBREW_NIX_TEMPLATE: &str = r#"{ config, pkgs, ... }:
 
 {
@@ -20,6 +22,17 @@ const LEGACY_HOMEBREW_NIX_TEMPLATE: &str = r#"{ config, pkgs, ... }:
   };
 }
 "#;
+
+/// Nix apply expression to read the names of Homebrew taps, brews, and casks
+/// with nix-eval.
+const NIX_EVAL_HOMEBREW_APPLY: &str = r#"cfg: {
+  brews = builtins.map (x: x.name) cfg.brews;
+  casks = builtins.map (x: x.name) cfg.casks;
+  taps = builtins.map (x: x.name) cfg.taps;
+}"#;
+
+const NIX_EVAL_HOMEBREW_ATTR_TEMPLATE: &str =
+    r#".#darwinConfigurations."{hostname}".config.homebrew"#;
 
 /// Checks if Homebrew is installed by trying to run `brew --version`.
 fn is_homebrew_installed() -> bool {
@@ -157,9 +170,12 @@ fn load_homebrew_data_state(path: &std::path::Path) -> Result<HomebrewState> {
 }
 
 /// Gets the current homebrew state from the system and nix config, computes the diff, and returns it.
-pub fn get_homebrew_state_diff(config_dir: &std::path::Path) -> Result<HomebrewState> {
+pub fn get_homebrew_state_diff(
+    config_dir: &std::path::Path,
+    hostname: &str,
+) -> Result<HomebrewState> {
     let installed = scan_homebrew();
-    let config = load_nix_config_homebrew(config_dir);
+    let config = load_nix_homebrew(config_dir, hostname)?;
     Ok(compute_homebrew_diff(installed, config))
 }
 
@@ -167,6 +183,7 @@ pub fn get_homebrew_state_diff(config_dir: &std::path::Path) -> Result<HomebrewS
 /// branch, and enters the managed review flow so the frontend lands on the evolve step.
 pub async fn apply_homebrew_diff(
     app: &AppHandle,
+    hostname: &str,
     diff: shared_types::HomebrewState,
 ) -> Result<shared_types::ConfigEditApplyResult> {
     let context = managed_edit::prepare_managed_edit(app)?;
@@ -174,7 +191,7 @@ pub async fn apply_homebrew_diff(
 
     let submitted_source = diff.source.clone();
     let fresh_installed = scan_homebrew();
-    let fresh_config = load_nix_config_homebrew(std::path::Path::new(&dir));
+    let fresh_config = load_nix_homebrew(std::path::Path::new(&dir), hostname)?;
     let diff = sanitize_homebrew_diff(diff, fresh_installed, fresh_config);
     if submitted_source != diff.source {
         log::warn!(
@@ -262,6 +279,76 @@ pub fn scan_homebrew() -> HomebrewState {
     state
 }
 
+/// Reads the homebrew state by using nix-eval in the provided config directory.
+fn load_nix_eval_homebrew(config_dir: &std::path::Path, hostname: &str) -> Result<HomebrewState> {
+    let path = config_dir
+        .to_str()
+        .ok_or_else(|| anyhow::anyhow!("invalid config dir path"))?;
+
+    let attr = NIX_EVAL_HOMEBREW_ATTR_TEMPLATE.replace("{hostname}", &hostname);
+    let output = nix_command(path)
+        .args(["eval", "--json", "--apply", NIX_EVAL_HOMEBREW_APPLY, &attr])
+        .output()?;
+
+    if !output.status.success() {
+        return Err(anyhow::anyhow!(
+            "nix eval failed with exit code {}: {}",
+            output.status.code().unwrap_or(-1),
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    let json: Value = serde_json::from_slice(&output.stdout)
+        .with_context(|| "failed to parse nix eval output as JSON")?;
+
+    // The JSON looks like this, let's process it into the HomebrewState struct:
+    /*
+         {
+         "brews": [],
+         "casks": [],
+         "taps": []
+         }
+    */
+    let mut state = make_homebrew_state(
+        is_homebrew_installed(),
+        Some(NIXMAC_HOMEBREW_NIX_EVAL.to_string()),
+    );
+    state.brews = json
+        .get("brews")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+    state.casks = json
+        .get("casks")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+    state.taps = json
+        .get("taps")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    log::debug!(
+        "load_nix_eval_homebrew: loaded state from nix-eval: brew count={}, cask count={}, tap count={}",
+        state.brews.len(),
+        state.casks.len(),
+        state.taps.len()
+    );
+    Ok(state)
+}
+
 /// Reads the homebrew state currently in nix config in the provided config dir, if it exists.
 /// Otherwise returns an empty state.
 /// The only supported nix config layouts for homebrew are:
@@ -271,13 +358,13 @@ pub fn scan_homebrew() -> HomebrewState {
 ///
 /// Depending on which one exists, we'll set the source field to the full
 /// path of the file or "flake-modules/darwin.nix" respectively, which can be used to determine where to write changes.
-pub fn load_nix_config_homebrew(config_dir: &std::path::Path) -> HomebrewState {
+fn load_nix_config_homebrew(config_dir: &std::path::Path) -> Result<HomebrewState> {
     let mut state = make_homebrew_state(is_homebrew_installed(), None);
 
     let nixmac_homebrew_data = config_dir.join(NIXMAC_HOMEBREW_DATA_PATH);
     if nixmac_homebrew_data.exists() {
         match load_homebrew_data_state(&nixmac_homebrew_data) {
-            Ok(data_state) => return data_state,
+            Ok(data_state) => return Ok(data_state),
             Err(e) => {
                 log::warn!(
                     "failed to read Nixmac Homebrew data from '{}': {}",
@@ -322,7 +409,19 @@ pub fn load_nix_config_homebrew(config_dir: &std::path::Path) -> HomebrewState {
         }
     }
 
-    state
+    log::debug!(
+        "load_nix_config_homebrew: loaded state from nix config: brew count={}, cask count={}, tap count={}",
+        state.brews.len(),
+        state.casks.len(),
+        state.taps.len()
+    );
+    Ok(state)
+}
+
+/// Reads the homebrew state first by using nix-eval and if that fails by falling
+/// back to some heuristic evaluation of likely flake files.
+fn load_nix_homebrew(config_dir: &std::path::Path, hostname: &str) -> Result<HomebrewState> {
+    load_nix_eval_homebrew(config_dir, hostname).or_else(|_| load_nix_config_homebrew(config_dir))
 }
 
 /// Finds what's missing from the config compared to the installed state,
@@ -592,6 +691,8 @@ fn apply_homebrew_data_import(
 /// Writes missing items in the diff to the config, using the source field to determine where to write.
 /// If the source is empty, we'll set up the official .nixmac/homebrew module and write data.json.
 /// We also hook up .nixmac to flake.nix in that case.
+/// TODO: We can try to use nix-eval to get any current homebrew state, look at the source(s),
+/// and try to apply the changes to the "correct" source instead of the well-known .nixmac/homebrew/data.json.
 pub fn apply_homebrew_import(diff: HomebrewState, config_dir: &std::path::Path) -> Result<()> {
     if diff.casks.is_empty() && diff.brews.is_empty() && diff.taps.is_empty() {
         return Ok(());
@@ -734,6 +835,22 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Runs against the local system; enable explicitly when debugging the nix eval homebrew."]
+    #[cfg(target_os = "macos")]
+    fn test_load_nix_eval_homebrew_against_this_host() {
+        use crate::bootstrap::default_config::detect_hostname;
+        use std::path::Path;
+
+        let this_host_name = detect_hostname().expect("failed to get hostname");
+        const CONFIG_DIR: &str = "~/.darwin";
+        let state = load_nix_eval_homebrew(Path::new(CONFIG_DIR), &this_host_name)
+            .expect("failed to load nix eval homebrew");
+
+        // Print the state for debugging purposes, but don't assert on it since it may vary by host.
+        println!("Loaded nix eval homebrew state: {:?}", state);
+    }
+
+    #[test]
     fn load_nix_config_homebrew_reads_nixmac_data_file() {
         let temp = tempfile::tempdir().expect("tempdir should be created");
         let data_file = temp.path().join(NIXMAC_HOMEBREW_DATA_PATH);
@@ -747,7 +864,8 @@ mod tests {
 "#,
         );
 
-        let state = load_nix_config_homebrew(temp.path());
+        let state =
+            load_nix_config_homebrew(temp.path()).expect("failed to load nix config homebrew");
 
         assert_eq!(state.source.as_deref(), Some(NIXMAC_HOMEBREW_DATA_PATH));
         assert_eq!(state.casks, vec!["iterm2", "raycast"]);
@@ -773,7 +891,8 @@ mod tests {
 "#,
         );
 
-        let state = load_nix_config_homebrew(temp.path());
+        let state =
+            load_nix_config_homebrew(temp.path()).expect("failed to load nix config homebrew");
 
         assert_eq!(state.source.as_deref(), Some(NIXMAC_HOMEBREW_DATA_PATH));
         assert_eq!(state.brews, vec!["git"]);
@@ -796,7 +915,8 @@ mod tests {
 "#,
         );
 
-        let state = load_nix_config_homebrew(temp.path());
+        let state =
+            load_nix_config_homebrew(temp.path()).expect("failed to load nix config homebrew");
 
         assert_eq!(
             state.source.as_deref(),
@@ -823,7 +943,8 @@ mod tests {
 "#,
         );
 
-        let state = load_nix_config_homebrew(temp.path());
+        let state =
+            load_nix_config_homebrew(temp.path()).expect("failed to load nix config homebrew");
 
         assert_eq!(
             state.source.as_deref(),
@@ -860,7 +981,8 @@ mod tests {
 "#,
         );
 
-        let state = load_nix_config_homebrew(temp.path());
+        let state =
+            load_nix_config_homebrew(temp.path()).expect("failed to load nix config homebrew");
 
         assert_eq!(state.casks, vec!["iterm2", "raycast"]);
         assert_eq!(state.brews, vec!["git", "jq"]);
