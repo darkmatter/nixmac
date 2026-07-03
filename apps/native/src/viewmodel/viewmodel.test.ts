@@ -23,7 +23,7 @@ import { startEvolveSync } from "./evolve";
 import { startGitSync } from "./git";
 import { startNixInstallSync } from "./nix-install";
 import { startPermissionsSync } from "./permissions";
-import { startPreferencesSync } from "./preferences";
+import { refreshHostsSnapshot, startPreferencesSync } from "./preferences";
 import { startPromptHistorySync } from "./prompt-history";
 import { startRebuildSync } from "./rebuild";
 
@@ -245,6 +245,14 @@ describe("view model sync", () => {
     });
 
     stop();
+  });
+
+  it("can force a hosts refresh before mirrored preferences include a configDir", async () => {
+    apiMocks.hosts = ["mbp"];
+    await refreshHostsSnapshot({ force: true });
+
+    expect(apiMocks.listHosts).toHaveBeenCalledTimes(1);
+    expect(viewModelActions.getState().hosts).toEqual(["mbp"]);
   });
 
   it("keeps previous hosts when listing fails or configDir is unset", async () => {

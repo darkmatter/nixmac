@@ -6,6 +6,7 @@ import { StepShell } from "@/components/widget/onboarding/step-shell";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { useFlakeExists } from "@/hooks/use-flake-exists";
 import { useThisHostname } from "@/hooks/use-this-hostname";
+import { refreshHostsSnapshot } from "@/viewmodel/preferences";
 import { onboardingActions, useViewModel } from "@nixmac/state";
 import {
   Check,
@@ -22,6 +23,7 @@ import { useState } from "react";
  * config directory chosen in the previous step. Also covers the "no hosts /
  * uncommitted flake" recovery paths.
  */
+
 export function SetupStep() {
   const configDir = useViewModel((s) => s.preferences?.configDir ?? "");
   const hosts = useViewModel((s) => s.hosts);
@@ -30,6 +32,7 @@ export function SetupStep() {
   const { saveHost, bootstrap, isBootstrapping } = useDarwinConfig();
 
   const [selectedHost, setSelectedHost] = useState("");
+  const [savingHost, setSavingHost] = useState(false);
   const flakeExists = useFlakeExists(configDir);
   const thisHostname = useThisHostname() || "this-mac";
 
@@ -40,10 +43,17 @@ export function SetupStep() {
   const checkingFlake = flakeExists === null;
 
   async function confirmHost() {
-    await saveHost(effectiveHost);
-    // Back-navigation pins viewingStep to "setup" while furthestStep is already
-    // ahead. Saving the host does not move furthestStep, so clear the override.
-    onboardingActions.setViewingStep(null);
+    if (!effectiveHost) return;
+    setSavingHost(true);
+    try {
+      await saveHost(effectiveHost);
+      await refreshHostsSnapshot({ force: true });
+      // Back-navigation pins viewingStep to "setup" while furthestStep is already
+      // ahead. Saving the host does not move furthestStep, so clear the override.
+      onboardingActions.setViewingStep(null);
+    } finally {
+      setSavingHost(false);
+    }
   }
 
   return (
@@ -144,8 +154,15 @@ export function SetupStep() {
                 aria-hidden="true"
               />
             </div>
-            <Button onClick={() => void confirmHost()} disabled={!effectiveHost}>
-              Use this host
+            <Button onClick={() => void confirmHost()} disabled={!effectiveHost || savingHost}>
+              {savingHost ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  Saving…
+                </>
+              ) : (
+                "Use this host"
+              )}
             </Button>
           </div>
         ) : (

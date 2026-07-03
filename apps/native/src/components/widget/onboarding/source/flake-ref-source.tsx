@@ -13,13 +13,13 @@ interface FlakeRefSourceProps {
 }
 
 /**
- * Advanced import: accepts a GitHub ref (`github:owner/repo[/branch]`) or a
- * local path, plus a `.zip` archive picker. Other flakeref kinds are
- * recognized but gated until the backend wires them up.
+ * Advanced import: accepts repository references supported by
+ * `bootstrap::import::parse_repo_ref`, plus a `.zip` archive picker.
  */
 export function FlakeRefSource({ onImported }: FlakeRefSourceProps) {
-  const { setDir, importGithub, pickZip, importZip } = useDarwinConfig();
+  const { importGithub, pickZip, importZip } = useDarwinConfig();
   const [value, setValue] = useState("");
+  const [dir, setDir] = useState("~/.darwin");
   const [loading, setLoading] = useState(false);
   const [zipLoading, setZipLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,19 +33,10 @@ export function FlakeRefSource({ onImported }: FlakeRefSourceProps) {
     setError(null);
     setLoading(true);
     try {
-      if (parsed.type === "github") {
-        // github:owner/repo[/branch] -> owner/repo[#branch] for config.importGithub
-        const rest = value.trim().replace(/^github:/i, "");
-        const [owner, repo, ...refParts] = rest.split("/");
-        const branch = refParts.join("/");
-        const repoRef = branch ? `${owner}/${repo}#${branch}` : `${owner}/${repo}`;
-        await importGithub(repoRef, ".darwin");
-      } else {
-        const normalized = await client.path.normalize({
-          input: value.trim().replace(/^path:/i, ""),
-        });
-        await setDir(normalized);
-      }
+      const normalized = await client.path.normalize({
+        input: dir.trim() || "~/.darwin",
+      });
+      await importGithub(value.trim(), normalized);
       onImported?.();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
@@ -60,7 +51,10 @@ export function FlakeRefSource({ onImported }: FlakeRefSourceProps) {
     if (!path) return;
     setZipLoading(true);
     try {
-      await importZip(path, ".darwin");
+      const normalized = await client.path.normalize({
+        input: dir.trim() || "~/.darwin",
+      });
+      await importZip(path, normalized);
       onImported?.();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
@@ -73,7 +67,7 @@ export function FlakeRefSource({ onImported }: FlakeRefSourceProps) {
     <div className="flex flex-col gap-4">
       <div>
         <label htmlFor="flake-ref" className="mb-1.5 block font-medium text-sm">
-          Flake reference or local path
+          Repository reference
         </label>
         <div
           className={cn(
@@ -95,7 +89,7 @@ export function FlakeRefSource({ onImported }: FlakeRefSourceProps) {
             spellCheck={false}
             autoCapitalize="off"
             autoComplete="off"
-            placeholder="github:owner/repo  ·  ~/Documents/nix-darwin"
+            placeholder="owner/repo?ref=main&dir=hosts/work"
             className="w-full bg-transparent font-mono text-sm outline-none placeholder:text-muted-foreground"
           />
         </div>
@@ -123,29 +117,29 @@ export function FlakeRefSource({ onImported }: FlakeRefSourceProps) {
             </span>
           ) : (
             <span className="text-muted-foreground">
-              Supports <code className="font-mono">github:owner/repo</code> and local paths today.
+              Supports <code className="font-mono">owner/repo</code>, GitHub URLs, SSH URLs, and optional <code className="font-mono">?ref=</code>/<code className="font-mono">?dir=</code>.
             </span>
           )}
         </div>
       </div>
 
-      <div>
-        <p className="mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">
-          Examples
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="repo-import-dir" className="font-medium text-sm">
+          Where to save it
+        </label>
+        <input
+          id="repo-import-dir"
+          value={dir}
+          onChange={(e) => {
+            setDir(e.target.value);
+            setError(null);
+          }}
+          placeholder="~/.darwin"
+          className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+        <p className="text-muted-foreground text-xs">
+          Imports into this directory, then selects it as your active config directory.
         </p>
-        <div className="flex flex-wrap gap-2">
-          {EXAMPLE_REFS.map((ex) => (
-            <button
-              key={ex.ref}
-              type="button"
-              onClick={() => setValue(ex.ref)}
-              className="group flex items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5 text-left transition-colors hover:border-primary/50"
-            >
-              <code className="font-mono text-foreground text-xs">{ex.ref}</code>
-              <span className="text-[11px] text-muted-foreground">{ex.note}</span>
-            </button>
-          ))}
-        </div>
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -173,6 +167,25 @@ export function FlakeRefSource({ onImported }: FlakeRefSourceProps) {
           )}
         </Button>
       </div>
+
+      <details className="rounded-lg border border-border bg-card px-3 py-2">
+        <summary className="cursor-pointer font-medium text-muted-foreground text-xs uppercase tracking-wide">
+          Reference examples
+        </summary>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {EXAMPLE_REFS.map((ex) => (
+            <button
+              key={ex.ref}
+              type="button"
+              onClick={() => setValue(ex.ref)}
+              className="group flex items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5 text-left transition-colors hover:border-primary/50"
+            >
+              <code className="font-mono text-foreground text-xs">{ex.ref}</code>
+              <span className="text-[11px] text-muted-foreground">{ex.note}</span>
+            </button>
+          ))}
+        </div>
+      </details>
 
       {error ? <p className="text-destructive text-xs">{error}</p> : null}
     </div>
