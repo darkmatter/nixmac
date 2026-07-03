@@ -137,6 +137,17 @@ runs:
         # store path — nix-store --realise only accepts store path roots.
         grep -oE '/nix/store/[a-z0-9]{32}-[^:/" ]+' .devenv-ci/env | sort -u > .devenv-ci/extra-paths || true
 
+        # Realise env-referenced store paths (e.g. PLAYWRIGHT_BROWSERS_PATH)
+        # right away: they live outside the profile closure, and `devenv
+        # shell` does not realise paths that only appear in exported env
+        # values. On persistent runners they usually pre-exist; on ephemeral
+        # runners (ARC pods) they don't, and later steps that launch
+        # Playwright fail with "Executable doesn't exist". Realising here
+        # also lets the push step below actually upload them.
+        if [ -s .devenv-ci/extra-paths ]; then
+          xargs nix-store --realise < .devenv-ci/extra-paths > /dev/null
+        fi
+
     # Push the profile closure synchronously and verify it is actually
     # downloadable before trusting it. cachix-action's post-job push is not
     # enough: it swallows per-path API errors (e.g. 403 from a token without
