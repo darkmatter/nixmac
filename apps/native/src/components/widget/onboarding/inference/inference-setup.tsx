@@ -11,7 +11,6 @@ import {
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
 import { ProviderIcon } from "@/components/widget/controls/provider-icons/provider-icon";
 import {
-  BYOK_PROVIDERS,
   DEFAULT_NIXMAC_MODEL,
   NIXMAC_PROVIDER,
   validateKeyFormat,
@@ -20,6 +19,13 @@ import {
   type InferenceMode,
 } from "@/components/widget/onboarding/lib/inference";
 import { tauriAPI } from "@/ipc/api";
+import type { UiPrefs } from "@/ipc/types";
+import {
+  BYOK_MODEL_PROVIDERS,
+  getAiModelProvider,
+  isPlainInputCliProvider,
+  modelPlaceholder,
+} from "@/lib/providers/ai-models";
 import type { AccountBilling, BillingProductInfo } from "@/lib/orpc";
 import { client, orpc } from "@/lib/orpc";
 import { getTelemetry } from "@/lib/telemetry/instance";
@@ -683,41 +689,62 @@ function PlanCard({
 type KeyState = "idle" | "checking" | "invalid" | "valid";
 
 function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) => void }) {
-  const [providerId, setProviderId] = useState(BYOK_PROVIDERS[0].id);
-  const provider = useMemo(
-    () => BYOK_PROVIDERS.find((p) => p.id === providerId) ?? BYOK_PROVIDERS[0],
-    [providerId],
-  );
-  const [model, setModel] = useState(provider.defaultModel);
+  const initialProvider = getAiModelProvider("openrouter");
+  const [providerId, setProviderId] = useState(initialProvider.id);
+  const provider = useMemo(() => getAiModelProvider(providerId), [providerId]);
+  const [model, setModel] = useState(initialProvider.defaultEvolveModel);
   const [key, setKey] = useState("");
+  const [baseUrl, setBaseUrl] = useState("");
   const [keyState, setKeyState] = useState<KeyState>("idle");
   const [serverError, setServerError] = useState("");
 
   const format = useMemo(() => validateKeyFormat(provider, key), [provider, key]);
   const touched = key.trim().length > 0;
+  const setup = provider.setup;
+  const isApiKeyProvider = setup.kind === "apiKey";
+  const isBaseUrlProvider = setup.kind === "baseUrl";
+  const requiresModel = provider.id === "ollama" || provider.id === "openai_compatible";
+  const setupReady =
+    isApiKeyProvider
+      ? format.valid
+      : isBaseUrlProvider
+        ? baseUrl.trim().length > 0 && model.trim().length > 0
+        : !requiresModel || model.trim().length > 0;
 
   async function changeProvider(id: string) {
-    const next = BYOK_PROVIDERS.find((p) => p.id === id) ?? BYOK_PROVIDERS[0];
+    const next = getAiModelProvider(id);
     await tauriAPI.models.clearCached(next.id);
     setProviderId(next.id);
-    setModel(next.defaultModel);
+    setModel(next.defaultEvolveModel);
     setKey("");
+    setBaseUrl("");
     setKeyState("idle");
     setServerError("");
   }
 
   async function verify() {
-    if (!format.valid) return;
+    if (!setupReady) return;
     setKeyState("checking");
     setServerError("");
     try {
-      // Persist the key + provider/model exactly like Settings → AI Models.
-      // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      await tauriAPI.ui.setPrefs({
-        [provider.prefsKeyField]: key.trim(),
+      const prefs: Partial<UiPrefs> = {
         evolveProvider: provider.id,
         evolveModel: model,
-      });
+        summaryProvider: provider.id,
+        summaryModel: model,
+      };
+      if (setup.kind === "apiKey") {
+        prefs[setup.prefsKeyField] = key.trim();
+      } else if (setup.kind === "baseUrl") {
+        prefs[setup.prefsBaseUrlField] = baseUrl.trim();
+        if (setup.prefsKeyField) {
+          prefs[setup.prefsKeyField] = key.trim() || null;
+        }
+      }
+
+      // Persist provider/model exactly like Settings -> AI Models.
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
+      await tauriAPI.ui.setPrefs(prefs);
       setKeyState("valid");
       getTelemetry().captureEvent({
         name: "inference_configured",
@@ -755,10 +782,10 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
               <SelectValue placeholder="Select provider" />
             </SelectTrigger>
             <SelectContent>
-              {BYOK_PROVIDERS.map((p) => (
+              {BYOK_MODEL_PROVIDERS.map((p) => (
                 <SelectItem key={p.id} value={p.id}>
                   <span className="flex items-center gap-2">
-                    <ProviderIcon provider={p.id} size={14} />
+                    <ProviderIcon provider={p.icon} size={14} />
                     {p.name}
                   </span>
                 </SelectItem>
@@ -768,81 +795,188 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
         </div>
         <div className="flex flex-col gap-1.5">
           <span className="font-medium text-sm">Model</span>
-          <ModelCombobox
-            provider={provider.id}
-            value={model}
-            onChange={setModel}
-            placeholder={provider.defaultModel}
-          />
+          {isPlainInputCliProvider(provider.id) ? (
+            <input
+              type="text"
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              placeholder="Leave empty for CLI default"
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          ) : (
+            <ModelCombobox
+              provider={
+                provider.id as "nixmac" | "openrouter" | "openai" | "ollama" | "openai_compatible" | "opencode"
+              }
+              value={model}
+              onChange={setModel}
+              placeholder={modelPlaceholder(provider.id, provider.defaultEvolveModel || "gpt-4o")}
+            />
+          )}
         </div>
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="byok-key" className="font-medium text-sm">
-          API key
-        </label>
-        <div
-          className={cn(
-            "flex items-center gap-2 rounded-lg border bg-background px-3 py-2 transition-colors focus-within:ring-2 focus-within:ring-ring",
-            keyState === "invalid" || (touched && !format.valid)
-              ? "border-destructive"
-              : keyState === "valid"
-                ? "border-success"
-                : "border-input",
-          )}
-        >
-          <KeyRound className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <input
-            id="byok-key"
-            type="password"
-            value={key}
-            onChange={(e) => {
-              setKey(e.target.value);
-              setKeyState("idle");
-              setServerError("");
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void verify();
-            }}
-            spellCheck={false}
-            autoComplete="off"
-            placeholder={provider.keyPlaceholder}
-            className="w-full bg-transparent font-mono text-sm outline-none placeholder:text-muted-foreground"
-          />
-        </div>
+      {isApiKeyProvider ? (
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="byok-key" className="font-medium text-sm">
+            API key
+          </label>
+          <div
+            className={cn(
+              "flex items-center gap-2 rounded-lg border bg-background px-3 py-2 transition-colors focus-within:ring-2 focus-within:ring-ring",
+              keyState === "invalid" || (touched && !format.valid)
+                ? "border-destructive"
+                : keyState === "valid"
+                  ? "border-success"
+                  : "border-input",
+            )}
+          >
+            <KeyRound className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <input
+              id="byok-key"
+              type="password"
+              value={key}
+              onChange={(e) => {
+                setKey(e.target.value);
+                setKeyState("idle");
+                setServerError("");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void verify();
+              }}
+              spellCheck={false}
+              autoComplete="off"
+              placeholder={setup.keyPlaceholder}
+              className="w-full bg-transparent font-mono text-sm outline-none placeholder:text-muted-foreground"
+            />
+          </div>
 
+          <div className="min-h-5 text-xs" aria-live="polite">
+            {keyState === "valid" ? (
+              <span className="flex items-center gap-1.5 text-success">
+                <Check className="size-3.5" aria-hidden="true" />
+                Key saved for {provider.name}.
+              </span>
+            ) : serverError ? (
+              <span className="flex items-center gap-1.5 text-destructive">
+                <TriangleAlert className="size-3.5" aria-hidden="true" />
+                {serverError}
+              </span>
+            ) : touched ? (
+              <span
+                className={cn(
+                  "flex items-center gap-1.5",
+                  format.valid ? "text-muted-foreground" : "text-destructive",
+                )}
+              >
+                {!format.valid ? <TriangleAlert className="size-3.5" aria-hidden="true" /> : null}
+                {format.hint}
+              </span>
+            ) : (
+              <span className="text-muted-foreground">
+                Find it at {setup.docsHint}. Stored locally in your app preferences.
+              </span>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {isBaseUrlProvider ? (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="byok-base-url" className="font-medium text-sm">
+              Base URL
+            </label>
+            <input
+              id="byok-base-url"
+              type="url"
+              value={baseUrl}
+              onChange={(e) => {
+                setBaseUrl(e.target.value);
+                setKeyState("idle");
+                setServerError("");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void verify();
+              }}
+              placeholder={setup.baseUrlPlaceholder}
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+          {setup.prefsKeyField ? (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="byok-compatible-key" className="font-medium text-sm">
+                API key
+              </label>
+              <div className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 py-2 transition-colors focus-within:ring-2 focus-within:ring-ring">
+                <KeyRound className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <input
+                  id="byok-compatible-key"
+                  type="password"
+                  value={key}
+                  onChange={(e) => {
+                    setKey(e.target.value);
+                    setKeyState("idle");
+                    setServerError("");
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void verify();
+                  }}
+                  spellCheck={false}
+                  autoComplete="off"
+                  placeholder={setup.keyPlaceholder}
+                  className="w-full bg-transparent font-mono text-sm outline-none placeholder:text-muted-foreground"
+                />
+              </div>
+            </div>
+          ) : null}
+          <div className="min-h-5 text-xs" aria-live="polite">
+            {keyState === "valid" ? (
+              <span className="flex items-center gap-1.5 text-success">
+                <Check className="size-3.5" aria-hidden="true" />
+                Provider saved.
+              </span>
+            ) : serverError ? (
+              <span className="flex items-center gap-1.5 text-destructive">
+                <TriangleAlert className="size-3.5" aria-hidden="true" />
+                {serverError}
+              </span>
+            ) : (
+              <span className="text-muted-foreground">
+                {setup.docsHint} Stored locally in your app preferences.
+              </span>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {!isApiKeyProvider && !isBaseUrlProvider ? (
         <div className="min-h-5 text-xs" aria-live="polite">
           {keyState === "valid" ? (
             <span className="flex items-center gap-1.5 text-success">
               <Check className="size-3.5" aria-hidden="true" />
-              Key saved for {provider.name}.
+              Provider saved.
             </span>
           ) : serverError ? (
             <span className="flex items-center gap-1.5 text-destructive">
               <TriangleAlert className="size-3.5" aria-hidden="true" />
               {serverError}
             </span>
-          ) : touched ? (
-            <span
-              className={cn(
-                "flex items-center gap-1.5",
-                format.valid ? "text-muted-foreground" : "text-destructive",
-              )}
-            >
-              {!format.valid ? <TriangleAlert className="size-3.5" aria-hidden="true" /> : null}
-              {format.hint}
-            </span>
-          ) : (
+          ) : provider.id === "ollama" ? (
             <span className="text-muted-foreground">
-              Find it at {provider.docsHint}. Stored locally in your app preferences.
+              Uses your local Ollama server from app preferences.
             </span>
+          ) : provider.setup.kind === "cli" ? (
+            <span className="text-muted-foreground">Uses the CLI tool installed on this Mac.</span>
+          ) : (
+            <span className="text-muted-foreground">Uses your nixmac hosted account.</span>
           )}
         </div>
-      </div>
+      ) : null}
 
       <Button
         onClick={verify}
-        disabled={!format.valid || keyState === "checking" || keyState === "valid"}
+        disabled={!setupReady || keyState === "checking" || keyState === "valid"}
       >
         {keyState === "checking" ? (
           <>
@@ -855,12 +989,12 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
             Saved
           </>
         ) : (
-          "Save & use this key"
+          "Save & use this provider"
         )}
       </Button>
       <p className="flex items-center gap-1.5 text-muted-foreground text-xs">
         <Lock className="size-3.5 text-success" aria-hidden="true" />
-        Your key is stored locally on this Mac — never on our servers.
+        Provider settings are stored locally on this Mac.
       </p>
     </div>
   );
