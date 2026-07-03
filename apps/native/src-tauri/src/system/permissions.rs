@@ -28,6 +28,13 @@ impl Default for PermissionsState {
 
 /// Get the default permissions list with initial pending status
 fn get_default_permissions() -> Vec<Permission> {
+    // If NIXMAC_SKIP_PERMISSIONS is set, we skip all permission checks and report everything as granted.
+    let mut default_status = PermissionStatus::Pending;
+    if e2e_skip_permissions_enabled() {
+        info!("NIXMAC_SKIP_PERMISSIONS=1: reporting all permissions as granted");
+        default_status = PermissionStatus::Granted;
+    }
+
     vec![
         Permission {
             id: "desktop".to_string(),
@@ -35,7 +42,7 @@ fn get_default_permissions() -> Vec<Permission> {
             description: "Required to manage and sync desktop files and configurations".to_string(),
             required: true,
             can_request_programmatically: true,
-            status: PermissionStatus::Pending,
+            status: default_status,
             instructions: None,
         },
         Permission {
@@ -45,7 +52,7 @@ fn get_default_permissions() -> Vec<Permission> {
                 .to_string(),
             required: true,
             can_request_programmatically: true,
-            status: PermissionStatus::Pending,
+            status: default_status,
             instructions: None,
         },
         Permission {
@@ -55,7 +62,7 @@ fn get_default_permissions() -> Vec<Permission> {
                 .to_string(),
             required: true,
             can_request_programmatically: false,
-            status: PermissionStatus::Pending,
+            status: default_status,
             instructions: Some("You will be prompted for your password when needed".to_string()),
         },
         Permission {
@@ -64,14 +71,14 @@ fn get_default_permissions() -> Vec<Permission> {
             description: "Required for darwin-rebuild to apply system changes".to_string(),
             required: true,
             can_request_programmatically: false,
-            status: PermissionStatus::Pending,
+            status: default_status,
             instructions: Some(
                 "First make sure nixmac is in your Applications folder (not running from the install disk image). Then go to System Settings → Privacy & Security → Full Disk Access and add nixmac to the list."
                     .to_string(),
             ),
         },
         privileged_helper_permission(
-            PermissionStatus::Pending,
+            default_status,
             "Enable this once per device to allow nixmac to activate already-built system generations unattended.",
         ),
     ]
@@ -447,6 +454,12 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
             })
         }
         "privileged-helper" => {
+            if e2e_skip_permissions_enabled() {
+                return Ok(privileged_helper_permission(
+                    PermissionStatus::Granted,
+                    "Enable this once per device to allow nixmac to activate already-built system generations unattended.",
+                ));
+            }
             let status = crate::privileged_helper::service::register().map(|status| {
                 if status.authorized {
                     PermissionStatus::Granted
