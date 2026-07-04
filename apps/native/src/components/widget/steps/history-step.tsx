@@ -57,7 +57,7 @@ export function HistoryStep() {
     <>
       <HistoryHeader count={total} />
       <div ref={scrollAreaRef} className="flex-1 min-h-0">
-        <ScrollArea className="h-full pb-3 pr-4">
+        <ScrollArea className="h-full pb-0 pr-4">
           <UncommittedChangesDetected
             isFlashing={isFlashing}
             onOpenDialog={() => setIsDiscardDialogOpen(true)}

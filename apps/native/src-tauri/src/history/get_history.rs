@@ -9,7 +9,7 @@ use tauri::{AppHandle, Manager, Runtime};
 ///
 /// Kept modest because each item fans out into a diff + DB lookup; the
 /// frontend grows the list incrementally via infinite scroll.
-const DEFAULT_HISTORY_PAGE_SIZE: usize = 50;
+const DEFAULT_HISTORY_PAGE_SIZE: usize = 12;
 
 pub async fn get_history<R: Runtime>(
     app: &AppHandle<R>,
