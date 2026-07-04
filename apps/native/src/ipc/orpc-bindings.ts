@@ -1813,6 +1813,7 @@ export type Procedures = {
     importGithub: Client<Record<never, never>, ConfigImportGithubInput, ImportConfigResult, Error>
     importZip: Client<Record<never, never>, ConfigImportZipInput, ImportConfigResult, Error>
     pickDir: Client<Record<never, never>, void, SetDirResult | null, Error>
+    pickFolder: Client<Record<never, never>, void, string | null, Error>
     pickZip: Client<Record<never, never>, void, string | null, Error>
     prepareNewDir: Client<Record<never, never>, ConfigSetDirInput, SetDirResult, Error>
     setDir: Client<Record<never, never>, ConfigSetDirInput, SetDirResult, Error>

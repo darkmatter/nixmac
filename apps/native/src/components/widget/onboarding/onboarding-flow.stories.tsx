@@ -341,6 +341,9 @@ function installBackend(startAt: string) {
     setConfigWithHosts("/Users/demo/Documents/nix-darwin"),
   );
   patchOrpc("config.pickDir", async () => setConfigWithHosts("/Users/demo/Documents/nix-darwin"));
+  // The local-folder source picks a folder, locates the flake, then sets the dir.
+  patchOrpc("config.pickFolder", async () => "/Users/demo/Documents/nix-darwin");
+  patchOrpc("flake.locate", async () => [""]);
   patch(tauriAPI.config, "setDir", async (dir: string) => setConfigWithHosts(dir));
   patchOrpc("config.setDir", async (input) =>
     setConfigWithHosts((input as { dir: string }).dir),

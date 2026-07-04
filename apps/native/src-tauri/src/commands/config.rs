@@ -185,6 +185,25 @@ pub async fn config_pick_dir(app: AppHandle) -> Result<Option<shared_types::SetD
     Ok(None)
 }
 
+/// Opens a native folder picker and returns the chosen path, WITHOUT
+/// selecting it as the config directory (unlike `config_pick_dir`) — callers
+/// validate the folder first and decide what to select.
+pub async fn config_pick_folder(app: AppHandle) -> Result<Option<String>, String> {
+    let prev_dir = store::get_config_dir(&app).unwrap_or_default();
+    let result = app
+        .dialog()
+        .file()
+        .set_title(
+            "Select Configuration Directory - TIP: press '⌘'+'⇧'+'.' to show hidden directories",
+        )
+        .set_directory({
+            let p = std::path::PathBuf::from(&prev_dir);
+            p.parent().map(std::path::PathBuf::from).unwrap_or(p)
+        })
+        .blocking_pick_folder();
+    Ok(result.map(|path| path.to_string()))
+}
+
 /// Checks if a flake.nix exists in the config directory
 pub async fn flake_exists(app: AppHandle) -> Result<bool, String> {
     let dir = store::get_config_dir(&app).map_err(|e| capture_err("flake_exists", e))?;

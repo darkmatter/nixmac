@@ -86,6 +86,12 @@ async fn pick_dir(ctx: OrpcCtx, _input: ()) -> Result<Option<SetDirResult>, ORPC
         .map_err(|error| internal_err("config.pickDir", error))
 }
 
+async fn pick_folder(ctx: OrpcCtx, _input: ()) -> Result<Option<String>, ORPCError> {
+    config::config_pick_folder(ctx.app)
+        .await
+        .map_err(|error| internal_err("config.pickFolder", error))
+}
+
 async fn pick_zip(ctx: OrpcCtx, _input: ()) -> Result<Option<String>, ORPCError> {
     config::config_pick_zip(ctx.app)
         .await
@@ -151,6 +157,9 @@ pub fn routes() -> Router<OrpcCtx> {
         "pickDir" => os::<OrpcCtx>()
             .output(orpc_specta::specta::<Option<SetDirResult>>())
             .handler(pick_dir),
+        "pickFolder" => os::<OrpcCtx>()
+            .output(orpc_specta::specta::<Option<String>>())
+            .handler(pick_folder),
         "pickZip" => os::<OrpcCtx>()
             .output(orpc_specta::specta::<Option<String>>())
             .handler(pick_zip),
