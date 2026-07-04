@@ -309,9 +309,9 @@ ty: FieldType;
  */
 default: JsonValue }
 
-export type ConfigFinalizeImportInput = { cloneDir: string;
+export type ConfigFinalizeImportInput = { cloneDir: string; 
 /**
- * Relative flake directory inside `cloneDir`; empty for the root.
+ * Relative flake directory inside `clone_dir`; empty for the root.
  */
 flakeDir: string }
 
@@ -1206,37 +1206,25 @@ source: string | null;
 lastChecked: number }
 
 /**
- * Result of a successful settings import.
- */
-/**
  * Result of importing a configuration (GitHub clone or zip extraction).
  * Serialized as a tagged union on `status` so the frontend can narrow on it.
  */
-export type ImportConfigResult = { status: "imported";
+export type ImportConfigResult = 
 /**
- * Selected absolute config directory: the import root, or the
- * flake's subdirectory inside it.
+ * A flake was found and the config directory now points at it.
  */
-dir: string;
+{ status: "imported"; dir: string; changed: boolean; flakeDir: string | null } | 
 /**
- * True when the selected directory differs from the previous one.
+ * Several nested flake candidates were found and no root flake broke the
+ * tie. Nothing was finalized: the imported tree is kept at `clone_dir`
+ * for the user to choose from (`config.finalizeImport`) or discard
+ * (`config.discardImport`).
  */
-changed: boolean;
-/**
- * Subdirectory (relative to the import root) the flake was found
- * in, when not the root itself.
- */
-flakeDir: string | null } | { status: "needsFlakeDirChoice";
-/**
- * Absolute directory holding the imported tree.
- */
-cloneDir: string;
-/**
- * Directories containing a flake.nix, relative to `cloneDir`,
- * shallowest first.
- */
-flakeDirs: string[] }
+{ status: "needsFlakeDirChoice"; cloneDir: string; flakeDirs: string[] }
 
+/**
+ * Result of a successful settings import.
+ */
 export type ImportResult = { path: string; keysImported: number }
 
 /**
