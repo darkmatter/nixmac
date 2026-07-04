@@ -3,6 +3,7 @@ import type { FileDiffContents } from "@/ipc/types";
 import { client } from "@/lib/orpc";
 import { refreshGitSnapshot } from "@/viewmodel/git";
 import { refreshHostsSnapshot } from "@/viewmodel/preferences";
+import { getTelemetry } from "@/lib/telemetry/instance";
 import { toast } from "sonner";
 
 /**
@@ -64,6 +65,7 @@ const handleCommit = async ({ message }: { message: string }) => {
     uiActions.appendLog("✓ Committed successfully\n");
     uiActions.setError(null);
     toast.success("Committed successfully");
+    getTelemetry().captureEvent({ name: "git_committed" });
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
     uiActions.setError(msg);

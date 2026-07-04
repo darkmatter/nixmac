@@ -875,6 +875,8 @@ export type GenerateHistoryFromInput = { commitHash: string; number: number }
 
 export type GitCommitFileInput = { filename: string; message: string }
 
+export type GitCommitFilesInput = { filenames: string[]; message: string }
+
 export type GitCommitInput = { message: string }
 
 export type GitDiscardFileInput = { filename: string }
@@ -1863,6 +1865,7 @@ export type Procedures = {
   git: {
     commit: Client<Record<never, never>, GitCommitInput, CommitResult, Error>
     commitFile: Client<Record<never, never>, GitCommitFileInput, CommitResult, Error>
+    commitFiles: Client<Record<never, never>, GitCommitFilesInput, CommitResult, Error>
     discardFile: Client<Record<never, never>, GitDiscardFileInput, OkResult, Error>
     fileDiffContents: Client<Record<never, never>, GitFileDiffContentsInput, Partial<{ [key in string]: FileDiffContents }>, Error>
     state: Client<Record<never, never>, void, GitState, Error>

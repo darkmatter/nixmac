@@ -89,6 +89,55 @@ fn refresh_after_single_file_change(app: &AppHandle, dir: &str) {
     crate::state::change_map::clear(app);
 }
 
+pub async fn commit_files(
+    app: AppHandle,
+    filenames: Vec<String>,
+    message: String,
+) -> Result<shared_types::CommitResult, String> {
+    let db_pool = app.state::<db::DbPool>();
+    let dir =
+        store::ensure_git_repo_folder(&app).map_err(|e| capture_err("git_commit_files", e))?;
+    let commit_info = git::commit_files(&dir, &filenames, &message)
+        .map_err(|e| capture_err("git_commit_files", e))?;
+
+    if let Err(e) = git::tag_commit(
+        &dir,
+        &format!("nixmac-commit-{}", &commit_info.hash[..8]),
+        &commit_info.hash,
+        false,
+    ) {
+        log::warn!("[git_commit_files] Failed to tag commit: {}", e);
+    }
+
+    let now = crate::utils::unix_now();
+    if let Err(e) = db::commits::upsert_commit(
+        &db_pool,
+        &commit_info.hash,
+        &commit_info.tree_hash,
+        Some(&message),
+        now,
+    ) {
+        log::error!("[git_commit_files] Failed to save commit: {}", e);
+    }
+
+    if let Ok(current_build_state) = build_state::get(&app) {
+        let updated = build_state::BuildState {
+            head_commit_hash: Some(commit_info.hash.clone()),
+            changeset_id: None,
+            ..current_build_state
+        };
+        if let Err(e) = build_state::set(&app, updated) {
+            log::warn!("[git_commit_files] Failed to update build state: {}", e);
+        }
+    }
+
+    refresh_after_single_file_change(&app, &dir);
+
+    Ok(shared_types::CommitResult {
+        hash: commit_info.hash,
+    })
+}
+
 /// Commit a single file's change, leaving the rest of the working tree in
 /// place. Unlike a full commit this recomputes the evolve step (rather than
 /// clearing the session) so any remaining changes keep their state.

@@ -9,8 +9,8 @@ import { DriftActionsMenu } from "./drift-actions-menu";
 // For a single summarized file the name is colored by change type; a group's
 // names stay neutral and the aggregate +/- delta carries the signal instead.
 const NAME_COLOR: Record<ChangeType, string> = {
-  new: "text-emerald-400",
-  removed: "text-red-400 line-through",
+  new: "text-emerald-300",
+  removed: "text-red-300 line-through",
   edited: "text-foreground",
   renamed: "text-foreground",
 };

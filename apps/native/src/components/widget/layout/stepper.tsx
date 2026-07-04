@@ -14,7 +14,7 @@ const STEPS: Array<{
 }> = [
     { step: "begin", name: "Describe", description: "What to change" },
     { step: "evolve", name: "Review", description: "Check & test" },
-    { step: "commit", name: "Save", description: "Keep changes" },
+    { step: "commit", name: "Save", description: "Commit" },
   ];
 
 const stepIndexByEvolveStep: Record<EvolveStep, number> = {

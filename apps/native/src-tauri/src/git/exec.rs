@@ -243,6 +243,68 @@ pub fn commit_file(dir: &str, path: &str, message: &str) -> Result<CommitInfo> {
     })
 }
 
+/// Commit a subset of files, leaving the rest of the working tree uncommitted.
+/// The index is reset to HEAD so only `paths` differ in this commit; each path
+/// is staged (or its deletion staged) and a commit is created.
+pub fn commit_files(dir: &str, paths: &[String], message: &str) -> Result<CommitInfo> {
+    let repo = git2::Repository::discover(dir)?;
+    let parent = repo.head().ok().and_then(|head| head.peel_to_commit().ok());
+
+    let mut index = repo.index().context("git2 open repository index")?;
+    if let Some(parent) = parent.as_ref() {
+        let head_tree = parent.tree().context("git2 read HEAD tree")?;
+        index
+            .read_tree(&head_tree)
+            .context("git2 reset index to HEAD")?;
+    } else {
+        index.clear().context("git2 clear index")?;
+    }
+
+    let workdir = repo
+        .workdir()
+        .context("commit_files in a bare repository")?;
+    for path in paths {
+        let rel = Path::new(path);
+        if workdir.join(rel).exists() {
+            index
+                .add_path(rel)
+                .with_context(|| format!("git2 stage `{path}`"))?;
+        } else {
+            index
+                .remove_path(rel)
+                .with_context(|| format!("git2 stage deletion of `{path}`"))?;
+        }
+    }
+    index.write().context("git2 write staged index")?;
+
+    let tree_id = index.write_tree().context("git2 write commit tree")?;
+    if let Some(parent) = parent.as_ref() {
+        if parent.tree_id() == tree_id {
+            anyhow::bail!("nothing to commit");
+        }
+    }
+    let tree = repo.find_tree(tree_id).context("git2 find commit tree")?;
+
+    let signature =
+        git2::Signature::now("nixmac", "nixmac@local").context("create git signature")?;
+    let parents = parent.iter().collect::<Vec<_>>();
+    let commit_id = repo
+        .commit(
+            Some("HEAD"),
+            &signature,
+            &signature,
+            message,
+            &tree,
+            &parents,
+        )
+        .context("git2 create commit")?;
+
+    Ok(CommitInfo {
+        hash: commit_id.to_string(),
+        tree_hash: tree_id.to_string(),
+    })
+}
+
 /// Discard the working-tree changes for a single file: tracked files are
 /// restored to their HEAD content (covering modifications and deletions), and
 /// an untracked file is removed from the working tree.

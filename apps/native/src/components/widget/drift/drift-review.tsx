@@ -14,7 +14,9 @@ import { ConfirmButton } from "@/components/widget/controls/confirm-button";
 import { useApply } from "@/hooks/use-apply";
 import { useEvolve } from "@/hooks/use-evolve";
 import { useRollback } from "@/hooks/use-rollback";
+import { orpc } from "@/lib/orpc";
 import { uiActions, useUiState, useViewModel } from "@nixmac/state";
+import { useMutation } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Check,
@@ -23,9 +25,9 @@ import {
   ListTree,
   Loader2,
   MessageSquareText,
+  Rocket,
   Sparkles,
   Trash2,
-  Wrench,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { DriftBanner } from "./drift-banner";
@@ -50,6 +52,7 @@ export function DriftReview() {
   const evolveState = useViewModel((s) => s.evolve);
   const isApplyBusy = useUiState((s) => s.isProcessing && s.processingAction === "apply");
   const rebuildRunning = useViewModel((s) => s.rebuildStatus?.isRunning ?? false);
+  const commitFiles = useMutation(orpc.git.commitFiles.mutationOptions({}))
 
   // No active evolution → the changes are manual drift, not AI-generated.
   const isManualDrift = (evolveState?.evolutionId ?? null) === null;
@@ -185,14 +188,14 @@ export function DriftReview() {
               confirmPrefKey="confirmBuild"
               onConfirm={handleApply}
               message="Rebuild with these configuration changes?"
-              color="teal"
+              color="white"
             >
               {buildChecking ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
               ) : (
-                <Wrench className="h-3.5 w-3.5" aria-hidden="true" />
+                <Rocket className="h-3.5 w-3.5" aria-hidden="true" />
               )}
-              {buildChecking ? "Checking…" : "Build & Test"}
+              {buildChecking ? "Checking…" : "Preview"}
             </ConfirmButton>
             {/* The split dropdown only adopts manual drift into an AI session.
                 An active AI session refines via the "Refine with AI" button. */}
@@ -221,12 +224,18 @@ export function DriftReview() {
                       </span>
                     </span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem disabled>
+                  <DropdownMenuItem
+                    onClick={() => commitFiles.mutate({
+                      filenames: files.map((f) => f.filename),
+                      message: "Manually committed changes",
+                    })}
+                    disabled={commitFiles.isPending}
+                  >
                     <GitCommitHorizontal />
                     <span>
                       Commit without building
                       <span className="block text-[10px] text-muted-foreground">
-                        Track as-is, skip rebuild — coming soon
+                        Track as-is, skip rebuild
                       </span>
                     </span>
                   </DropdownMenuItem>

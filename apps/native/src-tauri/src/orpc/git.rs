@@ -23,6 +23,13 @@ struct GitCommitFileInput {
 
 #[derive(Debug, Deserialize, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
+struct GitCommitFilesInput {
+    filenames: Vec<String>,
+    message: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
 struct GitDiscardFileInput {
     filename: String,
 }
@@ -43,6 +50,12 @@ async fn commit_file(ctx: OrpcCtx, input: GitCommitFileInput) -> Result<CommitRe
     git::commit_single_file(ctx.app, input.filename, input.message)
         .await
         .map_err(|error| internal_err("git.commitFile", error))
+}
+
+async fn commit_files(ctx: OrpcCtx, input: GitCommitFilesInput) -> Result<CommitResult, ORPCError> {
+    git::commit_files(ctx.app, input.filenames, input.message)
+        .await
+        .map_err(|error| internal_err("git.commitFiles", error))
 }
 
 async fn discard_file(ctx: OrpcCtx, input: GitDiscardFileInput) -> Result<OkResult, ORPCError> {
@@ -88,6 +101,10 @@ pub fn routes() -> Router<OrpcCtx> {
             .input(orpc_specta::specta::<GitCommitFileInput>())
             .output(orpc_specta::specta::<CommitResult>())
             .handler(commit_file),
+        "commitFiles" => os::<OrpcCtx>()
+            .input(orpc_specta::specta::<GitCommitFilesInput>())
+            .output(orpc_specta::specta::<CommitResult>())
+            .handler(commit_files),
         "discardFile" => os::<OrpcCtx>()
             .input(orpc_specta::specta::<GitDiscardFileInput>())
             .output(orpc_specta::specta::<OkResult>())
