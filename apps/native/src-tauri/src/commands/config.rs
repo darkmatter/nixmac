@@ -1,5 +1,5 @@
 use super::helpers::{capture_err, handle_new_config_dir};
-use crate::bootstrap::{default_config, import};
+use crate::bootstrap::{default_config, discover, import};
 use crate::storage::{canonical_config, store};
 use crate::{shared_types, types, utils};
 use std::path::{Component, Path, PathBuf};
@@ -196,6 +196,17 @@ pub async fn flake_exists_at(_app: AppHandle, dir: String) -> Result<bool, Strin
     let normalized_dir =
         utils::normalize_path_input(&dir).map_err(|e| capture_err("flake_exists_at", e))?;
     Ok(normalized_dir.join("flake.nix").exists())
+}
+
+/// Lists the directories under `dir` that contain a `flake.nix`, as paths
+/// relative to `dir` (`""` for `dir` itself), shallowest first.
+pub async fn flake_locate_at(_app: AppHandle, dir: String) -> Result<Vec<String>, String> {
+    let normalized_dir =
+        utils::normalize_path_input(&dir).map_err(|e| capture_err("flake_locate_at", e))?;
+    Ok(discover::find_flake_dirs(
+        &normalized_dir,
+        discover::FLAKE_SEARCH_DEPTH,
+    ))
 }
 
 /// Checks whether the provided path exists and is a directory.

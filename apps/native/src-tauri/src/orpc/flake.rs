@@ -14,6 +14,12 @@ struct FlakeExistsAtInput {
 
 #[derive(Debug, Deserialize, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
+struct FlakeLocateInput {
+    dir: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
 struct BootstrapDefaultConfigInput {
     hostname: String,
     template_id: Option<String>,
@@ -29,6 +35,12 @@ async fn exists_at(ctx: OrpcCtx, input: FlakeExistsAtInput) -> Result<bool, ORPC
     config::flake_exists_at(ctx.app, input.dir)
         .await
         .map_err(|error| internal_err("flake.existsAt", error))
+}
+
+async fn locate(ctx: OrpcCtx, input: FlakeLocateInput) -> Result<Vec<String>, ORPCError> {
+    config::flake_locate_at(ctx.app, input.dir)
+        .await
+        .map_err(|error| internal_err("flake.locate", error))
 }
 
 async fn bootstrap_default(
@@ -55,6 +67,10 @@ pub fn routes() -> Router<OrpcCtx> {
             .input(orpc_specta::specta::<FlakeExistsAtInput>())
             .output(orpc_specta::specta::<bool>())
             .handler(exists_at),
+        "locate" => os::<OrpcCtx>()
+            .input(orpc_specta::specta::<FlakeLocateInput>())
+            .output(orpc_specta::specta::<Vec<String>>())
+            .handler(locate),
         "bootstrapDefault" => os::<OrpcCtx>()
             .input(orpc_specta::specta::<BootstrapDefaultConfigInput>())
             .handler(bootstrap_default),

@@ -859,6 +859,8 @@ errorType: string | null }
 
 export type FlakeExistsAtInput = { dir: string }
 
+export type FlakeLocateInput = { dir: string }
+
 export type GatherMetadataInput = { request: FeedbackMetadataRequest }
 
 export type GenerateHistoryFromInput = { commitHash: string; number: number }
@@ -1828,6 +1830,7 @@ export type Procedures = {
     exists: Client<Record<never, never>, void, boolean, Error>
     existsAt: Client<Record<never, never>, FlakeExistsAtInput, boolean, Error>
     listHosts: Client<Record<never, never>, void, string[], Error>
+    locate: Client<Record<never, never>, FlakeLocateInput, string[], Error>
   }
   git: {
     commit: Client<Record<never, never>, GitCommitInput, CommitResult, Error>
