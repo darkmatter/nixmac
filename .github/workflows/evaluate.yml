@@ -4,15 +4,6 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   merge_group:
-  # Post-merge tripwire: re-run cargo check on develop itself so any compile
-  # breakage that slips past the pre-merge gate (merge-queue edge cases, the
-  # main->develop merge producing a broken tree from two green parents, a
-  # ruleset change) turns develop's commit status red quickly instead of
-  # costing the next person a confusing local build failure. Only the Rust
-  # Check job runs on push (see the per-job `if` guards below); the full build
-  # already gates the PR path.
-  push:
-    branches: [develop]
   workflow_dispatch:
 
 concurrency:

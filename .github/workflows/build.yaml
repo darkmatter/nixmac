@@ -1,11 +1,11 @@
 name: Build macOS App
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
     tags:
       - "v*"
   pull_request:
-    branches: [main, develop]
+    branches: [main]
   merge_group:
   workflow_dispatch:
 
@@ -107,15 +107,13 @@ jobs:
           cargo fetch --locked
           bash "$GITHUB_WORKSPACE/ops/scripts/ci/patch-passkey-swift.sh"
       # Decide what kind of build this is:
-      #   - tag:     push of refs/tags/v* → ship that exact version
-      #   - release: push to main → patch-bump the latest tag and ship
+      #   - tag:     push of refs/tags/v* → ship that exact version on stable
+      #   - develop: push to main → ship on the develop channel
       #   - branch:  PR / feature branch / workflow_dispatch → build-only
       #
-      # Tags are the source of truth for shipped versions, so the bump is
-      # computed from `git describe` rather than root package.json. This
-      # avoids needing to commit back to main (the `main` ruleset blocks
-      # pushes that don't satisfy the "build" check — which we can't
-      # satisfy from the same run that's pushing).
+      # Tags are the source of truth for shipped (stable) versions. Pushes to
+      # main land on the develop channel; the stable channel only updates when
+      # a release is created in GitHub (which pushes a v* tag).
       - name: Compute release version
         id: release-version
         run: bash ops/scripts/release/compute-version.sh
@@ -137,7 +135,7 @@ jobs:
           key: sccache-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
             sccache-${{ runner.os }}-${{ runner.arch }}-
-      # Sync native app version files. Tag + release modes use the computed
+      # Sync native app version files. Tag + develop modes use the computed
       # version directly; branch/PR builds fall back to the max(package.json,
       # latest-git-tag) guard so a stale package.json cannot embed a version
       # lower than what has already shipped (which would trigger a
@@ -277,27 +275,13 @@ jobs:
           path: target/release/bundle/macos/*.app
           if-no-files-found: warn
           include-hidden-files: true
-      # On push-to-main releases: tag HEAD and push the tag. Tags are the
-      # source of truth for shipped versions — no commit is pushed to main,
-      # so the repo ruleset (which requires the `build` check on any branch
-      # ref update) can't block us. GITHUB_TOKEN pushes don't retrigger
-      # workflows, so tagging here is safe.
-      - name: Tag release
-        if: steps.release-version.outputs.mode == 'release'
-        env:
-          TAG: ${{ steps.release-version.outputs.tag }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag "${TAG}"
-          git push origin "${TAG}"
-      # Create GitHub Release for tag and release modes.
-      # Skipped for test tags matching `-test.N` so we can exercise the full
-      # signing/notarization + DMG swap path on a disposable tag without
-      # publishing a public release.
+      # Create GitHub Release for tag pushes only. The stable channel only
+      # updates when a release is created in GitHub (via a pushed v* tag);
+      # main pushes land on the develop channel. Skipped for test tags
+      # matching `-test.N` so we can exercise the full signing/notarization +
+      # DMG swap path on a disposable tag without publishing a public release.
       - name: Create Release
-        if: (steps.release-version.outputs.mode == 'tag' ||
-          steps.release-version.outputs.mode == 'release') &&
+        if: steps.release-version.outputs.mode == 'tag' &&
           !contains(steps.release-version.outputs.tag, '-test.')
         uses: softprops/action-gh-release@v2
         with:
@@ -309,12 +293,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # Upload to R2 for auto-updater (R2 creds come from sops).
+      # tag → stable channel; develop (main push) → develop channel.
       # Skipped for test tags matching `-test.N` so we can exercise the full
       # signing/notarization + DMG swap path on a disposable tag without
       # overwriting latest.json on the updater CDN.
       - name: Upload to R2
         if: (steps.release-version.outputs.mode == 'tag' ||
-          steps.release-version.outputs.mode == 'release' ||
           steps.release-version.outputs.mode == 'develop') &&
           !contains(steps.release-version.outputs.tag, '-test.')
         shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
@@ -330,8 +314,7 @@ jobs:
       # Linear releases track what actually shipped. Skipped for `-test.N` tags
       # to match the GitHub Release / R2 upload skip.
       - name: Sync release to Linear
-        if: (steps.release-version.outputs.mode == 'tag' ||
-          steps.release-version.outputs.mode == 'release') &&
+        if: steps.release-version.outputs.mode == 'tag' &&
           !contains(steps.release-version.outputs.tag, '-test.')
         uses: linear/linear-release-action@v0
         with:

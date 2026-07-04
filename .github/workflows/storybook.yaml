@@ -2,9 +2,8 @@ name: Storybook Snapshots
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
-    branches: [main, develop]
 
 concurrency:
   group: storybook-${{ github.event.pull_request.number || github.ref }}

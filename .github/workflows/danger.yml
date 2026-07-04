@@ -4,22 +4,13 @@ on:
   pull_request:
     types: [opened, edited, synchronize, reopened, ready_for_review]
 
-jobs:
-  optimize_ci:
-    runs-on: arc
-    outputs:
-      skip: ${{ steps.check_skip.outputs.skip }}
-    steps:
-      - name: Optimize CI
-        id: check_skip
-        uses: withgraphite/graphite-ci-action@main
-        with:
-          graphite_token: ${{ secrets.GRAPHITE_TOKEN }}
+concurrency:
+  group: danger-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
+jobs:
   danger:
-    runs-on: [self-hosted, linux]
-    needs: optimize_ci
-    if: needs.optimize_ci.outputs.skip == 'false'
+    runs-on: arc
     permissions:
       contents: read
       pull-requests: write

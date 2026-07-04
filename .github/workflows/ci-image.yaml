@@ -6,7 +6,7 @@ name: CI Image
 # Linux jobs (typescript, treefmt, e2e) skip ~5-10 min of per-run installs.
 #
 # Triggers:
-#   - Push to main/develop that changes Dockerfile, nix/, devenv.*, flake.*,
+#   - Push to main that changes Dockerfile, nix/, devenv.*, flake.*,
 #     or package.json
 #   - Weekly schedule (Sun 09:00 UTC) to keep the base layer fresh
 #   - Manual dispatch
@@ -14,7 +14,7 @@ name: CI Image
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
     paths:
       - .github/ci-image/**
       - .github/workflows/ci-image.yaml
@@ -86,7 +86,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            # branch name (main, develop)
+            # branch name (main)
             type=ref,event=branch
             # latest on default branch
             type=raw,value=latest,enable={{is_default_branch}}

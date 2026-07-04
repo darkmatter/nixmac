@@ -6,17 +6,17 @@ name: Update Snapshots
 #   - issue_comment.edited: when a user checks the "Click here to accept
 #     these changes" checkbox on a sticky Storybook preview comment
 # The workflow:
-#   1. Checks out the PR head (issue_comment) or develop (dispatch)
+#   1. Checks out the PR head (issue_comment) or main (dispatch)
 #   2. Runs `bun run test:update-snapshots` (vitest --update)
 #   3. If any __snapshots__ files changed, commits to the PR branch
-#      (issue_comment) or opens/updates a PR against develop (dispatch)
+#      (issue_comment) or opens/updates a PR against main (dispatch)
 # The PR is labelled `snapshots` so it's easy to find and review.
 
 on:
   workflow_dispatch:
     inputs:
       pr_number:
-        description: "PR number to update snapshots on (defaults to develop)"
+        description: "PR number to update snapshots on (defaults to main)"
         required: false
         type: string
   issue_comment:
@@ -169,7 +169,7 @@ jobs:
               -f content='-1' >/dev/null
           fi
 
-      # Manual-dispatch path: open or update a PR against develop.
+      # Manual-dispatch path: open or update a PR against main.
       - name: Create pull request
         if: github.event_name != 'issue_comment' && steps.check.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v7
