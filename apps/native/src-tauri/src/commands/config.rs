@@ -1,5 +1,5 @@
 use super::helpers::{capture_err, handle_new_config_dir};
-use crate::bootstrap::{default_config, import};
+use crate::bootstrap::{default_config, discover, import};
 use crate::storage::{canonical_config, store};
 use crate::{shared_types, types, utils};
 use std::path::{Component, Path, PathBuf};
@@ -185,6 +185,25 @@ pub async fn config_pick_dir(app: AppHandle) -> Result<Option<shared_types::SetD
     Ok(None)
 }
 
+/// Opens a native folder picker and returns the chosen path, WITHOUT
+/// selecting it as the config directory (unlike `config_pick_dir`) — callers
+/// validate the folder first and decide what to select.
+pub async fn config_pick_folder(app: AppHandle) -> Result<Option<String>, String> {
+    let prev_dir = store::get_config_dir(&app).unwrap_or_default();
+    let result = app
+        .dialog()
+        .file()
+        .set_title(
+            "Select Configuration Directory - TIP: press '⌘'+'⇧'+'.' to show hidden directories",
+        )
+        .set_directory({
+            let p = std::path::PathBuf::from(&prev_dir);
+            p.parent().map(std::path::PathBuf::from).unwrap_or(p)
+        })
+        .blocking_pick_folder();
+    Ok(result.map(|path| path.to_string()))
+}
+
 /// Checks if a flake.nix exists in the config directory
 pub async fn flake_exists(app: AppHandle) -> Result<bool, String> {
     let dir = store::get_config_dir(&app).map_err(|e| capture_err("flake_exists", e))?;
@@ -196,6 +215,17 @@ pub async fn flake_exists_at(_app: AppHandle, dir: String) -> Result<bool, Strin
     let normalized_dir =
         utils::normalize_path_input(&dir).map_err(|e| capture_err("flake_exists_at", e))?;
     Ok(normalized_dir.join("flake.nix").exists())
+}
+
+/// Lists the directories under `dir` that contain a `flake.nix`, as paths
+/// relative to `dir` (`""` for `dir` itself), shallowest first.
+pub async fn flake_locate_at(_app: AppHandle, dir: String) -> Result<Vec<String>, String> {
+    let normalized_dir =
+        utils::normalize_path_input(&dir).map_err(|e| capture_err("flake_locate_at", e))?;
+    Ok(discover::find_flake_dirs(
+        &normalized_dir,
+        discover::FLAKE_SEARCH_DEPTH,
+    ))
 }
 
 /// Checks whether the provided path exists and is a directory.
@@ -269,13 +299,21 @@ fn is_importable_target(path: &Path) -> Result<bool, String> {
     Ok(!has_entries)
 }
 
+/// A validated, empty directory an import can clone/extract into. Records
+/// whether the import created it, so cleanup after a failed import knows if
+/// removing the directory itself is safe.
+struct ImportTarget {
+    path: PathBuf,
+    created: bool,
+}
+
 /// Validates and prepares an import target directory.
 ///
 /// On success the directory is guaranteed to be absent or *truly* empty: a
 /// lone `.DS_Store` (which `is_importable_target` tolerates, since the folder
 /// looks empty in Finder) is removed so libgit2 clone, which rejects a
 /// non-empty destination, succeeds.
-fn prepare_import_target(dir_name: Option<String>) -> Result<PathBuf, String> {
+fn prepare_import_target(dir_name: Option<String>) -> Result<ImportTarget, String> {
     let target = resolve_import_target(dir_name)?;
     validate_new_dir_location(&target)?;
     if !is_importable_target(&target)? {
@@ -284,17 +322,51 @@ fn prepare_import_target(dir_name: Option<String>) -> Result<PathBuf, String> {
             target.display()
         ));
     }
-    if target.exists() {
+    let created = !target.exists();
+    if created {
+        std::fs::create_dir_all(&target)
+            .map_err(|e| format!("Failed to create directory {}: {}", target.display(), e))?;
+    } else {
         let ds_store = target.join(".DS_Store");
         if ds_store.exists() {
             std::fs::remove_file(&ds_store)
                 .map_err(|e| format!("Failed to clear {}: {}", ds_store.display(), e))?;
         }
-    } else {
-        std::fs::create_dir_all(&target)
-            .map_err(|e| format!("Failed to create directory {}: {}", target.display(), e))?;
     }
-    Ok(target)
+    Ok(ImportTarget {
+        path: target,
+        created,
+    })
+}
+
+/// Best-effort removal of a failed import's contents so the target can be
+/// reused on retry. The directory itself is only removed when this import
+/// created it: a pre-existing directory (notably the canonical
+/// /etc/nix-darwin, whose creation needs the privileged flow) is left in
+/// place, emptied.
+fn cleanup_import_target(target: &ImportTarget) {
+    if let Ok(entries) = std::fs::read_dir(&target.path) {
+        for entry in entries.filter_map(|e| e.ok()) {
+            let path = entry.path();
+            let result = if path.is_dir() && !path.is_symlink() {
+                std::fs::remove_dir_all(&path)
+            } else {
+                std::fs::remove_file(&path)
+            };
+            if let Err(e) = result {
+                log::warn!("Failed to clean up {}: {}", path.display(), e);
+            }
+        }
+    }
+    if target.created {
+        if let Err(e) = std::fs::remove_dir(&target.path) {
+            log::warn!(
+                "Failed to remove import target {}: {}",
+                target.path.display(),
+                e
+            );
+        }
+    }
 }
 
 /// Selects an imported directory as the active config dir and initializes state.
@@ -324,34 +396,138 @@ pub async fn config_pick_zip(app: AppHandle) -> Result<Option<String>, String> {
     Ok(result.map(|path| path.to_string()))
 }
 
-/// Clones a GitHub reference (e.g. `owner/repo`) into a fresh config directory.
+/// Resolves the config directory inside a fresh clone: `target` itself, or a
+/// requested subdirectory, which must exist and contain a `flake.nix`.
+fn resolve_subdir_config_dir(target: &Path, subdir: &str) -> Result<PathBuf, String> {
+    let dir = target.join(subdir);
+    if !dir.is_dir() {
+        return Err(format!(
+            "Subdirectory '{}' does not exist in the imported repository",
+            subdir
+        ));
+    }
+    if !dir.join("flake.nix").is_file() {
+        return Err(format!(
+            "No flake.nix found in subdirectory '{}' of the imported repository",
+            subdir
+        ));
+    }
+    Ok(dir)
+}
+
+/// Where an imported tree's config directory should point, decided from the
+/// flake locations discovered inside it (relative paths, shallowest first).
+#[derive(Debug, PartialEq, Eq)]
+enum FlakeChoice {
+    /// Exactly one sensible choice: the relative dir (`""` for the root).
+    Chosen(String),
+    /// Several nested candidates and no root flake to break the tie.
+    Ambiguous(Vec<String>),
+    /// No flake.nix anywhere within the search depth.
+    NoneFound,
+}
+
+fn choose_flake_dir(dirs: Vec<String>) -> FlakeChoice {
+    match dirs.as_slice() {
+        [] => FlakeChoice::NoneFound,
+        // A root flake wins outright — that is what importing the repo means,
+        // regardless of any nested flakes (vendored examples, templates, ...).
+        [first, ..] if first.is_empty() => FlakeChoice::Chosen(String::new()),
+        [single] => FlakeChoice::Chosen(single.clone()),
+        _ => FlakeChoice::Ambiguous(dirs),
+    }
+}
+
+/// Validates a fresh import and selects its config directory: the root when
+/// it has a flake, the single nested flake dir otherwise. Zero or ambiguous
+/// candidates fail the import (cleaning the target up for retry) so a
+/// flake-less directory can never become the active configuration.
+fn finalize_discovered_import(
+    app: &AppHandle,
+    target: &ImportTarget,
+) -> Result<shared_types::ImportConfigResult, String> {
+    let flake_dirs = discover::find_flake_dirs(&target.path, discover::FLAKE_SEARCH_DEPTH);
+    match choose_flake_dir(flake_dirs) {
+        FlakeChoice::Chosen(rel) => {
+            let config_dir = if rel.is_empty() {
+                target.path.clone()
+            } else {
+                target.path.join(&rel)
+            };
+            let result = finalize_imported_dir(app, &config_dir)?;
+            Ok(shared_types::ImportConfigResult::Imported {
+                dir: result.dir,
+                changed: result.changed,
+                flake_dir: (!rel.is_empty()).then_some(rel),
+            })
+        }
+        FlakeChoice::NoneFound => {
+            cleanup_import_target(target);
+            Err(format!(
+                "No flake.nix found in the imported configuration (searched {} levels deep).",
+                discover::FLAKE_SEARCH_DEPTH
+            ))
+        }
+        FlakeChoice::Ambiguous(dirs) => Ok(shared_types::ImportConfigResult::NeedsFlakeDirChoice {
+            clone_dir: target.path.to_string_lossy().to_string(),
+            flake_dirs: dirs,
+        }),
+    }
+}
+
+/// Clones a GitHub reference (e.g. `owner/repo`) into a fresh config
+/// directory. The full repository is always cloned; the config directory
+/// points at the requested `?dir=` subdirectory, or at the discovered flake
+/// location, so the import keeps its git history and origin.
 pub async fn config_import_github(
     app: AppHandle,
     repo_ref: String,
     dir_name: Option<String>,
-) -> Result<shared_types::SetDirResult, String> {
+) -> Result<shared_types::ImportConfigResult, String> {
     let spec = import::parse_repo_ref(&repo_ref).map_err(|e| e.to_string())?;
     let target = prepare_import_target(dir_name)?;
+    let subdir = spec.subdir.clone();
 
     // Clone on a blocking thread; libgit2 network I/O is synchronous.
-    let target_for_clone = target.clone();
+    let target_for_clone = target.path.clone();
     let app_for_clone = app.clone();
-    tauri::async_runtime::spawn_blocking(move || {
+    let cloned = tauri::async_runtime::spawn_blocking(move || {
         import::materialize_repo(Some(app_for_clone), &spec, &target_for_clone)
     })
     .await
-    .map_err(|e| capture_err("config_import_github", e))?
     .map_err(|e| capture_err("config_import_github", e))?;
+    if let Err(e) = cloned {
+        cleanup_import_target(&target);
+        return Err(capture_err("config_import_github", e));
+    }
 
-    finalize_imported_dir(&app, &target)
+    match subdir.as_deref() {
+        Some(subdir) => {
+            let config_dir = match resolve_subdir_config_dir(&target.path, subdir) {
+                Ok(dir) => dir,
+                Err(e) => {
+                    cleanup_import_target(&target);
+                    return Err(e);
+                }
+            };
+            let result = finalize_imported_dir(&app, &config_dir)?;
+            Ok(shared_types::ImportConfigResult::Imported {
+                dir: result.dir,
+                changed: result.changed,
+                flake_dir: Some(subdir.to_string()),
+            })
+        }
+        None => finalize_discovered_import(&app, &target),
+    }
 }
 
-/// Extracts a local `.zip` archive into a fresh config directory.
+/// Extracts a local `.zip` archive into a fresh config directory. The config
+/// directory points at the discovered flake location inside the extraction.
 pub async fn config_import_zip(
     app: AppHandle,
     zip_path: String,
     dir_name: Option<String>,
-) -> Result<shared_types::SetDirResult, String> {
+) -> Result<shared_types::ImportConfigResult, String> {
     let zip =
         utils::normalize_path_input(&zip_path).map_err(|e| capture_err("config_import_zip", e))?;
     if !zip.is_file() {
@@ -359,13 +535,89 @@ pub async fn config_import_zip(
     }
     let target = prepare_import_target(dir_name)?;
 
-    let target_for_extract = target.clone();
-    tauri::async_runtime::spawn_blocking(move || import::extract_zip(&zip, &target_for_extract))
-        .await
-        .map_err(|e| capture_err("config_import_zip", e))?
-        .map_err(|e| capture_err("config_import_zip", e))?;
+    let target_for_extract = target.path.clone();
+    let extracted = tauri::async_runtime::spawn_blocking(move || {
+        import::extract_zip(&zip, &target_for_extract)
+    })
+    .await
+    .map_err(|e| capture_err("config_import_zip", e))?;
+    if let Err(e) = extracted {
+        cleanup_import_target(&target);
+        return Err(capture_err("config_import_zip", e));
+    }
 
-    finalize_imported_dir(&app, &target)
+    finalize_discovered_import(&app, &target)
+}
+
+/// Finalizes a pending import (`NeedsFlakeDirChoice`) by selecting one of the
+/// discovered flake directories inside the imported tree. `flake_dir` is
+/// relative to `clone_dir`; empty selects the root. Always reinitializes
+/// state for the new directory, unlike `config_set_dir`, which skips that
+/// when the path string is unchanged.
+pub async fn config_finalize_import(
+    app: AppHandle,
+    clone_dir: String,
+    flake_dir: String,
+) -> Result<shared_types::ImportConfigResult, String> {
+    let clone_dir = utils::normalize_path_input(&clone_dir)
+        .map_err(|e| capture_err("config_finalize_import", e))?;
+    if !clone_dir.is_dir() {
+        return Err(format!(
+            "Imported directory does not exist: {}",
+            clone_dir.display()
+        ));
+    }
+
+    let config_dir = if flake_dir.is_empty() {
+        if !clone_dir.join("flake.nix").is_file() {
+            return Err(format!("No flake.nix found in {}", clone_dir.display()));
+        }
+        clone_dir.clone()
+    } else {
+        import::validate_subdir(&flake_dir).map_err(|e| e.to_string())?;
+        resolve_subdir_config_dir(&clone_dir, &flake_dir)?
+    };
+
+    let result = finalize_imported_dir(&app, &config_dir)?;
+    Ok(shared_types::ImportConfigResult::Imported {
+        dir: result.dir,
+        changed: result.changed,
+        flake_dir: (!flake_dir.is_empty()).then_some(flake_dir),
+    })
+}
+
+/// Discards a pending import (`NeedsFlakeDirChoice` the user cancelled),
+/// emptying the imported tree so the target can be reused. Refuses to touch
+/// the active config directory or anything containing it.
+pub async fn config_discard_import(
+    app: AppHandle,
+    dir: String,
+) -> Result<shared_types::OkResult, String> {
+    let dir =
+        utils::normalize_path_input(&dir).map_err(|e| capture_err("config_discard_import", e))?;
+    // Same location rules as import targets: a home child or the canonical
+    // config dir. Anything else was never created by an import.
+    validate_new_dir_location(&dir)?;
+
+    if let Ok(active) = store::get_config_dir(&app) {
+        let active = PathBuf::from(active);
+        if active.starts_with(&dir) {
+            return Err(format!(
+                "Refusing to discard {}: it contains the active config directory",
+                dir.display()
+            ));
+        }
+    }
+
+    if dir.is_dir() {
+        // The canonical /etc/nix-darwin must stay in place (privileged
+        // creation); anything else an import created can go entirely.
+        cleanup_import_target(&ImportTarget {
+            path: dir.clone(),
+            created: !canonical_config::is_canonical_config_path(&dir),
+        });
+    }
+    Ok(shared_types::OkResult::yes())
 }
 
 #[cfg(test)]
@@ -444,10 +696,64 @@ mod tests {
         let dir = home.join(format!(".nixmac-test-prepare-import-{nonce}"));
         let target = prepare_import_target(Some(dir.to_string_lossy().to_string()))
             .expect("prepare import target");
-        assert_eq!(target, dir);
-        assert!(target.is_dir());
+        assert_eq!(target.path, dir);
+        assert!(target.created);
+        assert!(target.path.is_dir());
 
-        let _ = fs::remove_dir_all(target);
+        let _ = fs::remove_dir_all(target.path);
+    }
+
+    #[test]
+    fn choose_flake_dir_prefers_root_then_single_nested() {
+        let dirs = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+
+        assert_eq!(choose_flake_dir(dirs(&[])), FlakeChoice::NoneFound);
+        assert_eq!(
+            choose_flake_dir(dirs(&[""])),
+            FlakeChoice::Chosen(String::new())
+        );
+        // A root flake wins even when nested candidates exist.
+        assert_eq!(
+            choose_flake_dir(dirs(&["", "nix/os"])),
+            FlakeChoice::Chosen(String::new())
+        );
+        assert_eq!(
+            choose_flake_dir(dirs(&["nix/os"])),
+            FlakeChoice::Chosen("nix/os".to_string())
+        );
+        assert_eq!(
+            choose_flake_dir(dirs(&["a", "b"])),
+            FlakeChoice::Ambiguous(dirs(&["a", "b"]))
+        );
+    }
+
+    #[test]
+    fn cleanup_import_target_empties_and_removes_only_created_dirs() {
+        let created = temp_dir("cleanup-created");
+        fs::create_dir_all(created.join("repo/nested")).expect("create contents");
+        fs::write(created.join("repo/file"), "x").expect("create file");
+        cleanup_import_target(&ImportTarget {
+            path: created.clone(),
+            created: true,
+        });
+        assert!(!created.exists());
+
+        // A pre-existing directory is emptied but kept in place.
+        let preexisting = temp_dir("cleanup-preexisting");
+        fs::create_dir_all(preexisting.join("repo")).expect("create contents");
+        cleanup_import_target(&ImportTarget {
+            path: preexisting.clone(),
+            created: false,
+        });
+        assert!(preexisting.exists());
+        assert!(
+            fs::read_dir(&preexisting)
+                .expect("read dir")
+                .next()
+                .is_none()
+        );
+
+        let _ = fs::remove_dir_all(preexisting);
     }
 
     #[test]
@@ -455,6 +761,31 @@ mod tests {
         let dir = PathBuf::from("/tmp/nixmac-test");
         let result = prepare_import_target(Some(dir.to_string_lossy().to_string()));
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn resolve_subdir_config_dir_requires_existing_dir_with_flake() {
+        let dir = temp_dir("resolve-subdir");
+        fs::create_dir_all(dir.join("nix/os")).expect("create subdir");
+        fs::write(dir.join("nix/os/flake.nix"), "{ }").expect("create flake");
+        fs::create_dir_all(dir.join("empty")).expect("create empty subdir");
+
+        assert_eq!(
+            resolve_subdir_config_dir(&dir, "nix/os").expect("resolve"),
+            dir.join("nix/os")
+        );
+        assert!(
+            resolve_subdir_config_dir(&dir, "empty")
+                .unwrap_err()
+                .contains("No flake.nix")
+        );
+        assert!(
+            resolve_subdir_config_dir(&dir, "missing")
+                .unwrap_err()
+                .contains("does not exist")
+        );
+
+        let _ = fs::remove_dir_all(dir);
     }
 
     #[test]

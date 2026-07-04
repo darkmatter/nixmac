@@ -9,6 +9,9 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import type { GithubRepo } from "@/ipc/types";
+import { FlakeDirChooser } from "@/components/widget/controls/flake-dir-chooser";
+import { applyImportResult } from "@/hooks/use-darwin-config";
+import { useImportConfig } from "@/hooks/use-import-config";
 import { auth as authClient } from "@/lib/auth";
 import {
   AUTH_DEEP_LINK_ERROR_EVENT,
@@ -428,11 +431,16 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     onError: (e) => setError(errorMessage(e)),
   });
 
+  const importConfig = useImportConfig(onImported);
   const importMutation = useMutation({
-    // TODO: support the richer repo-ref format (ref + subdir) the backend accepts.
+    // The backend discovers the flake location inside the clone (root or a
+    // nested directory), so a plain owner/repo ref suffices here.
     mutationFn: (repo: GithubRepo) =>
       client.github.import({ repoRef: repoRef(repo), dirName: DEFAULT_DIR }),
-    onSuccess: () => onImported?.(),
+    onSuccess: async (result) => {
+      await applyImportResult(result);
+      importConfig.handleResult(result);
+    },
     onError: (e) => {
       resetRejectedSession(e);
       setError(errorMessage(e));
@@ -507,6 +515,18 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     safeRepoPage * REPOS_PER_PAGE,
     safeRepoPage * REPOS_PER_PAGE + REPOS_PER_PAGE,
   );
+
+  // ---- Pending flake-dir choice supersedes everything ----
+  if (importConfig.pending) {
+    return (
+      <FlakeDirChooser
+        flakeDirs={importConfig.pending.flakeDirs}
+        onChoose={importConfig.choose}
+        onCancel={importConfig.cancel}
+        busy={importConfig.resolving}
+      />
+    );
+  }
 
   // ---- Initial status probe ----
   if (auth === "checking") {

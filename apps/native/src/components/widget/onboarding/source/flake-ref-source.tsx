@@ -3,8 +3,10 @@
 import { useMemo, useState } from "react";
 import { Check, FileArchive, Link2, Loader2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FlakeDirChooser } from "@/components/widget/controls/flake-dir-chooser";
 import { EXAMPLE_REFS, parseFlakeRef } from "@/components/widget/onboarding/lib/flake-ref";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
+import { useImportConfig } from "@/hooks/use-import-config";
 import { client } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +29,7 @@ export function FlakeRefSource({ onImported }: FlakeRefSourceProps) {
   const parsed = useMemo(() => parseFlakeRef(value), [value]);
   const touched = value.trim().length > 0;
   const canUse = parsed.valid && parsed.importable;
+  const importConfig = useImportConfig(onImported);
 
   async function use() {
     if (!canUse) return;
@@ -36,8 +39,7 @@ export function FlakeRefSource({ onImported }: FlakeRefSourceProps) {
       const normalized = await client.path.normalize({
         input: dir.trim() || "~/.darwin",
       });
-      await importGithub(value.trim(), normalized);
-      onImported?.();
+      importConfig.handleResult(await importGithub(value.trim(), normalized));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -54,13 +56,23 @@ export function FlakeRefSource({ onImported }: FlakeRefSourceProps) {
       const normalized = await client.path.normalize({
         input: dir.trim() || "~/.darwin",
       });
-      await importZip(path, normalized);
-      onImported?.();
+      importConfig.handleResult(await importZip(path, normalized));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setZipLoading(false);
     }
+  }
+
+  if (importConfig.pending) {
+    return (
+      <FlakeDirChooser
+        flakeDirs={importConfig.pending.flakeDirs}
+        onChoose={importConfig.choose}
+        onCancel={importConfig.cancel}
+        busy={importConfig.resolving}
+      />
+    );
   }
 
   return (

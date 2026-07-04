@@ -266,6 +266,8 @@ configDir: string;
  */
 hostAttr: string | null }
 
+export type ConfigDiscardImportInput = { dir: string }
+
 /**
  * Result of a managed-edit apply operation (homebrew, system-defaults, etc.).
  */
@@ -306,6 +308,12 @@ ty: FieldType;
  * Default if the store has no value yet.
  */
 default: JsonValue }
+
+export type ConfigFinalizeImportInput = { cloneDir: string; 
+/**
+ * Relative flake directory inside `clone_dir`; empty for the root.
+ */
+flakeDir: string }
 
 export type ConfigImportGithubInput = { repoRef: string; dirName: string | null }
 
@@ -859,6 +867,8 @@ errorType: string | null }
 
 export type FlakeExistsAtInput = { dir: string }
 
+export type FlakeLocateInput = { dir: string }
+
 export type GatherMetadataInput = { request: FeedbackMetadataRequest }
 
 export type GenerateHistoryFromInput = { commitHash: string; number: number }
@@ -1194,6 +1204,23 @@ source: string | null;
  * Unix timestamp when this state was last collected.
  */
 lastChecked: number }
+
+/**
+ * Result of importing a configuration (GitHub clone or zip extraction).
+ * Serialized as a tagged union on `status` so the frontend can narrow on it.
+ */
+export type ImportConfigResult = 
+/**
+ * A flake was found and the config directory now points at it.
+ */
+{ status: "imported"; dir: string; changed: boolean; flakeDir: string | null } | 
+/**
+ * Several nested flake candidates were found and no root flake broke the
+ * tie. Nothing was finalized: the imported tree is kept at `clone_dir`
+ * for the user to choose from (`config.finalizeImport`) or discard
+ * (`config.discardImport`).
+ */
+{ status: "needsFlakeDirChoice"; cloneDir: string; flakeDirs: string[] }
 
 /**
  * Result of a successful settings import.
@@ -1767,11 +1794,14 @@ export type Procedures = {
     listModels: Client<Record<never, never>, ListModelsInput, string[], Error>
   }
   config: {
+    discardImport: Client<Record<never, never>, ConfigDiscardImportInput, OkResult, Error>
+    finalizeImport: Client<Record<never, never>, ConfigFinalizeImportInput, ImportConfigResult, Error>
     get: Client<Record<never, never>, void, Config, Error>
     getThisHostname: Client<Record<never, never>, void, string, Error>
-    importGithub: Client<Record<never, never>, ConfigImportGithubInput, SetDirResult, Error>
-    importZip: Client<Record<never, never>, ConfigImportZipInput, SetDirResult, Error>
+    importGithub: Client<Record<never, never>, ConfigImportGithubInput, ImportConfigResult, Error>
+    importZip: Client<Record<never, never>, ConfigImportZipInput, ImportConfigResult, Error>
     pickDir: Client<Record<never, never>, void, SetDirResult | null, Error>
+    pickFolder: Client<Record<never, never>, void, string | null, Error>
     pickZip: Client<Record<never, never>, void, string | null, Error>
     prepareNewDir: Client<Record<never, never>, ConfigSetDirInput, SetDirResult, Error>
     setDir: Client<Record<never, never>, ConfigSetDirInput, SetDirResult, Error>
@@ -1828,6 +1858,7 @@ export type Procedures = {
     exists: Client<Record<never, never>, void, boolean, Error>
     existsAt: Client<Record<never, never>, FlakeExistsAtInput, boolean, Error>
     listHosts: Client<Record<never, never>, void, string[], Error>
+    locate: Client<Record<never, never>, FlakeLocateInput, string[], Error>
   }
   git: {
     commit: Client<Record<never, never>, GitCommitInput, CommitResult, Error>
@@ -1843,7 +1874,7 @@ export type Procedures = {
     bootstrapStatus: Client<Record<never, never>, GithubBootstrapStatusInput, GithubBootstrapStatus, Error>
     connectStart: Client<Record<never, never>, void, GithubConnectStart, Error>
     disconnect: Client<Record<never, never>, void, void, Error>
-    import: Client<Record<never, never>, GithubImportInput, SetDirResult, Error>
+    import: Client<Record<never, never>, GithubImportInput, ImportConfigResult, Error>
     listRepos: Client<Record<never, never>, void, GithubRepo[], Error>
     status: Client<Record<never, never>, void, GithubStatus, Error>
   }

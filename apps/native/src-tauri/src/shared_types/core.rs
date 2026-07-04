@@ -23,6 +23,37 @@ pub struct SetDirResult {
     pub changed: bool,
 }
 
+/// Result of importing a configuration (GitHub clone or zip extraction).
+/// Serialized as a tagged union on `status` so the frontend can narrow on it.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(tag = "status", rename_all = "camelCase")]
+pub enum ImportConfigResult {
+    /// A flake was found and the config directory now points at it.
+    #[serde(rename_all = "camelCase")]
+    Imported {
+        /// Selected absolute config directory: the import root, or the
+        /// flake's subdirectory inside it.
+        dir: String,
+        /// True when the selected directory differs from the previous one.
+        changed: bool,
+        /// Subdirectory (relative to the import root) the flake was found
+        /// in, when not the root itself.
+        flake_dir: Option<String>,
+    },
+    /// Several nested flake candidates were found and no root flake broke the
+    /// tie. Nothing was finalized: the imported tree is kept at `clone_dir`
+    /// for the user to choose from (`config.finalizeImport`) or discard
+    /// (`config.discardImport`).
+    #[serde(rename_all = "camelCase")]
+    NeedsFlakeDirChoice {
+        /// Absolute directory holding the imported tree.
+        clone_dir: String,
+        /// Directories containing a flake.nix, relative to `clone_dir`,
+        /// shallowest first.
+        flake_dirs: Vec<String>,
+    },
+}
+
 /// Result returned from a rollback erase operation. Git/evolve state mirrors
 /// flow through the `*_changed` events; this only carries the rollback target.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]

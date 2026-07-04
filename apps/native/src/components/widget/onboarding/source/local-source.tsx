@@ -3,29 +3,86 @@
 import { useState } from "react";
 import { FolderOpen, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FlakeDirChooser } from "@/components/widget/controls/flake-dir-chooser";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
+import { client } from "@/lib/orpc";
 
 interface LocalSourceProps {
   onImported?: () => void;
 }
 
-/** Pick a local folder that already contains a flake.nix (real folder picker). */
+interface PendingLocalChoice {
+  folder: string;
+  flakeDirs: string[];
+}
+
+/**
+ * Pick a local folder holding a flake (real folder picker). The folder is
+ * only selected as the config directory once a flake.nix is actually found —
+ * at the folder root, in its single nested flake directory, or in the one the
+ * user picks when there are several.
+ */
 export function LocalSource({ onImported }: LocalSourceProps) {
-  const { pickDir } = useDarwinConfig();
+  const { setDir } = useDarwinConfig();
   const [browsing, setBrowsing] = useState(false);
+  const [choosing, setChoosing] = useState(false);
+  const [pending, setPending] = useState<PendingLocalChoice | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  async function selectDir(dir: string) {
+    await setDir(dir);
+    setPending(null);
+    onImported?.();
+  }
 
   async function browse() {
     setError(null);
     setBrowsing(true);
     try {
-      const result = await pickDir();
-      if (result) onImported?.();
+      const folder = await client.config.pickFolder();
+      if (!folder) return;
+      const flakeDirs = await client.flake.locate({ dir: folder });
+      if (flakeDirs[0] === "") {
+        // Flake at the folder root: the folder itself is the config dir.
+        await selectDir(folder);
+      } else if (flakeDirs.length === 1) {
+        await selectDir(`${folder}/${flakeDirs[0]}`);
+      } else if (flakeDirs.length === 0) {
+        setError(
+          `No flake.nix found in ${folder}. Pick the folder that contains your flake, or create a new configuration instead.`,
+        );
+      } else {
+        setPending({ folder, flakeDirs });
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBrowsing(false);
     }
+  }
+
+  async function choose(flakeDir: string) {
+    if (!pending) return;
+    setChoosing(true);
+    try {
+      await selectDir(`${pending.folder}/${flakeDir}`);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setChoosing(false);
+    }
+  }
+
+  if (pending) {
+    // Nothing was cloned, so cancelling just forgets the selection.
+    return (
+      <FlakeDirChooser
+        flakeDirs={pending.flakeDirs}
+        onChoose={choose}
+        onCancel={() => setPending(null)}
+        busy={choosing}
+      />
+    );
   }
 
   return (
@@ -39,8 +96,9 @@ export function LocalSource({ onImported }: LocalSourceProps) {
         </span>
         <p className="mt-4 font-medium text-sm">Choose a local folder</p>
         <p className="mt-1 max-w-sm text-pretty text-muted-foreground text-sm">
-          Select the folder that contains your <code className="font-mono">flake.nix</code>. Already
-          cloned your dotfiles? This is the quickest option.
+          Select the folder that contains your <code className="font-mono">flake.nix</code> — it can
+          also live in a subdirectory, we&apos;ll find it. Already cloned your dotfiles? This is the
+          quickest option.
         </p>
         <Button className="mt-5" onClick={browse} disabled={browsing}>
           {browsing ? (

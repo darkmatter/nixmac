@@ -2,7 +2,7 @@
 
 use super::{OrpcCtx, helpers::internal_err};
 use crate::commands::config;
-use crate::shared_types::{OkResult, SetDirResult};
+use crate::shared_types::{ImportConfigResult, OkResult, SetDirResult};
 use orpc::*;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -31,6 +31,20 @@ struct ConfigImportGithubInput {
 struct ConfigImportZipInput {
     zip_path: String,
     dir_name: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+struct ConfigFinalizeImportInput {
+    clone_dir: String,
+    /// Relative flake directory inside `clone_dir`; empty for the root.
+    flake_dir: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+struct ConfigDiscardImportInput {
+    dir: String,
 }
 
 async fn get(ctx: OrpcCtx, _input: ()) -> Result<crate::shared_types::Config, ORPCError> {
@@ -72,6 +86,12 @@ async fn pick_dir(ctx: OrpcCtx, _input: ()) -> Result<Option<SetDirResult>, ORPC
         .map_err(|error| internal_err("config.pickDir", error))
 }
 
+async fn pick_folder(ctx: OrpcCtx, _input: ()) -> Result<Option<String>, ORPCError> {
+    config::config_pick_folder(ctx.app)
+        .await
+        .map_err(|error| internal_err("config.pickFolder", error))
+}
+
 async fn pick_zip(ctx: OrpcCtx, _input: ()) -> Result<Option<String>, ORPCError> {
     config::config_pick_zip(ctx.app)
         .await
@@ -81,16 +101,37 @@ async fn pick_zip(ctx: OrpcCtx, _input: ()) -> Result<Option<String>, ORPCError>
 async fn import_github(
     ctx: OrpcCtx,
     input: ConfigImportGithubInput,
-) -> Result<SetDirResult, ORPCError> {
+) -> Result<ImportConfigResult, ORPCError> {
     config::config_import_github(ctx.app, input.repo_ref, input.dir_name)
         .await
         .map_err(|error| internal_err("config.importGithub", error))
 }
 
-async fn import_zip(ctx: OrpcCtx, input: ConfigImportZipInput) -> Result<SetDirResult, ORPCError> {
+async fn import_zip(
+    ctx: OrpcCtx,
+    input: ConfigImportZipInput,
+) -> Result<ImportConfigResult, ORPCError> {
     config::config_import_zip(ctx.app, input.zip_path, input.dir_name)
         .await
         .map_err(|error| internal_err("config.importZip", error))
+}
+
+async fn finalize_import(
+    ctx: OrpcCtx,
+    input: ConfigFinalizeImportInput,
+) -> Result<ImportConfigResult, ORPCError> {
+    config::config_finalize_import(ctx.app, input.clone_dir, input.flake_dir)
+        .await
+        .map_err(|error| internal_err("config.finalizeImport", error))
+}
+
+async fn discard_import(
+    ctx: OrpcCtx,
+    input: ConfigDiscardImportInput,
+) -> Result<OkResult, ORPCError> {
+    config::config_discard_import(ctx.app, input.dir)
+        .await
+        .map_err(|error| internal_err("config.discardImport", error))
 }
 
 pub fn routes() -> Router<OrpcCtx> {
@@ -116,16 +157,27 @@ pub fn routes() -> Router<OrpcCtx> {
         "pickDir" => os::<OrpcCtx>()
             .output(orpc_specta::specta::<Option<SetDirResult>>())
             .handler(pick_dir),
+        "pickFolder" => os::<OrpcCtx>()
+            .output(orpc_specta::specta::<Option<String>>())
+            .handler(pick_folder),
         "pickZip" => os::<OrpcCtx>()
             .output(orpc_specta::specta::<Option<String>>())
             .handler(pick_zip),
         "importGithub" => os::<OrpcCtx>()
             .input(orpc_specta::specta::<ConfigImportGithubInput>())
-            .output(orpc_specta::specta::<SetDirResult>())
+            .output(orpc_specta::specta::<ImportConfigResult>())
             .handler(import_github),
         "importZip" => os::<OrpcCtx>()
             .input(orpc_specta::specta::<ConfigImportZipInput>())
-            .output(orpc_specta::specta::<SetDirResult>())
+            .output(orpc_specta::specta::<ImportConfigResult>())
             .handler(import_zip),
+        "finalizeImport" => os::<OrpcCtx>()
+            .input(orpc_specta::specta::<ConfigFinalizeImportInput>())
+            .output(orpc_specta::specta::<ImportConfigResult>())
+            .handler(finalize_import),
+        "discardImport" => os::<OrpcCtx>()
+            .input(orpc_specta::specta::<ConfigDiscardImportInput>())
+            .output(orpc_specta::specta::<OkResult>())
+            .handler(discard_import),
     }
 }

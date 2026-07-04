@@ -235,8 +235,8 @@ fn parse_query_params(input: &str) -> Result<(&str, Option<String>, Option<Strin
 }
 
 /// Validates that a subdirectory used by git import urls is a relative path without empty components or
-/// `.`/`..` segments. This is important because git's sparse checkout doesn't support that.
-fn validate_subdir(path: &str) -> Result<()> {
+/// `.`/`..` segments, so joining it onto the clone directory can never escape it.
+pub(crate) fn validate_subdir(path: &str) -> Result<()> {
     if path.starts_with('/') {
         bail!("Subdirectory must be relative");
     }
@@ -250,12 +250,12 @@ fn validate_subdir(path: &str) -> Result<()> {
     Ok(())
 }
 
-/// Clones the repository specified by `spec` into `dest`, then copies the specified
-/// subdirectory (if any) into `dest`, stripping the wrapper directory that git sparse
-/// sparse checkout would normally require. This allows us to support subdirectory imports
-/// without forcing users to understand git's sparse checkout semantics. When an app handle
-/// is available, GitHub clones first try a short-lived GitHub App token; missing or failed
-/// token retrieval falls back to the user's normal git credentials.
+/// Clones the repository specified by `spec` into `dest`. The clone is always
+/// the full repository: a `subdir` in the spec is resolved by the caller into
+/// a config directory *inside* the clone, so the imported configuration keeps
+/// its `.git` history and origin. When an app handle is available, GitHub
+/// clones first try a short-lived GitHub App token; missing or failed token
+/// retrieval falls back to the user's normal git credentials.
 pub fn materialize_repo(app: Option<AppHandle>, spec: &RepoRef, dest: &Path) -> Result<()> {
     // We're going to have issues later if `dest` already exists as a non-empty directory, so check that upfront before doing any cloning.
     if dest.exists() {
@@ -294,32 +294,7 @@ pub fn materialize_repo(app: Option<AppHandle>, spec: &RepoRef, dest: &Path) -> 
             }
         });
 
-    // Easy case. No subdirectory means we can clone directly into the destination.
-    if spec.subdir.is_none() {
-        return clone_repo(&clone_spec, dest, clone_token.as_deref());
-    }
-
-    let temp = tempfile::tempdir().context("failed to create temporary clone directory")?;
-    let checkout_dir = temp.path().join("repo");
-
-    // Perform the actual clone into a temp directory, then copy the specified subdirectory into the final destination.
-    clone_repo(&clone_spec, &checkout_dir, clone_token.as_deref())?;
-
-    let subdir = spec.subdir.as_ref().unwrap();
-    let source = checkout_dir.join(subdir);
-
-    if !source.is_dir() {
-        bail!(
-            "subdirectory '{}' does not exist in {}",
-            subdir,
-            sanitize_clone_url_for_logs(&spec.clone_url),
-        );
-    }
-
-    copy_dir_contents(&source, dest)
-        .with_context(|| format!("failed to copy subdirectory '{}' into destination", subdir))?;
-
-    Ok(())
+    clone_repo(&clone_spec, dest, clone_token.as_deref())
 }
 
 /// Clones `spec` into `dest`. `dest` must not already exist as a non-empty
@@ -408,78 +383,6 @@ fn clone_repo(spec: &RepoRef, dest: &Path, token: Option<&str>) -> Result<()> {
         );
     }
     Ok(())
-}
-
-/// Copies the contents of `source` into `dest`, creating `dest`. Assumes `dest` does not exist or is empty as a precondition.
-fn copy_dir_contents(source: &Path, dest: &Path) -> Result<()> {
-    std::fs::create_dir_all(dest)
-        .with_context(|| format!("failed to create destination {}", dest.display()))?;
-
-    for entry in std::fs::read_dir(source)
-        .with_context(|| format!("failed to read source directory {}", source.display()))?
-    {
-        let entry = entry?;
-        let from = entry.path();
-        let to = dest.join(entry.file_name());
-
-        let file_type = entry.file_type()?;
-
-        if file_type.is_dir() {
-            copy_dir_recursive(&from, &to)?;
-        } else if file_type.is_file() {
-            std::fs::copy(&from, &to).with_context(|| {
-                format!("failed to copy {} to {}", from.display(), to.display())
-            })?;
-        } else if file_type.is_symlink() {
-            copy_symlink(&from, &to)?;
-        }
-    }
-
-    Ok(())
-}
-
-fn copy_dir_recursive(source: &Path, dest: &Path) -> Result<()> {
-    std::fs::create_dir_all(dest)
-        .with_context(|| format!("failed to create directory {}", dest.display()))?;
-
-    for entry in std::fs::read_dir(source)? {
-        let entry = entry?;
-        let from = entry.path();
-        let to = dest.join(entry.file_name());
-        let file_type = entry.file_type()?;
-
-        if file_type.is_dir() {
-            copy_dir_recursive(&from, &to)?;
-        } else if file_type.is_file() {
-            std::fs::copy(&from, &to).with_context(|| {
-                format!("failed to copy {} to {}", from.display(), to.display())
-            })?;
-        } else if file_type.is_symlink() {
-            // Yes, git repos can contain symlinks, and we need to preserve them when copying subdirectories out of the temp clone.
-            copy_symlink(&from, &to)?;
-        }
-    }
-
-    Ok(())
-}
-
-#[cfg(unix)]
-fn copy_symlink(source: &Path, dest: &Path) -> Result<()> {
-    let target = std::fs::read_link(source)
-        .with_context(|| format!("failed to read symlink {}", source.display()))?;
-
-    std::os::unix::fs::symlink(&target, dest)
-        .with_context(|| format!("failed to create symlink {}", dest.display()))?;
-
-    Ok(())
-}
-
-#[cfg(not(unix))]
-fn copy_symlink(source: &Path, _dest: &Path) -> Result<()> {
-    bail!(
-        "symlinks are not supported on this platform: {}",
-        source.display()
-    )
 }
 
 /// Returns the single shared top-level directory across all archive entries,
@@ -716,7 +619,10 @@ mod tests {
     }
 
     #[test]
-    fn materialize_repo_copies_only_requested_subdirectory() {
+    fn materialize_repo_full_clones_even_with_subdir_spec() {
+        // A subdir spec no longer extracts the subdirectory: the whole repo is
+        // cloned (keeping .git and origin) and the caller points the config
+        // directory inside the clone.
         let tmp = tempfile::tempdir().unwrap();
         let source = tmp.path().join("source");
         let _repo = create_local_repo(&source);
@@ -732,13 +638,12 @@ mod tests {
         materialize_repo(None, &spec, &dest).unwrap();
 
         assert_eq!(
-            fs::read_to_string(dest.join("flake.nix")).unwrap(),
+            fs::read_to_string(dest.join("config/flake.nix")).unwrap(),
             "default branch"
         );
-        assert!(dest.join("modules/default.nix").is_file());
-        assert!(!dest.join("config").exists());
-        assert!(!dest.join("README.md").exists());
-        assert!(!dest.join(".git").exists());
+        assert!(dest.join("config/modules/default.nix").is_file());
+        assert!(dest.join("README.md").is_file());
+        assert!(dest.join(".git").is_dir());
     }
 
     #[test]
