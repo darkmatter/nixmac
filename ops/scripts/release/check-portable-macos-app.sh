@@ -306,6 +306,23 @@ check_dmg() {
 		exit 2
 	fi
 
+	if [ ! -f "$mount_point/.DS_Store" ]; then
+		echo "ERROR: DMG is missing root .DS_Store Finder layout metadata: $dmg_path" >&2
+		exit 2
+	fi
+	if [ ! -s "$mount_point/.DS_Store" ]; then
+		echo "ERROR: DMG root .DS_Store is empty: $dmg_path" >&2
+		exit 2
+	fi
+	if [ ! -f "$mount_point/.background/dmg-background.png" ]; then
+		echo "ERROR: DMG is missing .background/dmg-background.png: $dmg_path" >&2
+		exit 2
+	fi
+	if [ ! -e "$mount_point/Applications" ]; then
+		echo "ERROR: DMG is missing Applications drop link: $dmg_path" >&2
+		exit 2
+	fi
+
 	while IFS= read -r app_path; do
 		check_app "$app_path"
 	done < <(find "$mount_point" -maxdepth 2 -name "*.app" -type d)

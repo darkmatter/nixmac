@@ -220,15 +220,17 @@ jobs:
       # Sign the app bundle (required for notarization)
       - name: Sign app bundle
         run: bash ops/scripts/release/sign-app.sh
-      # Replace unsigned app inside the Tauri-built DMG with the signed one.
-      # We mount the DMG read-write, swap the .app in place, and re-compress so
-      # the Finder window layout (background image, /Applications alias, icon
-      # positions) defined in tauri.conf.json's bundle.macOS.dmg is preserved.
-      # Previously this step deleted the DMG and called `hdiutil create`, which
-      # shipped a bare DMG without the drag-to-Applications affordance.
-      - name: Swap signed app into Tauri DMG
+      # Rebuild the final DMG from the signed app with pinned create-dmg.
+      # Tauri copies .background/dmg-background.png, but our CI hosts have not
+      # reliably emitted the root .DS_Store that Finder needs to show it. The
+      # script also mount-verifies .DS_Store, .background, Applications link,
+      # and the signed app before notarization/upload.
+      - name: Rebuild DMG with Finder layout
         if: steps.check-secrets.outputs.has_certificate == 'true'
-        run: bash ops/scripts/release/swap-signed-dmg.sh
+        run: |
+          APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d 2>/dev/null | sed -n '1p' || true)
+          DMG_PATH=$(find target/release/bundle/dmg -name "*.dmg" -type f 2>/dev/null | sed -n '1p' || true)
+          bash ops/scripts/release/rebuild-dmg-with-layout.sh "$APP_PATH" "$DMG_PATH"
       # Notarize the app (requires Apple Developer account)
       - name: Notarize app
         shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'

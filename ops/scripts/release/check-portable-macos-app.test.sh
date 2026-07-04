@@ -156,8 +156,12 @@ if command -v hdiutil >/dev/null 2>&1; then
 	DMG_ROOT="$TMP_DIR/dmg-root"
 	mkdir -p "$DMG_ROOT"
 	cp -R "$TMP_DIR/Clean.app" "$DMG_ROOT/Clean.app"
-	hdiutil create -quiet -srcfolder "$DMG_ROOT" -format UDZO "$TMP_DIR/Clean.dmg"
-	assert_passes "$TMP_DIR/Clean.dmg"
+	hdiutil create -quiet -srcfolder "$DMG_ROOT" -format UDZO "$TMP_DIR/Bare.dmg"
+	assert_fails_with "missing root .DS_Store" "$TMP_DIR/Bare.dmg"
+
+	LAYOUT_DMG="$TMP_DIR/Layout.dmg"
+	NIXMAC_SKIP_DMG_CODESIGN_CHECK=1 bash ops/scripts/release/rebuild-dmg-with-layout.sh "$TMP_DIR/Clean.app" "$LAYOUT_DMG"
+	assert_passes "$LAYOUT_DMG"
 else
 	echo "hdiutil unavailable; skipping DMG path test"
 fi
