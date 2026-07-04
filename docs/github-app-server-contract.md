@@ -138,4 +138,10 @@ ______________________________________________________________________
 - If bootstrap returns `fallbackRequired`, `expired`, or an unsupported/error response, the desktop
   reveals the existing Better Auth email OTP fallback. After OTP verification mints a device API key,
   the desktop resumes the authenticated `/api/auth/github/connect/start` install flow.
-- `hasFlake=false` repos are shown disabled in the picker (matches the current UI).
+- `hasFlake` only reflects a `flake.nix` at the **root** of the default branch. Repos that keep
+  their flake in a subdirectory (common for dotfiles, e.g. `nix/os/flake.nix`) report
+  `hasFlake=false`. The desktop therefore keeps `hasFlake=false` repos clickable (dimmed, "No
+  flake" badge) and validates after cloning: the import discovers nested flakes, offers a chooser
+  when several exist, and fails cleanly when there is none. Follow-up for the server: detect nested
+  flakes with a single recursive tree call (`GET /repos/{o}/{r}/git/trees/{defaultBranch}?recursive=1`)
+  so the badge can report them too.
