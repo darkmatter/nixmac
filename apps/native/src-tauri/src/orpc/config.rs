@@ -2,7 +2,7 @@
 
 use super::{OrpcCtx, helpers::internal_err};
 use crate::commands::config;
-use crate::shared_types::{OkResult, SetDirResult};
+use crate::shared_types::{ImportConfigResult, OkResult, SetDirResult};
 use orpc::*;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -81,13 +81,16 @@ async fn pick_zip(ctx: OrpcCtx, _input: ()) -> Result<Option<String>, ORPCError>
 async fn import_github(
     ctx: OrpcCtx,
     input: ConfigImportGithubInput,
-) -> Result<SetDirResult, ORPCError> {
+) -> Result<ImportConfigResult, ORPCError> {
     config::config_import_github(ctx.app, input.repo_ref, input.dir_name)
         .await
         .map_err(|error| internal_err("config.importGithub", error))
 }
 
-async fn import_zip(ctx: OrpcCtx, input: ConfigImportZipInput) -> Result<SetDirResult, ORPCError> {
+async fn import_zip(
+    ctx: OrpcCtx,
+    input: ConfigImportZipInput,
+) -> Result<ImportConfigResult, ORPCError> {
     config::config_import_zip(ctx.app, input.zip_path, input.dir_name)
         .await
         .map_err(|error| internal_err("config.importZip", error))
@@ -121,11 +124,11 @@ pub fn routes() -> Router<OrpcCtx> {
             .handler(pick_zip),
         "importGithub" => os::<OrpcCtx>()
             .input(orpc_specta::specta::<ConfigImportGithubInput>())
-            .output(orpc_specta::specta::<SetDirResult>())
+            .output(orpc_specta::specta::<ImportConfigResult>())
             .handler(import_github),
         "importZip" => os::<OrpcCtx>()
             .input(orpc_specta::specta::<ConfigImportZipInput>())
-            .output(orpc_specta::specta::<SetDirResult>())
+            .output(orpc_specta::specta::<ImportConfigResult>())
             .handler(import_zip),
     }
 }

@@ -3,7 +3,7 @@
 use super::{OrpcCtx, helpers::internal_err};
 use crate::commands::config;
 use crate::shared_types::{
-    GithubBootstrapStatus, GithubConnectStart, GithubRepo, GithubStatus, SetDirResult,
+    GithubBootstrapStatus, GithubConnectStart, GithubRepo, GithubStatus, ImportConfigResult,
 };
 use crate::sync;
 use orpc::*;
@@ -67,7 +67,7 @@ async fn disconnect(ctx: OrpcCtx, _input: ()) -> Result<(), ORPCError> {
         .map_err(|error| github_err("github.disconnect", error))
 }
 
-async fn import(ctx: OrpcCtx, input: GithubImportInput) -> Result<SetDirResult, ORPCError> {
+async fn import(ctx: OrpcCtx, input: GithubImportInput) -> Result<ImportConfigResult, ORPCError> {
     config::config_import_github(ctx.app, input.repo_ref, input.dir_name)
         .await
         .map_err(|error| internal_err("github.import", error))
@@ -96,7 +96,7 @@ pub fn routes() -> Router<OrpcCtx> {
                 .handler(disconnect),
             "import" => os::<OrpcCtx>()
                 .input(orpc_specta::specta::<GithubImportInput>())
-                .output(orpc_specta::specta::<SetDirResult>())
+                .output(orpc_specta::specta::<ImportConfigResult>())
                 .handler(import),
         },
     }

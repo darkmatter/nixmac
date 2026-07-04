@@ -280,13 +280,21 @@ fn is_importable_target(path: &Path) -> Result<bool, String> {
     Ok(!has_entries)
 }
 
+/// A validated, empty directory an import can clone/extract into. Records
+/// whether the import created it, so cleanup after a failed import knows if
+/// removing the directory itself is safe.
+struct ImportTarget {
+    path: PathBuf,
+    created: bool,
+}
+
 /// Validates and prepares an import target directory.
 ///
 /// On success the directory is guaranteed to be absent or *truly* empty: a
 /// lone `.DS_Store` (which `is_importable_target` tolerates, since the folder
 /// looks empty in Finder) is removed so libgit2 clone, which rejects a
 /// non-empty destination, succeeds.
-fn prepare_import_target(dir_name: Option<String>) -> Result<PathBuf, String> {
+fn prepare_import_target(dir_name: Option<String>) -> Result<ImportTarget, String> {
     let target = resolve_import_target(dir_name)?;
     validate_new_dir_location(&target)?;
     if !is_importable_target(&target)? {
@@ -295,17 +303,51 @@ fn prepare_import_target(dir_name: Option<String>) -> Result<PathBuf, String> {
             target.display()
         ));
     }
-    if target.exists() {
+    let created = !target.exists();
+    if created {
+        std::fs::create_dir_all(&target)
+            .map_err(|e| format!("Failed to create directory {}: {}", target.display(), e))?;
+    } else {
         let ds_store = target.join(".DS_Store");
         if ds_store.exists() {
             std::fs::remove_file(&ds_store)
                 .map_err(|e| format!("Failed to clear {}: {}", ds_store.display(), e))?;
         }
-    } else {
-        std::fs::create_dir_all(&target)
-            .map_err(|e| format!("Failed to create directory {}: {}", target.display(), e))?;
     }
-    Ok(target)
+    Ok(ImportTarget {
+        path: target,
+        created,
+    })
+}
+
+/// Best-effort removal of a failed import's contents so the target can be
+/// reused on retry. The directory itself is only removed when this import
+/// created it: a pre-existing directory (notably the canonical
+/// /etc/nix-darwin, whose creation needs the privileged flow) is left in
+/// place, emptied.
+fn cleanup_import_target(target: &ImportTarget) {
+    if let Ok(entries) = std::fs::read_dir(&target.path) {
+        for entry in entries.filter_map(|e| e.ok()) {
+            let path = entry.path();
+            let result = if path.is_dir() && !path.is_symlink() {
+                std::fs::remove_dir_all(&path)
+            } else {
+                std::fs::remove_file(&path)
+            };
+            if let Err(e) = result {
+                log::warn!("Failed to clean up {}: {}", path.display(), e);
+            }
+        }
+    }
+    if target.created {
+        if let Err(e) = std::fs::remove_dir(&target.path) {
+            log::warn!(
+                "Failed to remove import target {}: {}",
+                target.path.display(),
+                e
+            );
+        }
+    }
 }
 
 /// Selects an imported directory as the active config dir and initializes state.
@@ -354,43 +396,124 @@ fn resolve_subdir_config_dir(target: &Path, subdir: &str) -> Result<PathBuf, Str
     Ok(dir)
 }
 
+/// Where an imported tree's config directory should point, decided from the
+/// flake locations discovered inside it (relative paths, shallowest first).
+#[derive(Debug, PartialEq, Eq)]
+enum FlakeChoice {
+    /// Exactly one sensible choice: the relative dir (`""` for the root).
+    Chosen(String),
+    /// Several nested candidates and no root flake to break the tie.
+    Ambiguous(Vec<String>),
+    /// No flake.nix anywhere within the search depth.
+    NoneFound,
+}
+
+fn choose_flake_dir(dirs: Vec<String>) -> FlakeChoice {
+    match dirs.as_slice() {
+        [] => FlakeChoice::NoneFound,
+        // A root flake wins outright — that is what importing the repo means,
+        // regardless of any nested flakes (vendored examples, templates, ...).
+        [first, ..] if first.is_empty() => FlakeChoice::Chosen(String::new()),
+        [single] => FlakeChoice::Chosen(single.clone()),
+        _ => FlakeChoice::Ambiguous(dirs),
+    }
+}
+
+/// Validates a fresh import and selects its config directory: the root when
+/// it has a flake, the single nested flake dir otherwise. Zero or ambiguous
+/// candidates fail the import (cleaning the target up for retry) so a
+/// flake-less directory can never become the active configuration.
+fn finalize_discovered_import(
+    app: &AppHandle,
+    target: &ImportTarget,
+) -> Result<shared_types::ImportConfigResult, String> {
+    let flake_dirs = discover::find_flake_dirs(&target.path, discover::FLAKE_SEARCH_DEPTH);
+    match choose_flake_dir(flake_dirs) {
+        FlakeChoice::Chosen(rel) => {
+            let config_dir = if rel.is_empty() {
+                target.path.clone()
+            } else {
+                target.path.join(&rel)
+            };
+            let result = finalize_imported_dir(app, &config_dir)?;
+            Ok(shared_types::ImportConfigResult::Imported {
+                dir: result.dir,
+                changed: result.changed,
+                flake_dir: (!rel.is_empty()).then_some(rel),
+            })
+        }
+        FlakeChoice::NoneFound => {
+            cleanup_import_target(target);
+            Err(format!(
+                "No flake.nix found in the imported configuration (searched {} levels deep).",
+                discover::FLAKE_SEARCH_DEPTH
+            ))
+        }
+        FlakeChoice::Ambiguous(dirs) => {
+            // TODO: keep the clone and let the UI offer a chooser instead of
+            // asking the user to re-import with ?dir=.
+            cleanup_import_target(target);
+            Err(format!(
+                "Multiple flake.nix candidates found: {}. Re-import with ?dir=<subdirectory> to pick one.",
+                dirs.join(", ")
+            ))
+        }
+    }
+}
+
 /// Clones a GitHub reference (e.g. `owner/repo`) into a fresh config
-/// directory. The full repository is always cloned; a `?dir=` subdirectory
-/// selects the config directory *inside* the clone, so the import keeps its
-/// git history and origin.
+/// directory. The full repository is always cloned; the config directory
+/// points at the requested `?dir=` subdirectory, or at the discovered flake
+/// location, so the import keeps its git history and origin.
 pub async fn config_import_github(
     app: AppHandle,
     repo_ref: String,
     dir_name: Option<String>,
-) -> Result<shared_types::SetDirResult, String> {
+) -> Result<shared_types::ImportConfigResult, String> {
     let spec = import::parse_repo_ref(&repo_ref).map_err(|e| e.to_string())?;
     let target = prepare_import_target(dir_name)?;
     let subdir = spec.subdir.clone();
 
     // Clone on a blocking thread; libgit2 network I/O is synchronous.
-    let target_for_clone = target.clone();
+    let target_for_clone = target.path.clone();
     let app_for_clone = app.clone();
-    tauri::async_runtime::spawn_blocking(move || {
+    let cloned = tauri::async_runtime::spawn_blocking(move || {
         import::materialize_repo(Some(app_for_clone), &spec, &target_for_clone)
     })
     .await
-    .map_err(|e| capture_err("config_import_github", e))?
     .map_err(|e| capture_err("config_import_github", e))?;
+    if let Err(e) = cloned {
+        cleanup_import_target(&target);
+        return Err(capture_err("config_import_github", e));
+    }
 
-    let config_dir = match subdir.as_deref() {
-        Some(subdir) => resolve_subdir_config_dir(&target, subdir)?,
-        None => target.clone(),
-    };
-
-    finalize_imported_dir(&app, &config_dir)
+    match subdir.as_deref() {
+        Some(subdir) => {
+            let config_dir = match resolve_subdir_config_dir(&target.path, subdir) {
+                Ok(dir) => dir,
+                Err(e) => {
+                    cleanup_import_target(&target);
+                    return Err(e);
+                }
+            };
+            let result = finalize_imported_dir(&app, &config_dir)?;
+            Ok(shared_types::ImportConfigResult::Imported {
+                dir: result.dir,
+                changed: result.changed,
+                flake_dir: Some(subdir.to_string()),
+            })
+        }
+        None => finalize_discovered_import(&app, &target),
+    }
 }
 
-/// Extracts a local `.zip` archive into a fresh config directory.
+/// Extracts a local `.zip` archive into a fresh config directory. The config
+/// directory points at the discovered flake location inside the extraction.
 pub async fn config_import_zip(
     app: AppHandle,
     zip_path: String,
     dir_name: Option<String>,
-) -> Result<shared_types::SetDirResult, String> {
+) -> Result<shared_types::ImportConfigResult, String> {
     let zip =
         utils::normalize_path_input(&zip_path).map_err(|e| capture_err("config_import_zip", e))?;
     if !zip.is_file() {
@@ -398,13 +521,18 @@ pub async fn config_import_zip(
     }
     let target = prepare_import_target(dir_name)?;
 
-    let target_for_extract = target.clone();
-    tauri::async_runtime::spawn_blocking(move || import::extract_zip(&zip, &target_for_extract))
-        .await
-        .map_err(|e| capture_err("config_import_zip", e))?
-        .map_err(|e| capture_err("config_import_zip", e))?;
+    let target_for_extract = target.path.clone();
+    let extracted = tauri::async_runtime::spawn_blocking(move || {
+        import::extract_zip(&zip, &target_for_extract)
+    })
+    .await
+    .map_err(|e| capture_err("config_import_zip", e))?;
+    if let Err(e) = extracted {
+        cleanup_import_target(&target);
+        return Err(capture_err("config_import_zip", e));
+    }
 
-    finalize_imported_dir(&app, &target)
+    finalize_discovered_import(&app, &target)
 }
 
 #[cfg(test)]
@@ -483,10 +611,64 @@ mod tests {
         let dir = home.join(format!(".nixmac-test-prepare-import-{nonce}"));
         let target = prepare_import_target(Some(dir.to_string_lossy().to_string()))
             .expect("prepare import target");
-        assert_eq!(target, dir);
-        assert!(target.is_dir());
+        assert_eq!(target.path, dir);
+        assert!(target.created);
+        assert!(target.path.is_dir());
 
-        let _ = fs::remove_dir_all(target);
+        let _ = fs::remove_dir_all(target.path);
+    }
+
+    #[test]
+    fn choose_flake_dir_prefers_root_then_single_nested() {
+        let dirs = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+
+        assert_eq!(choose_flake_dir(dirs(&[])), FlakeChoice::NoneFound);
+        assert_eq!(
+            choose_flake_dir(dirs(&[""])),
+            FlakeChoice::Chosen(String::new())
+        );
+        // A root flake wins even when nested candidates exist.
+        assert_eq!(
+            choose_flake_dir(dirs(&["", "nix/os"])),
+            FlakeChoice::Chosen(String::new())
+        );
+        assert_eq!(
+            choose_flake_dir(dirs(&["nix/os"])),
+            FlakeChoice::Chosen("nix/os".to_string())
+        );
+        assert_eq!(
+            choose_flake_dir(dirs(&["a", "b"])),
+            FlakeChoice::Ambiguous(dirs(&["a", "b"]))
+        );
+    }
+
+    #[test]
+    fn cleanup_import_target_empties_and_removes_only_created_dirs() {
+        let created = temp_dir("cleanup-created");
+        fs::create_dir_all(created.join("repo/nested")).expect("create contents");
+        fs::write(created.join("repo/file"), "x").expect("create file");
+        cleanup_import_target(&ImportTarget {
+            path: created.clone(),
+            created: true,
+        });
+        assert!(!created.exists());
+
+        // A pre-existing directory is emptied but kept in place.
+        let preexisting = temp_dir("cleanup-preexisting");
+        fs::create_dir_all(preexisting.join("repo")).expect("create contents");
+        cleanup_import_target(&ImportTarget {
+            path: preexisting.clone(),
+            created: false,
+        });
+        assert!(preexisting.exists());
+        assert!(
+            fs::read_dir(&preexisting)
+                .expect("read dir")
+                .next()
+                .is_none()
+        );
+
+        let _ = fs::remove_dir_all(preexisting);
     }
 
     #[test]

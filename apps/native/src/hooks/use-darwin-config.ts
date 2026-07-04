@@ -1,5 +1,5 @@
 import { uiActions, useUiState } from "@nixmac/state";
-import type { SetDirResult } from "@/ipc/orpc-bindings";
+import type { ImportConfigResult, SetDirResult } from "@/ipc/orpc-bindings";
 import type { StarterTemplateId } from "@/components/widget/onboarding/lib/flake-ref";
 import { tauriAPI } from "@/ipc/api";
 import { client } from "@/lib/orpc";
@@ -11,8 +11,8 @@ interface DarwinConfigActions {
   saveHost: (host: string) => Promise<void>;
   bootstrap: (hostname: string, templateId?: StarterTemplateId) => Promise<void>;
   isBootstrapping: boolean;
-  importGithub: (repoRef: string, dirName?: string) => Promise<SetDirResult>;
-  importZip: (zipPath: string, dirName?: string) => Promise<SetDirResult>;
+  importGithub: (repoRef: string, dirName?: string) => Promise<ImportConfigResult>;
+  importZip: (zipPath: string, dirName?: string) => Promise<ImportConfigResult>;
   pickZip: () => Promise<string | null>;
 }
 
@@ -21,6 +21,19 @@ interface DarwinConfigActions {
 // sync modules mirror the new values (and re-list hosts) into the ViewModel.
 const applyDirResult = async (result: SetDirResult) => {
   if (result.changed) {
+    try {
+      await client.config.setHostAttr({ host: "" });
+    } catch {}
+  }
+};
+
+/**
+ * Post-import bookkeeping shared by every import surface (including the
+ * GitHub picker, which imports via `client.github.import`): a config dir
+ * change invalidates the previously selected host.
+ */
+export const applyImportResult = async (result: ImportConfigResult) => {
+  if (result.status === "imported" && result.changed) {
     try {
       await client.config.setHostAttr({ host: "" });
     } catch {}
@@ -51,7 +64,7 @@ const importGithub = async (repoRef: string, dirName?: string) => {
     repoRef,
     dirName: dirName ?? null,
   });
-  await applyDirResult(result);
+  await applyImportResult(result);
   return result;
 };
 
@@ -60,7 +73,7 @@ const importZip = async (zipPath: string, dirName?: string) => {
     zipPath,
     dirName: dirName ?? null,
   });
-  await applyDirResult(result);
+  await applyImportResult(result);
   return result;
 };
 

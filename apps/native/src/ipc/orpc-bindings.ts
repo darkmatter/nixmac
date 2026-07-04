@@ -1200,6 +1200,26 @@ lastChecked: number }
 /**
  * Result of a successful settings import.
  */
+/**
+ * Result of importing a configuration (GitHub clone or zip extraction).
+ * Serialized as a tagged union on `status` so the frontend can narrow on it.
+ */
+export type ImportConfigResult = { status: "imported";
+/**
+ * Selected absolute config directory: the import root, or the
+ * flake's subdirectory inside it.
+ */
+dir: string;
+/**
+ * True when the selected directory differs from the previous one.
+ */
+changed: boolean;
+/**
+ * Subdirectory (relative to the import root) the flake was found
+ * in, when not the root itself.
+ */
+flakeDir: string | null }
+
 export type ImportResult = { path: string; keysImported: number }
 
 /**
@@ -1771,8 +1791,8 @@ export type Procedures = {
   config: {
     get: Client<Record<never, never>, void, Config, Error>
     getThisHostname: Client<Record<never, never>, void, string, Error>
-    importGithub: Client<Record<never, never>, ConfigImportGithubInput, SetDirResult, Error>
-    importZip: Client<Record<never, never>, ConfigImportZipInput, SetDirResult, Error>
+    importGithub: Client<Record<never, never>, ConfigImportGithubInput, ImportConfigResult, Error>
+    importZip: Client<Record<never, never>, ConfigImportZipInput, ImportConfigResult, Error>
     pickDir: Client<Record<never, never>, void, SetDirResult | null, Error>
     pickZip: Client<Record<never, never>, void, string | null, Error>
     prepareNewDir: Client<Record<never, never>, ConfigSetDirInput, SetDirResult, Error>
@@ -1846,7 +1866,7 @@ export type Procedures = {
     bootstrapStatus: Client<Record<never, never>, GithubBootstrapStatusInput, GithubBootstrapStatus, Error>
     connectStart: Client<Record<never, never>, void, GithubConnectStart, Error>
     disconnect: Client<Record<never, never>, void, void, Error>
-    import: Client<Record<never, never>, GithubImportInput, SetDirResult, Error>
+    import: Client<Record<never, never>, GithubImportInput, ImportConfigResult, Error>
     listRepos: Client<Record<never, never>, void, GithubRepo[], Error>
     status: Client<Record<never, never>, void, GithubStatus, Error>
   }

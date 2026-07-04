@@ -9,10 +9,15 @@ import { viewModelActions } from "@nixmac/state";
 // Mocks
 // ---------------------------------------------------------------------------
 
-type SetDirResult = { dir: string; changed: boolean };
+type ImportConfigResult = {
+  status: "imported";
+  dir: string;
+  changed: boolean;
+  flakeDir: string | null;
+};
 
-const mockImportGithub = vi.fn<(ref: string, dir?: string) => Promise<SetDirResult>>();
-const mockImportZip = vi.fn<(zip: string, dir?: string) => Promise<SetDirResult>>();
+const mockImportGithub = vi.fn<(ref: string, dir?: string) => Promise<ImportConfigResult>>();
+const mockImportZip = vi.fn<(zip: string, dir?: string) => Promise<ImportConfigResult>>();
 const mockPickZip = vi.fn<() => Promise<string | null>>();
 const mockSetHostAttr = vi.fn<(h: string) => Promise<void>>();
 
@@ -36,12 +41,16 @@ function resetMocks() {
   mockSetHostAttr.mockReset();
 
   mockImportGithub.mockImplementation(async (_ref, dir) => ({
+    status: "imported",
     dir: `/home/user/${dir ?? ".darwin"}`,
     changed: true,
+    flakeDir: null,
   }));
   mockImportZip.mockImplementation(async (_zip, dir) => ({
+    status: "imported",
     dir: `/home/user/${dir ?? ".darwin"}`,
     changed: true,
+    flakeDir: null,
   }));
   mockPickZip.mockResolvedValue(null);
   mockSetHostAttr.mockResolvedValue();

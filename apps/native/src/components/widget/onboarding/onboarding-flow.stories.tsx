@@ -285,6 +285,14 @@ function installBackend(startAt: string) {
     return { dir, changed: true };
   };
 
+  // Import routes return the tagged ImportConfigResult instead of a plain
+  // SetDirResult.
+  const importedConfig = (dir: string) => ({
+    status: "imported" as const,
+    ...setConfigWithHosts(dir),
+    flakeDir: null,
+  });
+
   // permissions
   patch(tauriAPI.permissions, "refresh", async () => {
     syncVM();
@@ -352,10 +360,10 @@ function installBackend(startAt: string) {
     syncVM();
     return { dir, changed: true };
   });
-  patch(tauriAPI.config, "importGithub", async () => setConfigWithHosts("/Users/demo/.darwin"));
-  patchOrpc("config.importGithub", async () => setConfigWithHosts("/Users/demo/.darwin"));
-  patch(tauriAPI.config, "importZip", async () => setConfigWithHosts("/Users/demo/.darwin"));
-  patchOrpc("config.importZip", async () => setConfigWithHosts("/Users/demo/.darwin"));
+  patch(tauriAPI.config, "importGithub", async () => importedConfig("/Users/demo/.darwin"));
+  patchOrpc("config.importGithub", async () => importedConfig("/Users/demo/.darwin"));
+  patch(tauriAPI.config, "importZip", async () => importedConfig("/Users/demo/.darwin"));
+  patchOrpc("config.importZip", async () => importedConfig("/Users/demo/.darwin"));
   patch(tauriAPI.config, "pickZip", async () => "/Users/demo/Downloads/nix-darwin.zip");
   patchOrpc("config.pickZip", async () => "/Users/demo/Downloads/nix-darwin.zip");
   patch(tauriAPI.config, "setHostAttr", async (host: string) => {
@@ -422,8 +430,8 @@ function installBackend(startAt: string) {
   }));
   patch(tauriAPI.github, "listRepos", async () => MOCK_GITHUB_REPOS);
   patchOrpc("github.listRepos", async () => MOCK_GITHUB_REPOS);
-  patch(tauriAPI.github, "import", async () => setConfigWithHosts("/Users/demo/.darwin"));
-  patchOrpc("github.import", async () => setConfigWithHosts("/Users/demo/.darwin"));
+  patch(tauriAPI.github, "import", async () => importedConfig("/Users/demo/.darwin"));
+  patchOrpc("github.import", async () => importedConfig("/Users/demo/.darwin"));
   patch(tauriAPI.github, "disconnect", async () => {
     state.githubConnected = false;
   });
