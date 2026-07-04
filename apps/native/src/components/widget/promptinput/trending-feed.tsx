@@ -5,6 +5,7 @@ import {
   type TrendingItem,
   type TrendingKind,
 } from "@/components/widget/promptinput/trending-feed-data";
+import { getTelemetry } from "@/lib/telemetry/instance";
 import { cn } from "@/lib/utils";
 import {
   ArrowUpRight,
@@ -163,7 +164,13 @@ export function TrendingFeed({
               >
                 <button
                   type="button"
-                  onClick={() => onSelect(item.prompt)}
+                  onClick={() => {
+                    getTelemetry().captureEvent({
+                      name: "prompt_suggestion_used",
+                      props: { surface: "trending", id: key },
+                    });
+                    onSelect(item.prompt);
+                  }}
                   className="flex min-w-0 flex-1 items-center gap-3 py-2.5 text-left"
                 >
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-secondary text-muted-foreground">
@@ -227,6 +234,10 @@ export function TrendingFeed({
                           type="button"
                           role="menuitem"
                           onClick={() => {
+                            getTelemetry().captureEvent({
+                              name: "prompt_suggestion_used",
+                              props: { surface: "trending", id: key },
+                            });
                             onSelect(item.prompt);
                             setOpenMenu(null);
                           }}

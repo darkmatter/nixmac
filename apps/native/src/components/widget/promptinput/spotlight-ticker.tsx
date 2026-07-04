@@ -6,6 +6,7 @@ import {
   type StarterPrompt,
   type StarterPromptArchetype,
 } from "@/components/widget/promptinput/starter-prompts";
+import { getTelemetry } from "@/lib/telemetry/instance";
 import { cn } from "@/lib/utils";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
@@ -37,7 +38,13 @@ export function SpotlightTicker({ onSelect }: { onSelect: (prompt: string) => vo
         <button
           key={archetype.id}
           type="button"
-          onClick={() => onSelect(example.prompt)}
+          onClick={() => {
+            getTelemetry().captureEvent({
+              name: "prompt_suggestion_used",
+              props: { surface: "spotlight", id: example.id },
+            });
+            onSelect(example.prompt);
+          }}
           className="group flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent"
         >
           <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-background">

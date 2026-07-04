@@ -10,6 +10,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { getTelemetry } from "@/lib/telemetry/instance";
 import { cn } from "@/lib/utils";
 import { uiActions, useUiState, useViewModel } from "@nixmac/state";
 import { ClockIcon } from "lucide-react";
@@ -30,6 +31,11 @@ export function PromptHistoryBadge() {
   }
 
   const handleSelect = (prompt: string) => {
+    // Surface only — history prompts are user-authored text.
+    getTelemetry().captureEvent({
+      name: "prompt_suggestion_used",
+      props: { surface: "history" },
+    });
     uiActions.setEvolvePrompt(prompt);
     setOpen(false);
     setSearchValue("");

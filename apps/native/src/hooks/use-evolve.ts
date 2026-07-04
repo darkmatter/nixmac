@@ -1,5 +1,5 @@
 import { EVOLUTION_CANCELLED_MSG } from "@/lib/constants";
-import { uiActions, useUiState } from "@nixmac/state";
+import { uiActions, useUiState, viewModelActions } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import { client } from "@/lib/orpc";
@@ -53,7 +53,15 @@ const handleEvolve = async () => {
   // Track evolution start. The evolve event stream itself is folded into
   // the ViewModel by `viewmodel/evolution.ts` (and reset on the run's
   // `start` event), so no listener is needed here.
-  getTelemetry().captureEvent({ name: "evolve_started" });
+  const prefs = viewModelActions.getState().preferences;
+  getTelemetry().captureEvent({
+    name: "evolve_started",
+    props: {
+      trigger: "prompt",
+      provider: prefs?.evolveProvider ?? "default",
+      has_custom_model: Boolean(prefs?.evolveModel),
+    },
+  });
 
   try {
     // Run the unified evolution workflow. The backend updates the
@@ -71,6 +79,7 @@ const handleEvolve = async () => {
 
     if (isCancelled) {
       uiActions.appendLog("✗ Evolution cancelled\n");
+      getTelemetry().captureEvent({ name: "evolve_cancelled", props: { trigger: "prompt" } });
     } else {
       console.error("[useEvolve] Evolution failed:", {
         error: e,

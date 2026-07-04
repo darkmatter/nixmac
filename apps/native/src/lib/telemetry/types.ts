@@ -10,7 +10,11 @@ export type TelemetryEvent =
   | { name: "app_ready"; props?: { boot_ms?: number } }
   | {
       name: "evolve_started";
-      props?: { provider: string; has_custom_model: boolean };
+      props: {
+        trigger: "prompt" | "fix_build_error";
+        provider: string;
+        has_custom_model: boolean;
+      };
     }
   | {
       name: "evolve_completed";
@@ -19,6 +23,18 @@ export type TelemetryEvent =
   | {
       name: "evolve_failed";
       props?: { stage: "build" | "agent" | "apply" };
+    }
+  | { name: "evolve_cancelled"; props: { trigger: "prompt" | "fix_build_error" } }
+  | {
+      /**
+       * A curated suggestion seeded the evolve prompt. `id` is the stable
+       * curated identifier only — never user-authored prompt text.
+       */
+      name: "prompt_suggestion_used";
+      props: {
+        surface: "chips" | "spotlight" | "trending" | "mac_recommendation" | "history";
+        id?: string;
+      };
     }
   | { name: "rollback_performed" }
   | { name: "settings_changed"; props: { setting: string } }
@@ -43,7 +59,15 @@ export type TelemetryEvent =
       props: { count: number };
     }
   | { name: "history_restored" }
-  | { name: "feedback_submitted"; props: { type: string } };
+  | { name: "feedback_submitted"; props: { type: string } }
+  | {
+      name: "subscription_checkout_started";
+      props: { product: string };
+    }
+  | { name: "git_committed" }
+  | { name: "update_available"; props: { version: string } }
+  | { name: "update_installed"; props: { version: string } }
+  | { name: "update_install_failed"; props: { version: string } };
 
 export interface TelemetryProvider {
   /** Record a product event (goes to PostHog + OTEL span). */

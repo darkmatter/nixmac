@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { tauriAPI } from "@/ipc/api";
 import type { UpdateInfo } from "@/ipc/types";
 import { useViewModel } from "@nixmac/state";
+import { getTelemetry } from "@/lib/telemetry/instance";
 
 interface UpdateState {
   /** Whether we're currently checking for updates */
@@ -53,6 +54,7 @@ export function useUpdater() {
           version: update.version,
           notes: update.notes ?? null,
         }));
+        getTelemetry().captureEvent({ name: "update_available", props: { version: update.version } });
       } else {
         setState((s) => ({ ...s, checking: false }));
       }
@@ -96,6 +98,7 @@ export function useUpdater() {
       // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.updater.installUpdate();
       setState((s) => ({ ...s, progress: 100 }));
+      getTelemetry().captureEvent({ name: "update_installed", props: { version: update.version } });
 
       // On macOS the updater swaps the .app bundle on disk; using the
       // custom relaunch_after_update command opens the newly-installed
@@ -116,6 +119,10 @@ export function useUpdater() {
       }
 
       console.error("[updater] install failed:", err);
+      getTelemetry().captureEvent({
+        name: "update_install_failed",
+        props: { version: update.version },
+      });
       setState((s) => ({
         ...s,
         downloading: false,

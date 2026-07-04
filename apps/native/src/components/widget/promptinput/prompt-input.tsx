@@ -24,6 +24,7 @@ import { SystemDefaultsCTA } from "@/components/widget/promptinput/system-defaul
 import { TrendingFeed } from "@/components/widget/promptinput/trending-feed";
 import { useTypewriterPlaceholder } from "@/components/widget/promptinput/use-typewriter-placeholder";
 import { useEvolve } from "@/hooks/use-evolve";
+import { getTelemetry } from "@/lib/telemetry/instance";
 import { tauriAPI } from "@/ipc/api";
 import { getProviderConfigInvalidReason } from "@/lib/providers/ai-provider-validation";
 import { uiActions, useUiState, useViewModel } from "@nixmac/state";
@@ -241,7 +242,13 @@ export function PromptInput() {
               <BadgeButton
                 key={suggestion.id}
                 icon={STARTER_PROMPT_ICON_COMPONENTS[suggestion.icon]}
-                onClick={() => seedPrompt(suggestion.prompt)}
+                onClick={() => {
+                  getTelemetry().captureEvent({
+                    name: "prompt_suggestion_used",
+                    props: { surface: "chips", id: suggestion.id },
+                  });
+                  seedPrompt(suggestion.prompt);
+                }}
               >
                 {suggestion.label}
               </BadgeButton>

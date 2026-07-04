@@ -13,7 +13,8 @@ export default function App() {
     markBootStage("app-effect");
     bootBreadcrumb("App mounted");
     window.dispatchEvent(new Event("nixmac:app-mounted"));
-    telemetry.captureEvent({ name: "app_ready" });
+    // performance.now() is time since the webview's timeOrigin — page load.
+    telemetry.captureEvent({ name: "app_ready", props: { boot_ms: Math.round(performance.now()) } });
     clearBootStage();
   }, []);
 

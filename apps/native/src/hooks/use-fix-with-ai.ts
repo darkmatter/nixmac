@@ -47,7 +47,15 @@ export function useFixWithAi() {
     uiActions.setRebuildPanelDismissed(true);
     uiActions.appendLog("\n> Fixing build error with AI…\n");
 
-    getTelemetry().captureEvent({ name: "evolve_started" });
+    const prefs = viewModelActions.getState().preferences;
+    getTelemetry().captureEvent({
+      name: "evolve_started",
+      props: {
+        trigger: "fix_build_error",
+        provider: prefs?.evolveProvider ?? "default",
+        has_custom_model: Boolean(prefs?.evolveModel),
+      },
+    });
 
     try {
       // Fire-and-forget: the backend updates the git/evolve/change-map cells and
@@ -60,6 +68,10 @@ export function useFixWithAi() {
 
       if (isCancelled) {
         uiActions.appendLog("✗ Fix cancelled\n");
+        getTelemetry().captureEvent({
+          name: "evolve_cancelled",
+          props: { trigger: "fix_build_error" },
+        });
       } else {
         console.error("[useFixWithAi] Fix failed:", { error: e, message: msg });
         uiActions.setError(msg);
