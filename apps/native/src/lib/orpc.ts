@@ -171,31 +171,31 @@ import { QueryClient } from "@tanstack/react-query";
 
 export type {
   AccountBilling,
-  AdoptManualChangesResult,
+  
   BillingProductInfo,
-  BillingSubscription,
-  BillingUsage,
-  BuildCheckResult,
-  CheckoutUrl,
-  CommitResult,
-  Config,
-  EvolutionState,
-  EvolveCancelResult,
-  EvolveState,
-  EvolveStep,
-  FileDiffContents,
-  GithubBootstrapState,
-  GithubBootstrapStatus,
-  GithubConnectStart,
-  GithubRepo,
-  GithubStatus,
-  HistoryItem,
-  OkResult,
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   PreviewIndicatorState,
-  RebuildStatus,
-  RollbackResult,
-  SemanticChangeMap,
-  SetDirResult
+  
+  
+  
+  
 } from "@/ipc/orpc-bindings";
 
 /** Routes RPC calls through Tauri IPC (`plugin:orpc|handle_rpc`), not HTTP. */

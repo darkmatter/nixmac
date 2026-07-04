@@ -34,7 +34,7 @@ export interface RebuildNotice {
 
 export type RebuildContext = "rollback" | "apply";
 
-export interface RebuildState {
+interface RebuildState {
   isRunning: boolean;
   context: RebuildContext;
   lines: RebuildLine[];
@@ -46,7 +46,7 @@ export interface RebuildState {
   systemUntouched?: boolean;
 }
 
-export const initialRebuildState: RebuildState = {
+const initialRebuildState: RebuildState = {
   isRunning: false,
   context: "apply",
   lines: [],

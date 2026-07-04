@@ -15,7 +15,7 @@ interface ApiKeyProviderLike {
 	};
 }
 
-export interface KeyValidation {
+interface KeyValidation {
 	valid: boolean;
 	hint: string;
 }

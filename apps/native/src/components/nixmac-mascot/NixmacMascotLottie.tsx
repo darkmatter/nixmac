@@ -11,7 +11,7 @@ import Lottie, { type LottieRefCurrentProps } from "lottie-react";
 import { useEffect, useRef } from "react";
 import animationData from "./nixmac-mascot.json";
 
-export interface NixmacMascotLottieProps {
+interface NixmacMascotLottieProps {
   /** Rendered square size in px. Default 160. */
   size?: number;
   loop?: boolean;
@@ -47,4 +47,3 @@ export function NixmacMascotLottie({
   );
 }
 
-export default NixmacMascotLottie;

@@ -6,12 +6,7 @@ import type {
   FeedbackUsageStats,
 } from "@/ipc/types";
 
-export type {
-  FeedbackAiProviderModelInfo,
-  FeedbackFlakeInputsSnapshot,
-  FeedbackSystemInfo,
-  FeedbackUsageStats,
-};
+;
 
 /**
  * The high-level categories of feedback the user can submit.

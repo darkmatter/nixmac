@@ -7,7 +7,7 @@ import { ForwardingSpanProcessor } from "./forwarding-processor";
 import { sanitizeProps, sanitizeTelemetryAttributes } from "./sanitize";
 import type { TelemetryEvent, TelemetryProvider } from "./types";
 
-export interface TelemetryConfig {
+interface TelemetryConfig {
   key: string;
   host: string;
   release: string;

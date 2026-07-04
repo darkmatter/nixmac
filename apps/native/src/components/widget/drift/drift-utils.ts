@@ -17,7 +17,7 @@ import type { Change, ChangeType } from "@/ipc/types";
  */
 export type DriftFileRowData = ChangeFileSummary & { stats: DiffLineStats; diffText: string };
 
-export type DriftSummaryCounts = {
+type DriftSummaryCounts = {
   added: number;
   modified: number;
   removed: number;

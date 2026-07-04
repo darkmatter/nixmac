@@ -32,7 +32,7 @@ interface OpenAiCompatibleSetupOptions {
   mockOpenAiCompatible?: { responseFiles?: string[] };
 }
 
-export function createOpenAiCompatibleSetupOptionsForSuite({
+function createOpenAiCompatibleSetupOptionsForSuite({
   initializeConfigRepo = true,
   playbackPreset,
 }: {

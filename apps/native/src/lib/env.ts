@@ -4,7 +4,7 @@ import e2e from "../../env.e2e.json";
 import release from "../../env.release.json";
 
 /** Keys from committed `env.{development,release,e2e}.json` (native JSON module types). */
-export type EnvProfileKey =
+type EnvProfileKey =
 	| keyof typeof development
 	| keyof typeof release
 	| keyof typeof e2e;
@@ -49,9 +49,9 @@ const EnvProfileSchema = z
 	})
 	.passthrough();
 
-export type EnvProfile = z.infer<typeof EnvProfileSchema>;
+type EnvProfile = z.infer<typeof EnvProfileSchema>;
 
-export type SettingsType = {
+type SettingsType = {
 	readonly nixmacEnv: string;
 	readonly nixmacVersion: string;
 	readonly viteServerUrl?: string;
@@ -98,7 +98,7 @@ export const nixmacEnvironment = settings.nixmacEnv;
 export const nixmacVersion = settings.nixmacVersion;
 
 /** Raw merged profile value for ad-hoc reads. */
-export function getProfileValue(
+function getProfileValue(
 	key: ProfileLookupKey,
 ): string | boolean | number | undefined {
 	const value = profile[key as keyof EnvProfile];

@@ -437,7 +437,7 @@ function mockEditorListFiles() {
   ];
 }
 
-export async function invoke(command: string, args?: Record<string, unknown>) {
+async function invoke(command: string, args?: Record<string, unknown>) {
   // The ViewModel hydrates each backend-owned slice on widget mount by invoking
   // its `get_*` command (see src/viewmodel/*). In Storybook there is no Rust
   // backend, so these reads must return the *current store snapshot* — otherwise
@@ -519,14 +519,14 @@ export async function invoke(command: string, args?: Record<string, unknown>) {
   }
 }
 
-export const tauriEvent = {
+const tauriEvent = {
   listen: addListener,
   once: <T>(eventName: string, handler: (event: { payload: T }) => void) =>
     addListener(eventName, handler, true),
   emit,
 };
 
-export const storybookTauriAPI = {
+const storybookTauriAPI = {
   config: {
     get: async () => ({ configDir: "/Users/demo/.darwin", hostAttr: defaultHosts[0] }),
     setDir: async () => baseSetDirResult(),
