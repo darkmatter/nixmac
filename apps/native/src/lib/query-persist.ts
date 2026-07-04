@@ -25,7 +25,7 @@ import { load, type Store } from "@tauri-apps/plugin-store";
 const STORE_FILE = "query-cache.json";
 
 /** Discard persisted cache older than this on restore (also drives `gcTime`). */
-export const QUERY_PERSIST_MAX_AGE = 1000 * 60 * 60 * 24; // 24h
+const QUERY_PERSIST_MAX_AGE = 1000 * 60 * 60 * 24; // 24h
 
 /**
  * Lazily-opened Tauri store. `autoSave` debounces disk writes so the frequent
@@ -80,7 +80,7 @@ const tauriStorage: AsyncStorage<string> = {
  * Whole-cache persister for `PersistQueryClientProvider`. Disabled under the
  * e2e profile so tests start from a clean, deterministic cache.
  */
-export const queryPersister = isE2eProfile
+const queryPersister = isE2eProfile
   ? undefined
   : createAsyncStoragePersister({
       storage: tauriStorage,

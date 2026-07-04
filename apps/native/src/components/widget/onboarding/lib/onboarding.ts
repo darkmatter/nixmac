@@ -49,7 +49,7 @@ export function resolveOnboardingStep(furthestStep: StepId, viewingStep: StepId 
  * fact (backend gates + persisted preferences), except `inferenceDeferred`
  * which is transient session intent ("finish inference while the build runs").
  */
-export interface OnboardingStepInputs {
+interface OnboardingStepInputs {
   /** All required macOS permissions granted. */
   permissionsReady: boolean;
   /** The Nix package manager is detected (or test override). nix-darwin is not

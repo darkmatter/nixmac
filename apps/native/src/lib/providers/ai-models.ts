@@ -1,10 +1,10 @@
 import type { ProviderIconId } from "@/components/widget/controls/provider-icons/provider-icon";
 
-export const NIXMAC_PROVIDER = "nixmac";
-export const DEFAULT_NIXMAC_MODEL = "openai/gpt-4o-mini";
+const NIXMAC_PROVIDER = "nixmac";
+const DEFAULT_NIXMAC_MODEL = "openai/gpt-4o-mini";
 const DEFAULT_OLLAMA_MODEL = "llama3.1";
 
-export type AiModelProviderId =
+type AiModelProviderId =
 	| "nixmac"
 	| "openrouter"
 	| "openai"
@@ -14,9 +14,9 @@ export type AiModelProviderId =
 	| "codex"
 	| "opencode";
 
-export type ApiKeyPrefsField = "openrouterApiKey" | "openaiApiKey";
+type ApiKeyPrefsField = "openrouterApiKey" | "openaiApiKey";
 
-export interface AiModelProvider {
+interface AiModelProvider {
 	id: AiModelProviderId;
 	name: string;
 	icon: ProviderIconId;
@@ -133,14 +133,14 @@ export const BYOK_MODEL_PROVIDERS = AI_MODEL_PROVIDERS.filter(
 	(provider) => provider.setup.kind !== "hosted",
 );
 
-export const DEFAULT_EVOLVE_MODEL: Record<string, string> = Object.fromEntries(
+const DEFAULT_EVOLVE_MODEL: Record<string, string> = Object.fromEntries(
 	AI_MODEL_PROVIDERS.map((provider) => [
 		provider.id,
 		provider.defaultEvolveModel,
 	]),
 );
 
-export const DEFAULT_SUMMARY_MODEL: Record<string, string> = Object.fromEntries(
+const DEFAULT_SUMMARY_MODEL: Record<string, string> = Object.fromEntries(
 	AI_MODEL_PROVIDERS.map((provider) => [
 		provider.id,
 		provider.defaultSummaryModel,

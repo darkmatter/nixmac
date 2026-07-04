@@ -4,7 +4,7 @@ import { useBetterAuthTauri } from "@daveyplate/better-auth-tauri/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
-export const AUTH_DEEP_LINK_SCHEME = "nixmac";
+const AUTH_DEEP_LINK_SCHEME = "nixmac";
 
 export const AUTH_DEEP_LINK_SUCCESS_EVENT = "nixmac:auth-deep-link-success";
 export const AUTH_DEEP_LINK_ERROR_EVENT = "nixmac:auth-deep-link-error";

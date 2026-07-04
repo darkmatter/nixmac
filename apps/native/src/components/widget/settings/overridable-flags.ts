@@ -4,7 +4,7 @@ import {
 } from "@/components/widget/promptinput/prompt-suggestions-variant";
 
 /** One selectable override value for a flag, plus its human-facing label. */
-export type FlagOverrideOption = { value: string; label: string };
+type FlagOverrideOption = { value: string; label: string };
 
 /**
  * A multivariate PostHog feature flag a developer can override locally from the
@@ -16,7 +16,7 @@ export type FlagOverrideOption = { value: string; label: string };
  * variant key in `options`. Boolean flags are intentionally unsupported: a
  * `"false"` string would read back truthy at the call site.
  */
-export type OverridableFlag = {
+type OverridableFlag = {
   /** PostHog flag key; also the key under `featureFlagOverrides`. */
   key: string;
   /** Optional human label; defaults to the raw key when omitted. */

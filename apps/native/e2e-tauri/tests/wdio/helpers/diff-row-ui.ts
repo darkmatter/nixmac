@@ -5,7 +5,7 @@ const DIFF_SECTION_SELECTOR = '[data-testid="diff-section"]';
 const CHEVRON_BUTTON_SELECTOR = "button:has(.lucide-chevron-right)";
 const HUNK_PILL_SELECTOR = 'span[data-slot="badge"]';
 
-export function diffRowSelector(filename: string): string {
+function diffRowSelector(filename: string): string {
   return `[data-testid="diff-row-${filename}"]`;
 }
 
@@ -50,7 +50,7 @@ export async function expandDiffRow(
   return row;
 }
 
-export async function getMonacoScrollTop(filename: string): Promise<number> {
+async function getMonacoScrollTop(filename: string): Promise<number> {
   return (await (browser as any).execute(
     (sel: string) => {
       const linesContent = document

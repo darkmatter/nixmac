@@ -29,7 +29,7 @@ const SVG_BY_PROVIDER: Partial<Record<ProviderIconId, string>> = {
   ollama: ollamaSvg,
 };
 
-export interface ProviderIconProps {
+interface ProviderIconProps {
   provider: ProviderIconId;
   /** Rendered size in px (square). Default 16. */
   size?: number;
@@ -98,4 +98,3 @@ export function ProviderIcon({
   );
 }
 
-export default ProviderIcon;

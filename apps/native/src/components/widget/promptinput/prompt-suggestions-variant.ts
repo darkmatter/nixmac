@@ -13,7 +13,7 @@ import { useFeatureFlag } from "@/lib/telemetry/use-feature-flag";
  */
 export const EVOLVE_PROMPT_SUGGESTIONS_FLAG = "evolve-prompt-suggestions";
 
-export type PromptSuggestionsVariant = "chips" | "spotlight" | "trending";
+type PromptSuggestionsVariant = "chips" | "spotlight" | "trending";
 
 export const PROMPT_SUGGESTIONS_VARIANTS: readonly PromptSuggestionsVariant[] = [
   "chips",
@@ -22,7 +22,7 @@ export const PROMPT_SUGGESTIONS_VARIANTS: readonly PromptSuggestionsVariant[] = 
 ];
 
 /** Control variant used when the flag is unset, loading, or unrecognized. */
-export const DEFAULT_PROMPT_SUGGESTIONS_VARIANT: PromptSuggestionsVariant = "spotlight";
+const DEFAULT_PROMPT_SUGGESTIONS_VARIANT: PromptSuggestionsVariant = "spotlight";
 
 /**
  * Map a raw PostHog flag value to a known variant, falling back to the control

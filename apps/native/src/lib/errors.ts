@@ -3,7 +3,7 @@ import { createDevReporter } from "nostics/reporters/dev";
 
 /// <reference type="vite/client" />
 
-export const DIAGNOSTIC_CODES = {
+const DIAGNOSTIC_CODES = {
   EVOLVE_NO_PROVIDER: "EVOLVE_E001",
 } as const;
 
@@ -152,7 +152,7 @@ function docsBase(code: string): string {
 }
 
 // since this  is a desktop app, we don't need to worry about reducing bundle size
-export const diagnostics = defineDiagnostics({
+const diagnostics = defineDiagnostics({
   docsBase,
   reporters: [createConsoleReporter(), createDevReporter()],
   codes: {

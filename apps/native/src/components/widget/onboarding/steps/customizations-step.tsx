@@ -509,4 +509,4 @@ function GroupCard({
 }
 
 // Exposed for Storybook/fallback wiring.
-export { MOCK_CUSTOMIZATION_GROUPS };
+;
