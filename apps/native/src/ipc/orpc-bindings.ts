@@ -266,6 +266,8 @@ configDir: string;
  */
 hostAttr: string | null }
 
+export type ConfigDiscardImportInput = { dir: string }
+
 /**
  * Result of a managed-edit apply operation (homebrew, system-defaults, etc.).
  */
@@ -306,6 +308,12 @@ ty: FieldType;
  * Default if the store has no value yet.
  */
 default: JsonValue }
+
+export type ConfigFinalizeImportInput = { cloneDir: string;
+/**
+ * Relative flake directory inside `cloneDir`; empty for the root.
+ */
+flakeDir: string }
 
 export type ConfigImportGithubInput = { repoRef: string; dirName: string | null }
 
@@ -1218,7 +1226,16 @@ changed: boolean;
  * Subdirectory (relative to the import root) the flake was found
  * in, when not the root itself.
  */
-flakeDir: string | null }
+flakeDir: string | null } | { status: "needsFlakeDirChoice";
+/**
+ * Absolute directory holding the imported tree.
+ */
+cloneDir: string;
+/**
+ * Directories containing a flake.nix, relative to `cloneDir`,
+ * shallowest first.
+ */
+flakeDirs: string[] }
 
 export type ImportResult = { path: string; keysImported: number }
 
@@ -1789,6 +1806,8 @@ export type Procedures = {
     listModels: Client<Record<never, never>, ListModelsInput, string[], Error>
   }
   config: {
+    discardImport: Client<Record<never, never>, ConfigDiscardImportInput, OkResult, Error>
+    finalizeImport: Client<Record<never, never>, ConfigFinalizeImportInput, ImportConfigResult, Error>
     get: Client<Record<never, never>, void, Config, Error>
     getThisHostname: Client<Record<never, never>, void, string, Error>
     importGithub: Client<Record<never, never>, ConfigImportGithubInput, ImportConfigResult, Error>

@@ -33,6 +33,20 @@ struct ConfigImportZipInput {
     dir_name: Option<String>,
 }
 
+#[derive(Debug, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+struct ConfigFinalizeImportInput {
+    clone_dir: String,
+    /// Relative flake directory inside `clone_dir`; empty for the root.
+    flake_dir: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+struct ConfigDiscardImportInput {
+    dir: String,
+}
+
 async fn get(ctx: OrpcCtx, _input: ()) -> Result<crate::shared_types::Config, ORPCError> {
     config::config_get(ctx.app)
         .await
@@ -96,6 +110,24 @@ async fn import_zip(
         .map_err(|error| internal_err("config.importZip", error))
 }
 
+async fn finalize_import(
+    ctx: OrpcCtx,
+    input: ConfigFinalizeImportInput,
+) -> Result<ImportConfigResult, ORPCError> {
+    config::config_finalize_import(ctx.app, input.clone_dir, input.flake_dir)
+        .await
+        .map_err(|error| internal_err("config.finalizeImport", error))
+}
+
+async fn discard_import(
+    ctx: OrpcCtx,
+    input: ConfigDiscardImportInput,
+) -> Result<OkResult, ORPCError> {
+    config::config_discard_import(ctx.app, input.dir)
+        .await
+        .map_err(|error| internal_err("config.discardImport", error))
+}
+
 pub fn routes() -> Router<OrpcCtx> {
     router! {
         "get" => os::<OrpcCtx>()
@@ -130,5 +162,13 @@ pub fn routes() -> Router<OrpcCtx> {
             .input(orpc_specta::specta::<ConfigImportZipInput>())
             .output(orpc_specta::specta::<ImportConfigResult>())
             .handler(import_zip),
+        "finalizeImport" => os::<OrpcCtx>()
+            .input(orpc_specta::specta::<ConfigFinalizeImportInput>())
+            .output(orpc_specta::specta::<ImportConfigResult>())
+            .handler(finalize_import),
+        "discardImport" => os::<OrpcCtx>()
+            .input(orpc_specta::specta::<ConfigDiscardImportInput>())
+            .output(orpc_specta::specta::<OkResult>())
+            .handler(discard_import),
     }
 }

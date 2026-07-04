@@ -3,10 +3,14 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FlakeDirChooser } from "@/components/widget/controls/flake-dir-chooser";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
+import { useImportConfig } from "@/hooks/use-import-config";
 import { GitHubLogoIcon } from "@radix-ui/react-icons";
 import { FileArchive, FolderInput } from "lucide-react";
 import { useState } from "react";
+
+import type { ImportConfigResult } from "@/ipc/orpc-bindings";
 
 type ImportSource = "github" | "zip";
 
@@ -28,13 +32,13 @@ export function RepoImport({ onImported }: RepoImportProps) {
   const [error, setError] = useState<string | null>(null);
 
   const targetName = dirName.trim() || DEFAULT_DIR;
+  const importConfig = useImportConfig(onImported);
 
-  const runImport = async (fn: () => Promise<unknown>) => {
+  const runImport = async (fn: () => Promise<ImportConfigResult>) => {
     setError(null);
     setIsImporting(true);
     try {
-      await fn();
-      onImported?.();
+      importConfig.handleResult(await fn());
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -63,6 +67,17 @@ export function RepoImport({ onImported }: RepoImportProps) {
     }
     void runImport(() => importZip(zipPath, targetName));
   };
+
+  if (importConfig.pending) {
+    return (
+      <FlakeDirChooser
+        flakeDirs={importConfig.pending.flakeDirs}
+        onChoose={importConfig.choose}
+        onCancel={importConfig.cancel}
+        busy={importConfig.resolving}
+      />
+    );
+  }
 
   return (
     <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">

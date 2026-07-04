@@ -449,15 +449,10 @@ fn finalize_discovered_import(
                 discover::FLAKE_SEARCH_DEPTH
             ))
         }
-        FlakeChoice::Ambiguous(dirs) => {
-            // TODO: keep the clone and let the UI offer a chooser instead of
-            // asking the user to re-import with ?dir=.
-            cleanup_import_target(target);
-            Err(format!(
-                "Multiple flake.nix candidates found: {}. Re-import with ?dir=<subdirectory> to pick one.",
-                dirs.join(", ")
-            ))
-        }
+        FlakeChoice::Ambiguous(dirs) => Ok(shared_types::ImportConfigResult::NeedsFlakeDirChoice {
+            clone_dir: target.path.to_string_lossy().to_string(),
+            flake_dirs: dirs,
+        }),
     }
 }
 
@@ -533,6 +528,77 @@ pub async fn config_import_zip(
     }
 
     finalize_discovered_import(&app, &target)
+}
+
+/// Finalizes a pending import (`NeedsFlakeDirChoice`) by selecting one of the
+/// discovered flake directories inside the imported tree. `flake_dir` is
+/// relative to `clone_dir`; empty selects the root. Always reinitializes
+/// state for the new directory, unlike `config_set_dir`, which skips that
+/// when the path string is unchanged.
+pub async fn config_finalize_import(
+    app: AppHandle,
+    clone_dir: String,
+    flake_dir: String,
+) -> Result<shared_types::ImportConfigResult, String> {
+    let clone_dir = utils::normalize_path_input(&clone_dir)
+        .map_err(|e| capture_err("config_finalize_import", e))?;
+    if !clone_dir.is_dir() {
+        return Err(format!(
+            "Imported directory does not exist: {}",
+            clone_dir.display()
+        ));
+    }
+
+    let config_dir = if flake_dir.is_empty() {
+        if !clone_dir.join("flake.nix").is_file() {
+            return Err(format!("No flake.nix found in {}", clone_dir.display()));
+        }
+        clone_dir.clone()
+    } else {
+        import::validate_subdir(&flake_dir).map_err(|e| e.to_string())?;
+        resolve_subdir_config_dir(&clone_dir, &flake_dir)?
+    };
+
+    let result = finalize_imported_dir(&app, &config_dir)?;
+    Ok(shared_types::ImportConfigResult::Imported {
+        dir: result.dir,
+        changed: result.changed,
+        flake_dir: (!flake_dir.is_empty()).then_some(flake_dir),
+    })
+}
+
+/// Discards a pending import (`NeedsFlakeDirChoice` the user cancelled),
+/// emptying the imported tree so the target can be reused. Refuses to touch
+/// the active config directory or anything containing it.
+pub async fn config_discard_import(
+    app: AppHandle,
+    dir: String,
+) -> Result<shared_types::OkResult, String> {
+    let dir =
+        utils::normalize_path_input(&dir).map_err(|e| capture_err("config_discard_import", e))?;
+    // Same location rules as import targets: a home child or the canonical
+    // config dir. Anything else was never created by an import.
+    validate_new_dir_location(&dir)?;
+
+    if let Ok(active) = store::get_config_dir(&app) {
+        let active = PathBuf::from(active);
+        if active.starts_with(&dir) {
+            return Err(format!(
+                "Refusing to discard {}: it contains the active config directory",
+                dir.display()
+            ));
+        }
+    }
+
+    if dir.is_dir() {
+        // The canonical /etc/nix-darwin must stay in place (privileged
+        // creation); anything else an import created can go entirely.
+        cleanup_import_target(&ImportTarget {
+            path: dir.clone(),
+            created: !canonical_config::is_canonical_config_path(&dir),
+        });
+    }
+    Ok(shared_types::OkResult::yes())
 }
 
 #[cfg(test)]

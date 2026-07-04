@@ -40,6 +40,18 @@ pub enum ImportConfigResult {
         /// in, when not the root itself.
         flake_dir: Option<String>,
     },
+    /// Several nested flake candidates were found and no root flake broke the
+    /// tie. Nothing was finalized: the imported tree is kept at `clone_dir`
+    /// for the user to choose from (`config.finalizeImport`) or discard
+    /// (`config.discardImport`).
+    #[serde(rename_all = "camelCase")]
+    NeedsFlakeDirChoice {
+        /// Absolute directory holding the imported tree.
+        clone_dir: String,
+        /// Directories containing a flake.nix, relative to `clone_dir`,
+        /// shallowest first.
+        flake_dirs: Vec<String>,
+    },
 }
 
 /// Result returned from a rollback erase operation. Git/evolve state mirrors

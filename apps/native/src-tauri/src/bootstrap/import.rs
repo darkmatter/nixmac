@@ -236,7 +236,7 @@ fn parse_query_params(input: &str) -> Result<(&str, Option<String>, Option<Strin
 
 /// Validates that a subdirectory used by git import urls is a relative path without empty components or
 /// `.`/`..` segments, so joining it onto the clone directory can never escape it.
-fn validate_subdir(path: &str) -> Result<()> {
+pub(crate) fn validate_subdir(path: &str) -> Result<()> {
     if path.starts_with('/') {
         bail!("Subdirectory must be relative");
     }
