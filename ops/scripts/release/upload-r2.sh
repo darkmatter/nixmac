@@ -59,7 +59,6 @@ echo "Found dmg: $DMG_FILE"
 
 SIGNATURE=$(cat "$SIG_FILE" | jq -Rs .)
 
-DMG_SIGNATURE=$(cat "$DMG_FILE" | jq -Rs .)
 
 aws s3 cp "$TAR_GZ" "s3://nixmac-releases/${ARTIFACT_PREFIX}/nixmac.app.tar.gz" \
 	--endpoint-url "$R2_ENDPOINT" \
@@ -91,7 +90,6 @@ cat >/tmp/latest.json <<EOF
     "darwin-aarch64": {
       "signature": ${SIGNATURE},
       "url": "${BUNDLE_URL}",
-      "dmg_signature": ${DMG_SIGNATURE},
       "dmg_url": "${DMG_URL}"
     }
   }
