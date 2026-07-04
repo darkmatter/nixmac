@@ -335,7 +335,29 @@ pub async fn config_pick_zip(app: AppHandle) -> Result<Option<String>, String> {
     Ok(result.map(|path| path.to_string()))
 }
 
-/// Clones a GitHub reference (e.g. `owner/repo`) into a fresh config directory.
+/// Resolves the config directory inside a fresh clone: `target` itself, or a
+/// requested subdirectory, which must exist and contain a `flake.nix`.
+fn resolve_subdir_config_dir(target: &Path, subdir: &str) -> Result<PathBuf, String> {
+    let dir = target.join(subdir);
+    if !dir.is_dir() {
+        return Err(format!(
+            "Subdirectory '{}' does not exist in the imported repository",
+            subdir
+        ));
+    }
+    if !dir.join("flake.nix").is_file() {
+        return Err(format!(
+            "No flake.nix found in subdirectory '{}' of the imported repository",
+            subdir
+        ));
+    }
+    Ok(dir)
+}
+
+/// Clones a GitHub reference (e.g. `owner/repo`) into a fresh config
+/// directory. The full repository is always cloned; a `?dir=` subdirectory
+/// selects the config directory *inside* the clone, so the import keeps its
+/// git history and origin.
 pub async fn config_import_github(
     app: AppHandle,
     repo_ref: String,
@@ -343,6 +365,7 @@ pub async fn config_import_github(
 ) -> Result<shared_types::SetDirResult, String> {
     let spec = import::parse_repo_ref(&repo_ref).map_err(|e| e.to_string())?;
     let target = prepare_import_target(dir_name)?;
+    let subdir = spec.subdir.clone();
 
     // Clone on a blocking thread; libgit2 network I/O is synchronous.
     let target_for_clone = target.clone();
@@ -354,7 +377,12 @@ pub async fn config_import_github(
     .map_err(|e| capture_err("config_import_github", e))?
     .map_err(|e| capture_err("config_import_github", e))?;
 
-    finalize_imported_dir(&app, &target)
+    let config_dir = match subdir.as_deref() {
+        Some(subdir) => resolve_subdir_config_dir(&target, subdir)?,
+        None => target.clone(),
+    };
+
+    finalize_imported_dir(&app, &config_dir)
 }
 
 /// Extracts a local `.zip` archive into a fresh config directory.
@@ -466,6 +494,31 @@ mod tests {
         let dir = PathBuf::from("/tmp/nixmac-test");
         let result = prepare_import_target(Some(dir.to_string_lossy().to_string()));
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn resolve_subdir_config_dir_requires_existing_dir_with_flake() {
+        let dir = temp_dir("resolve-subdir");
+        fs::create_dir_all(dir.join("nix/os")).expect("create subdir");
+        fs::write(dir.join("nix/os/flake.nix"), "{ }").expect("create flake");
+        fs::create_dir_all(dir.join("empty")).expect("create empty subdir");
+
+        assert_eq!(
+            resolve_subdir_config_dir(&dir, "nix/os").expect("resolve"),
+            dir.join("nix/os")
+        );
+        assert!(
+            resolve_subdir_config_dir(&dir, "empty")
+                .unwrap_err()
+                .contains("No flake.nix")
+        );
+        assert!(
+            resolve_subdir_config_dir(&dir, "missing")
+                .unwrap_err()
+                .contains("does not exist")
+        );
+
+        let _ = fs::remove_dir_all(dir);
     }
 
     #[test]
