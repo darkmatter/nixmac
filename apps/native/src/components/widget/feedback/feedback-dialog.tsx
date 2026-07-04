@@ -490,7 +490,7 @@ export function FeedbackDialog() {
           <DialogDescription>{dialogDescription}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 flex-1 overflow-y-auto pr-2">
+        <div className="space-y-6 flex-1 overflow-y-auto pl-1 py-1 pr-3">
           {isPreviewingReport ? (
             <div className="space-y-3">
               <Label htmlFor="feedback-preview" className="text-foreground">
@@ -629,7 +629,7 @@ export function FeedbackDialog() {
               {/* Share with team */}
               <div className="space-y-2">
                 <Label className="text-foreground">SHARE WITH THE TEAM</Label>
-                <div className="space-y-2 max-h-[28vh] overflow-y-auto pr-2">
+                <div className="space-y-2 max-h-[28vh] overflow-y-auto pl-1 py-1 pr-2">
                   {shouldShowCurrentAppState(feedbackType, step, mainWindowError) && (
                     <div className="flex items-center gap-2">
                       <Checkbox
