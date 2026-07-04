@@ -9,54 +9,68 @@ set -euo pipefail
 #   GITHUB_EVENT_NAME  - push, pull_request, workflow_dispatch
 #
 # Outputs (via GITHUB_OUTPUT if set):
-#   mode     - "tag" | "release" | "develop" | "branch"
+#   mode     - "tag" | "develop" | "branch"
 #   version  - computed version string (empty for branch mode)
 #   tag      - computed tag string (empty for branch mode)
+#
+# Channel mapping:
+#   - tag push (refs/tags/v*) → stable channel (manual release)
+#   - push to main            → develop channel (continuous builds)
+#   - PR / other              → build-only
 
 MODE="branch"
 VERSION=""
 TAG=""
 
 # Match only stable vMAJ.MIN.PAT tags when deriving the next bump. Disposable
-# prerelease tags like `v0.22.0-test.1` would otherwise be returned by
-# `git describe --tags`, and parsing `0-test.1` as PAT breaks the arithmetic
+# prerelease tags like `v0.22.0-test.1` would otherwise poison the arithmetic
 # bump below.
 STABLE_TAG_MATCH='v[0-9]*.[0-9]*.[0-9]*'
-STABLE_TAG_EXCLUDE='*-*'
+STABLE_TAG_REGEX='^v[0-9]+\.[0-9]+\.[0-9]+$'
+
+latest_stable_tag() {
+	# `git describe --abbrev=0` returns the nearest tag in commit topology, not
+	# the highest SemVer tag. If two tags point at the same commit (`v0.27.0` and
+	# a mistaken `v0.24.10`), `git describe` can choose the lower one and every
+	# main push will keep bumping the wrong line. Sort all reachable stable tags
+	# semantically and take the highest one instead.
+	git tag --merged "${1:-HEAD}" --list "$STABLE_TAG_MATCH" --sort=-v:refname 2>/dev/null | grep -E "$STABLE_TAG_REGEX" | head -n1 || true
+}
+
+version_gt() {
+	node - "$1" "$2" <<'NODE'
+const [a, b] = process.argv.slice(2).map((version) => version.split(".").map((part) => Number.parseInt(part, 10)));
+for (let index = 0; index < 3; index += 1) {
+  if ((a[index] || 0) > (b[index] || 0)) process.exit(0);
+  if ((a[index] || 0) < (b[index] || 0)) process.exit(1);
+}
+process.exit(1);
+NODE
+}
+
+base_version() {
+	local latest package_version base
+	latest="$(latest_stable_tag HEAD | sed 's/^v//')"
+	package_version="$(node -p "require('./package.json').version" 2>/dev/null || echo "")"
+	base="$latest"
+	if [[ -n "$package_version" && "$package_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && { [[ -z "$base" ]] || version_gt "$package_version" "$base"; }; then
+		base="$package_version"
+		echo "Using package.json version $package_version as release floor" >&2
+	fi
+	echo "$base"
+}
 
 if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
 	MODE="tag"
 	VERSION="${GITHUB_REF_NAME#v}"
 	TAG="$GITHUB_REF_NAME"
 elif [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/main" ]]; then
-	# If HEAD is already tagged with a stable v* tag (e.g. nightly-release
-	# pushed both main and the tag together), skip release mode so the
-	# tag-push event is the single source of truth. Otherwise we'd build
-	# twice — once at the tag's version, once at a stale patch-bump — and
-	# ship the wrong one.
-	#
-	# Anchor the regex with `$` so disposable `-test.N` tags don't suppress
-	# legitimate main-push releases: a `-test.N` tag at HEAD doesn't ship
-	# (publish/R2/Linear steps in build.yaml skip it), so main-push should
-	# still bump+ship normally in that case.
-	if git tag --points-at HEAD 2>/dev/null | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
-		echo "HEAD is already tagged — letting the tag-push event handle release"
-		MODE="branch"
-	else
-		MODE="release"
-		BASE=$(git describe --tags --abbrev=0 --match "$STABLE_TAG_MATCH" --exclude "$STABLE_TAG_EXCLUDE" 2>/dev/null | sed 's/^v//' || echo "")
-		if [[ -z "$BASE" ]]; then
-			BASE=$(node -p "require('./package.json').version")
-			echo "No tags found — bumping from package.json version $BASE"
-		fi
-		IFS='.' read -r MAJ MIN PAT <<<"$BASE"
-		PAT=$((PAT + 1))
-		VERSION="${MAJ}.${MIN}.${PAT}"
-		TAG="v${VERSION}"
-	fi
-elif [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/develop" ]]; then
+	# Push to main → develop channel. The stable channel only updates from a
+	# manually-created tag release, so every commit on main (including
+	# multiple commits between releases) lands on the develop channel and is
+	# picked up by users on the develop update track.
 	MODE="develop"
-	BASE=$(git describe --tags --abbrev=0 --match "$STABLE_TAG_MATCH" --exclude "$STABLE_TAG_EXCLUDE" 2>/dev/null | sed 's/^v//' || echo "")
+	BASE=$(base_version)
 	if [[ -z "$BASE" ]]; then
 		BASE=$(node -p "require('./package.json').version")
 		echo "No tags found — using package.json version $BASE as develop base"
