@@ -220,12 +220,12 @@ jobs:
       # Sign the app bundle (required for notarization)
       - name: Sign app bundle
         run: bash ops/scripts/release/sign-app.sh
-      # Rebuild the final DMG from the signed app with pinned create-dmg.
-      # Tauri copies .background/dmg-background.png, but our CI hosts have not
-      # reliably emitted the root .DS_Store that Finder needs to show it. The
-      # script also mount-verifies .DS_Store, .background, Applications link,
+      # Install deterministic Finder metadata into the DMG. Tauri copies
+      # .background/dmg-background.png, but our CI hosts do not reliably emit
+      # root .DS_Store; without it Finder opens a plain white installer window.
+      # The script mount-verifies .DS_Store, .background, Applications link,
       # and the signed app before notarization/upload.
-      - name: Rebuild DMG with Finder layout
+      - name: Install DMG Finder layout metadata
         if: steps.check-secrets.outputs.has_certificate == 'true'
         run: |
           APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d 2>/dev/null | sed -n '1p' || true)

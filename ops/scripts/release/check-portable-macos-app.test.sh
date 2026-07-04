@@ -154,12 +154,15 @@ assert_fails_with "symlink points outside app bundle" "$TMP_DIR/SymlinkEscape.ap
 
 if command -v hdiutil >/dev/null 2>&1; then
 	DMG_ROOT="$TMP_DIR/dmg-root"
-	mkdir -p "$DMG_ROOT"
+	mkdir -p "$DMG_ROOT/.background"
 	cp -R "$TMP_DIR/Clean.app" "$DMG_ROOT/Clean.app"
+	cp apps/native/src-tauri/icons/dmg-background.png "$DMG_ROOT/.background/dmg-background.png"
+	ln -s /Applications "$DMG_ROOT/Applications"
 	hdiutil create -quiet -srcfolder "$DMG_ROOT" -format UDZO "$TMP_DIR/Bare.dmg"
 	assert_fails_with "missing root .DS_Store" "$TMP_DIR/Bare.dmg"
 
 	LAYOUT_DMG="$TMP_DIR/Layout.dmg"
+	cp "$TMP_DIR/Bare.dmg" "$LAYOUT_DMG"
 	NIXMAC_SKIP_DMG_CODESIGN_CHECK=1 bash ops/scripts/release/rebuild-dmg-with-layout.sh "$TMP_DIR/Clean.app" "$LAYOUT_DMG"
 	assert_passes "$LAYOUT_DMG"
 else
