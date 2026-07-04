@@ -4,22 +4,25 @@ import { HistoryDayLabel } from "@/components/widget/history/history-day-label";
 import { HistoryHeader } from "@/components/widget/history/history-header";
 import { HistoryItemCard } from "@/components/widget/history/history-item-card";
 import { UncommittedChangesDetected } from "@/components/widget/notifications/uncommitted-changes-detected";
-import { useHistory } from "@/hooks/use-history";
+import { useHistoryQuery } from "@/hooks/use-history";
 import { PREVIEW_ITEM_HASH, useHistoryRestore } from "@/hooks/use-history-restore";
-import { useViewModel } from "@nixmac/state";
+import { useLazyHistorySummarize } from "@/hooks/use-lazy-history-summarize";
+import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-export function HistoryScreen() {
-  const { loadHistory } = useHistory();
-  const history = useViewModel((state) => state.history);
+export function HistoryStep() {
+  const { history, total, hasNextPage, fetchNextPage, isFetchingNextPage } = useHistoryQuery();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const [isFlashing, setIsFlashing] = useState(false);
   const [isDiscardDialogOpen, setIsDiscardDialogOpen] = useState(false);
 
-  useEffect(() => {
-    loadHistory();
-  }, [loadHistory]);
+  const { observeItem } = useLazyHistorySummarize({
+    history,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  });
 
   const handleUncommittedChanges = () => {
     const viewport = scrollAreaRef.current?.querySelector("[data-radix-scroll-area-viewport]");
@@ -52,7 +55,7 @@ export function HistoryScreen() {
 
   return (
     <>
-      <HistoryHeader count={history.length} />
+      <HistoryHeader count={total} />
       <div ref={scrollAreaRef} className="flex-1 min-h-0">
         <ScrollArea className="h-full pb-3 pr-4">
           <UncommittedChangesDetected
@@ -73,30 +76,37 @@ export function HistoryScreen() {
                   );
                 }
                 return (
-                  <HistoryItemCard
-                    key={fi.item.hash}
-                    item={fi.item}
-                    isRestoring={fi.item.hash === restoringHash}
-                    isPreview={fi.item.hash === PREVIEW_ITEM_HASH}
-                    isPreviewActive={!!previewTargetHash}
-                    deactivateCount={
-                      fi.item.hash === PREVIEW_ITEM_HASH ? previewDeactivateCount : undefined
-                    }
-                    timeline={{
-                      isFirst: fi.item.hash === firstCommitHash,
-                      isLast: fi.item.hash === lastCommitHash,
-                      isUndone: undoneSet.has(fi.item.hash),
-                      bottomFadeToUndone: bottomFadeToUndoneHashes.has(fi.item.hash),
-                      topFadeFromUndone: topFadeFromUndoneHashes.has(fi.item.hash),
-                    }}
-                    onRequestRestore={handleRequestRestore}
-                    onConfirmRestore={handleConfirmRestore}
-                    onCancelRestore={handleCancelPreview}
-                  />
+                  <div key={fi.item.hash} ref={observeItem} data-history-hash={fi.item.hash}>
+                    <HistoryItemCard
+                      item={fi.item}
+                      isRestoring={fi.item.hash === restoringHash}
+                      isPreview={fi.item.hash === PREVIEW_ITEM_HASH}
+                      isPreviewActive={!!previewTargetHash}
+                      deactivateCount={
+                        fi.item.hash === PREVIEW_ITEM_HASH ? previewDeactivateCount : undefined
+                      }
+                      timeline={{
+                        isFirst: fi.item.hash === firstCommitHash,
+                        isLast: fi.item.hash === lastCommitHash,
+                        isUndone: undoneSet.has(fi.item.hash),
+                        bottomFadeToUndone: bottomFadeToUndoneHashes.has(fi.item.hash),
+                        topFadeFromUndone: topFadeFromUndoneHashes.has(fi.item.hash),
+                      }}
+                      onRequestRestore={handleRequestRestore}
+                      onConfirmRestore={handleConfirmRestore}
+                      onCancelRestore={handleCancelPreview}
+                    />
+                  </div>
                 );
               })}
             </div>
           ))}
+          {isFetchingNextPage && (
+            <div className="flex items-center justify-center gap-2 py-3 text-xs text-neutral-500">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Loading older commits…
+            </div>
+          )}
         </ScrollArea>
       </div>
       <DiscardUncommittedDialog open={isDiscardDialogOpen} onOpenChange={setIsDiscardDialogOpen} />

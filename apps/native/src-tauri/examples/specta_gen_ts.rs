@@ -77,6 +77,7 @@ fn main() {
         .register::<shared_types::EvolveStep>()
         .register::<shared_types::EvolveState>()
         .register::<shared_types::HistoryItem>()
+        .register::<shared_types::HistoryPage>()
         .register::<shared_types::ChangeType>()
         .register::<shared_types::GitFileStatus>()
         .register::<shared_types::GitStatus>()

@@ -50,8 +50,10 @@ pub async fn run_summarize_current(
 
 pub async fn fetch_history(
     app: AppHandle,
-) -> Result<Vec<crate::shared_types::HistoryItem>, String> {
-    crate::history::get_history(&app)
+    limit: Option<usize>,
+    offset: Option<usize>,
+) -> Result<crate::shared_types::HistoryPage, String> {
+    crate::history::get_history(&app, limit, offset)
         .await
         .map_err(|e| capture_err("get_history", e))
 }
@@ -115,8 +117,8 @@ pub async fn summarize_current(
 }
 
 #[tauri::command]
-pub async fn get_history(app: AppHandle) -> Result<Vec<crate::shared_types::HistoryItem>, String> {
-    fetch_history(app).await
+pub async fn get_history(app: AppHandle) -> Result<crate::shared_types::HistoryPage, String> {
+    fetch_history(app, None, None).await
 }
 
 #[tauri::command]

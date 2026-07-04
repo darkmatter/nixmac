@@ -5,13 +5,34 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use tauri::{AppHandle, Manager, Runtime};
 
+/// Default page size when the caller doesn't specify a `limit`.
+///
+/// Kept modest because each item fans out into a diff + DB lookup; the
+/// frontend grows the list incrementally via infinite scroll.
+const DEFAULT_HISTORY_PAGE_SIZE: usize = 50;
+
 pub async fn get_history<R: Runtime>(
     app: &AppHandle<R>,
-) -> Result<Vec<crate::shared_types::HistoryItem>> {
+    limit: Option<usize>,
+    offset: Option<usize>,
+) -> Result<crate::shared_types::HistoryPage> {
     let config_dir = crate::storage::store::get_config_dir(app)?;
     let pool = app.state::<crate::db::DbPool>();
 
-    let git_commits = crate::git::query::log(&config_dir, "HEAD", None)?;
+    // `limit` here is the *page size*; we fetch `limit + offset` from git and
+    // then skip `offset` so the per-commit fan-out below only touches the
+    // requested window — not the entire log.
+    let page_size = limit.unwrap_or(DEFAULT_HISTORY_PAGE_SIZE).clamp(1, 500);
+    let offset = offset.unwrap_or(0);
+    let fetch_limit = page_size.saturating_add(offset);
+
+    let git_commits = crate::git::query::log(&config_dir, "HEAD", Some(fetch_limit))?;
+    let total = crate::git::query::commit_count(&config_dir, "HEAD").unwrap_or(git_commits.len());
+    let git_commits = if offset >= git_commits.len() {
+        &git_commits[..0]
+    } else {
+        &git_commits[offset..]
+    };
 
     let build_state = crate::state::build_state::get(app).unwrap_or_default();
     let last_built_sha = if build_state.unknown_build() {
@@ -118,7 +139,12 @@ pub async fn get_history<R: Runtime>(
 
     populate_restore_history_items(&mut entries, origin_hashes);
 
-    Ok(entries)
+    let has_more = offset + entries.len() < total;
+    Ok(crate::shared_types::HistoryPage {
+        items: entries,
+        total,
+        has_more,
+    })
 }
 
 fn populate_restore_history_items(

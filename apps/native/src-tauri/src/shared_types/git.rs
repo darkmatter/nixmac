@@ -184,3 +184,20 @@ pub struct HistoryItem {
     /// Whether this history item has been undone by a later restore operation.
     pub is_undone: bool,
 }
+
+/// A page of history items with a total count, returned by `history.get`.
+///
+/// `total` is the full commit count reachable from HEAD (not just this page),
+/// so the frontend can decide whether more pages exist without an extra round
+/// trip. `has_more` is the same thing expressed as a boolean for convenience.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryPage {
+    /// Items in this page, newest-first.
+    pub items: Vec<HistoryItem>,
+    /// Total number of commits reachable from HEAD.
+    #[specta(type = f64)]
+    pub total: usize,
+    /// True when more pages remain beyond this page (offset + items.len() < total).
+    pub has_more: bool,
+}

@@ -5,6 +5,12 @@ use tauri::{AppHandle, Manager, Runtime};
 
 use crate::sqlite_types::Change;
 
+/// Summarize `number` commits starting at `commit_hash` (newest-first),
+/// diffing each commit against its parent.
+///
+/// This walks only the commits in the requested window via
+/// [`crate::git::query::log_from_commit`], avoiding the full-log scan the
+/// previous implementation performed.
 pub async fn from_commit_times_number<R: Runtime>(
     app: &AppHandle<R>,
     commit_hash: &str,
@@ -13,18 +19,10 @@ pub async fn from_commit_times_number<R: Runtime>(
     let config_dir = crate::storage::store::get_config_dir(app)?;
     let pool = app.state::<crate::db::DbPool>();
 
-    let all_commits = crate::git::query::log(&config_dir, "HEAD", None)?;
-    let start = match all_commits.iter().position(|c| c.hash == commit_hash) {
-        Some(i) => i,
-        None => return Ok(()),
-    };
-    let commits: Vec<_> = all_commits
-        .into_iter()
-        .skip(start)
-        .take(number + 1)
-        .collect();
-
-    if commits.is_empty() {
+    // `log_from_commit` returns up to `number + 1` commits (the extra one is
+    // the parent used as the diff base for the oldest commit in the window).
+    let commits = crate::git::query::log_from_commit(&config_dir, commit_hash, number)?;
+    if commits.len() < 2 {
         return Ok(());
     }
 

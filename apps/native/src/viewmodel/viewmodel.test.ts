@@ -67,9 +67,6 @@ vi.mock("@/ipc/api", () => ({
     summarizedChanges: {
       getChangeMap: vi.fn(() => Promise.resolve(apiMocks.changeMap)),
     },
-    history: {
-      get: vi.fn(() => Promise.resolve([])),
-    },
     preferences: {
       get: vi.fn(() => Promise.resolve(apiMocks.preferences)),
     },
@@ -107,9 +104,14 @@ vi.mock("@/lib/orpc", () => ({
         Promise.resolve(apiMocks.changeMap),
       ),
     },
+  },
+  orpc: {
     history: {
-      get: vi.fn<() => Promise<never[]>>(() => Promise.resolve([])),
+      key: vi.fn(() => ["history"]),
     },
+  },
+  queryClient: {
+    invalidateQueries: vi.fn<() => Promise<void>>(() => Promise.resolve()),
   },
 }));
 
