@@ -28,11 +28,13 @@ case "$UPDATE_CHANNEL" in
 		ARTIFACT_PREFIX="${VERSION}"
 		MANIFEST_KEY="latest.json"
 		BUNDLE_URL="https://releases.nixmac.com/${VERSION}/nixmac.app.tar.gz"
+		DMG_URL="https://releases.nixmac.com/${VERSION}/nixmac.dmg"
 		;;
 	develop)
 		ARTIFACT_PREFIX="channels/develop/${VERSION}"
 		MANIFEST_KEY="channels/develop/latest.json"
 		BUNDLE_URL="https://releases.nixmac.com/channels/develop/${VERSION}/nixmac.app.tar.gz"
+		DMG_URL="https://releases.nixmac.com/channels/develop/${VERSION}/nixmac.dmg"
 		;;
 	*)
 		echo "ERROR: unsupported UPDATE_CHANNEL: $UPDATE_CHANNEL"
@@ -42,6 +44,7 @@ esac
 
 TAR_GZ=$(find target/release/bundle -name "*.app.tar.gz" -not -name "*.sig" | head -1)
 SIG_FILE=$(find target/release/bundle -name "*.app.tar.gz.sig" | head -1)
+DMG_FILE=$(find target/release/bundle/dmg -name "*.dmg" -type f 2>/dev/null | sed -n '1p' || true)
 
 if [ -z "$TAR_GZ" ] || [ -z "$SIG_FILE" ]; then
 	echo "ERROR: Could not find .app.tar.gz or .sig file"
@@ -52,14 +55,21 @@ fi
 
 echo "Found tar.gz: $TAR_GZ"
 echo "Found sig: $SIG_FILE"
+echo "Found dmg: $DMG_FILE"
 
 SIGNATURE=$(cat "$SIG_FILE" | jq -Rs .)
+
+DMG_SIGNATURE=$(cat "$DMG_FILE" | jq -Rs .)
 
 aws s3 cp "$TAR_GZ" "s3://nixmac-releases/${ARTIFACT_PREFIX}/nixmac.app.tar.gz" \
 	--endpoint-url "$R2_ENDPOINT" \
 	--cache-control "max-age=31536000"
 
 aws s3 cp "$SIG_FILE" "s3://nixmac-releases/${ARTIFACT_PREFIX}/nixmac.app.tar.gz.sig" \
+	--endpoint-url "$R2_ENDPOINT" \
+	--cache-control "max-age=31536000"
+
+aws s3 cp "$DMG_FILE" "s3://nixmac-releases/${ARTIFACT_PREFIX}/nixmac.dmg" \
 	--endpoint-url "$R2_ENDPOINT" \
 	--cache-control "max-age=31536000"
 
@@ -80,7 +90,9 @@ cat >/tmp/latest.json <<EOF
   "platforms": {
     "darwin-aarch64": {
       "signature": ${SIGNATURE},
-      "url": "${BUNDLE_URL}"
+      "url": "${BUNDLE_URL}",
+      "dmg_signature": ${DMG_SIGNATURE},
+      "dmg_url": "${DMG_URL}"
     }
   }
 }
