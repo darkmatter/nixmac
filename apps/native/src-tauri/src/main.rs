@@ -829,6 +829,7 @@ fn run_gui_mode(
                     .closable(true)
                     .decorations(true)
                     .transparent(!e2e_opaque_window)
+                    .theme(Some(tauri::Theme::Dark))
                     .visible(true)
                     .background_color(tauri::utils::config::Color(0, 0, 0, 235))
                     .always_on_top(false)
