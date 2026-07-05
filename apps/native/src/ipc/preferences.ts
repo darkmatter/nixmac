@@ -52,3 +52,22 @@ export async function setPrefs(prefs: Partial<DarwinPrefsUpdate>): Promise<OkRes
   pendingPrefs = null;
   return result;
 }
+
+/**
+ * Folds a backend-emitted `global_preferences_changed` payload into the cache.
+ * Frontend `setPrefs` is not the only preferences writer — the backend mutates
+ * them too (apply bookkeeping, onboarding reset, settings import) — so without
+ * this the cache serves stale values after any backend-initiated write. Only
+ * keys already present in the cache are overwritten: the keychain-backed
+ * fields the cache exists to protect are absent from the event payload and
+ * must survive the merge, which is also why the cache is merged rather than
+ * dropped (a refetch would hit the keychain again).
+ */
+export function refreshCachedPrefs(update: Record<string, unknown>): void {
+  if (!cachedPrefs) return;
+  const next: Record<string, unknown> = { ...cachedPrefs };
+  for (const key of Object.keys(next)) {
+    if (key in update) next[key] = update[key];
+  }
+  cachedPrefs = next as DarwinPrefs;
+}

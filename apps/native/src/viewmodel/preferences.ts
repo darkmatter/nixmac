@@ -1,10 +1,13 @@
 import { tauriAPI } from "@/ipc/api";
+import { refreshCachedPrefs } from "@/ipc/preferences";
 import type { GlobalPreferences } from "@/ipc/types";
 import { viewModelActions } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
 
 function mirrorPreferences(preferences: GlobalPreferences): void {
   viewModelActions.setState({ preferences });
+  // Keep the UiPrefs read-path cache coherent with backend-initiated writes.
+  refreshCachedPrefs(preferences as unknown as Record<string, unknown>);
 }
 
 /**
