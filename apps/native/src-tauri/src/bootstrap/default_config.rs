@@ -123,6 +123,12 @@ pub fn detect_darwin_platform() -> &'static str {
 /// - `HOSTNAME_PLACEHOLDER` -> the provided hostname
 /// - `PLATFORM_PLACEHOLDER` -> the detected platform (aarch64-darwin or x86_64-darwin)
 /// - `USERNAME_PLACEHOLDER` -> the current macOS username
+///
+/// Template sources are not always trusted (remote template repos arrive as
+/// git clones), so VCS state and Finder metadata are never copied, and
+/// symlinks are skipped rather than followed — following them would let a
+/// hostile template recurse forever (`ln -s . self`) or pull out-of-tree file
+/// contents into a config the user may later publish.
 fn copy_template_dir(
     src: &Path,
     dest: &Path,
@@ -138,13 +144,23 @@ fn copy_template_dir(
     {
         let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
         let src_path = entry.path();
+        if entry.file_name() == ".git" || entry.file_name() == ".DS_Store" {
+            continue;
+        }
+        let file_type = entry
+            .file_type()
+            .map_err(|e| format!("Failed to inspect {}: {}", src_path.display(), e))?;
+        if file_type.is_symlink() {
+            log::warn!("Skipping symlink in template: {}", src_path.display());
+            continue;
+        }
         let file_name = render_template_file_name(&entry.file_name(), hostname, platform, username);
         let dest_path = dest.join(&file_name);
 
-        if src_path.is_dir() {
+        if file_type.is_dir() {
             // Recursively copy subdirectories
             copy_template_dir(&src_path, &dest_path, hostname, platform, username)?;
-        } else if src_path.is_file() {
+        } else if file_type.is_file() {
             // Check if it's a .nix file that needs template processing
             if is_nix_file(&src_path) {
                 // Read and process template placeholders using apply_template_placeholders.
@@ -163,6 +179,23 @@ fn copy_template_dir(
         }
     }
 
+    Ok(())
+}
+
+/// Validates a hostname destined for template placeholder substitution.
+/// The value is spliced into file *names* that pass through `Path::join`, so
+/// anything beyond a conservative charset (or a lone `.`/`..`) is rejected to
+/// keep every rendered path inside the destination.
+fn validate_template_hostname(hostname: &str) -> Result<(), String> {
+    let valid_chars = hostname
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'));
+    if hostname.is_empty() || !valid_chars || hostname == "." || hostname == ".." {
+        return Err(format!(
+            "Invalid hostname '{}': use letters, digits, '.', '_' and '-'",
+            hostname
+        ));
+    }
     Ok(())
 }
 
@@ -296,8 +329,44 @@ pub fn bootstrap_with_template(
         return Ok(());
     }
 
-    // Safety check: only proceed if directory is empty or git-only.
-    // This prevents accidentally overwriting an existing non-empty directory.
+    let template_dir = template_dir_for_id(template_id)?;
+    let template_path = resolve_template_path(app, template_dir)?;
+
+    log::info!("Using template from: {}", template_path.display());
+
+    scaffold_template(
+        &template_path,
+        &dir,
+        hostname,
+        detect_darwin_platform(),
+        &detect_username(),
+    )?;
+
+    if nix::is_nix_installed() {
+        if let Err(e) = finalize_flake_lock(app) {
+            log::info!("Could not finalize flake.lock during bootstrap: {}", e);
+        }
+    }
+
+    Ok(())
+}
+
+/// Scaffolds a configuration into `dest_dir` from a template directory: the
+/// destination-safety check, template copy with placeholder substitution,
+/// git init, and the tagged initial commit. Template-agnostic — the source
+/// can be a bundled template or a checked-out remote one.
+pub fn scaffold_template(
+    template_path: &Path,
+    dest_dir: &str,
+    hostname: &str,
+    platform: &str,
+    username: &str,
+) -> Result<(), String> {
+    validate_template_hostname(hostname)?;
+
+    // Safety check: only proceed if directory is empty or git-only. It lives
+    // here, next to the code that writes, so every scaffold path gets it.
+    let dest_path = Path::new(dest_dir);
     if !is_dir_safe_for_bootstrap(dest_path)
         .map_err(|e| format!("Failed to check bootstrap safety: {}", e))?
     {
@@ -307,33 +376,20 @@ pub fn bootstrap_with_template(
         ));
     }
 
-    let platform = detect_darwin_platform();
-    let username = detect_username();
-    let template_dir = template_dir_for_id(template_id)?;
-    let template_path = resolve_template_path(app, template_dir)?;
-
-    log::info!("Using template from: {}", template_path.display());
-
     // Copy and process all template files recursively
-    copy_template_dir(&template_path, dest_path, hostname, platform, &username)?;
+    copy_template_dir(template_path, dest_path, hostname, platform, username)?;
 
-    // Initialize git repository and commit templates (without flake.lock)
-    git::init::init_repo(&dir).map_err(|e| format!("Failed to init git: {}", e))?;
-    let info = git::commit_all(&dir, "chore: initial nix-darwin configuration")
+    // Initialize git repository and commit templates
+    git::init::init_repo(dest_dir).map_err(|e| format!("Failed to init git: {}", e))?;
+    let info = git::commit_all(dest_dir, "chore: initial nix-darwin configuration")
         .map_err(|e| format!("Failed to commit: {}", e))?;
     if let Err(e) = git::tag_commit(
-        &dir,
+        dest_dir,
         &format!("nixmac-base-{}", &info.hash[..8]),
         &info.hash,
         false,
     ) {
         log::warn!("Failed to tag initial commit as base: {}", e);
-    }
-
-    if nix::is_nix_installed() {
-        if let Err(e) = finalize_flake_lock(app) {
-            log::info!("Could not finalize flake.lock during bootstrap: {}", e);
-        }
     }
 
     Ok(())
@@ -363,9 +419,14 @@ pub fn finalize_flake_lock(app: &AppHandle) -> Result<(), String> {
         ));
     }
 
-    // Stage lock file and commit
-    let info = git::commit_all(&dir, "chore: add flake.lock")
-        .map_err(|e| format!("Failed to commit flake.lock: {}", e))?;
+    // Stage lock file and commit. A template may ship a complete flake.lock
+    // that `nix flake lock` leaves untouched — already committed, nothing to
+    // do.
+    let info = match git::commit_all(&dir, "chore: add flake.lock") {
+        Ok(info) => info,
+        Err(e) if e.to_string().contains("nothing to commit") => return Ok(()),
+        Err(e) => return Err(format!("Failed to commit flake.lock: {}", e)),
+    };
     if let Err(e) = git::tag_commit(
         &dir,
         &format!("nixmac-base-{}", &info.hash[..8]),
@@ -403,6 +464,81 @@ mod tests {
         fs::write(temp.path().join(".DS_Store"), "").expect("create finder metadata");
 
         assert!(is_dir_safe_for_bootstrap(temp.path()).expect("check directory"));
+    }
+
+    #[test]
+    fn copy_template_dir_skips_vcs_metadata_and_symlinks() {
+        let src = tempfile::tempdir().expect("create source dir");
+        fs::create_dir_all(src.path().join(".git/objects")).expect("create git dir");
+        fs::write(src.path().join(".git/HEAD"), "ref").expect("create git file");
+        fs::write(src.path().join(".DS_Store"), "").expect("create finder metadata");
+        fs::write(src.path().join("flake.nix"), "{ }").expect("create flake");
+
+        let outside = tempfile::tempdir().expect("create outside dir");
+        fs::write(outside.path().join("secret"), "leak").expect("create outside file");
+        std::os::unix::fs::symlink(outside.path().join("secret"), src.path().join("linked.nix"))
+            .expect("create symlink");
+        // A self-referential symlink must not cause unbounded recursion.
+        std::os::unix::fs::symlink(src.path(), src.path().join("loop")).expect("create loop");
+
+        let dest = tempfile::tempdir().expect("create dest dir");
+        copy_template_dir(src.path(), dest.path(), "host", "aarch64-darwin", "user")
+            .expect("copy template");
+
+        assert!(dest.path().join("flake.nix").is_file());
+        assert!(!dest.path().join(".git").exists());
+        assert!(!dest.path().join(".DS_Store").exists());
+        assert!(!dest.path().join("linked.nix").exists());
+        assert!(!dest.path().join("loop").exists());
+    }
+
+    #[test]
+    fn validate_template_hostname_rejects_path_escapes() {
+        assert!(validate_template_hostname("Coopers-MacBook-Pro").is_ok());
+        assert!(validate_template_hostname("host.1_x").is_ok());
+
+        for bad in ["", ".", "..", "a/b", "../evil", "host name", "host\n"] {
+            assert!(validate_template_hostname(bad).is_err(), "accepted {bad:?}");
+        }
+    }
+
+    #[test]
+    fn scaffold_template_creates_tagged_initial_commit() {
+        let src = tempfile::tempdir().expect("create source dir");
+        fs::write(
+            src.path().join("flake.nix"),
+            "darwinConfigurations.HOSTNAME_PLACEHOLDER = { };",
+        )
+        .expect("create flake");
+
+        let dest = tempfile::tempdir().expect("create dest dir");
+        let dest_dir = dest.path().to_string_lossy().to_string();
+        scaffold_template(src.path(), &dest_dir, "my-mac", "aarch64-darwin", "user")
+            .expect("scaffold");
+
+        let flake = fs::read_to_string(dest.path().join("flake.nix")).expect("read flake");
+        assert!(flake.contains("darwinConfigurations.my-mac"));
+
+        let repo = git2::Repository::open(dest.path()).expect("open repo");
+        let head = repo.head().expect("head").peel_to_commit().expect("commit");
+        assert_eq!(head.parent_count(), 0);
+        assert!(repo.remotes().expect("remotes").is_empty());
+        let tags = repo.tag_names(Some("nixmac-base-*")).expect("tags");
+        assert_eq!(tags.len(), 1);
+    }
+
+    #[test]
+    fn scaffold_template_rejects_non_empty_destination() {
+        let src = tempfile::tempdir().expect("create source dir");
+        fs::write(src.path().join("flake.nix"), "{ }").expect("create flake");
+
+        let dest = tempfile::tempdir().expect("create dest dir");
+        fs::write(dest.path().join("existing"), "keep").expect("create existing file");
+        let dest_dir = dest.path().to_string_lossy().to_string();
+
+        let err = scaffold_template(src.path(), &dest_dir, "my-mac", "aarch64-darwin", "user")
+            .expect_err("must reject");
+        assert!(err.contains("not empty"));
     }
 
     #[test]
