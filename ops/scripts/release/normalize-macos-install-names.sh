@@ -307,6 +307,8 @@ normalize_updater_tarball() {
 	local extract_dir
 	local tar_name
 	local app_count
+	local app_dir
+	local app_name
 
 	if [ ! -f "$tar_path" ]; then
 		echo "ERROR: updater tarball path does not exist: $tar_path" >&2
@@ -320,11 +322,19 @@ normalize_updater_tarball() {
 	echo "Extracting updater archive for install-name normalization: $tar_path"
 	tar -xzf "$tar_path" -C "$extract_dir"
 
-	app_count=$(find "$extract_dir" -maxdepth 3 -name "*.app" -type d | wc -l | tr -d '[:space:]')
-	if [ "$app_count" -eq 0 ]; then
-		echo "ERROR: no .app bundle found in $tar_path" >&2
+	# tauri-plugin-updater strips exactly one leading path component from every
+	# archive entry (entry.path().iter().skip(1)) before renaming the extraction
+	# dir over the installed bundle. Entries therefore MUST be rooted at
+	# `AppName.app/`; a `./`-rooted archive installs a nested
+	# `nixmac.app/nixmac.app/...` and corrupts the app. Enforce exactly one
+	# top-level .app and repack by its basename.
+	app_count=$(find "$extract_dir" -maxdepth 1 -name "*.app" -type d | wc -l | tr -d '[:space:]')
+	if [ "$app_count" -ne 1 ]; then
+		echo "ERROR: expected exactly one top-level .app bundle in $tar_path, found $app_count" >&2
 		exit 2
 	fi
+	app_dir=$(find "$extract_dir" -maxdepth 1 -name "*.app" -type d)
+	app_name=$(basename "$app_dir")
 
 	while IFS= read -r app_path; do
 		normalize_app "$app_path"
@@ -332,7 +342,7 @@ normalize_updater_tarball() {
 	done < <(find "$extract_dir" -maxdepth 3 -name "*.app" -type d)
 
 	echo "Repacking normalized updater archive: $tar_path"
-	tar -czf "$tar_path" -C "$extract_dir" .
+	tar -czf "$tar_path" -C "$extract_dir" "$app_name"
 	refresh_updater_signature "$tar_path"
 }
 
