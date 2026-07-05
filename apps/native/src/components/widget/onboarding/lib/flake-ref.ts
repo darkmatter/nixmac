@@ -1,4 +1,4 @@
-interface ParsedFlakeRef {
+export interface ParsedFlakeRef {
 	valid: boolean;
 	/** The recognized import input shape understood by the backend parser. */
 	type: "repo" | "unknown";

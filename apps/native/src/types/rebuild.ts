@@ -46,7 +46,7 @@ interface RebuildState {
   systemUntouched?: boolean;
 }
 
-const initialRebuildState: RebuildState = {
+export const initialRebuildState: RebuildState = {
   isRunning: false,
   context: "apply",
   lines: [],

@@ -98,7 +98,7 @@ export const nixmacEnvironment = settings.nixmacEnv;
 export const nixmacVersion = settings.nixmacVersion;
 
 /** Raw merged profile value for ad-hoc reads. */
-function getProfileValue(
+export function getProfileValue(
 	key: ProfileLookupKey,
 ): string | boolean | number | undefined {
 	const value = profile[key as keyof EnvProfile];

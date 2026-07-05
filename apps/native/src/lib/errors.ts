@@ -152,7 +152,7 @@ function docsBase(code: string): string {
 }
 
 // since this  is a desktop app, we don't need to worry about reducing bundle size
-const diagnostics = defineDiagnostics({
+export const diagnostics = defineDiagnostics({
   docsBase,
   reporters: [createConsoleReporter(), createDevReporter()],
   codes: {

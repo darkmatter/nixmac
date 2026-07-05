@@ -133,14 +133,14 @@ export const BYOK_MODEL_PROVIDERS = AI_MODEL_PROVIDERS.filter(
 	(provider) => provider.setup.kind !== "hosted",
 );
 
-const DEFAULT_EVOLVE_MODEL: Record<string, string> = Object.fromEntries(
+export const DEFAULT_EVOLVE_MODEL: Record<string, string> = Object.fromEntries(
 	AI_MODEL_PROVIDERS.map((provider) => [
 		provider.id,
 		provider.defaultEvolveModel,
 	]),
 );
 
-const DEFAULT_SUMMARY_MODEL: Record<string, string> = Object.fromEntries(
+export const DEFAULT_SUMMARY_MODEL: Record<string, string> = Object.fromEntries(
 	AI_MODEL_PROVIDERS.map((provider) => [
 		provider.id,
 		provider.defaultSummaryModel,

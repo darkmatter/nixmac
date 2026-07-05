@@ -9,7 +9,7 @@ import { toast } from "sonner";
  * Hook for git operations.
  * Provides functions for refreshing git status changes.
  */
-const prefetchFileDiffContents = async (
+export const prefetchFileDiffContents = async (
   status: { changes: { filename: string }[] } | null,
 ) => {
   const setFileDiffContents = uiActions.setFileDiffContents;
