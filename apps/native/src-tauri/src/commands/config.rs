@@ -459,9 +459,9 @@ fn is_importable_target(path: &Path) -> Result<bool, String> {
 /// A validated, empty directory an import can clone/extract into. Records
 /// whether the import created it, so cleanup after a failed import knows if
 /// removing the directory itself is safe.
-struct ImportTarget {
-    path: PathBuf,
-    created: bool,
+pub(super) struct ImportTarget {
+    pub(super) path: PathBuf,
+    pub(super) created: bool,
 }
 
 /// Validates and prepares an import target directory.
@@ -501,7 +501,7 @@ fn prepare_import_target(dir_name: Option<String>) -> Result<ImportTarget, Strin
 /// created it: a pre-existing directory (notably the canonical
 /// /etc/nix-darwin, whose creation needs the privileged flow) is left in
 /// place, emptied.
-fn cleanup_import_target(target: &ImportTarget) {
+pub(super) fn cleanup_import_target(target: &ImportTarget) {
     if let Ok(entries) = std::fs::read_dir(&target.path) {
         for entry in entries.filter_map(|e| e.ok()) {
             let path = entry.path();

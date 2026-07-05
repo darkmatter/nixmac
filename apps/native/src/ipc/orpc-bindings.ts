@@ -1920,6 +1920,9 @@ export type Procedures = {
     check: Client<Record<never, never>, void, NixCheckResult, Error>
     installState: Client<Record<never, never>, void, NixInstallState, Error>
   }
+  onboarding: {
+    reset: Client<Record<never, never>, void, OkResult, Error>
+  }
   path: {
     exists: Client<Record<never, never>, PathExistsInput, boolean, Error>
     normalize: Client<Record<never, never>, PathNormalizeInput, string, Error>
