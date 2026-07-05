@@ -17,7 +17,7 @@ export function OnboardingFlow() {
 
   return (
     <div
-      className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden px-4 py-8 sm:px-6"
+      className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden px-4 pt-8 sm:px-6"
       data-testid="onboarding-flow"
     >
       <OnboardingHeader title={`Step ${stepIndex(activeStep) + 1} of ${STEPS.length}`} />
@@ -29,7 +29,7 @@ export function OnboardingFlow() {
           progress={progress}
           onStepSelect={goToStep}
         />
-        <div className="min-h-0 overflow-y-auto pb-4 pr-1">
+        <div className="min-h-0 overflow-y-auto pb-8 pr-1">
           <OnboardingStepContent currentStep={activeStep} title={stepLabel(activeStep)} />
         </div>
       </div>
