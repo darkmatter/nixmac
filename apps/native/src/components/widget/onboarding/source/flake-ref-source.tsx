@@ -1,14 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, FileArchive, Link2, Loader2, TriangleAlert } from "lucide-react";
+import { FileArchive, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FlakeDirChooser } from "@/components/widget/controls/flake-dir-chooser";
+import { RepoRefInput } from "@/components/widget/controls/repo-ref-input";
 import { EXAMPLE_REFS, parseFlakeRef } from "@/components/widget/onboarding/lib/flake-ref";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { useImportConfig } from "@/hooks/use-import-config";
 import { client } from "@/lib/orpc";
-import { cn } from "@/lib/utils";
 
 interface FlakeRefSourceProps {
   onImported?: () => void;
@@ -27,7 +27,6 @@ export function FlakeRefSource({ onImported }: FlakeRefSourceProps) {
   const [error, setError] = useState<string | null>(null);
 
   const parsed = useMemo(() => parseFlakeRef(value), [value]);
-  const touched = value.trim().length > 0;
   const canUse = parsed.valid && parsed.importable;
   const importConfig = useImportConfig(onImported);
 
@@ -81,58 +80,16 @@ export function FlakeRefSource({ onImported }: FlakeRefSourceProps) {
         <label htmlFor="flake-ref" className="mb-1.5 block font-medium text-sm">
           Repository reference
         </label>
-        <div
-          className={cn(
-            "flex items-center gap-2 rounded-lg border bg-background px-3 py-2 transition-colors focus-within:ring-2 focus-within:ring-ring",
-            touched && !parsed.valid ? "border-destructive" : "border-input",
-          )}
-        >
-          <Link2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <input
-            id="flake-ref"
-            value={value}
-            onChange={(e) => {
-              setValue(e.target.value);
-              setError(null);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void use();
-            }}
-            spellCheck={false}
-            autoCapitalize="off"
-            autoComplete="off"
-            placeholder="owner/repo?ref=main&dir=hosts/work"
-            className="w-full bg-transparent font-mono text-sm outline-none placeholder:text-muted-foreground"
-          />
-        </div>
-
-        <div className="mt-2 min-h-5 text-xs" aria-live="polite">
-          {touched && parsed.valid ? (
-            <span
-              className={cn(
-                "flex items-center gap-1.5",
-                parsed.importable ? "text-success" : "text-warning",
-              )}
-            >
-              {parsed.importable ? (
-                <Check className="size-3.5" aria-hidden="true" />
-              ) : (
-                <TriangleAlert className="size-3.5" aria-hidden="true" />
-              )}
-              <span className="font-medium">{parsed.label}</span>
-              <span className="text-muted-foreground">— {parsed.hint}</span>
-            </span>
-          ) : touched && !parsed.valid ? (
-            <span className="flex items-center gap-1.5 text-destructive">
-              <TriangleAlert className="size-3.5" aria-hidden="true" />
-              {parsed.hint}
-            </span>
-          ) : (
-            <span className="text-muted-foreground">
-              Supports <code className="font-mono">owner/repo</code>, GitHub URLs, SSH URLs, and optional <code className="font-mono">?ref=</code>/<code className="font-mono">?dir=</code>.
-            </span>
-          )}
-        </div>
+        <RepoRefInput
+          id="flake-ref"
+          value={value}
+          parsed={parsed}
+          onChange={(next) => {
+            setValue(next);
+            setError(null);
+          }}
+          onSubmit={() => void use()}
+        />
       </div>
 
       <div className="flex flex-col gap-1.5">
