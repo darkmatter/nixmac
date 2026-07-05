@@ -143,6 +143,10 @@ assert_passes "$TMP_DIR/Clean.app"
 assert_passes "$TMP_DIR/SystemRpath.app"
 tar -czf "$TMP_DIR/Clean.app.tar.gz" -C "$TMP_DIR" Clean.app
 assert_passes "$TMP_DIR/Clean.app.tar.gz"
+mkdir -p "$TMP_DIR/dot-rooted"
+cp -R "$TMP_DIR/Clean.app" "$TMP_DIR/dot-rooted/Clean.app"
+tar -czf "$TMP_DIR/DotRooted.app.tar.gz" -C "$TMP_DIR/dot-rooted" .
+assert_fails_with "rooted at 'AppName.app/'" "$TMP_DIR/DotRooted.app.tar.gz"
 assert_fails_with "/nix/store/example-libiconv" "$TMP_DIR/NixStore.app"
 assert_fails_with ".devenv/profile/lib/libcustom.dylib" "$TMP_DIR/Devenv.app"
 assert_fails_with "/Users/runner/work/nixmac/build/libcustom.dylib" "$TMP_DIR/Absolute.app"
