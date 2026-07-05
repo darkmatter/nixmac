@@ -107,7 +107,7 @@ function ownerAndRepoFromLocator(
  * `bootstrap::import::parse_repo_ref`.
  */
 export function parseFlakeRef(raw: string): ParsedFlakeRef {
-	const input = raw.trim();
+	let input = raw.trim();
 
 	if (!input) {
 		return {
@@ -117,6 +117,23 @@ export function parseFlakeRef(raw: string): ParsedFlakeRef {
 			hint: "Paste a repository reference to continue.",
 			importable: false,
 		};
+	}
+
+	// Nix-style `github:owner/repo` sugar for the shorthand form (mirrors
+	// `bootstrap::import::parse_repo_ref`). The path-segment ref form is
+	// pointed at `?ref=`, which the shorthand supports.
+	if (input.startsWith("github:")) {
+		input = input.slice("github:".length);
+		const locatorPart = (input.split("?", 2)[0] ?? "").replace(/^\/+|\/+$/g, "");
+		if (locatorPart.split("/").filter(Boolean).length > 2) {
+			return {
+				valid: false,
+				type: "unknown",
+				label: "",
+				hint: "'github:owner/repo/<ref>' is not supported — use github:owner/repo?ref=<ref> instead.",
+				importable: false,
+			};
+		}
 	}
 
 	const { locator, error } = parseQuery(input);
@@ -166,6 +183,7 @@ export function parseFlakeRef(raw: string): ParsedFlakeRef {
 /** Example refs surfaced as quick-fill chips in the UI. */
 export const EXAMPLE_REFS: { ref: string; note: string }[] = [
 	{ ref: "owner/repo", note: "GitHub shorthand" },
+	{ ref: "github:owner/repo?dir=hosts/work", note: "Nix-style GitHub ref" },
 	{ ref: "owner/repo?ref=main", note: "Shorthand + branch/tag" },
 	{ ref: "owner/repo?dir=hosts/work", note: "Shorthand + subdirectory" },
 	{ ref: "owner/repo?ref=main&dir=hosts/work", note: "Shorthand + ref + dir" },

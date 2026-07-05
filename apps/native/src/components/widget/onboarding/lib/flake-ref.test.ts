@@ -85,12 +85,26 @@ describe("parseFlakeRef", () => {
 		});
 	});
 
-	it("rejects unsupported or malformed forms", () => {
+	it("accepts nix-style github: sugar for the shorthand", () => {
 		expect(parseFlakeRef("github:owner/repo")).toMatchObject({
-			valid: false,
-			importable: false,
+			valid: true,
+			importable: true,
+			type: "repo",
 		});
 
+		expect(parseFlakeRef("github:owner/repo?ref=main&dir=hosts/work")).toMatchObject({
+			valid: true,
+			importable: true,
+			type: "repo",
+		});
+
+		// The Nix path-segment ref form points the user at ?ref= instead.
+		const pathRef = parseFlakeRef("github:owner/repo/main");
+		expect(pathRef).toMatchObject({ valid: false, importable: false });
+		expect(pathRef.hint).toContain("?ref=");
+	});
+
+	it("rejects unsupported or malformed forms", () => {
 		expect(parseFlakeRef("/www.github.com/czxtm/darwin/")).toMatchObject({
 			valid: false,
 			importable: false,
