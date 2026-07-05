@@ -968,9 +968,12 @@ mod tests {
             &pending,
             Some(&pending.join("flakes/darwin").to_string_lossy())
         ));
-        // A path an import could not have created (not a direct home child).
+        // A path an import could not have created (outside the home
+        // directory). Deliberately not asserting on nested home paths: how
+        // deep an import target may nest is `validate_new_dir_location`'s
+        // contract, tested there — this guard only composes it.
         assert!(!pending_import_wipe_allowed(
-            &home.join("nested/deeper-dir"),
+            Path::new("/tmp/nixmac-test-pending-import"),
             None
         ));
     }
