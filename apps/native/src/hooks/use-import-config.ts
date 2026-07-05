@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ImportConfigResult } from "@/ipc/orpc-bindings";
 import { applyImportResult } from "@/hooks/use-darwin-config";
 import { client } from "@/lib/orpc";
+import { onboardingActions } from "@nixmac/state";
 
 export interface PendingFlakeChoice {
   /** Absolute directory holding the imported tree. */
@@ -36,9 +37,13 @@ export function useImportConfig(onImported?: () => void): ImportConfigState {
   const handleResult = (result: ImportConfigResult) => {
     if (result.status === "needsFlakeDirChoice") {
       setPending({ cloneDir: result.cloneDir, flakeDirs: result.flakeDirs });
+      // Mirrored into the onboarding store so "Restart setup" can discard the
+      // pending tree: the backend keeps no record of it.
+      onboardingActions.setPendingImportDir(result.cloneDir);
       return;
     }
     setPending(null);
+    onboardingActions.setPendingImportDir(null);
     onImported?.();
   };
 
@@ -64,6 +69,7 @@ export function useImportConfig(onImported?: () => void): ImportConfigState {
       await client.config.discardImport({ dir: pending.cloneDir });
     } finally {
       setPending(null);
+      onboardingActions.setPendingImportDir(null);
       setResolving(false);
     }
   };

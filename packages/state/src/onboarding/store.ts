@@ -15,6 +15,7 @@ export const initialOnboardingState: OnboardingStateValues = {
 	inferenceDeferred: false,
 	celebrating: false,
 	viewingStep: null,
+	pendingImportDir: null,
 };
 
 /** Imperative writers for the transient onboarding UI store. */
@@ -29,6 +30,8 @@ export type OnboardingActions = {
 	/** Keep the success celebration mounted after the build gate is satisfied. */
 	setCelebrating: (celebrating: boolean) => void;
 	setViewingStep: (viewingStep: OnboardingStepId | null) => void;
+	/** Track the clone dir of an import awaiting a flake-dir choice. */
+	setPendingImportDir: (pendingImportDir: string | null) => void;
 };
 
 /** Combined store shape: state values plus the actions that mutate them. */
@@ -44,6 +47,7 @@ export const onboardingStore = create<OnboardingStore>()((set) => ({
 	deferInference: () => set({ inferenceDeferred: true, viewingStep: null }),
 	setCelebrating: (celebrating) => set({ celebrating }),
 	setViewingStep: (viewingStep) => set({ viewingStep }),
+	setPendingImportDir: (pendingImportDir) => set({ pendingImportDir }),
 }));
 
 /**
@@ -59,6 +63,7 @@ const {
 	deferInference,
 	setCelebrating,
 	setViewingStep,
+	setPendingImportDir,
 } = onboardingStore.getInitialState();
 
 export const onboardingActions: OnboardingActions & {
@@ -74,4 +79,5 @@ export const onboardingActions: OnboardingActions & {
 	deferInference,
 	setCelebrating,
 	setViewingStep,
+	setPendingImportDir,
 };
