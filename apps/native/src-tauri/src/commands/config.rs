@@ -1,4 +1,6 @@
-use super::helpers::{capture_err, handle_new_config_dir};
+use super::helpers::{
+    capture_err, clear_config_dir_provisional, handle_new_config_dir, mark_config_dir_provisional,
+};
 use crate::bootstrap::{default_config, discover, import};
 use crate::storage::{canonical_config, store};
 use crate::{shared_types, types, utils};
@@ -59,6 +61,8 @@ pub async fn config_set_dir(
     let prev_dir = store::get_config_dir(&app).ok();
     let new_dir = normalized_dir.to_string_lossy().to_string();
     store::set_config_dir(&app, &new_dir).map_err(|e| capture_err("config_set_dir", e))?;
+    // The user chose a pre-existing directory: it is theirs, not onboarding's.
+    clear_config_dir_provisional(&app);
     store::sync_canonical_config_link(&new_dir).map_err(|e| capture_err("config_set_dir", e))?;
 
     let changed = prev_dir.as_deref() != Some(&new_dir);
@@ -142,6 +146,8 @@ pub async fn config_prepare_new_dir(
     let new_dir = normalized_dir.to_string_lossy().to_string();
     store::set_config_dir(&app, &new_dir).map_err(|e| capture_err("config_prepare_new_dir", e))?;
     store::ensure_config_dir_exists(&app).map_err(|e| capture_err("config_prepare_new_dir", e))?;
+    // Scaffolded by us, so owned by onboarding until the first successful apply.
+    mark_config_dir_provisional(&app, normalized_dir.as_path());
 
     let changed = prev_dir.as_deref() != Some(&new_dir);
     if changed {
@@ -174,6 +180,8 @@ pub async fn config_pick_dir(app: AppHandle) -> Result<Option<shared_types::SetD
     if let Some(path) = result {
         let dir = path.to_string();
         store::set_config_dir(&app, &dir).map_err(|e| capture_err("config_pick_dir", e))?;
+        // The user chose a pre-existing directory: it is theirs, not onboarding's.
+        clear_config_dir_provisional(&app);
         store::ensure_config_dir_exists(&app).map_err(|e| capture_err("config_pick_dir", e))?;
         let changed = dir != prev_dir;
         if changed {
@@ -455,6 +463,9 @@ fn finalize_discovered_import(
                 target.path.join(&rel)
             };
             let result = finalize_imported_dir(app, &config_dir)?;
+            // Record the materialization ROOT, not the (possibly nested)
+            // config dir: releasing ownership must remove the whole clone.
+            mark_config_dir_provisional(app, &target.path);
             Ok(shared_types::ImportConfigResult::Imported {
                 dir: result.dir,
                 changed: result.changed,
@@ -511,6 +522,9 @@ pub async fn config_import_github(
                 }
             };
             let result = finalize_imported_dir(&app, &config_dir)?;
+            // Record the clone ROOT: releasing ownership must remove the
+            // whole clone, not just the `?dir=` subdirectory.
+            mark_config_dir_provisional(&app, &target.path);
             Ok(shared_types::ImportConfigResult::Imported {
                 dir: result.dir,
                 changed: result.changed,
@@ -579,6 +593,9 @@ pub async fn config_finalize_import(
     };
 
     let result = finalize_imported_dir(&app, &config_dir)?;
+    // Record the clone ROOT: releasing ownership must remove the whole clone,
+    // not just the selected flake subdirectory.
+    mark_config_dir_provisional(&app, &clone_dir);
     Ok(shared_types::ImportConfigResult::Imported {
         dir: result.dir,
         changed: result.changed,

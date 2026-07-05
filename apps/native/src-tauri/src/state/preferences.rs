@@ -182,6 +182,32 @@ mod tests {
     }
 
     #[test]
+    fn global_preferences_provisional_config_dir_roundtrip() {
+        // Absent in a pre-existing file -> None; persisted value survives a
+        // load/serialize round trip.
+        let persistence = MemoryPersistence::with_value(json!({
+            "configDir": "/Users/cm/.darwin"
+        }));
+        let prefs = load_or_default::<GlobalPreferences>(&persistence).unwrap();
+        assert_eq!(prefs.onboarding_provisional_config_dir, None);
+
+        let persistence = MemoryPersistence::with_value(json!({
+            "configDir": "/Users/cm/.darwin",
+            "onboardingProvisionalConfigDir": "/Users/cm/.darwin"
+        }));
+        let prefs = load_or_default::<GlobalPreferences>(&persistence).unwrap();
+        assert_eq!(
+            prefs.onboarding_provisional_config_dir.as_deref(),
+            Some("/Users/cm/.darwin")
+        );
+        let serialized = serde_json::to_value(&prefs).unwrap();
+        assert_eq!(
+            serialized.get("onboardingProvisionalConfigDir"),
+            Some(&json!("/Users/cm/.darwin"))
+        );
+    }
+
+    #[test]
     fn global_preferences_default_when_slice_file_is_absent() {
         let persistence = MemoryPersistence::default();
         let prefs = load_or_default::<GlobalPreferences>(&persistence).unwrap();
