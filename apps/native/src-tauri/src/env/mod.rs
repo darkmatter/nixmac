@@ -97,16 +97,10 @@ fn web_server_url_for_config(config_dir: Option<&str>) -> Result<String> {
 
 /// Constructs the full feedback submission URL from environment configuration.
 pub fn feedback_url() -> Result<String> {
-    feedback_url_for_config(None)
-}
-
-fn feedback_url_for_config(config_dir: Option<&str>) -> Result<String> {
-    let resolved = settings(config_dir);
+    let resolved = settings(None);
     let base =
         non_empty(resolved.vite_server_url).context("sending feedback not configured (url)")?;
-    let dsn = non_empty(resolved.submitted_feedback_dsn)
-        .context("sending feedback not configured (dsn)")?;
-    Ok(format!("{base}/api/feedback/{dsn}"))
+    Ok(format!("{base}/api/feedback"))
 }
 
 #[allow(dead_code)]
