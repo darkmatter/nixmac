@@ -41,7 +41,7 @@ export function SetupStep() {
   const [fixingFlakeDir, setFixingFlakeDir] = useState(false);
   const [fixError, setFixError] = useState<string | null>(null);
   const flakeExists = useFlakeExists(configDir);
-  const thisHostname = useThisHostname() || "this-mac";
+  const thisHostname = useThisHostname();
 
   // Recovery for a config dir with no flake at its root (e.g. imported before
   // nested-flake support): nested candidates become one-click fixes.
@@ -54,7 +54,10 @@ export function SetupStep() {
   const nestedFlakeDirs = (nestedFlakesQuery.data ?? []).filter((dir) => dir !== "");
 
   const hasHosts = hosts.length > 0;
-  const effectiveHost = selectedHost || savedHost;
+  // Pre-select the host matching this machine so the chooser never starts empty
+  // when the flake already has an entry for it.
+  const hostMatchingThisMac = hosts.includes(thisHostname) ? thisHostname : "";
+  const effectiveHost = selectedHost || savedHost || hostMatchingThisMac;
   const needsInitialCommit =
     flakeExists === true && (gitStatus === null || gitStatus.headCommitHash === "");
   const checkingFlake = flakeExists === null;
@@ -269,7 +272,7 @@ export function SetupStep() {
             <Button
               className="mt-3"
               variant="secondary"
-              onClick={() => bootstrap(thisHostname)}
+              onClick={() => bootstrap(thisHostname || "this-mac")}
               disabled={isBootstrapping}
             >
               {isBootstrapping ? (
