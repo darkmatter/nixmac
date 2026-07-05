@@ -313,7 +313,7 @@ fn scaffold_template_from_clone(
     subdir: Option<&str>,
     hostname: &str,
     target: &Path,
-) -> Result<(), String> {
+) -> Result<default_config::ScaffoldOutcome, String> {
     let template_root = resolve_template_root(clone_dir, subdir)?;
     default_config::scaffold_template(
         &template_root,
@@ -363,12 +363,28 @@ pub async fn config_create_from_template(
     }
     .await;
 
-    if let Err(e) = scaffolded {
-        cleanup_import_target(&target);
-        return Err(e);
-    }
+    let outcome = match scaffolded {
+        Ok(outcome) => outcome,
+        Err(e) => {
+            cleanup_import_target(&target);
+            return Err(e);
+        }
+    };
 
     let result = finalize_imported_dir(&app, &target.path)?;
+
+    // The config dir changed, so any previous host attribute is stale. When
+    // the template consumed the hostname placeholder it is host-parameterized
+    // per the template conventions — adopt the chosen name directly, exactly
+    // like a bundled template. Otherwise leave it empty so the Choose Machine
+    // step resolves the template's actual hosts.
+    let host_attr = if outcome.hostname_used {
+        hostname.as_str()
+    } else {
+        ""
+    };
+    store::set_host_attr(&app, host_attr)
+        .map_err(|e| capture_err("config_create_from_template", e))?;
 
     // Mirror the bundled bootstrap: generate and commit flake.lock once the
     // config dir is selected. Non-fatal — a template may ship its own lock.
@@ -898,8 +914,11 @@ mod tests {
         let target = temp_dir("template-scaffold-target");
         fs::create_dir_all(&target).expect("create target");
 
-        scaffold_template_from_clone(&clone, Some("templates/mac"), "my-mac", &target)
-            .expect("scaffold");
+        let outcome =
+            scaffold_template_from_clone(&clone, Some("templates/mac"), "my-mac", &target)
+                .expect("scaffold");
+        // The fixture uses HOSTNAME_PLACEHOLDER, so the hostname is adoptable.
+        assert!(outcome.hostname_used);
 
         let flake = fs::read_to_string(target.join("flake.nix")).expect("read flake");
         assert!(flake.contains("darwinConfigurations.my-mac"));

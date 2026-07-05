@@ -129,13 +129,19 @@ pub fn detect_darwin_platform() -> &'static str {
 /// symlinks are skipped rather than followed — following them would let a
 /// hostile template recurse forever (`ln -s . self`) or pull out-of-tree file
 /// contents into a config the user may later publish.
+///
+/// Returns whether the template consumed the hostname placeholder in any
+/// `.nix` content or file name — i.e. it is host-parameterized per the
+/// template conventions, so `darwinConfigurations.<hostname>` can be assumed
+/// to exist after rendering.
 fn copy_template_dir(
     src: &Path,
     dest: &Path,
     hostname: &str,
     platform: &str,
     username: &str,
-) -> Result<(), String> {
+) -> Result<bool, String> {
+    let mut hostname_used = false;
     fs::create_dir_all(dest)
         .map_err(|e| format!("Failed to create directory {}: {}", dest.display(), e))?;
 
@@ -154,18 +160,25 @@ fn copy_template_dir(
             log::warn!("Skipping symlink in template: {}", src_path.display());
             continue;
         }
+        if let Some(raw_name) = entry.file_name().to_str() {
+            hostname_used |=
+                raw_name.contains("HOSTNAME_PLACEHOLDER") || raw_name.contains("{{hostname}}");
+        }
         let file_name = render_template_file_name(&entry.file_name(), hostname, platform, username);
         let dest_path = dest.join(&file_name);
 
         if file_type.is_dir() {
             // Recursively copy subdirectories
-            copy_template_dir(&src_path, &dest_path, hostname, platform, username)?;
+            hostname_used |=
+                copy_template_dir(&src_path, &dest_path, hostname, platform, username)?;
         } else if file_type.is_file() {
             // Check if it's a .nix file that needs template processing
             if is_nix_file(&src_path) {
-                // Read and process template placeholders using apply_template_placeholders.
-                let processed = crate::bootstrap::template::apply_template_placeholders(
-                    &src_path, hostname, platform, username,
+                let content = fs::read_to_string(&src_path)
+                    .map_err(|e| format!("Failed to read {}: {}", src_path.display(), e))?;
+                hostname_used |= content.contains("HOSTNAME_PLACEHOLDER");
+                let processed = crate::bootstrap::template::apply_template_placeholders_to_string(
+                    &content, hostname, platform, username,
                 )
                 .map_err(|e| format!("Failed to process template {}: {}", src_path.display(), e))?;
 
@@ -179,7 +192,7 @@ fn copy_template_dir(
         }
     }
 
-    Ok(())
+    Ok(hostname_used)
 }
 
 /// Validates a hostname destined for template placeholder substitution.
@@ -351,6 +364,16 @@ pub fn bootstrap_with_template(
     Ok(())
 }
 
+/// Facts observed while scaffolding, used to decide follow-up behavior.
+#[derive(Debug)]
+pub struct ScaffoldOutcome {
+    /// The template consumed the hostname placeholder (in `.nix` contents or
+    /// file names). Per the template conventions this means
+    /// `darwinConfigurations.<hostname>` exists after rendering, so the
+    /// hostname can be adopted as the host attribute without probing.
+    pub hostname_used: bool,
+}
+
 /// Scaffolds a configuration into `dest_dir` from a template directory: the
 /// destination-safety check, template copy with placeholder substitution,
 /// git init, and the tagged initial commit. Template-agnostic — the source
@@ -361,7 +384,7 @@ pub fn scaffold_template(
     hostname: &str,
     platform: &str,
     username: &str,
-) -> Result<(), String> {
+) -> Result<ScaffoldOutcome, String> {
     validate_template_hostname(hostname)?;
 
     // Safety check: only proceed if directory is empty or git-only. It lives
@@ -377,7 +400,7 @@ pub fn scaffold_template(
     }
 
     // Copy and process all template files recursively
-    copy_template_dir(template_path, dest_path, hostname, platform, username)?;
+    let hostname_used = copy_template_dir(template_path, dest_path, hostname, platform, username)?;
 
     // Initialize git repository and commit templates
     git::init::init_repo(dest_dir).map_err(|e| format!("Failed to init git: {}", e))?;
@@ -392,7 +415,7 @@ pub fn scaffold_template(
         log::warn!("Failed to tag initial commit as base: {}", e);
     }
 
-    Ok(())
+    Ok(ScaffoldOutcome { hostname_used })
 }
 
 /// Generates flake.lock and commits it as a follow-up to bootstrap.
@@ -482,14 +505,49 @@ mod tests {
         std::os::unix::fs::symlink(src.path(), src.path().join("loop")).expect("create loop");
 
         let dest = tempfile::tempdir().expect("create dest dir");
-        copy_template_dir(src.path(), dest.path(), "host", "aarch64-darwin", "user")
-            .expect("copy template");
+        let hostname_used =
+            copy_template_dir(src.path(), dest.path(), "host", "aarch64-darwin", "user")
+                .expect("copy template");
 
+        // `{ }` uses no placeholder, so the template is not host-parameterized.
+        assert!(!hostname_used);
         assert!(dest.path().join("flake.nix").is_file());
         assert!(!dest.path().join(".git").exists());
         assert!(!dest.path().join(".DS_Store").exists());
         assert!(!dest.path().join("linked.nix").exists());
         assert!(!dest.path().join("loop").exists());
+    }
+
+    #[test]
+    fn copy_template_dir_detects_hostname_placeholder_usage() {
+        // In .nix contents.
+        let src = tempfile::tempdir().expect("create source dir");
+        fs::write(
+            src.path().join("flake.nix"),
+            "darwinConfigurations.HOSTNAME_PLACEHOLDER = { };",
+        )
+        .expect("create flake");
+        let dest = tempfile::tempdir().expect("create dest dir");
+        assert!(
+            copy_template_dir(src.path(), dest.path(), "host", "aarch64-darwin", "user")
+                .expect("copy template")
+        );
+
+        // In file names only.
+        let src = tempfile::tempdir().expect("create source dir");
+        fs::create_dir_all(src.path().join("hosts/HOSTNAME_PLACEHOLDER")).expect("create dir");
+        fs::write(
+            src.path().join("hosts/HOSTNAME_PLACEHOLDER/default.nix"),
+            "{ }",
+        )
+        .expect("create module");
+        fs::write(src.path().join("flake.nix"), "{ }").expect("create flake");
+        let dest = tempfile::tempdir().expect("create dest dir");
+        assert!(
+            copy_template_dir(src.path(), dest.path(), "host", "aarch64-darwin", "user")
+                .expect("copy template")
+        );
+        assert!(dest.path().join("hosts/host/default.nix").is_file());
     }
 
     #[test]
@@ -513,8 +571,9 @@ mod tests {
 
         let dest = tempfile::tempdir().expect("create dest dir");
         let dest_dir = dest.path().to_string_lossy().to_string();
-        scaffold_template(src.path(), &dest_dir, "my-mac", "aarch64-darwin", "user")
+        let outcome = scaffold_template(src.path(), &dest_dir, "my-mac", "aarch64-darwin", "user")
             .expect("scaffold");
+        assert!(outcome.hostname_used);
 
         let flake = fs::read_to_string(dest.path().join("flake.nix")).expect("read flake");
         assert!(flake.contains("darwinConfigurations.my-mac"));

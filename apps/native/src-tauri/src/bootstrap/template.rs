@@ -228,7 +228,17 @@ pub fn apply_template_placeholders(
 ) -> Result<String, Error> {
     let content = fs::read_to_string(src_path)
         .with_context(|| format!("failed to read {}", src_path.display()))?;
+    apply_template_placeholders_to_string(&content, hostname, platform, username)
+}
 
+/// String-level variant of [`apply_template_placeholders`] for callers that
+/// already hold the content (and e.g. inspected it for placeholder usage).
+pub fn apply_template_placeholders_to_string(
+    content: &str,
+    hostname: &str,
+    platform: &str,
+    username: &str,
+) -> Result<String, Error> {
     let processed = content
         .replace("HOSTNAME_PLACEHOLDER", hostname)
         .replace("PLATFORM_PLACEHOLDER", platform)

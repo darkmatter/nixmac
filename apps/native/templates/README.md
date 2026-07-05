@@ -24,8 +24,12 @@ Conventions for template authors:
   chosen machine name, `aarch64-darwin`/`x86_64-darwin`, and the macOS
   username. In **file and directory names**, `{{hostname}}` and the same
   placeholder tokens are substituted for *every* file, not just `.nix` ones.
-- Templates that skip the hostname placeholder work too: nixmac then asks the
-  user to pick among the template's actual `darwinConfigurations` hosts.
+- Using the hostname placeholder implies the convention that
+  `darwinConfigurations.HOSTNAME_PLACEHOLDER` names the machine's
+  configuration: nixmac then selects the chosen machine name as the host
+  automatically, exactly like the bundled templates. Templates that skip the
+  placeholder work too — nixmac instead asks the user to pick among the
+  template's actual `darwinConfigurations` hosts.
 - Symlinks are **skipped** (with a warning) — don't rely on them.
 - `.git` and `.DS_Store` entries are never copied.
 - A shipped `flake.lock` is kept and committed, pinning the template author's

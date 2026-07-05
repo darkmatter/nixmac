@@ -86,16 +86,17 @@ const pickZip = () => client.config.pickZip();
 
 /**
  * Scaffolds a new configuration from a remote template repository. Atomic on
- * the backend: the config dir is only selected on success.
+ * the backend: the config dir is only selected on success. No applyDirResult
+ * here — the backend owns the host attribute for template creates (it adopts
+ * the chosen hostname when the template is host-parameterized, and clears it
+ * otherwise), so a client-side reset would wipe that decision.
  */
 const createFromTemplate = async (templateRef: string, hostname: string, dirName?: string) => {
-  const result = await client.config.createFromTemplate({
+  return client.config.createFromTemplate({
     templateRef,
     hostname,
     dirName: dirName ?? null,
   });
-  await applyDirResult(result);
-  return result;
 };
 
 const saveHost = async (host: string) => {

@@ -141,9 +141,11 @@ describe("CreateSource", () => {
         "/etc/nix-darwin",
       ),
     );
-    // The atomic command owns target preparation; prepareNewDir must not run.
+    // The atomic command owns target preparation and the host attribute;
+    // neither prepareNewDir nor a client-side hostAttr reset may run.
     expect(mockPrepareNewDir).not.toHaveBeenCalled();
     expect(mockBootstrapDefault).not.toHaveBeenCalled();
+    expect(mockSetHostAttr).not.toHaveBeenCalled();
     expect(onCreated).toHaveBeenCalled();
   });
 
