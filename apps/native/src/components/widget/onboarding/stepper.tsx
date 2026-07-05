@@ -1,5 +1,10 @@
 import { Check } from "lucide-react";
-import { STEPS, stepIndex, type StepId } from "@/components/widget/onboarding/lib/onboarding";
+import {
+  RESTART_TARGET_STEP,
+  STEPS,
+  stepIndex,
+  type StepId,
+} from "@/components/widget/onboarding/lib/onboarding";
 import { cn } from "@/lib/utils";
 
 interface StepperProps {
@@ -64,6 +69,11 @@ export function OnboardingStepper({ activeStep, furthestStep, onStepSelect }: St
 
         return (
           <li key={step.id}>
+            {/* Light break between the machine-state gates above and the
+                user-driven steps "Restart setup" rewinds to. */}
+            {step.id === RESTART_TARGET_STEP && (
+              <div aria-hidden="true" className="mx-3 mt-1 mb-2 border-border/60 border-t" />
+            )}
             {canNavigate ? (
               <button
                 type="button"
