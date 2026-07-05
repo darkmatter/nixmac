@@ -31,7 +31,4 @@ export type OnboardingStateValues = {
   celebrating: boolean;
   /** When set, the user is reviewing an earlier step instead of the furthest gate. */
   viewingStep: OnboardingStepId | null;
-  /** Clone dir of an import awaiting a flake-dir choice. The backend keeps no
-   * record of it, so restart needs this to discard the tree. */
-  pendingImportDir: string | null;
 };

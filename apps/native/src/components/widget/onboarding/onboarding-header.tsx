@@ -11,17 +11,11 @@ interface Props {
 }
 
 /** Rewinds onboarding to the config-dir step. The backend clears the durable
- * facts the step machine derives progress from (and deletes a config dir it
- * materialized itself), then the preferences-changed event re-routes the flow
- * — no navigation needed here. */
+ * facts the step machine derives progress from (and deletes a config dir or
+ * parked import it materialized itself), then the preferences-changed event
+ * re-routes the flow — no navigation needed here. */
 async function restartSetup() {
-  // An import parked on the flake-dir chooser lives only on disk; discard it
-  // first or the reset would orphan the tree.
-  const pendingImportDir = onboardingActions.getState().pendingImportDir;
   try {
-    if (pendingImportDir) {
-      await client.config.discardImport({ dir: pendingImportDir });
-    }
     await client.onboarding.reset();
   } catch (error) {
     // Typically the backend refusing to reset while a build is running.
