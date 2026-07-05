@@ -14,6 +14,17 @@ let
     browser: browser.name == "chromium"
   ) playright-json.browsers) 0;
   playwright-chromium-revision = playwright-chromium-entry.revision;
+  # Headless Chromium in CI containers (ARC pods) has no /etc/fonts and no
+  # system fonts, so fontconfig fails with "Cannot load default config file"
+  # and every glyph rasterizes to nothing — Creevey PR screenshots come out
+  # textless. Point fontconfig at a nix-provided config + font set instead.
+  playwright-fonts-conf = pkgs.makeFontsConf {
+    fontDirectories = [
+      pkgs.dejavu_fonts
+      pkgs.liberation_ttf
+      pkgs.noto-fonts-color-emoji
+    ];
+  };
   xcodeSwiftPathHook = ''
     host_xcode_developer_dir="$(env -u DEVELOPER_DIR -u SDKROOT /usr/bin/xcode-select -p 2>/dev/null || true)"
     if [ -z "$host_xcode_developer_dir" ]; then
@@ -131,6 +142,7 @@ lib.mkIf (!config.container.isBuilding) {
   + lib.optionalString pkgs.stdenv.isLinux ''
     export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
     export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+    export FONTCONFIG_FILE=${playwright-fonts-conf}
 
     export LD_LIBRARY_PATH=${
       lib.makeLibraryPath [

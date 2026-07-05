@@ -120,6 +120,7 @@ runs:
 
         "${RUNNER_TEMP}/devenv-cli/bin/devenv" shell --impure -- bash -c '
           for name in \
+            FONTCONFIG_FILE \
             LD_LIBRARY_PATH \
             LIBRARY_PATH \
             PLAYWRIGHT_BROWSERS_PATH \
