@@ -23,6 +23,7 @@ mod launchd;
 mod lsp;
 mod models;
 mod nix;
+mod onboarding;
 mod path;
 mod permissions;
 mod preferences;
@@ -73,5 +74,6 @@ pub fn build_router() -> Router<OrpcCtx> {
         .nest("lsp", lsp::routes())
         .nest("updater", updater::routes())
         .nest("nix", nix::routes())
+        .nest("onboarding", onboarding::routes())
         .nest("preferences", preferences::routes())
 }

@@ -26,6 +26,7 @@ pub mod feedback;
 pub mod git;
 pub mod homebrew;
 pub mod launchd;
+pub mod onboarding;
 pub mod peek;
 pub mod permissions;
 pub mod rollback;

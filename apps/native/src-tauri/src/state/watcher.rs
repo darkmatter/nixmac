@@ -24,6 +24,21 @@ static WATCH_DIR: Mutex<Option<String>> = Mutex::new(None);
 /// Holds handle to current watcher so we can wait for it to stop on restart.
 static WATCHER_THREAD: Mutex<Option<std::thread::JoinHandle<()>>> = Mutex::new(None);
 
+/// Stops the git status watcher, if one is running, and waits for it to exit.
+/// Used when the config directory is cleared (onboarding reset) — without a
+/// directory there is nothing to poll, and polling a deleted one would emit
+/// a `git_state_error` on every tick.
+pub fn stop_watching() {
+    let mut thread_guard = WATCHER_THREAD.lock().unwrap();
+    if let Some(old_thread) = thread_guard.take() {
+        WATCHER_ACTIVE.store(false, Ordering::SeqCst);
+        // fire-and-forget join, as in `start_watching`: a panicked watcher is
+        // being discarded either way.
+        let _ = old_thread.join();
+    }
+    *WATCH_DIR.lock().unwrap() = None;
+}
+
 /// Starts the git status watcher for the given directory.
 ///
 /// ## Parameters
