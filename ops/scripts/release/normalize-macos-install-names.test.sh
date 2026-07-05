@@ -234,6 +234,13 @@ if ! grep -F "fresh signature" "$TMP_DIR/nixmac.app.tar.gz.sig" >/dev/null; then
 	exit 1
 fi
 
+TAR_ROOTS=$(tar -tzf "$TMP_DIR/nixmac.app.tar.gz" | sed -E 's|/.*$|/|' | sort -u)
+if [ "$TAR_ROOTS" != "NixIconvUpdater.app/" ]; then
+	echo "expected repacked updater archive rooted at NixIconvUpdater.app/ (tauri updater strips one leading path component); got:" >&2
+	echo "$TAR_ROOTS" >&2
+	exit 1
+fi
+
 : >"$CODESIGN_LOG"
 make_app "$TMP_DIR/AdhocFallback.app" nix-iconv-adhoc
 (

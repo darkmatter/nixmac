@@ -344,9 +344,21 @@ check_updater_tarball() {
 	mkdir -p "$extract_dir"
 	tar -xzf "$tar_path" -C "$extract_dir"
 
-	app_count=$(find "$extract_dir" -maxdepth 3 -name "*.app" -type d | wc -l | tr -d '[:space:]')
-	if [ "$app_count" -eq 0 ]; then
-		echo "ERROR: no .app bundle found in $tar_path" >&2
+	# tauri-plugin-updater strips exactly one leading path component from every
+	# entry, so the archive MUST be rooted at `AppName.app/`. A `./`-rooted
+	# archive (e.g. from `tar -czf ... -C dir .`) installs a nested
+	# `nixmac.app/nixmac.app/...` bundle and corrupts the app on auto-update.
+	local bad_roots
+	bad_roots=$(tar -tzf "$tar_path" | sed -E 's|/.*$|/|' | sort -u | grep -Ev '^[^/.][^/]*\.app/$' || true)
+	if [ -n "$bad_roots" ]; then
+		echo "ERROR: updater tarball entries must be rooted at 'AppName.app/'; found roots:" >&2
+		echo "$bad_roots" >&2
+		exit 2
+	fi
+
+	app_count=$(find "$extract_dir" -maxdepth 1 -name "*.app" -type d | wc -l | tr -d '[:space:]')
+	if [ "$app_count" -ne 1 ]; then
+		echo "ERROR: expected exactly one top-level .app bundle in $tar_path, found $app_count" >&2
 		exit 2
 	fi
 
