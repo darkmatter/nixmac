@@ -106,6 +106,7 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
   useEffect(() => {
     if (status === "success" && hasInference && !dismissedCelebration && !celebrating) {
       onboardingActions.setCelebrating(true);
+      getTelemetry().captureEvent({ name: "onboarding_completed" });
     }
   }, [status, hasInference, dismissedCelebration, celebrating]);
 
