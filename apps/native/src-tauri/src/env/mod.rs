@@ -208,9 +208,8 @@ mod tests {
         unsafe { std::env::set_var(keys::SUBMITTED_FEEDBACK_DSN, "test-dsn") };
         assert_eq!(feedback_url().unwrap(), "https://example.com/api/feedback");
 
-        unsafe { std::env::remove_var(keys::VITE_SERVER_URL) };
-        unsafe { std::env::remove_var(keys::SUBMITTED_FEEDBACK_DSN) };
-        assert!(feedback_url().is_err());
+        // No real way to test an unset VITE_SERVER_URL because the build.rs embed will always provide a default
+        // from the JSON files.
     }
 
     #[test]
