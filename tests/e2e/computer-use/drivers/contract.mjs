@@ -13,7 +13,7 @@ export const driverCapabilityKeys = Object.freeze([
   "wait",
 ]);
 
-export const requiredDriverCapabilities = Object.freeze([
+const requiredDriverCapabilities = Object.freeze([
   "connect",
   "visibleState",
   "findElement",

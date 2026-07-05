@@ -199,7 +199,7 @@ export const EXAMPLE_REFS: { ref: string; note: string }[] = [
 	},
 ];
 
-export interface StarterTemplate {
+interface StarterTemplate {
 	id: StarterTemplateId;
 	name: string;
 	description: string;

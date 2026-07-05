@@ -14,16 +14,14 @@
     "desktop:dev": "bun -F native desktop:dev",
     "desktop:build": "bun -F native desktop:build",
     "desktop:test": "bun -F native desktop:test",
-    "postinstall": "\"$npm_execpath\" node_modules/bun2nix/index.ts -o bun.nix",
+    "postinstall": "bun2nix -o bun.nix",
     "release": "release-it",
     "test:e2e": "bun -F native test:e2e",
     "test:e2e:ui": "bun -F native test:e2e:ui",
     "test:e2e:install": "bun -F native test:e2e:install",
     "knip": "knip"
   },
-  "dependencies": {
-    "effect": "4.0.0-beta.62"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/bun": "1.3.14",
     "@types/node": "25.6.0",
@@ -33,8 +31,7 @@
     "oxlint": "1.63.0",
     "release-it": "19.2.4",
     "turbo": "2.9.18",
-    "typescript": "6.0.3",
-    "ultracite": "6.4.0"
+    "typescript": "6.0.3"
   },
   "overrides": {
     "cpu-features": "npm:noop2@2.0.0"

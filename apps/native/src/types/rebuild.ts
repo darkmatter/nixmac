@@ -34,7 +34,7 @@ export interface RebuildNotice {
 
 export type RebuildContext = "rollback" | "apply";
 
-export interface RebuildState {
+interface RebuildState {
   isRunning: boolean;
   context: RebuildContext;
   lines: RebuildLine[];

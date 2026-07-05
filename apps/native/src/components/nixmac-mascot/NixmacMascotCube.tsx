@@ -13,7 +13,7 @@ import { NixmacMascot } from "./NixmacMascot";
 import backSvg from "./nixmac-mascot-back.svg?raw";
 import "./nixmac-mascot-cube.css";
 
-export interface NixmacMascotCubeProps {
+interface NixmacMascotCubeProps {
   /** Rendered cube edge in px. Default 160. */
   size?: number;
   className?: string;
@@ -44,4 +44,3 @@ export function NixmacMascotCube({ size = 160, className }: NixmacMascotCubeProp
   );
 }
 
-export default NixmacMascotCube;

@@ -3,7 +3,7 @@ import { createDevReporter } from "nostics/reporters/dev";
 
 /// <reference type="vite/client" />
 
-export const DIAGNOSTIC_CODES = {
+const DIAGNOSTIC_CODES = {
   EVOLVE_NO_PROVIDER: "EVOLVE_E001",
 } as const;
 

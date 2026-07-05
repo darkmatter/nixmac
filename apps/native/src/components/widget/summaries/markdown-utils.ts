@@ -8,14 +8,14 @@ export function commitMessageBody(full: string): string {
   return trimmed.slice(newlineIndex + 1).trim();
 }
 
-export function lineCount(text: string): number {
+function lineCount(text: string): number {
   if (!text) {
     return 0;
   }
   return text.split(/\r?\n/).length;
 }
 
-export function exceedsLineLimit(text: string, maxLines: number): boolean {
+function exceedsLineLimit(text: string, maxLines: number): boolean {
   return lineCount(text) > maxLines;
 }
 

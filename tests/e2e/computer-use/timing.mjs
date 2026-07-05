@@ -1,4 +1,4 @@
-export const timingSchemaVersion = 1;
+const timingSchemaVersion = 1;
 
 const knownStatuses = new Set([
   "success",
@@ -14,7 +14,7 @@ export function nowIso() {
   return new Date().toISOString();
 }
 
-export function durationMsBetween(startedAt, endedAt) {
+function durationMsBetween(startedAt, endedAt) {
   const start = Date.parse(startedAt || "");
   const end = Date.parse(endedAt || "");
   if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return null;
@@ -28,7 +28,7 @@ function normalizeBoolean(value, fallback) {
   return fallback;
 }
 
-export function normalizeTimingPhase(input = {}) {
+function normalizeTimingPhase(input = {}) {
   const id = String(input.id || input.key || "").trim();
   if (!id) return null;
   const startedAt = input.startedAt || input.start || null;
@@ -103,7 +103,7 @@ export function mergeTimingMetadata(state, metadata, { source = "workflow" } = {
   return timing;
 }
 
-export function phaseSortKey(phase) {
+function phaseSortKey(phase) {
   const start = Date.parse(phase.startedAt || "");
   return Number.isFinite(start) ? start : Number.MAX_SAFE_INTEGER;
 }

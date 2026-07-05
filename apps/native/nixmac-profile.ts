@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-export type NixmacProfileName = "development" | "release" | "e2e";
+type NixmacProfileName = "development" | "release" | "e2e";
 
 function readProfileJson(nativeAppDir: string, name: NixmacProfileName): Record<string, unknown> {
   const raw = readFileSync(path.join(nativeAppDir, `env.${name}.json`), "utf8");
@@ -9,7 +9,7 @@ function readProfileJson(nativeAppDir: string, name: NixmacProfileName): Record<
 }
 
 /** Profile file selection — keep in sync with `apps/native/src-tauri/build.rs`. */
-export function resolveNixmacProfile(): NixmacProfileName {
+function resolveNixmacProfile(): NixmacProfileName {
   switch (process.env.NIXMAC_ENV ?? "development") {
     case "prod":
     case "production":
@@ -21,7 +21,7 @@ export function resolveNixmacProfile(): NixmacProfileName {
   }
 }
 
-export function resolveNixmacVersion(nativeAppDir: string): string {
+function resolveNixmacVersion(nativeAppDir: string): string {
   if (process.env.NIXMAC_VERSION) {
     return process.env.NIXMAC_VERSION;
   }
@@ -73,7 +73,7 @@ function isOverridableKey(key: string): boolean {
  * Merge process env on top of the committed profile — same idea as `.env` overriding
  * defaults, and mirroring Rust `NixmacEnvSettings::resolve()` precedence for strings.
  */
-export function mergeProfileWithProcessEnv(
+function mergeProfileWithProcessEnv(
   base: Record<string, unknown>,
   nativeAppDir: string,
 ): Record<string, unknown> {
@@ -89,14 +89,14 @@ export function mergeProfileWithProcessEnv(
   return merged;
 }
 
-export function loadCommittedProfile(
+function loadCommittedProfile(
   nativeAppDir: string,
   name: NixmacProfileName,
 ): Record<string, unknown> {
   return readProfileJson(nativeAppDir, name);
 }
 
-export function resolveMergedProfile(nativeAppDir: string): Record<string, unknown> {
+function resolveMergedProfile(nativeAppDir: string): Record<string, unknown> {
   const base = loadCommittedProfile(nativeAppDir, resolveNixmacProfile());
   return mergeProfileWithProcessEnv(base, nativeAppDir);
 }

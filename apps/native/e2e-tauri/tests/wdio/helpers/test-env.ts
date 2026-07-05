@@ -258,7 +258,7 @@ export async function setMockOpenAiCompatibleResponses({
   return response.json();
 }
 
-export async function setupNixmacTestEnvironment(
+async function setupNixmacTestEnvironment(
   options: SetupOptions = {},
 ): Promise<NixmacTestEnvironmentContext> {
   const {
@@ -333,7 +333,7 @@ export async function setupNixmacTestEnvironment(
   };
 }
 
-export async function teardownNixmacTestEnvironment(
+async function teardownNixmacTestEnvironment(
   context: NixmacTestEnvironmentContext | null | undefined,
 ): Promise<void> {
   if (context?.configDir) {

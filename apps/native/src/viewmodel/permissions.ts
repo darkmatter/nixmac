@@ -3,7 +3,7 @@ import type { PermissionsState } from "@/ipc/types";
 import { viewModelActions } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
 
-export function mirrorPermissions(permissions: PermissionsState | null): void {
+function mirrorPermissions(permissions: PermissionsState | null): void {
   viewModelActions.setState({ permissions, permissionsHydrated: true });
 }
 

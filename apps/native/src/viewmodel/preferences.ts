@@ -3,7 +3,7 @@ import type { GlobalPreferences } from "@/ipc/types";
 import { viewModelActions } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
 
-export function mirrorPreferences(preferences: GlobalPreferences): void {
+function mirrorPreferences(preferences: GlobalPreferences): void {
   viewModelActions.setState({ preferences });
 }
 

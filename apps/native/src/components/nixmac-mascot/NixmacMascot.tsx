@@ -10,7 +10,7 @@ import type { CSSProperties } from "react";
 import rawSvg from "./nixmac-mascot.svg?raw";
 import "./nixmac-mascot.css";
 
-export interface NixmacMascotProps {
+interface NixmacMascotProps {
   /** Rendered square size in px. Default 160. */
   size?: number;
   className?: string;
@@ -31,4 +31,3 @@ export function NixmacMascot({ size = 160, className, style }: NixmacMascotProps
   );
 }
 
-export default NixmacMascot;

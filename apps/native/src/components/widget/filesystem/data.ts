@@ -9,7 +9,7 @@ import type {
 import { filesystemSectionEnabled, FilesystemSectionFlag } from "@/lib/flags";
 
 export type FileTone = "teal" | "amber" | "rose" | "blue" | "muted";
-export type FileStatus = "managed" | "changed" | "candidate";
+type FileStatus = "managed" | "changed" | "candidate";
 
 type BaseCandidateItem = {
   name: string;

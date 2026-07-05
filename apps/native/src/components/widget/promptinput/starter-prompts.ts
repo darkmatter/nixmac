@@ -1,6 +1,6 @@
 import starterPromptArchetypes from "@/components/widget/promptinput/starter-prompts.json";
 
-export type StarterPromptArchetypeId =
+type StarterPromptArchetypeId =
   | "programmers"
   | "streamers"
   | "homelab"

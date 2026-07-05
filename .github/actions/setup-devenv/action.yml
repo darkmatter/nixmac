@@ -118,8 +118,12 @@ runs:
         mkdir -p .devenv-ci
         readlink -f .devenv/profile > .devenv-ci/profile-path
 
+        # enterShell hooks (e.g. devenv's automatic `bun install`) write to
+        # stdout too, so a bare redirect would poison the env file with lines
+        # GITHUB_ENV can't parse. Keep only the KEY=value lines we asked for.
         "${RUNNER_TEMP}/devenv-cli/bin/devenv" shell --impure -- bash -c '
           for name in \
+            FONTCONFIG_FILE \
             LD_LIBRARY_PATH \
             LIBRARY_PATH \
             PLAYWRIGHT_BROWSERS_PATH \
@@ -131,7 +135,9 @@ runs:
               printf "%s=%s\n" "$name" "$value"
             fi
           done
-        ' > .devenv-ci/env 2>/dev/null
+        ' 2>/dev/null \
+          | grep -E '^(FONTCONFIG_FILE|LD_LIBRARY_PATH|LIBRARY_PATH|PLAYWRIGHT_BROWSERS_PATH|PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD|RUSTFLAGS)=' \
+          > .devenv-ci/env || true
 
         # Trim env values like /nix/store/<hash>-pkg/lib down to the top-level
         # store path — nix-store --realise only accepts store path roots.
@@ -214,6 +220,8 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
+        # Filter defensively: caches saved before the env file was sanitized
+        # may contain stray enterShell output that GITHUB_ENV rejects.
         if [[ -f .devenv-ci/env ]]; then
-          cat .devenv-ci/env >> "$GITHUB_ENV"
+          grep -E '^[A-Z_][A-Z0-9_]*=' .devenv-ci/env >> "$GITHUB_ENV" || true
         fi

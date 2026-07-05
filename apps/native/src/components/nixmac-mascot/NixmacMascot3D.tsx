@@ -155,7 +155,7 @@ function Token({ spinning }: { spinning: boolean }) {
   );
 }
 
-export interface NixmacMascot3DProps {
+interface NixmacMascot3DProps {
   /** Rendered square size in px. Default 160. */
   size?: number;
   /** Turn continuously on the Y axis (the busy/indicator state). */
@@ -189,4 +189,3 @@ export function NixmacMascot3D({ size = 160, spinning = false, className }: Nixm
   );
 }
 
-export default NixmacMascot3D;

@@ -2,7 +2,7 @@ import path from "node:path";
 import { artifactFileIssue, artifactForLabel, pngDimensions } from "./artifact-utils.mjs";
 import { tryRun } from "./process-utils.mjs";
 
-export const visualProbeDefaults = {
+const visualProbeDefaults = {
   minWidth: 500,
   minHeight: 500,
   minYMax: 50,

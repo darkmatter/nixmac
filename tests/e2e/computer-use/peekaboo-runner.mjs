@@ -16,7 +16,7 @@ import { pngDimensions } from "./artifact-utils.mjs";
 import { containsUnmaskedSecret } from "./redaction.mjs";
 import { imageArtifactIssue, pngSignalStats, probeCropForImage } from "./visual-proof.mjs";
 
-export const PEEKABOO_E2E_SCENARIO_KEYS = Object.freeze({
+const PEEKABOO_E2E_SCENARIO_KEYS = Object.freeze({
   macos_descriptor_prompt_smoke: "peekabooDescriptorPromptSmoke",
   macos_core_product_proof: "peekabooCoreProductProof",
   macos_support_dialogs_smoke: "peekabooSupportDialogsSmoke",
@@ -28,7 +28,7 @@ export const PEEKABOO_E2E_SCENARIO_KEYS = Object.freeze({
   "nix-install": "peekabooNixInstall",
 });
 
-export const PEEKABOO_PHASE_COVERAGE = Object.freeze({
+const PEEKABOO_PHASE_COVERAGE = Object.freeze({
   peekabooCoreFixture: { label: "Peekaboo core fixture", correspondsTo: [], grade: "fixture" },
   peekabooCoreLaunch: {
     label: "Peekaboo core launch",
@@ -189,7 +189,7 @@ function phaseCoverageForReportPhase(key, phase) {
 
 export const DEFAULT_PEEKABOO_SCENARIO = "macos_descriptor_prompt_smoke";
 
-export function listPeekabooScenarios({ e2eRoot }) {
+function listPeekabooScenarios({ e2eRoot }) {
   const scenariosDir = path.join(e2eRoot, "scenarios");
   return readdirSync(scenariosDir)
     .filter((entry) => entry.endsWith(".sh"))
@@ -656,7 +656,7 @@ function coverageMapForScenario(scenario, report) {
   };
 }
 
-export function classifyCodesignOutput(output) {
+function classifyCodesignOutput(output) {
   if (!output) return { fatal: false, note: "codesign did not return output" };
   const allowed =
     /code object is not signed at all/i.test(output) ||
@@ -685,7 +685,7 @@ function stripAnsi(value) {
   return String(value ?? "").replace(/\x1B\[[0-9;]*m/g, "");
 }
 
-export function hasInfraFailureMarker(...values) {
+function hasInfraFailureMarker(...values) {
   return values
     .flatMap((value) => stripAnsi(value).split(/\r?\n/))
     .some((line) => /^(?:\[[A-Z]+\]\s*)?E2E_INFRA:/.test(line.trim()));

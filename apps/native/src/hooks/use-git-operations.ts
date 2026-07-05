@@ -38,7 +38,7 @@ function compactFileDiffContents(
   );
 }
 
-export const refreshGitStatus = async () => {
+const refreshGitStatus = async () => {
   try {
     await refreshGitSnapshot();
   } catch (e: unknown) {

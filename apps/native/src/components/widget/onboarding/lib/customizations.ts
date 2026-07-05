@@ -7,17 +7,17 @@ import type {
 } from "@/ipc/types";
 import type { TrackedCustomizationSource } from "@nixmac/state";
 
-export type CustomizationGroupId =
+type CustomizationGroupId =
   | "macos-settings"
   | "homebrew-casks"
   | "homebrew-taps"
   | "launch-agents";
 
-export type GroupSeverity = "info" | "warning";
+type GroupSeverity = "info" | "warning";
 
 export type CustomizationSource = TrackedCustomizationSource;
 
-export interface TrackedCustomizationBuckets {
+interface TrackedCustomizationBuckets {
   homebrew: HomebrewItem[];
   launchd: LaunchdItem[];
   systemDefaults: SystemDefault[];
