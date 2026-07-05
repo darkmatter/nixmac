@@ -9,7 +9,7 @@ use crate::shared_types::Evolution;
 use crate::storage::store;
 use crate::system::{nix, secret_scanner};
 use crate::types;
-use anyhow::{Context, Result};
+use anyhow::{self, Context, Result};
 use chrono::Utc;
 use log::{debug, warn};
 use serde_json::Value;
@@ -518,16 +518,61 @@ fn get_report_path(app: &AppHandle) -> Result<PathBuf> {
     Ok(app_data.join("report.json"))
 }
 
+/// Constructs the full feedback submission URL and API key from environment configuration.
+struct FeedbackDestination {
+    url: String,
+    api_key: String,
+}
+
+/// Error type for feedback submission failures
+enum FeedbackSendError {
+    Server(reqwest::StatusCode),
+    Network(reqwest_middleware::Error),
+}
+
+/// Determine the feedback submission destination (URL and API key) from environment and store.
+fn feedback_destination(app: &AppHandle) -> Result<Option<FeedbackDestination>> {
+    let url = match crate::env::feedback_url() {
+        Ok(url) => url,
+        Err(_) => return Ok(None),
+    };
+    let api_key = store::get_device_api_key(app)?
+        .ok_or_else(|| anyhow::anyhow!("Sign in before sending feedback"))?;
+
+    Ok(Some(FeedbackDestination { url, api_key }))
+}
+
+/// Helper function to send a feedback payload to the server, returning success or error.
+async fn send_feedback_payload(
+    client: &reqwest_middleware::ClientWithMiddleware,
+    destination: &FeedbackDestination,
+    payload: &Value,
+) -> std::result::Result<(), FeedbackSendError> {
+    match client
+        .post(&destination.url)
+        .header("Content-Type", "application/json")
+        .header("x-api-key", &destination.api_key)
+        .json(payload)
+        .send()
+        .await
+    {
+        Ok(resp) if resp.status().is_success() => Ok(()),
+        Ok(resp) => Err(FeedbackSendError::Server(resp.status())),
+        Err(error) => Err(FeedbackSendError::Network(error)),
+    }
+}
+
 /// Submit feedback: try to POST, save to disk on failure, also flush any pending reports.
 /// Returns true if the new submission was sent successfully.
 pub async fn submit(app: &AppHandle, payload: String) -> Result<bool> {
-    let feedback_url = match crate::env::feedback_url() {
-        Ok(url) => url,
-        Err(_) => {
+    let destination = match feedback_destination(app)? {
+        Some(destination) => destination,
+        None => {
             log::error!("[feedback] Feedback system is not configured");
             return Ok(false);
         }
     };
+
     let settings = crate::env::settings(None);
     let dsn = settings.submitted_feedback_dsn;
 
@@ -550,21 +595,15 @@ pub async fn submit(app: &AppHandle, payload: String) -> Result<bool> {
     };
     let client = crate::http_client::logged();
 
-    let sent = match client
-        .post(&feedback_url)
-        .header("Content-Type", "application/json")
-        .json(&parsed)
-        .send()
-        .await
-    {
-        Ok(resp) if resp.status().is_success() => true,
-        Ok(resp) => {
-            log::warn!("[feedback] Server rejected submission: {}", resp.status());
+    let sent = match send_feedback_payload(&client, &destination, &parsed).await {
+        Ok(()) => true,
+        Err(FeedbackSendError::Server(status)) => {
+            log::warn!("[feedback] Server rejected submission: {}", status);
             save_to_queue(app, &parsed, "server error")?;
             false
         }
-        Err(e) => {
-            log::warn!("[feedback] Failed to submit: {}", e);
+        Err(FeedbackSendError::Network(error)) => {
+            log::warn!("[feedback] Failed to submit: {}", error);
             save_to_queue(app, &parsed, "network error")?;
             false
         }
@@ -602,9 +641,9 @@ fn save_to_queue(app: &AppHandle, payload: &Value, failure_reason: &str) -> Resu
 /// Retry all pending feedback reports in the background.
 /// Reads report.json, POSTs each entry, removes successes.
 pub async fn retry_pending(app: &AppHandle) -> Result<usize> {
-    let feedback_url = match crate::env::feedback_url() {
-        Ok(url) => url,
-        Err(_) => return Ok(0), // If feedback is not configured, skip retrying
+    let destination = match feedback_destination(app)? {
+        Some(destination) => destination,
+        None => return Ok(0), // If feedback is not configured, skip retrying
     };
 
     let path = get_report_path(app)?;
@@ -625,7 +664,7 @@ pub async fn retry_pending(app: &AppHandle) -> Result<usize> {
     log::info!(
         "[feedback] Found {} pending report(s), sending to {}",
         entries.len(),
-        feedback_url
+        destination.url
     );
     let client = crate::http_client::logged();
     let mut remaining = Vec::new();
@@ -637,26 +676,17 @@ pub async fn retry_pending(app: &AppHandle) -> Result<usize> {
             None => continue,
         };
 
-        match client
-            .post(&feedback_url)
-            .header("Content-Type", "application/json")
-            .json(&payload)
-            .send()
-            .await
-        {
-            Ok(resp) if resp.status().is_success() => {
+        match send_feedback_payload(&client, &destination, &payload).await {
+            Ok(()) => {
                 log::info!("[feedback] Successfully sent pending report");
                 sent += 1;
             }
-            Ok(resp) => {
-                log::warn!(
-                    "[feedback] Server rejected pending report: {}",
-                    resp.status()
-                );
+            Err(FeedbackSendError::Server(status)) => {
+                log::warn!("[feedback] Server rejected pending report: {}", status);
                 remaining.push(entry);
             }
-            Err(e) => {
-                log::warn!("[feedback] Failed to send pending report: {}", e);
+            Err(FeedbackSendError::Network(error)) => {
+                log::warn!("[feedback] Failed to send pending report: {}", error);
                 remaining.push(entry);
             }
         }
