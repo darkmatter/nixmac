@@ -115,6 +115,7 @@ fn owner_and_repo(locator: &str) -> Result<(String, String)> {
 ///   * `owner/repo?ref=<ref>`
 ///   * `owner/repo?dir=<subdir>`
 ///   * `owner/repo?ref=<ref>&dir=<subdir>`
+///   * `github:owner/repo[?query]` (Nix-style sugar for the shorthand)
 ///   * `github.com/owner/repo[.git]`
 ///   * `https://github.com/owner/repo[.git]`
 ///   * `git@github.com:owner/repo[.git]`
@@ -127,15 +128,30 @@ fn owner_and_repo(locator: &str) -> Result<(String, String)> {
 /// Query parameters are consumed by the parser and are not included in the
 /// resulting clone URL.
 ///
-/// This intentionally does NOT support Nix flake references such as:
-///   * `github:owner/repo`
-///   * `github:owner/repo?dir=subdir`
-///   * `nixpkgs#hello`
+/// Beyond the `github:` prefix, Nix flake reference syntax is intentionally
+/// NOT supported: `github:owner/repo/<ref>` (use `?ref=` instead) and
+/// attribute suffixes like `nixpkgs#hello` are rejected.
 pub fn parse_repo_ref(input: &str) -> Result<RepoRef> {
     let trimmed = input.trim();
     if trimmed.is_empty() {
         bail!("Repository reference is required");
     }
+
+    // Nix-style `github:owner/repo` sugar for the shorthand form. The
+    // path-segment ref form is rejected with a pointer to `?ref=`, which the
+    // shorthand supports.
+    let trimmed = match trimmed.strip_prefix("github:") {
+        Some(rest) => {
+            let locator_part = rest.split('?').next().unwrap_or(rest);
+            if locator_part.trim_matches('/').split('/').count() > 2 {
+                bail!(
+                    "'github:owner/repo/<ref>' is not supported; use 'github:owner/repo?ref=<ref>' instead"
+                );
+            }
+            rest
+        }
+        None => trimmed,
+    };
 
     let (locator, git_ref, subdir) = parse_query_params(trimmed)?;
     let (owner, repo) = owner_and_repo(locator)?;
@@ -662,6 +678,23 @@ mod tests {
     }
 
     #[test]
+    fn parses_github_prefix_sugar() {
+        let r = parse_repo_ref("github:czxtm/darwin").unwrap();
+        assert_eq!(r.clone_url, "https://github.com/czxtm/darwin.git");
+        assert_eq!(r.owner, "czxtm");
+        assert_eq!(r.repo, "darwin");
+
+        let r = parse_repo_ref("github:czxtm/darwin?ref=main&dir=hosts/work").unwrap();
+        assert_eq!(r.clone_url, "https://github.com/czxtm/darwin.git");
+        assert_eq!(r.git_ref.as_deref(), Some("main"));
+        assert_eq!(r.subdir.as_deref(), Some("hosts/work"));
+
+        // The Nix path-segment ref form points the user at ?ref= instead.
+        let err = parse_repo_ref("github:czxtm/darwin/main").unwrap_err();
+        assert!(err.to_string().contains("?ref="));
+    }
+
+    #[test]
     fn parses_owner_repo_with_ref_and_subdir() {
         let r = parse_repo_ref("czxtm/darwin?ref=main&dir=hosts/work").unwrap();
         assert_eq!(
@@ -732,7 +765,6 @@ mod tests {
         assert!(parse_repo_ref("a/b/c").is_err());
         assert!(parse_repo_ref("bad owner/repo").is_err());
         assert!(parse_repo_ref("owner/bad!repo").is_err());
-        assert!(parse_repo_ref("github:owner/repo").is_err());
         assert!(parse_repo_ref("czxtm/darwin#main").is_err());
     }
 

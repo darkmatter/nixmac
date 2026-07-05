@@ -147,7 +147,8 @@ export function RepoImport({ onImported }: RepoImportProps) {
 
       <div className="space-y-1">
         <label htmlFor="import-dir-name" className="text-xs text-muted-foreground">
-          Destination folder (in your home directory)
+          Destination — a folder name or a path like{" "}
+          <span className="font-mono">~/dev/nix-darwin</span>
         </label>
         <Input
           id="import-dir-name"

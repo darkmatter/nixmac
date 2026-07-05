@@ -1,6 +1,7 @@
 use super::helpers::{capture_err, handle_new_config_dir};
 use crate::bootstrap::{default_config, discover, import};
 use crate::storage::{canonical_config, store};
+use crate::system::nix;
 use crate::{shared_types, types, utils};
 use std::path::{Component, Path, PathBuf};
 use tauri::AppHandle;
@@ -92,6 +93,11 @@ fn is_dir_empty_or_only_git(path: &Path) -> Result<bool, String> {
     Ok(false)
 }
 
+/// Validates the location for a new or imported configuration directory: the
+/// canonical /etc/nix-darwin location, or any directory inside the user's
+/// home — nested paths like `~/tmp/nix-darwin` are fine, missing parents are
+/// created by the callers. Paths are compared lexically (normalization does
+/// not resolve `..`), so parent-dir segments are rejected outright.
 fn validate_new_dir_location(path: &Path) -> Result<(), String> {
     if canonical_config::is_canonical_config_path(path) {
         return Ok(());
@@ -99,16 +105,19 @@ fn validate_new_dir_location(path: &Path) -> Result<(), String> {
 
     let home = dirs::home_dir().ok_or_else(|| "Failed to resolve home directory".to_string())?;
     let relative = path.strip_prefix(&home).map_err(|_| {
-        "New configuration directories must be created directly in your home directory".to_string()
+        "New configuration directories must live inside your home directory (or at /etc/nix-darwin)"
+            .to_string()
     })?;
 
-    let mut components = relative.components();
-    let Some(Component::Normal(_)) = components.next() else {
-        return Err("Use a directory name, not a path".to_string());
-    };
-
-    if components.next().is_some() {
-        return Err("Use a directory name, not a path".to_string());
+    let mut components = relative.components().peekable();
+    if components.peek().is_none() {
+        return Err(
+            "Choose a directory inside your home directory, not the home directory itself"
+                .to_string(),
+        );
+    }
+    if !components.all(|c| matches!(c, Component::Normal(_))) {
+        return Err("Directory paths must not contain '.' or '..' segments".to_string());
     }
 
     Ok(())
@@ -254,6 +263,146 @@ pub async fn bootstrap_default_config(
     template_id: Option<String>,
 ) -> Result<(), String> {
     default_config::bootstrap_with_template(&app, &hostname, template_id.as_deref())
+}
+
+/// Resolves the template root inside a checked-out template repository: the
+/// clone itself, or the `?dir=` subdirectory. The root must contain a
+/// `flake.nix`; the error lists the flake locations found elsewhere in the
+/// repository so the user can fix the reference's `?dir=`.
+fn resolve_template_root(clone_dir: &Path, subdir: Option<&str>) -> Result<PathBuf, String> {
+    let root = match subdir {
+        Some(subdir) => {
+            let dir = clone_dir.join(subdir);
+            if !dir.is_dir() {
+                return Err(format!(
+                    "Subdirectory '{}' does not exist in the template repository",
+                    subdir
+                ));
+            }
+            dir
+        }
+        None => clone_dir.to_path_buf(),
+    };
+    if root.join("flake.nix").is_file() {
+        return Ok(root);
+    }
+
+    let location = match subdir {
+        Some(subdir) => format!("subdirectory '{}' of the template repository", subdir),
+        None => "the template repository".to_string(),
+    };
+    let candidates: Vec<String> =
+        discover::find_flake_dirs(clone_dir, discover::FLAKE_SEARCH_DEPTH)
+            .into_iter()
+            .map(|dir| {
+                if dir.is_empty() {
+                    "<repository root>".to_string()
+                } else {
+                    dir
+                }
+            })
+            .collect();
+    if candidates.is_empty() {
+        Err(format!("No flake.nix found in {}.", location))
+    } else {
+        Err(format!(
+            "No flake.nix found in {}. Found flakes at: {}. Set ?dir=<subdirectory> accordingly (omit ?dir= for the repository root).",
+            location,
+            candidates.join(", ")
+        ))
+    }
+}
+
+/// Scaffolds a fresh configuration into `target` from a template checked out
+/// at `clone_dir`: placeholder rendering, fresh git history. Split from the
+/// async command so the clone-independent part is unit-testable.
+fn scaffold_template_from_clone(
+    clone_dir: &Path,
+    subdir: Option<&str>,
+    hostname: &str,
+    target: &Path,
+) -> Result<default_config::ScaffoldOutcome, String> {
+    let template_root = resolve_template_root(clone_dir, subdir)?;
+    default_config::scaffold_template(
+        &template_root,
+        &target.to_string_lossy(),
+        hostname,
+        default_config::detect_darwin_platform(),
+        &default_config::detect_username(),
+    )
+}
+
+/// Creates a new configuration from a remote template repository (e.g.
+/// `github:owner/repo?dir=templates/mac`). The repo is cloned into a
+/// temporary directory and the referenced template directory is scaffolded
+/// into a fresh config dir — unlike imports, the template's git history is
+/// deliberately NOT inherited. The config dir is only selected on success,
+/// so a failed clone or validation never advances onboarding.
+pub async fn config_create_from_template(
+    app: AppHandle,
+    template_ref: String,
+    hostname: String,
+    dir_name: Option<String>,
+) -> Result<shared_types::SetDirResult, String> {
+    // Cheap validations before any network or filesystem work.
+    default_config::validate_template_hostname(&hostname)?;
+    let spec = import::parse_repo_ref(&template_ref).map_err(|e| e.to_string())?;
+    let subdir = spec.subdir.clone();
+
+    let target = prepare_import_target(dir_name)?;
+
+    // Clone the whole template repo into a tempdir on a blocking thread;
+    // libgit2 network I/O is synchronous. The tempdir cleans itself up.
+    let scaffolded = async {
+        let temp = tempfile::tempdir()
+            .map_err(|e| format!("Failed to create temporary directory: {}", e))?;
+        let clone_dir = temp.path().join("repo");
+
+        let app_for_clone = app.clone();
+        let clone_dir_for_clone = clone_dir.clone();
+        tauri::async_runtime::spawn_blocking(move || {
+            import::materialize_repo(Some(app_for_clone), &spec, &clone_dir_for_clone)
+        })
+        .await
+        .map_err(|e| capture_err("config_create_from_template", e))?
+        .map_err(|e| capture_err("config_create_from_template", e))?;
+
+        scaffold_template_from_clone(&clone_dir, subdir.as_deref(), &hostname, &target.path)
+    }
+    .await;
+
+    let outcome = match scaffolded {
+        Ok(outcome) => outcome,
+        Err(e) => {
+            cleanup_import_target(&target);
+            return Err(e);
+        }
+    };
+
+    let result = finalize_imported_dir(&app, &target.path)?;
+
+    // The config dir changed, so any previous host attribute is stale. When
+    // the template consumed the hostname placeholder it is host-parameterized
+    // per the template conventions — adopt the chosen name directly, exactly
+    // like a bundled template. Otherwise leave it empty so the Choose Machine
+    // step resolves the template's actual hosts.
+    let host_attr = if outcome.hostname_used {
+        hostname.as_str()
+    } else {
+        ""
+    };
+    store::set_host_attr(&app, host_attr)
+        .map_err(|e| capture_err("config_create_from_template", e))?;
+
+    // Mirror the bundled bootstrap: generate and commit flake.lock once the
+    // config dir is selected. Non-fatal — a template may ship its own lock.
+    if nix::is_nix_installed() {
+        if let Err(e) = default_config::finalize_flake_lock(&app) {
+            log::info!("Could not finalize flake.lock for the template: {}", e);
+        }
+    }
+
+    Ok(result)
 }
 
 /// Resolves an optional destination into an absolute target for an imported
@@ -678,12 +827,39 @@ mod tests {
     }
 
     #[test]
-    fn new_config_dir_must_be_a_direct_home_child() {
+    fn new_config_dir_must_live_under_home() {
         let home = dirs::home_dir().expect("home directory");
 
         assert!(validate_new_dir_location(&home.join(".darwin-test")).is_ok());
-        assert!(validate_new_dir_location(&home.join("configs").join("darwin")).is_err());
+        // Nested destinations are fine; missing parents get created.
+        assert!(validate_new_dir_location(&home.join("configs").join("darwin")).is_ok());
+        assert!(validate_new_dir_location(&home.join("tmp/deeply/nested")).is_ok());
+
+        assert!(validate_new_dir_location(&home).is_err());
         assert!(validate_new_dir_location(Path::new("/tmp/darwin")).is_err());
+        // Lexical comparison: `..` segments could escape home. (Lone `.`
+        // segments are normalized away by Path::components and stay allowed.)
+        assert!(validate_new_dir_location(&home.join("a/../../etc")).is_err());
+        assert!(validate_new_dir_location(&home.join("a/./b")).is_ok());
+    }
+
+    #[test]
+    fn prepare_import_target_creates_missing_parents() {
+        let home = dirs::home_dir().expect("home directory");
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time should be after epoch")
+            .as_nanos();
+        let parent = home.join(format!(".nixmac-test-nested-{nonce}"));
+        let dir = parent.join("inner/nix-darwin");
+
+        let target = prepare_import_target(Some(dir.to_string_lossy().to_string()))
+            .expect("prepare nested import target");
+        assert_eq!(target.path, dir);
+        assert!(target.created);
+        assert!(target.path.is_dir());
+
+        let _ = fs::remove_dir_all(parent);
     }
 
     #[test]
@@ -725,6 +901,74 @@ mod tests {
             choose_flake_dir(dirs(&["a", "b"])),
             FlakeChoice::Ambiguous(dirs(&["a", "b"]))
         );
+    }
+
+    /// Lays out a fake checked-out template repository: `.git` metadata at
+    /// the root plus a nested template using placeholders.
+    fn fake_template_clone(root: &Path) {
+        fs::create_dir_all(root.join(".git/objects")).expect("create git dir");
+        fs::write(root.join(".git/HEAD"), "ref").expect("create git file");
+        fs::write(root.join("README.md"), "about these templates").expect("create readme");
+        fs::create_dir_all(root.join("templates/mac")).expect("create template dir");
+        fs::write(
+            root.join("templates/mac/flake.nix"),
+            "darwinConfigurations.HOSTNAME_PLACEHOLDER = { };",
+        )
+        .expect("create flake");
+    }
+
+    #[test]
+    fn resolve_template_root_requires_flake_and_lists_candidates() {
+        let clone = temp_dir("template-root");
+        fake_template_clone(&clone);
+
+        assert_eq!(
+            resolve_template_root(&clone, Some("templates/mac")).expect("resolve subdir"),
+            clone.join("templates/mac")
+        );
+
+        let err = resolve_template_root(&clone, None).expect_err("root has no flake");
+        assert!(err.contains("templates/mac"), "unhelpful error: {err}");
+
+        let err = resolve_template_root(&clone, Some("templates")).expect_err("no flake in subdir");
+        assert!(err.contains("templates/mac"), "unhelpful error: {err}");
+
+        assert!(
+            resolve_template_root(&clone, Some("missing"))
+                .expect_err("missing subdir")
+                .contains("does not exist")
+        );
+
+        let _ = fs::remove_dir_all(clone);
+    }
+
+    #[test]
+    fn scaffold_template_from_clone_renders_fresh_history_without_repo_git() {
+        let clone = temp_dir("template-scaffold-clone");
+        fake_template_clone(&clone);
+        let target = temp_dir("template-scaffold-target");
+        fs::create_dir_all(&target).expect("create target");
+
+        let outcome =
+            scaffold_template_from_clone(&clone, Some("templates/mac"), "my-mac", &target)
+                .expect("scaffold");
+        // The fixture uses HOSTNAME_PLACEHOLDER, so the hostname is adoptable.
+        assert!(outcome.hostname_used);
+
+        let flake = fs::read_to_string(target.join("flake.nix")).expect("read flake");
+        assert!(flake.contains("darwinConfigurations.my-mac"));
+        // Only the template subdir's contents land in the target.
+        assert!(!target.join("README.md").exists());
+        assert!(!target.join("templates").exists());
+
+        // Fresh history: a single parentless commit, no remotes.
+        let repo = git2::Repository::open(&target).expect("open repo");
+        let head = repo.head().expect("head").peel_to_commit().expect("commit");
+        assert_eq!(head.parent_count(), 0);
+        assert!(repo.remotes().expect("remotes").is_empty());
+
+        let _ = fs::remove_dir_all(clone);
+        let _ = fs::remove_dir_all(target);
     }
 
     #[test]

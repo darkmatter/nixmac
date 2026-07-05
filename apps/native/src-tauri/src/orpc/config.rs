@@ -35,6 +35,15 @@ struct ConfigImportZipInput {
 
 #[derive(Debug, Deserialize, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
+struct ConfigCreateFromTemplateInput {
+    /// Repository reference for the template, e.g. `github:owner/repo?dir=templates/mac`.
+    template_ref: String,
+    hostname: String,
+    dir_name: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
 struct ConfigFinalizeImportInput {
     clone_dir: String,
     /// Relative flake directory inside `clone_dir`; empty for the root.
@@ -116,6 +125,15 @@ async fn import_zip(
         .map_err(|error| internal_err("config.importZip", error))
 }
 
+async fn create_from_template(
+    ctx: OrpcCtx,
+    input: ConfigCreateFromTemplateInput,
+) -> Result<SetDirResult, ORPCError> {
+    config::config_create_from_template(ctx.app, input.template_ref, input.hostname, input.dir_name)
+        .await
+        .map_err(|error| internal_err("config.createFromTemplate", error))
+}
+
 async fn finalize_import(
     ctx: OrpcCtx,
     input: ConfigFinalizeImportInput,
@@ -171,6 +189,10 @@ pub fn routes() -> Router<OrpcCtx> {
             .input(orpc_specta::specta::<ConfigImportZipInput>())
             .output(orpc_specta::specta::<ImportConfigResult>())
             .handler(import_zip),
+        "createFromTemplate" => os::<OrpcCtx>()
+            .input(orpc_specta::specta::<ConfigCreateFromTemplateInput>())
+            .output(orpc_specta::specta::<SetDirResult>())
+            .handler(create_from_template),
         "finalizeImport" => os::<OrpcCtx>()
             .input(orpc_specta::specta::<ConfigFinalizeImportInput>())
             .output(orpc_specta::specta::<ImportConfigResult>())
