@@ -1115,6 +1115,14 @@ onboardingLastBuildAt: number | null;
  */
 onboardingProvisionalConfigDir: string | null; 
 /**
+ * Root of an import clone parked on the "which flake dir?" choice
+ * (`NeedsFlakeDirChoice`). Recorded so an abandoned choice can be
+ * discarded by the next import or an onboarding reset instead of
+ * orphaning the tree. Cleared on finalize/discard. Not writable via
+ * `UiPrefsUpdate`.
+ */
+pendingImportDir: string | null; 
+/**
  * Whether or not to auto-format Nix files when making changes to the flakes.
  */
 autoFormatNixFiles: boolean }
