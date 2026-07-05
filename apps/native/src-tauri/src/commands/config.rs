@@ -61,6 +61,7 @@ pub async fn config_set_dir(
 
     let prev_dir = store::get_config_dir(&app).ok();
     let new_dir = normalized_dir.to_string_lossy().to_string();
+    cascade_config_dir_replacement(&app, normalized_dir.as_path());
     store::set_config_dir(&app, &new_dir).map_err(|e| capture_err("config_set_dir", e))?;
     // The user chose a pre-existing directory: it is theirs, not onboarding's.
     clear_config_dir_provisional(&app);
@@ -144,6 +145,7 @@ pub async fn config_prepare_new_dir(
         ));
     }
 
+    release_provisional_target(&app, p);
     if p.exists() && !is_dir_empty_or_only_git(p)? {
         return Err(format!(
             "Directory {} already exists and is not empty. Choose Existing to use a current configuration.",
@@ -153,6 +155,7 @@ pub async fn config_prepare_new_dir(
 
     let prev_dir = store::get_config_dir(&app).ok();
     let new_dir = normalized_dir.to_string_lossy().to_string();
+    cascade_config_dir_replacement(&app, normalized_dir.as_path());
     store::set_config_dir(&app, &new_dir).map_err(|e| capture_err("config_prepare_new_dir", e))?;
     store::ensure_config_dir_exists(&app).map_err(|e| capture_err("config_prepare_new_dir", e))?;
     // Scaffolded by us, so owned by onboarding until the first successful apply.
@@ -188,6 +191,7 @@ pub async fn config_pick_dir(app: AppHandle) -> Result<Option<shared_types::SetD
 
     if let Some(path) = result {
         let dir = path.to_string();
+        cascade_config_dir_replacement(&app, Path::new(&dir));
         store::set_config_dir(&app, &dir).map_err(|e| capture_err("config_pick_dir", e))?;
         // The user chose a pre-existing directory: it is theirs, not onboarding's.
         clear_config_dir_provisional(&app);
@@ -456,6 +460,81 @@ fn is_importable_target(path: &Path) -> Result<bool, String> {
     Ok(!has_entries)
 }
 
+/// Bookkeeping for replacing the config dir while onboarding is still in
+/// progress (no successful apply yet). Call BEFORE `store::set_config_dir`:
+/// it reads the outgoing selection from preferences.
+///
+/// Two facts go stale when the dir changes mid-onboarding: the "scan this
+/// Mac" pass was applied to the old repo, so its stamp is cleared and the
+/// step machine re-surfaces the customizations step; and an old provisional
+/// materialization is now orphaned, so it is deleted — unless the new dir
+/// lives inside it. After the first successful apply this is a no-op:
+/// post-onboarding dir changes must not rewind onboarding or delete anything.
+fn cascade_config_dir_replacement(app: &AppHandle, new_dir: &Path) {
+    let Some(prefs) = crate::state::preferences::try_read(app) else {
+        return;
+    };
+    if prefs.onboarding_last_build_at.is_some() {
+        return;
+    }
+    let Some(old_dir) = prefs.config_dir.as_deref() else {
+        return;
+    };
+    let new_canonical = super::onboarding::canonicalized(new_dir);
+    if new_canonical == super::onboarding::canonicalized(Path::new(old_dir)) {
+        return;
+    }
+
+    if let Some(root) = super::onboarding::provisional_root_to_wipe(
+        prefs.onboarding_provisional_config_dir.as_deref(),
+        Some(old_dir),
+        prefs.onboarding_last_build_at,
+    ) {
+        // Never delete the tree the new selection lives in.
+        if !new_canonical.starts_with(super::onboarding::canonicalized(&root)) {
+            cleanup_import_target(&ImportTarget {
+                created: !canonical_config::is_canonical_config_path(&root),
+                path: root,
+            });
+        }
+    }
+
+    if prefs.onboarding_mac_scanned_at.is_some()
+        || prefs.onboarding_provisional_config_dir.is_some()
+    {
+        if let Err(e) = crate::state::preferences::write(app, |prefs| {
+            prefs.onboarding_mac_scanned_at = None;
+            prefs.onboarding_provisional_config_dir = None;
+        }) {
+            log::warn!("Failed to cascade onboarding facts on config dir change: {e:#}");
+        }
+    }
+}
+
+/// Frees `target` for reuse when it is onboarding's own provisional
+/// materialization. Import and scaffold targets must be empty, which would
+/// make retrying an import (or re-running it after "Change source") fail on
+/// its own leftovers; since onboarding still owns the tree — marker matches,
+/// active config dir inside it, no successful apply yet — deleting it is safe.
+fn release_provisional_target(app: &AppHandle, target: &Path) {
+    let Some(prefs) = crate::state::preferences::try_read(app) else {
+        return;
+    };
+    let Some(root) = super::onboarding::provisional_root_to_wipe(
+        prefs.onboarding_provisional_config_dir.as_deref(),
+        prefs.config_dir.as_deref(),
+        prefs.onboarding_last_build_at,
+    ) else {
+        return;
+    };
+    if super::onboarding::canonicalized(&root) == super::onboarding::canonicalized(target) {
+        cleanup_import_target(&ImportTarget {
+            created: !canonical_config::is_canonical_config_path(&root),
+            path: root,
+        });
+    }
+}
+
 /// A validated, empty directory an import can clone/extract into. Records
 /// whether the import created it, so cleanup after a failed import knows if
 /// removing the directory itself is safe.
@@ -532,6 +611,7 @@ fn finalize_imported_dir(
     target: &Path,
 ) -> Result<shared_types::SetDirResult, String> {
     let new_dir = target.to_string_lossy().to_string();
+    cascade_config_dir_replacement(app, target);
     store::set_config_dir(app, &new_dir).map_err(|e| capture_err("finalize_imported_dir", e))?;
     store::sync_canonical_config_link(&new_dir)
         .map_err(|e| capture_err("finalize_imported_dir", e))?;
@@ -645,6 +725,7 @@ pub async fn config_import_github(
     dir_name: Option<String>,
 ) -> Result<shared_types::ImportConfigResult, String> {
     let spec = import::parse_repo_ref(&repo_ref).map_err(|e| e.to_string())?;
+    release_provisional_target(&app, &resolve_import_target(dir_name.clone())?);
     let target = prepare_import_target(dir_name)?;
     let subdir = spec.subdir.clone();
 
@@ -696,6 +777,7 @@ pub async fn config_import_zip(
     if !zip.is_file() {
         return Err(format!("Zip file not found: {}", zip.display()));
     }
+    release_provisional_target(&app, &resolve_import_target(dir_name.clone())?);
     let target = prepare_import_target(dir_name)?;
 
     let target_for_extract = target.path.clone();

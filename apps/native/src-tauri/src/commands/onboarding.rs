@@ -85,7 +85,7 @@ pub async fn onboarding_reset(app: AppHandle) -> Result<shared_types::OkResult, 
 /// onboarding still owns it (marker set, no successful apply yet) and the
 /// active config dir really lives at or under the recorded root — a marker
 /// pointing anywhere else is stale and must not delete anything.
-fn provisional_root_to_wipe(
+pub(super) fn provisional_root_to_wipe(
     provisional_root: Option<&str>,
     config_dir: Option<&str>,
     last_build_at: Option<i64>,
@@ -106,7 +106,7 @@ fn provisional_root_to_wipe(
     Some(root)
 }
 
-fn canonicalized(path: &Path) -> PathBuf {
+pub(super) fn canonicalized(path: &Path) -> PathBuf {
     path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
 }
 
