@@ -231,6 +231,8 @@ export function CreateSource({ onCreated }: CreateSourceProps) {
         />
         <p className="text-muted-foreground text-xs">
           We&apos;ll write a <code className="font-mono">flake.nix</code> here and initialize git.
+          Any path in your home directory works, <code className="font-mono">~</code> included
+          (e.g. <code className="font-mono">~/dev/nix-darwin</code>); missing folders are created.
           Custom paths are symlinked to <code className="font-mono">/etc/nix-darwin</code>.
         </p>
       </div>

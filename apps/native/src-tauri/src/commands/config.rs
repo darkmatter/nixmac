@@ -93,6 +93,11 @@ fn is_dir_empty_or_only_git(path: &Path) -> Result<bool, String> {
     Ok(false)
 }
 
+/// Validates the location for a new or imported configuration directory: the
+/// canonical /etc/nix-darwin location, or any directory inside the user's
+/// home — nested paths like `~/tmp/nix-darwin` are fine, missing parents are
+/// created by the callers. Paths are compared lexically (normalization does
+/// not resolve `..`), so parent-dir segments are rejected outright.
 fn validate_new_dir_location(path: &Path) -> Result<(), String> {
     if canonical_config::is_canonical_config_path(path) {
         return Ok(());
@@ -100,16 +105,19 @@ fn validate_new_dir_location(path: &Path) -> Result<(), String> {
 
     let home = dirs::home_dir().ok_or_else(|| "Failed to resolve home directory".to_string())?;
     let relative = path.strip_prefix(&home).map_err(|_| {
-        "New configuration directories must be created directly in your home directory".to_string()
+        "New configuration directories must live inside your home directory (or at /etc/nix-darwin)"
+            .to_string()
     })?;
 
-    let mut components = relative.components();
-    let Some(Component::Normal(_)) = components.next() else {
-        return Err("Use a directory name, not a path".to_string());
-    };
-
-    if components.next().is_some() {
-        return Err("Use a directory name, not a path".to_string());
+    let mut components = relative.components().peekable();
+    if components.peek().is_none() {
+        return Err(
+            "Choose a directory inside your home directory, not the home directory itself"
+                .to_string(),
+        );
+    }
+    if !components.all(|c| matches!(c, Component::Normal(_))) {
+        return Err("Directory paths must not contain '.' or '..' segments".to_string());
     }
 
     Ok(())
@@ -819,12 +827,39 @@ mod tests {
     }
 
     #[test]
-    fn new_config_dir_must_be_a_direct_home_child() {
+    fn new_config_dir_must_live_under_home() {
         let home = dirs::home_dir().expect("home directory");
 
         assert!(validate_new_dir_location(&home.join(".darwin-test")).is_ok());
-        assert!(validate_new_dir_location(&home.join("configs").join("darwin")).is_err());
+        // Nested destinations are fine; missing parents get created.
+        assert!(validate_new_dir_location(&home.join("configs").join("darwin")).is_ok());
+        assert!(validate_new_dir_location(&home.join("tmp/deeply/nested")).is_ok());
+
+        assert!(validate_new_dir_location(&home).is_err());
         assert!(validate_new_dir_location(Path::new("/tmp/darwin")).is_err());
+        // Lexical comparison: `..` segments could escape home. (Lone `.`
+        // segments are normalized away by Path::components and stay allowed.)
+        assert!(validate_new_dir_location(&home.join("a/../../etc")).is_err());
+        assert!(validate_new_dir_location(&home.join("a/./b")).is_ok());
+    }
+
+    #[test]
+    fn prepare_import_target_creates_missing_parents() {
+        let home = dirs::home_dir().expect("home directory");
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time should be after epoch")
+            .as_nanos();
+        let parent = home.join(format!(".nixmac-test-nested-{nonce}"));
+        let dir = parent.join("inner/nix-darwin");
+
+        let target = prepare_import_target(Some(dir.to_string_lossy().to_string()))
+            .expect("prepare nested import target");
+        assert_eq!(target.path, dir);
+        assert!(target.created);
+        assert!(target.path.is_dir());
+
+        let _ = fs::remove_dir_all(parent);
     }
 
     #[test]

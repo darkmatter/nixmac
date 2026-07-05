@@ -107,7 +107,9 @@ export function FlakeRefSource({ onImported }: FlakeRefSourceProps) {
           className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
         <p className="text-muted-foreground text-xs">
-          Imports into this directory, then selects it as your active config directory.
+          Imports into this directory, then selects it as your active config directory. Any path
+          in your home directory works, <code className="font-mono">~</code> included; missing
+          folders are created.
         </p>
       </div>
 
