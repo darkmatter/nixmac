@@ -411,7 +411,7 @@ function GroupCard({
     >
       <div className="flex w-full items-start gap-3 p-4 text-left">
         <Checkbox
-          checked={allTracked}
+          checked={allTracked ? true : trackedIds.length > 0 ? "indeterminate" : false}
           onCheckedChange={(checked) => (checked === true ? onTrack(group.items) : onUntrack(ids))}
           aria-label={`Track all ${group.title}`}
           className="mt-1 size-4"
