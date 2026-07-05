@@ -61,7 +61,8 @@ export function OnboardingHeader({ title }: Props) {
       <ConfirmationDialog
         open={confirming}
         onOpenChange={setConfirming}
-        message="Restart setup from the beginning? Progress so far is discarded, and a configuration that was imported or created during setup is deleted. A pre-existing configuration directory you selected yourself is kept."
+        title="Restart setup from the beginning?"
+        message="Progress so far is discarded, and a configuration that was imported or created during setup is deleted. A pre-existing configuration directory you selected yourself is kept."
         color="amber"
         onConfirm={() => {
           void restartSetup();
