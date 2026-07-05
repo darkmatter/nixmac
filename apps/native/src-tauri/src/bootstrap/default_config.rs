@@ -186,7 +186,7 @@ fn copy_template_dir(
 /// The value is spliced into file *names* that pass through `Path::join`, so
 /// anything beyond a conservative charset (or a lone `.`/`..`) is rejected to
 /// keep every rendered path inside the destination.
-fn validate_template_hostname(hostname: &str) -> Result<(), String> {
+pub(crate) fn validate_template_hostname(hostname: &str) -> Result<(), String> {
     let valid_chars = hostname
         .chars()
         .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'));

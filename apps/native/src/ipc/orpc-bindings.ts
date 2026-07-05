@@ -266,6 +266,12 @@ configDir: string;
  */
 hostAttr: string | null }
 
+export type ConfigCreateFromTemplateInput = { 
+/**
+ * Repository reference for the template, e.g. `github:owner/repo?dir=templates/mac`.
+ */
+templateRef: string; hostname: string; dirName: string | null }
+
 export type ConfigDiscardImportInput = { dir: string }
 
 /**
@@ -1794,6 +1800,7 @@ export type Procedures = {
     listModels: Client<Record<never, never>, ListModelsInput, string[], Error>
   }
   config: {
+    createFromTemplate: Client<Record<never, never>, ConfigCreateFromTemplateInput, SetDirResult, Error>
     discardImport: Client<Record<never, never>, ConfigDiscardImportInput, OkResult, Error>
     finalizeImport: Client<Record<never, never>, ConfigFinalizeImportInput, ImportConfigResult, Error>
     get: Client<Record<never, never>, void, Config, Error>
