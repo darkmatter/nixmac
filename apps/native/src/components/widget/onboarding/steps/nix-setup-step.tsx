@@ -13,8 +13,13 @@ import { cn } from "@/lib/utils";
 const NIX_INSTALLERS = [
   {
     href: "https://determinate.systems/nix-installer/",
-    title: "Install Nix",
-    subtitle: "Determinate Systems installer (recommended)",
+    title: "Determinate Systems installer",
+    subtitle: "Recommended for most Macs: a polished installer with a clear uninstall path",
+  },
+  {
+    href: "https://nixos.org/download/",
+    title: "Official NixOS installer",
+    subtitle: "The upstream Nix project path, following terminal setup steps",
   },
 ] as const;
 
@@ -77,7 +82,7 @@ export function NixSetupStep() {
     <StepShell
       eyebrow={stepEyebrow("nix-setup")}
       title="Install Nix"
-      description="nixmac needs the Nix package manager before it can manage this Mac. Installation happens in your terminal — follow the link below, then re-check. nix-darwin is optional: if it isn't already installed, the first build fetches it via nix run."
+      description="nixmac needs the Nix package manager before it can manage this Mac. Installation happens in your terminal — pick one of the installers below, then re-check. nix-darwin is optional: if it isn't already installed, the first build fetches it via nix run."
     >
       <div className="rounded-xl border border-border bg-card">
         <div className="flex flex-col gap-3 border-border border-b p-4 sm:flex-row sm:items-center sm:justify-between">
