@@ -414,7 +414,7 @@ function GroupCard({
           checked={allTracked}
           onCheckedChange={(checked) => (checked === true ? onTrack(group.items) : onUntrack(ids))}
           aria-label={`Track all ${group.title}`}
-          className={cn("mt-1 size-4 border-none", allTracked ? "bg-white" : "bg-zinc-700")}
+          className="mt-1 size-4"
         />
         <button
           type="button"
@@ -461,10 +461,7 @@ function GroupCard({
                       checked === true ? onTrack([item]) : onUntrack([item.id])
                     }
                     aria-label={`Track ${item.label}`}
-                    className={cn(
-                      "mt-0.5 size-4 border-none",
-                      isTracked ? "bg-white" : "bg-zinc-700",
-                    )}
+                    className="mt-0.5 size-4"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="text-pretty font-medium text-sm">{item.label}</p>
