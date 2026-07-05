@@ -1107,6 +1107,14 @@ onboardingLoginDecided: boolean;
  */
 onboardingLastBuildAt: number | null; 
 /**
+ * Root directory the app materialized during onboarding (import/scaffold)
+ * and still owns: until the first successful apply clears this, restart
+ * and re-import may wipe and re-create it. Never set for user-selected
+ * pre-existing directories. Not writable via `UiPrefsUpdate` — backend
+ * code paths only, like `onboarding_last_build_at`.
+ */
+onboardingProvisionalConfigDir: string | null; 
+/**
  * Whether or not to auto-format Nix files when making changes to the flakes.
  */
 autoFormatNixFiles: boolean }

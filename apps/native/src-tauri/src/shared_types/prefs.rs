@@ -181,6 +181,12 @@ pub struct GlobalPreferences {
     /// Timestamp (unix secs) of the last successful build/evolution apply. Set by `finalize_apply`.
     #[specta(type = Option<f64>)]
     pub onboarding_last_build_at: Option<i64>,
+    /// Root directory the app materialized during onboarding (import/scaffold)
+    /// and still owns: until the first successful apply clears this, restart
+    /// and re-import may wipe and re-create it. Never set for user-selected
+    /// pre-existing directories. Not writable via `UiPrefsUpdate` — backend
+    /// code paths only, like `onboarding_last_build_at`.
+    pub onboarding_provisional_config_dir: Option<String>,
     /// Whether or not to auto-format Nix files when making changes to the flakes.
     pub auto_format_nix_files: bool,
 }
@@ -212,6 +218,7 @@ impl Default for GlobalPreferences {
             onboarding_mac_scanned_at: None,
             onboarding_login_decided: false,
             onboarding_last_build_at: None,
+            onboarding_provisional_config_dir: None,
             auto_format_nix_files: false,
         }
     }
