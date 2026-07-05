@@ -47,6 +47,9 @@ pub async fn onboarding_reset(app: AppHandle) -> Result<shared_types::OkResult, 
         });
     }
 
+    // An import parked on the flake-dir chooser is real on-disk state too.
+    super::config::discard_pending_import(&app);
+
     // No new dir is being selected, so `handle_new_config_dir` will not run —
     // clear the derived cells explicitly.
     git_state::update(
