@@ -1,4 +1,6 @@
-use super::helpers::{capture_err, handle_new_config_dir};
+use super::helpers::{
+    capture_err, clear_config_dir_provisional, handle_new_config_dir, mark_config_dir_provisional,
+};
 use crate::bootstrap::{default_config, discover, import};
 use crate::storage::{canonical_config, store};
 use crate::system::nix;
@@ -59,7 +61,10 @@ pub async fn config_set_dir(
 
     let prev_dir = store::get_config_dir(&app).ok();
     let new_dir = normalized_dir.to_string_lossy().to_string();
+    cascade_config_dir_replacement(&app, normalized_dir.as_path());
     store::set_config_dir(&app, &new_dir).map_err(|e| capture_err("config_set_dir", e))?;
+    // The user chose a pre-existing directory: it is theirs, not onboarding's.
+    clear_config_dir_provisional(&app);
     store::sync_canonical_config_link(&new_dir).map_err(|e| capture_err("config_set_dir", e))?;
 
     let changed = prev_dir.as_deref() != Some(&new_dir);
@@ -140,6 +145,7 @@ pub async fn config_prepare_new_dir(
         ));
     }
 
+    release_provisional_target(&app, p);
     if p.exists() && !is_dir_empty_or_only_git(p)? {
         return Err(format!(
             "Directory {} already exists and is not empty. Choose Existing to use a current configuration.",
@@ -149,8 +155,11 @@ pub async fn config_prepare_new_dir(
 
     let prev_dir = store::get_config_dir(&app).ok();
     let new_dir = normalized_dir.to_string_lossy().to_string();
+    cascade_config_dir_replacement(&app, normalized_dir.as_path());
     store::set_config_dir(&app, &new_dir).map_err(|e| capture_err("config_prepare_new_dir", e))?;
     store::ensure_config_dir_exists(&app).map_err(|e| capture_err("config_prepare_new_dir", e))?;
+    // Scaffolded by us, so owned by onboarding until the first successful apply.
+    mark_config_dir_provisional(&app, normalized_dir.as_path());
 
     let changed = prev_dir.as_deref() != Some(&new_dir);
     if changed {
@@ -182,7 +191,10 @@ pub async fn config_pick_dir(app: AppHandle) -> Result<Option<shared_types::SetD
 
     if let Some(path) = result {
         let dir = path.to_string();
+        cascade_config_dir_replacement(&app, Path::new(&dir));
         store::set_config_dir(&app, &dir).map_err(|e| capture_err("config_pick_dir", e))?;
+        // The user chose a pre-existing directory: it is theirs, not onboarding's.
+        clear_config_dir_provisional(&app);
         store::ensure_config_dir_exists(&app).map_err(|e| capture_err("config_pick_dir", e))?;
         let changed = dir != prev_dir;
         if changed {
@@ -448,12 +460,138 @@ fn is_importable_target(path: &Path) -> Result<bool, String> {
     Ok(!has_entries)
 }
 
+/// Bookkeeping for replacing the config dir while onboarding is still in
+/// progress (no successful apply yet). Call BEFORE `store::set_config_dir`:
+/// it reads the outgoing selection from preferences.
+///
+/// Two facts go stale when the dir changes mid-onboarding: the "scan this
+/// Mac" pass was applied to the old repo, so its stamp is cleared and the
+/// step machine re-surfaces the customizations step; and an old provisional
+/// materialization is now orphaned, so it is deleted — unless the new dir
+/// lives inside it. After the first successful apply this is a no-op:
+/// post-onboarding dir changes must not rewind onboarding or delete anything.
+fn cascade_config_dir_replacement(app: &AppHandle, new_dir: &Path) {
+    let Some(prefs) = crate::state::preferences::try_read(app) else {
+        return;
+    };
+    if prefs.onboarding_last_build_at.is_some() {
+        return;
+    }
+    let Some(old_dir) = prefs.config_dir.as_deref() else {
+        return;
+    };
+    let new_canonical = super::onboarding::canonicalized(new_dir);
+    if new_canonical == super::onboarding::canonicalized(Path::new(old_dir)) {
+        return;
+    }
+
+    if let Some(root) = super::onboarding::provisional_root_to_wipe(
+        prefs.onboarding_provisional_config_dir.as_deref(),
+        Some(old_dir),
+        prefs.onboarding_last_build_at,
+    ) {
+        // Never delete the tree the new selection lives in.
+        if !new_canonical.starts_with(super::onboarding::canonicalized(&root)) {
+            cleanup_import_target(&ImportTarget {
+                created: !canonical_config::is_canonical_config_path(&root),
+                path: root,
+            });
+        }
+    }
+
+    if prefs.onboarding_mac_scanned_at.is_some()
+        || prefs.onboarding_provisional_config_dir.is_some()
+    {
+        if let Err(e) = crate::state::preferences::write(app, |prefs| {
+            prefs.onboarding_mac_scanned_at = None;
+            prefs.onboarding_provisional_config_dir = None;
+        }) {
+            log::warn!("Failed to cascade onboarding facts on config dir change: {e:#}");
+        }
+    }
+}
+
+/// Frees `target` for reuse when it is onboarding's own provisional
+/// materialization. Import and scaffold targets must be empty, which would
+/// make retrying an import (or re-running it after "Change source") fail on
+/// its own leftovers; since onboarding still owns the tree — marker matches,
+/// active config dir inside it, no successful apply yet — deleting it is safe.
+fn release_provisional_target(app: &AppHandle, target: &Path) {
+    let Some(prefs) = crate::state::preferences::try_read(app) else {
+        return;
+    };
+    let Some(root) = super::onboarding::provisional_root_to_wipe(
+        prefs.onboarding_provisional_config_dir.as_deref(),
+        prefs.config_dir.as_deref(),
+        prefs.onboarding_last_build_at,
+    ) else {
+        return;
+    };
+    if super::onboarding::canonicalized(&root) == super::onboarding::canonicalized(target) {
+        cleanup_import_target(&ImportTarget {
+            created: !canonical_config::is_canonical_config_path(&root),
+            path: root,
+        });
+    }
+}
+
+/// Records the parked tree of a `NeedsFlakeDirChoice` import. The clone is
+/// real on-disk state with no other owner; the record is what lets the next
+/// import or an onboarding reset discard it if the user abandons the choice.
+fn record_pending_import(app: &AppHandle, dir: &Path) {
+    let dir = dir.to_string_lossy().to_string();
+    if let Err(e) = crate::state::preferences::write(app, move |prefs| {
+        prefs.pending_import_dir = Some(dir);
+    }) {
+        log::warn!("Failed to record pending import: {e:#}");
+    }
+}
+
+fn clear_pending_import(app: &AppHandle) {
+    if let Err(e) = crate::state::preferences::write(app, |prefs| {
+        prefs.pending_import_dir = None;
+    }) {
+        log::warn!("Failed to clear pending import record: {e:#}");
+    }
+}
+
+/// Discards the parked tree of an abandoned `NeedsFlakeDirChoice` import, if
+/// one is recorded. Safety mirrors `config_discard_import`: only locations an
+/// import could have created, and never a tree the active config dir lives in.
+pub(super) fn discard_pending_import(app: &AppHandle) {
+    let Some(prefs) = crate::state::preferences::try_read(app) else {
+        return;
+    };
+    let Some(pending) = prefs.pending_import_dir else {
+        return;
+    };
+    let dir = PathBuf::from(&pending);
+    if pending_import_wipe_allowed(&dir, prefs.config_dir.as_deref()) && dir.is_dir() {
+        cleanup_import_target(&ImportTarget {
+            created: !canonical_config::is_canonical_config_path(&dir),
+            path: dir,
+        });
+    }
+    clear_pending_import(app);
+}
+
+fn pending_import_wipe_allowed(dir: &Path, active_config: Option<&str>) -> bool {
+    if validate_new_dir_location(dir).is_err() {
+        return false;
+    }
+    let Some(active) = active_config else {
+        return true;
+    };
+    !super::onboarding::canonicalized(Path::new(active))
+        .starts_with(super::onboarding::canonicalized(dir))
+}
+
 /// A validated, empty directory an import can clone/extract into. Records
 /// whether the import created it, so cleanup after a failed import knows if
 /// removing the directory itself is safe.
-struct ImportTarget {
-    path: PathBuf,
-    created: bool,
+pub(super) struct ImportTarget {
+    pub(super) path: PathBuf,
+    pub(super) created: bool,
 }
 
 /// Validates and prepares an import target directory.
@@ -493,7 +631,7 @@ fn prepare_import_target(dir_name: Option<String>) -> Result<ImportTarget, Strin
 /// created it: a pre-existing directory (notably the canonical
 /// /etc/nix-darwin, whose creation needs the privileged flow) is left in
 /// place, emptied.
-fn cleanup_import_target(target: &ImportTarget) {
+pub(super) fn cleanup_import_target(target: &ImportTarget) {
     if let Ok(entries) = std::fs::read_dir(&target.path) {
         for entry in entries.filter_map(|e| e.ok()) {
             let path = entry.path();
@@ -524,6 +662,7 @@ fn finalize_imported_dir(
     target: &Path,
 ) -> Result<shared_types::SetDirResult, String> {
     let new_dir = target.to_string_lossy().to_string();
+    cascade_config_dir_replacement(app, target);
     store::set_config_dir(app, &new_dir).map_err(|e| capture_err("finalize_imported_dir", e))?;
     store::sync_canonical_config_link(&new_dir)
         .map_err(|e| capture_err("finalize_imported_dir", e))?;
@@ -604,6 +743,9 @@ fn finalize_discovered_import(
                 target.path.join(&rel)
             };
             let result = finalize_imported_dir(app, &config_dir)?;
+            // Record the materialization ROOT, not the (possibly nested)
+            // config dir: releasing ownership must remove the whole clone.
+            mark_config_dir_provisional(app, &target.path);
             Ok(shared_types::ImportConfigResult::Imported {
                 dir: result.dir,
                 changed: result.changed,
@@ -617,10 +759,13 @@ fn finalize_discovered_import(
                 discover::FLAKE_SEARCH_DEPTH
             ))
         }
-        FlakeChoice::Ambiguous(dirs) => Ok(shared_types::ImportConfigResult::NeedsFlakeDirChoice {
-            clone_dir: target.path.to_string_lossy().to_string(),
-            flake_dirs: dirs,
-        }),
+        FlakeChoice::Ambiguous(dirs) => {
+            record_pending_import(app, &target.path);
+            Ok(shared_types::ImportConfigResult::NeedsFlakeDirChoice {
+                clone_dir: target.path.to_string_lossy().to_string(),
+                flake_dirs: dirs,
+            })
+        }
     }
 }
 
@@ -634,6 +779,8 @@ pub async fn config_import_github(
     dir_name: Option<String>,
 ) -> Result<shared_types::ImportConfigResult, String> {
     let spec = import::parse_repo_ref(&repo_ref).map_err(|e| e.to_string())?;
+    discard_pending_import(&app);
+    release_provisional_target(&app, &resolve_import_target(dir_name.clone())?);
     let target = prepare_import_target(dir_name)?;
     let subdir = spec.subdir.clone();
 
@@ -660,6 +807,9 @@ pub async fn config_import_github(
                 }
             };
             let result = finalize_imported_dir(&app, &config_dir)?;
+            // Record the clone ROOT: releasing ownership must remove the
+            // whole clone, not just the `?dir=` subdirectory.
+            mark_config_dir_provisional(&app, &target.path);
             Ok(shared_types::ImportConfigResult::Imported {
                 dir: result.dir,
                 changed: result.changed,
@@ -682,6 +832,8 @@ pub async fn config_import_zip(
     if !zip.is_file() {
         return Err(format!("Zip file not found: {}", zip.display()));
     }
+    discard_pending_import(&app);
+    release_provisional_target(&app, &resolve_import_target(dir_name.clone())?);
     let target = prepare_import_target(dir_name)?;
 
     let target_for_extract = target.path.clone();
@@ -728,6 +880,11 @@ pub async fn config_finalize_import(
     };
 
     let result = finalize_imported_dir(&app, &config_dir)?;
+    // Record the clone ROOT: releasing ownership must remove the whole clone,
+    // not just the selected flake subdirectory.
+    mark_config_dir_provisional(&app, &clone_dir);
+    // The parked tree became the active config; it is no longer discardable.
+    clear_pending_import(&app);
     Ok(shared_types::ImportConfigResult::Imported {
         dir: result.dir,
         changed: result.changed,
@@ -766,6 +923,16 @@ pub async fn config_discard_import(
             created: !canonical_config::is_canonical_config_path(&dir),
         });
     }
+
+    let pending_matches = crate::state::preferences::try_read(&app)
+        .and_then(|prefs| prefs.pending_import_dir)
+        .is_some_and(|p| {
+            super::onboarding::canonicalized(Path::new(&p))
+                == super::onboarding::canonicalized(&dir)
+        });
+    if pending_matches {
+        clear_pending_import(&app);
+    }
     Ok(shared_types::OkResult::yes())
 }
 
@@ -782,6 +949,33 @@ mod tests {
             .expect("system time should be after epoch")
             .as_nanos();
         std::env::temp_dir().join(format!("nixmac-{name}-{nonce}"))
+    }
+
+    #[test]
+    fn pending_import_wipe_respects_location_and_active_config() {
+        let home = dirs::home_dir().expect("home dir");
+        let pending = home.join("nixmac-test-pending-import");
+
+        // Import-creatable location, no active config: safe.
+        assert!(pending_import_wipe_allowed(&pending, None));
+        // Active config elsewhere: still safe.
+        assert!(pending_import_wipe_allowed(
+            &pending,
+            Some(&home.join("other-config").to_string_lossy())
+        ));
+        // Active config inside the pending tree: never delete under it.
+        assert!(!pending_import_wipe_allowed(
+            &pending,
+            Some(&pending.join("flakes/darwin").to_string_lossy())
+        ));
+        // A path an import could not have created (outside the home
+        // directory). Deliberately not asserting on nested home paths: how
+        // deep an import target may nest is `validate_new_dir_location`'s
+        // contract, tested there — this guard only composes it.
+        assert!(!pending_import_wipe_allowed(
+            Path::new("/tmp/nixmac-test-pending-import"),
+            None
+        ));
     }
 
     #[test]

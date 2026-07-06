@@ -17,6 +17,14 @@ export const STEPS: { id: StepId; label: string; description: string }[] = [
   { id: "build", label: "First Build", description: "Apply your configuration" },
 ];
 
+/**
+ * First user-driven step. The gates above it (permissions, Nix install) are
+ * real machine state that a reset can't and shouldn't undo, so "Restart
+ * setup" rewinds to here; the stepper draws a separator above it to hint at
+ * that boundary.
+ */
+export const RESTART_TARGET_STEP: StepId = "config-dir";
+
 /** Stable "Step X of N" label so step numbering stays correct as steps change. */
 export function stepEyebrow(id: StepId): string {
   const index = STEPS.findIndex((s) => s.id === id);
@@ -49,7 +57,7 @@ export function resolveOnboardingStep(furthestStep: StepId, viewingStep: StepId 
  * fact (backend gates + persisted preferences), except `inferenceDeferred`
  * which is transient session intent ("finish inference while the build runs").
  */
-interface OnboardingStepInputs {
+export interface OnboardingStepInputs {
   /** All required macOS permissions granted. */
   permissionsReady: boolean;
   /** The Nix package manager is detected (or test override). nix-darwin is not

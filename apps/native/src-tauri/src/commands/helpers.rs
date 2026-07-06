@@ -28,6 +28,27 @@ pub(super) fn handle_new_config_dir(app: &AppHandle, dir: &str) -> Result<(), St
     Ok(())
 }
 
+/// Records that onboarding materialized `root` (import clone or scaffold) and
+/// still owns it. `root` is the clone/materialization root, which for
+/// non-root-flake imports is an ancestor of the selected config dir.
+pub(super) fn mark_config_dir_provisional(app: &AppHandle, root: &std::path::Path) {
+    let root = root.to_string_lossy().to_string();
+    if let Err(e) = crate::state::preferences::write(app, move |prefs| {
+        prefs.onboarding_provisional_config_dir = Some(root);
+    }) {
+        log::warn!("Failed to record provisional config dir: {e:#}");
+    }
+}
+
+/// Releases onboarding's ownership claim over the config directory, if any.
+pub(super) fn clear_config_dir_provisional(app: &AppHandle) {
+    if let Err(e) = crate::state::preferences::write(app, |prefs| {
+        prefs.onboarding_provisional_config_dir = None;
+    }) {
+        log::warn!("Failed to clear provisional config dir: {e:#}");
+    }
+}
+
 // Helper function to extract the hostname and config_dir from the app handle, returning an error if either is missing.
 pub(super) fn get_hostname_and_config_dir(
     app: &AppHandle,

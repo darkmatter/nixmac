@@ -1107,6 +1107,22 @@ onboardingLoginDecided: boolean;
  */
 onboardingLastBuildAt: number | null; 
 /**
+ * Root directory the app materialized during onboarding (import/scaffold)
+ * and still owns: until the first successful apply clears this, restart
+ * and re-import may wipe and re-create it. Never set for user-selected
+ * pre-existing directories. Not writable via `UiPrefsUpdate` — backend
+ * code paths only, like `onboarding_last_build_at`.
+ */
+onboardingProvisionalConfigDir: string | null; 
+/**
+ * Root of an import clone parked on the "which flake dir?" choice
+ * (`NeedsFlakeDirChoice`). Recorded so an abandoned choice can be
+ * discarded by the next import or an onboarding reset instead of
+ * orphaning the tree. Cleared on finalize/discard. Not writable via
+ * `UiPrefsUpdate`.
+ */
+pendingImportDir: string | null; 
+/**
  * Whether or not to auto-format Nix files when making changes to the flakes.
  */
 autoFormatNixFiles: boolean }
@@ -1911,6 +1927,9 @@ export type Procedures = {
   nix: {
     check: Client<Record<never, never>, void, NixCheckResult, Error>
     installState: Client<Record<never, never>, void, NixInstallState, Error>
+  }
+  onboarding: {
+    reset: Client<Record<never, never>, void, OkResult, Error>
   }
   path: {
     exists: Client<Record<never, never>, PathExistsInput, boolean, Error>

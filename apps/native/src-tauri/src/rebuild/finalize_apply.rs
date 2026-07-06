@@ -38,6 +38,9 @@ pub async fn finalize_apply(app: &AppHandle) -> Result<()> {
     if crate::state::preferences::try_read(app).is_some() {
         if let Err(error) = crate::state::preferences::write(app, |prefs| {
             prefs.onboarding_last_build_at = Some(crate::utils::unix_now());
+            // The applied config is live now: onboarding's ownership of the
+            // materialized directory ends, restart must never delete it.
+            prefs.onboarding_provisional_config_dir = None;
         }) {
             log::warn!("Failed to record onboarding build timestamp: {error:#}");
         }

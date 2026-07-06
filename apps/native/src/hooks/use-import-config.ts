@@ -35,6 +35,8 @@ export function useImportConfig(onImported?: () => void): ImportConfigState {
 
   const handleResult = (result: ImportConfigResult) => {
     if (result.status === "needsFlakeDirChoice") {
+      // Chooser-only view state; the backend records the parked tree itself
+      // (prefs.pendingImportDir) and discards it on reset or the next import.
       setPending({ cloneDir: result.cloneDir, flakeDirs: result.flakeDirs });
       return;
     }
