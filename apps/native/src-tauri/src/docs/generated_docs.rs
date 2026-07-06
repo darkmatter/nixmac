@@ -180,7 +180,13 @@ impl GeneratedDocsIndexLoader {
                 self.docs_dir.display()
             );
         }
+        self.load_cached_files()
+    }
 
+    /// Read and validate both docs files, ignoring the metadata freshness.
+    /// Used by `load_cached` behind the readiness check, and as the stale
+    /// fallback when regeneration fails.
+    fn load_cached_files(&self) -> Result<DocsIndex> {
         let nix_darwin_json =
             std::fs::read_to_string(self.docs_dir.join(NIX_DARWIN_DOCS_JSON_BASE))
                 .with_context(|| format!("failed to read {}", NIX_DARWIN_DOCS_JSON_BASE))?;
@@ -435,10 +441,30 @@ impl GeneratedDocsIndexLoader {
         // back. Fresh metadata with a missing file only happens for a corrupt
         // cache; reusing the intact file is then safe.
         let force = !self.cache_meta_is_fresh();
-        let nix_darwin_json = generate(OptionsTool::NixDarwin, force)?;
-        let home_manager_json = generate(OptionsTool::HomeManager, force)?;
-        self.write_cache_meta()?;
-        initialize_docs_index_from_strs(&nix_darwin_json, &home_manager_json)
+        let generated = generate(OptionsTool::NixDarwin, force)
+            .and_then(|nix_darwin| Ok((nix_darwin, generate(OptionsTool::HomeManager, force)?)));
+        match generated {
+            Ok((nix_darwin_json, home_manager_json)) => {
+                self.write_cache_meta()?;
+                initialize_docs_index_from_strs(&nix_darwin_json, &home_manager_json)
+            }
+            Err(err) => {
+                // Regeneration failed (offline, upstream breakage, missing
+                // nix). Valid-but-stale generated docs still describe the
+                // user's system better than the bundled static fallback the
+                // caller would revert to, so serve them. The metadata is left
+                // stale so a later launch retries the regeneration.
+                match self.load_cached_files() {
+                    Ok(index) => {
+                        log::warn!(
+                            "[generated_docs] regeneration failed; serving stale generated docs: {err:#}"
+                        );
+                        Ok(index)
+                    }
+                    Err(_) => Err(err),
+                }
+            }
+        }
     }
 }
 
@@ -606,6 +632,35 @@ mod tests {
             vec![false, false],
             "fresh metadata must not force regeneration"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn load_serves_stale_cache_when_regeneration_fails() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let docs_dir = temp.path();
+        write_docs_files(docs_dir)?;
+        let expired = now_unix_secs() - DOCS_CACHE_MAX_AGE.as_secs() - 1;
+        write_meta(docs_dir, DOCS_CACHE_SCHEMA_VERSION, expired)?;
+
+        let loader = GeneratedDocsIndexLoader::new(docs_dir.to_path_buf());
+        let index =
+            loader.load_with(|_tool, _force| anyhow::bail!("nix is unavailable in this test"))?;
+
+        assert_eq!(index.entries.len(), 2, "stale docs files should be served");
+        assert!(
+            !loader.cache_meta_is_fresh(),
+            "metadata must stay stale so a later launch retries regeneration"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn load_propagates_error_when_no_cache_and_generation_fails() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let loader = GeneratedDocsIndexLoader::new(temp.path().to_path_buf());
+        let result = loader.load_with(|_tool, _force| anyhow::bail!("nix is unavailable"));
+        assert!(result.is_err(), "no cache to fall back to");
         Ok(())
     }
 
