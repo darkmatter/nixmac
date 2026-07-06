@@ -41,7 +41,7 @@ export function computeCurrentStep(state: CurrentStepState): WidgetStep {
   }
 
   if (
-    (state.nixInstalled !== true || state.darwinRebuildAvailable !== true) &&
+    state.nixInstalled !== true &&
     settings.nixInstalledOverride !== true // bypass used for testing
   ) {
     return "nix-setup";
