@@ -154,6 +154,17 @@ export function getAiModelProvider(id: string): AiModelProvider {
 	);
 }
 
+export function isInferenceConfigured(
+	providerId: string | null | undefined,
+	model: string | null | undefined,
+): boolean {
+	if (!providerId) return false;
+	const provider = AI_MODEL_PROVIDERS.find((candidate) => candidate.id === providerId);
+	if (!provider) return false;
+	if (provider.setup.kind === "cli") return true;
+	return Boolean(model?.trim());
+}
+
 export function isPlainInputCliProvider(provider: string): boolean {
 	const setup = getAiModelProvider(provider).setup;
 	return setup.kind === "cli" && setup.plainModelInput;

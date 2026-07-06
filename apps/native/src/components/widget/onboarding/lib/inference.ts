@@ -15,6 +15,16 @@ interface ApiKeyProviderLike {
 	};
 }
 
+interface InferenceProvider {
+	id: string;
+	name: string;
+	defaultModel: string;
+	prefsKeyField: "openrouterApiKey" | "openaiApiKey";
+	keyPrefix: string;
+	keyPlaceholder: string;
+	docsHint: string;
+}
+
 /**
  * Bring-your-own-key providers, aligned to what the native backend actually
  * supports (OpenRouter + OpenAI direct). Keys persist to UiPrefs and the
