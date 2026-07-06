@@ -1,10 +1,12 @@
 {
-  # Result of `nix flake init -t nix-darwin/master` command as documented in nix-darwin setup.
+  # Result of `nix flake init -t nix-darwin/master` command as documented in nix-darwin setup,
+  # with inputs pinned to the matched stable release pair: a fresh install must not depend
+  # on nixpkgs-unstable and nix-darwin master happening to be compatible on install day.
   description = "Example nix-darwin system flake";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    nix-darwin.url = "github:nix-darwin/nix-darwin/master";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-25.11-darwin";
+    nix-darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-25.11";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
 
     sops-nix = {
