@@ -5,23 +5,20 @@
 All options under `services.zabbixServer`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---- | ----------- |
-| `services.zabbixServer.database.createLocally` | | |
-| `services.zabbixServer.database.host` | | |
-| `services.zabbixServer.database.name` | | |
-| `services.zabbixServer.database.passwordFile` | | |
-| `services.zabbixServer.database.port` | | |
-| `services.zabbixServer.database.socket` | | |
-| `services.zabbixServer.database.type` | | |
-| `services.zabbixServer.database.user` | | |
-| `services.zabbixServer.dbPassword` | | |
-| `services.zabbixServer.dbServer` | | |
-| `services.zabbixServer.enable` | | |
-| `services.zabbixServer.extraConfig` | | |
-| `services.zabbixServer.extraPackages` | | |
-| `services.zabbixServer.listen.ip` | | |
-| `services.zabbixServer.listen.port` | | |
-| `services.zabbixServer.modules` | | |
-| `services.zabbixServer.openFirewall` | | |
-| `services.zabbixServer.package` | | |
-| `services.zabbixServer.settings` | | |
+| --- | --- | --- |
+| `services.zabbixServer.database.createLocally` | `boolean` | Whether to create a local database automatically. |
+| `services.zabbixServer.database.host` | `string` | Database host address. |
+| `services.zabbixServer.database.name` | `string` | Database name. |
+| `services.zabbixServer.database.passwordFile` | `null or absolute path` | A file containing the password corresponding to {option}`database.user`. |
+| `services.zabbixServer.database.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Database host port. |
+| `services.zabbixServer.database.socket` | `null or absolute path` | Path to the unix socket file to use for authentication. |
+| `services.zabbixServer.database.type` | `one of "mysql", "pgsql"` | Database engine to use. |
+| `services.zabbixServer.database.user` | `string` | Database user. |
+| `services.zabbixServer.enable` | `boolean` | Whether to enable the Zabbix Server. |
+| `services.zabbixServer.extraPackages` | `list of package` | Packages to be added to the Zabbix {env}`PATH`. Typically used to add executables for scripts, but can be anything. |
+| `services.zabbixServer.listen.ip` | `string` | List of comma delimited IP addresses that the trapper should listen on. Trapper will listen on all network interfaces if this parameter is missing. |
+| `services.zabbixServer.listen.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listen port for trapper. |
+| `services.zabbixServer.modules` | `attribute set of package` | A set of modules to load. |
+| `services.zabbixServer.openFirewall` | `boolean` | Open ports in the firewall for the Zabbix Server. |
+| `services.zabbixServer.package` | `package` | The Zabbix package to use. |
+| `services.zabbixServer.settings` | `attribute set of (signed integer or string or list of string)` | Zabbix Server configuration. Refer to <https://www.zabbix.com/documentation/current/manual/appendix/config/zabbix_server> for details on supported values. |

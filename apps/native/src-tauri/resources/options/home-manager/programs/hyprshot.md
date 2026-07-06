@@ -5,7 +5,7 @@
 All options under `programs.hyprshot`.
 
 | Option | Type | Description |
-| -------------------------------- | ----------------- | ----------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.hyprshot.enable` | `boolean` | Whether to enable Hyprshot the Hyprland screenshot utility. |
 | `programs.hyprshot.package` | `null or package` | The hyprshot package to use. |
-| `programs.hyprshot.saveLocation` | `null or string` | Set the $HYPRSHOT_DIR environment variable to the given location. |
+| `programs.hyprshot.saveLocation` | `null or string` | Set the `$HYPRSHOT_DIR` environment variable to the given location. Hypershot will save screenshots to the first expression that resolves: - `$HYPRSHOT_DIR` - `$XDG_PICTURES_DIR` - `$(xdg-user-dir PICTURES)` |

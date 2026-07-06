@@ -5,11 +5,66 @@
 All options under `services.bentopdf`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.bentopdf.caddy.enable` | | |
-| `services.bentopdf.caddy.virtualHost` | | |
-| `services.bentopdf.domain` | | |
-| `services.bentopdf.enable` | | |
-| `services.bentopdf.nginx.enable` | | |
-| `services.bentopdf.nginx.virtualHost` | | |
-| `services.bentopdf.package` | | |
+| --- | --- | --- |
+| `services.bentopdf.caddy.enable` | `boolean` | Whether to enable a virtualhost to serve bentopdf through caddy. |
+| `services.bentopdf.caddy.virtualHost` | `submodule` | Extra configuration for the caddy virtual host of bentopdf. |
+| `services.bentopdf.caddy.virtualHost.extraConfig` | `strings concatenated with "\n"` | Additional lines of configuration appended to this virtual host in the automatically generated `Caddyfile`. |
+| `services.bentopdf.caddy.virtualHost.hostName` | `string` | Canonical hostname for the server. |
+| `services.bentopdf.caddy.virtualHost.listenAddresses` | `list of string` | A list of host interfaces to bind to for this virtual host. |
+| `services.bentopdf.caddy.virtualHost.logFormat` | `null or strings concatenated with "\n"` | Configuration for HTTP request logging (also known as access logs). See <https://caddyserver.com/docs/caddyfile/directives/log#log> for details. |
+| `services.bentopdf.caddy.virtualHost.serverAliases` | `list of string` | Additional names of virtual hosts served by this virtual host configuration. |
+| `services.bentopdf.caddy.virtualHost.useACMEHost` | `null or string` | A host of an existing Let's Encrypt certificate to use. This is mostly useful if you use DNS challenges but Caddy does not currently support your provider. *Note that this option does not create any certificates, nor does it add subdomains to existing ones – you will need to create them manually using [](#opt-security.acme.certs).* |
+| `services.bentopdf.domain` | `string` | Domain to use for the virtual host. |
+| `services.bentopdf.enable` | `boolean` | Whether to enable bentopdf Privacy First PDF Toolkit. |
+| `services.bentopdf.nginx.enable` | `boolean` | Whether to enable a virtualhost to serve bentopdf through nginx. |
+| `services.bentopdf.nginx.virtualHost` | `submodule` | Extra configuration for the nginx virtual host of bentopdf. |
+| `services.bentopdf.nginx.virtualHost.acmeFallbackHost` | `null or string` | Host which to proxy requests to if ACME challenge is not found. Useful if you want multiple hosts to be able to verify the same domain name. With this option, you could request certificates for the present domain with an ACME client that is running on another host, which you would specify here. |
+| `services.bentopdf.nginx.virtualHost.acmeRoot` | `null or string` | Directory for the ACME challenge, which is **public**. Don't put certs or keys in here. Set to null to inherit from config.security.acme. |
+| `services.bentopdf.nginx.virtualHost.addSSL` | `boolean` | Whether to enable HTTPS in addition to plain HTTP. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443). |
+| `services.bentopdf.nginx.virtualHost.basicAuth` | `attribute set of string` | Basic Auth protection for a vhost. WARNING: This is implemented to store the password in plain text in the Nix store. |
+| `services.bentopdf.nginx.virtualHost.basicAuthFile` | `null or absolute path` | Basic Auth password file for a vhost. Can be created by running {command}`nix-shell --packages apacheHttpd --run 'htpasswd -B -c FILENAME USERNAME'`. |
+| `services.bentopdf.nginx.virtualHost.default` | `boolean` | Makes this vhost the default. |
+| `services.bentopdf.nginx.virtualHost.enableACME` | `boolean` | Whether to ask Let's Encrypt to sign a certificate for this vhost. Alternately, you can use an existing certificate through {option}`useACMEHost`. |
+| `services.bentopdf.nginx.virtualHost.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the vhost verbatim. |
+| `services.bentopdf.nginx.virtualHost.forceSSL` | `boolean` | Whether to add a separate nginx server block that redirects (defaults to 301, configurable with `redirectCode`) all plain HTTP traffic to HTTPS. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443), where the non-SSL listens are used for the redirect vhosts. |
+| `services.bentopdf.nginx.virtualHost.globalRedirect` | `null or string` | If set, all requests for this host are redirected (defaults to 301, configurable with `redirectCode`) to the given hostname. |
+| `services.bentopdf.nginx.virtualHost.http2` | `boolean` | Whether to enable the HTTP/2 protocol. Note that (as of writing) due to nginx's implementation, to disable HTTP/2 you have to disable it on all vhosts that use a given IP address / port. If there is one server block configured to enable http2, then it is enabled for all server blocks on this IP. See <https://stackoverflow.com/a/39466948/263061>. |
+| `services.bentopdf.nginx.virtualHost.http3` | `boolean` | Whether to enable the HTTP/3 protocol. This requires activating the QUIC transport protocol `services.nginx.virtualHosts.<name>.quic = true;`. Note that HTTP/3 support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> HTTP/3 availability must be manually advertised, preferably in each location block. |
+| `services.bentopdf.nginx.virtualHost.http3_hq` | `boolean` | Whether to enable the HTTP/0.9 protocol negotiation used in QUIC interoperability tests. This requires activating the QUIC transport protocol `services.nginx.virtualHosts.<name>.quic = true;`. Note that special application protocol support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> |
+| `services.bentopdf.nginx.virtualHost.kTLS` | `boolean` | Whether to enable kTLS support. Implementing TLS in the kernel (kTLS) improves performance by significantly reducing the need for copying operations between user space and the kernel. Required Nginx version 1.21.4 or later. |
+| `services.bentopdf.nginx.virtualHost.listen` | `list of (submodule)` | Listen addresses and ports for this virtual host. IPv6 addresses must be enclosed in square brackets. Note: this option overrides `addSSL` and `onlySSL`. If you only want to set the addresses manually and not the ports, take a look at `listenAddresses`. |
+| `services.bentopdf.nginx.virtualHost.listen.*.addr` | `string` | Listen address. |
+| `services.bentopdf.nginx.virtualHost.listen.*.extraParameters` | `list of string` | Extra parameters of this listen directive. |
+| `services.bentopdf.nginx.virtualHost.listen.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number to listen on. If unset and the listen address is not a socket then nginx defaults to 80. |
+| `services.bentopdf.nginx.virtualHost.listen.*.proxyProtocol` | `boolean` | Enable PROXY protocol. |
+| `services.bentopdf.nginx.virtualHost.listen.*.ssl` | `boolean` | Enable SSL. |
+| `services.bentopdf.nginx.virtualHost.listenAddresses` | `list of string` | Listen addresses for this virtual host. Compared to `listen` this only sets the addresses and the ports are chosen automatically. Note: This option overrides `networking.enableIPv6` |
+| `services.bentopdf.nginx.virtualHost.locations` | `attribute set of (submodule)` | Declarative location config |
+| `services.bentopdf.nginx.virtualHost.locations.<name>.alias` | `null or absolute path` | Alias directory for requests. |
+| `services.bentopdf.nginx.virtualHost.locations.<name>.basicAuth` | `attribute set of string` | Basic Auth protection for a vhost. WARNING: This is implemented to store the password in plain text in the Nix store. |
+| `services.bentopdf.nginx.virtualHost.locations.<name>.basicAuthFile` | `null or absolute path` | Basic Auth password file for a vhost. Can be created by running {command}`nix-shell --packages apacheHttpd --run 'htpasswd -B -c FILENAME USERNAME'`. |
+| `services.bentopdf.nginx.virtualHost.locations.<name>.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the location verbatim. |
+| `services.bentopdf.nginx.virtualHost.locations.<name>.fastcgiParams` | `attribute set of (string or absolute path)` | FastCGI parameters to override. Unlike in the Nginx configuration file, overriding only some default parameters won't unset the default values for other parameters. |
+| `services.bentopdf.nginx.virtualHost.locations.<name>.index` | `null or string` | Adds index directive. |
+| `services.bentopdf.nginx.virtualHost.locations.<name>.priority` | `signed integer` | Order of this location block in relation to the others in the vhost. The semantics are the same as with `lib.mkOrder`. Smaller values have a greater priority. |
+| `services.bentopdf.nginx.virtualHost.locations.<name>.proxyPass` | `null or string` | Adds proxy_pass directive and sets recommended proxy headers if recommendedProxySettings is enabled. |
+| `services.bentopdf.nginx.virtualHost.locations.<name>.proxyWebsockets` | `boolean` | Whether to support proxying websocket connections with HTTP/1.1. |
+| `services.bentopdf.nginx.virtualHost.locations.<name>.recommendedProxySettings` | `boolean` | Enable recommended proxy settings. |
+| `services.bentopdf.nginx.virtualHost.locations.<name>.recommendedUwsgiSettings` | `boolean` | Enable recommended uwsgi settings. |
+| `services.bentopdf.nginx.virtualHost.locations.<name>.return` | `null or string or signed integer` | Adds a return directive, for e.g. redirections. |
+| `services.bentopdf.nginx.virtualHost.locations.<name>.root` | `null or absolute path` | Root directory for requests. |
+| `services.bentopdf.nginx.virtualHost.locations.<name>.tryFiles` | `null or string` | Adds try_files directive. |
+| `services.bentopdf.nginx.virtualHost.locations.<name>.uwsgiPass` | `null or string` | Adds uwsgi_pass directive and sets recommended proxy headers if recommendedUwsgiSettings is enabled. |
+| `services.bentopdf.nginx.virtualHost.onlySSL` | `boolean` | Whether to enable HTTPS and reject plain HTTP connections. This will set defaults for `listen` to listen on all interfaces on port 443. |
+| `services.bentopdf.nginx.virtualHost.quic` | `boolean` | Whether to enable the QUIC transport protocol. Note that QUIC support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> |
+| `services.bentopdf.nginx.virtualHost.redirectCode` | `integer between 300 and 399 (both inclusive)` | HTTP status used by `globalRedirect` and `forceSSL`. Possible usecases include temporary (302, 307) redirects, keeping the request method and body (307, 308), or explicitly resetting the method to GET (303). See <https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections>. |
+| `services.bentopdf.nginx.virtualHost.rejectSSL` | `boolean` | Whether to listen for and reject all HTTPS connections to this vhost. Useful in [default](#opt-services.nginx.virtualHosts._name_.default) server blocks to avoid serving the certificate for another vhost. Uses the `ssl_reject_handshake` directive available in nginx versions 1.19.4 and above. |
+| `services.bentopdf.nginx.virtualHost.reuseport` | `boolean` | Create an individual listening socket . It is required to specify only once on one of the hosts. |
+| `services.bentopdf.nginx.virtualHost.root` | `null or absolute path` | The path of the web root directory. |
+| `services.bentopdf.nginx.virtualHost.serverAliases` | `list of string` | Additional names of virtual hosts served by this virtual host configuration. |
+| `services.bentopdf.nginx.virtualHost.serverName` | `null or string` | Name of this virtual host. Defaults to attribute name in virtualHosts. |
+| `services.bentopdf.nginx.virtualHost.sslCertificate` | `absolute path` | Path to server SSL certificate. |
+| `services.bentopdf.nginx.virtualHost.sslCertificateKey` | `absolute path` | Path to server SSL certificate key. |
+| `services.bentopdf.nginx.virtualHost.sslTrustedCertificate` | `null or absolute path` | Path to root SSL certificate for stapling and client certificates. |
+| `services.bentopdf.nginx.virtualHost.useACMEHost` | `null or string` | A host of an existing Let's Encrypt certificate to use. This is useful if you have many subdomains and want to avoid hitting the [rate limit](https://letsencrypt.org/docs/rate-limits). Alternately, you can generate a certificate through {option}`enableACME`. *Note that this option does not create any certificates, nor it does add subdomains to existing ones – you will need to create them manually using [](#opt-security.acme.certs).* |
+| `services.bentopdf.package` | `package` | The bentopdf package to use. To use the "normal mode" variant of bentopdf, which includes all socials, marketing and explanatory texts, set this option to `pkgs.bentopdf.override { simpleMode = false; }`. |

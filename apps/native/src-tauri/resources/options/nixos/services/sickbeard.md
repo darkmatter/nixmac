@@ -5,11 +5,11 @@
 All options under `services.sickbeard`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.sickbeard.configFile` | | |
-| `services.sickbeard.dataDir` | | |
-| `services.sickbeard.enable` | | |
-| `services.sickbeard.group` | | |
-| `services.sickbeard.package` | | |
-| `services.sickbeard.port` | | |
-| `services.sickbeard.user` | | |
+| --- | --- | --- |
+| `services.sickbeard.configFile` | `absolute path` | Path to config file. |
+| `services.sickbeard.dataDir` | `absolute path` | Path where to store data files. |
+| `services.sickbeard.enable` | `boolean` | Whether to enable the sickbeard server. |
+| `services.sickbeard.group` | `string` | Group to run the service as |
+| `services.sickbeard.package` | `package` | The sickbeard package to use. Enable `pkgs.sickrage` or `pkgs.sickgear` as an alternative to SickBeard |
+| `services.sickbeard.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to bind to. |
+| `services.sickbeard.user` | `string` | User to run the service as |

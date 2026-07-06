@@ -5,7 +5,7 @@
 All options under `programs.mepo`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `programs.mepo.enable` | | |
-| `programs.mepo.locationBackends.geoclue` | | |
-| `programs.mepo.locationBackends.gpsd` | | |
+| --- | --- | --- |
+| `programs.mepo.enable` | `boolean` | Whether to enable Mepo, a fast, simple and hackable OSM map viewer. |
+| `programs.mepo.locationBackends.geoclue` | `boolean` | Whether to enable location detection via geoclue |
+| `programs.mepo.locationBackends.gpsd` | `boolean` | Whether to enable location detection via gpsd. This may require additional configuration of gpsd, see [here](#opt-services.gpsd.enable) |

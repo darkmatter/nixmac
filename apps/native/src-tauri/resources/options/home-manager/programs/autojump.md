@@ -5,7 +5,7 @@
 All options under `programs.autojump`.
 
 | Option | Type | Description |
-| ----------------------------------------- | --------- | ----------------------------------- |
+| --- | --- | --- |
 | `programs.autojump.enable` | `boolean` | Whether to enable autojump. |
 | `programs.autojump.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.autojump.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |

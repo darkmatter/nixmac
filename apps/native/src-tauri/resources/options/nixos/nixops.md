@@ -5,5 +5,5 @@
 All options under `nixops`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `nixops.enableDeprecatedAutoLuks` | | |
+| --- | --- | --- |
+| `nixops.enableDeprecatedAutoLuks` | `boolean` | Whether to enable the deprecated NixOps AutoLuks module. |

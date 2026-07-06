@@ -5,7 +5,7 @@
 All options under `services.tinydns`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.tinydns.data` | | |
-| `services.tinydns.enable` | | |
-| `services.tinydns.ip` | | |
+| --- | --- | --- |
+| `services.tinydns.data` | `strings concatenated with "\n"` | The DNS data to serve, in the format described by {manpage}`tinydns-data(8)` |
+| `services.tinydns.enable` | `boolean` | Whether to run the tinydns dns server |
+| `services.tinydns.ip` | `string` | IP address on which to listen for connections |

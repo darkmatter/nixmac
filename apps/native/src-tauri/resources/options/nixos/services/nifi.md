@@ -5,17 +5,6 @@
 All options under `services.nifi`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.nifi.enable` | | |
-| `services.nifi.enableHTTPS` | | |
-| `services.nifi.group` | | |
-| `services.nifi.initJavaHeapSize` | | |
-| `services.nifi.initPasswordFile` | | |
-| `services.nifi.initUser` | | |
-| `services.nifi.listenHost` | | |
-| `services.nifi.listenPort` | | |
-| `services.nifi.maxJavaHeapSize` | | |
-| `services.nifi.package` | | |
-| `services.nifi.proxyHost` | | |
-| `services.nifi.proxyPort` | | |
-| `services.nifi.user` | | |
+| --- | --- | --- |
+| `services.nifi.enable` | `boolean` | Whether to enable Apache NiFi. |
+| `services.nifi.enableHTTPS` | `boolean` | Enable HTTPS protocol. Don`t use in production. | | `services.nifi.group`|`string`| Group account where Apache NiFi runs. | |`services.nifi.initJavaHeapSize`|`null or signed integer`| Set the initial heap size for the JVM in MB. | |`services.nifi.initPasswordFile`|`null or absolute path`| nitial password for Apache NiFi. Password must be at least 12 characters. | |`services.nifi.initUser`|`null or string`| Initial user account for Apache NiFi. Username must be at least 4 characters. | |`services.nifi.listenHost`|`string`| Bind to an ip for Apache NiFi web-ui. | |`services.nifi.listenPort`|`16 bit unsigned integer; between 0 and 65535 (both inclusive)`| Bind to a port for Apache NiFi web-ui. | |`services.nifi.maxJavaHeapSize`|`null or signed integer`| Set the initial heap size for the JVM in MB. | |`services.nifi.package`|`package`| The nifi package to use. | |`services.nifi.proxyHost`|`null or string`| Allow requests from a specific host. | |`services.nifi.proxyPort`|`null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)`| Allow requests from a specific port. | |`services.nifi.user`|`string\` | User account where Apache NiFi runs. |

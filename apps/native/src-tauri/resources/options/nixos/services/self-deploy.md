@@ -5,13 +5,13 @@
 All options under `services.self-deploy`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.self-deploy.branch` | | |
-| `services.self-deploy.enable` | | |
-| `services.self-deploy.nixArgs` | | |
-| `services.self-deploy.nixAttribute` | | |
-| `services.self-deploy.nixFile` | | |
-| `services.self-deploy.repository` | | |
-| `services.self-deploy.sshKeyFile` | | |
-| `services.self-deploy.startAt` | | |
-| `services.self-deploy.switchCommand` | | |
+| --- | --- | --- |
+| `services.self-deploy.branch` | `string` | Branch to track Technically speaking any ref can be specified here, as this is passed directly to a `git fetch`, but for the use-case of continuous deployment you're likely to want to specify a branch. |
+| `services.self-deploy.enable` | `boolean` | Whether to enable self-deploy. |
+| `services.self-deploy.nixArgs` | `attribute set` | Arguments to `nix-build` passed as `--argstr` or `--arg` depending on the type. |
+| `services.self-deploy.nixAttribute` | `null or string` | Attribute of `nixFile` that builds the current system. |
+| `services.self-deploy.nixFile` | `absolute path` | Path to nix file in repository. Leading '/' refers to root of git repository. |
+| `services.self-deploy.repository` | `absolute path or string` | The repository to fetch from. Must be properly formatted for git. If this value is set to a path (must begin with `/`) then it's assumed that the repository is local and the resulting service won't wait for the network to be up. If the repository will be fetched over SSH, you must add an entry to `programs.ssh.knownHosts` for the SSH host for the fetch to be successful. |
+| `services.self-deploy.sshKeyFile` | `null or absolute path` | Path to SSH private key used to fetch private repositories over SSH. |
+| `services.self-deploy.startAt` | `string or list of string` | The schedule on which to run the `self-deploy` service. Format specified by `systemd.time 7`. This value can also be a list of `systemd.time 7` formatted strings, in which case the service will be started on multiple schedules. |
+| `services.self-deploy.switchCommand` | `one of "boot", "switch", "dry-activate", "test"` | The `switch-to-configuration` subcommand used. |

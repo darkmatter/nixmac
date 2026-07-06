@@ -5,12 +5,12 @@
 All options under `services.voxtype`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.voxtype.enable` | | |
-| `services.voxtype.environment` | | |
-| `services.voxtype.extraArgs` | | |
-| `services.voxtype.loadModels` | | |
-| `services.voxtype.package` | | |
-| `services.voxtype.settings` | | |
-| `services.voxtype.wayland.display` | | |
-| `services.voxtype.x11.display` | | |
+| --- | --- | --- |
+| `services.voxtype.enable` | `boolean` | Whether to enable Voxtype speech-to-text daemon. |
+| `services.voxtype.environment` | `attribute set of string` | Environment variables for the Voxtype user service. |
+| `services.voxtype.extraArgs` | `list of string` | Extra command-line arguments passed to `voxtype daemon`. |
+| `services.voxtype.loadModels` | `list of string` | Downloads the listed models with `voxtype setup --download` before starting the daemon. |
+| `services.voxtype.package` | `package` | The voxtype package to use. |
+| `services.voxtype.settings` | `TOML value` | Voxtype configuration written to `$XDG_CONFIG_HOME/voxtype/config.toml`. |
+| `services.voxtype.wayland.display` | `null or string` | Wayland display socket name to expose to the Voxtype user service. |
+| `services.voxtype.x11.display` | `null or string` | X11 display name to expose to the Voxtype user service. |

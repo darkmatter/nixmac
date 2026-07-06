@@ -5,8 +5,10 @@
 All options under `services.immich-kiosk`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.immich-kiosk.enable` | | |
-| `services.immich-kiosk.openFirewall` | | |
-| `services.immich-kiosk.package` | | |
-| `services.immich-kiosk.settings` | | |
+| --- | --- | --- |
+| `services.immich-kiosk.enable` | `boolean` | Whether to enable Immich Kiosk slideshow service. |
+| `services.immich-kiosk.openFirewall` | `boolean` | Whether to open the firewall for the immich-kiosk port. |
+| `services.immich-kiosk.package` | `package` | The immich-kiosk package to use. |
+| `services.immich-kiosk.settings` | `open submodule of (JSON value)` | Configuration for immich-kiosk. See <https://docs.immichkiosk.app/configuration/> for available options. Secret values can be loaded from files using `._secret = "/path/to/secret";`. |
+| `services.immich-kiosk.settings.immich_url` | `string` | URL of the immich instance. |
+| `services.immich-kiosk.settings.kiosk.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which immich-kiosk will listen. |

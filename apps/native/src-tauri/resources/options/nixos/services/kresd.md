@@ -5,13 +5,11 @@
 All options under `services.kresd`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.kresd.cacheDir` | | |
-| `services.kresd.enable` | | |
-| `services.kresd.extraConfig` | | |
-| `services.kresd.instances` | | |
-| `services.kresd.interfaces` | | |
-| `services.kresd.listenDoH` | | |
-| `services.kresd.listenPlain` | | |
-| `services.kresd.listenTLS` | | |
-| `services.kresd.package` | | |
+| --- | --- | --- |
+| `services.kresd.enable` | `boolean` | Whether to enable knot-resolver (version 5) domain name server. DNSSEC validation is turned on by default. You can run `kresd-cli 1` and give commands interactively to kresd@1.service. If you want to user knot-resolver 6, please use services.knot-resolver. |
+| `services.kresd.extraConfig` | `strings concatenated with "\n"` | Extra lines to be added verbatim to the generated configuration file. See upstream documentation <https://www.knot-resolver.cz/documentation/stable/config-overview.html> for more details. |
+| `services.kresd.instances` | `unsigned integer, meaning >=0` | The number of instances to start. They will be called kresd@{1,2,...}.service. Knot Resolver uses no threads, so this is the way to scale. You can dynamically start/stop them at will, so this is just system default. |
+| `services.kresd.listenDoH` | `list of string` | Addresses and ports on which kresd should provide DNS over HTTPS/2 (see RFC 8484). For detailed syntax see ListenStream in {manpage}`systemd.socket(5)`. |
+| `services.kresd.listenPlain` | `list of string` | What addresses and ports the server should listen on. For detailed syntax see ListenStream in {manpage}`systemd.socket(5)`. |
+| `services.kresd.listenTLS` | `list of string` | Addresses and ports on which kresd should provide DNS over TLS (see RFC 7858). For detailed syntax see ListenStream in {manpage}`systemd.socket(5)`. |
+| `services.kresd.package` | `package` | The knot-resolver_5 package to use. |

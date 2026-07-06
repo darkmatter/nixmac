@@ -5,7 +5,7 @@
 All options under `services.xscreensaver`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.xscreensaver.enable` | | |
-| `services.xscreensaver.hooks` | | |
-| `services.xscreensaver.package` | | |
+| --- | --- | --- |
+| `services.xscreensaver.enable` | `boolean` | Whether to enable xscreensaver user service. |
+| `services.xscreensaver.hooks` | `attribute set of strings concatenated with "\n"` | An attrset of events and commands to run upon each event. Refer to <https://www.jwz.org/xscreensaver/man3.html> for supported events. |
+| `services.xscreensaver.package` | `package` | The xscreensaver package to use. |

@@ -5,14 +5,14 @@
 All options under `programs.broot`.
 
 | Option | Type | Description |
-| ----------------------------------------- | -------------------------------- | -------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.broot.enable` | `boolean` | Whether to enable Broot, a better way to navigate directories. |
 | `programs.broot.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.broot.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
 | `programs.broot.enableNushellIntegration` | `boolean` | Whether to enable Nushell integration. |
 | `programs.broot.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
-| `programs.broot.modal` | | |
 | `programs.broot.package` | `package` | The broot package to use. |
 | `programs.broot.settings` | `open submodule of (JSON value)` | Verbatim config entries |
-| `programs.broot.skin` | | |
-| `programs.broot.verbs` | | |
+| `programs.broot.settings.modal` | `boolean` | Whether to enable modal (vim) mode. |
+| `programs.broot.settings.skin` | `attribute set of string` | Color configuration. Complete list of keys (expected to change before the v1 of broot): * `char_match` * `code` * `directory` * `exe` * `file` * `file_error` * `flag_label` * `flag_value` * `input` * `link` * `permissions` * `selected_line` * `size_bar_full` * `size_bar_void` * `size_text` * `spinner` * `status_error` * `status_normal` * `table_border` * `tree` * `unlisted` Add `_fg` for a foreground color and `_bg` for a background color. |
+| `programs.broot.settings.verbs` | `list of attribute set of (boolean or string or list of string)` | Define new verbs. For more information, see [Verb Definition Attributes](https://dystroy.org/broot/documentation/configuration/#verb-definition-attributes) in the broot documentation. The possible attributes are: `invocation` (optional) : how the verb is called by the user, with placeholders for arguments `execution` (mandatory) : how the verb is executed `key` (optional) : a keyboard key triggering execution `keys` (optional) : multiple keyboard keys each triggering execution `shortcut` (optional) : an alternate way to call the verb (without the arguments part) `leave_broot` (optional) : whether to quit broot on execution (default: `true`) `from_shell` (optional) : whether the verb must be executed from the parent shell (default: `false`) |

@@ -5,6 +5,6 @@
 All options under `services.cato-client`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.cato-client.enable` | | |
-| `services.cato-client.package` | | |
+| --- | --- | --- |
+| `services.cato-client.enable` | `boolean` | Whether to enable cato-client service. |
+| `services.cato-client.package` | `package` | The cato-client package to use. |

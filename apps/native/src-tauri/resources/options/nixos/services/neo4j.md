@@ -5,41 +5,40 @@
 All options under `services.neo4j`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.neo4j.bolt.advertisedAddress` | | |
-| `services.neo4j.bolt.enable` | | |
-| `services.neo4j.bolt.listenAddress` | | |
-| `services.neo4j.bolt.sslPolicy` | | |
-| `services.neo4j.bolt.tlsLevel` | | |
-| `services.neo4j.boltPort` | | |
-| `services.neo4j.certDir` | | |
-| `services.neo4j.constrainLoadCsv` | | |
-| `services.neo4j.dataDir` | | |
-| `services.neo4j.defaultListenAddress` | | |
-| `services.neo4j.directories.certificates` | | |
-| `services.neo4j.directories.data` | | |
-| `services.neo4j.directories.home` | | |
-| `services.neo4j.directories.imports` | | |
-| `services.neo4j.directories.plugins` | | |
-| `services.neo4j.enable` | | |
-| `services.neo4j.enableBolt` | | |
-| `services.neo4j.enableHttps` | | |
-| `services.neo4j.extraServerConfig` | | |
-| `services.neo4j.host` | | |
-| `services.neo4j.http.advertisedAddress` | | |
-| `services.neo4j.http.enable` | | |
-| `services.neo4j.http.listenAddress` | | |
-| `services.neo4j.https.advertisedAddress` | | |
-| `services.neo4j.https.enable` | | |
-| `services.neo4j.https.listenAddress` | | |
-| `services.neo4j.https.sslPolicy` | | |
-| `services.neo4j.httpsPort` | | |
-| `services.neo4j.listenAddress` | | |
-| `services.neo4j.package` | | |
-| `services.neo4j.port` | | |
-| `services.neo4j.readOnly` | | |
-| `services.neo4j.shell.enable` | | |
-| `services.neo4j.shell.enabled` | | |
-| `services.neo4j.ssl.policies` | | |
-| `services.neo4j.udc.enabled` | | |
-| `services.neo4j.workerCount` | | |
+| --- | --- | --- |
+| `services.neo4j.bolt.advertisedAddress` | `string` | Neo4j advertised address for BOLT traffic. The advertised address is expressed in the format `<ip-address>:<port-number>`. |
+| `services.neo4j.bolt.enable` | `boolean` | Enable the BOLT connector for Neo4j. Setting this option to `false` will stop Neo4j from listening for incoming connections on the BOLT port (7687 by default). |
+| `services.neo4j.bolt.listenAddress` | `string` | Neo4j listen address for BOLT traffic. The listen address is expressed in the format `<ip-address>:<port-number>`. |
+| `services.neo4j.bolt.sslPolicy` | `string` | Neo4j SSL policy for BOLT traffic. The legacy policy is a special policy which is not defined in the policy configuration section, but rather derives from {option}`directories.certificates` and associated files (by default: {file}`neo4j.key` and {file}`neo4j.cert`). Its use will be deprecated. Note: This connector must be configured to support/require SSL/TLS for the legacy policy to actually be utilized. See {option}`bolt.tlsLevel`. |
+| `services.neo4j.bolt.tlsLevel` | `one of "REQUIRED", "OPTIONAL", "DISABLED"` | SSL/TSL requirement level for BOLT traffic. |
+| `services.neo4j.constrainLoadCsv` | `boolean` | Sets the root directory for file URLs used with the Cypher `LOAD CSV` clause to be that defined by {option}`directories.imports`. It restricts access to only those files within that directory and its subdirectories. Setting this option to `false` introduces possible security problems. |
+| `services.neo4j.defaultListenAddress` | `string` | Default network interface to listen for incoming connections. To listen for connections on all interfaces, use "0.0.0.0". Specifies the default IP address and address part of connector specific {option}`listenAddress` options. To bind specific connectors to a specific network interfaces, specify the entire {option}`listenAddress` option for that connector. |
+| `services.neo4j.directories.certificates` | `absolute path` | Directory for storing certificates to be used by Neo4j for TLS connections. When setting this directory to something other than its default, ensure the directory's existence, and that read/write permissions are given to the Neo4j daemon user `neo4j`. Note that changing this directory from its default will prevent the directory structure required for each SSL policy from being automatically generated. A policy's directory structure as defined by its {option}`baseDirectory`,{option}`revokedDir` and {option}`trustedDir` must then be setup manually. The existence of these directories is mandatory, as well as the presence of the certificate file and the private key. Ensure the correct permissions are set on these directories and files. |
+| `services.neo4j.directories.data` | `absolute path` | Path of the data directory. You must not configure more than one Neo4j installation to use the same data directory. When setting this directory to something other than its default, ensure the directory's existence, and that read/write permissions are given to the Neo4j daemon user `neo4j`. |
+| `services.neo4j.directories.home` | `absolute path` | Path of the Neo4j home directory. Other default directories are subdirectories of this path. This directory will be created if non-existent, and its ownership will be {command}`chown` to the Neo4j daemon user `neo4j`. |
+| `services.neo4j.directories.imports` | `absolute path` | The root directory for file URLs used with the Cypher `LOAD CSV` clause. Only meaningful when {option}`constrainLoadCvs` is set to `true`. When setting this directory to something other than its default, ensure the directory's existence, and that read permission is given to the Neo4j daemon user `neo4j`. |
+| `services.neo4j.directories.plugins` | `absolute path` | Path of the database plugin directory. Compiled Java JAR files that contain database procedures will be loaded if they are placed in this directory. When setting this directory to something other than its default, ensure the directory's existence, and that read permission is given to the Neo4j daemon user `neo4j`. |
+| `services.neo4j.enable` | `boolean` | Whether to enable Neo4j Community Edition. |
+| `services.neo4j.extraServerConfig` | `strings concatenated with "\n"` | Extra configuration for Neo4j Community server. Refer to the [complete reference](https://neo4j.com/docs/operations-manual/current/reference/configuration-settings/) of Neo4j configuration settings. |
+| `services.neo4j.http.advertisedAddress` | `string` | Neo4j advertised address for HTTP traffic. The advertised address is expressed in the format `<ip-address>:<port-number>`. |
+| `services.neo4j.http.enable` | `boolean` | Enable the HTTP connector for Neo4j. Setting this option to `false` will stop Neo4j from listening for incoming connections on the HTTPS port (7474 by default). |
+| `services.neo4j.http.listenAddress` | `string` | Neo4j listen address for HTTP traffic. The listen address is expressed in the format `<ip-address>:<port-number>`. |
+| `services.neo4j.https.advertisedAddress` | `string` | Neo4j advertised address for HTTPS traffic. The advertised address is expressed in the format `<ip-address>:<port-number>`. |
+| `services.neo4j.https.enable` | `boolean` | Enable the HTTPS connector for Neo4j. Setting this option to `false` will stop Neo4j from listening for incoming connections on the HTTPS port (7473 by default). |
+| `services.neo4j.https.listenAddress` | `string` | Neo4j listen address for HTTPS traffic. The listen address is expressed in the format `<ip-address>:<port-number>`. |
+| `services.neo4j.https.sslPolicy` | `string` | Neo4j SSL policy for HTTPS traffic. The legacy policy is a special policy which is not defined in the policy configuration section, but rather derives from {option}`directories.certificates` and associated files (by default: {file}`neo4j.key` and {file}`neo4j.cert`). Its use will be deprecated. |
+| `services.neo4j.package` | `package` | The neo4j package to use. |
+| `services.neo4j.readOnly` | `boolean` | Only allow read operations from this Neo4j instance. |
+| `services.neo4j.shell.enable` | `boolean` | Enable a remote shell server which Neo4j Shell clients can log in to. Only applicable to {command}`neo4j-shell`. |
+| `services.neo4j.ssl.policies` | `attribute set of (submodule)` | Defines the SSL policies for use with Neo4j connectors. Each attribute of this set defines a policy, with the attribute name defining the name of the policy and its namespace. Refer to the operations manual section on Neo4j's [SSL Framework](https://neo4j.com/docs/operations-manual/current/security/ssl-framework/) for further details. |
+| `services.neo4j.ssl.policies.<name>.allowKeyGeneration` | `boolean` | Allows the generation of a private key and associated self-signed certificate. Only performed when both objects cannot be found for this policy. It is recommended to turn this off again after keys have been generated. The public certificate is required to be duplicated to the directory holding trusted certificates as defined by the {option}`trustedDir` option. Keys should in general be generated and distributed offline by a trusted certificate authority and not by utilizing this mode. |
+| `services.neo4j.ssl.policies.<name>.baseDirectory` | `absolute path` | The mandatory base directory for cryptographic objects of this policy. This path is only automatically generated when this option as well as {option}`directories.certificates` are left at their default. Ensure read/write permissions are given to the Neo4j daemon user `neo4j`. It is also possible to override each individual configuration with absolute paths. See the {option}`privateKey` and {option}`publicCertificate` policy options. |
+| `services.neo4j.ssl.policies.<name>.ciphers` | `null or (list of string)` | Restrict the allowed ciphers of this policy to those defined here. The default ciphers are those of the JVM platform. |
+| `services.neo4j.ssl.policies.<name>.clientAuth` | `one of "NONE", "OPTIONAL", "REQUIRE"` | The client authentication stance for this policy. |
+| `services.neo4j.ssl.policies.<name>.privateKey` | `string` | The name of private PKCS #8 key file for this policy to be found in the {option}`baseDirectory`, or the absolute path to the key file. It is mandatory that a key can be found or generated. |
+| `services.neo4j.ssl.policies.<name>.publicCertificate` | `string` | The name of public X.509 certificate (chain) file in PEM format for this policy to be found in the {option}`baseDirectory`, or the absolute path to the certificate file. It is mandatory that a certificate can be found or generated. The public certificate is required to be duplicated to the directory holding trusted certificates as defined by the {option}`trustedDir` option. |
+| `services.neo4j.ssl.policies.<name>.revokedDir` | `absolute path` | Path to directory of CRLs (Certificate Revocation Lists) in PEM format. Must be an absolute path. The existence of this directory is mandatory and will need to be created manually when: setting this option to something other than its default; setting either this policy's {option}`baseDirectory` or {option}`directories.certificates` to something other than their default. Ensure read/write permissions are given to the Neo4j daemon user `neo4j`. |
+| `services.neo4j.ssl.policies.<name>.tlsVersions` | `list of string` | Restrict the TLS protocol versions of this policy to those defined here. |
+| `services.neo4j.ssl.policies.<name>.trustAll` | `boolean` | Makes this policy trust all remote parties. Enabling this is not recommended and the policy's trusted directory will be ignored. Use of this mode is discouraged. It would offer encryption but no security. |
+| `services.neo4j.ssl.policies.<name>.trustedDir` | `absolute path` | Path to directory of X.509 certificates in PEM format for trusted parties. Must be an absolute path. The existence of this directory is mandatory and will need to be created manually when: setting this option to something other than its default; setting either this policy's {option}`baseDirectory` or {option}`directories.certificates` to something other than their default. Ensure read/write permissions are given to the Neo4j daemon user `neo4j`. The public certificate as defined by {option}`publicCertificate` is required to be duplicated to this directory. |
+| `services.neo4j.workerCount` | `integer between 0 and 44738 (both inclusive)` | Number of Neo4j worker threads, where the default of `0` indicates a worker count equal to the number of available processors. |

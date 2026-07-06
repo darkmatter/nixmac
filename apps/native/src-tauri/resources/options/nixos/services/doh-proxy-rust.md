@@ -5,6 +5,6 @@
 All options under `services.doh-proxy-rust`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.doh-proxy-rust.enable` | | |
-| `services.doh-proxy-rust.flags` | | |
+| --- | --- | --- |
+| `services.doh-proxy-rust.enable` | `boolean` | Whether to enable doh-proxy-rust. |
+| `services.doh-proxy-rust.flags` | `list of string` | A list of command-line flags to pass to doh-proxy. For details on the available options, see <https://github.com/jedisct1/doh-server#usage>. |

@@ -5,8 +5,8 @@
 All options under `services.betterlockscreen`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---------------- | -------------------------------------------------------------- |
-| `services.betterlockscreen.arguments` | `list of string` | List of arguments appended to ./betterlockscreen --lock [args] |
+| --- | --- | --- |
+| `services.betterlockscreen.arguments` | `list of string` | List of arguments appended to `./betterlockscreen --lock [args]` |
 | `services.betterlockscreen.enable` | `boolean` | Whether to enable betterlockscreen, a screen-locker module. |
-| `services.betterlockscreen.inactiveInterval` | `signed integer` | Value used for services.screen-locker.inactiveInterval . |
+| `services.betterlockscreen.inactiveInterval` | `signed integer` | Value used for {option}`services.screen-locker.inactiveInterval`. |
 | `services.betterlockscreen.package` | `package` | The betterlockscreen package to use. |

@@ -5,9 +5,9 @@
 All options under `programs.waveterm`.
 
 | Option | Type | Description |
-| ----------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `programs.waveterm.bookmarks` | `JSON value` | Bookmark definitions for WaveTerm. Details about the format and the options can be found here: https://docs.waveterm.dev/config#webbookmarks-configuration . |
+| --- | --- | --- |
+| `programs.waveterm.bookmarks` | `JSON value` | Bookmark definitions for WaveTerm. Details about the format and the options can be found here: <https://docs.waveterm.dev/config#webbookmarks-configuration>. |
 | `programs.waveterm.enable` | `boolean` | Whether to enable waveterm. |
 | `programs.waveterm.package` | `null or package` | The waveterm package to use. |
-| `programs.waveterm.settings` | `JSON value` | Configuration settings for WaveTerm. All available options can be found here: https://docs.waveterm.dev/config#configuration-keys . |
-| `programs.waveterm.themes` | `JSON value` | User defined terminal themes. All the details about available options and format can be found here: https://docs.waveterm.dev/config#terminal-theming . |
+| `programs.waveterm.settings` | `JSON value` | Configuration settings for WaveTerm. All available options can be found here: <https://docs.waveterm.dev/config#configuration-keys>. |
+| `programs.waveterm.themes` | `JSON value` | User defined terminal themes. All the details about available options and format can be found here: <https://docs.waveterm.dev/config#terminal-theming>. |

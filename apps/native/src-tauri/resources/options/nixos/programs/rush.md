@@ -5,10 +5,10 @@
 All options under `programs.rush`.
 
 | Option | Type | Description |
-| ----------------------- | ---- | ----------- |
-| `programs.rush.enable` | | |
-| `programs.rush.global` | | |
-| `programs.rush.package` | | |
-| `programs.rush.rules` | | |
-| `programs.rush.shell` | | |
-| `programs.rush.wrap` | | |
+| --- | --- | --- |
+| `programs.rush.enable` | `boolean` | Whether to enable Restricted User Shell.. |
+| `programs.rush.global` | `strings concatenated with "\n"` | The `global` statement defines global settings. |
+| `programs.rush.package` | `package` | The rush package to use. |
+| `programs.rush.rules` | `attribute set of strings concatenated with "\n"` | The rule statement configures a GNU Rush rule. This is a block statement, which means that all statements located between it and the next rule statement (or end of file, whichever occurs first) modify the definition of that rule. |
+| `programs.rush.shell` | `package or absolute path` | The resolved shell path that users can inherit to set `rush` as their login shell. This is a convenience option for use in user definitions. Example: `users.users.alice = { inherit (config.programs.rush) shell; ... };` |
+| `programs.rush.wrap` | `boolean` | Whether to wrap the `rush` binary with a SUID-enabled wrapper. This is required if {option}`security.enableWrappers` is enabled in your configuration. |

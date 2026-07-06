@@ -5,9 +5,12 @@
 All options under `services.nbd`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.nbd.server.enable` | | |
-| `services.nbd.server.exports` | | |
-| `services.nbd.server.extraOptions` | | |
-| `services.nbd.server.listenAddress` | | |
-| `services.nbd.server.listenPort` | | |
+| --- | --- | --- |
+| `services.nbd.server.enable` | `boolean` | Whether to enable the Network Block Device (nbd) server. |
+| `services.nbd.server.exports` | `attribute set of (submodule)` | Files or block devices to make available over the network. |
+| `services.nbd.server.exports.<name>.allowAddresses` | `null or (list of string)` | IPs and subnets that are authorized to connect for this device. If not specified, the server will allow all connections. |
+| `services.nbd.server.exports.<name>.extraOptions` | `attribute set of (boolean or signed integer or floating point number or string)` | Extra options for this export. See {manpage}`nbd-server(5)`. |
+| `services.nbd.server.exports.<name>.path` | `string` | File or block device to export. |
+| `services.nbd.server.extraOptions` | `attribute set of (boolean or signed integer or floating point number or string)` | Extra options for the server. See {manpage}`nbd-server(5)`. |
+| `services.nbd.server.listenAddress` | `null or string` | Address to listen on. If not specified, the server will listen on all interfaces. |
+| `services.nbd.server.listenPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. The port is NOT automatically opened in the firewall. |

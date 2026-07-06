@@ -5,7 +5,7 @@
 All options under `services.sysstat`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.sysstat.collect-args` | | |
-| `services.sysstat.collect-frequency` | | |
-| `services.sysstat.enable` | | |
+| --- | --- | --- |
+| `services.sysstat.collect-args` | `string` | Arguments to pass sa1 when collecting statistics |
+| `services.sysstat.collect-frequency` | `string` | OnCalendar specification for sysstat-collect |
+| `services.sysstat.enable` | `boolean` | Whether to enable sar system activity collection. |

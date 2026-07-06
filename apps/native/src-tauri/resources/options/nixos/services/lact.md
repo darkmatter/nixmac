@@ -5,7 +5,7 @@
 All options under `services.lact`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `services.lact.enable` | | |
-| `services.lact.package` | | |
-| `services.lact.settings` | | |
+| --- | --- | --- |
+| `services.lact.enable` | `boolean` | Whether to enable LACT, a tool for monitoring, configuring and overclocking GPUs. ::: {.note} If you are on an AMD GPU, it is recommended to enable overdrive mode by using `hardware.amdgpu.overdrive.enable = true;` in your configuration. See [LACT wiki](<https://github.com/ilya-zlobintsev/LACT/wiki/Overclocking-(AMD)>) for more information. ::: |
+| `services.lact.package` | `package` | The lact package to use. |
+| `services.lact.settings` | `open submodule of (YAML 1.1 value)` | Settings for LACT. The easiest method of acquiring the settings is to delete {file}`/etc/lact/config.yaml`, enter your settings and look at the file. ::: {.note} When `settings` is populated, the config file will be a symbolic link and thus LACT daemon will not be able to modify it through the GUI. ::: |

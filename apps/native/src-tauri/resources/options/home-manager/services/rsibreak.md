@@ -5,6 +5,6 @@
 All options under `services.rsibreak`.
 
 | Option | Type | Description |
-| --------------------------- | --------- | ---------------------------- |
+| --- | --- | --- |
 | `services.rsibreak.enable` | `boolean` | Whether to enable rsibreak. |
 | `services.rsibreak.package` | `package` | The rsibreak package to use. |

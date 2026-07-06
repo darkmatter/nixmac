@@ -5,11 +5,11 @@
 All options under `services.oxidized`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.oxidized.configFile` | | |
-| `services.oxidized.dataDir` | | |
-| `services.oxidized.enable` | | |
-| `services.oxidized.group` | | |
-| `services.oxidized.package` | | |
-| `services.oxidized.routerDB` | | |
-| `services.oxidized.user` | | |
+| --- | --- | --- |
+| `services.oxidized.configFile` | `null or absolute path` | Path to the oxidized configuration file. |
+| `services.oxidized.dataDir` | `absolute path` | State directory for the oxidized service. |
+| `services.oxidized.enable` | `boolean` | Whether to enable the oxidized configuration backup service. |
+| `services.oxidized.group` | `string` | Group under which the oxidized service runs. |
+| `services.oxidized.package` | `package` | The oxidized package to use. |
+| `services.oxidized.routerDB` | `null or absolute path` | Path to the file/database which contains the targets for oxidized. |
+| `services.oxidized.user` | `string` | User under which the oxidized service runs. |

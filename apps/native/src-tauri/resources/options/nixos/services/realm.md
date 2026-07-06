@@ -5,7 +5,7 @@
 All options under `services.realm`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `services.realm.config` | | |
-| `services.realm.enable` | | |
-| `services.realm.package` | | |
+| --- | --- | --- |
+| `services.realm.config` | `open submodule of (JSON value)` | The realm configuration, see <https://github.com/zhboner/realm#overview> for documentation. |
+| `services.realm.enable` | `boolean` | Whether to enable A simple, high performance relay server written in rust. |
+| `services.realm.package` | `package` | The realm package to use. |

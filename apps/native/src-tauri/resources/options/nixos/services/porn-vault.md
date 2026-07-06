@@ -5,10 +5,10 @@
 All options under `services.porn-vault`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.porn-vault.autoStart` | | |
-| `services.porn-vault.enable` | | |
-| `services.porn-vault.openFirewall` | | |
-| `services.porn-vault.package` | | |
-| `services.porn-vault.port` | | |
-| `services.porn-vault.settings` | | |
+| --- | --- | --- |
+| `services.porn-vault.autoStart` | `boolean` | Whether to start porn-vault automatically. |
+| `services.porn-vault.enable` | `boolean` | Whether to enable Porn-Vault. |
+| `services.porn-vault.openFirewall` | `boolean` | Whether to open the Porn-Vault port in the firewall. |
+| `services.porn-vault.package` | `package` | The porn-vault package to use. |
+| `services.porn-vault.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Which port Porn-Vault will use. |
+| `services.porn-vault.settings` | `JSON value` | Configuration for Porn-Vault. The attributes are serialized to JSON in config.json. See <https://gitlab.com/porn-vault/porn-vault/-/blob/dev/config.example.json> |

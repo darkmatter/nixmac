@@ -5,9 +5,9 @@
 All options under `services.incron`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.incron.allow` | | |
-| `services.incron.deny` | | |
-| `services.incron.enable` | | |
-| `services.incron.extraPackages` | | |
-| `services.incron.systab` | | |
+| --- | --- | --- |
+| `services.incron.allow` | `null or (list of string)` | Users allowed to use incrontab. If empty then no user will be allowed to have their own incrontab. If `null` then will defer to {option}`deny`. If both {option}`allow` and {option}`deny` are null then all users will be allowed to have their own incrontab. |
+| `services.incron.deny` | `null or (list of string)` | Users forbidden from using incrontab. |
+| `services.incron.enable` | `boolean` | Whether to enable the incron daemon. Note that commands run under incrontab only support common Nix profiles for the {env}`PATH` provided variable. |
+| `services.incron.extraPackages` | `list of package` | Extra packages available to the system incrontab. |
+| `services.incron.systab` | `strings concatenated with "\n"` | The system incrontab contents. |

@@ -5,8 +5,12 @@
 All options under `services.immichframe`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.immichframe.enable` | | |
-| `services.immichframe.package` | | |
-| `services.immichframe.port` | | |
-| `services.immichframe.settings` | | |
+| --- | --- | --- |
+| `services.immichframe.enable` | `boolean` | Whether to enable ImmichFrame. |
+| `services.immichframe.package` | `package` | The immichframe package to use. |
+| `services.immichframe.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port that ImmichFrame will listen on. |
+| `services.immichframe.settings` | `open submodule of (JSON value)` | Configuration for ImmichFrame. See <https://immichframe.online/docs/getting-started/configuration> for options and defaults. |
+| `services.immichframe.settings.Accounts` | `list of (open submodule of (JSON value))` | Accounts configuration, multiple are permitted. See <https://immichframe.online/docs/getting-started/configuration>. |
+| `services.immichframe.settings.Accounts.*.ApiKey` | `null or string` | API key to talk to the Immich server. Warning: it will be world-readable in /nix/store. Consider using {option}`ApiKeyFile` instead. See <https://immichframe.online/docs/getting-started/configuration#api-key-permissions> for details on what permissions this key needs. |
+| `services.immichframe.settings.Accounts.*.ApiKeyFile` | `null or absolute path not in the Nix store` | File containing an API key to talk to the Immich server. See <https://immichframe.online/docs/getting-started/configuration#api-key-permissions> for details on what permissions this key needs. |
+| `services.immichframe.settings.Accounts.*.ImmichServerUrl` | `string` | The URL of your Immich server. |

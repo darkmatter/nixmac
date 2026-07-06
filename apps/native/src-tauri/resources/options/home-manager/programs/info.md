@@ -5,7 +5,6 @@
 All options under `programs.info`.
 
 | Option | Type | Description |
-| ----------------------------------- | --------- | --------------------------- |
+| --- | --- | --- |
 | `programs.info.enable` | `boolean` | Whether to enable GNU Info. |
-| `programs.info.homeInfoDirLocation` | | |
 | `programs.info.package` | `package` | The texinfo package to use. |

@@ -5,10 +5,10 @@
 All options under `services.darkman`.
 
 | Option | Type | Description |
-| ----------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `services.darkman.darkModeScripts` | `attribute set of (absolute path or strings concatenated with “\n”)` | Scripts to run when switching to “dark mode”. |
+| --- | --- | --- |
+| `services.darkman.darkModeScripts` | `attribute set of (absolute path or strings concatenated with "\n")` | Scripts to run when switching to "dark mode". Multiline strings are interpreted as Bash shell scripts and a shebang is not required. |
 | `services.darkman.enable` | `boolean` | Whether to enable darkman, a tool that automatically switches dark-mode on and off based on the time of the day. |
-| `services.darkman.lightModeScripts` | `attribute set of (absolute path or strings concatenated with “\n”)` | Scripts to run when switching to “light mode”. |
+| `services.darkman.lightModeScripts` | `attribute set of (absolute path or strings concatenated with "\n")` | Scripts to run when switching to "light mode". Multiline strings are interpreted as Bash shell scripts and a shebang is not required. |
 | `services.darkman.package` | `null or package` | The darkman package to use. |
-| `services.darkman.scripts` | | |
-| `services.darkman.settings` | `open submodule of (YAML 1.1 value)` | Settings for the darkman command. See https://darkman.whynothugo.nl/#CONFIGURATION for details. |
+| `services.darkman.scripts` | `attribute set of (absolute path or strings concatenated with "\n")` | Scripts to run when switching modes, placed in {file}`$XDG_DATA_HOME/darkman/`. Each script receives the new mode (`dark` or `light`) as its first argument, allowing a single script to handle both modes. Multiline strings are interpreted as Bash shell scripts and a shebang is not required. These scripts take precedence over legacy scripts of the same name in {option}`darkModeScripts` and {option}`lightModeScripts`. |
+| `services.darkman.settings` | `open submodule of (YAML 1.1 value)` | Settings for the {command}`darkman` command. See <https://darkman.whynothugo.nl/#CONFIGURATION> for details. |

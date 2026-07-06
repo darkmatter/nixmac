@@ -5,13 +5,13 @@
 All options under `services.llama-swap`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.llama-swap.enable` | | |
-| `services.llama-swap.listenAddress` | | |
-| `services.llama-swap.openFirewall` | | |
-| `services.llama-swap.package` | | |
-| `services.llama-swap.port` | | |
-| `services.llama-swap.settings` | | |
-| `services.llama-swap.tls.certFile` | | |
-| `services.llama-swap.tls.enable` | | |
-| `services.llama-swap.tls.keyFile` | | |
+| --- | --- | --- |
+| `services.llama-swap.enable` | `boolean` | Whether to enable the llama-swap service. |
+| `services.llama-swap.listenAddress` | `string` | Address that llama-swap listens on. |
+| `services.llama-swap.openFirewall` | `boolean` | Whether to open the firewall for llama-swap. This adds {option}`port` to [](#opt-networking.firewall.allowedTCPPorts). |
+| `services.llama-swap.package` | `package` | The llama-swap package to use. |
+| `services.llama-swap.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port that llama-swap listens on. |
+| `services.llama-swap.settings` | `open submodule of (YAML 1.1 value)` | llama-swap configuration. Refer to the [llama-swap example configuration](https://github.com/mostlygeek/llama-swap/blob/main/config.example.yaml) for details on supported values. |
+| `services.llama-swap.tls.certFile` | `null or absolute path` | Path to the TLS certificate file. This certificate will be offered to, and may be verified by, clients. |
+| `services.llama-swap.tls.enable` | `boolean` | Whether to enable TLS encryption. |
+| `services.llama-swap.tls.keyFile` | `null or absolute path` | Path to the TLS private key file. This key will be used to decrypt, data received from clients. |

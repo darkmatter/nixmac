@@ -5,7 +5,7 @@
 All options under `programs.z-lua`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---------------- | -------------------------------------------- |
+| --- | --- | --- |
 | `programs.z-lua.enable` | `boolean` | Whether to enable z.lua. |
 | `programs.z-lua.enableAliases` | `boolean` | Whether to enable recommended z.lua aliases. |
 | `programs.z-lua.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |

@@ -5,6 +5,6 @@
 All options under `programs.pmount`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `programs.pmount.enable` | | |
-| `programs.pmount.package` | | |
+| --- | --- | --- |
+| `programs.pmount.enable` | `boolean` | Whether to enable pmount, a tool that allows normal users to mount removable devices without requiring root privileges . |
+| `programs.pmount.package` | `package` | The pmount package to use. |

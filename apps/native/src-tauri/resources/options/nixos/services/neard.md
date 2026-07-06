@@ -5,6 +5,9 @@
 All options under `services.neard`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.neard.enable` | | |
-| `services.neard.settings` | | |
+| --- | --- | --- |
+| `services.neard.enable` | `boolean` | Whether to enable neard, an NFC daemon. |
+| `services.neard.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Neard INI-style configuration file as a Nix attribute set. See the upstream [configuration file](https://github.com/linux-nfc/neard/blob/master/src/main.conf). |
+| `services.neard.settings.General.ConstantPoll` | `boolean` | Enable constant polling. Constant polling will automatically trigger a new polling loop whenever a tag or a device is no longer in the RF field. |
+| `services.neard.settings.General.DefaultPowered` | `boolean` | Automatically turn an adapter on when being discovered. |
+| `services.neard.settings.General.ResetOnError` | `boolean` | Power cycle the adapter when getting a driver error from the kernel. |

@@ -5,9 +5,12 @@
 All options under `services.mackerel-agent`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.mackerel-agent.apiKeyFile` | | |
-| `services.mackerel-agent.autoRetirement` | | |
-| `services.mackerel-agent.enable` | | |
-| `services.mackerel-agent.runAsRoot` | | |
-| `services.mackerel-agent.settings` | | |
+| --- | --- | --- |
+| `services.mackerel-agent.apiKeyFile` | `absolute path` | Path to file containing the Mackerel API key. The file should contain a single line of the following form: `apikey = "EXAMPLE_API_KEY"` |
+| `services.mackerel-agent.autoRetirement` | `boolean` | Whether to enable retiring the host upon OS shutdown . |
+| `services.mackerel-agent.enable` | `boolean` | Whether to enable mackerel.io agent. |
+| `services.mackerel-agent.runAsRoot` | `boolean` | Whether to enable running as root. |
+| `services.mackerel-agent.settings` | `open submodule of (TOML value)` | Options for mackerel-agent.conf. Documentation: <https://mackerel.io/docs/entry/spec/agent> |
+| `services.mackerel-agent.settings.diagnostic` | `boolean` | Whether to enable collecting memory usage for the agent itself. |
+| `services.mackerel-agent.settings.host_status.on_start` | `one of "working", "standby", "maintenance", "poweroff"` | Host status after agent startup. |
+| `services.mackerel-agent.settings.host_status.on_stop` | `one of "working", "standby", "maintenance", "poweroff"` | Host status after agent shutdown. |

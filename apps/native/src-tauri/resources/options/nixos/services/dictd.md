@@ -5,6 +5,6 @@
 All options under `services.dictd`.
 
 | Option | Type | Description |
-| ----------------------- | ---- | ----------- |
-| `services.dictd.DBs` | | |
-| `services.dictd.enable` | | |
+| --- | --- | --- |
+| `services.dictd.DBs` | `list of package` | List of databases to make available. |
+| `services.dictd.enable` | `boolean` | Whether to enable the DICT.org dictionary server. |

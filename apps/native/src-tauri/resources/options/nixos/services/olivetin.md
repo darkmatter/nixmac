@@ -5,11 +5,12 @@
 All options under `services.olivetin`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.olivetin.enable` | | |
-| `services.olivetin.extraConfigFiles` | | |
-| `services.olivetin.group` | | |
-| `services.olivetin.package` | | |
-| `services.olivetin.path` | | |
-| `services.olivetin.settings` | | |
-| `services.olivetin.user` | | |
+| --- | --- | --- |
+| `services.olivetin.enable` | `boolean` | Whether to enable OliveTin. |
+| `services.olivetin.extraConfigFiles` | `list of absolute path` | Config files to merge into the settings defined in [](#opt-services.olivetin.settings). This is useful to avoid putting secrets into the nix store. See <https://docs.olivetin.app/config.html> for more information. |
+| `services.olivetin.group` | `string` | The group under which OliveTin runs. |
+| `services.olivetin.package` | `package` | The olivetin package to use. |
+| `services.olivetin.path` | `list of (package or string)` | Packages added to the service's {env}`PATH`. |
+| `services.olivetin.settings` | `open submodule of (YAML 1.1 value)` | Configuration of OliveTin. See <https://docs.olivetin.app/config.html> for more information. |
+| `services.olivetin.settings.ListenAddressSingleHTTPFrontend` | `string` | The address to listen on for the internal "microproxy" frontend. |
+| `services.olivetin.user` | `string` | The user account under which OliveTin runs. |

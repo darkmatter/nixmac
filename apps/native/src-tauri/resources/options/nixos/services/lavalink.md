@@ -5,18 +5,23 @@
 All options under `services.lavalink`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.lavalink.address` | | |
-| `services.lavalink.enable` | | |
-| `services.lavalink.enableHttp2` | | |
-| `services.lavalink.environmentFile` | | |
-| `services.lavalink.extraConfig` | | |
-| `services.lavalink.group` | | |
-| `services.lavalink.home` | | |
-| `services.lavalink.jvmArgs` | | |
-| `services.lavalink.openFirewall` | | |
-| `services.lavalink.package` | | |
-| `services.lavalink.password` | | |
-| `services.lavalink.plugins` | | |
-| `services.lavalink.port` | | |
-| `services.lavalink.user` | | |
+| --- | --- | --- |
+| `services.lavalink.address` | `string` | The network address to bind to. |
+| `services.lavalink.enable` | `boolean` | Whether to enable Lavalink. |
+| `services.lavalink.enableHttp2` | `boolean` | Whether to enable HTTP/2 support. |
+| `services.lavalink.environmentFile` | `null or string` | Add custom environment variables from a file. See <https://lavalink.dev/configuration/index.html#example-environment-variables> for the full documentation. |
+| `services.lavalink.extraConfig` | `open submodule of (YAML 1.1 value)` | Configuration to write to {file}`application.yml`. See <https://lavalink.dev/configuration/#example-applicationyml> for the full documentation. Individual configuration parameters can be overwritten using environment variables. See <https://lavalink.dev/configuration/#example-environment-variables> for more information. |
+| `services.lavalink.group` | `string` | The group of the service. |
+| `services.lavalink.home` | `string` | The home directory for lavalink. |
+| `services.lavalink.jvmArgs` | `string` | Set custom JVM arguments. |
+| `services.lavalink.openFirewall` | `boolean` | Whether to expose the port to the network. |
+| `services.lavalink.package` | `package` | The lavalink package to use. |
+| `services.lavalink.password` | `null or string` | The password for Lavalink's authentication in plain text. |
+| `services.lavalink.plugins` | `list of (submodule)` | A list of plugins for lavalink. |
+| `services.lavalink.plugins.*.configName` | `null or string` | The name of the plugin to use as the key for the plugin configuration. |
+| `services.lavalink.plugins.*.dependency` | `string` | The coordinates of the plugin. |
+| `services.lavalink.plugins.*.extraConfig` | `open submodule of (YAML 1.1 value)` | The configuration for the plugin. The {option}`services.lavalink.plugins.*.configName` option must be set. |
+| `services.lavalink.plugins.*.hash` | `string` | The hash of the plugin. |
+| `services.lavalink.plugins.*.repository` | `string` | The plugin repository. Defaults to the lavalink releases repository. To use the snapshots repository, use <https://maven.lavalink.dev/snapshots> instead |
+| `services.lavalink.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port that Lavalink will use. |
+| `services.lavalink.user` | `string` | The user of the service. |

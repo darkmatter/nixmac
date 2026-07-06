@@ -5,5 +5,5 @@
 All options under `programs.extra-container`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `programs.extra-container.enable` | | |
+| --- | --- | --- |
+| `programs.extra-container.enable` | `boolean` | Whether to enable extra-container, a tool for running declarative NixOS containers without host system rebuilds . |

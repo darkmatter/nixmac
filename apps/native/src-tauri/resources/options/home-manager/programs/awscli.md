@@ -5,8 +5,8 @@
 All options under `programs.awscli`.
 
 | Option | Type | Description |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
-| `programs.awscli.credentials` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to $HOME/.aws/credentials . |
+| --- | --- | --- |
+| `programs.awscli.credentials` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to {file}`$HOME/.aws/credentials`. For security reasons, never store cleartext passwords here. We recommend that you use `credential_process` option to retrieve the IAM credentials from your favorite password manager during runtime, or use AWS IAM Identity Center to get short-term credentials. See <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-authentication.html>. |
 | `programs.awscli.enable` | `boolean` | Whether to enable AWS CLI tool. |
 | `programs.awscli.package` | `null or package` | The aws package to use. |
-| `programs.awscli.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to $HOME/.aws/config . |
+| `programs.awscli.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to {file}`$HOME/.aws/config`. |

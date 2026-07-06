@@ -5,6 +5,6 @@
 All options under `programs.yubikey-manager`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `programs.yubikey-manager.enable` | | |
-| `programs.yubikey-manager.package` | | |
+| --- | --- | --- |
+| `programs.yubikey-manager.enable` | `boolean` | Whether to enable yubikey-manager. |
+| `programs.yubikey-manager.package` | `package` | The yubikey-manager package to use. |

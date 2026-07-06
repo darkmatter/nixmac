@@ -5,17 +5,25 @@
 All options under `services.lasuite-drive`.
 
 | Option | Type | Description |
-| ------------------------------------------------- | ---- | ----------- |
-| `services.lasuite-drive.bind` | | |
-| `services.lasuite-drive.celery.extraArgs` | | |
-| `services.lasuite-drive.domain` | | |
-| `services.lasuite-drive.enable` | | |
-| `services.lasuite-drive.enableNginx` | | |
-| `services.lasuite-drive.environmentFiles` | | |
-| `services.lasuite-drive.gunicorn.extraArgs` | | |
-| `services.lasuite-drive.package` | | |
-| `services.lasuite-drive.postgresql.createLocally` | | |
-| `services.lasuite-drive.redis.createLocally` | | |
-| `services.lasuite-drive.s3Url` | | |
-| `services.lasuite-drive.secretKeyPath` | | |
-| `services.lasuite-drive.settings` | | |
+| --- | --- | --- |
+| `services.lasuite-drive.bind` | `string` | The path, host/port or file descriptior to bind the gunicorn socket to. See <https://docs.gunicorn.org/en/stable/settings.html#bind> for possible options. |
+| `services.lasuite-drive.celery.extraArgs` | `list of string` | Extra arguments to pass to the celery process. |
+| `services.lasuite-drive.domain` | `string` | Domain name of the drive instance. |
+| `services.lasuite-drive.enable` | `boolean` | Whether to enable SuiteNumérique Drive. |
+| `services.lasuite-drive.enableNginx` | `boolean` | Whether to enable enable and configure Nginx for reverse proxying. |
+| `services.lasuite-drive.environmentFiles` | `list of absolute path` | Path to environment files. This can be useful to pass secrets to drive via tools like `agenix` or `sops`. |
+| `services.lasuite-drive.gunicorn.extraArgs` | `list of string` | Extra arguments to pass to the gunicorn process. |
+| `services.lasuite-drive.package` | `package` | The lasuite-drive package to use. |
+| `services.lasuite-drive.postgresql.createLocally` | `boolean` | Configure local PostgreSQL database server for drive. |
+| `services.lasuite-drive.redis.createLocally` | `boolean` | Configure local Redis cache server for drive. |
+| `services.lasuite-drive.s3Url` | `string` | URL of the S3 bucket. |
+| `services.lasuite-drive.secretKeyPath` | `null or absolute path` | Path to the Django secret key. The key can be generated using: `python3 -c 'import secrets; print(secrets.token_hex())'` :::{.note} If not specified, a secret key is automatically generated and stored in the state directory. ::: |
+| `services.lasuite-drive.settings` | `open submodule of attribute set of (null or string or boolean or absolute path or signed integer)` | Configuration options of drive. See <https://github.com/suitenumerique/drive/blob/v0.18.0/docs/env.md> `REDIS_URL` and `CELERY_BROKER_URL` are set if `services.lasuite-drive.redis.createLocally` is true. `DB_HOST` is set if `services.lasuite-drive.postgresql.createLocally` is true. |
+| `services.lasuite-drive.settings.CELERY_BROKER_URL` | `null or string` | URL of the redis backend for celery |
+| `services.lasuite-drive.settings.DATA_DIR` | `absolute path` | Path to the data directory |
+| `services.lasuite-drive.settings.DB_HOST` | `null or string` | Host of the database |
+| `services.lasuite-drive.settings.DB_NAME` | `string` | Name of the database |
+| `services.lasuite-drive.settings.DB_USER` | `string` | User of the database |
+| `services.lasuite-drive.settings.DJANGO_ALLOWED_HOSTS` | `list of string` | Comma-separated list of hosts that are able to connect to the server |
+| `services.lasuite-drive.settings.DJANGO_SECRET_KEY_FILE` | `absolute path` | The path to the file containing Django's secret key |
+| `services.lasuite-drive.settings.REDIS_URL` | `null or string` | URL of the redis backend |

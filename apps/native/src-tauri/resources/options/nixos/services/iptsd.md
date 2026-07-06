@@ -5,6 +5,9 @@
 All options under `services.iptsd`.
 
 | Option | Type | Description |
-| ----------------------- | ---- | ----------- |
-| `services.iptsd.config` | | |
-| `services.iptsd.enable` | | |
+| --- | --- | --- |
+| `services.iptsd.config` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration for IPTSD. See the [reference configuration](https://github.com/linux-surface/iptsd/blob/master/etc/iptsd.conf) for available options and defaults. |
+| `services.iptsd.config.Stylus.Disable` | `boolean` | Disables the stylus. No stylus data will be processed. |
+| `services.iptsd.config.Touchscreen.DisableOnPalm` | `boolean` | Ignore all touchscreen inputs if a palm was registered on the display. |
+| `services.iptsd.config.Touchscreen.DisableOnStylus` | `boolean` | Ignore all touchscreen inputs if a stylus is in proximity. |
+| `services.iptsd.enable` | `boolean` | Whether to enable the userspace daemon for Intel Precise Touch & Stylus. |

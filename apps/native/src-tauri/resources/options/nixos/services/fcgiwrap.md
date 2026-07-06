@@ -5,11 +5,13 @@
 All options under `services.fcgiwrap`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.fcgiwrap.enable` | | |
-| `services.fcgiwrap.group` | | |
-| `services.fcgiwrap.instances` | | |
-| `services.fcgiwrap.preforkProcesses` | | |
-| `services.fcgiwrap.socketAddress` | | |
-| `services.fcgiwrap.socketType` | | |
-| `services.fcgiwrap.user` | | |
+| --- | --- | --- |
+| `services.fcgiwrap.instances` | `attribute set of (submodule)` | Configuration for fcgiwrap instances. |
+| `services.fcgiwrap.instances.<name>.process.group` | `null or string` | Group as which this instance of fcgiwrap will be run. |
+| `services.fcgiwrap.instances.<name>.process.prefork` | `positive integer, meaning >0` | Number of processes to prefork. |
+| `services.fcgiwrap.instances.<name>.process.user` | `null or string` | User as which this instance of fcgiwrap will be run. Set to `null` (the default) to use a dynamically allocated user. |
+| `services.fcgiwrap.instances.<name>.socket.address` | `string` | Socket address. In case of a UNIX socket, this should be its filesystem path. |
+| `services.fcgiwrap.instances.<name>.socket.group` | `null or string` | Group to be set as owner of the UNIX socket. |
+| `services.fcgiwrap.instances.<name>.socket.mode` | `null or string` | Mode to be set on the UNIX socket. Defaults to private to the socket's owner. |
+| `services.fcgiwrap.instances.<name>.socket.type` | `one of "unix", "tcp", "tcp6"` | Socket type: 'unix', 'tcp' or 'tcp6'. |
+| `services.fcgiwrap.instances.<name>.socket.user` | `null or string` | User to be set as owner of the UNIX socket. |

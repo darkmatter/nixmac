@@ -5,8 +5,8 @@
 All options under `services.SystemdJournal2Gelf`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.SystemdJournal2Gelf.enable` | | |
-| `services.SystemdJournal2Gelf.extraOptions` | | |
-| `services.SystemdJournal2Gelf.graylogServer` | | |
-| `services.SystemdJournal2Gelf.package` | | |
+| --- | --- | --- |
+| `services.SystemdJournal2Gelf.enable` | `boolean` | Whether to enable SystemdJournal2Gelf. |
+| `services.SystemdJournal2Gelf.extraOptions` | `strings concatenated with " "` | Any extra flags to pass to SystemdJournal2Gelf. Note that these are basically `journalctl` flags. |
+| `services.SystemdJournal2Gelf.graylogServer` | `string` | Host and port of your graylog2 input. This should be a GELF UDP input. |
+| `services.SystemdJournal2Gelf.package` | `package` | The systemd-journal2gelf package to use. |

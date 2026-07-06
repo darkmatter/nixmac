@@ -5,11 +5,11 @@
 All options under `services.vdr`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.vdr.enable` | | |
-| `services.vdr.enableLirc` | | |
-| `services.vdr.extraArguments` | | |
-| `services.vdr.group` | | |
-| `services.vdr.package` | | |
-| `services.vdr.user` | | |
-| `services.vdr.videoDir` | | |
+| --- | --- | --- |
+| `services.vdr.enable` | `boolean` | Whether to enable VDR, a video disk recorder. |
+| `services.vdr.enableLirc` | `boolean` | Whether to enable LIRC. |
+| `services.vdr.extraArguments` | `list of string` | Additional command line arguments to pass to VDR. |
+| `services.vdr.group` | `string` | Group under which the VDRvdr service runs. |
+| `services.vdr.package` | `package` | The vdr package to use. |
+| `services.vdr.user` | `string` | User under which the VDR service runs. |
+| `services.vdr.videoDir` | `absolute path` | Recording directory |

@@ -5,8 +5,8 @@
 All options under `programs.radio-active`.
 
 | Option | Type | Description |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.radio-active.aliases` | `attribute set of non-empty string` | Key/value pairs where the key is name of radio station and value is URL. |
 | `programs.radio-active.enable` | `boolean` | Whether to enable Enable installing radio-active and writing configuration file. |
 | `programs.radio-active.package` | `null or package` | The radio-active package to use. |
-| `programs.radio-active.settings` | `attribute set of attribute set of (non-empty string or (nonnegative integer or floating point number, meaning >=0))` | Declare-able configurations for radio-active written to $XDG_CONFIG_HOME/radio-active/configs.ini . |
+| `programs.radio-active.settings` | `attribute set of attribute set of (non-empty string or (nonnegative integer or floating point number, meaning >=0))` | Declare-able configurations for radio-active written to {file}`$XDG_CONFIG_HOME/radio-active/configs.ini`. |

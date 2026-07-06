@@ -5,11 +5,11 @@
 All options under `programs.aerc`.
 
 | Option | Type | Description |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.aerc.enable` | `boolean` | Whether to enable aerc. |
-| `programs.aerc.extraAccounts` | `strings concatenated with “\n” or attribute set of (strings concatenated with “\n” or attribute set of (values (null, bool, int, string, or float) or a list of values, that will be joined with a comma))` | Extra lines added to $HOME/.config/aerc/accounts.conf . |
-| `programs.aerc.extraBinds` | `strings concatenated with “\n” or attribute set of (strings concatenated with “\n” or attribute set of (values (null, bool, int, string, or float) or a list of values, that will be joined with a comma))` | Extra lines added to $HOME/.config/aerc/binds.conf . Global keybindings can be set in the global section. |
-| `programs.aerc.extraConfig` | `strings concatenated with “\n” or attribute set of (strings concatenated with “\n” or attribute set of (values (null, bool, int, string, or float) or a list of values, that will be joined with a comma))` | Extra lines added to $HOME/.config/aerc/aerc.conf . |
+| `programs.aerc.extraAccounts` | `strings concatenated with "\n" or attribute set of (strings concatenated with "\n" or attribute set of (values (null, bool, int, string, or float) or a list of values, that will be joined with a comma))` | Extra lines added to {file}`$HOME/.config/aerc/accounts.conf`. See {manpage}`aerc-config(5)`. |
+| `programs.aerc.extraBinds` | `strings concatenated with "\n" or attribute set of (strings concatenated with "\n" or attribute set of (values (null, bool, int, string, or float) or a list of values, that will be joined with a comma))` | Extra lines added to {file}`$HOME/.config/aerc/binds.conf`. Global keybindings can be set in the `global` section. See {manpage}`aerc-config(5)`. |
+| `programs.aerc.extraConfig` | `strings concatenated with "\n" or attribute set of (strings concatenated with "\n" or attribute set of (values (null, bool, int, string, or float) or a list of values, that will be joined with a comma))` | Extra lines added to {file}`$HOME/.config/aerc/aerc.conf`. See {manpage}`aerc-config(5)`. |
 | `programs.aerc.package` | `null or package` | The aerc package to use. |
-| `programs.aerc.stylesets` | `attribute set of (strings concatenated with “\n” or attribute set of (strings concatenated with “\n” or attribute set of (values (null, bool, int, string, or float) or a list of values, that will be joined with a comma)))` | Stylesets added to $HOME/.config/aerc/stylesets/ . |
-| `programs.aerc.templates` | `attribute set of strings concatenated with “\n”` | Templates added to $HOME/.config/aerc/templates/ . |
+| `programs.aerc.stylesets` | `attribute set of (strings concatenated with "\n" or attribute set of (strings concatenated with "\n" or attribute set of (values (null, bool, int, string, or float) or a list of values, that will be joined with a comma)))` | Stylesets added to {file}`$HOME/.config/aerc/stylesets/`. See {manpage}`aerc-stylesets(7)`. |
+| `programs.aerc.templates` | `attribute set of strings concatenated with "\n"` | Templates added to {file}`$HOME/.config/aerc/templates/`. See {manpage}`aerc-templates(7)`. |

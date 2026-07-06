@@ -5,8 +5,11 @@
 All options under `programs.schroot`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `programs.schroot.enable` | | |
-| `programs.schroot.package` | | |
-| `programs.schroot.profiles` | | |
-| `programs.schroot.settings` | | |
+| --- | --- | --- |
+| `programs.schroot.enable` | `boolean` | Whether to enable schroot, a lightweight virtualisation tool. |
+| `programs.schroot.package` | `package` | The schroot package to use. |
+| `programs.schroot.profiles` | `attribute set of (submodule)` | Custom configuration profiles for schroot. |
+| `programs.schroot.profiles.<name>.copyfiles` | `list of string` | A list of files to copy into the chroot from the host system. |
+| `programs.schroot.profiles.<name>.fstab` | `absolute path` | A file in the format described in {manpage}`fstab(5)`, used to mount filesystems inside the chroot. The mount location is relative to the root of the chroot. |
+| `programs.schroot.profiles.<name>.nssdatabases` | `list of string` | System databases (as described in /etc/nsswitch.conf on GNU/Linux systems) to copy into the chroot from the host. |
+| `programs.schroot.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Schroot configuration settings. For more details, see {manpage}`schroot.conf(5)`. |

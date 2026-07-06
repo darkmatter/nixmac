@@ -5,32 +5,81 @@
 All options under `services.snipe-it`.
 
 | Option | Type | Description |
-| -------------------------------------------------- | ---- | ----------- |
-| `services.snipe-it.appKeyFile` | | |
-| `services.snipe-it.appURL` | | |
-| `services.snipe-it.config` | | |
-| `services.snipe-it.dataDir` | | |
-| `services.snipe-it.database.createLocally` | | |
-| `services.snipe-it.database.host` | | |
-| `services.snipe-it.database.name` | | |
-| `services.snipe-it.database.passwordFile` | | |
-| `services.snipe-it.database.port` | | |
-| `services.snipe-it.database.user` | | |
-| `services.snipe-it.enable` | | |
-| `services.snipe-it.group` | | |
-| `services.snipe-it.hostName` | | |
-| `services.snipe-it.mail.backupNotificationAddress` | | |
-| `services.snipe-it.mail.driver` | | |
-| `services.snipe-it.mail.encryption` | | |
-| `services.snipe-it.mail.from.address` | | |
-| `services.snipe-it.mail.from.name` | | |
-| `services.snipe-it.mail.host` | | |
-| `services.snipe-it.mail.passwordFile` | | |
-| `services.snipe-it.mail.port` | | |
-| `services.snipe-it.mail.replyTo.address` | | |
-| `services.snipe-it.mail.replyTo.name` | | |
-| `services.snipe-it.mail.user` | | |
-| `services.snipe-it.maxUploadSize` | | |
-| `services.snipe-it.nginx` | | |
-| `services.snipe-it.poolConfig` | | |
-| `services.snipe-it.user` | | |
+| --- | --- | --- |
+| `services.snipe-it.appKeyFile` | `absolute path` | A file containing the Laravel APP_KEY - a 32 character long, base64 encoded key used for encryption where needed. Can be generated with `head -c 32 /dev/urandom \| base64`. |
+| `services.snipe-it.appURL` | `string` | The root URL that you want to host Snipe-IT on. All URLs in Snipe-IT will be generated using this value. If you change this in the future you may need to run a command to update stored URLs in the database. Command example: `snipe-it snipe-it:update-url https://old.example.com https://new.example.com` |
+| `services.snipe-it.config` | `attribute set of (null or boolean or signed integer or 16 bit unsigned integer; between 0 and 65535 (both inclusive) or absolute path or string or (submodule))` | Snipe-IT configuration options to set in the {file}`.env` file. Refer to <https://snipe-it.readme.io/docs/configuration> for details on supported values. Settings containing secret data should be set to an attribute set containing the attribute `_secret` - a string pointing to a file containing the value the option should be set to. See the example to get a better picture of this: in the resulting {file}`.env` file, the `OIDC_CLIENT_SECRET` key will be set to the contents of the {file}`/run/keys/oidc_secret` file. |
+| `services.snipe-it.dataDir` | `absolute path` | snipe-it data directory |
+| `services.snipe-it.database.createLocally` | `boolean` | Create the database and database user locally. |
+| `services.snipe-it.database.host` | `string` | Database host address. |
+| `services.snipe-it.database.name` | `string` | Database name. |
+| `services.snipe-it.database.passwordFile` | `null or absolute path` | A file containing the password corresponding to {option}`database.user`. |
+| `services.snipe-it.database.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Database host port. |
+| `services.snipe-it.database.user` | `string` | Database username. |
+| `services.snipe-it.enable` | `boolean` | Whether to enable snipe-it, a free open source IT asset/license management system. |
+| `services.snipe-it.group` | `string` | Group snipe-it runs as. |
+| `services.snipe-it.hostName` | `string` | The hostname to serve Snipe-IT on. |
+| `services.snipe-it.mail.backupNotificationAddress` | `string` | Email Address to send Backup Notifications to. |
+| `services.snipe-it.mail.driver` | `one of "smtp", "sendmail"` | Mail driver to use. |
+| `services.snipe-it.mail.encryption` | `null or one of "tls", "ssl"` | SMTP encryption mechanism to use. |
+| `services.snipe-it.mail.from.address` | `string` | Mail "from" address. |
+| `services.snipe-it.mail.from.name` | `string` | Mail "from" name. |
+| `services.snipe-it.mail.host` | `string` | Mail host address. |
+| `services.snipe-it.mail.passwordFile` | `null or absolute path` | A file containing the password corresponding to {option}`mail.user`. |
+| `services.snipe-it.mail.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Mail host port. |
+| `services.snipe-it.mail.replyTo.address` | `string` | Mail "reply-to" address. |
+| `services.snipe-it.mail.replyTo.name` | `string` | Mail "reply-to" name. |
+| `services.snipe-it.mail.user` | `null or string` | Mail username. |
+| `services.snipe-it.maxUploadSize` | `string` | The maximum size for uploads (e.g. images). |
+| `services.snipe-it.nginx` | `submodule` | With this option, you can customize the nginx virtualHost settings. |
+| `services.snipe-it.nginx.acmeFallbackHost` | `null or string` | Host which to proxy requests to if ACME challenge is not found. Useful if you want multiple hosts to be able to verify the same domain name. With this option, you could request certificates for the present domain with an ACME client that is running on another host, which you would specify here. |
+| `services.snipe-it.nginx.acmeRoot` | `null or string` | Directory for the ACME challenge, which is **public**. Don't put certs or keys in here. Set to null to inherit from config.security.acme. |
+| `services.snipe-it.nginx.addSSL` | `boolean` | Whether to enable HTTPS in addition to plain HTTP. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443). |
+| `services.snipe-it.nginx.basicAuth` | `attribute set of string` | Basic Auth protection for a vhost. WARNING: This is implemented to store the password in plain text in the Nix store. |
+| `services.snipe-it.nginx.basicAuthFile` | `null or absolute path` | Basic Auth password file for a vhost. Can be created by running {command}`nix-shell --packages apacheHttpd --run 'htpasswd -B -c FILENAME USERNAME'`. |
+| `services.snipe-it.nginx.default` | `boolean` | Makes this vhost the default. |
+| `services.snipe-it.nginx.enableACME` | `boolean` | Whether to ask Let's Encrypt to sign a certificate for this vhost. Alternately, you can use an existing certificate through {option}`useACMEHost`. |
+| `services.snipe-it.nginx.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the vhost verbatim. |
+| `services.snipe-it.nginx.forceSSL` | `boolean` | Whether to add a separate nginx server block that redirects (defaults to 301, configurable with `redirectCode`) all plain HTTP traffic to HTTPS. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443), where the non-SSL listens are used for the redirect vhosts. |
+| `services.snipe-it.nginx.globalRedirect` | `null or string` | If set, all requests for this host are redirected (defaults to 301, configurable with `redirectCode`) to the given hostname. |
+| `services.snipe-it.nginx.http2` | `boolean` | Whether to enable the HTTP/2 protocol. Note that (as of writing) due to nginx's implementation, to disable HTTP/2 you have to disable it on all vhosts that use a given IP address / port. If there is one server block configured to enable http2, then it is enabled for all server blocks on this IP. See <https://stackoverflow.com/a/39466948/263061>. |
+| `services.snipe-it.nginx.http3` | `boolean` | Whether to enable the HTTP/3 protocol. This requires activating the QUIC transport protocol `services.nginx.virtualHosts.<name>.quic = true;`. Note that HTTP/3 support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> HTTP/3 availability must be manually advertised, preferably in each location block. |
+| `services.snipe-it.nginx.http3_hq` | `boolean` | Whether to enable the HTTP/0.9 protocol negotiation used in QUIC interoperability tests. This requires activating the QUIC transport protocol `services.nginx.virtualHosts.<name>.quic = true;`. Note that special application protocol support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> |
+| `services.snipe-it.nginx.kTLS` | `boolean` | Whether to enable kTLS support. Implementing TLS in the kernel (kTLS) improves performance by significantly reducing the need for copying operations between user space and the kernel. Required Nginx version 1.21.4 or later. |
+| `services.snipe-it.nginx.listen` | `list of (submodule)` | Listen addresses and ports for this virtual host. IPv6 addresses must be enclosed in square brackets. Note: this option overrides `addSSL` and `onlySSL`. If you only want to set the addresses manually and not the ports, take a look at `listenAddresses`. |
+| `services.snipe-it.nginx.listen.*.addr` | `string` | Listen address. |
+| `services.snipe-it.nginx.listen.*.extraParameters` | `list of string` | Extra parameters of this listen directive. |
+| `services.snipe-it.nginx.listen.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number to listen on. If unset and the listen address is not a socket then nginx defaults to 80. |
+| `services.snipe-it.nginx.listen.*.proxyProtocol` | `boolean` | Enable PROXY protocol. |
+| `services.snipe-it.nginx.listen.*.ssl` | `boolean` | Enable SSL. |
+| `services.snipe-it.nginx.listenAddresses` | `list of string` | Listen addresses for this virtual host. Compared to `listen` this only sets the addresses and the ports are chosen automatically. Note: This option overrides `networking.enableIPv6` |
+| `services.snipe-it.nginx.locations` | `attribute set of (submodule)` | Declarative location config |
+| `services.snipe-it.nginx.locations.<name>.alias` | `null or absolute path` | Alias directory for requests. |
+| `services.snipe-it.nginx.locations.<name>.basicAuth` | `attribute set of string` | Basic Auth protection for a vhost. WARNING: This is implemented to store the password in plain text in the Nix store. |
+| `services.snipe-it.nginx.locations.<name>.basicAuthFile` | `null or absolute path` | Basic Auth password file for a vhost. Can be created by running {command}`nix-shell --packages apacheHttpd --run 'htpasswd -B -c FILENAME USERNAME'`. |
+| `services.snipe-it.nginx.locations.<name>.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the location verbatim. |
+| `services.snipe-it.nginx.locations.<name>.fastcgiParams` | `attribute set of (string or absolute path)` | FastCGI parameters to override. Unlike in the Nginx configuration file, overriding only some default parameters won't unset the default values for other parameters. |
+| `services.snipe-it.nginx.locations.<name>.index` | `null or string` | Adds index directive. |
+| `services.snipe-it.nginx.locations.<name>.priority` | `signed integer` | Order of this location block in relation to the others in the vhost. The semantics are the same as with `lib.mkOrder`. Smaller values have a greater priority. |
+| `services.snipe-it.nginx.locations.<name>.proxyPass` | `null or string` | Adds proxy_pass directive and sets recommended proxy headers if recommendedProxySettings is enabled. |
+| `services.snipe-it.nginx.locations.<name>.proxyWebsockets` | `boolean` | Whether to support proxying websocket connections with HTTP/1.1. |
+| `services.snipe-it.nginx.locations.<name>.recommendedProxySettings` | `boolean` | Enable recommended proxy settings. |
+| `services.snipe-it.nginx.locations.<name>.recommendedUwsgiSettings` | `boolean` | Enable recommended uwsgi settings. |
+| `services.snipe-it.nginx.locations.<name>.return` | `null or string or signed integer` | Adds a return directive, for e.g. redirections. |
+| `services.snipe-it.nginx.locations.<name>.root` | `null or absolute path` | Root directory for requests. |
+| `services.snipe-it.nginx.locations.<name>.tryFiles` | `null or string` | Adds try_files directive. |
+| `services.snipe-it.nginx.locations.<name>.uwsgiPass` | `null or string` | Adds uwsgi_pass directive and sets recommended proxy headers if recommendedUwsgiSettings is enabled. |
+| `services.snipe-it.nginx.onlySSL` | `boolean` | Whether to enable HTTPS and reject plain HTTP connections. This will set defaults for `listen` to listen on all interfaces on port 443. |
+| `services.snipe-it.nginx.quic` | `boolean` | Whether to enable the QUIC transport protocol. Note that QUIC support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> |
+| `services.snipe-it.nginx.redirectCode` | `integer between 300 and 399 (both inclusive)` | HTTP status used by `globalRedirect` and `forceSSL`. Possible usecases include temporary (302, 307) redirects, keeping the request method and body (307, 308), or explicitly resetting the method to GET (303). See <https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections>. |
+| `services.snipe-it.nginx.rejectSSL` | `boolean` | Whether to listen for and reject all HTTPS connections to this vhost. Useful in [default](#opt-services.nginx.virtualHosts._name_.default) server blocks to avoid serving the certificate for another vhost. Uses the `ssl_reject_handshake` directive available in nginx versions 1.19.4 and above. |
+| `services.snipe-it.nginx.reuseport` | `boolean` | Create an individual listening socket . It is required to specify only once on one of the hosts. |
+| `services.snipe-it.nginx.root` | `null or absolute path` | The path of the web root directory. |
+| `services.snipe-it.nginx.serverAliases` | `list of string` | Additional names of virtual hosts served by this virtual host configuration. |
+| `services.snipe-it.nginx.serverName` | `null or string` | Name of this virtual host. Defaults to attribute name in virtualHosts. |
+| `services.snipe-it.nginx.sslCertificate` | `absolute path` | Path to server SSL certificate. |
+| `services.snipe-it.nginx.sslCertificateKey` | `absolute path` | Path to server SSL certificate key. |
+| `services.snipe-it.nginx.sslTrustedCertificate` | `null or absolute path` | Path to root SSL certificate for stapling and client certificates. |
+| `services.snipe-it.nginx.useACMEHost` | `null or string` | A host of an existing Let's Encrypt certificate to use. This is useful if you have many subdomains and want to avoid hitting the [rate limit](https://letsencrypt.org/docs/rate-limits). Alternately, you can generate a certificate through {option}`enableACME`. *Note that this option does not create any certificates, nor it does add subdomains to existing ones – you will need to create them manually using [](#opt-security.acme.certs).* |
+| `services.snipe-it.poolConfig` | `attribute set of (string or signed integer or boolean)` | Options for the snipe-it PHP pool. See the documentation on `php-fpm.conf` for details on configuration directives. |
+| `services.snipe-it.user` | `string` | User snipe-it runs as. |

@@ -5,5 +5,5 @@
 All options under `programs.zmap`.
 
 | Option | Type | Description |
-| ---------------------- | ---- | ----------- |
-| `programs.zmap.enable` | | |
+| --- | --- | --- |
+| `programs.zmap.enable` | `boolean` | Whether to enable ZMap, a network scanner designed for Internet-wide network surveys. |

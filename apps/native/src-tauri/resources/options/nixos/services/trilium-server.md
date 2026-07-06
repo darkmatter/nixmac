@@ -5,14 +5,16 @@
 All options under `services.trilium-server`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `services.trilium-server.dataDir` | | |
-| `services.trilium-server.enable` | | |
-| `services.trilium-server.environmentFile` | | |
-| `services.trilium-server.host` | | |
-| `services.trilium-server.instanceName` | | |
-| `services.trilium-server.nginx` | | |
-| `services.trilium-server.noAuthentication` | | |
-| `services.trilium-server.noBackup` | | |
-| `services.trilium-server.package` | | |
-| `services.trilium-server.port` | | |
+| --- | --- | --- |
+| `services.trilium-server.dataDir` | `string` | The directory storing the notes database and the configuration. |
+| `services.trilium-server.enable` | `boolean` | Whether to enable trilium-server. |
+| `services.trilium-server.environmentFile` | `null or absolute path` | File to load as the environment file. This allows you to pass secrets in without writing to the nix store. |
+| `services.trilium-server.host` | `string` | The host address to bind to (defaults to localhost). |
+| `services.trilium-server.instanceName` | `string` | Instance name used to distinguish between different instances |
+| `services.trilium-server.nginx` | `submodule` | Configuration for nginx reverse proxy. |
+| `services.trilium-server.nginx.enable` | `boolean` | Configure the nginx reverse proxy settings. |
+| `services.trilium-server.nginx.hostName` | `string` | The hostname use to setup the virtualhost configuration |
+| `services.trilium-server.noAuthentication` | `boolean` | If set to true, no password is required to access the web frontend. |
+| `services.trilium-server.noBackup` | `boolean` | Disable periodic database backups. |
+| `services.trilium-server.package` | `package` | The trilium-server package to use. |
+| `services.trilium-server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port number to bind to. |

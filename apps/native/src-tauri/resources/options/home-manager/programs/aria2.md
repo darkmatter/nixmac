@@ -5,9 +5,8 @@
 All options under `programs.aria2`.
 
 | Option | Type | Description |
-| ------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.aria2.enable` | `boolean` | Whether to enable aria2. |
-| `programs.aria2.extraConfig` | | |
 | `programs.aria2.package` | `null or package` | The aria2 package to use. |
-| `programs.aria2.settings` | `attribute set of (atom (null, bool, int, float or string))` | Options to add to aria2.conf file. See aria2c (1) for options. |
+| `programs.aria2.settings` | `attribute set of (atom (null, bool, int, float or string))` | Options to add to {file}`aria2.conf` file. See {manpage}`aria2c(1)` for options. |
 | `programs.aria2.systemd.enable` | `boolean` | Whether to enable Aria2 systemd integration. |

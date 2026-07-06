@@ -5,10 +5,10 @@
 All options under `services.miredo`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.miredo.bindAddress` | | |
-| `services.miredo.bindPort` | | |
-| `services.miredo.enable` | | |
-| `services.miredo.interfaceName` | | |
-| `services.miredo.package` | | |
-| `services.miredo.serverAddress` | | |
+| --- | --- | --- |
+| `services.miredo.bindAddress` | `null or string` | Depending on the local firewall/NAT rules, you might need to force Miredo to use a fixed UDP port and or IPv4 address. |
+| `services.miredo.bindPort` | `null or string` | Depending on the local firewall/NAT rules, you might need to force Miredo to use a fixed UDP port and or IPv4 address. |
+| `services.miredo.enable` | `boolean` | Whether to enable the Miredo IPv6 tunneling service. |
+| `services.miredo.interfaceName` | `string` | Name of the network tunneling interface. |
+| `services.miredo.package` | `package` | The miredo package to use. |
+| `services.miredo.serverAddress` | `string` | The hostname or primary IPv4 address of the Teredo server. This setting is required if Miredo runs as a Teredo client. "teredo.remlab.net" is an experimental service for testing only. Please use another server for production and/or large scale deployments. |

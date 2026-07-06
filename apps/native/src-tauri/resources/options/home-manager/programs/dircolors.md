@@ -5,12 +5,12 @@
 All options under `programs.dircolors`.
 
 | Option | Type | Description |
-| --------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------- |
-| `programs.dircolors.enable` | `boolean` | Whether to manage .dir_colors and set LS_COLORS . |
+| --- | --- | --- |
+| `programs.dircolors.enable` | `boolean` | Whether to manage {file}`.dir_colors` and set `LS_COLORS`. |
 | `programs.dircolors.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.dircolors.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
 | `programs.dircolors.enableNushellIntegration` | `boolean` | Whether to enable Nushell integration. |
 | `programs.dircolors.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
-| `programs.dircolors.extraConfig` | `strings concatenated with “\n”` | Extra lines added to .dir_colors file. |
+| `programs.dircolors.extraConfig` | `strings concatenated with "\n"` | Extra lines added to {file}`.dir_colors` file. |
 | `programs.dircolors.package` | `package` | The dircolors package to use. |
-| `programs.dircolors.settings` | `attribute set of string` | Options to add to .dir_colors file. See dircolors --print-database for options. |
+| `programs.dircolors.settings` | `attribute set of string` | Options to add to {file}`.dir_colors` file. See {command}`dircolors --print-database` for options. |

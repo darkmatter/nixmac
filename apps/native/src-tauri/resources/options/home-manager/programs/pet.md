@@ -5,9 +5,13 @@
 All options under `programs.pet`.
 
 | Option | Type | Description |
-| ------------------------------- | --------------------- | ------------------------------------------------------------------------ |
+| --- | --- | --- |
 | `programs.pet.enable` | `boolean` | Whether to enable pet. |
 | `programs.pet.package` | `null or package` | The pet package to use. |
-| `programs.pet.selectcmdPackage` | `null or package` | The fzf package to use. The package needed for the settings.selectcmd . |
-| `programs.pet.settings` | `TOML value` | Settings written to config.toml . See the pet documentation for details. |
+| `programs.pet.selectcmdPackage` | `null or package` | The fzf package to use. The package needed for the {var}`settings.selectcmd`. |
+| `programs.pet.settings` | `TOML value` | Settings written to {file}`config.toml`. See the pet documentation for details. |
 | `programs.pet.snippets` | `list of (submodule)` | The snippets. |
+| `programs.pet.snippets.*.command` | `string` | The command. |
+| `programs.pet.snippets.*.description` | `string` | Description of the snippet. |
+| `programs.pet.snippets.*.output` | `string` | Example output of the command. |
+| `programs.pet.snippets.*.tag` | `list of string` | List of tags attached to the command. |

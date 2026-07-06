@@ -5,8 +5,8 @@
 All options under `services.turn-rs`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.turn-rs.enable` | | |
-| `services.turn-rs.package` | | |
-| `services.turn-rs.secretFile` | | |
-| `services.turn-rs.settings` | | |
+| --- | --- | --- |
+| `services.turn-rs.enable` | `boolean` | Whether to enable turn-rs server. |
+| `services.turn-rs.package` | `package` | The turn-rs package to use. |
+| `services.turn-rs.secretFile` | `null or absolute path` | Environment variables from this file will be interpolated into the final config file using envsubst with this syntax: `$ENVIRONMENT` or `${VARIABLE}`. The file should contain lines formatted as `SECRET_VAR=SECRET_VALUE`. This is useful to avoid putting secrets into the nix store. |
+| `services.turn-rs.settings` | `open submodule of (TOML value)` | Turn-rs server config file |

@@ -5,13 +5,12 @@
 All options under `services.resolved`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.resolved.dnsDelegates` | | |
-| `services.resolved.dnsovertls` | | |
-| `services.resolved.dnssec` | | |
-| `services.resolved.domains` | | |
-| `services.resolved.enable` | | |
-| `services.resolved.extraConfig` | | |
-| `services.resolved.fallbackDns` | | |
-| `services.resolved.llmnr` | | |
-| `services.resolved.settings.Resolve` | | |
+| --- | --- | --- |
+| `services.resolved.dnsDelegates` | `attribute set of (submodule)` | dns-delegate files to be created. See {manpage}`systemd.dns-delegate(5)` for more info. |
+| `services.resolved.dnsDelegates.<name>.Delegate` | `open submodule of attribute set of (systemd option)` | Settings option for systemd dns-delegate files. See {manpage}`systemd.dns-delegate(5)` for all available options. |
+| `services.resolved.enable` | `boolean` | Whether to enable the Systemd DNS resolver daemon (systemd-resolved). |
+| `services.resolved.settings.Resolve` | `open submodule of attribute set of (systemd option)` | Settings option for systemd-resolved. See {manpage}`resolved.conf(5)` for all available options. |
+| `services.resolved.settings.Resolve.DNS` | `systemd option` | List of IP addresses to query as recursive DNS resolvers. |
+| `services.resolved.settings.Resolve.DNSOverTLS` | `systemd option` | Whether to use TLS encryption for DNS queries. Requires nameservers that support DNS-over-TLS. |
+| `services.resolved.settings.Resolve.DNSSEC` | `systemd option` | Whether to validate DNSSEC for DNS lookups. |
+| `services.resolved.settings.Resolve.Domains` | `systemd option` | List of search domains used to complete unqualified name lookups. |

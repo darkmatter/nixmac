@@ -5,7 +5,7 @@
 All options under `services.zram-generator`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.zram-generator.enable` | | |
-| `services.zram-generator.package` | | |
-| `services.zram-generator.settings` | | |
+| --- | --- | --- |
+| `services.zram-generator.enable` | `boolean` | Whether to enable Systemd unit generator for zram devices. |
+| `services.zram-generator.package` | `package` | The zram-generator package to use. |
+| `services.zram-generator.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration for zram-generator, see <https://github.com/systemd/zram-generator> for documentation. |

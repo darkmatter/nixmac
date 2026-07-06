@@ -5,12 +5,16 @@
 All options under `services.lidarr`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.lidarr.dataDir` | | |
-| `services.lidarr.enable` | | |
-| `services.lidarr.environmentFiles` | | |
-| `services.lidarr.group` | | |
-| `services.lidarr.openFirewall` | | |
-| `services.lidarr.package` | | |
-| `services.lidarr.settings` | | |
-| `services.lidarr.user` | | |
+| --- | --- | --- |
+| `services.lidarr.dataDir` | `string` | The directory where Lidarr stores its data files. |
+| `services.lidarr.enable` | `boolean` | Whether to enable Lidarr, a Usenet/BitTorrent music downloader. |
+| `services.lidarr.environmentFiles` | `list of absolute path` | Environment file to pass secret configuration values. Each line must follow the `LIDARR__SECTION__KEY=value` pattern. Please consult the documentation at the [wiki](https://wiki.servarr.com/useful-tools#using-environment-variables-for-config). |
+| `services.lidarr.group` | `string` | Group under which Lidarr runs. |
+| `services.lidarr.openFirewall` | `boolean` | Open ports in the firewall for Lidarr |
+| `services.lidarr.package` | `package` | The lidarr package to use. |
+| `services.lidarr.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Attribute set of arbitrary config options. Please consult the documentation at the [wiki](https://wiki.servarr.com/useful-tools#using-environment-variables-for-config). WARNING: this configuration is stored in the world-readable Nix store! For secrets use [](#opt-services.lidarr.environmentFiles). |
+| `services.lidarr.settings.log.analyticsEnabled` | `boolean` | Send Anonymous Usage Data |
+| `services.lidarr.settings.server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port Number |
+| `services.lidarr.settings.update.automatically` | `boolean` | Automatically download and install updates. |
+| `services.lidarr.settings.update.mechanism` | `null or one of "external", "builtIn", "script"` | which update mechanism to use |
+| `services.lidarr.user` | `string` | User account under which Lidarr runs. |

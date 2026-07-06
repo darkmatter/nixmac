@@ -5,8 +5,14 @@
 All options under `services.postfix-tlspol`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `services.postfix-tlspol.configurePostfix` | | |
-| `services.postfix-tlspol.enable` | | |
-| `services.postfix-tlspol.package` | | |
-| `services.postfix-tlspol.settings` | | |
+| --- | --- | --- |
+| `services.postfix-tlspol.configurePostfix` | `boolean` | Whether to configure the required settings to use postfix-tlspol in the local Postfix instance. |
+| `services.postfix-tlspol.enable` | `boolean` | Whether to enable postfix-tlspol. |
+| `services.postfix-tlspol.package` | `package` | The postfix-tlspol package to use. |
+| `services.postfix-tlspol.settings` | `open submodule of (YAML 1.2 value)` | The postfix-tlspol configuration file as a Nix attribute set. See the reference documentation for possible options. <https://github.com/Zuplu/postfix-tlspol/blob/main/configs/config.default.yaml> |
+| `services.postfix-tlspol.settings.dns.address` | `null or string` | IP and port to your DNS resolver. Uses resolvers from /etc/resolv.conf if unset. ::: {.note} The configured DNS resolver must validate DNSSEC signatures. ::: |
+| `services.postfix-tlspol.settings.server.address` | `string` | Path or address/port where postfix-tlspol binds its socket to. |
+| `services.postfix-tlspol.settings.server.cache-file` | `absolute path` | Path to the cache file. |
+| `services.postfix-tlspol.settings.server.log-level` | `one of "debug", "info", "warn", "error"` | Log level |
+| `services.postfix-tlspol.settings.server.prefetch` | `boolean` | Whether to prefetch DNS records when the TTL of a cached record is about to expire. |
+| `services.postfix-tlspol.settings.server.socket-permissions` | `string` | Permissions to the UNIX socket, if configured. ::: {.note} Due to hardening on the systemd unit the socket can never be created world readable/writable. ::: |

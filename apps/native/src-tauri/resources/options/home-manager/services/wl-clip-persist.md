@@ -5,9 +5,9 @@
 All options under `services.wl-clip-persist`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------ |
-| `services.wl-clip-persist.clipboardType` | `one of “regular”, “primary”, “both”` | The clipboard type to persist. |
+| --- | --- | --- |
+| `services.wl-clip-persist.clipboardType` | `one of "regular", "primary", "both"` | The clipboard type to persist. - `regular`: Persist the regular clipboard only (recommended). - `primary`: Persist the primary selection only. - `both`: Persist both regular and primary clipboards. Note: Operating on the primary clipboard may have unintended side effects for some applications. |
 | `services.wl-clip-persist.enable` | `boolean` | Whether to enable wl-clip-persist, a Wayland clipboard persistence tool. |
-| `services.wl-clip-persist.extraOptions` | `list of string` | Extra command-line arguments to pass to wl-clip-persist. |
+| `services.wl-clip-persist.extraOptions` | `list of string` | Extra command-line arguments to pass to wl-clip-persist. Available options include: - `--write-timeout <ms>`: Timeout for writing clipboard data (default: 3000). - `--ignore-event-on-error`: Only handle events without errors. - `--all-mime-type-regex <regex>`: Filter events by MIME type regex. - `--selection-size-limit <bytes>`: Limit clipboard data size. - `--reconnect-tries <n>`: Number of reconnection attempts. - `--reconnect-delay <ms>`: Delay between reconnect attempts (default: 100). - `--disable-timestamps`: Disable log timestamps. |
 | `services.wl-clip-persist.package` | `package` | The wl-clip-persist package to use. |
 | `services.wl-clip-persist.systemdTargets` | `(list of string) or string` | The systemd targets that will automatically start the wl-clip-persist service. |

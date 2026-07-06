@@ -5,11 +5,11 @@
 All options under `programs.pandoc`.
 
 | Option | Type | Description |
-| -------------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.pandoc.citationStyles` | `list of absolute path` | List of .csl files to install. |
 | `programs.pandoc.defaults` | `JSON value` | Options to set by default. These will be converted to JSON and written to a defaults file (see Default files in pandoc documentation). |
-| `programs.pandoc.defaultsFile` | `absolute path (read only)` | Resulting defaults file. |
+| `programs.pandoc.defaultsFile` | `absolute path` | Resulting defaults file. |
 | `programs.pandoc.enable` | `boolean` | Whether to enable pandoc. |
-| `programs.pandoc.finalPackage` | `package (read only)` | Resulting package. |
+| `programs.pandoc.finalPackage` | `package` | Resulting package. |
 | `programs.pandoc.package` | `package` | The pandoc package to use. |
 | `programs.pandoc.templates` | `attribute set of absolute path` | Custom templates. |

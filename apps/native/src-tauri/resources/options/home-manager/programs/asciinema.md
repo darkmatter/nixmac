@@ -5,7 +5,7 @@
 All options under `programs.asciinema`.
 
 | Option | Type | Description |
-| ----------------------------- | ----------------- | --------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.asciinema.enable` | `boolean` | Whether to enable Enable installing asciinema and writing configuration file. |
 | `programs.asciinema.package` | `null or package` | The asciinema package to use. |
-| `programs.asciinema.settings` | `TOML value` | Declare-able configurations for asciinema written to $XDG_CONFIG_HOME/asciinema/config.toml . |
+| `programs.asciinema.settings` | `TOML value` | Declare-able configurations for asciinema written to {file}`$XDG_CONFIG_HOME/asciinema/config.toml`. Check official docs for available configurations; https://docs.asciinema.org/manual/cli/configuration/v3/#config-file |

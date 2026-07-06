@@ -5,9 +5,9 @@
 All options under `programs.rust-motd`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `programs.rust-motd.enable` | | |
-| `programs.rust-motd.enableMotdInSSHD` | | |
-| `programs.rust-motd.order` | | |
-| `programs.rust-motd.refreshInterval` | | |
-| `programs.rust-motd.settings` | | |
+| --- | --- | --- |
+| `programs.rust-motd.enable` | `boolean` | Whether to enable rust-motd, a Message Of The Day (MOTD) generator. |
+| `programs.rust-motd.enableMotdInSSHD` | `boolean` | Whether to let `openssh` print the result when entering a new `ssh`-session. By default either nothing or a static file defined via [](#opt-users.motd) is printed. Because of that, the latter option is incompatible with this module. |
+| `programs.rust-motd.order` | `list of string` | The order of the sections in [](#opt-programs.rust-motd.settings). By default they are ordered alphabetically. Context: since attribute sets in Nix are always ordered alphabetically internally this means that `nix {   uptime = { /* ... */ };   banner = { /* ... */ }; } ` will still have `banner` displayed before `uptime`. To work around that, this option can be used to define the order of all keys, i.e. `nix {   order = [     "uptime"     "banner"   ]; } ` makes sure that `uptime` is placed before `banner` in the motd. |
+| `programs.rust-motd.refreshInterval` | `string` | Interval in which the {manpage}`motd(5)` file is refreshed. For possible formats, please refer to {manpage}`systemd.time(7)`. |
+| `programs.rust-motd.settings` | `attribute set of (TOML value)` | Settings on what to generate. Please read the [upstream documentation](https://github.com/rust-motd/rust-motd/blob/main/README.md#configuration) for further information. |

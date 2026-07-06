@@ -5,17 +5,23 @@
 All options under `programs.w3m`.
 
 | Option | Type | Description |
-| ------------------------------ | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `programs.w3m.bindings` | `attribute set of string` | Keybindings for w3m. |
+| --- | --- | --- |
+| `programs.w3m.bindings` | `attribute set of string` | Keybindings for w3m. See <https://git.sr.ht/~rkta/w3m/tree/master/item/doc/README.keymap> for documentation. |
 | `programs.w3m.bookmarks.marks` | `attribute set of list of (submodule)` | Bookmark file for w3m. |
+| `programs.w3m.bookmarks.marks.<name>.*.name` | `string` | Display name of bookmark. |
+| `programs.w3m.bookmarks.marks.<name>.*.url` | `string` | Destination address of bookmark. |
 | `programs.w3m.bookmarks.title` | `string` | Title of the bookmarks page. |
-| `programs.w3m.cgiBin` | `attribute set of (submodule)` | Scripts located in w3m’s cgi-bin directory. For security reasons, w3m can only read scripts from here and ${pkgs.w3m}/libexec/w3m/cgi-bin/ (referenceable as $LIB in w3m). The cgi-bin scripts can be written in any language and have access to the query provided to them through the QUERY_STRING environment variable. A cgi-bin script can send commands back to w3m via stdout with the form “W3m-control: <command>”. |
+| `programs.w3m.cgiBin` | `attribute set of (submodule)` | Scripts located in w3m's cgi-bin directory. For security reasons, w3m can only read scripts from here and {file}`${pkgs.w3m}/libexec/w3m/cgi-bin/` (referenceable as $LIB in w3m). The cgi-bin scripts can be written in any language and have access to the query provided to them through the QUERY_STRING environment variable. A cgi-bin script can send commands back to w3m via stdout with the form "W3m-control: <command>". See <https://git.sr.ht/~rkta/w3m/tree/master/item/doc/MANUAL.html> for more information. As of w3m v0.5.5, the option `cgi_bin` isn't defined by default. If you want to use any cgi-bin scripts in w3m then set `programs.w3m.settings.cgi_bin`. |
+| `programs.w3m.cgiBin.<name>.source` | `null or absolute path` | Path to script file. |
+| `programs.w3m.cgiBin.<name>.text` | `null or strings concatenated with "\n"` | Inline content of script file. |
 | `programs.w3m.enable` | `boolean` | Whether to enable the w3m terminal web browser. |
 | `programs.w3m.extraPackages` | `list of package` | Extra packages available to w3m. |
-| `programs.w3m.finalPackage` | `package (read only)` | Final W3m package that respects homePage, xdg.enable, and w3mImg2Sixel. |
-| `programs.w3m.homePage` | `string` | Page w3m opens to if a url isn’t provided. |
+| `programs.w3m.finalPackage` | `package` | Final W3m package that respects homePage, xdg.enable, and w3mImg2Sixel. |
+| `programs.w3m.homePage` | `string` | Page w3m opens to if a url isn't provided. |
 | `programs.w3m.package` | `null or package` | The w3m package to use. |
-| `programs.w3m.settings` | `attribute set of (string or signed integer)` | Settings for w3m typically set on the OPTIONS page. The best way to configure them is setting them in w3m then nixifying the w3m config file located at either ~/.w3m/config or ~/$XDG_CONFIG_HOME/w3m/config . |
-| `programs.w3m.siteconf` | `list of (submodule)` | Settings for w3m’s siteconf. It allows you to match on a url pattern and do various things like url substitutions, site-specific user agent settings, specifying charset, and a few others. |
-| `programs.w3m.urimethodmap` | `attribute set of string` | Settings for w3m’s urimethodmap. It allows you to define custom uri schemes and map them to scripts. Scripts must be in the directory defined in programs.w3m.settings.cgi_bin . |
+| `programs.w3m.settings` | `attribute set of (string or signed integer)` | Settings for w3m typically set on the OPTIONS page. The best way to configure them is setting them in w3m then nixifying the w3m `config` file located at either {file}`~/.w3m/config` or {file}`~/$XDG_CONFIG_HOME/w3m/config`. |
+| `programs.w3m.siteconf` | `list of (submodule)` | Settings for w3m's siteconf. It allows you to match on a url pattern and do various things like url substitutions, site-specific user agent settings, specifying charset, and a few others. See <https://git.sr.ht/~rkta/w3m/tree/master/item/doc/README.siteconf> for documentation and examples. As of w3m v0.5.5, siteconf doesn't respect the W3M_DIR environment variable, so unless `programs.w3m.settings.siteconf_file` is set, `siteconf` will always be at {file}`~/.w3m/siteconf`. |
+| `programs.w3m.siteconf.*.preferences` | `list of string` | The preferences that w3m can apply to the matched url. Options are: `substitute_url "<destination-url>"`, `url_charset <charset>`, `no_referer_from on\|off`, `no_referer_to on\|off`, `user_agent "string"`. |
+| `programs.w3m.siteconf.*.url` | `string` | The url that the preferences should apply to. Can be of the form `<url>`, `m!<regex>!`, `m@<regex>@`, or `/<regex>/` with optional trailing "i" for case insensitive and "exact" for exact matches. |
+| `programs.w3m.urimethodmap` | `attribute set of string` | Settings for w3m's urimethodmap. It allows you to define custom uri schemes and map them to scripts. Scripts must be in the directory defined in `programs.w3m.settings.cgi_bin`. As of w3m v0.5.5, urimethodmap doesn't respect the W3M_DIR environment variable, so unless `programs.w3m.settings.urimethodmap` is set, `urimethodmap` will always be at {file}`~/.w3m/urimethodmap`. |
 | `programs.w3m.w3mImg2Sixel` | `null or string` | The executable and arguments that w3m should execute when using libsixel as the image backend. |

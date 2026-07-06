@@ -5,10 +5,10 @@
 All options under `services.mailcatcher`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.mailcatcher.enable` | | |
-| `services.mailcatcher.http.ip` | | |
-| `services.mailcatcher.http.path` | | |
-| `services.mailcatcher.http.port` | | |
-| `services.mailcatcher.smtp.ip` | | |
-| `services.mailcatcher.smtp.port` | | |
+| --- | --- | --- |
+| `services.mailcatcher.enable` | `boolean` | Whether to enable MailCatcher, an SMTP server and web interface to locally test outbound emails. |
+| `services.mailcatcher.http.ip` | `string` | The ip address of the http server. |
+| `services.mailcatcher.http.path` | `null or string` | Prefix to all HTTP paths. |
+| `services.mailcatcher.http.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port address of the http server. |
+| `services.mailcatcher.smtp.ip` | `string` | The ip address of the smtp server. |
+| `services.mailcatcher.smtp.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port address of the smtp server. |

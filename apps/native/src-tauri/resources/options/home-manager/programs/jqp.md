@@ -5,7 +5,7 @@
 All options under `programs.jqp`.
 
 | Option | Type | Description |
-| ----------------------- | ----------------- | ------------------------------------- |
+| --- | --- | --- |
 | `programs.jqp.enable` | `boolean` | Whether to enable jqp, jq playground. |
 | `programs.jqp.package` | `null or package` | The jqp package to use. |
 | `programs.jqp.settings` | `YAML 1.1 value` | Jqp configuration |

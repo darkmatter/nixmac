@@ -5,11 +5,11 @@
 All options under `services.tika`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.tika.configFile` | | |
-| `services.tika.enable` | | |
-| `services.tika.enableOcr` | | |
-| `services.tika.listenAddress` | | |
-| `services.tika.openFirewall` | | |
-| `services.tika.package` | | |
-| `services.tika.port` | | |
+| --- | --- | --- |
+| `services.tika.configFile` | `null or absolute path` | The Apache Tika configuration (XML) file to use. |
+| `services.tika.enable` | `boolean` | Whether to enable Apache Tika server. |
+| `services.tika.enableOcr` | `boolean` | Whether to enable OCR support by adding the `tesseract` package as a dependency. |
+| `services.tika.listenAddress` | `string` | The Apache Tika bind address. |
+| `services.tika.openFirewall` | `boolean` | Whether to open the firewall for Apache Tika. This adds `services.tika.port` to `networking.firewall.allowedTCPPorts`. |
+| `services.tika.package` | `package` | The tika package to use. |
+| `services.tika.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The Apache Tike port to listen on |

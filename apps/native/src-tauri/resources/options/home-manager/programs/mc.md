@@ -5,11 +5,11 @@
 All options under `programs.mc`.
 
 | Option | Type | Description |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.mc.enable` | `boolean` | Whether to enable Midnight Commander. |
-| `programs.mc.extensionSettings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Settings for mc/mc.ext.ini file. This setting completely replaces the default /etc/mc/mc.ext.ini . |
-| `programs.mc.fileHighlightSettings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Settings for mc/filehighlight.ini file. This setting completely replaces the default /etc/mc/filehighlight.ini . |
-| `programs.mc.keymapSettings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Settings for mc/mc.keymap file. |
+| `programs.mc.extensionSettings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Settings for `mc/mc.ext.ini` file. This setting completely replaces the default `/etc/mc/mc.ext.ini`. Midnight Commander does not merge this file with the system default, so you should copy the original if you want to preserve default behavior and add your changes there. |
+| `programs.mc.fileHighlightSettings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Settings for `mc/filehighlight.ini` file. This setting completely replaces the default `/etc/mc/filehighlight.ini`. Midnight Commander does not merge this file with the system default, so you should copy the original if you want to preserve default behavior and add your changes there. |
+| `programs.mc.keymapSettings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Settings for `mc/mc.keymap` file. Any missing settings will fall back to the system default. |
 | `programs.mc.package` | `null or package` | The mc package to use. |
-| `programs.mc.panelsSettings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Settings for mc/panels file. |
-| `programs.mc.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Settings for mc/ini file. |
+| `programs.mc.panelsSettings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Settings for `mc/panels` file. Any missing settings will fall back to the system default. |
+| `programs.mc.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Settings for `mc/ini` file. Any missing settings will fall back to the system default. |

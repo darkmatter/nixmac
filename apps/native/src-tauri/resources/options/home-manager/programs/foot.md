@@ -5,9 +5,9 @@
 All options under `programs.foot`.
 
 | Option | Type | Description |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.foot.enable` | `boolean` | Whether to enable Foot terminal. |
 | `programs.foot.package` | `package` | The foot package to use. |
 | `programs.foot.server.enable` | `boolean` | Whether to enable Foot terminal server. |
-| `programs.foot.server.systemdTarget` | | |
-| `programs.foot.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string) or a list of them for duplicate keys)` | Configuration written to $XDG_CONFIG_HOME/foot/foot.ini . See https://codeberg.org/dnkl/foot/src/branch/master/foot.ini for a list of available options. |
+| `programs.foot.server.systemdTarget` | `string` | The systemd target that will automatically start the Foot server service. When setting this value to `"sway-session.target"`, make sure to also enable {option}`wayland.windowManager.sway.systemd.enable`, otherwise the service may never be started. |
+| `programs.foot.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string) or a list of them for duplicate keys)` | Configuration written to {file}`$XDG_CONFIG_HOME/foot/foot.ini`. See <https://codeberg.org/dnkl/foot/src/branch/master/foot.ini> for a list of available options. |

@@ -5,11 +5,11 @@
 All options under `services.dgraph`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.dgraph.alpha.host` | | |
-| `services.dgraph.alpha.port` | | |
-| `services.dgraph.enable` | | |
-| `services.dgraph.package` | | |
-| `services.dgraph.settings` | | |
-| `services.dgraph.zero.host` | | |
-| `services.dgraph.zero.port` | | |
+| --- | --- | --- |
+| `services.dgraph.alpha.host` | `string` | The host which dgraph alpha will be run on. |
+| `services.dgraph.alpha.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port which to run dgraph alpha on. |
+| `services.dgraph.enable` | `boolean` | Whether to enable Dgraph native GraphQL database with a graph backend. |
+| `services.dgraph.package` | `package` | The dgraph package to use. |
+| `services.dgraph.settings` | `JSON value` | Contents of the dgraph config. For more details see <https://dgraph.io/docs/deploy/config> |
+| `services.dgraph.zero.host` | `string` | The host which dgraph zero will be run on. |
+| `services.dgraph.zero.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port which to run dgraph zero on. |

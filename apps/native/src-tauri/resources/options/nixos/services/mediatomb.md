@@ -5,21 +5,24 @@
 All options under `services.mediatomb`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.mediatomb.customCfg` | | |
-| `services.mediatomb.dataDir` | | |
-| `services.mediatomb.dsmSupport` | | |
-| `services.mediatomb.enable` | | |
-| `services.mediatomb.group` | | |
-| `services.mediatomb.interface` | | |
-| `services.mediatomb.mediaDirectories` | | |
-| `services.mediatomb.openFirewall` | | |
-| `services.mediatomb.package` | | |
-| `services.mediatomb.pcDirectoryHide` | | |
-| `services.mediatomb.port` | | |
-| `services.mediatomb.ps3Support` | | |
-| `services.mediatomb.serverName` | | |
-| `services.mediatomb.tg100Support` | | |
-| `services.mediatomb.transcoding` | | |
-| `services.mediatomb.user` | | |
-| `services.mediatomb.uuid` | | |
+| --- | --- | --- |
+| `services.mediatomb.customCfg` | `boolean` | Allow the service to create and use its own config file inside the `dataDir` as configured by {option}`services.mediatomb.dataDir`. Deactivated by default, the service then runs with the configuration generated from this module. Otherwise, when enabled, no service configuration is generated. Gerbera/Mediatomb then starts using config.xml within the configured `dataDir`. It's up to the user to make a correct configuration file. |
+| `services.mediatomb.dataDir` | `absolute path` | The directory where Gerbera/Mediatomb stores its state, data, etc. |
+| `services.mediatomb.dsmSupport` | `boolean` | Whether to enable D-Link DSM 320 specific tweaks. WARNING: incompatible with ps3 support. |
+| `services.mediatomb.enable` | `boolean` | Whether to enable the Gerbera/Mediatomb DLNA server. |
+| `services.mediatomb.group` | `string` | Group account under which the service runs. |
+| `services.mediatomb.interface` | `string` | A specific interface to bind to. |
+| `services.mediatomb.mediaDirectories` | `list of (submodule)` | Declare media directories to index. |
+| `services.mediatomb.mediaDirectories.*.hidden-files` | `boolean` | Whether to index the hidden files or not. |
+| `services.mediatomb.mediaDirectories.*.path` | `string` | Absolute directory path to the media directory to index. |
+| `services.mediatomb.mediaDirectories.*.recursive` | `boolean` | Whether the indexation must take place recursively or not. |
+| `services.mediatomb.openFirewall` | `boolean` | If false (the default), this is up to the user to declare the firewall rules. If true, this opens port 1900 (tcp and udp) and the port specified by {option}`sercvices.mediatomb.port`. If the option {option}`services.mediatomb.interface` is set, the firewall rules opened are dedicated to that interface. Otherwise, those rules are opened globally. |
+| `services.mediatomb.package` | `package` | The gerbera package to use. |
+| `services.mediatomb.pcDirectoryHide` | `boolean` | Whether to list the top-level directory or not (from upnp client standpoint). |
+| `services.mediatomb.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The network port to listen on. |
+| `services.mediatomb.ps3Support` | `boolean` | Whether to enable ps3 specific tweaks. WARNING: incompatible with DSM 320 support. |
+| `services.mediatomb.serverName` | `string` | How to identify the server on the network. |
+| `services.mediatomb.tg100Support` | `boolean` | Whether to enable Telegent TG100 specific tweaks. |
+| `services.mediatomb.transcoding` | `boolean` | Whether to enable transcoding. |
+| `services.mediatomb.user` | `string` | User account under which the service runs. |
+| `services.mediatomb.uuid` | `string` | A unique (on your network) to identify the server by. |

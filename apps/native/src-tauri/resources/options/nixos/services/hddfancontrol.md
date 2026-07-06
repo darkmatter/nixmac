@@ -5,12 +5,11 @@
 All options under `services.hddfancontrol`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.hddfancontrol.disks` | | |
-| `services.hddfancontrol.enable` | | |
-| `services.hddfancontrol.extraArgs` | | |
-| `services.hddfancontrol.logVerbosity` | | |
-| `services.hddfancontrol.package` | | |
-| `services.hddfancontrol.pwmPaths` | | |
-| `services.hddfancontrol.settings` | | |
-| `services.hddfancontrol.smartctl` | | |
+| --- | --- | --- |
+| `services.hddfancontrol.enable` | `boolean` | Whether to enable hddfancontrol daemon. |
+| `services.hddfancontrol.package` | `package` | The hddfancontrol package to use. |
+| `services.hddfancontrol.settings` | `attribute set of (submodule)` | Parameter-sets for each instance of hddfancontrol. |
+| `services.hddfancontrol.settings.<drive-bay-name>.disks` | `list of string` | Drive(s) to get temperature from Can also use command substitution to automatically grab all matching drives; such as all scsi (sas) drives |
+| `services.hddfancontrol.settings.<drive-bay-name>.extraArgs` | `list of string` | Extra commandline arguments for hddfancontrol |
+| `services.hddfancontrol.settings.<drive-bay-name>.logVerbosity` | `one of "TRACE", "DEBUG", "INFO", "WARN", "ERROR"` | Verbosity of the log level |
+| `services.hddfancontrol.settings.<drive-bay-name>.pwmPaths` | `list of string` | PWM filepath(s) to control fan speed (under /sys), followed by initial and fan-stop PWM values Can also use command substitution to ensure the correct hwmonX is selected on every boot |

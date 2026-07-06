@@ -5,7 +5,7 @@
 All options under `services.usbrelayd`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.usbrelayd.broker` | | |
-| `services.usbrelayd.clientName` | | |
-| `services.usbrelayd.enable` | | |
+| --- | --- | --- |
+| `services.usbrelayd.broker` | `string` | Hostname or IP address of your MQTT Broker. |
+| `services.usbrelayd.clientName` | `string` | Name, your client connects as. |
+| `services.usbrelayd.enable` | `boolean` | Whether to enable USB Relay MQTT daemon. |

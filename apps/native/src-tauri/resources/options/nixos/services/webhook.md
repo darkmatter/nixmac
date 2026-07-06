@@ -5,18 +5,20 @@
 All options under `services.webhook`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.webhook.enable` | | |
-| `services.webhook.enableTemplates` | | |
-| `services.webhook.environment` | | |
-| `services.webhook.extraArgs` | | |
-| `services.webhook.group` | | |
-| `services.webhook.hooks` | | |
-| `services.webhook.hooksTemplated` | | |
-| `services.webhook.ip` | | |
-| `services.webhook.openFirewall` | | |
-| `services.webhook.package` | | |
-| `services.webhook.port` | | |
-| `services.webhook.urlPrefix` | | |
-| `services.webhook.user` | | |
-| `services.webhook.verbose` | | |
+| --- | --- | --- |
+| `services.webhook.enable` | `boolean` | Whether to enable [Webhook](https://github.com/adnanh/webhook), a server written in Go that allows you to create HTTP endpoints (hooks), which execute configured commands for any person or service that knows the URL . |
+| `services.webhook.enableTemplates` | `boolean` | Enable the generated hooks file to be parsed as a Go template. See [the documentation](https://github.com/adnanh/webhook/blob/master/docs/Templates.md) for more information. |
+| `services.webhook.environment` | `attribute set of string` | Extra environment variables passed to webhook. |
+| `services.webhook.extraArgs` | `list of string` | These are arguments passed to the webhook command in the systemd service. You can find the available arguments and options in the [documentation][parameters]. \[parameters\]: https://github.com/adnanh/webhook/blob/master/docs/Webhook-Parameters.md |
+| `services.webhook.group` | `string` | Webhook will be run under this group. If set, you must create this group yourself! |
+| `services.webhook.hooks` | `attribute set of (open submodule of (JSON value))` | The actual configuration of which hooks will be served. Read more on the [project homepage] and on the [hook definition] page. At least one hook needs to be configured. \[hook definition\]: https://github.com/adnanh/webhook/blob/master/docs/Hook-Definition.md \[project homepage\]: https://github.com/adnanh/webhook#configuration |
+| `services.webhook.hooks.<name>.execute-command` | `string` | The command that should be executed when the hook is triggered. |
+| `services.webhook.hooks.<name>.id` | `string` | The ID of your hook. This value is used to create the HTTP endpoint (`protocol://yourserver:port/prefix/${id}`). |
+| `services.webhook.hooksTemplated` | `attribute set of string` | Same as {option}`hooks`, but these hooks are specified as literal strings instead of Nix values, and hence can include [template syntax](https://github.com/adnanh/webhook/blob/master/docs/Templates.md) which might not be representable as JSON. Template syntax requires the {option}`enableTemplates` option to be set to `true`, which is done by default if this option is set. |
+| `services.webhook.ip` | `string` | The IP webhook should serve hooks on. The default means it can be reached on any interface if `openFirewall = true`. |
+| `services.webhook.openFirewall` | `boolean` | Open the configured port in the firewall for external ingress traffic. Preferably the Webhook server is instead put behind a reverse proxy. |
+| `services.webhook.package` | `package` | The webhook package to use. |
+| `services.webhook.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port webhook should be reachable from. |
+| `services.webhook.urlPrefix` | `string` | The URL path prefix to use for served hooks (`protocol://yourserver:port/${prefix}/hook-id`). |
+| `services.webhook.user` | `string` | Webhook will be run under this user. If set, you must create this user yourself! |
+| `services.webhook.verbose` | `boolean` | Whether to show verbose output. |

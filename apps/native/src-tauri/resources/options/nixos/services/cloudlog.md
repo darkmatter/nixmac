@@ -5,32 +5,32 @@
 All options under `services.cloudlog`.
 
 | Option | Type | Description |
-| ----------------------------------------------- | ---- | ----------- |
-| `services.cloudlog.baseUrl` | | |
-| `services.cloudlog.dataDir` | | |
-| `services.cloudlog.database.createLocally` | | |
-| `services.cloudlog.database.host` | | |
-| `services.cloudlog.database.name` | | |
-| `services.cloudlog.database.passwordFile` | | |
-| `services.cloudlog.database.user` | | |
-| `services.cloudlog.enable` | | |
-| `services.cloudlog.extraConfig` | | |
-| `services.cloudlog.poolConfig` | | |
-| `services.cloudlog.update-clublog-scp.enable` | | |
-| `services.cloudlog.update-clublog-scp.interval` | | |
-| `services.cloudlog.update-dok.enable` | | |
-| `services.cloudlog.update-dok.interval` | | |
-| `services.cloudlog.update-lotw-users.enable` | | |
-| `services.cloudlog.update-lotw-users.interval` | | |
-| `services.cloudlog.update-sota.enable` | | |
-| `services.cloudlog.update-sota.interval` | | |
-| `services.cloudlog.update-wwff.enable` | | |
-| `services.cloudlog.update-wwff.interval` | | |
-| `services.cloudlog.upload-clublog.enable` | | |
-| `services.cloudlog.upload-clublog.interval` | | |
-| `services.cloudlog.upload-lotw.enable` | | |
-| `services.cloudlog.upload-lotw.interval` | | |
-| `services.cloudlog.upload-qrz.enable` | | |
-| `services.cloudlog.upload-qrz.interval` | | |
-| `services.cloudlog.user` | | |
-| `services.cloudlog.virtualHost` | | |
+| --- | --- | --- |
+| `services.cloudlog.baseUrl` | `string` | Cloudlog base URL |
+| `services.cloudlog.dataDir` | `string` | Cloudlog data directory. |
+| `services.cloudlog.database.createLocally` | `boolean` | Create the database and database user locally. |
+| `services.cloudlog.database.host` | `string` | MySQL database host |
+| `services.cloudlog.database.name` | `string` | MySQL database name. |
+| `services.cloudlog.database.passwordFile` | `null or string` | MySQL user password file. |
+| `services.cloudlog.database.user` | `string` | MySQL user name. |
+| `services.cloudlog.enable` | `boolean` | Whether to enable Cloudlog. |
+| `services.cloudlog.extraConfig` | `string` | Any additional text to be appended to the config.php configuration file. This is a PHP script. For configuration settings, see <https://github.com/magicbug/Cloudlog/wiki/Cloudlog.php-Configuration-File>. |
+| `services.cloudlog.poolConfig` | `attribute set of (string or signed integer or boolean)` | Options for Cloudlog's PHP-FPM pool. |
+| `services.cloudlog.update-clublog-scp.enable` | `boolean` | Whether to periodically update the Clublog SCP database. If enabled, a systemd timer will run the update task as specified by the interval option. |
+| `services.cloudlog.update-clublog-scp.interval` | `string` | Specification (in the format described by {manpage}`systemd.time(7)`) of the time at which the Clublog SCP update will occur. |
+| `services.cloudlog.update-dok.enable` | `boolean` | Whether to periodically update the DOK resource file. If enabled, a systemd timer will run the update task as specified by the interval option. |
+| `services.cloudlog.update-dok.interval` | `string` | Specification (in the format described by {manpage}`systemd.time(7)`) of the time at which the DOK update will occur. |
+| `services.cloudlog.update-lotw-users.enable` | `boolean` | Whether to periodically update the list of LoTW users. If enabled, a systemd timer will run the update task as specified by the interval option. |
+| `services.cloudlog.update-lotw-users.interval` | `string` | Specification (in the format described by {manpage}`systemd.time(7)`) of the time at which the LoTW user update will occur. |
+| `services.cloudlog.update-sota.enable` | `boolean` | Whether to periodically update the SOTA database. If enabled, a systemd timer will run the update task as specified by the interval option. |
+| `services.cloudlog.update-sota.interval` | `string` | Specification (in the format described by {manpage}`systemd.time(7)`) of the time at which the SOTA update will occur. |
+| `services.cloudlog.update-wwff.enable` | `boolean` | Whether to periodically update the WWFF database. If enabled, a systemd timer will run the update task as specified by the interval option. |
+| `services.cloudlog.update-wwff.interval` | `string` | Specification (in the format described by {manpage}`systemd.time(7)`) of the time at which the WWFF update will occur. |
+| `services.cloudlog.upload-clublog.enable` | `boolean` | Whether to periodically upload logs to Clublog. If enabled, a systemd timer will run the log upload task as specified by the interval option. |
+| `services.cloudlog.upload-clublog.interval` | `string` | Specification (in the format described by {manpage}`systemd.time(7)`) of the time at which the Clublog upload will occur. |
+| `services.cloudlog.upload-lotw.enable` | `boolean` | Whether to periodically upload logs to LoTW. If enabled, a systemd timer will run the log upload task as specified by the interval option. |
+| `services.cloudlog.upload-lotw.interval` | `string` | Specification (in the format described by {manpage}`systemd.time(7)`) of the time at which the LoTW upload will occur. |
+| `services.cloudlog.upload-qrz.enable` | `boolean` | Whether to periodically upload logs to QRZ. If enabled, a systemd timer will run the update task as specified by the interval option. |
+| `services.cloudlog.upload-qrz.interval` | `string` | Specification (in the format described by {manpage}`systemd.time(7)`) of the time at which the QRZ upload will occur. |
+| `services.cloudlog.user` | `string` | User account under which Cloudlog runs. |
+| `services.cloudlog.virtualHost` | `null or string` | Name of the nginx virtualhost to use and setup. If null, do not setup any virtualhost. |

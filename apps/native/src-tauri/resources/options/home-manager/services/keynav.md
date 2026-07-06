@@ -5,7 +5,7 @@
 All options under `services.keynav`.
 
 | Option | Type | Description |
-| -------------------------- | --------- | -------------------------- |
+| --- | --- | --- |
 | `services.keynav.enable` | `boolean` | Whether to enable keynav. |
 | `services.keynav.package` | `package` | The keynav package to use. |
-| `services.keynav.settings` | | |
+| `services.keynav.settings` | `attribute set of (atom (null, bool, int, float or string))` | Configuration for keynav written to {file}`$XDG_CONFIG_HOME/keynav/keynavrc`. Each attribute name is a key binding and the value is the action. See <https://github.com/jordansissel/keynav/blob/master/keynav.pod> for available bindings and actions. |

@@ -5,8 +5,8 @@
 All options under `programs.bun`.
 
 | Option | Type | Description |
-| ----------------------------------- | ----------------- | -------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.bun.enable` | `boolean` | Whether to enable Bun JavaScript runtime. |
 | `programs.bun.enableGitIntegration` | `boolean` | Whether to enable Git integration. |
 | `programs.bun.package` | `null or package` | The bun package to use. |
-| `programs.bun.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/.bunfig.toml . |
+| `programs.bun.settings` | `TOML value` | Configuration written to {file}`$XDG_CONFIG_HOME/.bunfig.toml`. See <https://bun.sh/docs/runtime/bunfig> for the full list of options. |

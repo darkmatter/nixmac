@@ -5,5 +5,5 @@
 All options under `services.wg-netmanager`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.wg-netmanager.enable` | | |
+| --- | --- | --- |
+| `services.wg-netmanager.enable` | `boolean` | Whether to enable Wireguard network manager. |

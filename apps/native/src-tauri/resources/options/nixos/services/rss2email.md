@@ -5,9 +5,11 @@
 All options under `services.rss2email`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.rss2email.config` | | |
-| `services.rss2email.enable` | | |
-| `services.rss2email.feeds` | | |
-| `services.rss2email.interval` | | |
-| `services.rss2email.to` | | |
+| --- | --- | --- |
+| `services.rss2email.config` | `attribute set of (string or signed integer or boolean)` | The configuration to give rss2email. Default will use system-wide `sendmail` to send the email. This is rss2email's default when running `r2e new`. This set contains key-value associations that will be set in the `[DEFAULT]` block along with the `to` parameter. See `man r2e` for more information on which parameters are accepted. |
+| `services.rss2email.enable` | `boolean` | Whether to enable rss2email. |
+| `services.rss2email.feeds` | `attribute set of (submodule)` | The feeds to watch. |
+| `services.rss2email.feeds.<name>.to` | `null or string` | Email address to which to send feed items. If `null`, this will not be set in the configuration file, and rss2email will make it default to `rss2email.to`. |
+| `services.rss2email.feeds.<name>.url` | `string` | The URL at which to fetch the feed. |
+| `services.rss2email.interval` | `string` | How often to check the feeds, in systemd interval format |
+| `services.rss2email.to` | `string` | Mail address to which to send emails |

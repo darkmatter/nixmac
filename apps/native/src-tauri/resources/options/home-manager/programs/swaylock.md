@@ -5,7 +5,7 @@
 All options under `programs.swaylock`.
 
 | Option | Type | Description |
-| ---------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `programs.swaylock.enable` | `boolean` | Whether to enable swaylock. |
+| --- | --- | --- |
+| `programs.swaylock.enable` | `boolean` | Whether to enable swaylock. Note that PAM must be configured to enable swaylock to perform authentication. The package installed through home-manager will *not* be able to unlock the session without this configuration. On NixOS, this is by default enabled with the sway module, but for other compositors it can currently be enabled using: `nix security.pam.services.swaylock = {}; ` On non-NixOS, it is easiest to avoid incompatibility involving PAM by 1. stopping Home Manager from installing swaylock by setting {option}`programs.swaylock.package` to `null`; and 2. instead installing swaylock from your distribution's repository. |
 | `programs.swaylock.package` | `null or package` | The swaylock package to use. |
-| `programs.swaylock.settings` | `attribute set of (boolean or floating point number or signed integer or absolute path or string)` | Default arguments to swaylock . An empty set disables configuration generation. |
+| `programs.swaylock.settings` | `attribute set of (boolean or floating point number or signed integer or absolute path or string)` | Default arguments to {command}`swaylock`. An empty set disables configuration generation. |

@@ -5,12 +5,12 @@
 All options under `services.emacs`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `services.emacs.client.arguments` | `list of string` | Command-line arguments to pass to emacsclient . |
+| --- | --- | --- |
+| `services.emacs.client.arguments` | `list of string` | Command-line arguments to pass to {command}`emacsclient`. |
 | `services.emacs.client.enable` | `boolean` | Whether to enable generation of Emacs client desktop file. |
-| `services.emacs.defaultEditor` | `boolean` | Whether to configure emacsclient as the default editor using the EDITOR and VISUAL environment variables. |
+| `services.emacs.defaultEditor` | `boolean` | Whether to configure {command}`emacsclient` as the default editor using the {env}`EDITOR` and {env}`VISUAL` environment variables. |
 | `services.emacs.enable` | `boolean` | Whether to enable the Emacs daemon. |
-| `services.emacs.extraOptions` | `list of string` | Extra command-line arguments to pass to emacs . |
+| `services.emacs.extraOptions` | `list of string` | Extra command-line arguments to pass to {command}`emacs`. |
 | `services.emacs.package` | `package` | The Emacs package to use. |
 | `services.emacs.socketActivation.enable` | `boolean` | Whether to enable systemd socket activation for the Emacs service. |
-| `services.emacs.startWithUserSession` | `boolean or value “graphical” (singular enum)` | Whether to launch Emacs service with the systemd user session. If it is true , Emacs service is started by default.target . If it is "graphical" , Emacs service is started by graphical-session.target . |
+| `services.emacs.startWithUserSession` | `boolean or value "graphical" (singular enum)` | Whether to launch Emacs service with the systemd user session. If it is `true`, Emacs service is started by `default.target`. If it is `"graphical"`, Emacs service is started by `graphical-session.target`. |

@@ -5,7 +5,7 @@
 All options under `programs.kraftkit`.
 
 | Option | Type | Description |
-| ---------------------------- | ----------------- | --------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.kraftkit.enable` | `boolean` | Whether to enable kraftkit - CLI to build and use customized unikernel VMs. |
 | `programs.kraftkit.package` | `null or package` | The kraft package to use. |
-| `programs.kraftkit.settings` | `YAML 1.1 value` | Configuration written to $XDG_CONFIG_HOME/kraftkit/config.yaml . |
+| `programs.kraftkit.settings` | `YAML 1.1 value` | Configuration written to {file}`$XDG_CONFIG_HOME/kraftkit/config.yaml`. |

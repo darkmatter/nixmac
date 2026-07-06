@@ -5,6 +5,6 @@
 All options under `services.amazon-ssm-agent`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.amazon-ssm-agent.enable` | | |
-| `services.amazon-ssm-agent.package` | | |
+| --- | --- | --- |
+| `services.amazon-ssm-agent.enable` | `boolean` | Whether to enable Amazon SSM agent. |
+| `services.amazon-ssm-agent.package` | `package` | The amazon-ssm-agent package to use. |

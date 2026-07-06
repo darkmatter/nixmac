@@ -5,11 +5,16 @@
 All options under `services.your_spotify`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.your_spotify.clientPackage` | | |
-| `services.your_spotify.enable` | | |
-| `services.your_spotify.enableLocalDB` | | |
-| `services.your_spotify.nginxVirtualHost` | | |
-| `services.your_spotify.package` | | |
-| `services.your_spotify.settings` | | |
-| `services.your_spotify.spotifySecretFile` | | |
+| --- | --- | --- |
+| `services.your_spotify.clientPackage` | `package` | Client package to use. |
+| `services.your_spotify.enable` | `boolean` | Whether to enable your_spotify. |
+| `services.your_spotify.enableLocalDB` | `boolean` | Whether to enable a local mongodb instance. |
+| `services.your_spotify.nginxVirtualHost` | `null or string` | If set creates an nginx virtual host for the client. In most cases this should be the CLIENT_ENDPOINT without protocol prefix. |
+| `services.your_spotify.package` | `package` | The your_spotify package to use. |
+| `services.your_spotify.settings` | `open submodule of attribute set of string` | Your Spotify Configuration. Refer to [Your Spotify](https://github.com/Yooooomi/your_spotify) for definitions and values. |
+| `services.your_spotify.settings.API_ENDPOINT` | `string` | The endpoint of your server This api has to be reachable from the device you use the website from not from the server. This means that for example you may need two nginx virtual hosts if you want to expose this on the internet. Has to include a protocol Prefix (e.g. `http://`) |
+| `services.your_spotify.settings.CLIENT_ENDPOINT` | `string` | The endpoint of your web application. Has to include a protocol Prefix (e.g. `http://`) |
+| `services.your_spotify.settings.MONGO_ENDPOINT` | `string` | The endpoint of the Mongo database. |
+| `services.your_spotify.settings.PORT` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port of the api server |
+| `services.your_spotify.settings.SPOTIFY_PUBLIC` | `string` | The public client ID of your Spotify application. Refer to: [Creating the Spotify Application](https://github.com/Yooooomi/your_spotify#creating-the-spotify-application) |
+| `services.your_spotify.spotifySecretFile` | `absolute path` | A file containing the secret key of your Spotify application. Refer to: [Creating the Spotify Application](https://github.com/Yooooomi/your_spotify#creating-the-spotify-application). |

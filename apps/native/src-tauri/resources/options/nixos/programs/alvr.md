@@ -5,7 +5,7 @@
 All options under `programs.alvr`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `programs.alvr.enable` | | |
-| `programs.alvr.openFirewall` | | |
-| `programs.alvr.package` | | |
+| --- | --- | --- |
+| `programs.alvr.enable` | `boolean` | Whether to enable ALVR, the VR desktop streamer. |
+| `programs.alvr.openFirewall` | `boolean` | Whether to open the default ports in the firewall for the ALVR server. |
+| `programs.alvr.package` | `package` | The alvr package to use. |

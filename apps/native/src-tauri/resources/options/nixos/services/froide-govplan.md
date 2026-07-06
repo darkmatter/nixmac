@@ -5,10 +5,11 @@
 All options under `services.froide-govplan`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.froide-govplan.dataDir` | | |
-| `services.froide-govplan.enable` | | |
-| `services.froide-govplan.hostName` | | |
-| `services.froide-govplan.package` | | |
-| `services.froide-govplan.secretKeyFile` | | |
-| `services.froide-govplan.settings` | | |
+| --- | --- | --- |
+| `services.froide-govplan.dataDir` | `string` | Directory to store the Froide-Govplan server data. |
+| `services.froide-govplan.enable` | `boolean` | Whether to enable Gouvernment planer web app Govplan. |
+| `services.froide-govplan.hostName` | `string` | FQDN for the froide-govplan instance. |
+| `services.froide-govplan.package` | `package` | The froide-govplan package to use. |
+| `services.froide-govplan.secretKeyFile` | `null or absolute path` | Path to a file containing the secret key. |
+| `services.froide-govplan.settings` | `open submodule of attribute set of (Python value)` | Configuration options to set in `extra_settings.py`. |
+| `services.froide-govplan.settings.ALLOWED_HOSTS` | `list of string` | A list of valid fully-qualified domain names (FQDNs) and/or IP addresses that can be used to reach the Froide-Govplan service. |

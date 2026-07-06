@@ -5,5 +5,5 @@
 All options under `services.hdapsd`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `services.hdapsd.enable` | | |
+| --- | --- | --- |
+| `services.hdapsd.enable` | `boolean` | Whether to enable Hard Drive Active Protection System Daemon, devices are detected and managed automatically by udev and systemd . |

@@ -5,8 +5,8 @@
 All options under `services.qdrant`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.qdrant.enable` | | |
-| `services.qdrant.package` | | |
-| `services.qdrant.settings` | | |
-| `services.qdrant.webUIPackage` | | |
+| --- | --- | --- |
+| `services.qdrant.enable` | `boolean` | Whether to enable Vector Search Engine for the next generation of AI applications. |
+| `services.qdrant.package` | `package` | The qdrant package to use. |
+| `services.qdrant.settings` | `YAML 1.1 value` | Configuration for Qdrant Refer to <https://github.com/qdrant/qdrant/blob/master/config/config.yaml> for details on supported values. |
+| `services.qdrant.webUIPackage` | `package` | The qdrant-web-ui package to use. |

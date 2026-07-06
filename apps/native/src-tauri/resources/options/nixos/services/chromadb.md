@@ -5,11 +5,10 @@
 All options under `services.chromadb`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.chromadb.dbpath` | | |
-| `services.chromadb.enable` | | |
-| `services.chromadb.host` | | |
-| `services.chromadb.logFile` | | |
-| `services.chromadb.openFirewall` | | |
-| `services.chromadb.package` | | |
-| `services.chromadb.port` | | |
+| --- | --- | --- |
+| `services.chromadb.dbpath` | `string` | Location where ChromaDB stores its files |
+| `services.chromadb.enable` | `boolean` | Whether to enable ChromaDB, an open-source AI application database.. |
+| `services.chromadb.host` | `string` | Defines the IP address by which ChromaDB will be accessible. |
+| `services.chromadb.openFirewall` | `boolean` | Whether to automatically open the specified TCP port in the firewall. |
+| `services.chromadb.package` | `package` | The chromadb package to use. |
+| `services.chromadb.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Defined the port number to listen. |

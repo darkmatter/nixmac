@@ -5,8 +5,8 @@
 All options under `programs.cdemu`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `programs.cdemu.enable` | | |
-| `programs.cdemu.group` | | |
-| `programs.cdemu.gui` | | |
-| `programs.cdemu.image-analyzer` | | |
+| --- | --- | --- |
+| `programs.cdemu.enable` | `boolean` | {command}`cdemu` for members of {option}`programs.cdemu.group`. |
+| `programs.cdemu.group` | `string` | Group that users must be in to use {command}`cdemu`. |
+| `programs.cdemu.gui` | `boolean` | Whether to install the {command}`cdemu` GUI (gCDEmu). |
+| `programs.cdemu.image-analyzer` | `boolean` | Whether to install the image analyzer. |

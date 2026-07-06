@@ -5,5 +5,5 @@
 All options under `services.stratis`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.stratis.enable` | | |
+| --- | --- | --- |
+| `services.stratis.enable` | `boolean` | Whether to enable Stratis Storage - Easy to use local storage management for Linux. |

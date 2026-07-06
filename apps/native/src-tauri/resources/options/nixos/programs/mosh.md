@@ -5,8 +5,8 @@
 All options under `programs.mosh`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `programs.mosh.enable` | | |
-| `programs.mosh.openFirewall` | | |
-| `programs.mosh.package` | | |
-| `programs.mosh.withUtempter` | | |
+| --- | --- | --- |
+| `programs.mosh.enable` | `boolean` | Whether to enable mosh. |
+| `programs.mosh.openFirewall` | `boolean` | Whether to automatically open the necessary ports in the firewall. |
+| `programs.mosh.package` | `package` | The mosh package to use. |
+| `programs.mosh.withUtempter` | `boolean` | Whether to enable libutempter for mosh. This is required so that mosh can write to /var/run/utmp (which can be queried with `who` to display currently connected user sessions). Note, this will add a guid wrapper for the group utmp! |

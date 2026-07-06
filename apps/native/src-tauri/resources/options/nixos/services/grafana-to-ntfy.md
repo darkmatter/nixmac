@@ -5,14 +5,14 @@
 All options under `services.grafana-to-ntfy`.
 
 | Option | Type | Description |
-| ------------------------------------------------- | ---- | ----------- |
-| `services.grafana-to-ntfy.enable` | | |
-| `services.grafana-to-ntfy.package` | | |
-| `services.grafana-to-ntfy.settings.address` | | |
-| `services.grafana-to-ntfy.settings.bauthPass` | | |
-| `services.grafana-to-ntfy.settings.bauthUser` | | |
-| `services.grafana-to-ntfy.settings.markdown` | | |
-| `services.grafana-to-ntfy.settings.ntfyBAuthPass` | | |
-| `services.grafana-to-ntfy.settings.ntfyBAuthUser` | | |
-| `services.grafana-to-ntfy.settings.ntfyUrl` | | |
-| `services.grafana-to-ntfy.settings.port` | | |
+| --- | --- | --- |
+| `services.grafana-to-ntfy.enable` | `boolean` | Whether to enable grafana-to-ntfy, a Grafana/Alertmanager to ntfy.sh bridge. |
+| `services.grafana-to-ntfy.package` | `package` | The grafana-to-ntfy package to use. |
+| `services.grafana-to-ntfy.settings.address` | `string` | Address to listen on. |
+| `services.grafana-to-ntfy.settings.bauthPass` | `null or absolute path` | Path to the password file for Basic Auth on incoming webhook requests. When set together with {option}`bauthUser`, incoming requests require Basic Auth. When both are null, the endpoint is open (unauthenticated). |
+| `services.grafana-to-ntfy.settings.bauthUser` | `null or string` | The user for Basic Auth on incoming webhook requests from Grafana or Alertmanager. When set together with {option}`bauthPass`, incoming requests require Basic Auth. When both are null, the endpoint is open (unauthenticated). |
+| `services.grafana-to-ntfy.settings.markdown` | `boolean` | Enable Markdown formatting in ntfy notifications. Sets the X-Markdown header. |
+| `services.grafana-to-ntfy.settings.ntfyBAuthPass` | `null or absolute path` | The path to the password for the specified ntfy-sh user. Setting this option is required when using a ntfy-sh instance with access control enabled. |
+| `services.grafana-to-ntfy.settings.ntfyBAuthUser` | `null or string` | The ntfy-sh user to use for authenticating with the ntfy-sh instance. Setting this option is required when using a ntfy-sh instance with access control enabled. |
+| `services.grafana-to-ntfy.settings.ntfyUrl` | `string` | The URL to the ntfy-sh topic. |
+| `services.grafana-to-ntfy.settings.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |

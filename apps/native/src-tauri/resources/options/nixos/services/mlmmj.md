@@ -5,10 +5,10 @@
 All options under `services.mlmmj`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.mlmmj.enable` | | |
-| `services.mlmmj.group` | | |
-| `services.mlmmj.listDomain` | | |
-| `services.mlmmj.mailLists` | | |
-| `services.mlmmj.maintInterval` | | |
-| `services.mlmmj.user` | | |
+| --- | --- | --- |
+| `services.mlmmj.enable` | `boolean` | Enable mlmmj |
+| `services.mlmmj.group` | `string` | mailinglist local group |
+| `services.mlmmj.listDomain` | `string` | Set the mailing list domain |
+| `services.mlmmj.mailLists` | `list of string` | The collection of hosted maillists |
+| `services.mlmmj.maintInterval` | `string` | Time interval between mlmmj-maintd runs, see {manpage}`systemd.time(7)` for format information. |
+| `services.mlmmj.user` | `string` | mailinglist local user |

@@ -5,9 +5,15 @@
 All options under `services.autosuspend`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.autosuspend.checks` | | |
-| `services.autosuspend.enable` | | |
-| `services.autosuspend.package` | | |
-| `services.autosuspend.settings` | | |
-| `services.autosuspend.wakeups` | | |
+| --- | --- | --- |
+| `services.autosuspend.checks` | `attribute set of (open submodule of section of an INI file (attrs of INI atom (null, bool, int, float or string)))` | Checks for activity. For more information, see: - <https://autosuspend.readthedocs.io/en/latest/configuration_file.html#activity-check-configuration> - <https://autosuspend.readthedocs.io/en/latest/available_checks.html> |
+| `services.autosuspend.checks.<name>.class` | `null or one of "ActiveCalendarEvent", "ActiveConnection", "ExternalCommand", "JsonPath", "Kodi", "KodiIdleTime", "LastLogActivity", "Load", "LogindSessionsIdle", "Mpd", "NetworkBandwidth", "Ping", "Processes", "Smb", "Users", "XIdleTime", "XPath"` | Name of the class implementing the check. If this option is not specified, the check's name must represent a valid internal check class. |
+| `services.autosuspend.checks.<name>.enabled` | `boolean` | Whether to enable this activity check. |
+| `services.autosuspend.enable` | `boolean` | Whether to enable the autosuspend daemon. |
+| `services.autosuspend.package` | `package` | The autosuspend package to use. |
+| `services.autosuspend.settings` | `open submodule of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration for autosuspend, see <https://autosuspend.readthedocs.io/en/latest/configuration_file.html#general-configuration> for supported values. |
+| `services.autosuspend.settings.suspend_cmd` | `string` | The command to execute in case the host shall be suspended. This line can contain additional command line arguments to the command to execute. |
+| `services.autosuspend.settings.wakeup_cmd` | `string` | The command to execute for scheduling a wake up of the system. The given string is processed using Python’s `str.format()` and a format argument called `timestamp` encodes the UTC timestamp of the planned wake up time (float). Additionally `iso` can be used to acquire the timestamp in ISO 8601 format. |
+| `services.autosuspend.wakeups` | `attribute set of (open submodule of section of an INI file (attrs of INI atom (null, bool, int, float or string)))` | Checks for wake up. For more information, see: - <https://autosuspend.readthedocs.io/en/latest/configuration_file.html#wake-up-check-configuration> - <https://autosuspend.readthedocs.io/en/latest/available_wakeups.html> |
+| `services.autosuspend.wakeups.<name>.class` | `null or one of "Calendar", "Command", "File", "Periodic", "SystemdTimer", "XPath", "XPathDelta"` | Name of the class implementing the check. If this option is not specified, the check's name must represent a valid internal check class. |
+| `services.autosuspend.wakeups.<name>.enabled` | `boolean` | Whether to enable this wake-up check. |

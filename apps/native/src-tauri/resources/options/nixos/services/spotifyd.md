@@ -5,8 +5,8 @@
 All options under `services.spotifyd`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.spotifyd.config` | | |
-| `services.spotifyd.enable` | | |
-| `services.spotifyd.package` | | |
-| `services.spotifyd.settings` | | |
+| --- | --- | --- |
+| `services.spotifyd.config` | `strings concatenated with "\n"` | (Deprecated) Configuration for Spotifyd. For syntax and directives, see <https://docs.spotifyd.rs/configuration/index.html#config-file>. |
+| `services.spotifyd.enable` | `boolean` | Whether to enable spotifyd, a Spotify playing daemon. |
+| `services.spotifyd.package` | `package` | The spotifyd package to use. |
+| `services.spotifyd.settings` | `TOML value` | Configuration for Spotifyd. For syntax and directives, see <https://docs.spotifyd.rs/configuration/index.html#config-file>. |

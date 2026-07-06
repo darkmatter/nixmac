@@ -5,28 +5,28 @@
 All options under `services.keycloak`.
 
 | Option | Type | Description |
-| ------------------------------------------------ | ---- | ----------- |
-| `services.keycloak.bindAddress` | | |
-| `services.keycloak.database.caCert` | | |
-| `services.keycloak.database.createLocally` | | |
-| `services.keycloak.database.host` | | |
-| `services.keycloak.database.name` | | |
-| `services.keycloak.database.passwordFile` | | |
-| `services.keycloak.database.port` | | |
-| `services.keycloak.database.type` | | |
-| `services.keycloak.database.useSSL` | | |
-| `services.keycloak.database.username` | | |
-| `services.keycloak.enable` | | |
-| `services.keycloak.extraConfig` | | |
-| `services.keycloak.forceBackendUrlToFrontendUrl` | | |
-| `services.keycloak.frontendUrl` | | |
-| `services.keycloak.httpPort` | | |
-| `services.keycloak.httpsPort` | | |
-| `services.keycloak.initialAdminPassword` | | |
-| `services.keycloak.package` | | |
-| `services.keycloak.plugins` | | |
-| `services.keycloak.realmFiles` | | |
-| `services.keycloak.settings` | | |
-| `services.keycloak.sslCertificate` | | |
-| `services.keycloak.sslCertificateKey` | | |
-| `services.keycloak.themes` | | |
+| --- | --- | --- |
+| `services.keycloak.database.caCert` | `null or absolute path` | The SSL / TLS CA certificate that verifies the identity of the database server. Required when PostgreSQL is used and SSL is turned on. For MySQL, if left at `null`, the default Java keystore is used, which should suffice if the server certificate is issued by an official CA. |
+| `services.keycloak.database.createLocally` | `boolean` | Whether a database should be automatically created on the local host. Set this to false if you plan on provisioning a local database yourself. This has no effect if services.keycloak.database.host is customized. |
+| `services.keycloak.database.host` | `string` | Hostname of the database to connect to. For PostgreSQL, this can also be a path to a Unix socket directory (e.g., `/run/postgresql`) to use peer authentication. This requires adding `junixsocket-common` and `junixsocket-native-common` to [](#opt-services.keycloak.plugins). |
+| `services.keycloak.database.name` | `string` | Database name to use when connecting to an external or manually provisioned database; has no effect when a local database is automatically provisioned. To use this with a local database, set [](#opt-services.keycloak.database.createLocally) to `false` and create the database and user manually. |
+| `services.keycloak.database.passwordFile` | `null or absolute path` | The path to a file containing the database password. Not required when using Unix socket authentication (peer auth) by setting `host` to a socket path like `/run/postgresql`. |
+| `services.keycloak.database.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port of the database to connect to. |
+| `services.keycloak.database.type` | `one of "mysql", "mariadb", "postgresql"` | The type of database Keycloak should connect to. |
+| `services.keycloak.database.useSSL` | `boolean` | Whether the database connection should be secured by SSL / TLS. Defaults to `false` for localhost and Unix socket connections. |
+| `services.keycloak.database.username` | `string` | Username to use when connecting to an external or manually provisioned database; has no effect when a local database is automatically provisioned. To use this with a local database, set [](#opt-services.keycloak.database.createLocally) to `false` and create the database and user manually. |
+| `services.keycloak.enable` | `boolean` | Whether to enable the Keycloak identity and access management server. |
+| `services.keycloak.initialAdminPassword` | `null or string` | Initial password set for the temporary `admin` user. The password is not stored safely and should be changed immediately in the admin panel. See [Admin bootstrap and recovery](https://www.keycloak.org/server/bootstrap-admin-recovery) for details. |
+| `services.keycloak.package` | `package` | The keycloak package to use. |
+| `services.keycloak.plugins` | `list of absolute path` | Keycloak plugin jar, ear files or derivations containing them. Packaged plugins are available through `pkgs.keycloak.plugins`. |
+| `services.keycloak.realmFiles` | `list of absolute path` | Realm files that the server is going to import during startup. If a realm already exists in the server, the import operation is skipped. Importing the master realm is not supported. All files are expected to be in `json` format. See the [documentation](https://www.keycloak.org/server/importExport) for further information. |
+| `services.keycloak.settings` | `open submodule of attribute set of (null or string or signed integer or boolean or attribute set of absolute path)` | Configuration options corresponding to parameters set in {file}`conf/keycloak.conf`. Most available options are documented at <https://www.keycloak.org/server/all-config>. Options containing secret data should be set to an attribute set containing the attribute `_secret` - a string pointing to a file containing the value the option should be set to. See the example to get a better picture of this: in the resulting {file}`conf/keycloak.conf` file, the `https-key-store-password` key will be set to the contents of the {file}`/run/keys/store_password` file. |
+| `services.keycloak.settings.hostname` | `null or string` | The hostname part of the public URL used as base for all frontend requests. See <https://www.keycloak.org/server/hostname> for more information about hostname configuration. |
+| `services.keycloak.settings.hostname-backchannel-dynamic` | `boolean` | Enables dynamic resolving of backchannel URLs, including hostname, scheme, port and context path. See <https://www.keycloak.org/server/hostname> for more information about hostname configuration. |
+| `services.keycloak.settings.http-host` | `string` | On which address Keycloak should accept new connections. |
+| `services.keycloak.settings.http-port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | On which port Keycloak should listen for new HTTP connections. |
+| `services.keycloak.settings.http-relative-path` | `string` | The path relative to `/` for serving resources. ::: {.note} In versions of Keycloak using Wildfly (\<17), this defaulted to `/auth`. If upgrading from the Wildfly version of Keycloak, i.e. a NixOS version before 22.05, you'll likely want to set this to `/auth` to keep compatibility with your clients. See <https://www.keycloak.org/migration/migrating-to-quarkus> for more information on migrating from Wildfly to Quarkus. ::: |
+| `services.keycloak.settings.https-port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | On which port Keycloak should listen for new HTTPS connections. |
+| `services.keycloak.sslCertificate` | `null or absolute path` | The path to a PEM formatted certificate to use for TLS/SSL connections. |
+| `services.keycloak.sslCertificateKey` | `null or absolute path` | The path to a PEM formatted private key to use for TLS/SSL connections. |
+| `services.keycloak.themes` | `attribute set of package` | Additional theme packages for Keycloak. Each theme is linked into subdirectory with a corresponding attribute name. Theme packages consist of several subdirectories which provide different theme types: for example, `account`, `login` etc. After adding a theme to this option you can select it by its name in Keycloak administration console. |

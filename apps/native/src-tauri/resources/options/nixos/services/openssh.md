@@ -5,36 +5,51 @@
 All options under `services.openssh`.
 
 | Option | Type | Description |
-| -------------------------------------------------- | ---- | ----------- |
-| `services.openssh.allowSFTP` | | |
-| `services.openssh.authorizedKeysCommand` | | |
-| `services.openssh.authorizedKeysCommandUser` | | |
-| `services.openssh.authorizedKeysFiles` | | |
-| `services.openssh.authorizedKeysInHomedir` | | |
-| `services.openssh.banner` | | |
-| `services.openssh.challengeResponseAuthentication` | | |
-| `services.openssh.ciphers` | | |
-| `services.openssh.enable` | | |
-| `services.openssh.enableRecommendedAlgorithms` | | |
-| `services.openssh.extraConfig` | | |
-| `services.openssh.forwardX11` | | |
-| `services.openssh.gatewayPorts` | | |
-| `services.openssh.generateHostKeys` | | |
-| `services.openssh.hostKeys` | | |
-| `services.openssh.kbdInteractiveAuthentication` | | |
-| `services.openssh.kexAlgorithms` | | |
-| `services.openssh.knownHosts` | | |
-| `services.openssh.listenAddresses` | | |
-| `services.openssh.logLevel` | | |
-| `services.openssh.macs` | | |
-| `services.openssh.moduliFile` | | |
-| `services.openssh.openFirewall` | | |
-| `services.openssh.package` | | |
-| `services.openssh.passwordAuthentication` | | |
-| `services.openssh.permitRootLogin` | | |
-| `services.openssh.ports` | | |
-| `services.openssh.settings` | | |
-| `services.openssh.sftpFlags` | | |
-| `services.openssh.sftpServerExecutable` | | |
-| `services.openssh.startWhenNeeded` | | |
-| `services.openssh.useDns` | | |
+| --- | --- | --- |
+| `services.openssh.allowSFTP` | `boolean` | Whether to enable the SFTP subsystem in the SSH daemon. This enables the use of commands such as {command}`sftp` and {command}`sshfs`. |
+| `services.openssh.authorizedKeysCommand` | `string` | Specifies a program to be used to look up the user's public keys. The program must be owned by root, not writable by group or others and specified by an absolute path. |
+| `services.openssh.authorizedKeysCommandUser` | `string` | Specifies the user under whose account the AuthorizedKeysCommand is run. It is recommended to use a dedicated user that has no other role on the host than running authorized keys commands. |
+| `services.openssh.authorizedKeysFiles` | `list of string` | Specify the rules for which files to read on the host. This is an advanced option. If you're looking to configure user keys, you can generally use [](#opt-users.users._name_.openssh.authorizedKeys.keys) or [](#opt-users.users._name_.openssh.authorizedKeys.keyFiles). These are paths relative to the host root file system or home directories and they are subject to certain token expansion rules. See AuthorizedKeysFile in man sshd_config for details. |
+| `services.openssh.authorizedKeysInHomedir` | `boolean` | Enables the use of the `~/.ssh/authorized_keys` file. Otherwise, the only files trusted by default are those in `/etc/ssh/authorized_keys.d`, *i.e.* SSH keys from [](#opt-users.users._name_.openssh.authorizedKeys.keys). |
+| `services.openssh.enable` | `boolean` | Whether to enable the OpenSSH secure shell daemon, which allows secure remote logins. |
+| `services.openssh.enableRecommendedAlgorithms` | `boolean` | Use algorithms curated and recommended by NixOS. Set to false to use upstream's default algorithms. |
+| `services.openssh.extraConfig` | `strings concatenated with "\n"` | Verbatim contents of {file}`sshd_config`. |
+| `services.openssh.generateHostKeys` | `boolean` | Whether to generate SSH host keys. This can be enabled explicitly if you want to generate host keys but don't want to enable the SSH daemon. |
+| `services.openssh.hostKeys` | `list of (attribute set)` | NixOS can automatically generate SSH host keys. This option specifies the path, type and size of each key. See {manpage}`ssh-keygen(1)` for supported types and sizes. |
+| `services.openssh.knownHosts` | `attribute set of (submodule)` | Alias of {option}`programs.ssh.knownHosts`. |
+| `services.openssh.knownHosts.<name>.certAuthority` | `boolean` | This public key is an SSH certificate authority, rather than an individual host's key. |
+| `services.openssh.knownHosts.<name>.extraHostNames` | `list of string` | A list of additional host names and/or IP numbers used for accessing the host's ssh service. This list is ignored if `hostNames` is set explicitly. |
+| `services.openssh.knownHosts.<name>.hostNames` | `list of string` | A list of host names and/or IP numbers used for accessing the host's ssh service. This list includes the name of the containing `knownHosts` attribute by default for convenience. If you wish to configure multiple host keys for the same host use multiple `knownHosts` entries with different attribute names and the same `hostNames` list. |
+| `services.openssh.knownHosts.<name>.publicKey` | `null or string` | The public key data for the host. You can fetch a public key from a running SSH server with the {command}`ssh-keyscan` command. The public key should not include any host names, only the key type and the key itself. |
+| `services.openssh.knownHosts.<name>.publicKeyFile` | `null or absolute path` | The path to the public key file for the host. The public key file is read at build time and saved in the Nix store. You can fetch a public key file from a running SSH server with the {command}`ssh-keyscan` command. The content of the file should follow the same format as described for the `publicKey` option. Only a single key is supported. If a host has multiple keys, use {option}`programs.ssh.knownHostsFiles` instead. |
+| `services.openssh.listenAddresses` | `list of (submodule)` | List of addresses and ports to listen on (ListenAddress directive in config). If port is not specified for address sshd will listen on all ports specified by `ports` option. NOTE: this will override default listening on all local addresses and port 22. NOTE: setting this option won't automatically enable given ports in firewall configuration. NOTE: If the IP address is not available at boot time, the following has to be added to make sure sshd will wait for dhcp configuration: `nix systemd.services.sshd = {   wants = [ "network-online.target" ];   after = [ "network-online.target" ]; }; ` See the following issue for details: <https://github.com/NixOS/nixpkgs/issues/105570> |
+| `services.openssh.listenAddresses.*.addr` | `null or string` | Host, IPv4 or IPv6 address to listen to. |
+| `services.openssh.listenAddresses.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen to. |
+| `services.openssh.moduliFile` | `absolute path` | Path to `moduli` file to install in `/etc/ssh/moduli`. If this option is unset, then the `moduli` file shipped with OpenSSH will be used. |
+| `services.openssh.openFirewall` | `boolean` | Whether to automatically open the specified ports in the firewall. |
+| `services.openssh.package` | `package` | OpenSSH package to use for sshd. |
+| `services.openssh.ports` | `list of 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Specifies on which ports the SSH daemon listens. |
+| `services.openssh.settings` | `open submodule of attribute set of (atom (null, bool, int, float or string))` | Configuration for `sshd_config(5)`. |
+| `services.openssh.settings.AcceptEnv` | `null or (list of string)` | Specifies what environment variables sent by the client will be copied into the session's environment. The TERM environment variable is always accepted whenever the client requests a pseudo-terminal as it is required by the protocol. |
+| `services.openssh.settings.AllowGroups` | `null or (list of string)` | If specified, login is allowed only for users part of the listed groups. See {manpage}`sshd_config(5)` for details. |
+| `services.openssh.settings.AllowUsers` | `null or (list of string)` | If specified, login is allowed only for the listed users. See {manpage}`sshd_config(5)` for details. |
+| `services.openssh.settings.AuthorizedPrincipalsFile` | `null or string` | Specifies a file that lists principal names that are accepted for certificate authentication. The default is `"none"`, i.e. not to use a principals file. |
+| `services.openssh.settings.Banner` | `null or absolute path` | The file whose contents are sent to the remote user before authentication. |
+| `services.openssh.settings.Ciphers` | `null or (list of string)` | Allowed ciphers Defaults to a curated set of algorithms. Set enableRecommendedAlgorithms to false to use upstream's defaults. |
+| `services.openssh.settings.DenyGroups` | `null or (list of string)` | If specified, login is denied for all users part of the listed groups. Takes precedence over [](#opt-services.openssh.settings.AllowGroups). See {manpage}`sshd_config(5)` for details. |
+| `services.openssh.settings.DenyUsers` | `null or (list of string)` | If specified, login is denied for all listed users. Takes precedence over [](#opt-services.openssh.settings.AllowUsers). See {manpage}`sshd_config(5)` for details. |
+| `services.openssh.settings.GatewayPorts` | `null or string` | Specifies whether remote hosts are allowed to connect to ports forwarded for the client. See {manpage}`sshd_config(5)`. |
+| `services.openssh.settings.KbdInteractiveAuthentication` | `null or boolean` | Specifies whether keyboard-interactive authentication is allowed. |
+| `services.openssh.settings.KexAlgorithms` | `null or (list of string)` | Allowed key exchange algorithms Defaults to a curated set of algorithms. Set enableRecommendedAlgorithms to false to use upstream's defaults. |
+| `services.openssh.settings.LogLevel` | `null or one of "QUIET", "FATAL", "ERROR", "INFO", "VERBOSE", "DEBUG", "DEBUG1", "DEBUG2", "DEBUG3"` | Gives the verbosity level that is used when logging messages from {manpage}`sshd(8)`. Logging with a DEBUG level violates the privacy of users and is not recommended. |
+| `services.openssh.settings.Macs` | `null or (list of string)` | Allowed MACs Defaults to a curated set of algorithms. Set enableRecommendedAlgorithms to false to use upstream's defaults. |
+| `services.openssh.settings.PasswordAuthentication` | `null or boolean` | Specifies whether password authentication is allowed. |
+| `services.openssh.settings.PermitRootLogin` | `null or one of "yes", "without-password", "prohibit-password", "forced-commands-only", "no"` | Whether the root user can login using ssh. |
+| `services.openssh.settings.PrintMotd` | `null or boolean` | Whether to enable printing /etc/motd when a user logs in interactively. |
+| `services.openssh.settings.StrictModes` | `null or boolean` | Whether sshd should check file modes and ownership of directories |
+| `services.openssh.settings.UseDns` | `null or boolean` | Specifies whether {manpage}`sshd(8)` should look up the remote host name, and to check that the resolved host name for the remote IP address maps back to the very same IP address. If this option is set to no (the default) then only addresses and not host names may be used in ~/.ssh/authorized_keys from and sshd_config Match Host directives. |
+| `services.openssh.settings.UsePAM` | `null or boolean` | Whether to enable PAM authentication. |
+| `services.openssh.settings.X11Forwarding` | `null or boolean` | Whether to allow X11 connections to be forwarded. |
+| `services.openssh.sftpFlags` | `list of string` | Commandline flags to add to sftp-server. |
+| `services.openssh.sftpServerExecutable` | `string` | The sftp server executable. Can be a path or "internal-sftp" to use the sftp server built into the sshd binary. |
+| `services.openssh.startWhenNeeded` | `boolean` | If set, {command}`sshd` is socket-activated; that is, instead of having it permanently running as a daemon, systemd will start an instance for each incoming connection. |

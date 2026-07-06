@@ -5,9 +5,8 @@
 All options under `programs.hyprpanel`.
 
 | Option | Type | Description |
-| ----------------------------------------------------- | ------------ | ----------------------------------------------------------------- |
-| `programs.hyprpanel."dontAssertNotificationDaemons "` | | |
+| --- | --- | --- |
 | `programs.hyprpanel.enable` | `boolean` | Whether to enable HyprPanel. |
 | `programs.hyprpanel.package` | `package` | The hyprpanel package to use. |
-| `programs.hyprpanel.settings` | `JSON value` | Configuration written to $XDG_CONFIG_HOME/hyprpanel/config.json . |
+| `programs.hyprpanel.settings` | `JSON value` | Configuration written to {file}`$XDG_CONFIG_HOME/hyprpanel/config.json`. See <https://hyprpanel.com/configuration/settings.html#home-manager-module> for the full list of options. |
 | `programs.hyprpanel.systemd.enable` | `boolean` | Whether to enable HyprPanel systemd integration. |

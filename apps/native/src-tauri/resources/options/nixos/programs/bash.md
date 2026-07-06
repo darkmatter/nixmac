@@ -5,22 +5,20 @@
 All options under `programs.bash`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `programs.bash.blesh.enable` | | |
-| `programs.bash.completion.enable` | | |
-| `programs.bash.completion.package` | | |
-| `programs.bash.enable` | | |
-| `programs.bash.enableCompletion` | | |
-| `programs.bash.enableLsColors` | | |
-| `programs.bash.interactiveShellInit` | | |
-| `programs.bash.loginShellInit` | | |
-| `programs.bash.logout` | | |
-| `programs.bash.lsColorsFile` | | |
-| `programs.bash.promptInit` | | |
-| `programs.bash.promptPluginInit` | | |
-| `programs.bash.shellAliases` | | |
-| `programs.bash.shellInit` | | |
-| `programs.bash.undistractMe.enable` | | |
-| `programs.bash.undistractMe.playSound` | | |
-| `programs.bash.undistractMe.timeout` | | |
-| `programs.bash.vteIntegration` | | |
+| --- | --- | --- |
+| `programs.bash.blesh.enable` | `boolean` | Whether to enable blesh, a full-featured line editor written in pure Bash. |
+| `programs.bash.completion.enable` | `boolean` | Whether to enable Bash completion for all interactive bash shells. |
+| `programs.bash.completion.package` | `package` | The bash-completion package to use. |
+| `programs.bash.enable` | `boolean` | Whenever to configure Bash as an interactive shell. Note that this tries to make Bash the default {option}`users.defaultUserShell`, which in turn means that you might need to explicitly set this variable if you have another shell configured with NixOS. |
+| `programs.bash.enableLsColors` | `boolean` | Whether to enable extra colors in directory listings. |
+| `programs.bash.interactiveShellInit` | `strings concatenated with "\n"` | Shell script code called during interactive bash shell initialisation. |
+| `programs.bash.loginShellInit` | `strings concatenated with "\n"` | Shell script code called during login bash shell initialisation. |
+| `programs.bash.logout` | `strings concatenated with "\n"` | Shell script code called during login bash shell logout. |
+| `programs.bash.lsColorsFile` | `null or absolute path` | Alternative colorscheme for ls colors |
+| `programs.bash.promptInit` | `strings concatenated with "\n"` | Shell script code used to initialise the bash prompt. |
+| `programs.bash.shellAliases` | `attribute set of (null or string or absolute path)` | Set of aliases for bash shell, which overrides {option}`environment.shellAliases`. See {option}`environment.shellAliases` for an option format description. |
+| `programs.bash.shellInit` | `strings concatenated with "\n"` | Shell script code called during bash shell initialisation. |
+| `programs.bash.undistractMe.enable` | `boolean` | Whether to enable notifications when long-running terminal commands complete. |
+| `programs.bash.undistractMe.playSound` | `boolean` | Whether to enable notification sounds when long-running terminal commands complete. |
+| `programs.bash.undistractMe.timeout` | `signed integer` | Number of seconds it would take for a command to be considered long-running. |
+| `programs.bash.vteIntegration` | `boolean` | Whether to enable Bash integration for VTE terminals. This allows it to preserve the current directory of the shell across terminals. |

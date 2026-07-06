@@ -5,12 +5,12 @@
 All options under `services.certspotter`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.certspotter.emailRecipients` | | |
-| `services.certspotter.enable` | | |
-| `services.certspotter.extraFlags` | | |
-| `services.certspotter.hooks` | | |
-| `services.certspotter.package` | | |
-| `services.certspotter.sendmailPath` | | |
-| `services.certspotter.startAtEnd` | | |
-| `services.certspotter.watchlist` | | |
+| --- | --- | --- |
+| `services.certspotter.emailRecipients` | `list of string` | A list of email addresses to send certificate updates to. |
+| `services.certspotter.enable` | `boolean` | Whether to enable Cert Spotter, a Certificate Transparency log monitor. |
+| `services.certspotter.extraFlags` | `list of string` | Extra command-line arguments to pass to Cert Spotter |
+| `services.certspotter.hooks` | `list of absolute path` | Scripts to run upon the detection of a new certificate. See `man 8 certspotter-script` or [the GitHub page](https://github.com/SSLMate/certspotter/blob/v0.24.1/man/certspotter-script.md) for more info. |
+| `services.certspotter.package` | `package` | The certspotter package to use. |
+| `services.certspotter.sendmailPath` | `null or absolute path` | Path to the `sendmail` binary. By default, the local sendmail wrapper is used (see {option}`services.mail.sendmailSetuidWrapper`}). |
+| `services.certspotter.startAtEnd` | `boolean` | Whether to skip certificates issued before the first launch of Cert Spotter. Setting this to `false` will cause Cert Spotter to download tens of terabytes of data. |
+| `services.certspotter.watchlist` | `list of string` | Domain names to watch. To monitor a domain with all subdomains, prefix its name with `.` (e.g. `.example.org`). |

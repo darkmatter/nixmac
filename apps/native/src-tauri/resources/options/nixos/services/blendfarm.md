@@ -5,12 +5,15 @@
 All options under `services.blendfarm`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---- | ----------- |
-| `services.blendfarm.basicSecurityPasswordFile` | | |
-| `services.blendfarm.blenderPackage` | | |
-| `services.blendfarm.enable` | | |
-| `services.blendfarm.group` | | |
-| `services.blendfarm.openFirewall` | | |
-| `services.blendfarm.package` | | |
-| `services.blendfarm.serverConfig` | | |
-| `services.blendfarm.user` | | |
+| --- | --- | --- |
+| `services.blendfarm.basicSecurityPasswordFile` | `null or string` | Path to the password file the client needs to connect to the server. The password must not contain a forward slash. |
+| `services.blendfarm.blenderPackage` | `package` | The blender package to use. |
+| `services.blendfarm.enable` | `boolean` | Whether to enable Blendfarm, a render farm management software for Blender. |
+| `services.blendfarm.group` | `string` | Group under which blendfarm runs. |
+| `services.blendfarm.openFirewall` | `boolean` | Whether to enable allowing blendfarm network access through the firewall. |
+| `services.blendfarm.package` | `package` | The blendfarm package to use. |
+| `services.blendfarm.serverConfig` | `open submodule of attribute set of anything` | Server configuration |
+| `services.blendfarm.serverConfig.BroadcastPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Default port blendfarm server advertises itself on. |
+| `services.blendfarm.serverConfig.BypassScriptUpdate` | `boolean` | Prevents blendfarm from replacing the .py self-generated scripts. |
+| `services.blendfarm.serverConfig.Port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Default port blendfarm server listens on. |
+| `services.blendfarm.user` | `string` | User under which blendfarm runs. |

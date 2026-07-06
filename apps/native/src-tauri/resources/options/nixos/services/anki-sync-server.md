@@ -5,11 +5,14 @@
 All options under `services.anki-sync-server`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.anki-sync-server.address` | | |
-| `services.anki-sync-server.baseDirectory` | | |
-| `services.anki-sync-server.enable` | | |
-| `services.anki-sync-server.openFirewall` | | |
-| `services.anki-sync-server.package` | | |
-| `services.anki-sync-server.port` | | |
-| `services.anki-sync-server.users` | | |
+| --- | --- | --- |
+| `services.anki-sync-server.address` | `string` | IP address anki-sync-server listens to. Note host names are not resolved. |
+| `services.anki-sync-server.baseDirectory` | `string` | Base directory where user(s) synchronized data will be stored. |
+| `services.anki-sync-server.enable` | `boolean` | Whether to enable anki-sync-server. |
+| `services.anki-sync-server.openFirewall` | `boolean` | Whether to open the firewall for the specified port. |
+| `services.anki-sync-server.package` | `package` | The anki-sync-server package to use. |
+| `services.anki-sync-server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number anki-sync-server listens to. |
+| `services.anki-sync-server.users` | `list of (submodule)` | List of user-password pairs to provide to the sync server. |
+| `services.anki-sync-server.users.*.password` | `null or string` | Password accepted by anki-sync-server for the associated username. **WARNING**: This option is **not secure**. This password will be stored in *plaintext* and will be visible to *all users*. See {option}`services.anki-sync-server.users.passwordFile` for a more secure option. |
+| `services.anki-sync-server.users.*.passwordFile` | `null or absolute path` | File containing the password accepted by anki-sync-server for the associated username. Make sure to make readable only by root. |
+| `services.anki-sync-server.users.*.username` | `string` | User name accepted by anki-sync-server. |

@@ -5,12 +5,12 @@
 All options under `programs.foot`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `programs.foot.enable` | | |
-| `programs.foot.enableBashIntegration` | | |
-| `programs.foot.enableFishIntegration` | | |
-| `programs.foot.enableZshIntegration` | | |
-| `programs.foot.package` | | |
-| `programs.foot.settings` | | |
-| `programs.foot.theme` | | |
-| `programs.foot.xdg.serverAutostart` | | |
+| --- | --- | --- |
+| `programs.foot.enable` | `boolean` | Whether to enable foot terminal emulator. |
+| `programs.foot.enableBashIntegration` | `boolean` | Whether to enable foot bash integration. |
+| `programs.foot.enableFishIntegration` | `boolean` | Whether to enable foot fish integration. |
+| `programs.foot.enableZshIntegration` | `boolean` | Whether to enable foot zsh integration. |
+| `programs.foot.package` | `package` | The foot package to use. |
+| `programs.foot.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string) or a list of them for duplicate keys)` | Configuration for foot terminal emulator. Further information can be found in {command}`man 5 foot.ini`. Global configuration has to be written under the [main] section. |
+| `programs.foot.theme` | `null or string` | Theme name. Check <https://codeberg.org/dnkl/foot/src/branch/master/themes> for available themes. |
+| `programs.foot.xdg.serverAutostart` | `boolean` | Whether to enable starting the foot server via xdg-autostart. |

@@ -5,5 +5,5 @@
 All options under `programs.nbd`.
 
 | Option | Type | Description |
-| --------------------- | ---- | ----------- |
-| `programs.nbd.enable` | | |
+| --- | --- | --- |
+| `programs.nbd.enable` | `boolean` | Whether to enable Network Block Device (nbd) support. |

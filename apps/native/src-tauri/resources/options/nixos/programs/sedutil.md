@@ -5,5 +5,5 @@
 All options under `programs.sedutil`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `programs.sedutil.enable` | | |
+| --- | --- | --- |
+| `programs.sedutil.enable` | `boolean` | Whether to enable sedutil, to manage self encrypting drives that conform to the Trusted Computing Group OPAL 2.0 SSC specification. |

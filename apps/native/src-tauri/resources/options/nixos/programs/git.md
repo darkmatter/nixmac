@@ -5,12 +5,12 @@
 All options under `programs.git`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `programs.git.attributes` | | |
-| `programs.git.config` | | |
-| `programs.git.enable` | | |
-| `programs.git.lfs.enable` | | |
-| `programs.git.lfs.enablePureSSHTransfer` | | |
-| `programs.git.lfs.package` | | |
-| `programs.git.package` | | |
-| `programs.git.prompt.enable` | | |
+| --- | --- | --- |
+| `programs.git.attributes` | `strings concatenated with "\n"` | Assign git attributes to files (one pattern per line): PATTERN1 ATTR1 ATTR2 ... Blank lines and lines beginning with # are ignored. See {manpage}`gitattributes(5)` for more information. |
+| `programs.git.config` | `(attribute set of attribute set of anything) or list of attribute set of attribute set of anything` | Configuration to write to /etc/gitconfig. A list can also be specified to keep the configuration in order. For example, setting `config` to `[ { foo.x = 42; } { bar.y = 42; }]` will put the `foo` section before the `bar` section unlike the default alphabetical order, which can be helpful for sections such as `include` and `includeIf`. See the CONFIGURATION FILE section of {manpage}`git-config(1)` for more information. |
+| `programs.git.enable` | `boolean` | Whether to enable git, a distributed version control system. |
+| `programs.git.lfs.enable` | `boolean` | Whether to enable git-lfs (Large File Storage). |
+| `programs.git.lfs.enablePureSSHTransfer` | `boolean` | Whether to enable Enable pure SSH transfer in server side by adding git-lfs-transfer to environment.systemPackages. |
+| `programs.git.lfs.package` | `package` | The git-lfs package to use. |
+| `programs.git.package` | `package` | The git package to use. |
+| `programs.git.prompt.enable` | `boolean` | Whether to enable automatically sourcing git-prompt.sh. This does not change $PS1; it simply provides relevant utility functions. |

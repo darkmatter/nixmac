@@ -5,16 +5,15 @@
 All options under `programs.mpv`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `programs.mpv.bindings` | `attribute set of string` | Input configuration written to $XDG_CONFIG_HOME/mpv/input.conf . See mpv (1) for the full list of options. |
-| `programs.mpv.config` | `attribute set of (string or signed integer or boolean or floating point number or list of (string or signed integer or boolean or floating point number))` | Configuration written to $XDG_CONFIG_HOME/mpv/mpv.conf . See mpv (1) for the full list of options. |
-| `programs.mpv.defaultProfiles` | `list of string` | Profiles to be applied by default. Options set by them are overridden by options set in programs.mpv.config . |
+| --- | --- | --- |
+| `programs.mpv.bindings` | `attribute set of string` | Input configuration written to {file}`$XDG_CONFIG_HOME/mpv/input.conf`. See {manpage}`mpv(1)` for the full list of options. |
+| `programs.mpv.config` | `attribute set of (string or signed integer or boolean or floating point number or list of (string or signed integer or boolean or floating point number))` | Configuration written to {file}`$XDG_CONFIG_HOME/mpv/mpv.conf`. See {manpage}`mpv(1)` for the full list of options. |
+| `programs.mpv.defaultProfiles` | `list of string` | Profiles to be applied by default. Options set by them are overridden by options set in [](#opt-programs.mpv.config). |
 | `programs.mpv.enable` | `boolean` | Whether to enable mpv. |
-| `programs.mpv.extraInput` | `strings concatenated with “\n”` | Additional lines that are appended to $XDG_CONFIG_HOME/mpv/input.conf . See mpv (1) for the full list of options. |
+| `programs.mpv.extraInput` | `strings concatenated with "\n"` | Additional lines that are appended to {file}`$XDG_CONFIG_HOME/mpv/input.conf`. See {manpage}`mpv(1)` for the full list of options. |
 | `programs.mpv.extraMakeWrapperArgs` | `list of string` | List of scripts to use with mpv. |
-| `programs.mpv.finalPackage` | | |
-| `programs.mpv.includes` | `list of string` | List of configuration files to include at the end of mpv.conf. Mpv accepts several useful prefixes . |
+| `programs.mpv.includes` | `list of string` | List of configuration files to include at the end of mpv.conf. Mpv accepts several useful [prefixes](https://mpv.io/manual/stable/#paths). |
 | `programs.mpv.package` | `package` | The mpv package to use. |
-| `programs.mpv.profiles` | `attribute set of attribute set of (string or signed integer or boolean or floating point number or list of (string or signed integer or boolean or floating point number))` | Sub-configuration options for specific profiles written to $XDG_CONFIG_HOME/mpv/mpv.conf . See programs.mpv.config for more information. |
-| `programs.mpv.scriptOpts` | `attribute set of attribute set of (string or signed integer or boolean or floating point number or list of (string or signed integer or boolean or floating point number))` | Script options added to $XDG_CONFIG_HOME/mpv/script-opts/ . See mpv (1) for the full list of options of builtin scripts. |
+| `programs.mpv.profiles` | `attribute set of attribute set of (string or signed integer or boolean or floating point number or list of (string or signed integer or boolean or floating point number))` | Sub-configuration options for specific profiles written to {file}`$XDG_CONFIG_HOME/mpv/mpv.conf`. See {option}`programs.mpv.config` for more information. |
+| `programs.mpv.scriptOpts` | `attribute set of attribute set of (string or signed integer or boolean or floating point number or list of (string or signed integer or boolean or floating point number))` | Script options added to {file}`$XDG_CONFIG_HOME/mpv/script-opts/`. See {manpage}`mpv(1)` for the full list of options of builtin scripts. |
 | `programs.mpv.scripts` | `list of package` | List of scripts to use with mpv. |

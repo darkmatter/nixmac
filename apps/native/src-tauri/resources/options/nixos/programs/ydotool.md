@@ -5,6 +5,6 @@
 All options under `programs.ydotool`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `programs.ydotool.enable` | | |
-| `programs.ydotool.group` | | |
+| --- | --- | --- |
+| `programs.ydotool.enable` | `boolean` | Whether to enable ydotoold system service and {command}`ydotool` for members of {option}`programs.ydotool.group`. . |
+| `programs.ydotool.group` | `string` | Group which users must be in to use {command}`ydotool`. |

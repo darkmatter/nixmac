@@ -5,7 +5,7 @@
 All options under `programs.piston-cli`.
 
 | Option | Type | Description |
-| ------------------------------ | ---------------- | ----------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.piston-cli.enable` | `boolean` | Whether to enable piston-cli, code runner. |
 | `programs.piston-cli.package` | `package` | The piston-cli package to use. |
-| `programs.piston-cli.settings` | `YAML 1.1 value` | Configuration written to $XDG_CONFIG_HOME/piston-cli/config.yml . |
+| `programs.piston-cli.settings` | `YAML 1.1 value` | Configuration written to {file}`$XDG_CONFIG_HOME/piston-cli/config.yml`. |

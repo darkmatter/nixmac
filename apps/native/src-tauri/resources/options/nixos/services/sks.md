@@ -5,11 +5,11 @@
 All options under `services.sks`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.sks.dataDir` | | |
-| `services.sks.enable` | | |
-| `services.sks.extraDbConfig` | | |
-| `services.sks.hkpAddress` | | |
-| `services.sks.hkpPort` | | |
-| `services.sks.package` | | |
-| `services.sks.webroot` | | |
+| --- | --- | --- |
+| `services.sks.dataDir` | `absolute path` | Data directory (-basedir) for SKS, where the database and all configuration files are located (e.g. KDB, PTree, membership and sksconf). |
+| `services.sks.enable` | `boolean` | Whether to enable SKS (synchronizing key server for OpenPGP) and start the database server. You need to create "${dataDir}/dump/\*.gpg" for the initial import. |
+| `services.sks.extraDbConfig` | `string` | Set contents of the files "KDB/DB_CONFIG" and "PTree/DB_CONFIG" within the ${dataDir} directory. This is used to configure options for the database for the sks key server. Documentation of available options are available in the file named "sampleConfig/DB_CONFIG" in the following repository: https://bitbucket.org/skskeyserver/sks-keyserver/src |
+| `services.sks.hkpAddress` | `list of string` | Domain names, IPv4 and/or IPv6 addresses to listen on for HKP requests. |
+| `services.sks.hkpPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | HKP port to listen on. |
+| `services.sks.package` | `package` | The sks package to use. |
+| `services.sks.webroot` | `null or absolute path` | Source directory (will be symlinked, if not null) for the files the built-in webserver should serve. SKS (${pkgs.sks.webSamples}) provides the following examples: "HTML5", "OpenPKG", and "XHTML+ES". The index file can be named index.html, index.htm, index.xhtm, or index.xhtml. Files with the extensions .css, .es, .js, .jpg, .jpeg, .png, or .gif are supported. Subdirectories and filenames with anything other than alphanumeric characters and the '.' character will be ignored. |

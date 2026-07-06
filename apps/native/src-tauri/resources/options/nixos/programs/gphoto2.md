@@ -5,5 +5,5 @@
 All options under `programs.gphoto2`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `programs.gphoto2.enable` | | |
+| --- | --- | --- |
+| `programs.gphoto2.enable` | `boolean` | Whether to configure system to use gphoto2. To grant digital camera access to a user, the user must be part of the camera group: `users.users.alice.extraGroups = ["camera"];` |

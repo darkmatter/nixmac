@@ -5,13 +5,13 @@
 All options under `services.traefik`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.traefik.dataDir` | | |
-| `services.traefik.dynamicConfigFile` | | |
-| `services.traefik.dynamicConfigOptions` | | |
-| `services.traefik.enable` | | |
-| `services.traefik.environmentFiles` | | |
-| `services.traefik.group` | | |
-| `services.traefik.package` | | |
-| `services.traefik.staticConfigFile` | | |
-| `services.traefik.staticConfigOptions` | | |
+| --- | --- | --- |
+| `services.traefik.dataDir` | `absolute path` | Location for any persistent data traefik creates, ie. acme |
+| `services.traefik.dynamicConfigFile` | `null or absolute path` | Path to traefik's dynamic configuration to use. (Using that option has precedence over `dynamicConfigOptions`) |
+| `services.traefik.dynamicConfigOptions` | `TOML value` | Dynamic configuration for Traefik. |
+| `services.traefik.enable` | `boolean` | Whether to enable Traefik web server. |
+| `services.traefik.environmentFiles` | `list of absolute path` | Files to load as environment file. Environment variables from this file will be substituted into the static configuration file using envsubst. |
+| `services.traefik.group` | `string` | Set the group that traefik runs under. For the docker backend this needs to be set to `docker` instead. |
+| `services.traefik.package` | `package` | The traefik package to use. |
+| `services.traefik.staticConfigFile` | `null or absolute path` | Path to traefik's static configuration to use. (Using that option has precedence over `staticConfigOptions` and `dynamicConfigOptions`) |
+| `services.traefik.staticConfigOptions` | `TOML value` | Static configuration for Traefik. |

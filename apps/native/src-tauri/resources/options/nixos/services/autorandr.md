@@ -5,10 +5,33 @@
 All options under `services.autorandr`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.autorandr.defaultTarget` | | |
-| `services.autorandr.enable` | | |
-| `services.autorandr.hooks` | | |
-| `services.autorandr.ignoreLid` | | |
-| `services.autorandr.matchEdid` | | |
-| `services.autorandr.profiles` | | |
+| --- | --- | --- |
+| `services.autorandr.defaultTarget` | `string` | Fallback if no monitor layout can be detected. See the docs (https://github.com/phillipberndt/autorandr/blob/v1.0/README.md#how-to-use) for further reference. |
+| `services.autorandr.enable` | `boolean` | Whether to enable handling of hotplug and sleep events by autorandr. |
+| `services.autorandr.hooks` | `submodule` | Global hook scripts |
+| `services.autorandr.hooks.postswitch` | `attribute set of strings concatenated with "\n"` | Postswitch hook executed after mode switch. |
+| `services.autorandr.hooks.predetect` | `attribute set of strings concatenated with "\n"` | Predetect hook executed before autorandr attempts to run xrandr. |
+| `services.autorandr.hooks.preswitch` | `attribute set of strings concatenated with "\n"` | Preswitch hook executed before mode switch. |
+| `services.autorandr.ignoreLid` | `boolean` | Treat outputs as connected even if their lids are closed |
+| `services.autorandr.matchEdid` | `boolean` | Match displays based on edid instead of name |
+| `services.autorandr.profiles` | `attribute set of (submodule)` | Autorandr profiles specification. |
+| `services.autorandr.profiles.<name>.config` | `attribute set of (submodule)` | Per output profile configuration. |
+| `services.autorandr.profiles.<name>.config.<name>.crtc` | `null or (unsigned integer, meaning >=0)` | Output video display controller. |
+| `services.autorandr.profiles.<name>.config.<name>.dpi` | `null or (positive integer, meaning >0)` | Output DPI configuration. |
+| `services.autorandr.profiles.<name>.config.<name>.enable` | `boolean` | Whether to enable the output. |
+| `services.autorandr.profiles.<name>.config.<name>.gamma` | `string` | Output gamma configuration. |
+| `services.autorandr.profiles.<name>.config.<name>.mode` | `string` | Output resolution. |
+| `services.autorandr.profiles.<name>.config.<name>.position` | `string` | Output position |
+| `services.autorandr.profiles.<name>.config.<name>.primary` | `boolean` | Whether output should be marked as primary |
+| `services.autorandr.profiles.<name>.config.<name>.rate` | `string` | Output framerate. |
+| `services.autorandr.profiles.<name>.config.<name>.rotate` | `null or one of "normal", "left", "right", "inverted"` | Output rotate configuration. |
+| `services.autorandr.profiles.<name>.config.<name>.scale` | `null or (submodule)` | Output scale configuration. Either configure by pixels or a scaling factor. When using pixel method the {manpage}`xrandr(1)` option `--scale-from` will be used; when using factor method the option `--scale` will be used. This option is a shortcut version of the transform option and they are mutually exclusive. |
+| `services.autorandr.profiles.<name>.config.<name>.scale.method` | `one of "factor", "pixel"` | Output scaling method. |
+| `services.autorandr.profiles.<name>.config.<name>.scale.x` | `floating point number or (positive integer, meaning >0)` | Horizontal scaling factor/pixels. |
+| `services.autorandr.profiles.<name>.config.<name>.scale.y` | `floating point number or (positive integer, meaning >0)` | Vertical scaling factor/pixels. |
+| `services.autorandr.profiles.<name>.config.<name>.transform` | `null or (3×3 matrix of floating point numbers)` | Refer to {manpage}`xrandr(1)` for the documentation of the transform matrix. |
+| `services.autorandr.profiles.<name>.fingerprint` | `attribute set of string` | Output name to EDID mapping. Use `autorandr --fingerprint` to get current setup values. |
+| `services.autorandr.profiles.<name>.hooks` | `submodule` | Profile hook scripts. |
+| `services.autorandr.profiles.<name>.hooks.postswitch` | `attribute set of strings concatenated with "\n"` | Postswitch hook executed after mode switch. |
+| `services.autorandr.profiles.<name>.hooks.predetect` | `attribute set of strings concatenated with "\n"` | Predetect hook executed before autorandr attempts to run xrandr. |
+| `services.autorandr.profiles.<name>.hooks.preswitch` | `attribute set of strings concatenated with "\n"` | Preswitch hook executed before mode switch. |

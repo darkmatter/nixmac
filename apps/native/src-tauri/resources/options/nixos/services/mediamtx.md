@@ -5,9 +5,9 @@
 All options under `services.mediamtx`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.mediamtx.allowVideoAccess` | | |
-| `services.mediamtx.enable` | | |
-| `services.mediamtx.env` | | |
-| `services.mediamtx.package` | | |
-| `services.mediamtx.settings` | | |
+| --- | --- | --- |
+| `services.mediamtx.allowVideoAccess` | `boolean` | Whether to enable access to video devices like cameras on the system . |
+| `services.mediamtx.enable` | `boolean` | Whether to enable MediaMTX. |
+| `services.mediamtx.env` | `attribute set of anything` | Extra environment variables for MediaMTX |
+| `services.mediamtx.package` | `package` | The mediamtx package to use. |
+| `services.mediamtx.settings` | `YAML 1.1 value` | Settings for MediaMTX. Refer to the defaults at <https://github.com/bluenviron/mediamtx/blob/main/mediamtx.yml>. |

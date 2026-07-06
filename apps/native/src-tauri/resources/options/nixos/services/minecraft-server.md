@@ -5,13 +5,13 @@
 All options under `services.minecraft-server`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.minecraft-server.dataDir` | | |
-| `services.minecraft-server.declarative` | | |
-| `services.minecraft-server.enable` | | |
-| `services.minecraft-server.eula` | | |
-| `services.minecraft-server.jvmOpts` | | |
-| `services.minecraft-server.openFirewall` | | |
-| `services.minecraft-server.package` | | |
-| `services.minecraft-server.serverProperties` | | |
-| `services.minecraft-server.whitelist` | | |
+| --- | --- | --- |
+| `services.minecraft-server.dataDir` | `absolute path` | Directory to store Minecraft database and other state/data files. |
+| `services.minecraft-server.declarative` | `boolean` | Whether to use a declarative Minecraft server configuration. Only if set to `true`, the options {option}`services.minecraft-server.whitelist` and {option}`services.minecraft-server.serverProperties` will be applied. |
+| `services.minecraft-server.enable` | `boolean` | If enabled, start a Minecraft Server. The server data will be loaded from and saved to {option}`services.minecraft-server.dataDir`. |
+| `services.minecraft-server.eula` | `boolean` | Whether you agree to [Mojangs EULA](https://www.minecraft.net/eula). This option must be set to `true` to run Minecraft server. |
+| `services.minecraft-server.jvmOpts` | `strings concatenated with " "` | JVM options for the Minecraft server. |
+| `services.minecraft-server.openFirewall` | `boolean` | Whether to open ports in the firewall for the server. |
+| `services.minecraft-server.package` | `package` | The minecraft-server package to use. |
+| `services.minecraft-server.serverProperties` | `attribute set of (boolean or signed integer or string)` | Minecraft server properties for the server.properties file. Only has an effect when {option}`services.minecraft-server.declarative` is set to `true`. See <https://minecraft.wiki/w/Server.properties#Java_Edition> for documentation on these values. |
+| `services.minecraft-server.whitelist` | `attribute set of Minecraft UUID` | Whitelisted players, only has an effect when {option}`services.minecraft-server.declarative` is `true` and the whitelist is enabled via {option}`services.minecraft-server.serverProperties` by setting `white-list` to `true`. This is a mapping from Minecraft usernames to UUIDs. You can use <https://mcuuid.net/> to get a Minecraft UUID for a username. |

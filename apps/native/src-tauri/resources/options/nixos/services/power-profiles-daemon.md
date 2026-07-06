@@ -5,6 +5,6 @@
 All options under `services.power-profiles-daemon`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.power-profiles-daemon.enable` | | |
-| `services.power-profiles-daemon.package` | | |
+| --- | --- | --- |
+| `services.power-profiles-daemon.enable` | `boolean` | Whether to enable power-profiles-daemon, a DBus daemon that allows changing system behavior based upon user-selected power profiles. |
+| `services.power-profiles-daemon.package` | `package` | The power-profiles-daemon package to use. |

@@ -5,15 +5,16 @@
 All options under `services.aria2`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.aria2.downloadDir` | | |
-| `services.aria2.downloadDirPermission` | | |
-| `services.aria2.enable` | | |
-| `services.aria2.extraArguments` | | |
-| `services.aria2.listenPortRange` | | |
-| `services.aria2.openPorts` | | |
-| `services.aria2.rpcListenPort` | | |
-| `services.aria2.rpcSecret` | | |
-| `services.aria2.rpcSecretFile` | | |
-| `services.aria2.serviceUMask` | | |
-| `services.aria2.settings` | | |
+| --- | --- | --- |
+| `services.aria2.downloadDirPermission` | `string` | The permission for `settings.dir`. The default is 0770, which denies access for users not in the `aria2` group. You may want to adjust `serviceUMask` as well, which further restricts the file permission for newly created files (i.e. the downloads). |
+| `services.aria2.enable` | `boolean` | Whether or not to enable the headless Aria2 daemon service. Aria2 daemon can be controlled via the RPC interface using one of many WebUIs (http://localhost:6800/ by default). Targets are downloaded to `/var/lib/aria2/Downloads` by default and are accessible to users in the `aria2` group. |
+| `services.aria2.openPorts` | `boolean` | Open listen and RPC ports found in `settings.listen-port` and `settings.rpc-listen-port` options in the firewall. |
+| `services.aria2.rpcSecretFile` | `absolute path` | A file containing the RPC secret authorization token. Read <https://aria2.github.io/manual/en/html/aria2c.html#rpc-auth> to know how this option value is used. |
+| `services.aria2.serviceUMask` | `string` | The file mode creation mask for Aria2 service. The default is 0022 for compatibility reason, as this is the default used by systemd. However, this results in file permission 0644 for new files, and denies `aria2` group member from modifying the file. You may want to set this value to `0002` so you can manage the file more easily. |
+| `services.aria2.settings` | `open submodule of attribute set of (boolean or signed integer or floating point number or (optionally newline-terminated) single-line string)` | Generates the {file}`aria2.conf` file. Refer to [the documentation][0] for all possible settings. \[0\]: <https://aria2.github.io/manual/en/html/aria2c.html#synopsis> |
+| `services.aria2.settings.conf-path` | `(optionally newline-terminated) single-line string` | Configuration file path. |
+| `services.aria2.settings.dir` | `(optionally newline-terminated) single-line string` | Directory to store downloaded files. |
+| `services.aria2.settings.enable-rpc` | `boolean` | Enable JSON-RPC/XML-RPC server. |
+| `services.aria2.settings.listen-port` | `list of attribute set of 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Set UDP listening port range used by DHT(IPv4, IPv6) and UDP tracker. |
+| `services.aria2.settings.rpc-listen-port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Specify a port number for JSON-RPC/XML-RPC server to listen to. Possible Values: 1024-65535 |
+| `services.aria2.settings.save-session` | `(optionally newline-terminated) single-line string` | Save error/unfinished downloads to FILE on exit. |

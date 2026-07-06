@@ -5,6 +5,6 @@
 All options under `services.freenet`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.freenet.enable` | | |
-| `services.freenet.nice` | | |
+| --- | --- | --- |
+| `services.freenet.enable` | `boolean` | Whether to enable Freenet daemon. |
+| `services.freenet.nice` | `integer between -20 and 19 (both inclusive)` | Set the nice level for the Freenet daemon |

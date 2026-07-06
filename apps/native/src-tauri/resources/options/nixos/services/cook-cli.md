@@ -5,10 +5,10 @@
 All options under `services.cook-cli`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.cook-cli.autoStart` | | |
-| `services.cook-cli.basePath` | | |
-| `services.cook-cli.enable` | | |
-| `services.cook-cli.openFirewall` | | |
-| `services.cook-cli.package` | | |
-| `services.cook-cli.port` | | |
+| --- | --- | --- |
+| `services.cook-cli.autoStart` | `boolean` | Whether to start cook-cli server automatically. |
+| `services.cook-cli.basePath` | `string` | Path to the directory cook-cli will look for recipes. |
+| `services.cook-cli.enable` | `boolean` | Whether to enable cook-cli. |
+| `services.cook-cli.openFirewall` | `boolean` | Whether to open the cook-cli server port in the firewall. |
+| `services.cook-cli.package` | `package` | The cook-cli package to use. |
+| `services.cook-cli.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Which port cook-cli server will use. |

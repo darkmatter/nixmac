@@ -5,8 +5,7 @@
 All options under `services.xsettingsd`.
 
 | Option | Type | Description |
-| -------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `services.xsettingsd.configFile` | | |
+| --- | --- | --- |
 | `services.xsettingsd.enable` | `boolean` | Whether to enable xsettingsd. |
 | `services.xsettingsd.package` | `package` | The xsettingsd package to use. |
-| `services.xsettingsd.settings` | `attribute set of (boolean or signed integer or string)` | Xsettingsd options for configuration file. See https://github.com/derat/xsettingsd/wiki/Settings for documentation on these values. |
+| `services.xsettingsd.settings` | `attribute set of (boolean or signed integer or string)` | Xsettingsd options for configuration file. See <https://github.com/derat/xsettingsd/wiki/Settings> for documentation on these values. |

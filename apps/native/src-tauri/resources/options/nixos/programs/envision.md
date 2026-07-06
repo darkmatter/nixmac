@@ -5,7 +5,7 @@
 All options under `programs.envision`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `programs.envision.enable` | | |
-| `programs.envision.openFirewall` | | |
-| `programs.envision.package` | | |
+| --- | --- | --- |
+| `programs.envision.enable` | `boolean` | Whether to enable envision. |
+| `programs.envision.openFirewall` | `boolean` | Whether to enable the default ports in the firewall for the WiVRn server. |
+| `programs.envision.package` | `package` | The envision package to use. |

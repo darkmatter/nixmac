@@ -5,6 +5,6 @@
 All options under `services.ratbagd`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.ratbagd.enable` | | |
-| `services.ratbagd.package` | | |
+| --- | --- | --- |
+| `services.ratbagd.enable` | `boolean` | Whether to enable ratbagd for configuring gaming mice. |
+| `services.ratbagd.package` | `package` | The libratbag package to use. |

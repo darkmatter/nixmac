@@ -5,6 +5,6 @@
 All options under `programs.mangowc`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `programs.mangowc.enable` | | |
-| `programs.mangowc.package` | | |
+| --- | --- | --- |
+| `programs.mangowc.enable` | `boolean` | Whether to enable MangoWC, a Wayland compositor based on dwl and scenefx. |
+| `programs.mangowc.package` | `package` | The mangowc package to use. |

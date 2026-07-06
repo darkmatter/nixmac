@@ -5,7 +5,7 @@
 All options under `programs.benchexec`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `programs.benchexec.enable` | | |
-| `programs.benchexec.package` | | |
-| `programs.benchexec.users` | | |
+| --- | --- | --- |
+| `programs.benchexec.enable` | `boolean` | Whether to enable BenchExec. |
+| `programs.benchexec.package` | `package` | The benchexec package to use. |
+| `programs.benchexec.users` | `list of (string or signed integer)` | Users that intend to use BenchExec. Provide usernames of users that are configured via {option}`users.users` as string, and UIDs of "mutable users" as integers. Control group delegation will be configured via systemd. For more information, see <https://github.com/sosy-lab/benchexec/blob/3.18/doc/INSTALL.md#setting-up-cgroups>. |

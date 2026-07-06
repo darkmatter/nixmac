@@ -5,7 +5,7 @@
 All options under `services.synapse-bt`.
 
 | Option | Type | Description |
-| --------------------------------- | ---------------- | --------------------------------------------------- |
+| --- | --- | --- |
 | `services.synapse-bt.downloadDir` | `absolute path` | Download directory for Synapse BitTorrent. |
 | `services.synapse-bt.enable` | `boolean` | Whether to run Synapse BitTorrent Daemon. |
 | `services.synapse-bt.extraConfig` | `attribute set` | Extra configuration options for Synapse BitTorrent. |

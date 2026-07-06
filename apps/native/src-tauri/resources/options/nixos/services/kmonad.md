@@ -5,8 +5,18 @@
 All options under `services.kmonad`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.kmonad.enable` | | |
-| `services.kmonad.extraArgs` | | |
-| `services.kmonad.keyboards` | | |
-| `services.kmonad.package` | | |
+| --- | --- | --- |
+| `services.kmonad.enable` | `boolean` | Whether to enable KMonad: an advanced keyboard manager. |
+| `services.kmonad.extraArgs` | `list of string` | Extra arguments to pass to KMonad. |
+| `services.kmonad.keyboards` | `attribute set of (submodule)` | Keyboard configuration. |
+| `services.kmonad.keyboards.<name>.config` | `strings concatenated with "\n"` | Keyboard configuration. |
+| `services.kmonad.keyboards.<name>.defcfg.allowCommands` | `boolean` | Whether to enable keys to run shell commands. |
+| `services.kmonad.keyboards.<name>.defcfg.compose.delay` | `unsigned integer, meaning >=0` | The delay (in milliseconds) between compose key sequences. |
+| `services.kmonad.keyboards.<name>.defcfg.compose.key` | `null or string` | The (optional) compose key to use. |
+| `services.kmonad.keyboards.<name>.defcfg.enable` | `boolean` | Whether to enable automatic generation of the defcfg block. When this option is set to true, the config option for this keyboard should not include a defcfg block . |
+| `services.kmonad.keyboards.<name>.defcfg.fallthrough` | `boolean` | Whether to enable re-emitting unhandled key events. |
+| `services.kmonad.keyboards.<name>.device` | `absolute path` | Path to the keyboard's device file. |
+| `services.kmonad.keyboards.<name>.enableHardening` | `boolean` | Whether to enable systemd hardening. ::: {.note} If KMonad is used to execute shell commands, hardening may make some of them fail. ::: |
+| `services.kmonad.keyboards.<name>.extraGroups` | `list of string` | Extra permission groups to attach to the KMonad instance for this keyboard. Since KMonad runs as an unprivileged user, it may sometimes need extra permissions in order to read the keyboard device file. If your keyboard's device file isn't in the input group, you'll need to list its group in this option. |
+| `services.kmonad.keyboards.<name>.name` | `string` | Keyboard name. |
+| `services.kmonad.package` | `package` | The KMonad package to use. |

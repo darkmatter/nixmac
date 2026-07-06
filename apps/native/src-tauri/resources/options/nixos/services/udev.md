@@ -5,10 +5,9 @@
 All options under `services.udev`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.udev.enable` | | |
-| `services.udev.extraHwdb` | | |
-| `services.udev.extraRules` | | |
-| `services.udev.initrdRules` | | |
-| `services.udev.packages` | | |
-| `services.udev.path` | | |
+| --- | --- | --- |
+| `services.udev.enable` | `boolean` | Whether to enable udev, a device manager for the Linux kernel. |
+| `services.udev.extraHwdb` | `strings concatenated with "\n"` | Additional {command}`hwdb` files. They'll be written into file {file}`99-local.hwdb`. Thus they are read after all other files. |
+| `services.udev.extraRules` | `strings concatenated with "\n"` | Additional {command}`udev` rules. They'll be written into file {file}`99-local.rules`. Thus they are read and applied after all other rules. |
+| `services.udev.packages` | `list of absolute path` | List of packages containing {command}`udev` rules. All files found in {file}`«pkg»/etc/udev/rules.d` and {file}`«pkg»/lib/udev/rules.d` will be included. |
+| `services.udev.path` | `list of absolute path` | Packages added to the {env}`PATH` environment variable when executing programs from Udev rules. coreutils, gnu{sed,grep}, util-linux and config.systemd.package are automatically included. |

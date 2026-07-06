@@ -5,8 +5,7 @@
 All options under `services.pantheon`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.pantheon.apps.enable` | | |
-| `services.pantheon.contractor.enable` | | |
-| `services.pantheon.files` | | |
-| `services.pantheon.parental-controls.enable` | | |
+| --- | --- | --- |
+| `services.pantheon.apps.enable` | `boolean` | Whether to enable Pantheon default applications. |
+| `services.pantheon.contractor.enable` | `boolean` | Whether to enable contractor, a desktop-wide extension service used by Pantheon. |
+| `services.pantheon.parental-controls.enable` | `boolean` | Whether to enable Pantheon parental controls daemon. |

@@ -5,10 +5,10 @@
 All options under `services.homebox`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.homebox.database.createLocally` | | |
-| `services.homebox.enable` | | |
-| `services.homebox.group` | | |
-| `services.homebox.package` | | |
-| `services.homebox.settings` | | |
-| `services.homebox.user` | | |
+| --- | --- | --- |
+| `services.homebox.database.createLocally` | `boolean` | Configure local PostgreSQL database server for Homebox. |
+| `services.homebox.enable` | `boolean` | Whether to enable homebox. |
+| `services.homebox.group` | `string` | Group under which Homebox runs. |
+| `services.homebox.package` | `package` | The homebox package to use. |
+| `services.homebox.settings` | `open submodule of attribute set of (null or string)` | The homebox configuration as environment variables. For definitions and available options see the upstream [documentation](https://homebox.software/en/configure/#configure-homebox). |
+| `services.homebox.user` | `string` | User account under which Homebox runs. |

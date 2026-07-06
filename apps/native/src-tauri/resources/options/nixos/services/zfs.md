@@ -5,30 +5,30 @@
 All options under `services.zfs`.
 
 | Option | Type | Description |
-| ----------------------------------------------- | ---- | ----------- |
-| `services.zfs.autoReplication.enable` | | |
-| `services.zfs.autoReplication.followDelete` | | |
-| `services.zfs.autoReplication.host` | | |
-| `services.zfs.autoReplication.identityFilePath` | | |
-| `services.zfs.autoReplication.localFilesystem` | | |
-| `services.zfs.autoReplication.package` | | |
-| `services.zfs.autoReplication.recursive` | | |
-| `services.zfs.autoReplication.remoteFilesystem` | | |
-| `services.zfs.autoReplication.username` | | |
-| `services.zfs.autoScrub.enable` | | |
-| `services.zfs.autoScrub.interval` | | |
-| `services.zfs.autoScrub.pools` | | |
-| `services.zfs.autoScrub.randomizedDelaySec` | | |
-| `services.zfs.autoSnapshot.daily` | | |
-| `services.zfs.autoSnapshot.enable` | | |
-| `services.zfs.autoSnapshot.flags` | | |
-| `services.zfs.autoSnapshot.frequent` | | |
-| `services.zfs.autoSnapshot.hourly` | | |
-| `services.zfs.autoSnapshot.monthly` | | |
-| `services.zfs.autoSnapshot.weekly` | | |
-| `services.zfs.expandOnBoot` | | |
-| `services.zfs.trim.enable` | | |
-| `services.zfs.trim.interval` | | |
-| `services.zfs.trim.randomizedDelaySec` | | |
-| `services.zfs.zed.enableMail` | | |
-| `services.zfs.zed.settings` | | |
+| --- | --- | --- |
+| `services.zfs.autoReplication.enable` | `boolean` | Whether to enable ZFS snapshot replication. |
+| `services.zfs.autoReplication.followDelete` | `boolean` | Remove remote snapshots that don't have a local correspondent. |
+| `services.zfs.autoReplication.host` | `string` | Remote host where snapshots should be sent. `lz4` is expected to be installed on this host. |
+| `services.zfs.autoReplication.identityFilePath` | `absolute path` | Path to SSH key used to login to host. |
+| `services.zfs.autoReplication.localFilesystem` | `string` | Local ZFS filesystem from which snapshots should be sent. Defaults to the attribute name. |
+| `services.zfs.autoReplication.package` | `package` | The zfs-replicate package to use. |
+| `services.zfs.autoReplication.recursive` | `boolean` | Recursively discover snapshots to send. |
+| `services.zfs.autoReplication.remoteFilesystem` | `string` | Remote ZFS filesystem where snapshots should be sent. |
+| `services.zfs.autoReplication.username` | `string` | Username used by SSH to login to remote host. |
+| `services.zfs.autoScrub.enable` | `boolean` | Whether to enable periodic scrubbing of ZFS pools. |
+| `services.zfs.autoScrub.interval` | `string` | Systemd calendar expression when to scrub ZFS pools. See {manpage}`systemd.time(7)`. |
+| `services.zfs.autoScrub.pools` | `list of string` | List of ZFS pools to periodically scrub. If empty, all pools will be scrubbed. |
+| `services.zfs.autoScrub.randomizedDelaySec` | `string` | Add a randomized delay before each ZFS autoscrub. The delay will be chosen between zero and this value. This value must be a time span in the format specified by {manpage}`systemd.time(7)` |
+| `services.zfs.autoSnapshot.daily` | `signed integer` | Number of daily auto-snapshots that you wish to keep. |
+| `services.zfs.autoSnapshot.enable` | `boolean` | Enable the (OpenSolaris-compatible) ZFS auto-snapshotting service. Note that you must set the `com.sun:auto-snapshot` property to `true` on all datasets which you wish to auto-snapshot. You can override a child dataset to use, or not use auto-snapshotting by setting its flag with the given interval: `zfs set com.sun:auto-snapshot:weekly=false DATASET` |
+| `services.zfs.autoSnapshot.flags` | `string` | Flags to pass to the zfs-auto-snapshot command. Run `zfs-auto-snapshot` (without any arguments) to see available flags. If it's not too inconvenient for snapshots to have timestamps in UTC, it is suggested that you append `--utc` to the list of default options (see example). Otherwise, snapshot names can cause name conflicts or apparent time reversals due to daylight savings, timezone or other date/time changes. |
+| `services.zfs.autoSnapshot.frequent` | `signed integer` | Number of frequent (15-minute) auto-snapshots that you wish to keep. |
+| `services.zfs.autoSnapshot.hourly` | `signed integer` | Number of hourly auto-snapshots that you wish to keep. |
+| `services.zfs.autoSnapshot.monthly` | `signed integer` | Number of monthly auto-snapshots that you wish to keep. |
+| `services.zfs.autoSnapshot.weekly` | `signed integer` | Number of weekly auto-snapshots that you wish to keep. |
+| `services.zfs.expandOnBoot` | `one of "disabled", "all" or list of string` | After importing, expand each device in the specified pools. Set the value to the plain string "all" to expand all pools on boot: services.zfs.expandOnBoot = "all"; or set the value to a list of pools to expand the disks of specific pools: services.zfs.expandOnBoot = [ "tank" "dozer" ]; |
+| `services.zfs.trim.enable` | `boolean` | Whether to enable periodic TRIM on all ZFS pools. |
+| `services.zfs.trim.interval` | `string` | How often we run trim. For most desktop and server systems a sufficient trimming frequency is once a week. The format is described in {manpage}`systemd.time(7)`. |
+| `services.zfs.trim.randomizedDelaySec` | `string` | Add a randomized delay before each ZFS trim. The delay will be chosen between zero and this value. This value must be a time span in the format specified by {manpage}`systemd.time(7)` |
+| `services.zfs.zed.enableMail` | `boolean` | Whether to enable ZED's ability to send emails. |
+| `services.zfs.zed.settings` | `attribute set of (string or signed integer or boolean or list of string)` | ZFS Event Daemon /etc/zfs/zed.d/zed.rc content See {manpage}`zed(8)` for details on ZED and the scripts in /etc/zfs/zed.d to find the possible variables |

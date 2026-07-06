@@ -5,8 +5,8 @@
 All options under `services.whitebophir`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.whitebophir.enable` | | |
-| `services.whitebophir.listenAddress` | | |
-| `services.whitebophir.package` | | |
-| `services.whitebophir.port` | | |
+| --- | --- | --- |
+| `services.whitebophir.enable` | `boolean` | Whether to enable whitebophir, an online collaborative whiteboard server (persistent state will be maintained under {file}`/var/lib/whitebophir`). |
+| `services.whitebophir.listenAddress` | `string` | Address to listen on (use 0.0.0.0 to allow access from any address). |
+| `services.whitebophir.package` | `package` | The whitebophir package to use. |
+| `services.whitebophir.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to bind to. |

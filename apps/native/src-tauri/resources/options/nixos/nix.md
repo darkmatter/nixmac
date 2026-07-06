@@ -5,60 +5,69 @@
 All options under `nix`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `nix.allowedUsers` | | |
-| `nix.autoOptimiseStore` | | |
-| `nix.binaryCachePublicKeys` | | |
-| `nix.binaryCaches` | | |
-| `nix.buildCores` | | |
-| `nix.buildMachines` | | |
-| `nix.channel.enable` | | |
-| `nix.checkAllErrors` | | |
-| `nix.checkConfig` | | |
-| `nix.chrootDirs` | | |
-| `nix.daemonCPUSchedPolicy` | | |
-| `nix.daemonGroup` | | |
-| `nix.daemonIONiceLevel` | | |
-| `nix.daemonIOSchedClass` | | |
-| `nix.daemonIOSchedPriority` | | |
-| `nix.daemonNiceLevel` | | |
-| `nix.daemonUser` | | |
-| `nix.distributedBuilds` | | |
-| `nix.enable` | | |
-| `nix.envVars` | | |
-| `nix.extraOptions` | | |
-| `nix.firewall.allowLoopback` | | |
-| `nix.firewall.allowNonTCPUDP` | | |
-| `nix.firewall.allowPrivateNetworks` | | |
-| `nix.firewall.allowedTCPPorts` | | |
-| `nix.firewall.allowedUDPPorts` | | |
-| `nix.firewall.enable` | | |
-| `nix.firewall.extraNftablesRules` | | |
-| `nix.gc.automatic` | | |
-| `nix.gc.dates` | | |
-| `nix.gc.options` | | |
-| `nix.gc.persistent` | | |
-| `nix.gc.randomizedDelaySec` | | |
-| `nix.maxJobs` | | |
-| `nix.nixPath` | | |
-| `nix.nrBuildUsers` | | |
-| `nix.optimise.automatic` | | |
-| `nix.optimise.dates` | | |
-| `nix.optimise.persistent` | | |
-| `nix.optimise.randomizedDelaySec` | | |
-| `nix.package` | | |
-| `nix.readOnlyStore` | | |
-| `nix.registry` | | |
-| `nix.requireSignedBinaryCaches` | | |
-| `nix.sandboxPaths` | | |
-| `nix.settings` | | |
-| `nix.sshServe.enable` | | |
-| `nix.sshServe.keys` | | |
-| `nix.sshServe.protocol` | | |
-| `nix.sshServe.trusted` | | |
-| `nix.sshServe.write` | | |
-| `nix.systemFeatures` | | |
-| `nix.trustedBinaryCaches` | | |
-| `nix.trustedUsers` | | |
-| `nix.useChroot` | | |
-| `nix.useSandbox` | | |
+| --- | --- | --- |
+| `nix.buildMachines` | `list of (submodule)` | This option lists the machines to be used if distributed builds are enabled (see {option}`nix.distributedBuilds`). Nix will perform derivations on those machines via SSH by copying the inputs to the Nix store on the remote machine, starting the build, then copying the output back to the local Nix store. |
+| `nix.buildMachines.*.hostName` | `string` | The hostname of the build machine. |
+| `nix.buildMachines.*.mandatoryFeatures` | `list of string` | A list of features mandatory for this builder. The builder will be ignored for derivations that don't require all features in this list. All mandatory features are automatically included in {var}`supportedFeatures`. |
+| `nix.buildMachines.*.maxJobs` | `signed integer` | The number of concurrent jobs the build machine supports. The build machine will enforce its own limits, but this allows hydra to schedule better since there is no work-stealing between build machines. |
+| `nix.buildMachines.*.protocol` | `one of <null>, "ssh", "ssh-ng"` | The protocol used for communicating with the build machine. Use `ssh-ng` if your remote builder and your local Nix version support that improved protocol. Use `null` when trying to change the special localhost builder without a protocol which is for example used by hydra. |
+| `nix.buildMachines.*.publicHostKey` | `null or string` | The (base64-encoded) public host key of this builder. The field is calculated via {command}`base64 -w0 /etc/ssh/ssh_host_type_key.pub`. If null, SSH will use its regular known-hosts file when connecting. |
+| `nix.buildMachines.*.speedFactor` | `signed integer` | The relative speed of this builder. This is an arbitrary integer that indicates the speed of this builder, relative to other builders. Higher is faster. |
+| `nix.buildMachines.*.sshKey` | `null or string` | The path to the SSH private key with which to authenticate on the build machine. The private key must not have a passphrase. If null, the building user (root on NixOS machines) must have an appropriate ssh configuration to log in non-interactively. Note that for security reasons, this path must point to a file in the local filesystem, *not* to the nix store. |
+| `nix.buildMachines.*.sshUser` | `null or string` | The username to log in as on the remote host. This user must be able to log in and run nix commands non-interactively. It must also be privileged to build derivations, so must be included in {option}`nix.settings.trusted-users`. |
+| `nix.buildMachines.*.supportedFeatures` | `list of string` | A list of features supported by this builder. The builder will be ignored for derivations that require features not in this list. |
+| `nix.buildMachines.*.system` | `null or string` | The system type the build machine can execute derivations on. Either this attribute or {var}`systems` must be present, where {var}`system` takes precedence if both are set. |
+| `nix.buildMachines.*.systems` | `list of string` | The system types the build machine can execute derivations on. Either this attribute or {var}`system` must be present, where {var}`system` takes precedence if both are set. |
+| `nix.channel.enable` | `boolean` | Whether the `nix-channel` command and state files are made available on the machine. The following files are initialized when enabled: - `/nix/var/nix/profiles/per-user/root/channels` - `/root/.nix-channels` - `$HOME/.nix-defexpr/channels` (on login) Disabling this option will not remove the state files from the system. |
+| `nix.checkAllErrors` | `boolean` | If enabled, checks the nix.conf parsing for any kind of error. When disabled, checks only for unknown settings. |
+| `nix.checkConfig` | `boolean` | If enabled, checks that Nix can parse the generated nix.conf. |
+| `nix.daemonCPUSchedPolicy` | `one of "other", "batch", "idle"` | Nix daemon process CPU scheduling policy. This policy propagates to build processes. `other` is the default scheduling policy for regular tasks. The `batch` policy is similar to `other`, but optimised for non-interactive tasks. `idle` is for extremely low-priority tasks that should only be run when no other task requires CPU time. Please note that while using the `idle` policy may greatly improve responsiveness of a system performing expensive builds, it may also slow down and potentially starve crucial configuration updates during load. `idle` may therefore be a sensible policy for systems that experience only intermittent phases of high CPU load, such as desktop or portable computers used interactively. Other systems should use the `other` or `batch` policy instead. For more fine-grained resource control, please refer to {manpage}`systemd.resource-control(5)` and adjust {option}`systemd.services.nix-daemon` directly. |
+| `nix.daemonGroup` | `string` | Group to use to run the Nix daemon. |
+| `nix.daemonIOSchedClass` | `one of "best-effort", "idle"` | Nix daemon process I/O scheduling class. This class propagates to build processes. `best-effort` is the default class for regular tasks. The `idle` class is for extremely low-priority tasks that should only perform I/O when no other task does. Please note that while using the `idle` scheduling class can improve responsiveness of a system performing expensive builds, it might also slow down or starve crucial configuration updates during load. `idle` may therefore be a sensible class for systems that experience only intermittent phases of high I/O load, such as desktop or portable computers used interactively. Other systems should use the `best-effort` class. |
+| `nix.daemonIOSchedPriority` | `signed integer` | Nix daemon process I/O scheduling priority. This priority propagates to build processes. The supported priorities depend on the scheduling policy: With idle, priorities are not used in scheduling decisions. best-effort supports values in the range 0 (high) to 7 (low). |
+| `nix.daemonUser` | `string` | User to use to run the Nix daemon. If this is not "root" then the Nix daemon will set several settings to preserve functionality. When setting this option, you must also set `nix.daemonGroup`. |
+| `nix.distributedBuilds` | `boolean` | Whether to distribute builds to the machines listed in {option}`nix.buildMachines`. |
+| `nix.enable` | `boolean` | Whether to enable Nix. Disabling Nix makes the system hard to modify and the Nix programs and configuration will not be made available by NixOS itself. |
+| `nix.extraOptions` | `strings concatenated with "\n"` | Additional text appended to {file}`nix.conf`. |
+| `nix.firewall.allowLoopback` | `unspecified value` | Whether to allow traffic on the loopback interface. Traffic is still subject to protocol/port rules |
+| `nix.firewall.allowNonTCPUDP` | `boolean` | Whether to allow traffic that is neither TCP nor UDP |
+| `nix.firewall.allowPrivateNetworks` | `unspecified value` | Whether to allow traffic to local networks. Traffic is still subject to protocol/port rules. Note that this option may break DNS resolution when the DNS resolver is in a local network |
+| `nix.firewall.allowedTCPPorts` | `list of ((optionally newline-terminated) single-line string or 16 bit unsigned integer; between 0 and 65535 (both inclusive))` | TCP ports to which traffic is allowed. Specifying no ports will allow all TCP traffic |
+| `nix.firewall.allowedUDPPorts` | `list of ((optionally newline-terminated) single-line string or 16 bit unsigned integer; between 0 and 65535 (both inclusive))` | UDP ports to which traffic is allowed. Specifying no ports will allow all UDP traffic |
+| `nix.firewall.enable` | `boolean` | Whether to enable firewalling for outgoing traffic of the nix daemon. |
+| `nix.firewall.extraNftablesRules` | `list of (optionally newline-terminated) single-line string` | Extra nftables rules to prepend to the generated ones |
+| `nix.gc.automatic` | `boolean` | Automatically run the garbage collector at a specific time. |
+| `nix.gc.dates` | `(optionally newline-terminated) single-line string or list of string` | How often or when garbage collection is performed. For most desktop and server systems a sufficient garbage collection is once a week. This value must be a calendar event in the format specified by {manpage}`systemd.time(7)`. |
+| `nix.gc.options` | `(optionally newline-terminated) single-line string` | Options given to [`nix-collect-garbage`](https://nixos.org/manual/nix/stable/command-ref/nix-collect-garbage) when the garbage collector is run automatically. |
+| `nix.gc.persistent` | `boolean` | Takes a boolean argument. If true, the time when the service unit was last triggered is stored on disk. When the timer is activated, the service unit is triggered immediately if it would have been triggered at least once during the time when the timer was inactive. Such triggering is nonetheless subject to the delay imposed by RandomizedDelaySec=. This is useful to catch up on missed runs of the service when the system was powered down. |
+| `nix.gc.randomizedDelaySec` | `(optionally newline-terminated) single-line string` | Add a randomized delay before each garbage collection. The delay will be chosen between zero and this value. This value must be a time span in the format specified by {manpage}`systemd.time(7)` |
+| `nix.nixPath` | `list of string` | The default Nix expression search path, used by the Nix evaluator to look up paths enclosed in angle brackets (e.g. `<nixpkgs>`). |
+| `nix.nrBuildUsers` | `signed integer` | Number of `nixbld` user accounts created to perform secure concurrent builds. If you receive an error message saying that “all build users are currently in use”, you should increase this value. |
+| `nix.optimise.automatic` | `boolean` | Automatically run the nix store optimiser at a specific time. |
+| `nix.optimise.dates` | `(optionally newline-terminated) single-line string or list of string` | Specification (in the format described by {manpage}`systemd.time(7)`) of the time at which the optimiser will run. |
+| `nix.optimise.persistent` | `boolean` | Takes a boolean argument. If true, the time when the service unit was last triggered is stored on disk. When the timer is activated, the service unit is triggered immediately if it would have been triggered at least once during the time when the timer was inactive. Such triggering is nonetheless subject to the delay imposed by RandomizedDelaySec=. This is useful to catch up on missed runs of the service when the system was powered down. |
+| `nix.optimise.randomizedDelaySec` | `(optionally newline-terminated) single-line string` | Add a randomized delay before the optimizer will run. The delay will be chosen between zero and this value. This value must be a time span in the format specified by {manpage}`systemd.time(7)` |
+| `nix.package` | `package` | This option specifies the Nix package instance to use throughout the system. |
+| `nix.registry` | `attribute set of (submodule)` | A system-wide flake registry. See {manpage}`nix3-registry(1)` for more information. |
+| `nix.registry.<name>.exact` | `boolean` | Whether the {option}`from` reference needs to match exactly. If set, a {option}`from` reference like `nixpkgs` does not match with a reference like `nixpkgs/nixos-20.03`. |
+| `nix.registry.<name>.flake` | `null or (attribute set)` | The flake input {option}`from` is rewritten to. |
+| `nix.registry.<name>.from` | `attribute set of (string or signed integer or boolean or absolute path or package)` | The flake reference to be rewritten. The format of flake references is described in {manpage}`nix3-flake(1)`. |
+| `nix.registry.<name>.to` | `attribute set of (string or signed integer or boolean or absolute path or package)` | The flake reference {option}`from` is rewritten to. The format of flake references is described in {manpage}`nix3-flake(1)`. |
+| `nix.settings` | `open submodule of attribute set of (Nix config atom (null, bool, int, float, str, path or package) or list of (Nix config atom (null, bool, int, float, str, path or package)))` | Configuration for Nix, see <https://nixos.org/manual/nix/stable/command-ref/conf-file.html> or {manpage}`nix.conf(5)` for available options. The value declared here will be translated directly to the key-value pairs Nix expects. You can use {command}`nix-instantiate --eval --strict '<nixpkgs/nixos>' -A config.nix.settings` to view the current value. By default it is empty. Nix configurations defined under {option}`nix.*` will be translated and applied to this option. In addition, configuration specified in {option}`nix.extraOptions` will be appended verbatim to the resulting config file. |
+| `nix.settings.allowed-users` | `list of string` | A list of names of users (separated by whitespace) that are allowed to connect to the Nix daemon. As with {option}`nix.settings.trusted-users`, you can specify groups by prefixing them with `@`. Also, you can allow all users by specifying `*`. The default is `*`. Note that trusted users are always allowed to connect. |
+| `nix.settings.auto-optimise-store` | `boolean` | If set to true, Nix automatically detects files in the store that have identical contents, and replaces them with hard links to a single copy. This saves disk space. If set to false (the default), you can still run nix-store --optimise to get rid of duplicate files. |
+| `nix.settings.cores` | `signed integer` | This option defines the maximum number of concurrent tasks during one build. It affects, e.g., -j option for make. The special value 0 means that the builder should use all available CPU cores in the system. Some builds may become non-deterministic with this option; use with care! Packages will only be affected if enableParallelBuilding is set for them. |
+| `nix.settings.extra-sandbox-paths` | `list of string` | Directories from the host filesystem to be included in the sandbox. |
+| `nix.settings.max-jobs` | `signed integer or value "auto" (singular enum)` | This option defines the maximum number of jobs that Nix will try to build in parallel. The default is auto, which means it will use all available logical cores. It is recommend to set it to the total number of logical cores in your system (e.g., 16 for two CPUs with 4 cores each and hyper-threading). |
+| `nix.settings.require-sigs` | `boolean` | If enabled (the default), Nix will only download binaries from binary caches if they are cryptographically signed with any of the keys listed in {option}`nix.settings.trusted-public-keys`. If disabled, signatures are neither required nor checked, so it's strongly recommended that you use only trustworthy caches and https to prevent man-in-the-middle attacks. |
+| `nix.settings.sandbox` | `boolean or value "relaxed" (singular enum)` | If set, Nix will perform builds in a sandboxed environment that it will set up automatically for each build. This prevents impurities in builds by disallowing access to dependencies outside of the Nix store by using network and mount namespaces in a chroot environment. This is enabled by default even though it has a possible performance impact due to the initial setup time of a sandbox for each build. It doesn't affect derivation hashes, so changing this option will not trigger a rebuild of packages. When set to "relaxed", this option permits derivations that set `__noChroot = true;` to run outside of the sandboxed environment. Exercise caution when using this mode of operation! It is intended to be a quick hack when building with packages that are not easily setup to be built reproducibly. |
+| `nix.settings.substituters` | `list of string` | List of binary cache URLs used to obtain pre-built binaries of Nix packages. By default https://cache.nixos.org/ is added. |
+| `nix.settings.system-features` | `list of string` | The set of features supported by the machine. Derivations can express dependencies on system features through the `requiredSystemFeatures` attribute. |
+| `nix.settings.trusted-public-keys` | `list of string` | List of public keys used to sign binary caches. If {option}`nix.settings.trusted-public-keys` is enabled, then Nix will use a binary from a binary cache if and only if it is signed by *any* of the keys listed here. By default, only the key for `cache.nixos.org` is included. |
+| `nix.settings.trusted-substituters` | `list of string` | List of binary cache URLs that non-root users can use (in addition to those specified using {option}`nix.settings.substituters`) by passing `--option binary-caches` to Nix commands. |
+| `nix.settings.trusted-users` | `list of string` | A list of names of users that have additional rights when connecting to the Nix daemon, such as the ability to specify additional binary caches, or to import unsigned NARs. You can also specify groups by prefixing them with `@`; for instance, `@wheel` means all users in the wheel group. |
+| `nix.sshServe.enable` | `boolean` | Whether to enable serving the Nix store as a remote store via SSH. |
+| `nix.sshServe.keys` | `list of string` | A list of SSH public keys allowed to access the binary cache via SSH. |
+| `nix.sshServe.protocol` | `one of "ssh", "ssh-ng"` | The specific Nix-over-SSH protocol to use. |
+| `nix.sshServe.trusted` | `boolean` | Whether to add nix-ssh to the nix.settings.trusted-users |
+| `nix.sshServe.write` | `boolean` | Whether to enable writing to the Nix store as a remote store via SSH. Note: by default, the sshServe user is named nix-ssh and is not a trusted-user. nix-ssh should be added to the {option}`nix.sshServe.trusted` option in most use cases, such as allowing remote building of derivations to anonymous people based on ssh key |

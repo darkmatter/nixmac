@@ -5,7 +5,7 @@
 All options under `services.torque`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.torque.mom.enable` | | |
-| `services.torque.mom.serverNode` | | |
-| `services.torque.server.enable` | | |
+| --- | --- | --- |
+| `services.torque.mom.enable` | `boolean` | Whether to enable torque computing node. |
+| `services.torque.mom.serverNode` | `string` | Hostname running pbs server. |
+| `services.torque.server.enable` | `boolean` | Whether to enable torque server. |

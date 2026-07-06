@@ -5,11 +5,10 @@
 All options under `services.thelounge`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.thelounge.enable` | | |
-| `services.thelounge.extraConfig` | | |
-| `services.thelounge.package` | | |
-| `services.thelounge.plugins` | | |
-| `services.thelounge.port` | | |
-| `services.thelounge.private` | | |
-| `services.thelounge.public` | | |
+| --- | --- | --- |
+| `services.thelounge.enable` | `boolean` | Whether to enable The Lounge web IRC client. |
+| `services.thelounge.extraConfig` | `attribute set` | The Lounge's {file}`config.js` contents as attribute set (will be converted to JSON to generate the configuration file). The options defined here will be merged to the default configuration file. Note: In case of duplicate configuration, options from {option}`extraConfig` have priority. Documentation: <https://thelounge.chat/docs/server/configuration> |
+| `services.thelounge.package` | `package` | The thelounge package to use. |
+| `services.thelounge.plugins` | `list of package` | The Lounge plugins to install. Plugins can be found in `pkgs.theLoungePlugins.plugins` and `pkgs.theLoungePlugins.themes`. |
+| `services.thelounge.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | TCP port to listen on for http connections. |
+| `services.thelounge.public` | `boolean` | Make your The Lounge instance public. Setting this to `false` will require you to configure user accounts by using the ({command}`thelounge`) command or by adding entries in {file}`/var/lib/thelounge/users`. You might need to restart The Lounge after making changes to the state directory. |

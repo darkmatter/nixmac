@@ -5,7 +5,25 @@
 All options under `services.watchdogd`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.watchdogd.enable` | | |
-| `services.watchdogd.package` | | |
-| `services.watchdogd.settings` | | |
+| --- | --- | --- |
+| `services.watchdogd.enable` | `boolean` | Whether to enable watchdogd, an advanced system & process supervisor. |
+| `services.watchdogd.package` | `package` | The watchdogd package to use. |
+| `services.watchdogd.settings` | `open submodule of attribute set of (boolean or signed integer or floating point number or string or attribute set of (boolean or signed integer or floating point number or string))` | Configuration to put in {file}`watchdogd.conf`. See {manpage}`watchdogd.conf(5)` for more details. |
+| `services.watchdogd.settings.filenr.critical` | `nonnegative integer or floating point number, meaning >=0` | The critical watermark level. Alert sent to log, followed by reboot or script action. |
+| `services.watchdogd.settings.filenr.enabled` | `boolean` | Whether to enable watchdogd plugin filenr. |
+| `services.watchdogd.settings.filenr.interval` | `unsigned integer, meaning >=0` | Amount of seconds between every poll. |
+| `services.watchdogd.settings.filenr.logmark` | `boolean` | Whether to log current stats every poll interval. |
+| `services.watchdogd.settings.filenr.warning` | `nonnegative integer or floating point number, meaning >=0` | The high watermark level. Alert sent to log. |
+| `services.watchdogd.settings.interval` | `unsigned integer, meaning >=0` | The kick interval, i.e. how often {manpage}`watchdogd(8)` should reset the WDT timer. |
+| `services.watchdogd.settings.loadavg.critical` | `nonnegative integer or floating point number, meaning >=0` | The critical watermark level. Alert sent to log, followed by reboot or script action. |
+| `services.watchdogd.settings.loadavg.enabled` | `boolean` | Whether to enable watchdogd plugin loadavg. |
+| `services.watchdogd.settings.loadavg.interval` | `unsigned integer, meaning >=0` | Amount of seconds between every poll. |
+| `services.watchdogd.settings.loadavg.logmark` | `boolean` | Whether to log current stats every poll interval. |
+| `services.watchdogd.settings.loadavg.warning` | `nonnegative integer or floating point number, meaning >=0` | The high watermark level. Alert sent to log. |
+| `services.watchdogd.settings.meminfo.critical` | `nonnegative integer or floating point number, meaning >=0` | The critical watermark level. Alert sent to log, followed by reboot or script action. |
+| `services.watchdogd.settings.meminfo.enabled` | `boolean` | Whether to enable watchdogd plugin meminfo. |
+| `services.watchdogd.settings.meminfo.interval` | `unsigned integer, meaning >=0` | Amount of seconds between every poll. |
+| `services.watchdogd.settings.meminfo.logmark` | `boolean` | Whether to log current stats every poll interval. |
+| `services.watchdogd.settings.meminfo.warning` | `nonnegative integer or floating point number, meaning >=0` | The high watermark level. Alert sent to log. |
+| `services.watchdogd.settings.safe-exit` | `boolean` | With {var}`safeExit` enabled, the daemon will ask the driver to disable the WDT before exiting. However, some WDT drivers (or hardware) may not support this. |
+| `services.watchdogd.settings.timeout` | `unsigned integer, meaning >=0` | The WDT timeout before reset. |

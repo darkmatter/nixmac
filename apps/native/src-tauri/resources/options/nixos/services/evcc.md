@@ -5,9 +5,9 @@
 All options under `services.evcc`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.evcc.enable` | | |
-| `services.evcc.environmentFile` | | |
-| `services.evcc.extraArgs` | | |
-| `services.evcc.package` | | |
-| `services.evcc.settings` | | |
+| --- | --- | --- |
+| `services.evcc.enable` | `boolean` | Whether to enable EVCC, the extensible EV Charge Controller and Home Energy Management System. |
+| `services.evcc.environmentFile` | `null or absolute path` | File with environment variables to pass into the runtime environment. Useful to pass secrets into the configuration, that get applied using `envsubst`. |
+| `services.evcc.extraArgs` | `list of string` | Extra arguments to pass to the `evcc` executable. |
+| `services.evcc.package` | `package` | The evcc package to use. |
+| `services.evcc.settings` | `YAML 1.1 value` | evcc configuration as a Nix attribute set. Supports substitution of secrets using `envsubst` from the `environmentFile`. Check for possible options in the sample [evcc.dist.yaml](https://github.com/andig/evcc/blob/0.309.1/evcc.dist.yaml). |

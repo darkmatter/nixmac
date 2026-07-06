@@ -5,5 +5,5 @@
 All options under `programs.joycond-cemuhook`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `programs.joycond-cemuhook.enable` | | |
+| --- | --- | --- |
+| `programs.joycond-cemuhook.enable` | `boolean` | Whether to enable joycond-cemuhook, a program to enable support for cemuhook's UDP protocol for joycond devices. |

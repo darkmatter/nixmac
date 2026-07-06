@@ -5,9 +5,11 @@
 All options under `services.wayvnc`.
 
 | Option | Type | Description |
-| ------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------- |
+| --- | --- | --- |
 | `services.wayvnc.autoStart` | `boolean` | Whether to enable autostarting of wayvnc. |
 | `services.wayvnc.enable` | `boolean` | Whether to enable wayvnc VNC server. |
 | `services.wayvnc.package` | `package` | The wayvnc package to use. |
-| `services.wayvnc.settings` | `open submodule of attribute set of (atom (null, bool, int, float or string))` | See CONFIGURATION section in wayvnc (1) . |
+| `services.wayvnc.settings` | `open submodule of attribute set of (atom (null, bool, int, float or string))` | See CONFIGURATION section in {manpage}`wayvnc(1)`. |
+| `services.wayvnc.settings.address` | `string` | The address to which the server shall bind, e.g. 0.0.0.0 or localhost. |
+| `services.wayvnc.settings.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to which the server shall bind. |
 | `services.wayvnc.systemdTarget` | `string` | Systemd target to bind to. |

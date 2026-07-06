@@ -5,8 +5,22 @@
 All options under `services.waagent`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.waagent.enable` | | |
-| `services.waagent.extraPackages` | | |
-| `services.waagent.package` | | |
-| `services.waagent.settings` | | |
+| --- | --- | --- |
+| `services.waagent.enable` | `boolean` | Whether to enable Windows Azure Linux Agent. |
+| `services.waagent.extraPackages` | `list of package` | Additional packages to add to the waagent {env}`PATH`. |
+| `services.waagent.package` | `package` | The waagent package to use. |
+| `services.waagent.settings` | `open submodule of attribute set of (atom (bool, string, int or float) or null or a list of them or an attribute set of them)` | The waagent.conf configuration, see <https://learn.microsoft.com/en-us/azure/virtual-machines/extensions/agent-linux> for documentation. |
+| `services.waagent.settings.AutoUpdate.UpdateToLatestVersion` | `boolean` | Whether or not to enable auto-update of the Extension Handler. |
+| `services.waagent.settings.HttpProxy.Host` | `null or string` | If you set http proxy, waagent will use is proxy to access the Internet. |
+| `services.waagent.settings.HttpProxy.Port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | If you set http proxy, waagent will use this proxy to access the Internet. |
+| `services.waagent.settings.Logs.Verbose` | `boolean` | If you set this option, log verbosity is boosted. Waagent logs to `/var/log/waagent.log` and uses the system logrotate functionality to rotate logs. |
+| `services.waagent.settings.OS.EnableRDMA` | `boolean` | If enabled, the agent attempts to install and then load an RDMA kernel driver that matches the version of the firmware on the underlying hardware. |
+| `services.waagent.settings.OS.RootDeviceScsiTimeout` | `null or signed integer` | Configures the SCSI timeout in seconds on the OS disk and data drives. If set to `null`, the system defaults are used. |
+| `services.waagent.settings.Provisioning.Agent` | `one of "auto", "waagent", "cloud-init", "disabled"` | Which provisioning agent to use. |
+| `services.waagent.settings.Provisioning.Enable` | `boolean` | Whether to enable provisioning functionality in the agent. If provisioning is disabled, SSH host and user keys in the image are preserved and configuration in the Azure provisioning API is ignored. Set to `false` if cloud-init is used for provisioning tasks. |
+| `services.waagent.settings.ResourceDisk.EnableSwap` | `boolean` | If enabled, the agent creates a swap file (`/swapfile`) on the resource disk and adds it to the system swap space. This configuration has no effect if resource disk is managed by cloud-init. |
+| `services.waagent.settings.ResourceDisk.FileSystem` | `string` | The file system type for the resource disk. If the string is `X`, then `mkfs.X` should be present in the environment. You can add additional filesystem packages using `services.waagent.extraPackages`. This configuration has no effect if resource disk is managed by cloud-init. |
+| `services.waagent.settings.ResourceDisk.Format` | `boolean` | If set to `true`, waagent formats and mounts the resource disk that the platform provides, unless the file system type in `ResourceDisk.FileSystem` is set to `ntfs`. The agent makes a single Linux partition (ID 83) available on the disk. This partition isn't formatted if it can be successfully mounted. This configuration has no effect if resource disk is managed by cloud-init. |
+| `services.waagent.settings.ResourceDisk.MountOptions` | `list of string` | This option specifies disk mount options to be passed to the `mount -o` command. For more information, see the {manpage}`mount(8)` manual page. |
+| `services.waagent.settings.ResourceDisk.MountPoint` | `string` | This option specifies the path at which the resource disk is mounted. The resource disk is a temporary disk and might be emptied when the VM is deprovisioned. This configuration has no effect if resource disk is managed by cloud-init. |
+| `services.waagent.settings.ResourceDisk.SwapSizeMB` | `signed integer` | Specifies the size of the swap file in MiB (1024×1024 bytes). This configuration has no effect if resource disk is managed by cloud-init. |

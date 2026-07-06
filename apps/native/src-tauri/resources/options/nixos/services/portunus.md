@@ -5,22 +5,24 @@
 All options under `services.portunus`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.portunus.dex.enable` | | |
-| `services.portunus.dex.oidcClients` | | |
-| `services.portunus.dex.port` | | |
-| `services.portunus.domain` | | |
-| `services.portunus.enable` | | |
-| `services.portunus.group` | | |
-| `services.portunus.ldap.group` | | |
-| `services.portunus.ldap.package` | | |
-| `services.portunus.ldap.searchUserName` | | |
-| `services.portunus.ldap.suffix` | | |
-| `services.portunus.ldap.tls` | | |
-| `services.portunus.ldap.user` | | |
-| `services.portunus.package` | | |
-| `services.portunus.port` | | |
-| `services.portunus.seedPath` | | |
-| `services.portunus.seedSettings` | | |
-| `services.portunus.stateDir` | | |
-| `services.portunus.user` | | |
+| --- | --- | --- |
+| `services.portunus.dex.enable` | `boolean` | Whether to enable Dex ldap connector. To activate dex, first a search user must be created in the Portunus web ui and then the password must to be set as the `DEX_SEARCH_USER_PASSWORD` environment variable in the [](#opt-services.dex.environmentFile) setting . |
+| `services.portunus.dex.oidcClients` | `list of (submodule)` | List of OIDC clients. The OIDC secret must be set as the `DEX_CLIENT_${id}` environment variable in the [](#opt-services.dex.environmentFile) setting. ::: {.note} Make sure the id only contains characters that are allowed in an environment variable name, e.g. no -. ::: |
+| `services.portunus.dex.oidcClients.*.callbackURL` | `string` | URL where the OIDC client should redirect |
+| `services.portunus.dex.oidcClients.*.id` | `string` | ID of the OIDC client |
+| `services.portunus.dex.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port where dex should listen on. |
+| `services.portunus.domain` | `string` | Subdomain which gets reverse proxied to Portunus webserver. |
+| `services.portunus.enable` | `boolean` | Whether to enable Portunus, a self-contained user/group management and authentication service for LDAP. |
+| `services.portunus.group` | `string` | Group account under which Portunus runs its webserver. |
+| `services.portunus.ldap.group` | `string` | Group account under which Portunus runs its LDAP server. |
+| `services.portunus.ldap.package` | `package` | The openldap package to use. |
+| `services.portunus.ldap.searchUserName` | `string` | The login name of the search user. This user account must be configured in Portunus either manually or via seeding. |
+| `services.portunus.ldap.suffix` | `string` | The DN of the topmost entry in your LDAP directory. Please refer to the Portunus documentation for more information on how this impacts the structure of the LDAP directory. |
+| `services.portunus.ldap.tls` | `boolean` | Whether to enable LDAPS protocol. This also adds two entries to the `/etc/hosts` file to point [](#opt-services.portunus.domain) to localhost, so that CLIs and programs can use ldaps protocol and verify the certificate without opening the firewall port for the protocol. This requires a TLS certificate for [](#opt-services.portunus.domain) to be configured via [](#opt-security.acme.certs). |
+| `services.portunus.ldap.user` | `string` | User account under which Portunus runs its LDAP server. |
+| `services.portunus.package` | `package` | The portunus package to use. |
+| `services.portunus.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port where the Portunus webserver should listen on. This must be put behind a TLS-capable reverse proxy because Portunus only listens on localhost. |
+| `services.portunus.seedPath` | `null or absolute path` | Path to a portunus seed file in json format. See <https://github.com/majewsky/portunus#seeding-users-and-groups-from-static-configuration> for available options. |
+| `services.portunus.seedSettings` | `null or (attribute set of list of attribute set of anything)` | Seed settings for users and groups. See upstream for format <https://github.com/majewsky/portunus#seeding-users-and-groups-from-static-configuration> |
+| `services.portunus.stateDir` | `absolute path` | Path where Portunus stores its state. |
+| `services.portunus.user` | `string` | User account under which Portunus runs its webserver. |

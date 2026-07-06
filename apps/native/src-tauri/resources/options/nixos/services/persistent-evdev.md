@@ -5,6 +5,6 @@
 All options under `services.persistent-evdev`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.persistent-evdev.devices` | | |
-| `services.persistent-evdev.enable` | | |
+| --- | --- | --- |
+| `services.persistent-evdev.devices` | `attribute set of string` | A set of virtual proxy device labels with backing physical device ids. Physical devices should already exist in {file}`/dev/input/by-id/`. Proxy devices will be automatically given a `uinput-` prefix. See the [project page](https://github.com/aiberia/persistent-evdev#example-usage-with-libvirt) for example configuration of virtual devices with libvirt and remember to add `uinput-*` devices to the qemu `cgroup_device_acl` list (see [](#opt-virtualisation.libvirtd.qemu.verbatimConfig)). |
+| `services.persistent-evdev.enable` | `boolean` | Whether to enable virtual input devices that persist even if the backing device is hotplugged. |

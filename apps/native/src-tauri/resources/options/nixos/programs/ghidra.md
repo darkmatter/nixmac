@@ -5,7 +5,7 @@
 All options under `programs.ghidra`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `programs.ghidra.enable` | | |
-| `programs.ghidra.gdb` | | |
-| `programs.ghidra.package` | | |
+| --- | --- | --- |
+| `programs.ghidra.enable` | `boolean` | Whether to enable Ghidra, a software reverse engineering (SRE) suite of tools. |
+| `programs.ghidra.gdb` | `boolean` | Whether to add to gdbinit the python modules required to make Ghidra's debugger work. |
+| `programs.ghidra.package` | `package` | The ghidra package to use. |

@@ -5,26 +5,31 @@
 All options under `programs.kitty`.
 
 | Option | Type | Description |
-| ------------------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.kitty.actionAliases` | `attribute set of string` | Define action aliases. |
-| `programs.kitty.autoThemeFiles` | `null or (submodule)` | Configure Kitty automatic color themes. This creates $XDG_CONFIG_HOME/kitty/light-theme.auto.conf , $XDG_CONFIG_HOME/kitty/dark-theme.auto.conf , and $XDG_CONFIG_HOME/kitty/no-preference-theme.auto.conf . Kitty applies these based on the OS color scheme, and they override other color and background image settings. |
+| `programs.kitty.autoThemeFiles` | `null or (submodule)` | Configure Kitty automatic color themes. This creates {file}`$XDG_CONFIG_HOME/kitty/light-theme.auto.conf`, {file}`$XDG_CONFIG_HOME/kitty/dark-theme.auto.conf`, and {file}`$XDG_CONFIG_HOME/kitty/no-preference-theme.auto.conf`. Kitty applies these based on the OS color scheme, and they override other color and background image settings. |
+| `programs.kitty.autoThemeFiles.dark` | `string` | Theme name for dark color scheme. |
+| `programs.kitty.autoThemeFiles.light` | `string` | Theme name for light color scheme. |
+| `programs.kitty.autoThemeFiles.noPreference` | `string` | Theme name for no-preference color scheme. |
 | `programs.kitty.darwinLaunchOptions` | `null or (list of string)` | Command-line options to use when launched by Mac OS GUI |
-| `programs.kitty.diffConfig.extraConfig` | | |
-| `programs.kitty.diffConfig.keybindings` | | |
-| `programs.kitty.diffConfig.settings` | | |
+| `programs.kitty.diffConfig.extraConfig` | `strings concatenated with "\n"` | Additional configuration to add kitty's diff.conf |
+| `programs.kitty.diffConfig.keybindings` | `attribute set of string` | Mapping of keybindings to use inside kitty's diff tool. Configuration set through the `extraConfig` options will take greater priority. |
+| `programs.kitty.diffConfig.settings` | `attribute set of (string or boolean or signed integer or floating point number)` | Configuration written to {file}`$XDG_CONFIG_HOME/kitty/diff.conf`. See <https://sw.kovidgoyal.net/kitty/kittens/diff/> for the documentation. Configuration set through the `extraConfig` option will take greater priority. |
 | `programs.kitty.enable` | `boolean` | Whether to enable Kitty terminal emulator. |
 | `programs.kitty.enableGitIntegration` | `boolean` | Whether to enable git integration. |
 | `programs.kitty.environment` | `attribute set of string` | Environment variables to set or override. |
-| `programs.kitty.extraConfig` | `strings concatenated with “\n”` | Additional configuration to add to kitty.conf. |
+| `programs.kitty.extraConfig` | `strings concatenated with "\n"` | Additional configuration to add to kitty.conf. |
 | `programs.kitty.font` | `null or (submodule)` | The font to use. |
+| `programs.kitty.font.name` | `string` | The family name of the font within the package. |
+| `programs.kitty.font.package` | `null or package` | Package providing the font. This package will be installed to your profile. If `null` then the font is assumed to already be available in your profile. |
+| `programs.kitty.font.size` | `null or signed integer or floating point number` | The size of the font. |
 | `programs.kitty.keybindings` | `attribute set of string` | Mapping of keybindings to actions. |
 | `programs.kitty.mouseBindings` | `attribute set of string` | Mapping of mouse bindings to actions. |
 | `programs.kitty.package` | `null or package` | The kitty package to use. |
-| `programs.kitty.quickAccessTerminalConfig` | `attribute set of (string or boolean or signed integer or floating point number)` | Configuration written to $XDG_CONFIG_HOME/kitty/quick-access-terminal.conf . See https://sw.kovidgoyal.net/kitty/kittens/quick-access-terminal/ for the documentation. |
-| `programs.kitty.settings` | `attribute set of (string or boolean or signed integer or floating point number)` | Configuration written to $XDG_CONFIG_HOME/kitty/kitty.conf . See https://sw.kovidgoyal.net/kitty/conf.html for the documentation. |
+| `programs.kitty.quickAccessTerminalConfig` | `attribute set of (string or boolean or signed integer or floating point number)` | Configuration written to {file}`$XDG_CONFIG_HOME/kitty/quick-access-terminal.conf`. See <https://sw.kovidgoyal.net/kitty/kittens/quick-access-terminal/> for the documentation. |
+| `programs.kitty.settings` | `attribute set of (string or boolean or signed integer or floating point number)` | Configuration written to {file}`$XDG_CONFIG_HOME/kitty/kitty.conf`. See <https://sw.kovidgoyal.net/kitty/conf.html> for the documentation. |
 | `programs.kitty.shellIntegration.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.kitty.shellIntegration.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
 | `programs.kitty.shellIntegration.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
-| `programs.kitty.shellIntegration.mode` | `null or string` | Set the mode of the shell integration. This accepts the same options as the shell_integration option of Kitty. Note that no-rc is always implied, unless this set to null . See https://sw.kovidgoyal.net/kitty/shell-integration for more details. |
-| `programs.kitty.theme` | | |
-| `programs.kitty.themeFile` | `null or string` | Apply a Kitty color theme. This option takes the file name of a theme in kitty-themes , without the .conf suffix. See https://github.com/kovidgoyal/kitty-themes/tree/master/themes for a list of themes. |
+| `programs.kitty.shellIntegration.mode` | `null or string` | Set the mode of the shell integration. This accepts the same options as the `shell_integration` option of Kitty. Note that `no-rc` is always implied, unless this set to `null`. See <https://sw.kovidgoyal.net/kitty/shell-integration> for more details. |
+| `programs.kitty.themeFile` | `null or string` | Apply a Kitty color theme. This option takes the file name of a theme in `kitty-themes`, without the `.conf` suffix. See <https://github.com/kovidgoyal/kitty-themes/tree/master/themes> for a list of themes. Note that if any automatic themes are configured via `programs.kitty.autoThemeFiles`, Kitty will prefer them based on the OS color scheme and they will override other color and background image settings. |

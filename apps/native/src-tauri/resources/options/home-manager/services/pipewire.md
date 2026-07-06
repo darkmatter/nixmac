@@ -5,17 +5,17 @@
 All options under `services.pipewire`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---- | ----------- |
-| `services.pipewire.clientConfigs` | | |
-| `services.pipewire.configPackages` | | |
-| `services.pipewire.configs` | | |
-| `services.pipewire.enable` | | |
-| `services.pipewire.extraLadspaPackages` | | |
-| `services.pipewire.extraLv2Packages` | | |
-| `services.pipewire.jackConfigs` | | |
-| `services.pipewire.pulseConfigs` | | |
-| `services.pipewire.wireplumber.configPackages` | | |
-| `services.pipewire.wireplumber.configs` | | |
-| `services.pipewire.wireplumber.enable` | | |
-| `services.pipewire.wireplumber.scriptPackages` | | |
-| `services.pipewire.wireplumber.scripts` | | |
+| --- | --- | --- |
+| `services.pipewire.clientConfigs` | `attribute set of (JSON value)` | Set of configuration files for the PipeWire client library. Every item in this attrset becomes a separate drop-in file in {file}`$XDG_CONFIG_HOME/pipewire/client.conf.d/`. See the [PipeWire wiki][wiki] for examples. \[wiki\]: https://gitlab.freedesktop.org/pipewire/pipewire/-/wikis/Config-client |
+| `services.pipewire.configPackages` | `list of package` | List of packages that provide PipeWire configurations, in the form of {file}`share/pipewire/*/*.conf` files. LV2 dependencies will be picked up from config packages automatically via `passthru.requiredLv2Packages`. |
+| `services.pipewire.configs` | `attribute set of (JSON value)` | Set of configuration files for the PipeWire server. Every item in this attrset becomes a separate drop-in file in {file}`$XDG_CONFIG_HOME/pipewire/pipewire.conf.d/`. See `man pipewire.conf` for details, and the [PipeWire wiki] for examples. \[pipewire wiki\]: https://gitlab.freedesktop.org/pipewire/pipewire/-/wikis/Config-PipeWire |
+| `services.pipewire.enable` | `boolean` | Whether to enable PipeWire configurations. |
+| `services.pipewire.extraLadspaPackages` | `list of package` | List of packages that provide LADSPA plugins, in the form of {file}`lib/ladspa/*` files. LADSPA dependencies will be picked up from config packages automatically via `passthru.requiredLadspaPackages`, so they don't need to be set here. |
+| `services.pipewire.extraLv2Packages` | `list of package` | List of packages that provide LV2 plugins, in the form of {file}`lib/lv2/*` files. LV2 dependencies will be picked up from config packages automatically via `passthru.requiredLv2Packages`, so they don't need to be set here. |
+| `services.pipewire.jackConfigs` | `attribute set of (JSON value)` | Set of configuration files for the PipeWire JACK server and client library. Every item in this attrset becomes a separate drop-in file in {file}`$XDG_CONFIG_HOME/pipewire/jack.conf.d/`. See the [PipeWire wiki] for examples. \[pipewire wiki\]: https://gitlab.freedesktop.org/pipewire/pipewire/-/wikis/Config-JACK |
+| `services.pipewire.pulseConfigs` | `attribute set of (JSON value)` | Set of configuration files for the PipeWire PulseAudio server. Every item in this attrset becomes a separate drop-in file in {file}`$XDG_CONFIG_HOME/pipewire/pipewire-pulse.conf.d/`. See `man pipewire-pulse.conf` for details, and the [PipeWire wiki] for examples. \[pipewire wiki\]: https://gitlab.freedesktop.org/pipewire/pipewire/-/wikis/Config-PulseAudio |
+| `services.pipewire.wireplumber.configPackages` | `list of package` | List of packages that provide WirePlumber configurations, in the form of {file}`share/wireplumber/*/*.conf` files. LV2 dependencies will be picked up from config packages automatically via `passthru.requiredLv2Packages`. |
+| `services.pipewire.wireplumber.configs` | `attribute set of (JSON value)` | Set of configuration files for the WirePlumber daemon. Every item in this attrset becomes a separate drop-in file in {file}`$XDG_CONFIG_HOME/wireplumber/wireplumber.conf.d/`. See the [NixOS option] for details. \[nixos option\]: https://search.nixos.org/options?channel=25.11&type=options&show=services.pipewire.wireplumber.extraConfig |
+| `services.pipewire.wireplumber.enable` | `boolean` | Whether to enable WirePlumber configurations. |
+| `services.pipewire.wireplumber.scriptPackages` | `list of package` | List of packages that provide WirePlumber scripts, in the form of {file}`share/wireplumber/scripts/*/*.lua` files. |
+| `services.pipewire.wireplumber.scripts` | `attribute set of strings concatenated with "\n"` | Set of lua scripts to be used by WirePlumber configuration files. Every item in this attrset becomes a separate drop-in file in {file}`$XDG_DATA_HOME/wireplumber/scripts/`. See the [NixOS option] for details. \[nixos option\]: https://search.nixos.org/options?channel=25.11&type=options&show=services.pipewire.wireplumber.extraScripts |

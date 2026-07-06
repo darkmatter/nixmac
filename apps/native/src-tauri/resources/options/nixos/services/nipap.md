@@ -5,19 +5,27 @@
 All options under `services.nipap`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---- | ----------- |
-| `services.nipap.authBackendSettings` | | |
-| `services.nipap.enable` | | |
-| `services.nipap.nipap-www.enable` | | |
-| `services.nipap.nipap-www.host` | | |
-| `services.nipap.nipap-www.package` | | |
-| `services.nipap.nipap-www.port` | | |
-| `services.nipap.nipap-www.umask` | | |
-| `services.nipap.nipap-www.unixSocket` | | |
-| `services.nipap.nipap-www.workers` | | |
-| `services.nipap.nipap-www.xmlrpcURIFile` | | |
-| `services.nipap.nipapd.database.createLocally` | | |
-| `services.nipap.nipapd.enable` | | |
-| `services.nipap.nipapd.package` | | |
-| `services.nipap.settings` | | |
-| `services.nipap.user` | | |
+| --- | --- | --- |
+| `services.nipap.authBackendSettings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | auth.backends options to set in /etc/nipap/nipap.conf. |
+| `services.nipap.enable` | `boolean` | Whether to enable global Neat IP Address Planner (NIPAP) configuration. |
+| `services.nipap.nipap-www.enable` | `boolean` | Whether to enable nipap-www server. |
+| `services.nipap.nipap-www.host` | `null or string` | Host to bind to. |
+| `services.nipap.nipap-www.package` | `package` | The nipap-www package to use. |
+| `services.nipap.nipap-www.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to bind to. |
+| `services.nipap.nipap-www.umask` | `string` | umask for files written by Gunicorn, including UNIX socket. |
+| `services.nipap.nipap-www.unixSocket` | `null or string` | Path to UNIX socket to bind to. |
+| `services.nipap.nipap-www.workers` | `signed integer` | Number of worker processes for Gunicorn to fork. |
+| `services.nipap.nipap-www.xmlrpcURIFile` | `null or absolute path` | Path to file containing XMLRPC URI for use by web UI - this is a secret, since it contains auth credentials. If null, it will be initialized assuming that the auth database is local. |
+| `services.nipap.nipapd.database.createLocally` | `boolean` | Create a nipap database automatically. |
+| `services.nipap.nipapd.enable` | `boolean` | Whether to enable nipapd server. |
+| `services.nipap.nipapd.package` | `package` | The nipap package to use. |
+| `services.nipap.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration options to set in /etc/nipap/nipap.conf. |
+| `services.nipap.settings.auth.auth_cache_timeout` | `signed integer` | Seconds to store cached auth entries for. |
+| `services.nipap.settings.auth.default_backend` | `string` | Name of auth backend to use by default. |
+| `services.nipap.settings.nipapd.db_host` | `string` | PostgreSQL host to connect to. Empty means use UNIX socket. |
+| `services.nipap.settings.nipapd.db_name` | `string` | Name of database to use on PostgreSQL server. |
+| `services.nipap.settings.nipapd.debug` | `boolean` | Enable debug logging. |
+| `services.nipap.settings.nipapd.foreground` | `boolean` | Remain in foreground rather than forking to background. |
+| `services.nipap.settings.nipapd.listen` | `string` | IP address to bind nipapd to. |
+| `services.nipap.settings.nipapd.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to bind nipapd to. |
+| `services.nipap.user` | `string` | User to use for running NIPAP services. |

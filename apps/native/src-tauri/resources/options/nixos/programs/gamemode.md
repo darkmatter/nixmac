@@ -5,8 +5,8 @@
 All options under `programs.gamemode`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `programs.gamemode.enable` | | |
-| `programs.gamemode.enableRenice` | | |
-| `programs.gamemode.package` | | |
-| `programs.gamemode.settings` | | |
+| --- | --- | --- |
+| `programs.gamemode.enable` | `boolean` | Whether to enable GameMode to optimise system performance on demand. |
+| `programs.gamemode.enableRenice` | `boolean` | Whether to enable CAP_SYS_NICE on gamemoded to support lowering process niceness. |
+| `programs.gamemode.package` | `package` | The gamemode package to use. |
+| `programs.gamemode.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string) or a list of them for duplicate keys)` | System-wide configuration for GameMode (/etc/gamemode.ini). See {manpage}`gamemoded(8)` man page for available settings. |

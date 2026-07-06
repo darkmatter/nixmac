@@ -5,7 +5,7 @@
 All options under `services.powerdns`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.powerdns.enable` | | |
-| `services.powerdns.extraConfig` | | |
-| `services.powerdns.secretFile` | | |
+| --- | --- | --- |
+| `services.powerdns.enable` | `boolean` | Whether to enable PowerDNS domain name server. |
+| `services.powerdns.extraConfig` | `strings concatenated with "\n"` | PowerDNS configuration. Refer to <https://doc.powerdns.com/authoritative/settings.html> for details on supported values. |
+| `services.powerdns.secretFile` | `null or absolute path` | Environment variables from this file will be interpolated into the final config file using envsubst with this syntax: `$ENVIRONMENT` or `${VARIABLE}`. The file should contain lines formatted as `SECRET_VAR=SECRET_VALUE`. This is useful to avoid putting secrets into the nix store. |

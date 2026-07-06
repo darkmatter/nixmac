@@ -5,7 +5,7 @@
 All options under `programs.qalculate`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `programs.qalculate.enable` | | |
-| `programs.qalculate.package` | | |
-| `programs.qalculate.settings` | | |
+| --- | --- | --- |
+| `programs.qalculate.enable` | `boolean` | Whether to enable Qalculate!, a multi-purpose desktop calculator. |
+| `programs.qalculate.package` | `null or package` | The libqalculate package to use. |
+| `programs.qalculate.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to {file}`$XDG_CONFIG_HOME/qalculate/qalc.cfg`. Settings are organized into two INI sections: - `General` — persistence and display preferences (e.g. `save_mode_on_exit`, `colorize`, `precision`). - `Mode` — active calculator settings that mirror the options accepted by the {command}`set` command in an interactive {command}`qalc` session (e.g. `angle_unit`, `number_base`, `min_deci`). See {manpage}`qalc(1)` for the full list of available settings and their accepted values. |

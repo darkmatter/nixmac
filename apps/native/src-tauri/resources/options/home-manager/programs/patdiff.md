@@ -5,7 +5,7 @@
 All options under `programs.patdiff`.
 
 | Option | Type | Description |
-| --------------------------------------- | --------- | ------------------------------------------------------------------------------------ |
-| `programs.patdiff.enable` | `boolean` | Whether to enable the patdiff differ. See https://opensource.janestreet.com/patdiff/ |
-| `programs.patdiff.enableGitIntegration` | `boolean` | Whether to enable git integration for patdiff. |
+| --- | --- | --- |
+| `programs.patdiff.enable` | `boolean` | Whether to enable the {command}`patdiff` differ. See <https://opensource.janestreet.com/patdiff/> |
+| `programs.patdiff.enableGitIntegration` | `boolean` | Whether to enable git integration for patdiff. When enabled, patdiff will be configured as git's external diff tool. |
 | `programs.patdiff.package` | `package` | The patdiff package to use. |

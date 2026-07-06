@@ -5,9 +5,9 @@
 All options under `programs.yambar`.
 
 | Option | Type | Description |
-| -------------------------------- | ----------------- | ----------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.yambar.enable` | `boolean` | Whether to enable Yambar. |
 | `programs.yambar.package` | `null or package` | The yambar package to use. |
-| `programs.yambar.settings` | `YAML 1.1 value` | Configuration written to $XDG_CONFIG_HOME/yambar/config.yml . See yambar (5) for options. |
+| `programs.yambar.settings` | `YAML 1.1 value` | Configuration written to {file}`$XDG_CONFIG_HOME/yambar/config.yml`. See {manpage}`yambar(5)` for options. |
 | `programs.yambar.systemd.enable` | `boolean` | Whether to enable yambar systemd integration. |
-| `programs.yambar.systemd.target` | `string` | The systemd target that will automatically start the yambar service. |
+| `programs.yambar.systemd.target` | `string` | The systemd target that will automatically start the yambar service. When setting this value to `"sway-session.target"`, make sure to also enable {option}`wayland.windowManager.sway.systemd.enable`, otherwise the service may never be started. |

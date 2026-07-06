@@ -5,5 +5,5 @@
 All options under `programs.calls`.
 
 | Option | Type | Description |
-| ----------------------- | ---- | ----------- |
-| `programs.calls.enable` | | |
+| --- | --- | --- |
+| `programs.calls.enable` | `boolean` | Whether to enable GNOME calls: a phone dialer and call handler . |

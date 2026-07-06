@@ -5,10 +5,10 @@
 All options under `services.tlp`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.tlp.enable` | | |
-| `services.tlp.extraConfig` | | |
-| `services.tlp.package` | | |
-| `services.tlp.pd.enable` | | |
-| `services.tlp.pd.package` | | |
-| `services.tlp.settings` | | |
+| --- | --- | --- |
+| `services.tlp.enable` | `boolean` | Whether to enable the TLP power management daemon. |
+| `services.tlp.extraConfig` | `strings concatenated with "\n"` | Verbatim additional configuration variables for TLP. DEPRECATED: use services.tlp.settings instead. |
+| `services.tlp.package` | `package` | The tlp package to use. |
+| `services.tlp.pd.enable` | `boolean` | Whether to enable the power-rofiles-daemon like DBus interface for TLP. |
+| `services.tlp.pd.package` | `package` | The tlp-pd package to use. |
+| `services.tlp.settings` | `attribute set of (boolean or signed integer or floating point number or string or list of string)` | Options passed to TLP. See <https://linrunner.de/tlp> for all supported options.. |

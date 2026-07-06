@@ -5,11 +5,11 @@
 All options under `services.jackett`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.jackett.dataDir` | | |
-| `services.jackett.enable` | | |
-| `services.jackett.group` | | |
-| `services.jackett.openFirewall` | | |
-| `services.jackett.package` | | |
-| `services.jackett.port` | | |
-| `services.jackett.user` | | |
+| --- | --- | --- |
+| `services.jackett.dataDir` | `string` | The directory where Jackett stores its data files. |
+| `services.jackett.enable` | `boolean` | Whether to enable Jackett, API support for your favorite torrent trackers. |
+| `services.jackett.group` | `string` | Group under which Jackett runs. |
+| `services.jackett.openFirewall` | `boolean` | Open ports in the firewall for the Jackett web interface. |
+| `services.jackett.package` | `package` | The jackett package to use. |
+| `services.jackett.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port serving the web interface |
+| `services.jackett.user` | `string` | User account under which Jackett runs. |

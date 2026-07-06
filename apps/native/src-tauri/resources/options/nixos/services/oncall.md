@@ -5,9 +5,15 @@
 All options under `services.oncall`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.oncall.database.createLocally` | | |
-| `services.oncall.enable` | | |
-| `services.oncall.package` | | |
-| `services.oncall.secretFile` | | |
-| `services.oncall.settings` | | |
+| --- | --- | --- |
+| `services.oncall.database.createLocally` | `boolean` | Whether to enable Create the database and database user locally.. |
+| `services.oncall.enable` | `boolean` | Whether to enable Oncall web app. |
+| `services.oncall.package` | `package` | The oncall package to use. |
+| `services.oncall.secretFile` | `absolute path not in the Nix store` | A YAML file containing secrets such as database or user passwords. Some variables that can be considered secrets are: - db.conn.kwargs.password: Password used to authenticate to the database. - session.encrypt_key: Key for encrypting/signing session cookies. Change to random long values in production. - session.sign_key: Key for encrypting/signing session cookies. Change to random long values in production. |
+| `services.oncall.settings` | `open submodule of (YAML 1.1 value)` | Extra configuration options to append or override. For available and default option values see [upstream configuration file](https://github.com/linkedin/oncall/blob/master/configs/config.yaml) and the administration part in the [offical documentation](https://oncall.tools/docs/admin_guide.html). |
+| `services.oncall.settings.db.conn.kwargs.database` | `string` | Database name. |
+| `services.oncall.settings.db.conn.kwargs.host` | `string` | Database host. |
+| `services.oncall.settings.db.conn.kwargs.user` | `string` | Database user. |
+| `services.oncall.settings.db.conn.require_auth` | `boolean` | Whether authentication is required to access the web app. |
+| `services.oncall.settings.db.conn.str` | `string` | Database connection scheme. The default specifies the connection through a local socket. |
+| `services.oncall.settings.oncall_host` | `string` | FQDN for the Oncall instance. |

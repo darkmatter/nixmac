@@ -5,35 +5,35 @@
 All options under `services.gotenberg`.
 
 | Option | Type | Description |
-| ----------------------------------------------- | ---- | ----------- |
-| `services.gotenberg.bindIP` | | |
-| `services.gotenberg.bodyLimit` | | |
-| `services.gotenberg.chromium.autoStart` | | |
-| `services.gotenberg.chromium.disableJavascript` | | |
-| `services.gotenberg.chromium.disableRoutes` | | |
-| `services.gotenberg.chromium.maxQueueSize` | | |
-| `services.gotenberg.chromium.package` | | |
-| `services.gotenberg.downloadFrom.allowList` | | |
-| `services.gotenberg.downloadFrom.denyList` | | |
-| `services.gotenberg.downloadFrom.disable` | | |
-| `services.gotenberg.downloadFrom.maxRetries` | | |
-| `services.gotenberg.enable` | | |
-| `services.gotenberg.enableBasicAuth` | | |
-| `services.gotenberg.environmentFile` | | |
-| `services.gotenberg.extraArgs` | | |
-| `services.gotenberg.extraFontPackages` | | |
-| `services.gotenberg.libreoffice.autoStart` | | |
-| `services.gotenberg.libreoffice.disableRoutes` | | |
-| `services.gotenberg.libreoffice.maxQueueSize` | | |
-| `services.gotenberg.libreoffice.package` | | |
-| `services.gotenberg.libreoffice.restartAfter` | | |
-| `services.gotenberg.logLevel` | | |
-| `services.gotenberg.package` | | |
-| `services.gotenberg.pdfEngines.convert` | | |
-| `services.gotenberg.pdfEngines.disableRoutes` | | |
-| `services.gotenberg.pdfEngines.merge` | | |
-| `services.gotenberg.pdfEngines.readMetadata` | | |
-| `services.gotenberg.pdfEngines.writeMetadata` | | |
-| `services.gotenberg.port` | | |
-| `services.gotenberg.rootPath` | | |
-| `services.gotenberg.timeout` | | |
+| --- | --- | --- |
+| `services.gotenberg.bindIP` | `null or string` | Port the API listener should bind to. Set to 0.0.0.0 to listen on all available IPs. |
+| `services.gotenberg.bodyLimit` | `null or string` | Sets the max limit for `multipart/form-data` requests. Accepts values like '5M', '20G', etc. |
+| `services.gotenberg.chromium.autoStart` | `boolean` | Automatically start Chromium when Gotenberg starts. If false, Chromium will start on the first conversion request that uses it. |
+| `services.gotenberg.chromium.disableJavascript` | `boolean` | Disable Javascript execution. |
+| `services.gotenberg.chromium.disableRoutes` | `boolean` | Disable all routes allowing Chromium-based conversion. |
+| `services.gotenberg.chromium.maxQueueSize` | `unsigned integer, meaning >=0` | Maximum queue size for chromium-based conversions. Setting to 0 disables the limit. |
+| `services.gotenberg.chromium.package` | `package` | The chromium package to use. |
+| `services.gotenberg.downloadFrom.allowList` | `null or string` | Allow these URLs to be used in the `downloadFrom` API field. Accepts a regular expression. |
+| `services.gotenberg.downloadFrom.denyList` | `null or string` | Deny accepting URLs from these domains in the `downloadFrom` API field. Accepts a regular expression. |
+| `services.gotenberg.downloadFrom.disable` | `boolean` | Whether to disable the ability to download files for conversion from outside sources. |
+| `services.gotenberg.downloadFrom.maxRetries` | `unsigned integer, meaning >=0` | The maximum amount of times to retry downloading a file specified with `downloadFrom`. |
+| `services.gotenberg.enable` | `boolean` | Whether to enable Gotenberg, a stateless API for PDF files. |
+| `services.gotenberg.enableBasicAuth` | `boolean` | HTTP Basic Authentication. If you set this, be sure to set `GOTENBERG_API_BASIC_AUTH_USERNAME`and `GOTENBERG_API_BASIC_AUTH_PASSWORD` in your `services.gotenberg.environmentFile` file. |
+| `services.gotenberg.environmentFile` | `null or absolute path` | Environment file to load extra environment variables from. |
+| `services.gotenberg.extraArgs` | `list of string` | Any extra command-line flags to pass to the Gotenberg service. |
+| `services.gotenberg.extraFontPackages` | `list of package` | Extra fonts to make available. |
+| `services.gotenberg.libreoffice.autoStart` | `boolean` | Automatically start LibreOffice when Gotenberg starts. If false, LibreOffice will start on the first conversion request that uses it. |
+| `services.gotenberg.libreoffice.disableRoutes` | `boolean` | Disable all routes allowing LibreOffice-based conversion. |
+| `services.gotenberg.libreoffice.maxQueueSize` | `unsigned integer, meaning >=0` | Maximum queue size for LibreOffice-based conversions. Setting to 0 disables the limit. |
+| `services.gotenberg.libreoffice.package` | `package` | The libreoffice package to use. |
+| `services.gotenberg.libreoffice.restartAfter` | `unsigned integer, meaning >=0` | Restart LibreOffice after this many conversions. Setting to 0 disables this feature. |
+| `services.gotenberg.logLevel` | `one of "error", "warn", "info", "debug"` | The logging level for Gotenberg. |
+| `services.gotenberg.package` | `package` | The gotenberg package to use. |
+| `services.gotenberg.pdfEngines.convert` | `list of value "libreoffice-pdfengine" (singular enum)` | PDF Engines to use for converting files. |
+| `services.gotenberg.pdfEngines.disableRoutes` | `boolean` | Disable routes related to PDF engines. |
+| `services.gotenberg.pdfEngines.merge` | `list of (one of "qpdf", "pdfcpu", "pdftk")` | PDF Engines to use for merging files. |
+| `services.gotenberg.pdfEngines.readMetadata` | `list of value "exiftool" (singular enum)` | PDF Engines to use for reading metadata from files. |
+| `services.gotenberg.pdfEngines.writeMetadata` | `list of value "exiftool" (singular enum)` | PDF Engines to use for writing metadata to files. |
+| `services.gotenberg.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which the API should listen. |
+| `services.gotenberg.rootPath` | `string` | Root path for the Gotenberg API. |
+| `services.gotenberg.timeout` | `null or string` | Timeout for API requests. |

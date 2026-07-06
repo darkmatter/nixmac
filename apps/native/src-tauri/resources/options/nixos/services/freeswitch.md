@@ -5,9 +5,9 @@
 All options under `services.freeswitch`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.freeswitch.configDir` | | |
-| `services.freeswitch.configTemplate` | | |
-| `services.freeswitch.enable` | | |
-| `services.freeswitch.enableReload` | | |
-| `services.freeswitch.package` | | |
+| --- | --- | --- |
+| `services.freeswitch.configDir` | `attribute set of absolute path` | Override file in FreeSWITCH config template directory. Each top-level attribute denotes a file path in the configuration directory, its value is the file path. See [FreeSWITCH documentation](https://freeswitch.org/confluence/display/FREESWITCH/Default+Configuration) for more info. Also check available templates in [FreeSWITCH repository](https://github.com/signalwire/freeswitch/tree/master/conf). |
+| `services.freeswitch.configTemplate` | `absolute path` | Configuration template to use. See available templates in [FreeSWITCH repository](https://github.com/signalwire/freeswitch/tree/master/conf). You can also set your own configuration directory. |
+| `services.freeswitch.enable` | `boolean` | Whether to enable FreeSWITCH. |
+| `services.freeswitch.enableReload` | `boolean` | Issue the `reloadxml` command to FreeSWITCH when configuration directory changes (instead of restart). See [FreeSWITCH documentation](https://freeswitch.org/confluence/display/FREESWITCH/Reloading) for more info. The configuration directory is exposed at {file}`/etc/freeswitch`. See also `systemd.services.*.restartIfChanged`. |
+| `services.freeswitch.package` | `package` | The freeswitch package to use. |

@@ -5,6 +5,6 @@
 All options under `services.yubikey-agent`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.yubikey-agent.enable` | | |
-| `services.yubikey-agent.package` | | |
+| --- | --- | --- |
+| `services.yubikey-agent.enable` | `boolean` | Whether to start yubikey-agent when you log in. Also sets SSH_AUTH_SOCK to point at yubikey-agent. Note that yubikey-agent will use whatever pinentry is specified in programs.gnupg.agent.pinentryPackage. |
+| `services.yubikey-agent.package` | `package` | The yubikey-agent package to use. |

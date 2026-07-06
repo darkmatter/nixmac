@@ -5,13 +5,13 @@
 All options under `services.yggdrasil-jumper`.
 
 | Option | Type | Description |
-| --------------------------------------------------- | ---- | ----------- |
-| `services.yggdrasil-jumper.appendListenAddresses` | | |
-| `services.yggdrasil-jumper.detectWireguard` | | |
-| `services.yggdrasil-jumper.enable` | | |
-| `services.yggdrasil-jumper.extraArgs` | | |
-| `services.yggdrasil-jumper.extraConfig` | | |
-| `services.yggdrasil-jumper.logLevel` | | |
-| `services.yggdrasil-jumper.package` | | |
-| `services.yggdrasil-jumper.retrieveListenAddresses` | | |
-| `services.yggdrasil-jumper.settings` | | |
+| --- | --- | --- |
+| `services.yggdrasil-jumper.appendListenAddresses` | `boolean` | Append Yggdrasil router configuration with listeners on loopback addresses (`127.0.0.1`) and preselected ports to support peering using client-server protocols like `quic` and `tls`. See `Listen` option in Yggdrasil router configuration. |
+| `services.yggdrasil-jumper.detectWireguard` | `boolean` | Control whether `settings.wireguard = true` should automatically provide CAP_NET_ADMIN capability and make the necessary packages available to Yggdrasil Jumper service. |
+| `services.yggdrasil-jumper.enable` | `boolean` | Whether to enable the Yggdrasil Jumper system service. |
+| `services.yggdrasil-jumper.extraArgs` | `list of string` | Extra command line arguments for Yggdrasil Jumper. |
+| `services.yggdrasil-jumper.extraConfig` | `strings concatenated with "\n"` | Configuration for Yggdrasil Jumper in plaintext. |
+| `services.yggdrasil-jumper.logLevel` | `one of "off", "error", "warn", "info", "debug", "trace"` | Set logging verbosity for Yggdrasil Jumper. |
+| `services.yggdrasil-jumper.package` | `package` | The yggdrasil-jumper package to use. |
+| `services.yggdrasil-jumper.retrieveListenAddresses` | `boolean` | Automatically retrieve listen addresses from the Yggdrasil router configuration. See `yggdrasil_listen` option in Yggdrasil Jumper configuration. |
+| `services.yggdrasil-jumper.settings` | `TOML value` | Configuration for Yggdrasil Jumper as a Nix attribute set. |

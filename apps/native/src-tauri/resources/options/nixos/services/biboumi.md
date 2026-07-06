@@ -5,9 +5,22 @@
 All options under `services.biboumi`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.biboumi.credentialsFile` | | |
-| `services.biboumi.enable` | | |
-| `services.biboumi.openFirewall` | | |
-| `services.biboumi.package` | | |
-| `services.biboumi.settings` | | |
+| --- | --- | --- |
+| `services.biboumi.credentialsFile` | `absolute path` | Path to a configuration file to be merged with the settings. Beware not to surround "=" with spaces when setting biboumi's options in this file. Useful to merge a file which is better kept out of the Nix store because it contains sensible data like [password](#opt-services.biboumi.settings.password). |
+| `services.biboumi.enable` | `boolean` | Whether to enable the Biboumi XMPP gateway to IRC. |
+| `services.biboumi.openFirewall` | `boolean` | Whether to enable opening of the identd port in the firewall. |
+| `services.biboumi.package` | `package` | The biboumi package to use. |
+| `services.biboumi.settings` | `open submodule of settings option` | See [biboumi 9.0](https://doc.biboumi.louiz.org/9.0/admin.html#configuration) for documentation. |
+| `services.biboumi.settings.admin` | `list of string` | The bare JID of the gateway administrator. This JID will have more privileges than other standard users, for example some administration ad-hoc commands will only be available to that JID. |
+| `services.biboumi.settings.ca_file` | `absolute path` | Specifies which file should be used as the list of trusted CA when negotiating a TLS session. |
+| `services.biboumi.settings.db_name` | `null or absolute path or string` | The name of the database to use. Set it to null and use [credentialsFile](#opt-services.biboumi.credentialsFile) if you do not want this connection string to go into the Nix store. |
+| `services.biboumi.settings.hostname` | `string` | The hostname served by the XMPP gateway. This domain must be configured in the XMPP server as an external component. |
+| `services.biboumi.settings.identd_port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The TCP port on which to listen for identd queries. |
+| `services.biboumi.settings.log_level` | `integer between 0 and 3 (both inclusive)` | Indicate what type of log messages to write in the logs. 0 is debug, 1 is info, 2 is warning, 3 is error. |
+| `services.biboumi.settings.password` | `null or string` | The password used to authenticate the XMPP component to your XMPP server. This password must be configured in the XMPP server, associated with the external component on [hostname](#opt-services.biboumi.settings.hostname). Set it to null and use [credentialsFile](#opt-services.biboumi.credentialsFile) if you do not want this password to go into the Nix store. |
+| `services.biboumi.settings.persistent_by_default` | `boolean` | Whether all rooms will be persistent by default: the value of the “persistent” option in the global configuration of each user will be “true”, but the value of each individual room will still default to false. This means that a user just needs to change the global “persistent” configuration option to false in order to override this. |
+| `services.biboumi.settings.policy_directory` | `absolute path` | A directory that should contain the policy files, used to customize Botan’s behaviour when negotiating the TLS connections with the IRC servers. |
+| `services.biboumi.settings.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The TCP port to use to connect to the local XMPP component. |
+| `services.biboumi.settings.realname_customization` | `boolean` | Whether the users will be able to use the ad-hoc commands that lets them configure their realname and username. |
+| `services.biboumi.settings.realname_from_jid` | `boolean` | Whether the realname and username of each biboumi user will be extracted from their JID. Otherwise they will be set to the nick they used to connect to the IRC server. |
+| `services.biboumi.settings.xmpp_server_ip` | `string` | The IP address to connect to the XMPP server on. The connection to the XMPP server is unencrypted, so the biboumi instance and the server should normally be on the same host. |

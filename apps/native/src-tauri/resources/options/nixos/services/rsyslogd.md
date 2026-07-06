@@ -5,8 +5,8 @@
 All options under `services.rsyslogd`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.rsyslogd.defaultConfig` | | |
-| `services.rsyslogd.enable` | | |
-| `services.rsyslogd.extraConfig` | | |
-| `services.rsyslogd.extraParams` | | |
+| --- | --- | --- |
+| `services.rsyslogd.defaultConfig` | `strings concatenated with "\n"` | The default {file}`syslog.conf` file configures a fairly standard setup of log files, which can be extended by means of {var}`extraConfig`. |
+| `services.rsyslogd.enable` | `boolean` | Whether to enable syslogd. Note that systemd also logs syslog messages, so you normally don't need to run syslogd. |
+| `services.rsyslogd.extraConfig` | `strings concatenated with "\n"` | Additional text appended to {file}`syslog.conf`, i.e. the contents of {var}`defaultConfig`. |
+| `services.rsyslogd.extraParams` | `list of string` | Additional parameters passed to {command}`rsyslogd`. |

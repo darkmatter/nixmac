@@ -5,11 +5,11 @@
 All options under `services.grafana_reporter`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.grafana_reporter.addr` | | |
-| `services.grafana_reporter.enable` | | |
-| `services.grafana_reporter.grafana.addr` | | |
-| `services.grafana_reporter.grafana.port` | | |
-| `services.grafana_reporter.grafana.protocol` | | |
-| `services.grafana_reporter.port` | | |
-| `services.grafana_reporter.templateDir` | | |
+| --- | --- | --- |
+| `services.grafana_reporter.addr` | `string` | Listening address. |
+| `services.grafana_reporter.enable` | `boolean` | Whether to enable grafana_reporter. |
+| `services.grafana_reporter.grafana.addr` | `string` | Grafana address. |
+| `services.grafana_reporter.grafana.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Grafana port. |
+| `services.grafana_reporter.grafana.protocol` | `one of "http", "https"` | Grafana protocol. |
+| `services.grafana_reporter.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listening port. |
+| `services.grafana_reporter.templateDir` | `string or absolute path` | Optional template directory to use custom tex templates |

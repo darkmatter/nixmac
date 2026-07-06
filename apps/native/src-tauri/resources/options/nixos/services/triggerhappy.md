@@ -5,8 +5,11 @@
 All options under `services.triggerhappy`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.triggerhappy.bindings` | | |
-| `services.triggerhappy.enable` | | |
-| `services.triggerhappy.extraConfig` | | |
-| `services.triggerhappy.user` | | |
+| --- | --- | --- |
+| `services.triggerhappy.bindings` | `list of (submodule)` | Key bindings for {command}`triggerhappy`. |
+| `services.triggerhappy.bindings.*.cmd` | `string` | What to run. |
+| `services.triggerhappy.bindings.*.event` | `one of "press", "hold", "release"` | Event to match. |
+| `services.triggerhappy.bindings.*.keys` | `list of string` | List of keys to match. Key names as defined in linux/input-event-codes.h |
+| `services.triggerhappy.enable` | `boolean` | Whether to enable the {command}`triggerhappy` hotkey daemon. |
+| `services.triggerhappy.extraConfig` | `strings concatenated with "\n"` | Literal contents to append to the end of {command}`triggerhappy` configuration file. |
+| `services.triggerhappy.user` | `string` | User account under which {command}`triggerhappy` runs. |

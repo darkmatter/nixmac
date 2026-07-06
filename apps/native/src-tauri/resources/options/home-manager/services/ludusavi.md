@@ -5,10 +5,10 @@
 All options under `services.ludusavi`.
 
 | Option | Type | Description |
-| -------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.ludusavi.backupNotification` | `boolean` | Send a notification message after a successful backup. |
-| `services.ludusavi.configFile` | `null or absolute path` | Path to a Ludusavi config.yaml . Mutually exclusive with the settings option. See https://github.com/mtkennerly/ludusavi/blob/master/docs/help/configuration-file.md for available options. |
+| `services.ludusavi.configFile` | `null or absolute path` | Path to a Ludusavi `config.yaml`. Mutually exclusive with the `settings` option. See https://github.com/mtkennerly/ludusavi/blob/master/docs/help/configuration-file.md for available options. |
 | `services.ludusavi.enable` | `boolean` | Whether to enable Ludusavi game backup tool. |
-| `services.ludusavi.frequency` | `string` | How often to run ludusavi. This value is passed to the systemd timer configuration as the onCalendar option. See systemd.time (7) for more information about the format. |
+| `services.ludusavi.frequency` | `string` | How often to run ludusavi. This value is passed to the systemd timer configuration as the onCalendar option. See {manpage}`systemd.time(7)` for more information about the format. |
 | `services.ludusavi.package` | `package` | The ludusavi package to use. |
 | `services.ludusavi.settings` | `YAML 1.1 value` | Ludusavi configuration as an attribute set. See https://github.com/mtkennerly/ludusavi#configuration-file for available options. |

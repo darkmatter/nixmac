@@ -5,22 +5,24 @@
 All options under `services.openafsClient`.
 
 | Option | Type | Description |
-| --------------------------------------------- | ---- | ----------- |
-| `services.openafsClient.afsdb` | | |
-| `services.openafsClient.cache.blocks` | | |
-| `services.openafsClient.cache.chunksize` | | |
-| `services.openafsClient.cache.directory` | | |
-| `services.openafsClient.cache.diskless` | | |
-| `services.openafsClient.cellName` | | |
-| `services.openafsClient.cellServDB` | | |
-| `services.openafsClient.crypt` | | |
-| `services.openafsClient.daemons` | | |
-| `services.openafsClient.enable` | | |
-| `services.openafsClient.fakestat` | | |
-| `services.openafsClient.globalCellServDBFile` | | |
-| `services.openafsClient.inumcalc` | | |
-| `services.openafsClient.mountPoint` | | |
-| `services.openafsClient.packages.module` | | |
-| `services.openafsClient.packages.programs` | | |
-| `services.openafsClient.sparse` | | |
-| `services.openafsClient.startDisconnected` | | |
+| --- | --- | --- |
+| `services.openafsClient.afsdb` | `boolean` | Resolve cells via AFSDB DNS records. |
+| `services.openafsClient.cache.blocks` | `signed integer` | Cache size in 1KB blocks. |
+| `services.openafsClient.cache.chunksize` | `integer between 0 and 30 (both inclusive)` | Size of each cache chunk given in powers of 2. `0` resets the chunk size to its default values (13 (8 KB) for memcache, 18-20 (256 KB to 1 MB) for diskcache). Maximum value is 30. Important performance parameter. Set to higher values when dealing with large files. |
+| `services.openafsClient.cache.directory` | `string` | Cache directory. |
+| `services.openafsClient.cache.diskless` | `boolean` | Use in-memory cache for diskless machines. Has no real performance benefit anymore. |
+| `services.openafsClient.cellName` | `string` | Cell name. |
+| `services.openafsClient.cellServDB` | `(attribute set of list of (submodule)) or (list of anything) convertible to it` | This cell's database server records, added to the global CellServDB. See {manpage}`CellServDB(5)` man page for syntax. Ignored when `afsdb` is set to `true`. |
+| `services.openafsClient.cellServDB.<name>.*.dnsname` | `string` | DNS full-qualified domain name of a database server |
+| `services.openafsClient.cellServDB.<name>.*.ip` | `string` | IP Address of a database server |
+| `services.openafsClient.crypt` | `boolean` | Whether to enable (weak) protocol encryption. |
+| `services.openafsClient.daemons` | `signed integer` | Number of daemons to serve user requests. Numbers higher than 6 usually do no increase performance. Default is sufficient for up to five concurrent users. |
+| `services.openafsClient.enable` | `boolean` | Whether to enable the OpenAFS client. |
+| `services.openafsClient.fakestat` | `boolean` | Return fake data on stat() calls. If `true`, always do so. If `false`, only do so for cross-cell mounts (as these are potentially expensive). |
+| `services.openafsClient.globalCellServDBFile` | `null or path in the Nix store` | Global CellServDB file to be deployed. Set to `null` to only deploy the cells in `cellServDB`. Any cells defined in `cellServDB` will override cells in the global file. |
+| `services.openafsClient.inumcalc` | `string matching the pattern compat\|md5` | Inode calculation method. `compat` is computationally less expensive, but `md5` greatly reduces the likelihood of inode collisions in larger scenarios involving multiple cells mounted into one AFS space. |
+| `services.openafsClient.mountPoint` | `string` | Mountpoint of the AFS file tree, conventionally `/afs`. When set to a different value, only cross-cells that use the same value can be accessed. |
+| `services.openafsClient.packages.module` | `package` | OpenAFS kernel module package. MUST match the userland package! |
+| `services.openafsClient.packages.programs` | `package` | OpenAFS programs package. MUST match the kernel module package! |
+| `services.openafsClient.sparse` | `boolean` | Minimal cell list in /afs. |
+| `services.openafsClient.startDisconnected` | `boolean` | Start up in disconnected mode. You need to execute `fs disco online` (as root) to switch to connected mode. Useful for roaming devices. |

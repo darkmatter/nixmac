@@ -5,13 +5,8 @@
 All options under `programs.diff-so-fancy`.
 
 | Option | Type | Description |
-| --------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `programs.diff-so-fancy.changeHunkIndicators` | | |
+| --- | --- | --- |
 | `programs.diff-so-fancy.enable` | `boolean` | Whether to enable diff-so-fancy, a diff colorizer. |
-| `programs.diff-so-fancy.enableGitIntegration` | `boolean` | Whether to enable git integration for diff-so-fancy. |
-| `programs.diff-so-fancy.markEmptyLines` | | |
-| `programs.diff-so-fancy.pagerOpts` | `list of string` | Arguments to be passed to less . |
-| `programs.diff-so-fancy.rulerWidth` | | |
-| `programs.diff-so-fancy.settings` | `attribute set of (string or boolean or signed integer)` | Options to configure diff-so-fancy. See https://github.com/so-fancy/diff-so-fancy#configuration for available options. |
-| `programs.diff-so-fancy.stripLeadingSymbols` | | |
-| `programs.diff-so-fancy.useUnicodeRuler` | | |
+| `programs.diff-so-fancy.enableGitIntegration` | `boolean` | Whether to enable git integration for diff-so-fancy. When enabled, diff-so-fancy will be configured as git's pager for {command}`diff`, {command}`log`, and {command}`show`, and as git's diff filter for interactive staging. |
+| `programs.diff-so-fancy.pagerOpts` | `list of string` | Arguments to be passed to {command}`less`. |
+| `programs.diff-so-fancy.settings` | `attribute set of (string or boolean or signed integer)` | Options to configure diff-so-fancy. See <https://github.com/so-fancy/diff-so-fancy#configuration> for available options. |

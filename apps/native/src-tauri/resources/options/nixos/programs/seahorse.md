@@ -5,5 +5,5 @@
 All options under `programs.seahorse`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `programs.seahorse.enable` | | |
+| --- | --- | --- |
+| `programs.seahorse.enable` | `boolean` | Whether to enable Seahorse, a GNOME application for managing encryption keys and passwords in the GNOME Keyring. |

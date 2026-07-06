@@ -5,13 +5,10 @@
 All options under `services.mautrix-discord`.
 
 | Option | Type | Description |
-| -------------------------------------------------- | ---- | ----------- |
-| `services.mautrix-discord.dataDir` | | |
-| `services.mautrix-discord.enable` | | |
-| `services.mautrix-discord.environmentFile` | | |
-| `services.mautrix-discord.package` | | |
-| `services.mautrix-discord.registerToSynapse` | | |
-| `services.mautrix-discord.registrationServiceUnit` | | |
-| `services.mautrix-discord.serviceDependencies` | | |
-| `services.mautrix-discord.serviceUnit` | | |
-| `services.mautrix-discord.settings` | | |
+| --- | --- | --- |
+| `services.mautrix-discord.dataDir` | `absolute path` | Directory to store the bridge's data. |
+| `services.mautrix-discord.enable` | `boolean` | Whether to enable Mautrix-Discord, a Matrix-Discord puppeting/relay-bot bridge. |
+| `services.mautrix-discord.environmentFile` | `null or absolute path` | File containing environment variables for secret substitution. Variables in the config like `$VARIABLE` will be replaced. |
+| `services.mautrix-discord.package` | `package` | The mautrix-discord package to use. |
+| `services.mautrix-discord.registerToSynapse` | `boolean` | Whether to add the bridge's app service registration file to `services.matrix-synapse.settings.app_service_config_files`. |
+| `services.mautrix-discord.settings` | `YAML 1.1 value` | {file}`config.yaml` configuration as a Nix attribute set. Configuration options should match those described in [example-config.yaml](https://github.com/mautrix/discord/blob/main/example-config.yaml). Secret tokens should be specified using {option}`environmentFile` instead of this world-readable attribute set. |

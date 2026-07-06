@@ -5,9 +5,9 @@
 All options under `programs.sagemath`.
 
 | Option | Type | Description |
-| ------------------------------ | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `programs.sagemath.configDir` | `string` | Directory where the sage.init file will be stored. Note that the upstream default is ~/.sage , but our default is to follow XDG. |
-| `programs.sagemath.dataDir` | `string` | Location for DOT_SAGE . Note that the upstream default is ~/.sage , but our default is to follow XDG. |
+| --- | --- | --- |
+| `programs.sagemath.configDir` | `string` | Directory where the {file}`sage.init` file will be stored. Note that the upstream default is {file}`~/.sage`, but our default is to follow XDG. |
+| `programs.sagemath.dataDir` | `string` | Location for {env}`DOT_SAGE`. Note that the upstream default is {file}`~/.sage`, but our default is to follow XDG. |
 | `programs.sagemath.enable` | `boolean` | Whether to enable SageMath, a mathematics software system. |
-| `programs.sagemath.initScript` | `strings concatenated with “\n”` | Contents of the init.sage file that is loaded on startup. |
+| `programs.sagemath.initScript` | `strings concatenated with "\n"` | Contents of the {file}`init.sage` file that is loaded on startup. |
 | `programs.sagemath.package` | `null or package` | The sage package to use. The SageMath package to use. |

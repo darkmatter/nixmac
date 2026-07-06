@@ -5,7 +5,7 @@
 All options under `programs.afew`.
 
 | Option | Type | Description |
-| --------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.afew.enable` | `boolean` | Whether to enable the afew initial tagging script for Notmuch. |
-| `programs.afew.extraConfig` | `strings concatenated with “\n”` | Extra lines added to afew configuration file. Available configuration options are described in the afew manual: https://afew.readthedocs.io/en/latest/configuration.html . |
+| `programs.afew.extraConfig` | `strings concatenated with "\n"` | Extra lines added to afew configuration file. Available configuration options are described in the afew manual: <https://afew.readthedocs.io/en/latest/configuration.html>. |
 | `programs.afew.package` | `null or package` | The afew package to use. |

@@ -5,9 +5,9 @@
 All options under `programs.thunderbird`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `programs.thunderbird.enable` | | |
-| `programs.thunderbird.package` | | |
-| `programs.thunderbird.policies` | | |
-| `programs.thunderbird.preferences` | | |
-| `programs.thunderbird.preferencesStatus` | | |
+| --- | --- | --- |
+| `programs.thunderbird.enable` | `boolean` | Whether to enable Thunderbird mail client. |
+| `programs.thunderbird.package` | `package` | The thunderbird package to use. |
+| `programs.thunderbird.policies` | `JSON value` | Group policies to install. See [Thunderbird's documentation](https://github.com/thunderbird/policy-templates) for a list of available options. This can be used to install extensions declaratively! Check out the documentation of the `ExtensionSettings` policy for details. |
+| `programs.thunderbird.preferences` | `attribute set of (boolean or signed integer or string)` | Preferences to set from `about:config`. Some of these might be able to be configured more ergonomically using policies. |
+| `programs.thunderbird.preferencesStatus` | `one of "default", "locked", "user", "clear"` | The status of `thunderbird.preferences`. `status` can assume the following values: - `"default"`: Preferences appear as default. - `"locked"`: Preferences appear as default and can't be changed. - `"user"`: Preferences appear as changed. - `"clear"`: Value has no effect. Resets to factory defaults on each startup. |

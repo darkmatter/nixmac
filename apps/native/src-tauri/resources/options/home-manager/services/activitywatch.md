@@ -5,9 +5,15 @@
 All options under `services.activitywatch`.
 
 | Option | Type | Description |
-| ------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.activitywatch.enable` | `boolean` | Whether to enable ActivityWatch, an automated time tracker. |
 | `services.activitywatch.extraOptions` | `list of string` | Additional arguments to be passed on to the ActivityWatch server. |
-| `services.activitywatch.package` | `package` | The activitywatch package to use. Specifically, this should be a package containing the Rust implementation of ActivityWatch server . |
-| `services.activitywatch.settings` | `TOML value` | Configuration for aw-server-rust to be generated at $XDG_CONFIG_HOME/activitywatch/aw-server-rust/config.toml . |
-| `services.activitywatch.watchers` | `attribute set of (submodule)` | Watchers to be included with the service alongside with their configuration. |
+| `services.activitywatch.package` | `package` | The activitywatch package to use. Specifically, this should be a package containing [the Rust implementation of ActivityWatch server](https://github.com/ActivityWatch/aw-server-rust). |
+| `services.activitywatch.settings` | `TOML value` | Configuration for `aw-server-rust` to be generated at {file}`$XDG_CONFIG_HOME/activitywatch/aw-server-rust/config.toml`. |
+| `services.activitywatch.watchers` | `attribute set of (submodule)` | Watchers to be included with the service alongside with their configuration. Check with `systemctl --user status "*aw*"` If a configuration is set, a file will be generated in {file}`$XDG_CONFIG_HOME/activitywatch/$WATCHER_NAME/$WATCHER_SETTINGS_FILENAME`. ::: {.note} The watchers are run with the service manager and the settings format of the configuration is only assumed to be in TOML. Furthermore, it assumes the watcher program is using the official client libraries which has functions to store it in the appropriate location. ::: |
+| `services.activitywatch.watchers.<name>.executable` | `string` | The name of the executable of the watcher. This is useful in case the watcher name is different from the executable. By default, this option uses the watcher name. |
+| `services.activitywatch.watchers.<name>.extraOptions` | `list of string` | Extra arguments to be passed to the watcher executable. |
+| `services.activitywatch.watchers.<name>.name` | `string` | The name of the watcher. This will be used as the directory name for {file}`$XDG_CONFIG_HOME/activitywatch/$NAME` when {option}`services.activitywatch.watchers.<name>.settings` is set. |
+| `services.activitywatch.watchers.<name>.package` | `package` | The activitywatch package to use. The derivation containing the watcher executable. |
+| `services.activitywatch.watchers.<name>.settings` | `TOML value` | The settings for the individual watcher in TOML format. If set, a file will be generated at {file}`$XDG_CONFIG_HOME/activitywatch/$NAME/$FILENAME`. To set the basename of the settings file, see [](#opt-services.activitywatch.watchers._name_.settingsFilename). |
+| `services.activitywatch.watchers.<name>.settingsFilename` | `string` | The filename of the generated settings file. By default, this uses the watcher name to be generated at {file}`$XDG_CONFIG_HOME/activitywatch/$NAME/$NAME.toml`. This is useful in case the watcher requires a different name for the configuration file. |

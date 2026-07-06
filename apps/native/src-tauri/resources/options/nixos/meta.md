@@ -5,8 +5,6 @@
 All options under `meta`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `meta.buildDocsInSandbox` | | |
-| `meta.doc` | | |
-| `meta.maintainers` | | |
-| `meta.teams` | | |
+| --- | --- | --- |
+| `meta.maintainers` | `list of lib.maintainers` | List of maintainers of each module. This option should be defined at most once per module. The option value is not a list of maintainers, but an attribute set that maps module file names to lists of maintainers. |
+| `meta.teams` | `list of lib.teams` | List of team maintainers of each module. This option should be defined at most once per module. |

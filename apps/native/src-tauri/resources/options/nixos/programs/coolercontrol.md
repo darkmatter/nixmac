@@ -5,6 +5,5 @@
 All options under `programs.coolercontrol`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `programs.coolercontrol.enable` | | |
-| `programs.coolercontrol.nvidiaSupport` | | |
+| --- | --- | --- |
+| `programs.coolercontrol.enable` | `boolean` | Whether to enable CoolerControl GUI & its background services. |

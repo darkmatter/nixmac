@@ -5,9 +5,9 @@
 All options under `services.opentelemetry-collector`.
 
 | Option | Type | Description |
-| ----------------------------------------------------- | ---- | ----------- |
-| `services.opentelemetry-collector.configFile` | | |
-| `services.opentelemetry-collector.enable` | | |
-| `services.opentelemetry-collector.package` | | |
-| `services.opentelemetry-collector.settings` | | |
-| `services.opentelemetry-collector.validateConfigFile` | | |
+| --- | --- | --- |
+| `services.opentelemetry-collector.configFile` | `null or absolute path` | Specify a path to a configuration file that Opentelemetry Collector should use. |
+| `services.opentelemetry-collector.enable` | `boolean` | Whether to enable Opentelemetry Collector. |
+| `services.opentelemetry-collector.package` | `package` | The opentelemetry-collector package to use. |
+| `services.opentelemetry-collector.settings` | `YAML 1.1 value` | Specify the configuration for Opentelemetry Collector in Nix. See <https://opentelemetry.io/docs/collector/configuration/> for available options. |
+| `services.opentelemetry-collector.validateConfigFile` | `boolean` | Whether to enable Validate configuration file. |

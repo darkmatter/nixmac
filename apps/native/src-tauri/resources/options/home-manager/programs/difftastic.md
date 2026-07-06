@@ -5,10 +5,10 @@
 All options under `programs.difftastic`.
 
 | Option | Type | Description |
-| -------------------------------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.difftastic.enable` | `boolean` | Whether to enable difftastic, a structural diff tool. |
-| `programs.difftastic.git.diffToolMode` | `boolean` | Whether to additionally configure difftastic as a git difftool. |
-| `programs.difftastic.git.enable` | `boolean` | Whether to enable git integration for difftastic. |
+| `programs.difftastic.git.enable` | `boolean` | Whether to enable git integration for difftastic. When enabled, difftastic will be configured as git's external diff command, as a git difftool, or both, depending on the value of {option}`programs.difftastic.git.mode`. |
+| `programs.difftastic.git.mode` | `one of "external", "difftool", "both"` | How difftastic integrates with git. - `"external"`: set `diff.external` so {command}`git diff` uses difftastic by default. - `"difftool"`: only configure difftastic as a git difftool (`diff.tool` and `difftool.difftastic.cmd`), leaving {command}`git diff` untouched. - `"both"`: configure both `diff.external` and the difftool. |
 | `programs.difftastic.jujutsu.enable` | `boolean` | Whether to enable jujutsu integration for difftastic. |
-| `programs.difftastic.options` | `attribute set of (string or signed integer or boolean or list of (string or signed integer or boolean))` | Configuration options for difftastic . See difft --help |
+| `programs.difftastic.options` | `attribute set of (string or signed integer or boolean or list of (string or signed integer or boolean))` | Configuration options for {command}`difftastic`. See {command}`difft --help` |
 | `programs.difftastic.package` | `package` | The difftastic package to use. |

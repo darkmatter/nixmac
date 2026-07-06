@@ -5,9 +5,9 @@
 All options under `services.seerr`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.seerr.configDir` | | |
-| `services.seerr.enable` | | |
-| `services.seerr.openFirewall` | | |
-| `services.seerr.package` | | |
-| `services.seerr.port` | | |
+| --- | --- | --- |
+| `services.seerr.configDir` | `absolute path` | Config data directory |
+| `services.seerr.enable` | `boolean` | Whether to enable Seerr, a requests manager for Jellyfin. |
+| `services.seerr.openFirewall` | `boolean` | Open port in the firewall for the Seerr web interface. |
+| `services.seerr.package` | `package` | The seerr package to use. |
+| `services.seerr.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port which the Seerr web UI should listen to. |

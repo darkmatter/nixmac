@@ -5,5 +5,5 @@
 All options under `services.oidentd`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.oidentd.enable` | | |
+| --- | --- | --- |
+| `services.oidentd.enable` | `boolean` | Whether to enable ‘oidentd’, an implementation of the Ident protocol (RFC 1413). It allows remote systems to identify the name of the user associated with a TCP connection. |

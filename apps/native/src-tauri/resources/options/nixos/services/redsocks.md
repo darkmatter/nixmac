@@ -5,10 +5,20 @@
 All options under `services.redsocks`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.redsocks.chroot` | | |
-| `services.redsocks.enable` | | |
-| `services.redsocks.log` | | |
-| `services.redsocks.log_debug` | | |
-| `services.redsocks.log_info` | | |
-| `services.redsocks.redsocks` | | |
+| --- | --- | --- |
+| `services.redsocks.chroot` | `null or string` | Chroot under which to run redsocks. Log file is opened before chroot, but if logging to syslog /etc/localtime may be required. |
+| `services.redsocks.enable` | `boolean` | Whether to enable redsocks. |
+| `services.redsocks.log` | `string` | Where to send logs. Possible values are: - stderr - file:/path/to/file - syslog:FACILITY where FACILITY is any of "daemon", "local0", etc. |
+| `services.redsocks.log_debug` | `boolean` | Log connection progress. |
+| `services.redsocks.log_info` | `boolean` | Log start and end of client sessions. |
+| `services.redsocks.redsocks` | `list of (submodule)` | Local port to proxy associations to be performed. The example shows how to configure a proxy to handle port 80 as HTTP relay, and all other ports as HTTP connect. |
+| `services.redsocks.redsocks.*.disclose_src` | `one of "false", "X-Forwarded-For", "Forwarded_ip", "Forwarded_ipport"` | Way to disclose client IP to the proxy. - "false": do not disclose http-connect supports the following ways: - "X-Forwarded-For": add header "X-Forwarded-For: IP" - "Forwarded_ip": add header "Forwarded: for=IP" (see RFC7239) - "Forwarded_ipport": add header 'Forwarded: for="IP:port"' |
+| `services.redsocks.redsocks.*.doNotRedirect` | `list of string` | Iptables filters that if matched will get the packet off of redsocks. |
+| `services.redsocks.redsocks.*.ip` | `string` | IP on which redsocks should listen. Defaults to 127.0.0.1 for security reasons. |
+| `services.redsocks.redsocks.*.login` | `null or string` | Login to send to proxy. |
+| `services.redsocks.redsocks.*.password` | `null or string` | Password to send to proxy. WARNING, this will end up world-readable in the store! Awaiting https://github.com/NixOS/nix/issues/8 to be able to fix. |
+| `services.redsocks.redsocks.*.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which redsocks should listen. |
+| `services.redsocks.redsocks.*.proxy` | `string` | Proxy through which redsocks should forward incoming traffic. Example: "example.org:8080" |
+| `services.redsocks.redsocks.*.redirectCondition` | `boolean or string` | Conditions to make outbound packets go through this redsocks instance. If set to false, no packet will be forwarded. If set to true, all packets will be forwarded (except packets excluded by redirectInternetOnly). If set to a string, this is an iptables filter that will be matched against packets before getting them into redsocks. For example, setting it to "--dport 80" will only send packets to port 80 to redsocks. Note "-p tcp" is always implicitly added, as udp can only be proxied through redudp or the like. |
+| `services.redsocks.redsocks.*.redirectInternetOnly` | `boolean` | Exclude all non-globally-routable IPs from redsocks |
+| `services.redsocks.redsocks.*.type` | `one of "socks4", "socks5", "http-connect", "http-relay"` | Type of proxy. |

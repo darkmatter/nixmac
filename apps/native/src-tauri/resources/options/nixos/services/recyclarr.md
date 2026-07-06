@@ -5,11 +5,11 @@
 All options under `services.recyclarr`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.recyclarr.command` | | |
-| `services.recyclarr.configuration` | | |
-| `services.recyclarr.enable` | | |
-| `services.recyclarr.group` | | |
-| `services.recyclarr.package` | | |
-| `services.recyclarr.schedule` | | |
-| `services.recyclarr.user` | | |
+| --- | --- | --- |
+| `services.recyclarr.command` | `string` | The recyclarr command to run (e.g., sync). |
+| `services.recyclarr.configuration` | `YAML 1.1 value` | Recyclarr YAML configuration as a Nix attribute set. For detailed configuration options and examples, see the [official configuration reference](https://recyclarr.dev/wiki/yaml/config-reference/). The configuration is processed using [utils.genJqSecretsReplacement](https://github.com/NixOS/nixpkgs/blob/master/nixos/lib/utils.nix#L232-L331) to handle secret substitution. \`\`\` |
+| `services.recyclarr.enable` | `boolean` | Whether to enable recyclarr service. |
+| `services.recyclarr.group` | `string` | Group under which recyclarr runs. |
+| `services.recyclarr.package` | `package` | The recyclarr package to use. |
+| `services.recyclarr.schedule` | `string` | When to run recyclarr in systemd calendar format. |
+| `services.recyclarr.user` | `string` | User account under which recyclarr runs. |

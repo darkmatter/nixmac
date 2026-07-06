@@ -5,6 +5,6 @@
 All options under `services.safeeyes`.
 
 | Option | Type | Description |
-| --------------------------- | --------- | --------------------------------------------- |
+| --- | --- | --- |
 | `services.safeeyes.enable` | `boolean` | Whether to enable The Safe Eyes OSGI service. |
 | `services.safeeyes.package` | `package` | The safeeyes package to use. |

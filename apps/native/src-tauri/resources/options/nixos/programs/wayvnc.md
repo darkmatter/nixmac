@@ -5,6 +5,6 @@
 All options under `programs.wayvnc`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `programs.wayvnc.enable` | | |
-| `programs.wayvnc.package` | | |
+| --- | --- | --- |
+| `programs.wayvnc.enable` | `boolean` | Whether to enable wayvnc, VNC server for wlroots based Wayland compositors. |
+| `programs.wayvnc.package` | `package` | The wayvnc package to use. |

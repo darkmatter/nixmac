@@ -5,10 +5,10 @@
 All options under `programs.tmate`.
 
 | Option | Type | Description |
-| ------------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.tmate.dsaFingerprint` | `null or string` | Tmate server EdDSA key fingerprint. |
 | `programs.tmate.enable` | `boolean` | Whether to enable tmate. |
-| `programs.tmate.extraConfig` | `strings concatenated with “\n”` | Additional content written at the end of ~/.tmate.conf . |
+| `programs.tmate.extraConfig` | `strings concatenated with "\n"` | Additional content written at the end of {file}`~/.tmate.conf`. |
 | `programs.tmate.host` | `null or string` | Tmate server address. |
 | `programs.tmate.package` | `package` | The tmate package to use. |
 | `programs.tmate.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Tmate server port. |

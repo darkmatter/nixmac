@@ -5,13 +5,16 @@
 All options under `services.yggdrasil`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.yggdrasil.config` | | |
-| `services.yggdrasil.denyDhcpcdInterfaces` | | |
-| `services.yggdrasil.enable` | | |
-| `services.yggdrasil.extraArgs` | | |
-| `services.yggdrasil.group` | | |
-| `services.yggdrasil.openMulticastPort` | | |
-| `services.yggdrasil.package` | | |
-| `services.yggdrasil.persistentKeys` | | |
-| `services.yggdrasil.settings` | | |
+| --- | --- | --- |
+| `services.yggdrasil.denyDhcpcdInterfaces` | `list of string` | Disable the DHCP client for any interface whose name matches any of the shell glob patterns in this list. Use this option to prevent the DHCP client from broadcasting requests on the yggdrasil network. It is only necessary to do so when yggdrasil is running in TAP mode, because TUN interfaces do not support broadcasting. |
+| `services.yggdrasil.enable` | `boolean` | Whether to enable the yggdrasil system service. |
+| `services.yggdrasil.extraArgs` | `list of string` | Extra command line arguments. |
+| `services.yggdrasil.group` | `null or string` | Group to grant access to the Yggdrasil control socket. If `null`, only root can access the socket. |
+| `services.yggdrasil.openMulticastPort` | `boolean` | Whether to open the UDP port used for multicast peer discovery. The NixOS firewall blocks link-local communication, so in order to make incoming local peering work you will also need to configure `MulticastInterfaces` in your Yggdrasil configuration ({option}`settings`). You will then have to add the ports that you configure there to your firewall configuration ({option}`networking.firewall.allowedTCPPorts` or {option}`networking.firewall.interfaces.<name>.allowedTCPPorts`). |
+| `services.yggdrasil.package` | `package` | The yggdrasil package to use. |
+| `services.yggdrasil.persistentKeys` | `boolean` | Whether to enable automatic generation and persistence of keys. If enabled, a private key will be generated on first startup and stored at /var/lib/yggdrasil/private.pem. This ensures the Yggdrasil node retains the same IPv6 address across reboots. If you have existing keys from a previous installation (in the old keys.json format at /var/lib/yggdrasil/keys.json), they will be automatically migrated to the new PEM format on first startup. Note: This option is mutually exclusive with {option}`settings.PrivateKeyPath`. If you want to use externally managed keys, use {option}`settings.PrivateKeyPath` instead . |
+| `services.yggdrasil.settings` | `open submodule of (JSON value)` | Configuration for yggdrasil, as a structured Nix attribute set. If you specify settings here, they will be used as persistent configuration and Yggdrasil will retain the same configuration (including IPv6 address if keys are provided) across restarts. If no settings are specified, ephemeral keys are generated and the Yggdrasil interface will have a random IPv6 address each time the service is started. Use {option}`settings.PrivateKeyPath` to securely load private keys from files owned by root via systemd credentials. The most important options have dedicated NixOS options above. You can also specify any other yggdrasil configuration option directly. For a complete list of available options, see: https://yggdrasil-network.github.io/configurationref.html You can use the command `nix-shell -p yggdrasil --run "yggdrasil -genconf"` to generate default configuration values with documentation. |
+| `services.yggdrasil.settings.AllowedPublicKeys` | `list of string` | List of peer public keys to allow incoming peering connections from. If left empty, all connections are allowed by default. |
+| `services.yggdrasil.settings.Listen` | `list of string` | Listen addresses for incoming connections. You need listeners to accept incoming peerings from non-local nodes. |
+| `services.yggdrasil.settings.Peers` | `list of string` | List of outbound peer connection strings. Connection strings can contain options, see the yggdrasil documentation. |
+| `services.yggdrasil.settings.PrivateKeyPath` | `null or absolute path` | Path to the private key file on the host system. When specified, the key will be loaded via systemd credentials for secure access by the yggdrasil service. Warning: Do not put private keys directly in the Nix store as they would be world-readable! |

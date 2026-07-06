@@ -5,7 +5,7 @@
 All options under `services.trayscale`.
 
 | Option | Type | Description |
-| ------------------------------- | --------- | ---------------------------------------------------------------------------- |
-| `services.trayscale.enable` | `boolean` | Whether to enable An unofficial GUI wrapper around the Tailscale CLI client… |
+| --- | --- | --- |
+| `services.trayscale.enable` | `boolean` | Whether to enable An unofficial GUI wrapper around the Tailscale CLI client.. |
 | `services.trayscale.hideWindow` | `boolean` | Whether to hide the trayscale window on startup. |
 | `services.trayscale.package` | `package` | The trayscale package to use. |

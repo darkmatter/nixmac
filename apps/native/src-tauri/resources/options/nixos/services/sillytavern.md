@@ -5,14 +5,14 @@
 All options under `services.sillytavern`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.sillytavern.configFile` | | |
-| `services.sillytavern.enable` | | |
-| `services.sillytavern.group` | | |
-| `services.sillytavern.listen` | | |
-| `services.sillytavern.listenAddressIPv4` | | |
-| `services.sillytavern.listenAddressIPv6` | | |
-| `services.sillytavern.package` | | |
-| `services.sillytavern.port` | | |
-| `services.sillytavern.user` | | |
-| `services.sillytavern.whitelist` | | |
+| --- | --- | --- |
+| `services.sillytavern.configFile` | `absolute path` | Path to the SillyTavern configuration file. |
+| `services.sillytavern.enable` | `boolean` | Whether to enable sillytavern. |
+| `services.sillytavern.group` | `string` | Group account under which the web-application run. |
+| `services.sillytavern.listen` | `null or boolean` | Whether to listen on all network interfaces. |
+| `services.sillytavern.listenAddressIPv4` | `null or string` | Specific IPv4 address to listen to. |
+| `services.sillytavern.listenAddressIPv6` | `null or string` | Specific IPv6 address to listen to. |
+| `services.sillytavern.package` | `package` | The sillytavern package to use. |
+| `services.sillytavern.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which SillyTavern will listen. |
+| `services.sillytavern.user` | `string` | User account under which the web-application run. |
+| `services.sillytavern.whitelist` | `null or boolean` | Enables whitelist mode. |

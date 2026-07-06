@@ -5,6 +5,6 @@
 All options under `services.throttled`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.throttled.enable` | | |
-| `services.throttled.extraConfig` | | |
+| --- | --- | --- |
+| `services.throttled.enable` | `boolean` | Whether to enable fix for Intel CPU throttling. |
+| `services.throttled.extraConfig` | `string` | Alternative configuration |

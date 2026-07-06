@@ -5,7 +5,6 @@
 All options under `services.flatpak`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.flatpak.enable` | | |
-| `services.flatpak.extraPortals` | | |
-| `services.flatpak.package` | | |
+| --- | --- | --- |
+| `services.flatpak.enable` | `boolean` | Whether to enable flatpak. |
+| `services.flatpak.package` | `package` | The flatpak package to use. |

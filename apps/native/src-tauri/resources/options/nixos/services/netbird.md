@@ -5,52 +5,100 @@
 All options under `services.netbird`.
 
 | Option | Type | Description |
-| ------------------------------------------------------------- | ---- | ----------- |
-| `services.netbird.clients` | | |
-| `services.netbird.enable` | | |
-| `services.netbird.package` | | |
-| `services.netbird.server.coturn.domain` | | |
-| `services.netbird.server.coturn.enable` | | |
-| `services.netbird.server.coturn.openPorts` | | |
-| `services.netbird.server.coturn.password` | | |
-| `services.netbird.server.coturn.passwordFile` | | |
-| `services.netbird.server.coturn.useAcmeCertificates` | | |
-| `services.netbird.server.coturn.user` | | |
-| `services.netbird.server.dashboard.domain` | | |
-| `services.netbird.server.dashboard.enable` | | |
-| `services.netbird.server.dashboard.enableNginx` | | |
-| `services.netbird.server.dashboard.finalDrv` | | |
-| `services.netbird.server.dashboard.managementServer` | | |
-| `services.netbird.server.dashboard.package` | | |
-| `services.netbird.server.dashboard.settings` | | |
-| `services.netbird.server.domain` | | |
-| `services.netbird.server.enable` | | |
-| `services.netbird.server.enableNginx` | | |
-| `services.netbird.server.management.disableAnonymousMetrics` | | |
-| `services.netbird.server.management.disableSingleAccountMode` | | |
-| `services.netbird.server.management.dnsDomain` | | |
-| `services.netbird.server.management.domain` | | |
-| `services.netbird.server.management.enable` | | |
-| `services.netbird.server.management.enableNginx` | | |
-| `services.netbird.server.management.extraOptions` | | |
-| `services.netbird.server.management.logLevel` | | |
-| `services.netbird.server.management.metricsPort` | | |
-| `services.netbird.server.management.oidcConfigEndpoint` | | |
-| `services.netbird.server.management.package` | | |
-| `services.netbird.server.management.port` | | |
-| `services.netbird.server.management.settings` | | |
-| `services.netbird.server.management.singleAccountModeDomain` | | |
-| `services.netbird.server.management.turnDomain` | | |
-| `services.netbird.server.management.turnPort` | | |
-| `services.netbird.server.signal.domain` | | |
-| `services.netbird.server.signal.enable` | | |
-| `services.netbird.server.signal.enableNginx` | | |
-| `services.netbird.server.signal.extraOptions` | | |
-| `services.netbird.server.signal.logLevel` | | |
-| `services.netbird.server.signal.metricsPort` | | |
-| `services.netbird.server.signal.package` | | |
-| `services.netbird.server.signal.port` | | |
-| `services.netbird.tunnels` | | |
-| `services.netbird.ui.enable` | | |
-| `services.netbird.ui.package` | | |
-| `services.netbird.useRoutingFeatures` | | |
+| --- | --- | --- |
+| `services.netbird.clients` | `attribute set of (submodule)` | Attribute set of NetBird client daemons, by default each one will: 1. be manageable using dedicated tooling: - `netbird-<name>` script, - `NetBird - netbird-<name>` graphical interface when appropriate (see `ui.enable`), 2. run as a `netbird-<name>.service`, 3. listen for incoming remote connections on the port `51820` (`openFirewall` by default), 4. manage the `netbird-<name>` wireguard interface, 5. use the {file}`/var/lib/netbird-<name>/config.json` configuration file, 6. override {file}`/var/lib/netbird-<name>/config.json` with values from {file}`/etc/netbird-<name>/config.d/*.json`, 7. (`hardened`) be locally manageable by `netbird-<name>` system group, With following caveats: - multiple daemons will interfere with each other's DNS resolution of `netbird.cloud`, but should remain fully operational otherwise. Setting up custom (non-conflicting) DNS zone is currently possible only when self-hosting. |
+| `services.netbird.clients.<name>.autoStart` | `boolean` | Start the service with the system. As of 2024-02-13 it is not possible to start a NetBird client daemon without immediately connecting to the network, but it is [planned for a near future](https://github.com/netbirdio/netbird/projects/2#card-91718018). |
+| `services.netbird.clients.<name>.bin.suffix` | `string` | A system group name for this client instance. |
+| `services.netbird.clients.<name>.config` | `JSON value` | Additional configuration that exists before the first start and later overrides the existing values in {file}`config.json`. It is mostly helpful to manage configuration ignored/not yet implemented outside of `netbird up` invocation. WARNING: this is not an upstream feature, it could break in the future (by having lower priority) after upstream implements an equivalent. It is implemented as a `preStart` script which overrides {file}`config.json` with content of {file}`/etc/netbird-‹name›/config.d/*.json` files. This option manages specifically {file}`50-nixos.json` file. Consult [the source code](https://github.com/netbirdio/netbird/blob/88747e3e0191abc64f1e8c7ecc65e5e50a1527fd/client/internal/config.go#L49-L82) or inspect existing file for a complete list of available configurations. |
+| `services.netbird.clients.<name>.dir.baseName` | `string` | A systemd service name to use (without `.service` suffix). |
+| `services.netbird.clients.<name>.dir.runtime` | `absolute path` | A runtime directory used by NetBird client. |
+| `services.netbird.clients.<name>.dir.state` | `absolute path` | A state directory used by NetBird client to store {file}`config.json`, {file}`state.json` & {file}`resolv.conf`. |
+| `services.netbird.clients.<name>.dns-resolver.address` | `null or string` | An explicit address that NetBird will serve `*.netbird.cloud.` (usually) entries on. NetBird serves DNS on it's own (dynamic) client address by default. |
+| `services.netbird.clients.<name>.dns-resolver.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | A port to serve DNS entries on when `dns-resolver.address` is enabled. |
+| `services.netbird.clients.<name>.environment` | `attribute set of string` | Environment for the netbird service, used to pass configuration options. |
+| `services.netbird.clients.<name>.hardened` | `boolean` | Hardened service: - runs as a dedicated user with minimal set of permissions (see caveats), - restricts daemon configuration socket access to dedicated user group (you can grant access to it with `users.users."<user>".extraGroups = [ netbird-‹name› ]`), Even though the local system resources access is restricted: - `CAP_NET_RAW`, `CAP_NET_ADMIN` and `CAP_BPF` still give unlimited network manipulation possibilites, - older kernels don't have `CAP_BPF` and use `CAP_SYS_ADMIN` instead, Known security features that are not (yet) integrated into the module: - 2024-02-14: `rosenpass` is an experimental feature configurable solely through `--enable-rosenpass` flag on the `netbird up` command, see [the docs](https://docs.netbird.io/how-to/enable-post-quantum-cryptography) |
+| `services.netbird.clients.<name>.interface` | `string` | Name of the network interface managed by this client. |
+| `services.netbird.clients.<name>.logLevel` | `one of "panic", "fatal", "error", "warn", "warning", "info", "debug", "trace"` | Log level of the NetBird daemon. |
+| `services.netbird.clients.<name>.login.enable` | `boolean` | Whether to enable automated login for NetBird client. |
+| `services.netbird.clients.<name>.login.setupKeyFile` | `null or string` | A Setup Key file path used for automated login of the machine. |
+| `services.netbird.clients.<name>.login.systemdDependencies` | `list of string` | Additional systemd dependencies required to succeed before the Setup Key file becomes available. |
+| `services.netbird.clients.<name>.name` | `string` | Primary name for use (as a suffix) in: - systemd service name, - hardened user name and group, - [systemd `*Directory=`](https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#RuntimeDirectory=) names, - desktop application identification, |
+| `services.netbird.clients.<name>.openFirewall` | `boolean` | Opens up firewall `port` for communication between NetBird peers directly over LAN or public IP, without using (internet-hosted) TURN servers as intermediaries. |
+| `services.netbird.clients.<name>.openInternalFirewall` | `boolean` | Opens up internal firewall ports for the NetBird's network interface. |
+| `services.netbird.clients.<name>.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port the NetBird client listens on. |
+| `services.netbird.clients.<name>.service.name` | `string` | A systemd service name to use (without `.service` suffix). |
+| `services.netbird.clients.<name>.suffixedName` | `string` | A systemd service name to use (without `.service` suffix). |
+| `services.netbird.clients.<name>.ui.enable` | `boolean` | Controls presence of `netbird-ui` wrapper for this NetBird client. |
+| `services.netbird.clients.<name>.user.group` | `string` | A system group name for this client instance. |
+| `services.netbird.clients.<name>.user.name` | `string` | A system user name for this client instance. |
+| `services.netbird.enable` | `boolean` | Enables backward-compatible NetBird client service. This is strictly equivalent to: `nix services.netbird.clients.default = {   port = 51820;   name = "netbird";   interface = "wt0";   hardened = false; }; ` |
+| `services.netbird.package` | `package` | The netbird package to use. |
+| `services.netbird.server.coturn.domain` | `string` | The domain under which the coturn server runs. |
+| `services.netbird.server.coturn.enable` | `boolean` | Whether to enable a Coturn server for Netbird, will also open the firewall on the configured range. |
+| `services.netbird.server.coturn.openPorts` | `list of 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The list of ports used by coturn for listening to open in the firewall. |
+| `services.netbird.server.coturn.password` | `null or string` | The password of the user used by netbird to connect to the coturn server. Be advised this will be world readable in the nix store. |
+| `services.netbird.server.coturn.passwordFile` | `null or absolute path` | The path to a file containing the password of the user used by netbird to connect to the coturn server. |
+| `services.netbird.server.coturn.useAcmeCertificates` | `boolean` | Whether to use ACME certificates corresponding to the given domain for the server. |
+| `services.netbird.server.coturn.user` | `string` | The username used by netbird to connect to the coturn server. |
+| `services.netbird.server.dashboard.domain` | `string` | The domain under which the dashboard runs. |
+| `services.netbird.server.dashboard.enable` | `boolean` | Whether to enable the static netbird dashboard frontend. |
+| `services.netbird.server.dashboard.enableNginx` | `boolean` | Whether to enable Nginx reverse-proxy to serve the dashboard. |
+| `services.netbird.server.dashboard.finalDrv` | `package` | The derivation containing the final templated dashboard. |
+| `services.netbird.server.dashboard.managementServer` | `string` | The address of the management server, used for the API endpoints. |
+| `services.netbird.server.dashboard.package` | `package` | The netbird-dashboard package to use. |
+| `services.netbird.server.dashboard.settings` | `open submodule of attribute set of (string or boolean)` | An attribute set that will be used to substitute variables when building the dashboard. Any values set here will be templated into the frontend and be public for anyone that can reach your website. The exact values sadly aren't documented anywhere. A starting point when searching for valid values is this [script](https://github.com/netbirdio/dashboard/blob/main/docker/init_react_envs.sh) The only mandatory value is 'AUTH_AUTHORITY' as we cannot set a default value here. |
+| `services.netbird.server.domain` | `string` | The domain under which the netbird server runs. |
+| `services.netbird.server.enable` | `boolean` | Whether to enable Netbird Server stack, comprising the dashboard, management API and signal service. |
+| `services.netbird.server.enableNginx` | `boolean` | Whether to enable Nginx reverse-proxy for the netbird server services. |
+| `services.netbird.server.management.disableAnonymousMetrics` | `boolean` | Disables push of anonymous usage metrics to NetBird. |
+| `services.netbird.server.management.disableSingleAccountMode` | `boolean` | If set to true, disables single account mode. The `singleAccountModeDomain` property will be ignored and every new user will have a separate NetBird account. |
+| `services.netbird.server.management.dnsDomain` | `string` | Domain used for peer resolution. |
+| `services.netbird.server.management.domain` | `string` | The domain under which the management API runs. |
+| `services.netbird.server.management.enable` | `boolean` | Whether to enable Netbird Management Service. |
+| `services.netbird.server.management.enableNginx` | `boolean` | Whether to enable Nginx reverse-proxy for the netbird management service. |
+| `services.netbird.server.management.extraOptions` | `list of string` | Additional options given to netbird-mgmt as commandline arguments. |
+| `services.netbird.server.management.logLevel` | `one of "ERROR", "WARN", "INFO", "DEBUG"` | Log level of the netbird services. |
+| `services.netbird.server.management.metricsPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Internal port of the metrics server. |
+| `services.netbird.server.management.oidcConfigEndpoint` | `string` | The oidc discovery endpoint. |
+| `services.netbird.server.management.package` | `package` | The netbird-management package to use. |
+| `services.netbird.server.management.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Internal port of the management server. |
+| `services.netbird.server.management.settings` | `JSON value` | Configuration of the netbird management server. Options containing secret data should be set to an attribute set containing the attribute \_secret - a string pointing to a file containing the value the option should be set to. See the example to get a better picture of this: in the resulting management.json file, the `DataStoreEncryptionKey` key will be set to the contents of the /run/agenix/netbird_mgmt-data_store_encryption_key file. |
+| `services.netbird.server.management.singleAccountModeDomain` | `string` | Enables single account mode. This means that all the users will be under the same account grouped by the specified domain. If the installation has more than one account, the property is ineffective. |
+| `services.netbird.server.management.turnDomain` | `string` | The domain of the TURN server to use. |
+| `services.netbird.server.management.turnPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port of the TURN server to use. |
+| `services.netbird.server.signal.domain` | `string` | The domain name for the signal service. |
+| `services.netbird.server.signal.enable` | `boolean` | Whether to enable Netbird's Signal Service. |
+| `services.netbird.server.signal.enableNginx` | `boolean` | Whether to enable Nginx reverse-proxy for the netbird signal service. |
+| `services.netbird.server.signal.extraOptions` | `list of string` | Additional options given to netbird-signal as commandline arguments. |
+| `services.netbird.server.signal.logLevel` | `one of "ERROR", "WARN", "INFO", "DEBUG"` | Log level of the netbird signal service. |
+| `services.netbird.server.signal.metricsPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Internal port of the metrics server. |
+| `services.netbird.server.signal.package` | `package` | The netbird-signal package to use. |
+| `services.netbird.server.signal.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Internal port of the signal server. |
+| `services.netbird.tunnels` | `attribute set of (submodule)` | Alias of {option}`services.netbird.clients`. |
+| `services.netbird.tunnels.<name>.autoStart` | `boolean` | Start the service with the system. As of 2024-02-13 it is not possible to start a NetBird client daemon without immediately connecting to the network, but it is [planned for a near future](https://github.com/netbirdio/netbird/projects/2#card-91718018). |
+| `services.netbird.tunnels.<name>.bin.suffix` | `string` | A system group name for this client instance. |
+| `services.netbird.tunnels.<name>.config` | `JSON value` | Additional configuration that exists before the first start and later overrides the existing values in {file}`config.json`. It is mostly helpful to manage configuration ignored/not yet implemented outside of `netbird up` invocation. WARNING: this is not an upstream feature, it could break in the future (by having lower priority) after upstream implements an equivalent. It is implemented as a `preStart` script which overrides {file}`config.json` with content of {file}`/etc/netbird-‹name›/config.d/*.json` files. This option manages specifically {file}`50-nixos.json` file. Consult [the source code](https://github.com/netbirdio/netbird/blob/88747e3e0191abc64f1e8c7ecc65e5e50a1527fd/client/internal/config.go#L49-L82) or inspect existing file for a complete list of available configurations. |
+| `services.netbird.tunnels.<name>.dir.baseName` | `string` | A systemd service name to use (without `.service` suffix). |
+| `services.netbird.tunnels.<name>.dir.runtime` | `absolute path` | A runtime directory used by NetBird client. |
+| `services.netbird.tunnels.<name>.dir.state` | `absolute path` | A state directory used by NetBird client to store {file}`config.json`, {file}`state.json` & {file}`resolv.conf`. |
+| `services.netbird.tunnels.<name>.dns-resolver.address` | `null or string` | An explicit address that NetBird will serve `*.netbird.cloud.` (usually) entries on. NetBird serves DNS on it's own (dynamic) client address by default. |
+| `services.netbird.tunnels.<name>.dns-resolver.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | A port to serve DNS entries on when `dns-resolver.address` is enabled. |
+| `services.netbird.tunnels.<name>.environment` | `attribute set of string` | Environment for the netbird service, used to pass configuration options. |
+| `services.netbird.tunnels.<name>.hardened` | `boolean` | Hardened service: - runs as a dedicated user with minimal set of permissions (see caveats), - restricts daemon configuration socket access to dedicated user group (you can grant access to it with `users.users."<user>".extraGroups = [ netbird-‹name› ]`), Even though the local system resources access is restricted: - `CAP_NET_RAW`, `CAP_NET_ADMIN` and `CAP_BPF` still give unlimited network manipulation possibilites, - older kernels don't have `CAP_BPF` and use `CAP_SYS_ADMIN` instead, Known security features that are not (yet) integrated into the module: - 2024-02-14: `rosenpass` is an experimental feature configurable solely through `--enable-rosenpass` flag on the `netbird up` command, see [the docs](https://docs.netbird.io/how-to/enable-post-quantum-cryptography) |
+| `services.netbird.tunnels.<name>.interface` | `string` | Name of the network interface managed by this client. |
+| `services.netbird.tunnels.<name>.logLevel` | `one of "panic", "fatal", "error", "warn", "warning", "info", "debug", "trace"` | Log level of the NetBird daemon. |
+| `services.netbird.tunnels.<name>.login.enable` | `boolean` | Whether to enable automated login for NetBird client. |
+| `services.netbird.tunnels.<name>.login.setupKeyFile` | `null or string` | A Setup Key file path used for automated login of the machine. |
+| `services.netbird.tunnels.<name>.login.systemdDependencies` | `list of string` | Additional systemd dependencies required to succeed before the Setup Key file becomes available. |
+| `services.netbird.tunnels.<name>.name` | `string` | Primary name for use (as a suffix) in: - systemd service name, - hardened user name and group, - [systemd `*Directory=`](https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#RuntimeDirectory=) names, - desktop application identification, |
+| `services.netbird.tunnels.<name>.openFirewall` | `boolean` | Opens up firewall `port` for communication between NetBird peers directly over LAN or public IP, without using (internet-hosted) TURN servers as intermediaries. |
+| `services.netbird.tunnels.<name>.openInternalFirewall` | `boolean` | Opens up internal firewall ports for the NetBird's network interface. |
+| `services.netbird.tunnels.<name>.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port the NetBird client listens on. |
+| `services.netbird.tunnels.<name>.service.name` | `string` | A systemd service name to use (without `.service` suffix). |
+| `services.netbird.tunnels.<name>.suffixedName` | `string` | A systemd service name to use (without `.service` suffix). |
+| `services.netbird.tunnels.<name>.ui.enable` | `boolean` | Controls presence of `netbird-ui` wrapper for this NetBird client. |
+| `services.netbird.tunnels.<name>.user.group` | `string` | A system group name for this client instance. |
+| `services.netbird.tunnels.<name>.user.name` | `string` | A system user name for this client instance. |
+| `services.netbird.ui.enable` | `boolean` | Controls presence `netbird-ui` wrappers, defaults to presence of graphical sessions. |
+| `services.netbird.ui.package` | `package` | The netbird-ui package to use. |
+| `services.netbird.useRoutingFeatures` | `one of "none", "client", "server", "both"` | Enables settings required for NetBird's routing features: Network Resources, Network Routes & Exit Nodes. When set to `client` or `both`, reverse path filtering will be set to loose instead of strict. When set to `server` or `both`, IP forwarding will be enabled. |

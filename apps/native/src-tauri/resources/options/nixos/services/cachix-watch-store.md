@@ -5,13 +5,13 @@
 All options under `services.cachix-watch-store`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---- | ----------- |
-| `services.cachix-watch-store.cacheName` | | |
-| `services.cachix-watch-store.cachixTokenFile` | | |
-| `services.cachix-watch-store.compressionLevel` | | |
-| `services.cachix-watch-store.enable` | | |
-| `services.cachix-watch-store.host` | | |
-| `services.cachix-watch-store.jobs` | | |
-| `services.cachix-watch-store.package` | | |
-| `services.cachix-watch-store.signingKeyFile` | | |
-| `services.cachix-watch-store.verbose` | | |
+| --- | --- | --- |
+| `services.cachix-watch-store.cacheName` | `string` | Cachix binary cache name |
+| `services.cachix-watch-store.cachixTokenFile` | `absolute path` | Required file that needs to contain the cachix auth token. |
+| `services.cachix-watch-store.compressionLevel` | `null or integer between 0 and 16 (both inclusive)` | The compression level for ZSTD compression (between 0 and 16) |
+| `services.cachix-watch-store.enable` | `boolean` | Whether to enable Cachix Watch Store: <https://docs.cachix.org>. |
+| `services.cachix-watch-store.host` | `null or string` | Cachix host to connect to |
+| `services.cachix-watch-store.jobs` | `null or (positive integer, meaning >0)` | Number of threads used for pushing store paths |
+| `services.cachix-watch-store.package` | `package` | The cachix package to use. |
+| `services.cachix-watch-store.signingKeyFile` | `null or absolute path` | Optional file containing a self-managed signing key to sign uploaded store paths. |
+| `services.cachix-watch-store.verbose` | `boolean` | Enable verbose output |

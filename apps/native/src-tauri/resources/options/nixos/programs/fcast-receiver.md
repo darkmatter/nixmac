@@ -5,7 +5,7 @@
 All options under `programs.fcast-receiver`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `programs.fcast-receiver.enable` | | |
-| `programs.fcast-receiver.openFirewall` | | |
-| `programs.fcast-receiver.package` | | |
+| --- | --- | --- |
+| `programs.fcast-receiver.enable` | `boolean` | Whether to enable FCast Receiver. |
+| `programs.fcast-receiver.openFirewall` | `boolean` | Open ports needed for the functionality of the program. |
+| `programs.fcast-receiver.package` | `package` | The fcast-receiver package to use. |

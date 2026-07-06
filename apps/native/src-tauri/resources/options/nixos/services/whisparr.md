@@ -5,12 +5,16 @@
 All options under `services.whisparr`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.whisparr.dataDir` | | |
-| `services.whisparr.enable` | | |
-| `services.whisparr.environmentFiles` | | |
-| `services.whisparr.group` | | |
-| `services.whisparr.openFirewall` | | |
-| `services.whisparr.package` | | |
-| `services.whisparr.settings` | | |
-| `services.whisparr.user` | | |
+| --- | --- | --- |
+| `services.whisparr.dataDir` | `absolute path` | The directory where Whisparr stores its data files. |
+| `services.whisparr.enable` | `boolean` | Whether to enable Whisparr. |
+| `services.whisparr.environmentFiles` | `list of absolute path` | Environment file to pass secret configuration values. Each line must follow the `WHISPARR__SECTION__KEY=value` pattern. Please consult the documentation at the [wiki](https://wiki.servarr.com/useful-tools#using-environment-variables-for-config). |
+| `services.whisparr.group` | `string` | Group under which Whisparr runs. |
+| `services.whisparr.openFirewall` | `boolean` | Open ports in the firewall for the Whisparr web interface. |
+| `services.whisparr.package` | `package` | The whisparr package to use. |
+| `services.whisparr.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Attribute set of arbitrary config options. Please consult the documentation at the [wiki](https://wiki.servarr.com/useful-tools#using-environment-variables-for-config). WARNING: this configuration is stored in the world-readable Nix store! For secrets use [](#opt-services.whisparr.environmentFiles). |
+| `services.whisparr.settings.log.analyticsEnabled` | `boolean` | Send Anonymous Usage Data |
+| `services.whisparr.settings.server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port Number |
+| `services.whisparr.settings.update.automatically` | `boolean` | Automatically download and install updates. |
+| `services.whisparr.settings.update.mechanism` | `null or one of "external", "builtIn", "script"` | which update mechanism to use |
+| `services.whisparr.user` | `string` | User account under which Whisparr runs. |

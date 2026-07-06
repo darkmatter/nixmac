@@ -5,10 +5,10 @@
 All options under `services.perses`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.perses.enable` | | |
-| `services.perses.extraOptions` | | |
-| `services.perses.listenAddress` | | |
-| `services.perses.package` | | |
-| `services.perses.port` | | |
-| `services.perses.settings` | | |
+| --- | --- | --- |
+| `services.perses.enable` | `boolean` | Whether to enable perses. |
+| `services.perses.extraOptions` | `list of string` | Additional options passed to perses daemon. |
+| `services.perses.listenAddress` | `string` | Address to listen on. Empty string will listen on all interfaces. |
+| `services.perses.package` | `package` | The perses package to use. |
+| `services.perses.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Perses Web interface port. |
+| `services.perses.settings` | `open submodule of (YAML 1.1 value)` | Perses settings. See <https://perses.dev/perses/docs/configuration/configuration/> for available options. You can specify secret values in this configuration by setting `somevalue._secret = "/path/to/file"` instead of setting `somevalue` directly. |

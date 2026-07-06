@@ -5,11 +5,290 @@
 All options under `accounts`.
 
 | Option | Type | Description |
-| --------------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `accounts.calendar.accounts` | `attribute set of (submodule)` | List of calendars. |
+| `accounts.calendar.accounts.<name>.khal.addresses` | `list of string` | Email addresses to be associated with this account. Used to check the participation status ("PARTSTAT"), refer to khal documentation. |
+| `accounts.calendar.accounts.<name>.khal.color` | `null or string` | Color in which events in this calendar are displayed. For instance 'light green' or an RGB color '#ff0000' |
+| `accounts.calendar.accounts.<name>.khal.enable` | `boolean` | Whether to enable khal access. |
+| `accounts.calendar.accounts.<name>.khal.glob` | `string` | The glob expansion to be searched for events or birthdays when type is set to discover. |
+| `accounts.calendar.accounts.<name>.khal.priority` | `signed integer` | Priority of a calendar used for coloring (calendar with highest priority is preferred). |
+| `accounts.calendar.accounts.<name>.khal.readOnly` | `boolean` | Keep khal from making any changes to this account. |
+| `accounts.calendar.accounts.<name>.khal.type` | `one of "calendar", "discover"` | Either a single calendar (calendar which is the default) or a directory with multiple calendars (discover). |
+| `accounts.calendar.accounts.<name>.local` | `submodule` | Local configuration for the calendar. |
+| `accounts.calendar.accounts.<name>.local.encoding` | `null or string` | File encoding for items, both content and file name. Defaults to UTF-8. |
+| `accounts.calendar.accounts.<name>.local.fileExt` | `null or string` | The file extension to use. |
+| `accounts.calendar.accounts.<name>.local.path` | `string` | The path of the storage. |
+| `accounts.calendar.accounts.<name>.local.type` | `one of "filesystem", "singlefile"` | The type of the storage. |
+| `accounts.calendar.accounts.<name>.name` | `string` | Unique identifier of the calendar. This is set to the attribute name of the calendar configuration. |
+| `accounts.calendar.accounts.<name>.pimsync.enable` | `boolean` | Whether to enable synchronization using pimsync. |
+| `accounts.calendar.accounts.<name>.pimsync.extraLocalStorageDirectives` | `anything` | Extra directives that should be added under this accounts local storage directive |
+| `accounts.calendar.accounts.<name>.pimsync.extraPairDirectives` | `anything` | Extra directives that should be added under this accounts pair directive |
+| `accounts.calendar.accounts.<name>.pimsync.extraRemoteStorageDirectives` | `anything` | Extra directives that should be added under this accounts remote storage directive |
+| `accounts.calendar.accounts.<name>.primary` | `boolean` | Whether this is the primary account. Only one account may be set as primary. |
+| `accounts.calendar.accounts.<name>.primaryCollection` | `null or string` | The primary collection of the account. Required when an account has multiple collections. |
+| `accounts.calendar.accounts.<name>.qcal.enable` | `boolean` | Whether to enable qcal access. |
+| `accounts.calendar.accounts.<name>.remote` | `null or (submodule)` | Remote configuration for the calendar. |
+| `accounts.calendar.accounts.<name>.remote.passwordCommand` | `null or (list of string)` | A command that prints the password to standard output. |
+| `accounts.calendar.accounts.<name>.remote.type` | `one of "caldav", "http", "google_calendar"` | The type of the storage. |
+| `accounts.calendar.accounts.<name>.remote.url` | `null or string` | The URL of the storage. |
+| `accounts.calendar.accounts.<name>.remote.userName` | `null or string` | User name for authentication. |
+| `accounts.calendar.accounts.<name>.thunderbird.color` | `string` | Display color of the calendar in hex |
+| `accounts.calendar.accounts.<name>.thunderbird.enable` | `boolean` | Whether to enable the Thunderbird mail client for this account. |
+| `accounts.calendar.accounts.<name>.thunderbird.profiles` | `list of string` | List of Thunderbird profiles for which this account should be enabled. If this list is empty (the default), this account will be enabled for all declared profiles. |
+| `accounts.calendar.accounts.<name>.thunderbird.readOnly` | `boolean` | Mark calendar as read only |
+| `accounts.calendar.accounts.<name>.thunderbird.settings` | `function that evaluates to a(n) attribute set of (boolean or signed integer or string)` | Extra settings to add to this Thunderbird calendar configuration. The {var}`id` given as argument is an automatically generated account identifier. |
+| `accounts.calendar.accounts.<name>.vdirsyncer.auth` | `null or one of "basic", "digest", "guess"` | Authentication settings. The default is `basic`. |
+| `accounts.calendar.accounts.<name>.vdirsyncer.authCert` | `null or string or list of string` | Either a path to a certificate with a client certificate and the key or a list of paths to the files with them. |
+| `accounts.calendar.accounts.<name>.vdirsyncer.clientIdCommand` | `null or (list of string)` | A command that prints the OAuth credentials to standard output. See <https://vdirsyncer.pimutils.org/en/stable/config.html#google> for more information. |
+| `accounts.calendar.accounts.<name>.vdirsyncer.clientSecretCommand` | `null or (list of string)` | A command that prints the OAuth credentials to standard output. See <https://vdirsyncer.pimutils.org/en/stable/config.html#google> for more information. |
+| `accounts.calendar.accounts.<name>.vdirsyncer.collections` | `null or (list of (string or list of string))` | The collections to synchronize between the storages. |
+| `accounts.calendar.accounts.<name>.vdirsyncer.conflictResolution` | `null or one of "remote wins", "local wins" or list of string` | What to do in case of a conflict between the storages. Either `remote wins` or `local wins` or a list that contains a command to run. By default, an error message is printed. |
+| `accounts.calendar.accounts.<name>.vdirsyncer.enable` | `boolean` | Whether to enable synchronization using vdirsyncer. |
+| `accounts.calendar.accounts.<name>.vdirsyncer.itemTypes` | `null or (list of string)` | Kinds of items to show. The default is to show everything. This depends on particular features of the server, the results are not validated. |
+| `accounts.calendar.accounts.<name>.vdirsyncer.metadata` | `list of string` | Metadata keys that should be synchronized when vdirsyncer metasync is executed. |
+| `accounts.calendar.accounts.<name>.vdirsyncer.partialSync` | `null or one of "revert", "error", "ignore"` | What should happen if synchronization in one direction is impossible due to one storage being read-only. Defaults to `revert`. See <https://vdirsyncer.pimutils.org/en/stable/config.html#pair-section> for more information. |
+| `accounts.calendar.accounts.<name>.vdirsyncer.postHook` | `null or strings concatenated with "\n"` | Command to call for each item creation and modification. The command will be called with the path of the new/updated file. |
+| `accounts.calendar.accounts.<name>.vdirsyncer.timeRange` | `null or (submodule)` | A time range to synchronize. start and end can be any Python expression that returns a `datetime.datetime` object. |
+| `accounts.calendar.accounts.<name>.vdirsyncer.timeRange.end` | `string` | End of time range to show. |
+| `accounts.calendar.accounts.<name>.vdirsyncer.timeRange.start` | `string` | Start of time range to show. |
+| `accounts.calendar.accounts.<name>.vdirsyncer.tokenFile` | `null or string` | A file path where access tokens are stored. |
+| `accounts.calendar.accounts.<name>.vdirsyncer.urlCommand` | `null or (list of string)` | A command that prints the URL of the storage. |
+| `accounts.calendar.accounts.<name>.vdirsyncer.useVcard4` | `boolean` | Specifies whether vdirsyncer should request vCards in version 4.0. If set to `false` then vdirsyncer will default to version 3.0. |
+| `accounts.calendar.accounts.<name>.vdirsyncer.userAgent` | `null or string` | The user agent to report to the server. Defaults to `vdirsyncer`. |
+| `accounts.calendar.accounts.<name>.vdirsyncer.userNameCommand` | `null or (list of string)` | A command that prints the user name to standard output. |
+| `accounts.calendar.accounts.<name>.vdirsyncer.verify` | `null or absolute path` | Null or path to certificate to verify SSL against |
+| `accounts.calendar.accounts.<name>.vdirsyncer.verifyFingerprint` | `null or string` | Optional. SHA1 or MD5 fingerprint of the expected server certificate. See <https://vdirsyncer.pimutils.org/en/stable/ssl-tutorial.html#ssl-tutorial> for more information. |
 | `accounts.calendar.basePath` | `string` | The base directory in which to save calendars. May be a relative path, in which case it is relative the home directory. |
 | `accounts.contact.accounts` | `attribute set of (submodule)` | List of contacts. |
+| `accounts.contact.accounts.<name>.khal.addresses` | `list of string` | Email addresses to be associated with this account. Used to check the participation status ("PARTSTAT"), refer to khal documentation. |
+| `accounts.contact.accounts.<name>.khal.collections` | `null or (list of string)` | VCARD collections to be searched for contact birthdays. |
+| `accounts.contact.accounts.<name>.khal.color` | `null or string` | Color in which events in this calendar are displayed. For instance 'light green' or an RGB color '#ff0000' |
+| `accounts.contact.accounts.<name>.khal.enable` | `boolean` | Whether to enable khal access. |
+| `accounts.contact.accounts.<name>.khal.priority` | `signed integer` | Priority of a calendar used for coloring (calendar with highest priority is preferred). |
+| `accounts.contact.accounts.<name>.khal.readOnly` | `boolean` | Keep khal from making any changes to this account. |
+| `accounts.contact.accounts.<name>.khard.addressbooks` | `(list of string) or string convertible to it` | If provided, each item on this list will generate an entry on khard configuration file as a separate addressbook (vdir). This is used for hardcoding sub-directories under the local storage path (accounts.contact.accounts.<name>.local.path) for khard. The default value will set the aforementioned path as a single vdir. |
+| `accounts.contact.accounts.<name>.khard.enable` | `boolean` | Whether to enable khard access. |
+| `accounts.contact.accounts.<name>.khard.glob` | `string` | The glob expansion to be searched for contacts when type is set to discover. |
+| `accounts.contact.accounts.<name>.khard.type` | `one of "vdir", "discover"` | Either a single vdir located in [](#opt-accounts.contact.accounts._name_.local.path) or multiple automatically discovered vdirs in [](#opt-accounts.contact.accounts._name_.local.path)/[](#opt-accounts.contact.accounts._name_.khard.glob). |
+| `accounts.contact.accounts.<name>.local` | `submodule` | Local configuration for the contacts. |
+| `accounts.contact.accounts.<name>.local.encoding` | `null or string` | File encoding for items, both content and file name. Defaults to UTF-8. |
+| `accounts.contact.accounts.<name>.local.fileExt` | `null or string` | The file extension to use. |
+| `accounts.contact.accounts.<name>.local.path` | `string` | The path of the storage. |
+| `accounts.contact.accounts.<name>.local.type` | `one of "filesystem", "singlefile"` | The type of the storage. |
+| `accounts.contact.accounts.<name>.name` | `string` | Unique identifier of the contact account. This is set to the attribute name of the contact configuration. |
+| `accounts.contact.accounts.<name>.pimsync.enable` | `boolean` | Whether to enable synchronization using pimsync. |
+| `accounts.contact.accounts.<name>.pimsync.extraLocalStorageDirectives` | `anything` | Extra directives that should be added under this accounts local storage directive |
+| `accounts.contact.accounts.<name>.pimsync.extraPairDirectives` | `anything` | Extra directives that should be added under this accounts pair directive |
+| `accounts.contact.accounts.<name>.pimsync.extraRemoteStorageDirectives` | `anything` | Extra directives that should be added under this accounts remote storage directive |
+| `accounts.contact.accounts.<name>.remote` | `null or (submodule)` | Remote configuration for the contacts. |
+| `accounts.contact.accounts.<name>.remote.passwordCommand` | `null or (list of string)` | A command that prints the password to standard output. |
+| `accounts.contact.accounts.<name>.remote.type` | `one of "carddav", "http", "google_contacts"` | The type of the storage. |
+| `accounts.contact.accounts.<name>.remote.url` | `null or string` | The URL of the storage. |
+| `accounts.contact.accounts.<name>.remote.userName` | `null or string` | User name for authentication. |
+| `accounts.contact.accounts.<name>.thunderbird.enable` | `boolean` | Whether to enable the Thunderbird mail client for this account. |
+| `accounts.contact.accounts.<name>.thunderbird.profiles` | `list of string` | List of Thunderbird profiles for which this account should be enabled. If this list is empty (the default), this account will be enabled for all declared profiles. |
+| `accounts.contact.accounts.<name>.thunderbird.token` | `null or string` | A token is generated when adding an address book manually to Thunderbird, this can be entered here. |
+| `accounts.contact.accounts.<name>.vdirsyncer.auth` | `null or one of "basic", "digest", "guess"` | Authentication settings. The default is `basic`. |
+| `accounts.contact.accounts.<name>.vdirsyncer.authCert` | `null or string or list of string` | Either a path to a certificate with a client certificate and the key or a list of paths to the files with them. |
+| `accounts.contact.accounts.<name>.vdirsyncer.clientIdCommand` | `null or (list of string)` | A command that prints the OAuth credentials to standard output. See <https://vdirsyncer.pimutils.org/en/stable/config.html#google> for more information. |
+| `accounts.contact.accounts.<name>.vdirsyncer.clientSecretCommand` | `null or (list of string)` | A command that prints the OAuth credentials to standard output. See <https://vdirsyncer.pimutils.org/en/stable/config.html#google> for more information. |
+| `accounts.contact.accounts.<name>.vdirsyncer.collections` | `null or (list of (string or list of string))` | The collections to synchronize between the storages. |
+| `accounts.contact.accounts.<name>.vdirsyncer.conflictResolution` | `null or one of "remote wins", "local wins" or list of string` | What to do in case of a conflict between the storages. Either `remote wins` or `local wins` or a list that contains a command to run. By default, an error message is printed. |
+| `accounts.contact.accounts.<name>.vdirsyncer.enable` | `boolean` | Whether to enable synchronization using vdirsyncer. |
+| `accounts.contact.accounts.<name>.vdirsyncer.itemTypes` | `null or (list of string)` | Kinds of items to show. The default is to show everything. This depends on particular features of the server, the results are not validated. |
+| `accounts.contact.accounts.<name>.vdirsyncer.metadata` | `list of string` | Metadata keys that should be synchronized when vdirsyncer metasync is executed. |
+| `accounts.contact.accounts.<name>.vdirsyncer.partialSync` | `null or one of "revert", "error", "ignore"` | What should happen if synchronization in one direction is impossible due to one storage being read-only. Defaults to `revert`. See <https://vdirsyncer.pimutils.org/en/stable/config.html#pair-section> for more information. |
+| `accounts.contact.accounts.<name>.vdirsyncer.postHook` | `null or strings concatenated with "\n"` | Command to call for each item creation and modification. The command will be called with the path of the new/updated file. |
+| `accounts.contact.accounts.<name>.vdirsyncer.timeRange` | `null or (submodule)` | A time range to synchronize. start and end can be any Python expression that returns a `datetime.datetime` object. |
+| `accounts.contact.accounts.<name>.vdirsyncer.timeRange.end` | `string` | End of time range to show. |
+| `accounts.contact.accounts.<name>.vdirsyncer.timeRange.start` | `string` | Start of time range to show. |
+| `accounts.contact.accounts.<name>.vdirsyncer.tokenFile` | `null or string` | A file path where access tokens are stored. |
+| `accounts.contact.accounts.<name>.vdirsyncer.urlCommand` | `null or (list of string)` | A command that prints the URL of the storage. |
+| `accounts.contact.accounts.<name>.vdirsyncer.useVcard4` | `boolean` | Specifies whether vdirsyncer should request vCards in version 4.0. If set to `false` then vdirsyncer will default to version 3.0. |
+| `accounts.contact.accounts.<name>.vdirsyncer.userAgent` | `null or string` | The user agent to report to the server. Defaults to `vdirsyncer`. |
+| `accounts.contact.accounts.<name>.vdirsyncer.userNameCommand` | `null or (list of string)` | A command that prints the user name to standard output. |
+| `accounts.contact.accounts.<name>.vdirsyncer.verify` | `null or absolute path` | Null or path to certificate to verify SSL against |
+| `accounts.contact.accounts.<name>.vdirsyncer.verifyFingerprint` | `null or string` | Optional. SHA1 or MD5 fingerprint of the expected server certificate. See <https://vdirsyncer.pimutils.org/en/stable/ssl-tutorial.html#ssl-tutorial> for more information. |
 | `accounts.contact.basePath` | `string` | The base directory in which to save contacts. May be a relative path, in which case it is relative the home directory. |
 | `accounts.email.accounts` | `attribute set of (submodule)` | List of email accounts. |
+| `accounts.email.accounts.<name>.address` | `string matching the pattern .*@.*` | The email address of this account. |
+| `accounts.email.accounts.<name>.aerc.enable` | `boolean` | Whether to enable aerc. |
+| `accounts.email.accounts.<name>.aerc.extraAccounts` | `attribute set of (values (null, bool, int, string, or float) or a list of values, that will be joined with a comma)` | Extra config added to the configuration section for this account in {file}`$HOME/.config/aerc/accounts.conf`. See {manpage}`aerc-accounts(5)`. |
+| `accounts.email.accounts.<name>.aerc.extraBinds` | `attribute set of (strings concatenated with "\n" or attribute set of (values (null, bool, int, string, or float) or a list of values, that will be joined with a comma))` | Extra bindings specific to this account, added to {file}`$HOME/.config/aerc/binds.conf`. See {manpage}`aerc-binds(5)`. |
+| `accounts.email.accounts.<name>.aerc.extraConfig` | `attribute set of (strings concatenated with "\n" or attribute set of (values (null, bool, int, string, or float) or a list of values, that will be joined with a comma))` | Config specific to this account, added to {file}`$HOME/.config/aerc/aerc.conf`. Aerc only supports per-account UI configuration. For other sections of {file}`$HOME/.config/aerc/aerc.conf`, use `programs.aerc.extraConfig`. See {manpage}`aerc-config(5)`. |
+| `accounts.email.accounts.<name>.aerc.imapAuth` | `null or one of "oauthbearer", "xoauth2"` | Sets the authentication mechanism if imap is used as the incoming method. See {manpage}`aerc-imap(5)`. |
+| `accounts.email.accounts.<name>.aerc.imapOauth2Params` | `null or (submodule)` | Sets the oauth2 params if authentication mechanism oauthbearer or xoauth2 is used. See {manpage}`aerc-imap(5)`. |
+| `accounts.email.accounts.<name>.aerc.imapOauth2Params.client_id` | `null or string` | The OAuth2 client identifier. |
+| `accounts.email.accounts.<name>.aerc.imapOauth2Params.client_secret` | `null or string` | The OAuth2 client secret. |
+| `accounts.email.accounts.<name>.aerc.imapOauth2Params.scope` | `null or string` | The OAuth2 requested scope. |
+| `accounts.email.accounts.<name>.aerc.imapOauth2Params.token_endpoint` | `null or string` | The OAuth2 token endpoint. |
+| `accounts.email.accounts.<name>.aerc.smtpAuth` | `null or one of "none", "plain", "login", "oauthbearer", "xoauth2"` | Sets the authentication mechanism if smtp is used as the outgoing method. See {manpage}`aerc-smtp(5)`. |
+| `accounts.email.accounts.<name>.aerc.smtpOauth2Params` | `null or (submodule)` | Sets the oauth2 params if authentication mechanism oauthbearer or xoauth2 is used. See {manpage}`aerc-imap(5)`. |
+| `accounts.email.accounts.<name>.aerc.smtpOauth2Params.client_id` | `null or string` | The OAuth2 client identifier. |
+| `accounts.email.accounts.<name>.aerc.smtpOauth2Params.client_secret` | `null or string` | The OAuth2 client secret. |
+| `accounts.email.accounts.<name>.aerc.smtpOauth2Params.scope` | `null or string` | The OAuth2 requested scope. |
+| `accounts.email.accounts.<name>.aerc.smtpOauth2Params.token_endpoint` | `null or string` | The OAuth2 token endpoint. |
+| `accounts.email.accounts.<name>.aliases` | `list of (string matching the pattern .*@.* or (submodule))` | Alternative identities of this account. |
+| `accounts.email.accounts.<name>.alot.contactCompletion` | `attribute set of string` | Contact completion configuration as expected per alot. See [alot's wiki](http://alot.readthedocs.io/en/latest/configuration/contacts_completion.html) for explanation about possible values. |
+| `accounts.email.accounts.<name>.alot.extraConfig` | `strings concatenated with "\n"` | Extra settings to add to this Alot account configuration. |
+| `accounts.email.accounts.<name>.alot.sendMailCommand` | `null or string` | Command to send a mail. If msmtp is enabled for the account, then this is set to {command}`msmtpq --read-envelope-from --read-recipients`. |
+| `accounts.email.accounts.<name>.astroid.enable` | `boolean` | Whether to enable Astroid. |
+| `accounts.email.accounts.<name>.astroid.extraConfig` | `attribute set of anything` | Extra settings to add to this astroid account configuration. |
+| `accounts.email.accounts.<name>.astroid.sendMailCommand` | `string` | Command to send a mail. If msmtp is enabled for the account, then this is set to {command}`msmtpq --read-envelope-from --read-recipients`. |
+| `accounts.email.accounts.<name>.enable` | `boolean` | Whether this account is enabled. Potentially useful to allow setting email configuration globally then enabling or disabling on specific systems. |
+| `accounts.email.accounts.<name>.ews` | `null or (submodule)` | The EWS configuration to use for this account. |
+| `accounts.email.accounts.<name>.ews.authentication` | `null or string or one of "anonymous", "apop", "clear", "cram_md5", "digest_md5", "gssapi", "login", "ntlm", "plain", "xoauth2"` | The authentication mechanism. |
+| `accounts.email.accounts.<name>.ews.host` | `string` | Hostname of EWS server. |
+| `accounts.email.accounts.<name>.ews.serviceDescriptionURL` | `string` | URL to EWS service description. |
+| `accounts.email.accounts.<name>.ews.tls` | `submodule` | Configuration for secure connections. |
+| `accounts.email.accounts.<name>.ews.tls.certificatesFile` | `null or absolute path` | Path to file containing certificate authorities that should be used to validate the connection authenticity. If `null` then the system default is used. Note, if set then the system default may still be accepted. |
+| `accounts.email.accounts.<name>.ews.tls.enable` | `boolean` | Whether to enable TLS/SSL. |
+| `accounts.email.accounts.<name>.ews.tls.useStartTls` | `boolean` | Whether to use STARTTLS. This is discouraged and should be avoided if possible. See <https://datatracker.ietf.org/doc/html/rfc8314> for more. |
+| `accounts.email.accounts.<name>.flavor` | `one of "davmail", "fastmail.com", "gmail.com", "mailbox.org", "migadu.com", "outlook.office365.com-ews", "outlook.office365.com", "plain", "posteo.de", "runbox.com", "yandex.com"` | Some email providers have peculiar behavior that require special treatment. This option is therefore intended to indicate the nature of the provider. When this indicates a specific provider then, for example, the IMAP, SMTP, and JMAP server configuration may be set automatically. |
+| `accounts.email.accounts.<name>.folders` | `submodule` | Standard email folders. |
+| `accounts.email.accounts.<name>.folders.drafts` | `null or string` | Relative path of the drafts mail folder. |
+| `accounts.email.accounts.<name>.folders.inbox` | `string` | Relative path of the inbox mail. |
+| `accounts.email.accounts.<name>.folders.sent` | `null or string` | Relative path of the sent mail folder. |
+| `accounts.email.accounts.<name>.folders.trash` | `string` | Relative path of the deleted mail folder. |
+| `accounts.email.accounts.<name>.getmail.delete` | `boolean` | Enable if you want to delete read messages from the server. Most users should either enable `delete` or disable `readAll`. |
+| `accounts.email.accounts.<name>.getmail.destinationCommand` | `null or string` | Specify a command delivering the incoming mail to your maildir. |
+| `accounts.email.accounts.<name>.getmail.enable` | `boolean` | Whether to enable the getmail mail retriever for this account. |
+| `accounts.email.accounts.<name>.getmail.mailboxes` | `non-empty (list of string)` | A non-empty list of mailboxes. To download all mail you can use the `ALL` mailbox. |
+| `accounts.email.accounts.<name>.getmail.readAll` | `boolean` | Enable if you want to fetch all, even the read messages from the server. Most users should either enable `delete` or disable `readAll`. |
+| `accounts.email.accounts.<name>.gpg` | `null or (submodule)` | GPG configuration. |
+| `accounts.email.accounts.<name>.gpg.encryptByDefault` | `boolean` | Encrypt outgoing messages by default. |
+| `accounts.email.accounts.<name>.gpg.key` | `string` | The key to use as listed in {command}`gpg --list-keys`. |
+| `accounts.email.accounts.<name>.gpg.signByDefault` | `boolean` | Sign messages by default. |
+| `accounts.email.accounts.<name>.himalaya.enable` | `boolean` | Whether to enable the email client Himalaya CLI for this email account. |
+| `accounts.email.accounts.<name>.himalaya.settings` | `open submodule of (TOML value)` | Himalaya CLI configuration for this email account. See <https://github.com/pimalaya/himalaya/blob/master/config.sample.toml> for supported values. |
+| `accounts.email.accounts.<name>.imap` | `null or (submodule)` | The IMAP configuration to use for this account. |
+| `accounts.email.accounts.<name>.imap.authentication` | `null or string or one of "anonymous", "apop", "clear", "cram_md5", "digest_md5", "gssapi", "login", "ntlm", "plain", "xoauth2"` | The authentication mechanism. |
+| `accounts.email.accounts.<name>.imap.host` | `string` | Hostname of IMAP server. |
+| `accounts.email.accounts.<name>.imap.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port on which the IMAP server listens. If `null` then the default port is used. |
+| `accounts.email.accounts.<name>.imap.tls` | `submodule` | Configuration for secure connections. |
+| `accounts.email.accounts.<name>.imap.tls.certificatesFile` | `null or absolute path` | Path to file containing certificate authorities that should be used to validate the connection authenticity. If `null` then the system default is used. Note, if set then the system default may still be accepted. |
+| `accounts.email.accounts.<name>.imap.tls.enable` | `boolean` | Whether to enable TLS/SSL. |
+| `accounts.email.accounts.<name>.imap.tls.useStartTls` | `boolean` | Whether to use STARTTLS. This is discouraged and should be avoided if possible. See <https://datatracker.ietf.org/doc/html/rfc8314> for more. |
+| `accounts.email.accounts.<name>.imapnotify.boxes` | `list of string` | IMAP folders to watch. |
+| `accounts.email.accounts.<name>.imapnotify.enable` | `boolean` | Whether to enable imapnotify. |
+| `accounts.email.accounts.<name>.imapnotify.extraArgs` | `list of string` | Extra arguments to pass to goimapnotify. |
+| `accounts.email.accounts.<name>.imapnotify.extraConfig` | `JSON value` | Additional configuration to add for this account. |
+| `accounts.email.accounts.<name>.imapnotify.onNotify` | `string or attribute set of string` | Shell commands to run on any event. |
+| `accounts.email.accounts.<name>.imapnotify.onNotifyPost` | `string or attribute set of string` | Shell commands to run after onNotify event. |
+| `accounts.email.accounts.<name>.jmap` | `null or (submodule)` | The JMAP configuration to use for this account. |
+| `accounts.email.accounts.<name>.jmap.host` | `null or string` | Hostname of JMAP server. If both this option and [](#opt-accounts.email.accounts._name_.jmap.sessionUrl) are specified, `host` is preferred by applications when establishing a session. |
+| `accounts.email.accounts.<name>.jmap.sessionUrl` | `null or string` | URL for the JMAP Session resource. If both this option and [](#opt-accounts.email.accounts._name_.jmap.host) are specified, `host` is preferred by applications when establishing a session. |
+| `accounts.email.accounts.<name>.lieer.enable` | `boolean` | Whether to enable lieer Gmail synchronization for notmuch. |
+| `accounts.email.accounts.<name>.lieer.notmuchSetupWarning` | `boolean` | Warn if Notmuch is not also enabled for this account. This can safely be disabled if {command}`notmuch init` has been used to configure this account outside of Home Manager. |
+| `accounts.email.accounts.<name>.lieer.settings` | `open submodule of (JSON value)` | Settings which are applied to {file}`.gmailieer.json` for the account. See the [lieer manual](https://github.com/gauteh/lieer/) for documentation of settings not explicitly covered by this module. |
+| `accounts.email.accounts.<name>.lieer.settings.drop_non_existing_label` | `boolean` | Allow missing labels on the Gmail side to be dropped. |
+| `accounts.email.accounts.<name>.lieer.settings.file_extension` | `string` | Extension to include in local file names, which can be useful for indexing with third-party programs. |
+| `accounts.email.accounts.<name>.lieer.settings.ignore_empty_history` | `boolean` | Work around a Gmail API quirk where an empty change history is sometimes returned. See this [GitHub issue](https://github.com/gauteh/lieer/issues/120) for more details. |
+| `accounts.email.accounts.<name>.lieer.settings.ignore_remote_labels` | `list of string` | Set Gmail labels to ignore when syncing from remote labels to local tags (before translations). |
+| `accounts.email.accounts.<name>.lieer.settings.ignore_tags` | `list of string` | Set labels to ignore when syncing from local tags to remote labels (after translations). |
+| `accounts.email.accounts.<name>.lieer.settings.local_trash_tag` | `string` | Local tag to which the remote Gmail 'TRASH' label is translated. |
+| `accounts.email.accounts.<name>.lieer.settings.remove_local_messages` | `boolean` | Remove local messages that have been deleted on the remote. |
+| `accounts.email.accounts.<name>.lieer.settings.replace_slash_with_dot` | `boolean` | Replace '/' with '.' in Gmail labels. |
+| `accounts.email.accounts.<name>.lieer.settings.timeout` | `unsigned integer, meaning >=0` | HTTP timeout in seconds. 0 means forever or system timeout. |
+| `accounts.email.accounts.<name>.lieer.sync.enable` | `boolean` | Whether to enable lieer synchronization service. |
+| `accounts.email.accounts.<name>.lieer.sync.frequency` | `string` | How often to synchronize the account. This value is passed to the systemd timer configuration as the onCalendar option. See {manpage}`systemd.time(7)` for more information about the format. |
+| `accounts.email.accounts.<name>.maildir` | `null or (submodule)` | Maildir configuration for this account. |
+| `accounts.email.accounts.<name>.maildir.path` | `string` | Path to maildir directory where mail for this account is stored. This is relative to the base maildir path. |
+| `accounts.email.accounts.<name>.mbsync.create` | `one of "none", "maildir", "imap", "both"` | Automatically create missing mailboxes within the given mail store. |
+| `accounts.email.accounts.<name>.mbsync.enable` | `boolean` | Whether to enable synchronization using mbsync. |
+| `accounts.email.accounts.<name>.mbsync.expunge` | `one of "none", "maildir", "imap", "both"` | Permanently remove messages marked for deletion from the given mail store. |
+| `accounts.email.accounts.<name>.mbsync.extraConfig.account` | `attribute set of (string or signed integer or boolean or list of string)` | Account section extra configuration. |
+| `accounts.email.accounts.<name>.mbsync.extraConfig.channel` | `attribute set of (string or signed integer or boolean or list of string)` | Per channel extra configuration. |
+| `accounts.email.accounts.<name>.mbsync.extraConfig.local` | `attribute set of (string or signed integer or boolean or list of string)` | Local store extra configuration. |
+| `accounts.email.accounts.<name>.mbsync.extraConfig.remote` | `attribute set of (string or signed integer or boolean or list of string)` | Remote store extra configuration. |
+| `accounts.email.accounts.<name>.mbsync.flatten` | `null or string` | If set, flattens the hierarchy within the maildir by substituting the canonical hierarchy delimiter `/` with this value. |
+| `accounts.email.accounts.<name>.mbsync.groups` | `attribute set of (submodule)` | Some email providers (Gmail) have a different directory hierarchy for synchronized email messages. Namely, when using mbsync without specifying a set of channels into a group, all synchronized directories end up beneath the `[Gmail]/` directory. This option allows you to specify a group, and subsequently channels that will allow you to sync your mail into an arbitrary hierarchy. |
+| `accounts.email.accounts.<name>.mbsync.groups.<name>.channels` | `attribute set of (submodule)` | List of channels that should be grouped together into this group. When performing a synchronization, the groups are synchronized, rather than the individual channels. Using these channels and then grouping them together allows for you to define the maildir hierarchy as you see fit. |
+| `accounts.email.accounts.<name>.mbsync.groups.<name>.channels.<name>.extraConfig` | `attribute set of (string or signed integer or boolean or list of string)` | Extra configuration lines to add to *THIS* channel's configuration. |
+| `accounts.email.accounts.<name>.mbsync.groups.<name>.channels.<name>.farPattern` | `string` | IMAP4 patterns for which mailboxes on the remote mail server to sync. If `Patterns` are specified, `farPattern` is interpreted as a prefix which is not matched against the patterns, and is not affected by mailbox list overrides. If this is left as the default, then mbsync will default to the pattern `INBOX`. |
+| `accounts.email.accounts.<name>.mbsync.groups.<name>.channels.<name>.name` | `string` | The unique name for THIS channel in THIS group. The group will refer to this channel by this name. In addition, you can manually sync just this channel by specifying this name to mbsync on the command line. |
+| `accounts.email.accounts.<name>.mbsync.groups.<name>.channels.<name>.nearPattern` | `string` | Name for where mail coming from the remote (far) mail server will end up locally. The mailbox specified by the far pattern will be placed in this directory. If this is left as the default, then mbsync will default to the pattern `INBOX`. |
+| `accounts.email.accounts.<name>.mbsync.groups.<name>.channels.<name>.patterns` | `list of string` | Instead of synchronizing *just* the mailboxes that match the `farPattern`, use it as a prefix which is not matched against the patterns, and is not affected by mailbox list overrides. |
+| `accounts.email.accounts.<name>.mbsync.groups.<name>.name` | `string` | The name of this group for this account. These names are different than some others, because they will hide channel names that are the same. |
+| `accounts.email.accounts.<name>.mbsync.patterns` | `list of string` | Pattern of mailboxes to synchronize. |
+| `accounts.email.accounts.<name>.mbsync.remove` | `one of "none", "maildir", "imap", "both"` | Propagate mailbox deletions to the given mail store. |
+| `accounts.email.accounts.<name>.mbsync.subFolders` | `one of "Verbatim", "Maildir++", "Legacy"` | The on-disk folder naming style. This option has no effect when {option}`flatten` is used. |
+| `accounts.email.accounts.<name>.meli.enable` | `boolean` | Whether to enable the meli mail client for this account. Requires SMTP settings.. |
+| `accounts.email.accounts.<name>.meli.mailboxAliases` | `attribute set of (attribute set)` | Folder display name |
+| `accounts.email.accounts.<name>.meli.mailboxes` | `list of string` | Mailboxes to show in meli |
+| `accounts.email.accounts.<name>.meli.settings` | `open submodule of (TOML value)` | Account specific meli configuration |
+| `accounts.email.accounts.<name>.msmtp.enable` | `boolean` | Whether to enable msmtp. If enabled then it is possible to use the `--account` command line option to send a message for a given account using the {command}`msmtp` or {command}`msmtpq` tool. For example, {command}`msmtp --account=private` would send using the account defined in {option}`accounts.email.accounts.private`. If the `--account` option is not given then the primary account will be used. |
+| `accounts.email.accounts.<name>.msmtp.extraConfig` | `attribute set of string` | Extra configuration options to add to {file}`~/.msmtprc`. See <https://marlam.de/msmtp/msmtprc.txt> for examples. |
+| `accounts.email.accounts.<name>.msmtp.tls.fingerprint` | `null or string matching the pattern ([[:alnum:]]{2}:)+[[:alnum:]]{2}` | Fingerprint of a trusted TLS certificate. The fingerprint can be obtained by executing {command}`msmtp --serverinfo --tls --tls-certcheck=off`. |
+| `accounts.email.accounts.<name>.mu.enable` | `boolean` | Whether to enable mu indexing. |
+| `accounts.email.accounts.<name>.mujmap.enable` | `boolean` | Whether to enable mujmap JMAP synchronization for notmuch. |
+| `accounts.email.accounts.<name>.mujmap.notmuchSetupWarning` | `boolean` | Warn if Notmuch is not also enabled for this account. This can safely be disabled if {file}`mujmap.toml` is managed outside of Home Manager. |
+| `accounts.email.accounts.<name>.mujmap.settings` | `open submodule of (TOML value)` | Settings which are applied to {file}`mujmap.toml` for the account. See the [mujmap project](https://github.com/elizagamedev/mujmap) for documentation of settings not explicitly covered by this module. |
+| `accounts.email.accounts.<name>.mujmap.settings.auto_create_new_mailboxes` | `boolean` | Whether to create new mailboxes automatically on the server from notmuch tags. |
+| `accounts.email.accounts.<name>.mujmap.settings.cache_dir` | `null or string` | The cache directory in which to store mail files while they are being downloaded. The default is operating-system specific. |
+| `accounts.email.accounts.<name>.mujmap.settings.fqdn` | `null or string` | Fully qualified domain name of the JMAP service. mujmap looks up the JMAP SRV record for this host to determine the JMAP session URL. Mutually exclusive with [](#opt-accounts.email.accounts._name_.mujmap.settings.session_url). If `null`, defaults to [](#opt-accounts.email.accounts._name_.jmap.host). |
+| `accounts.email.accounts.<name>.mujmap.settings.password_command` | `null or string or list of string` | Shell command which will print a password to stdout for basic HTTP authentication. If `null`, defaults to [](#opt-accounts.email.accounts._name_.passwordCommand). |
+| `accounts.email.accounts.<name>.mujmap.settings.session_url` | `null or string` | Session URL to connect to. Mutually exclusive with [](#opt-accounts.email.accounts._name_.mujmap.settings.fqdn). If `null`, defaults to [](#opt-accounts.email.accounts._name_.jmap.sessionUrl). |
+| `accounts.email.accounts.<name>.mujmap.settings.tags` | `open submodule of (TOML value)` | Tag configuration. Beware that there are quirks that require manual consideration if changing the values of these files; please see <https://github.com/elizagamedev/mujmap/blob/main/mujmap.toml.example> for more details. |
+| `accounts.email.accounts.<name>.mujmap.settings.tags.deleted` | `string` | Tag for notmuch to use for messages stored in the mailbox labeled with the `Trash` name attribute. If set to an empty string, this mailbox *and its child mailboxes* are not synchronized with a tag. |
+| `accounts.email.accounts.<name>.mujmap.settings.tags.directory_separator` | `string` | Directory separator for mapping notmuch tags to maildirs. |
+| `accounts.email.accounts.<name>.mujmap.settings.tags.important` | `string` | Tag for notmuch to use for messages stored in the mailbox labeled with the `Important` name attribute and/or with the `$Important` keyword. If set to an empty string, this mailbox, *its child mailboxes*, and these keywords are not synchronized with a tag. |
+| `accounts.email.accounts.<name>.mujmap.settings.tags.inbox` | `string` | Tag for notmuch to use for messages stored in the mailbox labeled with the `Inbox` name attribute. If set to an empty string, this mailbox *and its child mailboxes* are not synchronized with a tag. |
+| `accounts.email.accounts.<name>.mujmap.settings.tags.lowercase` | `boolean` | If true, translate all mailboxes to lowercase names when mapping to notmuch tags. |
+| `accounts.email.accounts.<name>.mujmap.settings.tags.phishing` | `string` | Tag for notmuch to use for the IANA `$Phishing` keyword. If set to an empty string, this keyword is not synchronized with a tag. |
+| `accounts.email.accounts.<name>.mujmap.settings.tags.sent` | `string` | Tag for notmuch to use for messages stored in the mailbox labeled with the `Sent` name attribute. If set to an empty string, this mailbox *and its child mailboxes* are not synchronized with a tag. |
+| `accounts.email.accounts.<name>.mujmap.settings.tags.spam` | `string` | Tag for notmuch to use for messages stored in the mailbox labeled with the `Junk` name attribute and/or with the `$Junk` keyword, *except* for messages with the `$NotJunk` keyword. If set to an empty string, this mailbox, *its child mailboxes*, and these keywords are not synchronized with a tag. |
+| `accounts.email.accounts.<name>.mujmap.settings.username` | `null or string` | Username for basic HTTP authentication. If `null`, defaults to [](#opt-accounts.email.accounts._name_.userName). |
+| `accounts.email.accounts.<name>.name` | `string` | Unique identifier of the account. This is set to the attribute name of the account configuration. |
+| `accounts.email.accounts.<name>.neomutt.enable` | `boolean` | Whether to enable NeoMutt. |
+| `accounts.email.accounts.<name>.neomutt.extraConfig` | `strings concatenated with "\n"` | Extra lines to add to the folder hook for this account. |
+| `accounts.email.accounts.<name>.neomutt.extraMailboxes` | `list of (string or (submodule))` | List of extra mailboxes |
+| `accounts.email.accounts.<name>.neomutt.mailboxName` | `null or string` | Use a different name as mailbox name |
+| `accounts.email.accounts.<name>.neomutt.mailboxType` | `one of "maildir", "imap"` | Whether this account uses maildir folders or IMAP mailboxes |
+| `accounts.email.accounts.<name>.neomutt.sendMailCommand` | `null or string` | Command to send a mail. If not set, neomutt will be in charge of sending mails. |
+| `accounts.email.accounts.<name>.neomutt.showDefaultMailbox` | `boolean` | Show the default mailbox (INBOX) |
+| `accounts.email.accounts.<name>.notmuch.enable` | `boolean` | Whether to enable notmuch indexing. |
+| `accounts.email.accounts.<name>.notmuch.neomutt.enable` | `boolean` | Whether to enable Notmuch support in NeoMutt. |
+| `accounts.email.accounts.<name>.notmuch.neomutt.virtualMailboxes` | `list of (submodule)` | List of virtual mailboxes using Notmuch queries |
+| `accounts.email.accounts.<name>.notmuch.neomutt.virtualMailboxes.*.limit` | `null or signed integer` | Restricts number of messages/threads in the result. |
+| `accounts.email.accounts.<name>.notmuch.neomutt.virtualMailboxes.*.name` | `string` | Name to display |
+| `accounts.email.accounts.<name>.notmuch.neomutt.virtualMailboxes.*.query` | `string` | Notmuch query |
+| `accounts.email.accounts.<name>.notmuch.neomutt.virtualMailboxes.*.type` | `null or one of "threads", "messages"` | Reads all matching messages or whole-threads. The default is 'messages' or nm_query_type. |
+| `accounts.email.accounts.<name>.offlineimap.enable` | `boolean` | Whether to enable OfflineIMAP. |
+| `accounts.email.accounts.<name>.offlineimap.extraConfig.account` | `attribute set of (string or signed integer or boolean)` | Extra configuration options to add to the account section. |
+| `accounts.email.accounts.<name>.offlineimap.extraConfig.local` | `attribute set of (string or signed integer or boolean)` | Extra configuration options to add to the local account section. |
+| `accounts.email.accounts.<name>.offlineimap.extraConfig.remote` | `attribute set of (string or signed integer or boolean)` | Extra configuration options to add to the remote account section. |
+| `accounts.email.accounts.<name>.offlineimap.postSyncHookCommand` | `strings concatenated with "\n"` | Command to run after fetching new mails. |
+| `accounts.email.accounts.<name>.passwordCommand` | `null or string or list of string` | A command, which when run writes the account password on standard output. |
+| `accounts.email.accounts.<name>.primary` | `boolean` | Whether this is the primary account. Only one account may be set as primary. |
+| `accounts.email.accounts.<name>.realName` | `string` | Name displayed when sending mails. |
+| `accounts.email.accounts.<name>.signature` | `submodule` | Signature configuration. |
+| `accounts.email.accounts.<name>.signature.command` | `null or absolute path` | A command that generates a signature. |
+| `accounts.email.accounts.<name>.signature.delimiter` | `string` | The delimiter used between the document and the signature. |
+| `accounts.email.accounts.<name>.signature.htmlFormat` | `boolean` | Whether Thunderbird should interpret {option}`text` as an HTML signature. This maps to Thunderbird's `mail.identity.id_*.htmlSigFormat` preference. The signature content itself is still written through `mail.identity.id_*.htmlSigText`. |
+| `accounts.email.accounts.<name>.signature.showSignature` | `one of "append", "attach", "none"` | Method to communicate the signature. |
+| `accounts.email.accounts.<name>.signature.text` | `string` | Signature content. |
+| `accounts.email.accounts.<name>.smtp` | `null or (submodule)` | The SMTP configuration to use for this account. |
+| `accounts.email.accounts.<name>.smtp.authentication` | `null or string or one of "anonymous", "apop", "clear", "cram_md5", "digest_md5", "gssapi", "login", "ntlm", "plain", "xoauth2"` | The authentication mechanism. |
+| `accounts.email.accounts.<name>.smtp.host` | `string` | Hostname of SMTP server. |
+| `accounts.email.accounts.<name>.smtp.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port on which the SMTP server listens. If `null` then the default port is used. |
+| `accounts.email.accounts.<name>.smtp.tls` | `submodule` | Configuration for secure connections. |
+| `accounts.email.accounts.<name>.smtp.tls.certificatesFile` | `null or absolute path` | Path to file containing certificate authorities that should be used to validate the connection authenticity. If `null` then the system default is used. Note, if set then the system default may still be accepted. |
+| `accounts.email.accounts.<name>.smtp.tls.enable` | `boolean` | Whether to enable TLS/SSL. |
+| `accounts.email.accounts.<name>.smtp.tls.useStartTls` | `boolean` | Whether to use STARTTLS. This is discouraged and should be avoided if possible. See <https://datatracker.ietf.org/doc/html/rfc8314> for more. |
+| `accounts.email.accounts.<name>.thunderbird.enable` | `boolean` | Whether to enable the Thunderbird mail client for this account. |
+| `accounts.email.accounts.<name>.thunderbird.messageFilters` | `list of (submodule)` | List of message filters to add to this Thunderbird account configuration. Home Manager writes these to Thunderbird's per-account `msgFilterRules.dat` file under the profile mail server directory, for example `ImapMail/<server>/msgFilterRules.dat`. Thunderbird does not publish a stable reference for all fields in this file. To migrate existing filters, inspect an existing `msgFilterRules.dat` file and translate each filter block into this option. |
+| `accounts.email.accounts.<name>.thunderbird.messageFilters.*.action` | `string` | Action to perform on matched messages. |
+| `accounts.email.accounts.<name>.thunderbird.messageFilters.*.actionValue` | `null or string` | Argument passed to the filter action, e.g. a folder path. |
+| `accounts.email.accounts.<name>.thunderbird.messageFilters.*.condition` | `string` | Condition to match messages against. |
+| `accounts.email.accounts.<name>.thunderbird.messageFilters.*.enabled` | `boolean` | Whether this filter is currently active. |
+| `accounts.email.accounts.<name>.thunderbird.messageFilters.*.extraConfig` | `null or string` | Extra settings to apply to the filter |
+| `accounts.email.accounts.<name>.thunderbird.messageFilters.*.name` | `string` | Name for the filter. |
+| `accounts.email.accounts.<name>.thunderbird.messageFilters.*.text` | `null or string` | The raw text of the filter. Note that this will override all other options. |
+| `accounts.email.accounts.<name>.thunderbird.messageFilters.*.type` | `string` | Thunderbird filter type bitmask written as the `type="..."` field in `msgFilterRules.dat`. Thunderbird does not publish a stable table for this bitmask. To reuse an existing value, inspect the account's `msgFilterRules.dat` file and copy the `type="..."` field from a comparable filter. |
+| `accounts.email.accounts.<name>.thunderbird.perIdentitySettings` | `function that evaluates to a(n) attribute set of (boolean or signed integer or string)` | Extra settings to add to each identity of this Thunderbird account configuration. The {var}`id` given as argument is an automatically generated identifier. |
+| `accounts.email.accounts.<name>.thunderbird.profiles` | `list of string` | List of Thunderbird profiles for which this account should be enabled. If this list is empty (the default), this account will be enabled for all declared profiles. |
+| `accounts.email.accounts.<name>.thunderbird.settings` | `function that evaluates to a(n) attribute set of (boolean or signed integer or string)` | Extra settings to add to this Thunderbird account configuration. The {var}`id` given as argument is an automatically generated account identifier. |
+| `accounts.email.accounts.<name>.userName` | `null or string` | The server username of this account. This will be used as the SMTP, IMAP, and JMAP user name. |
 | `accounts.email.certificatesFile` | `null or absolute path` | Path to default file containing certificate authorities that should be used to validate the connection authenticity. This path may be overridden on a per-account basis. |
-| `accounts.email.maildirBasePath` | `string` | The base directory for account maildir directories. May be a relative path (e.g. the user setting this value as “MyMaildir”), in which case it is relative the home directory (e.g. resulting in “~/MyMaildir”). |
+| `accounts.email.maildirBasePath` | `string` | The base directory for account maildir directories. May be a relative path (e.g. the user setting this value as "MyMaildir"), in which case it is relative the home directory (e.g. resulting in "~/MyMaildir"). |

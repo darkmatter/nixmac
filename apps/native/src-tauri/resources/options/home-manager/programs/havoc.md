@@ -5,7 +5,7 @@
 All options under `programs.havoc`.
 
 | Option | Type | Description |
-| ------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.havoc.enable` | `boolean` | Whether to enable Havoc terminal. |
 | `programs.havoc.package` | `null or package` | The havoc package to use. |
-| `programs.havoc.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to $XDG_CONFIG_HOME/havoc.cfg . See https://raw.githubusercontent.com/ii8/havoc/master/havoc.cfg for a list of available options. |
+| `programs.havoc.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to {file}`$XDG_CONFIG_HOME/havoc.cfg`. See <https://raw.githubusercontent.com/ii8/havoc/master/havoc.cfg> for a list of available options. |

@@ -5,18 +5,18 @@
 All options under `services.pixiecore`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.pixiecore.apiServer` | | |
-| `services.pixiecore.cmdLine` | | |
-| `services.pixiecore.debug` | | |
-| `services.pixiecore.dhcpNoBind` | | |
-| `services.pixiecore.enable` | | |
-| `services.pixiecore.extraArguments` | | |
-| `services.pixiecore.initrd` | | |
-| `services.pixiecore.kernel` | | |
-| `services.pixiecore.listen` | | |
-| `services.pixiecore.mode` | | |
-| `services.pixiecore.openFirewall` | | |
-| `services.pixiecore.port` | | |
-| `services.pixiecore.quick` | | |
-| `services.pixiecore.statusPort` | | |
+| --- | --- | --- |
+| `services.pixiecore.apiServer` | `string` | URI to connect to the API. Ignored unless mode is set to 'api' |
+| `services.pixiecore.cmdLine` | `string` | Kernel commandline arguments. Ignored unless mode is set to 'boot' |
+| `services.pixiecore.debug` | `boolean` | Log more things that aren't directly related to booting a recognized client |
+| `services.pixiecore.dhcpNoBind` | `boolean` | Handle DHCP traffic without binding to the DHCP server port |
+| `services.pixiecore.enable` | `boolean` | Whether to enable Pixiecore. |
+| `services.pixiecore.extraArguments` | `list of string` | Additional command line arguments to pass to Pixiecore |
+| `services.pixiecore.initrd` | `string` | Initrd path. Ignored unless mode is set to 'boot' |
+| `services.pixiecore.kernel` | `string` | Kernel path. Ignored unless mode is set to 'boot' |
+| `services.pixiecore.listen` | `string` | IPv4 address to listen on |
+| `services.pixiecore.mode` | `one of "api", "boot", "quick"` | Which mode to use |
+| `services.pixiecore.openFirewall` | `boolean` | Open ports (67, 69, 4011 UDP and 'port', 'statusPort' TCP) in the firewall for Pixiecore. |
+| `services.pixiecore.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on for HTTP |
+| `services.pixiecore.quick` | `one of "arch", "centos", "coreos", "debian", "fedora", "ubuntu", "xyz"` | Which quick option to use |
+| `services.pixiecore.statusPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | HTTP port for status information (can be the same as --port) |

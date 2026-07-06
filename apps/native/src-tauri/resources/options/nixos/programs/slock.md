@@ -5,6 +5,6 @@
 All options under `programs.slock`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `programs.slock.enable` | | |
-| `programs.slock.package` | | |
+| --- | --- | --- |
+| `programs.slock.enable` | `boolean` | Whether to install slock screen locker with setuid wrapper. |
+| `programs.slock.package` | `package` | The slock package to use. |

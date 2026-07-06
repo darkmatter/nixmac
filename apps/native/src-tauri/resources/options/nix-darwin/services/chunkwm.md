@@ -5,12 +5,12 @@
 All options under `services.chunkwm`.
 
 | Option | Type | Description |
-| ---------------------------------------- | -------------------------------------------- | ------------------------------------------------- |
+| --- | --- | --- |
 | `services.chunkwm.enable` | `boolean` | Whether to enable the chunkwm window manager. |
-| `services.chunkwm.extraConfig` | `strings concatenated with “\n”` | Additional commands for chunkwmrc . |
+| `services.chunkwm.extraConfig` | `strings concatenated with "\n"` | Additional commands for {file}`chunkwmrc`. |
 | `services.chunkwm.hotload` | `boolean` | Whether to enable hotload. |
 | `services.chunkwm.package` | `package` | This option specifies the chunkwm package to use. |
-| `services.chunkwm.plugins.border.config` | `strings concatenated with “\n”` | Optional border plugin configuration. |
+| `services.chunkwm.plugins.border.config` | `strings concatenated with "\n"` | Optional border plugin configuration. |
 | `services.chunkwm.plugins.dir` | `absolute path` | Chunkwm Plugins directory. |
-| `services.chunkwm.plugins.list` | `list of (one of “border”, “ffm”, “tiling”)` | Chunkwm Plugins to enable. |
-| `services.chunkwm.plugins.tiling.config` | `strings concatenated with “\n”` | Optional tiling plugin configuration. |
+| `services.chunkwm.plugins.list` | `list of (one of "border", "ffm", "tiling")` | Chunkwm Plugins to enable. |
+| `services.chunkwm.plugins.tiling.config` | `strings concatenated with "\n"` | Optional tiling plugin configuration. |

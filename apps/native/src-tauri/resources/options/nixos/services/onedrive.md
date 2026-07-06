@@ -5,6 +5,6 @@
 All options under `services.onedrive`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.onedrive.enable` | | |
-| `services.onedrive.package` | | |
+| --- | --- | --- |
+| `services.onedrive.enable` | `boolean` | Whether to enable OneDrive service. |
+| `services.onedrive.package` | `package` | The onedrive package to use. |

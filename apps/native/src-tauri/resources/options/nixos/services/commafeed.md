@@ -5,11 +5,11 @@
 All options under `services.commafeed`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.commafeed.enable` | | |
-| `services.commafeed.environment` | | |
-| `services.commafeed.environmentFile` | | |
-| `services.commafeed.group` | | |
-| `services.commafeed.package` | | |
-| `services.commafeed.stateDir` | | |
-| `services.commafeed.user` | | |
+| --- | --- | --- |
+| `services.commafeed.enable` | `boolean` | Whether to enable CommaFeed. |
+| `services.commafeed.environment` | `attribute set of (boolean or signed integer or string)` | Extra environment variables passed to CommaFeed, refer to <https://github.com/Athou/commafeed/blob/master/commafeed-server/config.yml.example> for supported values. The default user is `admin` and the default password is `admin`. Correct configuration for H2 database is already provided. |
+| `services.commafeed.environmentFile` | `null or absolute path` | Environment file as defined in {manpage}`systemd.exec(5)`. |
+| `services.commafeed.group` | `string` | Group under which CommaFeed runs. |
+| `services.commafeed.package` | `package` | The commafeed package to use. |
+| `services.commafeed.stateDir` | `absolute path` | Directory holding all state for CommaFeed to run. |
+| `services.commafeed.user` | `string` | User under which CommaFeed runs. |

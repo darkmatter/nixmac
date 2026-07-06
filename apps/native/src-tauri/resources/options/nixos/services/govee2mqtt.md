@@ -5,9 +5,9 @@
 All options under `services.govee2mqtt`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.govee2mqtt.enable` | | |
-| `services.govee2mqtt.environmentFile` | | |
-| `services.govee2mqtt.group` | | |
-| `services.govee2mqtt.package` | | |
-| `services.govee2mqtt.user` | | |
+| --- | --- | --- |
+| `services.govee2mqtt.enable` | `boolean` | Whether to enable Govee2MQTT. |
+| `services.govee2mqtt.environmentFile` | `absolute path` | Environment file as defined in {manpage}`systemd.exec(5)`. See upstream documentation <https://github.com/wez/govee2mqtt/blob/main/docs/CONFIG.md>. |
+| `services.govee2mqtt.group` | `string` | Group under which Govee2MQTT should run. |
+| `services.govee2mqtt.package` | `package` | The govee2mqtt package to use. |
+| `services.govee2mqtt.user` | `string` | User under which Govee2MQTT should run. |

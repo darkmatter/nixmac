@@ -5,6 +5,6 @@
 All options under `services.powerstation`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.powerstation.enable` | | |
-| `services.powerstation.package` | | |
+| --- | --- | --- |
+| `services.powerstation.enable` | `boolean` | Whether to enable PowerStation. |
+| `services.powerstation.package` | `package` | The powerstation package to use. |

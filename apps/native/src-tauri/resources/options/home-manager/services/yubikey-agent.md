@@ -5,6 +5,6 @@
 All options under `services.yubikey-agent`.
 
 | Option | Type | Description |
-| -------------------------------- | --------- | -------------------------------------------------- |
+| --- | --- | --- |
 | `services.yubikey-agent.enable` | `boolean` | Whether to enable Seamless ssh-agent for YubiKeys. |
 | `services.yubikey-agent.package` | `package` | The yubikey-agent package to use. |

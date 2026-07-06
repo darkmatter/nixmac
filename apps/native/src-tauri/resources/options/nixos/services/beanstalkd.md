@@ -5,8 +5,8 @@
 All options under `services.beanstalkd`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.beanstalkd.enable` | | |
-| `services.beanstalkd.listen.address` | | |
-| `services.beanstalkd.listen.port` | | |
-| `services.beanstalkd.openFirewall` | | |
+| --- | --- | --- |
+| `services.beanstalkd.enable` | `boolean` | Whether to enable the Beanstalk work queue. |
+| `services.beanstalkd.listen.address` | `string` | IP address to listen on. |
+| `services.beanstalkd.listen.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | TCP port that will be used to accept client connections. |
+| `services.beanstalkd.openFirewall` | `boolean` | Whether to open ports in the firewall for the server. |

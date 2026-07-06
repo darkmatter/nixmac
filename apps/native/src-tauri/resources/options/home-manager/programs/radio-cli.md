@@ -5,7 +5,7 @@
 All options under `programs.radio-cli`.
 
 | Option | Type | Description |
-| ----------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.radio-cli.enable` | `boolean` | Whether to enable radio-cli. |
 | `programs.radio-cli.package` | `null or package` | The radio-cli package to use. |
-| `programs.radio-cli.settings` | `JSON value` | Configuration settings for radio-cli. For an example config, refer to: https://github.com/margual56/radio-cli/blob/main/config.json |
+| `programs.radio-cli.settings` | `JSON value` | Configuration settings for radio-cli. For an example config, refer to: <https://github.com/margual56/radio-cli/blob/main/config.json> |

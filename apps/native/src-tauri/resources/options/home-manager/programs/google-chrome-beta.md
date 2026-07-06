@@ -5,11 +5,5 @@
 All options under `programs.google-chrome-beta`.
 
 | Option | Type | Description |
-| -------------------------------------------------- | ---- | ----------- |
-| `programs.google-chrome-beta.commandLineArgs` | | |
-| `programs.google-chrome-beta.dictionaries` | | |
-| `programs.google-chrome-beta.enable` | | |
-| `programs.google-chrome-beta.extensions` | | |
-| `programs.google-chrome-beta.finalPackage` | | |
-| `programs.google-chrome-beta.nativeMessagingHosts` | | |
-| `programs.google-chrome-beta.package` | | |
+| --- | --- | --- |
+| `programs.google-chrome-beta.nativeMessagingHosts` | `list of package` | List of Google Chrome Beta native messaging hosts to install. |

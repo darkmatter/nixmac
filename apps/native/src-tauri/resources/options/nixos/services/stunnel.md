@@ -5,12 +5,12 @@
 All options under `services.stunnel`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.stunnel.clients` | | |
-| `services.stunnel.enable` | | |
-| `services.stunnel.enableInsecureSSLv3` | | |
-| `services.stunnel.fipsMode` | | |
-| `services.stunnel.group` | | |
-| `services.stunnel.logLevel` | | |
-| `services.stunnel.servers` | | |
-| `services.stunnel.user` | | |
+| --- | --- | --- |
+| `services.stunnel.clients` | `attribute set of attribute set of (null or boolean or signed integer or string)` | Define the client configurations. By default, verifyChain and OCSPaia are enabled and CAFile is set to `security.pki.caBundle`. See "SERVICE-LEVEL OPTIONS" in {manpage}`stunnel(8)`. |
+| `services.stunnel.enable` | `boolean` | Whether to enable the stunnel TLS tunneling service. |
+| `services.stunnel.enableInsecureSSLv3` | `boolean` | Enable support for the insecure SSLv3 protocol. |
+| `services.stunnel.fipsMode` | `boolean` | Enable FIPS 140-2 mode required for compliance. |
+| `services.stunnel.group` | `null or string` | The group under which stunnel runs. |
+| `services.stunnel.logLevel` | `one of "emerg", "alert", "crit", "err", "warning", "notice", "info", "debug"` | Verbosity of stunnel output. |
+| `services.stunnel.servers` | `attribute set of attribute set of (null or boolean or signed integer or string)` | Define the server configurations. See "SERVICE-LEVEL OPTIONS" in {manpage}`stunnel(8)`. |
+| `services.stunnel.user` | `null or string` | The user under which stunnel runs. |

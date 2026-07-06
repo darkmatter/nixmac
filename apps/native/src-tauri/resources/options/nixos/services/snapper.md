@@ -5,10 +5,22 @@
 All options under `services.snapper`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.snapper.cleanupInterval` | | |
-| `services.snapper.configs` | | |
-| `services.snapper.filters` | | |
-| `services.snapper.persistentTimer` | | |
-| `services.snapper.snapshotInterval` | | |
-| `services.snapper.snapshotRootOnBoot` | | |
+| --- | --- | --- |
+| `services.snapper.cleanupInterval` | `string` | Cleanup interval. The format is described in {manpage}`systemd.time(7)`. |
+| `services.snapper.configs` | `attribute set of (open submodule of attribute set of ((list of (string without line breaks or quotes)) or boolean or string without line breaks or quotes or signed integer or floating point number))` | Subvolume configuration. Any option mentioned in man:snapper-configs(5) is valid here, even if NixOS doesn't document it. |
+| `services.snapper.configs.<name>.ALLOW_GROUPS` | `list of (string without line breaks or quotes)` | List of groups allowed to operate with the config. Also see the PERMISSIONS section in man:snapper(8). |
+| `services.snapper.configs.<name>.ALLOW_USERS` | `list of (string without line breaks or quotes)` | List of users allowed to operate with the config. "root" is always implicitly included. Also see the PERMISSIONS section in man:snapper(8). |
+| `services.snapper.configs.<name>.FSTYPE` | `one of "btrfs", "bcachefs"` | Filesystem type. Only btrfs is stable and tested. bcachefs support is experimental. |
+| `services.snapper.configs.<name>.SUBVOLUME` | `absolute path` | Path of the subvolume or mount point. This path is a subvolume and has to contain a subvolume named .snapshots. See also man:snapper(8) section PERMISSIONS. |
+| `services.snapper.configs.<name>.TIMELINE_CLEANUP` | `boolean` | Defines whether the timeline cleanup algorithm should be run for the config. |
+| `services.snapper.configs.<name>.TIMELINE_CREATE` | `boolean` | Defines whether hourly snapshots should be created. |
+| `services.snapper.configs.<name>.TIMELINE_LIMIT_DAILY` | `unsigned integer, meaning >=0, or string containing either a number or a range` | Limits for timeline cleanup. |
+| `services.snapper.configs.<name>.TIMELINE_LIMIT_HOURLY` | `unsigned integer, meaning >=0, or string containing either a number or a range` | Limits for timeline cleanup. |
+| `services.snapper.configs.<name>.TIMELINE_LIMIT_MONTHLY` | `unsigned integer, meaning >=0, or string containing either a number or a range` | Limits for timeline cleanup. |
+| `services.snapper.configs.<name>.TIMELINE_LIMIT_QUARTERLY` | `unsigned integer, meaning >=0, or string containing either a number or a range` | Limits for timeline cleanup. |
+| `services.snapper.configs.<name>.TIMELINE_LIMIT_WEEKLY` | `unsigned integer, meaning >=0, or string containing either a number or a range` | Limits for timeline cleanup. |
+| `services.snapper.configs.<name>.TIMELINE_LIMIT_YEARLY` | `unsigned integer, meaning >=0, or string containing either a number or a range` | Limits for timeline cleanup. |
+| `services.snapper.filters` | `null or strings concatenated with "\n"` | Global display difference filter. See man:snapper(8) for more details. |
+| `services.snapper.persistentTimer` | `boolean` | Set the `Persistent` option for the {manpage}`systemd.timer(5)` which triggers the snapshot immediately if the last trigger was missed (e.g. if the system was powered down). |
+| `services.snapper.snapshotInterval` | `string` | Snapshot interval. The format is described in {manpage}`systemd.time(7)`. |
+| `services.snapper.snapshotRootOnBoot` | `boolean` | Whether to snapshot root on boot |

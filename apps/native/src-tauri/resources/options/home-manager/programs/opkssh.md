@@ -5,7 +5,7 @@
 All options under `programs.opkssh`.
 
 | Option | Type | Description |
-| -------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.opkssh.enable` | `boolean` | Whether to enable enable the OpenPubkey SSH client. |
 | `programs.opkssh.package` | `null or package` | The opkssh package to use. |
-| `programs.opkssh.settings` | `YAML 1.1 value` | Configuration written to $HOME/.opk/config.yml . See https://github.com/openpubkey/opkssh/blob/main/docs/config.md#client-config-opkconfigyml . |
+| `programs.opkssh.settings` | `YAML 1.1 value` | Configuration written to {file}`$HOME/.opk/config.yml`. See <https://github.com/openpubkey/opkssh/blob/main/docs/config.md#client-config-opkconfigyml>. |

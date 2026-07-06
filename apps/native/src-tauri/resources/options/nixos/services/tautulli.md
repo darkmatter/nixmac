@@ -5,12 +5,12 @@
 All options under `services.tautulli`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.tautulli.configFile` | | |
-| `services.tautulli.dataDir` | | |
-| `services.tautulli.enable` | | |
-| `services.tautulli.group` | | |
-| `services.tautulli.openFirewall` | | |
-| `services.tautulli.package` | | |
-| `services.tautulli.port` | | |
-| `services.tautulli.user` | | |
+| --- | --- | --- |
+| `services.tautulli.configFile` | `string` | The location of Tautulli's config file. |
+| `services.tautulli.dataDir` | `string` | The directory where Tautulli stores its data files. |
+| `services.tautulli.enable` | `boolean` | Whether to enable Tautulli Plex Monitor. |
+| `services.tautulli.group` | `string` | Group under which Tautulli runs. |
+| `services.tautulli.openFirewall` | `boolean` | Open ports in the firewall for Tautulli. |
+| `services.tautulli.package` | `package` | The tautulli package to use. |
+| `services.tautulli.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | TCP port where Tautulli listens. |
+| `services.tautulli.user` | `string` | User account under which Tautulli runs. |

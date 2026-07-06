@@ -5,7 +5,23 @@
 All options under `services.nvme-rs`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.nvme-rs.enable` | | |
-| `services.nvme-rs.package` | | |
-| `services.nvme-rs.settings` | | |
+| --- | --- | --- |
+| `services.nvme-rs.enable` | `boolean` | Whether to enable nvme-rs, a monitoring service. |
+| `services.nvme-rs.package` | `package` | The nvme-rs package to use. |
+| `services.nvme-rs.settings` | `open submodule of (TOML value)` | Configuration for nvme-rs in TOML format. See the config.toml example for all available options. |
+| `services.nvme-rs.settings.check_interval_secs` | `signed integer` | Check interval in seconds |
+| `services.nvme-rs.settings.email` | `null or (open submodule of (TOML value))` | Email notification configuration |
+| `services.nvme-rs.settings.email.from` | `string` | Sender email address |
+| `services.nvme-rs.settings.email.smtp_password_file` | `absolute path` | File containing SMTP password |
+| `services.nvme-rs.settings.email.smtp_port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | SMTP server port |
+| `services.nvme-rs.settings.email.smtp_server` | `string` | SMTP server address |
+| `services.nvme-rs.settings.email.smtp_username` | `string` | SMTP username |
+| `services.nvme-rs.settings.email.to` | `string` | Recipient email address |
+| `services.nvme-rs.settings.email.use_tls` | `boolean` | Use TLS for SMTP connection |
+| `services.nvme-rs.settings.thresholds` | `open submodule of (TOML value)` | Threshold configuration for NVMe monitoring |
+| `services.nvme-rs.settings.thresholds.error_threshold` | `signed integer` | Error count warning threshold |
+| `services.nvme-rs.settings.thresholds.spare_warning` | `signed integer` | Available spare warning threshold (%) |
+| `services.nvme-rs.settings.thresholds.temp_critical` | `signed integer` | Temperature critical threshold (°C) |
+| `services.nvme-rs.settings.thresholds.temp_warning` | `signed integer` | Temperature warning threshold (°C) |
+| `services.nvme-rs.settings.thresholds.wear_critical` | `signed integer` | Wear critical threshold (%) |
+| `services.nvme-rs.settings.thresholds.wear_warning` | `signed integer` | Wear warning threshold (%) |

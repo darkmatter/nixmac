@@ -5,5 +5,5 @@
 All options under `services.magic-wormhole-mailbox-server`.
 
 | Option | Type | Description |
-| ----------------------------------------------- | ---- | ----------- |
-| `services.magic-wormhole-mailbox-server.enable` | | |
+| --- | --- | --- |
+| `services.magic-wormhole-mailbox-server.enable` | `boolean` | Whether to enable Magic Wormhole Mailbox Server. |

@@ -5,13 +5,11 @@
 All options under `services.zeronet`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.zeronet.dataDir` | | |
-| `services.zeronet.enable` | | |
-| `services.zeronet.fileserverPort` | | |
-| `services.zeronet.logDir` | | |
-| `services.zeronet.package` | | |
-| `services.zeronet.port` | | |
-| `services.zeronet.settings` | | |
-| `services.zeronet.tor` | | |
-| `services.zeronet.torAlways` | | |
+| --- | --- | --- |
+| `services.zeronet.enable` | `boolean` | Whether to enable zeronet. |
+| `services.zeronet.fileserverPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Zeronet fileserver port. |
+| `services.zeronet.package` | `package` | The zeronet package to use. |
+| `services.zeronet.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Optional zeronet web UI port. |
+| `services.zeronet.settings` | `attribute set of attribute set of (string or signed integer or boolean or list of string)` | {file}`zeronet.conf` configuration. Refer to <https://zeronet.readthedocs.io/en/latest/faq/#is-it-possible-to-use-a-configuration-file> for details on supported values; |
+| `services.zeronet.tor` | `boolean` | Use TOR for zeronet traffic where possible. |
+| `services.zeronet.torAlways` | `boolean` | Use TOR for all zeronet traffic. |

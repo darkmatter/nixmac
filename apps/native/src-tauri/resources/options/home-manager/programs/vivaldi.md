@@ -5,11 +5,5 @@
 All options under `programs.vivaldi`.
 
 | Option | Type | Description |
-| --------------------------------------- | ----------------- | ---------------------------------------------------------- |
-| `programs.vivaldi.commandLineArgs` | | |
-| `programs.vivaldi.dictionaries` | | |
-| `programs.vivaldi.enable` | | |
-| `programs.vivaldi.extensions` | | |
-| `programs.vivaldi.finalPackage` | | |
+| --- | --- | --- |
 | `programs.vivaldi.nativeMessagingHosts` | `list of package` | List of Vivaldi Browser native messaging hosts to install. |
-| `programs.vivaldi.package` | | |

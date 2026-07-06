@@ -5,10 +5,10 @@
 All options under `services.pptpd`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.pptpd.clientIpRange` | | |
-| `services.pptpd.enable` | | |
-| `services.pptpd.extraPppdOptions` | | |
-| `services.pptpd.extraPptpdOptions` | | |
-| `services.pptpd.maxClients` | | |
-| `services.pptpd.serverIp` | | |
+| --- | --- | --- |
+| `services.pptpd.clientIpRange` | `string` | The range from which client IPs are drawn. |
+| `services.pptpd.enable` | `boolean` | Whether to enable pptpd, the Point-to-Point Tunneling Protocol daemon. |
+| `services.pptpd.extraPppdOptions` | `strings concatenated with "\n"` | Adds extra lines to the pppd options file. |
+| `services.pptpd.extraPptpdOptions` | `strings concatenated with "\n"` | Adds extra lines to the pptpd configuration file. |
+| `services.pptpd.maxClients` | `signed integer` | The maximum number of simultaneous connections. |
+| `services.pptpd.serverIp` | `string` | The server-side IP address. |

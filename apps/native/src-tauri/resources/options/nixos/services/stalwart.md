@@ -5,13 +5,13 @@
 All options under `services.stalwart`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.stalwart.credentials` | | |
-| `services.stalwart.dataDir` | | |
-| `services.stalwart.enable` | | |
-| `services.stalwart.group` | | |
-| `services.stalwart.openFirewall` | | |
-| `services.stalwart.package` | | |
-| `services.stalwart.settings` | | |
-| `services.stalwart.stateVersion` | | |
-| `services.stalwart.user` | | |
+| --- | --- | --- |
+| `services.stalwart.credentials` | `attribute set of string` | Credentials envs used to configure Stalwart secrets. These secrets can be accessed in configuration values with the macros such as `%{file:/run/credentials/stalwart.service/VAR_NAME}%`. |
+| `services.stalwart.dataDir` | `absolute path` | Data directory for stalwart |
+| `services.stalwart.enable` | `boolean` | Whether to enable the all-in-one collaboration and mail server, Stalwart. |
+| `services.stalwart.group` | `string` | Group ownership of service |
+| `services.stalwart.openFirewall` | `boolean` | Whether to open TCP firewall ports, which are specified in {option}`services.stalwart.settings.server.listener` on all interfaces. |
+| `services.stalwart.package` | `package` | The stalwart package to use. |
+| `services.stalwart.settings` | `TOML value` | Configuration options for the Stalwart server. See <https://stalw.art/docs/category/configuration> for available options. By default, the module is configured to store everything locally. |
+| `services.stalwart.stateVersion` | `string` | The version of this module (=version of NixOS) when this module was first enabled on this particular machine, used to maintain compatibility with application data created on older versions of this module. See {option}`system.stateVersion` for details on the NixOS-global equivalent to this option. |
+| `services.stalwart.user` | `string` | User ownership of service |

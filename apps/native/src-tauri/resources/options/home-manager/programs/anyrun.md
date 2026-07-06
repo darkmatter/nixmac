@@ -5,21 +5,29 @@
 All options under `programs.anyrun`.
 
 | Option | Type | Description |
-| ----------------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.anyrun.config.closeOnClick` | `boolean` | Close window when a click outside the main box is received. |
-| `programs.anyrun.config.height` | `submodule` | The minimum height of the runner, the runner will expand to fit all the entries. |
+| `programs.anyrun.config.height` | `submodule` | The minimum height of the runner, the runner will expand to fit all the entries. This is a numeric option - pass either `{ absolute = int; };` or `{ fraction = float; };`. when using `absolute` it sets the absolute value in pixels, when using `fraction`, it sets a fraction of the width or height of the full screen (depends on exclusive zones and the settings related to them) window |
+| `programs.anyrun.config.height.absolute` | `null or signed integer` | Absolute value in pixels. |
+| `programs.anyrun.config.height.fraction` | `null or floating point number` | Fraction of the screen. |
 | `programs.anyrun.config.hideIcons` | `boolean` | Hide match and plugin info icons. |
 | `programs.anyrun.config.hidePluginInfo` | `boolean` | Hide the plugin info panel. |
 | `programs.anyrun.config.ignoreExclusiveZones` | `boolean` | Ignore exclusive zones, eg. Waybar. |
-| `programs.anyrun.config.layer` | `one of “background”, “bottom”, “top”, “overlay”` | Layer shell layer (background, bottom, top or overlay). |
+| `programs.anyrun.config.layer` | `one of "background", "bottom", "top", "overlay"` | Layer shell layer (background, bottom, top or overlay). |
 | `programs.anyrun.config.margin` | `signed integer` | Add a margin around the window to allow for CSS shadow styling. |
 | `programs.anyrun.config.maxEntries` | `null or signed integer` | Limit amount of entries shown in total. |
 | `programs.anyrun.config.plugins` | `null or (list of (package or string))` | List of anyrun plugins to use. Can either be packages, absolute plugin paths, or strings. |
 | `programs.anyrun.config.showResultsImmediately` | `boolean` | Show search results immediately when Anyrun starts. |
-| `programs.anyrun.config.width` | `submodule` | The width of the runner. |
-| `programs.anyrun.config.x` | `submodule` | The horizontal position, adjusted so that { relative = 0.5; } always centers the runner. |
-| `programs.anyrun.config.y` | `submodule` | The vertical position, works the same as x. |
+| `programs.anyrun.config.width` | `submodule` | The width of the runner. This is a numeric option - pass either `{ absolute = int; };` or `{ fraction = float; };`. when using `absolute` it sets the absolute value in pixels, when using `fraction`, it sets a fraction of the width or height of the full screen (depends on exclusive zones and the settings related to them) window |
+| `programs.anyrun.config.width.absolute` | `null or signed integer` | Absolute value in pixels. |
+| `programs.anyrun.config.width.fraction` | `null or floating point number` | Fraction of the screen. |
+| `programs.anyrun.config.x` | `submodule` | The horizontal position, adjusted so that { relative = 0.5; } always centers the runner. This is a numeric option - pass either `{ absolute = int; };` or `{ fraction = float; };`. when using `absolute` it sets the absolute value in pixels, when using `fraction`, it sets a fraction of the width or height of the full screen (depends on exclusive zones and the settings related to them) window |
+| `programs.anyrun.config.x.absolute` | `null or signed integer` | Absolute value in pixels. |
+| `programs.anyrun.config.x.fraction` | `null or floating point number` | Fraction of the screen. |
+| `programs.anyrun.config.y` | `submodule` | The vertical position, works the same as x. This is a numeric option - pass either `{ absolute = int; };` or `{ fraction = float; };`. when using `absolute` it sets the absolute value in pixels, when using `fraction`, it sets a fraction of the width or height of the full screen (depends on exclusive zones and the settings related to them) window |
+| `programs.anyrun.config.y.absolute` | `null or signed integer` | Absolute value in pixels. |
+| `programs.anyrun.config.y.fraction` | `null or floating point number` | Fraction of the screen. |
 | `programs.anyrun.enable` | `boolean` | Whether to enable anyrun. |
-| `programs.anyrun.extraConfigFiles` | `attribute set` | Extra files to put in ~/.config/anyrun , a wrapper over xdg.configFile . |
-| `programs.anyrun.extraCss` | `null or strings concatenated with “\n”` | Extra CSS lines to add to ~/.config/anyrun/style.css . |
+| `programs.anyrun.extraConfigFiles` | `attribute set` | Extra files to put in {file}`~/.config/anyrun`, a wrapper over {option}`xdg.configFile`. |
+| `programs.anyrun.extraCss` | `null or strings concatenated with "\n"` | Extra CSS lines to add to {file}`~/.config/anyrun/style.css`. |
 | `programs.anyrun.package` | `null or package` | The anyrun package to use. |

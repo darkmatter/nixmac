@@ -5,12 +5,12 @@
 All options under `services.sshguard`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.sshguard.attack_threshold` | | |
-| `services.sshguard.blacklist_file` | | |
-| `services.sshguard.blacklist_threshold` | | |
-| `services.sshguard.blocktime` | | |
-| `services.sshguard.detection_time` | | |
-| `services.sshguard.enable` | | |
-| `services.sshguard.services` | | |
-| `services.sshguard.whitelist` | | |
+| --- | --- | --- |
+| `services.sshguard.attack_threshold` | `signed integer` | Block attackers when their cumulative attack score exceeds threshold. Most attacks have a score of 10. |
+| `services.sshguard.blacklist_file` | `absolute path` | Blacklist an attacker when its score exceeds threshold. Blacklisted addresses are loaded from and added to blacklist-file. |
+| `services.sshguard.blacklist_threshold` | `null or signed integer` | Blacklist an attacker when its score exceeds threshold. Blacklisted addresses are loaded from and added to blacklist-file. |
+| `services.sshguard.blocktime` | `signed integer` | Block attackers for initially blocktime seconds after exceeding threshold. Subsequent blocks increase by a factor of 1.5. sshguard unblocks attacks at random intervals, so actual block times will be longer. |
+| `services.sshguard.detection_time` | `signed integer` | Remember potential attackers for up to detection_time seconds before resetting their score. |
+| `services.sshguard.enable` | `boolean` | Whether to enable the sshguard service. |
+| `services.sshguard.services` | `list of string` | Systemd services sshguard should receive logs of. |
+| `services.sshguard.whitelist` | `list of string` | Whitelist a list of addresses, hostnames, or address blocks. |

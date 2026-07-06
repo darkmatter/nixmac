@@ -5,32 +5,32 @@
 All options under `services.vsftpd`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.vsftpd.allowWriteableChroot` | | |
-| `services.vsftpd.anonymousMkdirEnable` | | |
-| `services.vsftpd.anonymousUmask` | | |
-| `services.vsftpd.anonymousUploadEnable` | | |
-| `services.vsftpd.anonymousUser` | | |
-| `services.vsftpd.anonymousUserHome` | | |
-| `services.vsftpd.anonymousUserNoPassword` | | |
-| `services.vsftpd.chrootlocalUser` | | |
-| `services.vsftpd.enable` | | |
-| `services.vsftpd.enableVirtualUsers` | | |
-| `services.vsftpd.extraConfig` | | |
-| `services.vsftpd.forceLocalDataSSL` | | |
-| `services.vsftpd.forceLocalLoginsSSL` | | |
-| `services.vsftpd.localRoot` | | |
-| `services.vsftpd.localUsers` | | |
-| `services.vsftpd.portPromiscuous` | | |
-| `services.vsftpd.rsaCertFile` | | |
-| `services.vsftpd.rsaKeyFile` | | |
-| `services.vsftpd.ssl_sslv2` | | |
-| `services.vsftpd.ssl_sslv3` | | |
-| `services.vsftpd.ssl_tlsv1` | | |
-| `services.vsftpd.userDbPath` | | |
-| `services.vsftpd.userlist` | | |
-| `services.vsftpd.userlistDeny` | | |
-| `services.vsftpd.userlistEnable` | | |
-| `services.vsftpd.userlistFile` | | |
-| `services.vsftpd.virtualUseLocalPrivs` | | |
-| `services.vsftpd.writeEnable` | | |
+| --- | --- | --- |
+| `services.vsftpd.allowWriteableChroot` | `boolean` | Allow the use of writeable root inside chroot(). |
+| `services.vsftpd.anonymousMkdirEnable` | `boolean` | Whether any uploads are permitted to anonymous users. |
+| `services.vsftpd.anonymousUmask` | `string` | Anonymous write umask. |
+| `services.vsftpd.anonymousUploadEnable` | `boolean` | Whether any uploads are permitted to anonymous users. |
+| `services.vsftpd.anonymousUser` | `boolean` | Whether to enable the anonymous FTP user. |
+| `services.vsftpd.anonymousUserHome` | `absolute path` | Directory to consider the HOME of the anonymous user. |
+| `services.vsftpd.anonymousUserNoPassword` | `boolean` | Whether to disable the password for the anonymous FTP user. |
+| `services.vsftpd.chrootlocalUser` | `boolean` | Whether local users are confined to their home directory. |
+| `services.vsftpd.enable` | `boolean` | Whether to enable vsftpd. |
+| `services.vsftpd.enableVirtualUsers` | `boolean` | Whether to enable the `pam_userdb`-based virtual user system |
+| `services.vsftpd.extraConfig` | `strings concatenated with "\n"` | Extra configuration to add at the bottom of the generated configuration file. |
+| `services.vsftpd.forceLocalDataSSL` | `boolean` | Only applies if {option}`sslEnable` is true. Non anonymous (local) users must use a secure SSL connection for sending/receiving data on data connection. |
+| `services.vsftpd.forceLocalLoginsSSL` | `boolean` | Only applies if {option}`sslEnable` is true. Non anonymous (local) users must use a secure SSL connection to send a password. |
+| `services.vsftpd.localRoot` | `null or string` | This option represents a directory which vsftpd will try to change into after a local (i.e. non- anonymous) login. Failure is silently ignored. |
+| `services.vsftpd.localUsers` | `boolean` | Whether to enable FTP for local users. |
+| `services.vsftpd.portPromiscuous` | `boolean` | Set to YES if you want to disable the PORT security check that ensures that outgoing data connections can only connect to the client. Only enable if you know what you are doing! |
+| `services.vsftpd.rsaCertFile` | `null or absolute path` | RSA certificate file. |
+| `services.vsftpd.rsaKeyFile` | `null or absolute path` | RSA private key file. |
+| `services.vsftpd.ssl_sslv2` | `boolean` | Only applies if {option}`ssl_enable` is activated. If enabled, this option will permit SSL v2 protocol connections. TLS v1 connections are preferred. |
+| `services.vsftpd.ssl_sslv3` | `boolean` | Only applies if {option}`ssl_enable` is activated. If enabled, this option will permit SSL v3 protocol connections. TLS v1 connections are preferred. |
+| `services.vsftpd.ssl_tlsv1` | `boolean` | Only applies if {option}`ssl_enable` is activated. If enabled, this option will permit TLS v1 protocol connections. TLS v1 connections are preferred. |
+| `services.vsftpd.userDbPath` | `null or string` | Only applies if {option}`enableVirtualUsers` is true. Path pointing to the `pam_userdb` user database used by vsftpd to authenticate the virtual users. This user list should be stored in the Berkeley DB database format. To generate a new user database, create a text file, add your users using the following format: `user1 password1 user2 password2` You can then install `pkgs.db` to generate the Berkeley DB using `db_load -T -t hash -f logins.txt userDb.db` Caution: `pam_userdb` will automatically append a `.db` suffix to the filename you provide though this option. This option shouldn't include this filetype suffix. |
+| `services.vsftpd.userlist` | `list of string` | See {option}`userlistFile`. |
+| `services.vsftpd.userlistDeny` | `boolean` | Specifies whether {option}`userlistFile` is a list of user names to allow or deny access. The default `false` means whitelist/allow. |
+| `services.vsftpd.userlistEnable` | `boolean` | Whether users are included. |
+| `services.vsftpd.userlistFile` | `absolute path` | Newline separated list of names to be allowed/denied if {option}`userlistEnable` is `true`. Meaning see {option}`userlistDeny`. The default is a file containing the users from {option}`userlist`. If explicitly set to null userlist_file will not be set in vsftpd's config file. |
+| `services.vsftpd.virtualUseLocalPrivs` | `boolean` | If enabled, virtual users will use the same privileges as local users. By default, virtual users will use the same privileges as anonymous users, which tends to be more restrictive (especially in terms of write access). |
+| `services.vsftpd.writeEnable` | `boolean` | Whether any write activity is permitted to users. |

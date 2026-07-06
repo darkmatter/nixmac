@@ -5,5 +5,5 @@
 All options under `services.sundtek`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.sundtek.enable` | | |
+| --- | --- | --- |
+| `services.sundtek.enable` | `boolean` | Whether to enable Sundtek driver. |

@@ -5,7 +5,7 @@
 All options under `programs.retext`.
 
 | Option | Type | Description |
-| -------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.retext.enable` | `boolean` | Whether to enable retext. |
 | `programs.retext.package` | `null or package` | The retext package to use. |
-| `programs.retext.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration settings for retext. All the available options can be found here: https://github.com/retext-project/retext/blob/master/configuration.md . |
+| `programs.retext.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration settings for retext. All the available options can be found here: <https://github.com/retext-project/retext/blob/master/configuration.md>. |

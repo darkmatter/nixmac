@@ -5,7 +5,7 @@
 All options under `services.byedpi`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.byedpi.enable` | | |
-| `services.byedpi.extraArgs` | | |
-| `services.byedpi.package` | | |
+| --- | --- | --- |
+| `services.byedpi.enable` | `boolean` | Whether to enable the ByeDPI service. |
+| `services.byedpi.extraArgs` | `list of string` | Extra command line arguments. |
+| `services.byedpi.package` | `package` | The byedpi package to use. |

@@ -5,5 +5,5 @@
 All options under `services.spice-vdagentd`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.spice-vdagentd.enable` | | |
+| --- | --- | --- |
+| `services.spice-vdagentd.enable` | `boolean` | Whether to enable Spice guest vdagent daemon. |

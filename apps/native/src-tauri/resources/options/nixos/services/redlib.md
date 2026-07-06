@@ -5,10 +5,10 @@
 All options under `services.redlib`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.redlib.address` | | |
-| `services.redlib.enable` | | |
-| `services.redlib.openFirewall` | | |
-| `services.redlib.package` | | |
-| `services.redlib.port` | | |
-| `services.redlib.settings` | | |
+| --- | --- | --- |
+| `services.redlib.address` | `string` | The address to listen on |
+| `services.redlib.enable` | `boolean` | Whether to enable Private front-end for Reddit. |
+| `services.redlib.openFirewall` | `boolean` | Open ports in the firewall for the redlib web interface |
+| `services.redlib.package` | `package` | The redlib package to use. |
+| `services.redlib.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to listen on |
+| `services.redlib.settings` | `open submodule of attribute set of (null or boolean or signed integer or string)` | See [GitHub](https://github.com/redlib-org/redlib/tree/main?tab=readme-ov-file#configuration) for available settings. |

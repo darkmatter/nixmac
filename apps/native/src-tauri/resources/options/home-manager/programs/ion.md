@@ -5,8 +5,8 @@
 All options under `programs.ion`.
 
 | Option | Type | Description |
-| --------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.ion.enable` | `boolean` | Whether to enable the Ion Shell. Compatible with Redox and Linux. |
-| `programs.ion.initExtra` | `strings concatenated with “\n”` | Ion script which is called during ion initialization. |
+| `programs.ion.initExtra` | `strings concatenated with "\n"` | Ion script which is called during ion initialization. |
 | `programs.ion.package` | `package` | The ion package to use. |
 | `programs.ion.shellAliases` | `attribute set of string` | An attribute set that maps aliases (the top level attribute names in this option) to command strings or directly to build outputs. |

@@ -5,11 +5,11 @@
 All options under `programs.lazyworktree`.
 
 | Option | Type | Description |
-| --------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.lazyworktree.enable` | `boolean` | Whether to enable lazyworktree. |
 | `programs.lazyworktree.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.lazyworktree.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
 | `programs.lazyworktree.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
 | `programs.lazyworktree.package` | `null or package` | The lazyworktree package to use. |
-| `programs.lazyworktree.settings` | `YAML 1.1 value` | Configuration written to $XDG_CONFIG_HOME/lazyworktree/config.yaml . See https://github.com/chmouel/lazyworktree?tab=readme-ov-file#global-configuration-yaml for supported values. |
+| `programs.lazyworktree.settings` | `YAML 1.1 value` | Configuration written to {file}`$XDG_CONFIG_HOME/lazyworktree/config.yaml`. See <https://github.com/chmouel/lazyworktree?tab=readme-ov-file#global-configuration-yaml> for supported values. |
 | `programs.lazyworktree.shellWrapperName` | `string` | Name of the shell wrapper that launches lazyworktree and changes to the selected worktree directory on exit. This option only has an effect when at least one shell integration option is enabled. |

@@ -5,8 +5,8 @@
 All options under `services.duckdns`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.duckdns.domains` | | |
-| `services.duckdns.domainsFile` | | |
-| `services.duckdns.enable` | | |
-| `services.duckdns.tokenFile` | | |
+| --- | --- | --- |
+| `services.duckdns.domains` | `null or (list of string)` | The domain(s) to update in DuckDNS (without the .duckdns.org suffix) |
+| `services.duckdns.domainsFile` | `null or absolute path` | The path to a file containing a newline-separated list of DuckDNS domain(s) to be updated (without the .duckdns.org suffix) |
+| `services.duckdns.enable` | `boolean` | Whether to enable DuckDNS Dynamic DNS Client. |
+| `services.duckdns.tokenFile` | `absolute path` | The path to a file containing the token used to authenticate with DuckDNS. |

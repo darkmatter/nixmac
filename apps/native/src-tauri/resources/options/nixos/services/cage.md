@@ -5,10 +5,10 @@
 All options under `services.cage`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.cage.enable` | | |
-| `services.cage.environment` | | |
-| `services.cage.extraArguments` | | |
-| `services.cage.package` | | |
-| `services.cage.program` | | |
-| `services.cage.user` | | |
+| --- | --- | --- |
+| `services.cage.enable` | `boolean` | Whether to enable cage kiosk service. |
+| `services.cage.environment` | `attribute set of string` | Additional environment variables to pass to Cage. |
+| `services.cage.extraArguments` | `list of string` | Additional command line arguments to pass to Cage. |
+| `services.cage.package` | `package` | The cage package to use. |
+| `services.cage.program` | `absolute path` | Program to run in cage. |
+| `services.cage.user` | `string` | User to log-in as. |

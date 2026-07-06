@@ -5,13 +5,13 @@
 All options under `services.ircdHybrid`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.ircdHybrid.adminEmail` | | |
-| `services.ircdHybrid.certificate` | | |
-| `services.ircdHybrid.description` | | |
-| `services.ircdHybrid.enable` | | |
-| `services.ircdHybrid.extraIPs` | | |
-| `services.ircdHybrid.extraPort` | | |
-| `services.ircdHybrid.rsaKey` | | |
-| `services.ircdHybrid.serverName` | | |
-| `services.ircdHybrid.sid` | | |
+| --- | --- | --- |
+| `services.ircdHybrid.adminEmail` | `string` | IRCD server administrator e-mail. |
+| `services.ircdHybrid.certificate` | `null or absolute path` | IRCD server SSL certificate. There are some limitations - read manual. |
+| `services.ircdHybrid.description` | `string` | IRCD server description. |
+| `services.ircdHybrid.enable` | `boolean` | Whether to enable IRCD. |
+| `services.ircdHybrid.extraIPs` | `list of string` | Extra IP's to bind. |
+| `services.ircdHybrid.extraPort` | `string` | Extra port to avoid filtering. |
+| `services.ircdHybrid.rsaKey` | `null or absolute path` | IRCD server RSA key. |
+| `services.ircdHybrid.serverName` | `string` | IRCD server name. |
+| `services.ircdHybrid.sid` | `string` | IRCD server unique ID in a net of servers. |

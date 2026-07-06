@@ -5,8 +5,11 @@
 All options under `services.typesense`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.typesense.apiKeyFile` | | |
-| `services.typesense.enable` | | |
-| `services.typesense.package` | | |
-| `services.typesense.settings` | | |
+| --- | --- | --- |
+| `services.typesense.apiKeyFile` | `absolute path` | Sets the admin api key for typesense. Always use this option instead of {option}`settings.server.api-key` to prevent the key from being written to the world-readable nix store. |
+| `services.typesense.enable` | `boolean` | Whether to enable typesense. |
+| `services.typesense.package` | `package` | The typesense package to use. |
+| `services.typesense.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string) or a non-empty list of them)` | Typesense configuration. Refer to [the documentation](https://typesense.org/docs/0.24.1/api/server-configuration.html) for supported values. |
+| `services.typesense.settings.server.api-address` | `string` | Address to which Typesense API service binds. |
+| `services.typesense.settings.server.api-port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which the Typesense API service listens. |
+| `services.typesense.settings.server.data-dir` | `string` | Path to the directory where data will be stored on disk. |

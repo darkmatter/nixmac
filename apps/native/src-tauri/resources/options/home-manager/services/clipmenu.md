@@ -5,7 +5,7 @@
 All options under `services.clipmenu`.
 
 | Option | Type | Description |
-| ---------------------------- | ---------------- | ------------------------------------------------------------ |
+| --- | --- | --- |
 | `services.clipmenu.enable` | `boolean` | Whether to enable clipmenu, the clipboard management daemon. |
-| `services.clipmenu.launcher` | `null or string` | Launcher command, if not set, dmenu will be used by default. |
+| `services.clipmenu.launcher` | `null or string` | Launcher command, if not set, {command}`dmenu` will be used by default. |
 | `services.clipmenu.package` | `package` | The clipmenu package to use. |

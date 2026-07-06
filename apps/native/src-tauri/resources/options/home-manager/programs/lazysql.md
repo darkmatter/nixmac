@@ -5,7 +5,7 @@
 All options under `programs.lazysql`.
 
 | Option | Type | Description |
-| --------------------------- | ----------------- | ----------------------------------- |
+| --- | --- | --- |
 | `programs.lazysql.enable` | `boolean` | Whether to enable lazysql. |
 | `programs.lazysql.package` | `null or package` | The lazysql package to use. |
 | `programs.lazysql.settings` | `TOML value` | Configuration settings for lazysql. |

@@ -5,7 +5,7 @@
 All options under `services.ngircd`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.ngircd.config` | | |
-| `services.ngircd.enable` | | |
-| `services.ngircd.package` | | |
+| --- | --- | --- |
+| `services.ngircd.config` | `strings concatenated with "\n"` | The ngircd configuration (see {manpage}`ngircd.conf(5)`). |
+| `services.ngircd.enable` | `boolean` | Whether to enable the ngircd IRC server. |
+| `services.ngircd.package` | `package` | The ngircd package to use. |

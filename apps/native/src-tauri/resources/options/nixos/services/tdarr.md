@@ -5,22 +5,41 @@
 All options under `services.tdarr`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.tdarr.dataDir` | | |
-| `services.tdarr.enable` | | |
-| `services.tdarr.group` | | |
-| `services.tdarr.nodes` | | |
-| `services.tdarr.package` | | |
-| `services.tdarr.server.auth.enable` | | |
-| `services.tdarr.server.cronPluginUpdate` | | |
-| `services.tdarr.server.enable` | | |
-| `services.tdarr.server.environmentFile` | | |
-| `services.tdarr.server.maxLogSizeMB` | | |
-| `services.tdarr.server.openFirewall` | | |
-| `services.tdarr.server.package` | | |
-| `services.tdarr.server.serverBindIP` | | |
-| `services.tdarr.server.serverDualStack` | | |
-| `services.tdarr.server.serverIP` | | |
-| `services.tdarr.server.serverPort` | | |
-| `services.tdarr.server.webUIPort` | | |
-| `services.tdarr.user` | | |
+| --- | --- | --- |
+| `services.tdarr.dataDir` | `absolute path` | Base directory for Tdarr data. |
+| `services.tdarr.enable` | `boolean` | Whether to enable Tdarr. This is a convenience option that enables both the server and all configured nodes. For more granular control, use {option}`services.tdarr.server.enable` and configure nodes individually. |
+| `services.tdarr.group` | `string` | Group under which Tdarr runs. |
+| `services.tdarr.nodes` | `attribute set of (submodule)` | Attribute set of Tdarr processing nodes to run on this machine. |
+| `services.tdarr.nodes.<name>.cronPluginUpdate` | `string` | Cron expression for automatic plugin updates. Empty string disables. |
+| `services.tdarr.nodes.<name>.dataDir` | `absolute path` | Data directory for this node. |
+| `services.tdarr.nodes.<name>.enable` | `boolean` | Whether to enable this Tdarr node. |
+| `services.tdarr.nodes.<name>.environmentFile` | `null or absolute path` | File containing environment variable overrides for this node, in the format accepted by systemd's `EnvironmentFile`. Useful for passing secrets like `apiKey` without putting them in the Nix store. |
+| `services.tdarr.nodes.<name>.maxLogSizeMB` | `unsigned integer, meaning >=0` | Maximum log file size in megabytes. |
+| `services.tdarr.nodes.<name>.name` | `string` | Display name for this node in the Tdarr web UI. |
+| `services.tdarr.nodes.<name>.package` | `package` | Package to use for this Tdarr node. |
+| `services.tdarr.nodes.<name>.pathTranslators` | `list of (submodule)` | Path translations between server and node for cross-platform or cross-mount-point file access. |
+| `services.tdarr.nodes.<name>.pathTranslators.*.node` | `string` | Node-side path for path translation. |
+| `services.tdarr.nodes.<name>.pathTranslators.*.server` | `string` | Server-side path for path translation. |
+| `services.tdarr.nodes.<name>.pollInterval` | `unsigned integer, meaning >=0` | How often the node checks the server for work, in milliseconds. |
+| `services.tdarr.nodes.<name>.priority` | `signed integer` | Node priority for job assignment. `-1` means no priority. `0` is the highest priority, `1` is next, and so on. |
+| `services.tdarr.nodes.<name>.serverURL` | `string` | Full URL of the Tdarr server this node connects to. This is the recommended way to specify the server location. When running a local server, the default value is correct. |
+| `services.tdarr.nodes.<name>.startPaused` | `boolean` | Whether the node starts in a paused state. |
+| `services.tdarr.nodes.<name>.type` | `one of "mapped", "unmapped"` | Node type. - `mapped`: Node accesses files directly from the library paths. - `unmapped`: Node receives files over the network API. |
+| `services.tdarr.nodes.<name>.workers.healthcheckCPU` | `unsigned integer, meaning >=0` | Number of CPU healthcheck workers. Can be overridden in the web UI. |
+| `services.tdarr.nodes.<name>.workers.healthcheckGPU` | `unsigned integer, meaning >=0` | Number of GPU healthcheck workers. Can be overridden in the web UI. |
+| `services.tdarr.nodes.<name>.workers.transcodeCPU` | `unsigned integer, meaning >=0` | Number of CPU transcode workers. Can be overridden in the web UI. |
+| `services.tdarr.nodes.<name>.workers.transcodeGPU` | `unsigned integer, meaning >=0` | Number of GPU transcode workers. Can be overridden in the web UI. |
+| `services.tdarr.package` | `package` | The tdarr package to use. |
+| `services.tdarr.server.auth.enable` | `boolean` | Whether to enable authentication for the Tdarr web UI and API. |
+| `services.tdarr.server.cronPluginUpdate` | `string` | Cron expression for automatic plugin updates. Empty string disables. |
+| `services.tdarr.server.enable` | `boolean` | Whether to enable Tdarr server. |
+| `services.tdarr.server.environmentFile` | `null or absolute path` | File containing environment variable overrides for the server, in the format accepted by systemd's `EnvironmentFile`. Useful for setting secrets such as `authSecretKey` or `seededApiKey` without exposing them in the Nix store. Example file contents: `authSecretKey=your-secret-key seededApiKey=tapi_your_api_key_here` |
+| `services.tdarr.server.maxLogSizeMB` | `unsigned integer, meaning >=0` | Maximum log file size in megabytes. |
+| `services.tdarr.server.openFirewall` | `boolean` | Whether to open the firewall for the Tdarr server web UI and API ports. |
+| `services.tdarr.server.package` | `package` | Package to use for the Tdarr server. |
+| `services.tdarr.server.serverBindIP` | `boolean` | Whether to bind to the specific IP in {option}`services.tdarr.server.serverIP`. |
+| `services.tdarr.server.serverDualStack` | `boolean` | Enable dual-stack (IPv4/IPv6) networking. When enabled, the server binds to `::` if IPv6 is available, accepting both IPv4 and IPv6 connections. Useful in Kubernetes and other modern networking setups. |
+| `services.tdarr.server.serverIP` | `string` | IP address the server binds to. |
+| `services.tdarr.server.serverPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port for server API communication. |
+| `services.tdarr.server.webUIPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port for the Tdarr web UI. |
+| `services.tdarr.user` | `string` | User account under which Tdarr runs. |

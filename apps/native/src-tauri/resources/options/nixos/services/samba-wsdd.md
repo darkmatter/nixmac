@@ -5,14 +5,14 @@
 All options under `services.samba-wsdd`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.samba-wsdd.discovery` | | |
-| `services.samba-wsdd.domain` | | |
-| `services.samba-wsdd.enable` | | |
-| `services.samba-wsdd.extraOptions` | | |
-| `services.samba-wsdd.hoplimit` | | |
-| `services.samba-wsdd.hostname` | | |
-| `services.samba-wsdd.interface` | | |
-| `services.samba-wsdd.listen` | | |
-| `services.samba-wsdd.openFirewall` | | |
-| `services.samba-wsdd.workgroup` | | |
+| --- | --- | --- |
+| `services.samba-wsdd.discovery` | `boolean` | Enable discovery operation mode. |
+| `services.samba-wsdd.domain` | `null or string` | Set domain name (disables workgroup). |
+| `services.samba-wsdd.enable` | `boolean` | Whether to enable Web Services Dynamic Discovery host daemon. This enables (Samba) hosts, like your local NAS device, to be found by Web Service Discovery Clients like Windows . |
+| `services.samba-wsdd.extraOptions` | `list of string` | Additional wsdd options. |
+| `services.samba-wsdd.hoplimit` | `null or signed integer` | Hop limit for multicast packets (default = 1). |
+| `services.samba-wsdd.hostname` | `null or string` | Override (NetBIOS) hostname to be used (default hostname). |
+| `services.samba-wsdd.interface` | `null or string` | Interface or address to use. |
+| `services.samba-wsdd.listen` | `string` | Listen on path or localhost port in discovery mode. |
+| `services.samba-wsdd.openFirewall` | `boolean` | Whether to open the required firewall ports in the firewall. |
+| `services.samba-wsdd.workgroup` | `null or string` | Set workgroup name (default WORKGROUP). |

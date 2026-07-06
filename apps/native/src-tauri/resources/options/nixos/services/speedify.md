@@ -5,6 +5,6 @@
 All options under `services.speedify`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.speedify.enable` | | |
-| `services.speedify.package` | | |
+| --- | --- | --- |
+| `services.speedify.enable` | `boolean` | This option enables Speedify daemon. This sets {option}`networking.firewall.checkReversePath` to "loose", which might be undesirable for security. |
+| `services.speedify.package` | `package` | The speedify package to use. |

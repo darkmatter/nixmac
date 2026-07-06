@@ -5,6 +5,6 @@
 All options under `programs.xppen`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `programs.xppen.enable` | | |
-| `programs.xppen.package` | | |
+| --- | --- | --- |
+| `programs.xppen.enable` | `boolean` | Whether to enable XPPen PenTablet application. |
+| `programs.xppen.package` | `package` | The xppen_4 package to use. Use xppen_4 for newer and xppen_3 for older tablets. To check which version of the driver you need, go to https://www.xp-pen.com/download/ then select your tablet and look for the major version in the available files for Linux. |

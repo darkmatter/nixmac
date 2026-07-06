@@ -5,7 +5,7 @@
 All options under `programs.meli`.
 
 | Option | Type | Description |
-| ------------------------ | -------------------------------- | --------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.meli.enable` | `boolean` | Whether to enable meli email client. |
 | `programs.meli.includes` | `list of string` | Paths of the various meli configuration files to include. |
 | `programs.meli.package` | `package` | The meli package to use. |

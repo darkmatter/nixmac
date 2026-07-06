@@ -5,9 +5,9 @@
 All options under `services.powerdns-admin`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.powerdns-admin.config` | | |
-| `services.powerdns-admin.enable` | | |
-| `services.powerdns-admin.extraArgs` | | |
-| `services.powerdns-admin.saltFile` | | |
-| `services.powerdns-admin.secretKeyFile` | | |
+| --- | --- | --- |
+| `services.powerdns-admin.config` | `string` | Configuration python file. See [the example configuration](https://github.com/ngoduykhanh/PowerDNS-Admin/blob/v0.4.2/configs/development.py) for options. Also see [Flask Session configuration](https://flask-session.readthedocs.io/en/latest/config.html#SESSION_TYPE) as the version shipped with NixOS is more recent than the one PowerDNS-Admin expects and it requires explicit configuration. |
+| `services.powerdns-admin.enable` | `boolean` | Whether to enable the PowerDNS web interface. |
+| `services.powerdns-admin.extraArgs` | `list of string` | Extra arguments passed to powerdns-admin. |
+| `services.powerdns-admin.saltFile` | `null or absolute path` | The salt used for serialization. This should be set, otherwise the default is used. Set this to null to ignore this setting and configure it through another way. |
+| `services.powerdns-admin.secretKeyFile` | `null or absolute path` | The secret used to create cookies. This needs to be set, otherwise the default is used and everyone can forge valid login cookies. Set this to null to ignore this setting and configure it through another way. |

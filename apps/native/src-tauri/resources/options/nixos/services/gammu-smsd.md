@@ -5,26 +5,26 @@
 All options under `services.gammu-smsd`.
 
 | Option | Type | Description |
-| ------------------------------------------------ | ---- | ----------- |
-| `services.gammu-smsd.backend.files.errorSMSPath` | | |
-| `services.gammu-smsd.backend.files.inboxPath` | | |
-| `services.gammu-smsd.backend.files.outboxPath` | | |
-| `services.gammu-smsd.backend.files.sentSMSPath` | | |
-| `services.gammu-smsd.backend.service` | | |
-| `services.gammu-smsd.backend.sql.database` | | |
-| `services.gammu-smsd.backend.sql.driver` | | |
-| `services.gammu-smsd.backend.sql.host` | | |
-| `services.gammu-smsd.backend.sql.password` | | |
-| `services.gammu-smsd.backend.sql.sqlDialect` | | |
-| `services.gammu-smsd.backend.sql.user` | | |
-| `services.gammu-smsd.device.connection` | | |
-| `services.gammu-smsd.device.group` | | |
-| `services.gammu-smsd.device.path` | | |
-| `services.gammu-smsd.device.pin` | | |
-| `services.gammu-smsd.device.synchronizeTime` | | |
-| `services.gammu-smsd.enable` | | |
-| `services.gammu-smsd.extraConfig.gammu` | | |
-| `services.gammu-smsd.extraConfig.smsd` | | |
-| `services.gammu-smsd.log.file` | | |
-| `services.gammu-smsd.log.format` | | |
-| `services.gammu-smsd.user` | | |
+| --- | --- | --- |
+| `services.gammu-smsd.backend.files.errorSMSPath` | `absolute path` | Where SMSes with error in transmission is placed |
+| `services.gammu-smsd.backend.files.inboxPath` | `absolute path` | Where the received SMSes are stored |
+| `services.gammu-smsd.backend.files.outboxPath` | `absolute path` | Where SMSes to be sent should be placed |
+| `services.gammu-smsd.backend.files.sentSMSPath` | `absolute path` | Where the transmitted SMSes are placed |
+| `services.gammu-smsd.backend.service` | `one of "null", "files", "sql"` | Service to use to store sms data. |
+| `services.gammu-smsd.backend.sql.database` | `null or string` | Database name to store sms data |
+| `services.gammu-smsd.backend.sql.driver` | `one of "native_mysql", "native_pgsql", "odbc", "dbi"` | DB driver to use |
+| `services.gammu-smsd.backend.sql.host` | `string` | Database server address |
+| `services.gammu-smsd.backend.sql.password` | `null or string` | User password used for connection to the database |
+| `services.gammu-smsd.backend.sql.sqlDialect` | `null or string` | SQL dialect to use (odbc driver only) |
+| `services.gammu-smsd.backend.sql.user` | `null or string` | User name used for connection to the database |
+| `services.gammu-smsd.device.connection` | `string` | Protocol which will be used to talk to the phone |
+| `services.gammu-smsd.device.group` | `string` | Owner group of the device |
+| `services.gammu-smsd.device.path` | `absolute path` | Device node or address of the phone |
+| `services.gammu-smsd.device.pin` | `null or string` | PIN code for the simcard |
+| `services.gammu-smsd.device.synchronizeTime` | `boolean` | Whether to set time from computer to the phone during starting connection |
+| `services.gammu-smsd.enable` | `boolean` | Whether to enable gammu-smsd daemon. |
+| `services.gammu-smsd.extraConfig.gammu` | `strings concatenated with "\n"` | Extra config lines to be added into [gammu] section |
+| `services.gammu-smsd.extraConfig.smsd` | `strings concatenated with "\n"` | Extra config lines to be added into [smsd] section |
+| `services.gammu-smsd.log.file` | `string` | Path to file where information about communication will be stored |
+| `services.gammu-smsd.log.format` | `one of "nothing", "text", "textall", "textalldate", "errors", "errorsdate", "binary"` | Determines what will be logged to the LogFile |
+| `services.gammu-smsd.user` | `string` | User that has access to the device |

@@ -5,11 +5,11 @@
 All options under `services.strongswan`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.strongswan.ca` | | |
-| `services.strongswan.connections` | | |
-| `services.strongswan.enable` | | |
-| `services.strongswan.enabledPlugins` | | |
-| `services.strongswan.managePlugins` | | |
-| `services.strongswan.secrets` | | |
-| `services.strongswan.setup` | | |
+| --- | --- | --- |
+| `services.strongswan.ca` | `attribute set of attribute set of string` | A set of CAs (certification authorities) and their options for the ‘ca xxx’ sections of the {file}`ipsec.conf` file. |
+| `services.strongswan.connections` | `attribute set of attribute set of string` | A set of connections and their options for the ‘conn xxx’ sections of the {file}`ipsec.conf` file. |
+| `services.strongswan.enable` | `boolean` | Whether to enable strongSwan. |
+| `services.strongswan.enabledPlugins` | `list of string` | A list of additional plugins to enable if {option}`managePlugins` is true. |
+| `services.strongswan.managePlugins` | `boolean` | If set to true, this option will disable automatic plugin loading and then tell strongSwan to enable the plugins specified in the {option}`enabledPlugins` option. |
+| `services.strongswan.secrets` | `list of string` | A list of paths to IPSec secret files. These files will be included into the main ipsec.secrets file with the `include` directive. It is safer if these paths are absolute. |
+| `services.strongswan.setup` | `attribute set of string` | A set of options for the ‘config setup’ section of the {file}`ipsec.conf` file. Defines general configuration parameters. |

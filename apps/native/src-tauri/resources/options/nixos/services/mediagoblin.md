@@ -5,12 +5,17 @@
 All options under `services.mediagoblin`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.mediagoblin.createDatabaseLocally` | | |
-| `services.mediagoblin.domain` | | |
-| `services.mediagoblin.enable` | | |
-| `services.mediagoblin.package` | | |
-| `services.mediagoblin.paste.port` | | |
-| `services.mediagoblin.paste.settings` | | |
-| `services.mediagoblin.pluginPackages` | | |
-| `services.mediagoblin.settings` | | |
+| --- | --- | --- |
+| `services.mediagoblin.createDatabaseLocally` | `boolean` | Whether to configure a local postgres database and connect to it. |
+| `services.mediagoblin.domain` | `string` | Domain under which mediagoblin will be served. |
+| `services.mediagoblin.enable` | `boolean` | Whether to enable MediaGoblin. After the initial deployment, make sure to add an admin account: `mediagoblin-gmg adduser --username admin --email admin@example.com mediagoblin-gmg makeadmin admin` |
+| `services.mediagoblin.package` | `package` | The mediagoblin package to use. |
+| `services.mediagoblin.paste.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port under which paste will listen. |
+| `services.mediagoblin.paste.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Settings which are written into `paste.ini`. |
+| `services.mediagoblin.pluginPackages` | `list of package` | Plugins to add to the environment of MediaGoblin. They still need to be enabled in the config. |
+| `services.mediagoblin.settings` | `open submodule of anything` | Settings which are written into `mediagoblin.ini`. |
+| `services.mediagoblin.settings.mediagoblin.allow_registration` | `boolean` | Whether to enable user self registration. This is generally not recommend due to spammers. See [upstream FAQ](https://docs.mediagoblin.org/en/stable/siteadmin/production-deployments.html#should-i-keep-open-registration-enabled). |
+| `services.mediagoblin.settings.mediagoblin.email_debug_mode` | `boolean` | Disable email debug mode to start sending outgoing mails. This requires configuring SMTP settings, see the [upstream docs](https://docs.mediagoblin.org/en/stable/siteadmin/configuration.html#enabling-email-notifications) for details. |
+| `services.mediagoblin.settings.mediagoblin.email_sender_address` | `string` | Email address which notices are sent from. |
+| `services.mediagoblin.settings.mediagoblin.plugins` | `unspecified value` | Plugins to enable. See [upstream docs](https://docs.mediagoblin.org/en/stable/siteadmin/plugins.html) for details. Extra dependencies are automatically enabled. |
+| `services.mediagoblin.settings.mediagoblin.sql_engine` | `string` | Database to use. |

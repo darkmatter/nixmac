@@ -5,7 +5,7 @@
 All options under `services.poweralertd`.
 
 | Option | Type | Description |
-| -------------------------------- | ---------------- | ---------------------------------------------------- |
+| --- | --- | --- |
 | `services.poweralertd.enable` | `boolean` | Whether to enable the Upower-powered power alertd. |
 | `services.poweralertd.extraArgs` | `list of string` | Extra command line arguments to pass to poweralertd. |
 | `services.poweralertd.package` | `package` | The poweralertd package to use. |

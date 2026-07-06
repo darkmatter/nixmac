@@ -5,12 +5,12 @@
 All options under `services.https-dns-proxy`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.https-dns-proxy.address` | | |
-| `services.https-dns-proxy.enable` | | |
-| `services.https-dns-proxy.extraArgs` | | |
-| `services.https-dns-proxy.port` | | |
-| `services.https-dns-proxy.preferIPv4` | | |
-| `services.https-dns-proxy.provider.ips` | | |
-| `services.https-dns-proxy.provider.kind` | | |
-| `services.https-dns-proxy.provider.url` | | |
+| --- | --- | --- |
+| `services.https-dns-proxy.address` | `string` | The address on which to listen |
+| `services.https-dns-proxy.enable` | `boolean` | Whether to enable https-dns-proxy daemon. |
+| `services.https-dns-proxy.extraArgs` | `list of string` | Additional arguments to pass to the process. |
+| `services.https-dns-proxy.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port on which to listen |
+| `services.https-dns-proxy.preferIPv4` | `boolean` | https_dns_proxy will by default use IPv6 and fail if it is not available. To play it safe, we choose IPv4. |
+| `services.https-dns-proxy.provider.ips` | `list of string` | The custom provider IPs |
+| `services.https-dns-proxy.provider.kind` | `one of "cloudflare", "custom", "google", "opendns", "quad9"` | The upstream provider to use or custom in case you do not trust any of the predefined providers or just want to use your own. The default is quad9 and there are privacy and security trade-offs when using any upstream provider. Please consider that before using any of them. Supported providers: cloudflare, custom, google, opendns, quad9 If you pick the custom provider, you will need to provide the bootstrap IP addresses as well as the resolver https URL. |
+| `services.https-dns-proxy.provider.url` | `string` | The custom provider URL |

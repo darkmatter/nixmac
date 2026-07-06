@@ -5,7 +5,7 @@
 All options under `programs.mouse-actions`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `programs.mouse-actions.autorun` | | |
-| `programs.mouse-actions.enable` | | |
-| `programs.mouse-actions.package` | | |
+| --- | --- | --- |
+| `programs.mouse-actions.autorun` | `boolean` | Whether to start a user service to run mouse-actions on startup. |
+| `programs.mouse-actions.enable` | `boolean` | Whether to install and set up mouse-actions and it's udev rules. Note that only users in the "uinput" group will be able to use the package |
+| `programs.mouse-actions.package` | `package` | The mouse-actions package to use. |

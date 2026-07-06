@@ -5,8 +5,8 @@
 All options under `services.babeld`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.babeld.enable` | | |
-| `services.babeld.extraConfig` | | |
-| `services.babeld.interfaceDefaults` | | |
-| `services.babeld.interfaces` | | |
+| --- | --- | --- |
+| `services.babeld.enable` | `boolean` | Whether to enable the babeld network routing daemon. |
+| `services.babeld.extraConfig` | `strings concatenated with "\n"` | Options that will be copied to babeld.conf. See {manpage}`babeld(8)` for details. |
+| `services.babeld.interfaceDefaults` | `null or (attribute set of unspecified value)` | A set describing default parameters for babeld interfaces. See {manpage}`babeld(8)` for options. |
+| `services.babeld.interfaces` | `attribute set of attribute set of unspecified value` | A set describing babeld interfaces. See {manpage}`babeld(8)` for options. |

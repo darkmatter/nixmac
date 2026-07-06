@@ -5,9 +5,18 @@
 All options under `services.doh-server`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.doh-server.configFile` | | |
-| `services.doh-server.enable` | | |
-| `services.doh-server.package` | | |
-| `services.doh-server.settings` | | |
-| `services.doh-server.useACMEHost` | | |
+| --- | --- | --- |
+| `services.doh-server.configFile` | `absolute path` | The config file for the doh-server. Setting this option will override any configuration applied by the `settings` option. |
+| `services.doh-server.enable` | `boolean` | Whether to enable DNS-over-HTTPS server. |
+| `services.doh-server.package` | `package` | The dns-over-https package to use. |
+| `services.doh-server.settings` | `open submodule of (TOML value)` | Configuration of doh-server in toml. See example in <https://github.com/m13253/dns-over-https/blob/master/doh-server/doh-server.conf> |
+| `services.doh-server.settings.ecs_allow_non_global_ip` | `boolean` | By default, non global IP addresses are never forwarded to upstream servers. This is to prevent two things from happening: 1. the upstream server knowing your private LAN addresses; 2. the upstream server unable to provide geographically near results, or even fail to provide any result. However, if you are deploying a split tunnel corporation network environment, or for any other reason you want to inhibit this behavior and allow local (eg RFC1918) address to be forwarded, change the following option to "true". |
+| `services.doh-server.settings.ecs_use_precise_ip` | `boolean` | If ECS is added to the request, let the full IP address or cap it to 24 or 128 mask. This option is to be used only on private networks where knowledge of the terminal endpoint may be required for security purposes (eg. DNS Firewalling). Not a good option on the internet where IP address may be used to identify the user and not only the approximate location. |
+| `services.doh-server.settings.listen` | `list of string` | HTTP listen address and port |
+| `services.doh-server.settings.log_guessed_client_ip` | `boolean` | Enable log IP from HTTPS-reverse proxy header: X-Forwarded-For or X-Real-IP Note: http uri/useragent log cannot be controlled by this config |
+| `services.doh-server.settings.path` | `string` | HTTP path for resolve application |
+| `services.doh-server.settings.timeout` | `signed integer` | Upstream timeout |
+| `services.doh-server.settings.tries` | `signed integer` | Number of tries if upstream DNS fails |
+| `services.doh-server.settings.upstream` | `list of string` | Upstream DNS resolver. If multiple servers are specified, a random one will be chosen each time. You can use "udp", "tcp" or "tcp-tls" for the type prefix. For "udp", UDP will first be used, and switch to TCP when the server asks to or the response is too large. For "tcp", only TCP will be used. For "tcp-tls", DNS-over-TLS (RFC 7858) will be used to secure the upstream connection. |
+| `services.doh-server.settings.verbose` | `boolean` | Enable logging |
+| `services.doh-server.useACMEHost` | `null or string` | A host of an existing Let's Encrypt certificate to use. *Note that this option does not create any certificates, nor it does add subdomains to existing ones – you will need to create them manually using [](#opt-security.acme.certs).* |

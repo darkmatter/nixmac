@@ -5,6 +5,6 @@
 All options under `programs.flashprog`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `programs.flashprog.enable` | | |
-| `programs.flashprog.package` | | |
+| --- | --- | --- |
+| `programs.flashprog.enable` | `boolean` | Whether to enable configuring flashprog udev rules and installing flashprog as system package . |
+| `programs.flashprog.package` | `package` | The flashprog package to use. |

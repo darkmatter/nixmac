@@ -5,7 +5,9 @@
 All options under `services.rimgo`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.rimgo.enable` | | |
-| `services.rimgo.package` | | |
-| `services.rimgo.settings` | | |
+| --- | --- | --- |
+| `services.rimgo.enable` | `boolean` | Whether to enable rimgo. |
+| `services.rimgo.package` | `package` | The rimgo package to use. |
+| `services.rimgo.settings` | `open submodule of attribute set of string` | Settings for rimgo, see [the official documentation](https://rimgo.codeberg.page/docs/usage/configuration/) for supported options. |
+| `services.rimgo.settings.ADDRESS` | `string` | The address to listen on. |
+| `services.rimgo.settings.PORT` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to use. |

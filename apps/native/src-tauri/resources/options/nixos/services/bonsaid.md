@@ -5,9 +5,14 @@
 All options under `services.bonsaid`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.bonsaid.configFile` | | |
-| `services.bonsaid.enable` | | |
-| `services.bonsaid.extraFlags` | | |
-| `services.bonsaid.package` | | |
-| `services.bonsaid.settings` | | |
+| --- | --- | --- |
+| `services.bonsaid.configFile` | `absolute path` | Path to a .json file specifying the state transitions. You don't need to set this unless you prefer to provide the json file yourself instead of using the `settings` option. |
+| `services.bonsaid.enable` | `boolean` | Whether to enable bonsaid. |
+| `services.bonsaid.extraFlags` | `list of string` | Extra flags to pass to `bonsaid`, such as `[ "-v" ]` to enable verbose logging. |
+| `services.bonsaid.package` | `package` | The bonsai package to use. |
+| `services.bonsaid.settings` | `list of (open submodule of (JSON value))` | State transition definitions. See the upstream [README](https://git.sr.ht/~stacyharper/bonsai) for extended documentation and a more complete example. |
+| `services.bonsaid.settings.*.command` | `null or (list of string)` | Command to run when this transition is taken. This is executed inline by `bonsaid` and blocks handling of any other events until completion. To perform the command asynchronously, specify it like `[ "setsid" "-f" "my-command" ]`. Only effects transitions with `type = "exec"`. |
+| `services.bonsaid.settings.*.delay_duration` | `null or signed integer` | Nanoseconds to wait after the previous state change before performing this transition. This can be placed at the same level as a `type = "event"` transition to achieve a timeout mechanism. Only effects transitions with `type = "delay"`. |
+| `services.bonsaid.settings.*.event_name` | `null or string` | Name of the event which should trigger this transition when received by `bonsaid`. Events are sent to `bonsaid` by running `bonsaictl -e <event_name>`. Only effects transitions with `type = "event"`. |
+| `services.bonsaid.settings.*.transitions` | `list of (open submodule of (JSON value))` | List of transitions out of this state. If left empty, then this state is considered a terminal state and entering it will trigger an immediate transition back to the root state (after processing side effects). |
+| `services.bonsaid.settings.*.type` | `one of "delay", "event", "exec"` | Type of transition. Determines how bonsaid interprets the other options in this transition. |

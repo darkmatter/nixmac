@@ -5,8 +5,8 @@
 All options under `services.ringboard`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.ringboard.wayland.enable` | | |
-| `services.ringboard.wayland.package` | | |
-| `services.ringboard.x11.enable` | | |
-| `services.ringboard.x11.package` | | |
+| --- | --- | --- |
+| `services.ringboard.wayland.enable` | `boolean` | Whether to enable Wayland support for Ringboard. |
+| `services.ringboard.wayland.package` | `package` | The ringboard-wayland package to use. |
+| `services.ringboard.x11.enable` | `boolean` | Whether to enable X11 support for Ringboard. |
+| `services.ringboard.x11.package` | `package` | The ringboard package to use. |

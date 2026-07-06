@@ -5,8 +5,8 @@
 All options under `services.networking`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.networking.websockify.enable` | | |
-| `services.networking.websockify.portMap` | | |
-| `services.networking.websockify.sslCert` | | |
-| `services.networking.websockify.sslKey` | | |
+| --- | --- | --- |
+| `services.networking.websockify.enable` | `boolean` | Whether to enable websockify to forward websocket connections to TCP connections. |
+| `services.networking.websockify.portMap` | `attribute set of 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Ports to map by default. |
+| `services.networking.websockify.sslCert` | `absolute path` | Path to the SSL certificate. |
+| `services.networking.websockify.sslKey` | `absolute path` | Path to the SSL key. |

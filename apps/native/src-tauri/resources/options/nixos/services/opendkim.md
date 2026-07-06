@@ -5,14 +5,13 @@
 All options under `services.opendkim`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.opendkim.configFile` | | |
-| `services.opendkim.domains` | | |
-| `services.opendkim.enable` | | |
-| `services.opendkim.group` | | |
-| `services.opendkim.keyFile` | | |
-| `services.opendkim.keyPath` | | |
-| `services.opendkim.selector` | | |
-| `services.opendkim.settings` | | |
-| `services.opendkim.socket` | | |
-| `services.opendkim.user` | | |
+| --- | --- | --- |
+| `services.opendkim.configFile` | `null or absolute path` | Additional opendkim configuration as a file. |
+| `services.opendkim.domains` | `string` | Local domains set (see {manpage}`opendkim(8)` for more information on datasets). Messages from them are signed, not verified. |
+| `services.opendkim.enable` | `boolean` | Whether to enable OpenDKIM sender authentication system. |
+| `services.opendkim.group` | `string` | Group for the daemon. |
+| `services.opendkim.keyPath` | `absolute path` | The path that opendkim should put its generated private keys into. The DNS settings will be found in this directory with the name selector.txt. |
+| `services.opendkim.selector` | `string` | Selector to use when signing. |
+| `services.opendkim.settings` | `open submodule of attribute set of string` | Additional opendkim configuration |
+| `services.opendkim.socket` | `string` | Socket which is used for communication with OpenDKIM. |
+| `services.opendkim.user` | `string` | User for the daemon. |

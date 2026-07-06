@@ -5,16 +5,18 @@
 All options under `services.pgmanage`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `services.pgmanage.allowCustomConnections` | | |
-| `services.pgmanage.connections` | | |
-| `services.pgmanage.enable` | | |
-| `services.pgmanage.localOnly` | | |
-| `services.pgmanage.logLevel` | | |
-| `services.pgmanage.loginGroup` | | |
-| `services.pgmanage.loginTimeout` | | |
-| `services.pgmanage.package` | | |
-| `services.pgmanage.port` | | |
-| `services.pgmanage.sqlRoot` | | |
-| `services.pgmanage.superOnly` | | |
-| `services.pgmanage.tls` | | |
+| --- | --- | --- |
+| `services.pgmanage.allowCustomConnections` | `boolean` | This tells pgmanage whether or not to allow anyone to use a custom connection from the login screen. |
+| `services.pgmanage.connections` | `attribute set of string` | pgmanage requires at least one PostgreSQL server be defined. Detailed information about PostgreSQL connection strings is available at: <https://www.postgresql.org/docs/current/libpq-connect.html> Note that you should not specify your user name or password. That information will be entered on the login screen. If you specify a username or password, it will be removed by pgmanage before attempting to connect to a database. |
+| `services.pgmanage.enable` | `boolean` | Whether to enable PostgreSQL Administration for the web. |
+| `services.pgmanage.localOnly` | `boolean` | This tells pgmanage whether or not to set the listening socket to local addresses only. |
+| `services.pgmanage.logLevel` | `one of "error", "warn", "notice", "info"` | Verbosity of logs |
+| `services.pgmanage.loginGroup` | `null or string` | This tells pgmanage to only allow users in a certain PostgreSQL group to login to pgmanage. Note that a connection will be made to PostgreSQL in order to test if the user is a member of the login group. |
+| `services.pgmanage.loginTimeout` | `signed integer` | Number of seconds of inactivity before user is automatically logged out. |
+| `services.pgmanage.package` | `package` | The pgmanage package to use. |
+| `services.pgmanage.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | This tells pgmanage what port to listen on for browser requests. |
+| `services.pgmanage.sqlRoot` | `string` | This tells pgmanage where to put the SQL file history. All tabs are saved to this location so that if you get disconnected from pgmanage you don't lose your work. |
+| `services.pgmanage.superOnly` | `boolean` | This tells pgmanage whether or not to only allow super users to login. The recommended value is true and will restrict users who are not super users from logging in to any PostgreSQL instance through pgmanage. Note that a connection will be made to PostgreSQL in order to test if the user is a superuser. |
+| `services.pgmanage.tls` | `null or (submodule)` | These options tell pgmanage where the TLS Certificate and Key files reside. If you use these options then you'll only be able to access pgmanage through a secure TLS connection. These options are only necessary if you wish to connect directly to pgmanage using a secure TLS connection. As an alternative, you can set up pgmanage in a reverse proxy configuration. This allows your web server to terminate the secure connection and pass on the request to pgmanage. You can find help to set up this configuration in: <https://github.com/pgManage/pgManage/blob/master/INSTALL_NGINX.md> |
+| `services.pgmanage.tls.cert` | `string` | TLS certificate |
+| `services.pgmanage.tls.key` | `string` | TLS key |

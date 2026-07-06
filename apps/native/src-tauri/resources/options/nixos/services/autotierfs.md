@@ -5,7 +5,7 @@
 All options under `services.autotierfs`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.autotierfs.enable` | | |
-| `services.autotierfs.package` | | |
-| `services.autotierfs.settings` | | |
+| --- | --- | --- |
+| `services.autotierfs.enable` | `boolean` | Whether to enable the autotier passthrough tiering filesystem. |
+| `services.autotierfs.package` | `package` | The autotier package to use. |
+| `services.autotierfs.settings` | `open submodule of attribute set of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | The contents of the configuration file for autotier. See the [autotier repo](https://github.com/45Drives/autotier#configuration) for supported values. |

@@ -5,11 +5,11 @@
 All options under `services.zerobin`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.zerobin.dataDir` | | |
-| `services.zerobin.enable` | | |
-| `services.zerobin.extraConfig` | | |
-| `services.zerobin.group` | | |
-| `services.zerobin.listenAddress` | | |
-| `services.zerobin.listenPort` | | |
-| `services.zerobin.user` | | |
+| --- | --- | --- |
+| `services.zerobin.dataDir` | `string` | Path to the 0bin data directory |
+| `services.zerobin.enable` | `boolean` | Whether to enable 0bin. |
+| `services.zerobin.extraConfig` | `strings concatenated with "\n"` | Extra configuration to be appended to the 0bin config file (see <https://0bin.readthedocs.org/en/latest/en/options.html>) |
+| `services.zerobin.group` | `string` | The group 0bin should run as |
+| `services.zerobin.listenAddress` | `string` | The address zerobin should listen to |
+| `services.zerobin.listenPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port zerobin should listen on |
+| `services.zerobin.user` | `string` | The user 0bin should run as |

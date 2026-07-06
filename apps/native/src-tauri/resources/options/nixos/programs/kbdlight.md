@@ -5,5 +5,5 @@
 All options under `programs.kbdlight`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `programs.kbdlight.enable` | | |
+| --- | --- | --- |
+| `programs.kbdlight.enable` | `boolean` | Whether to enable kbdlight. |

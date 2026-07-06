@@ -5,8 +5,8 @@
 All options under `programs.amber`.
 
 | Option | Type | Description |
-| ----------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `programs.amber.ambrSettings` | `TOML value` | Configuration settings for amber’s ambr tool. All the available options can be found here: https://github.com/dalance/amber?tab=readme-ov-file#configurable-value . |
-| `programs.amber.ambsSettings` | `TOML value` | Configuration settings for amber’s ambs tool. All the available options can be found here: https://github.com/dalance/amber?tab=readme-ov-file#configurable-value . |
+| --- | --- | --- |
+| `programs.amber.ambrSettings` | `TOML value` | Configuration settings for amber's ambr tool. All the available options can be found here: <https://github.com/dalance/amber?tab=readme-ov-file#configurable-value>. |
+| `programs.amber.ambsSettings` | `TOML value` | Configuration settings for amber's ambs tool. All the available options can be found here: <https://github.com/dalance/amber?tab=readme-ov-file#configurable-value>. |
 | `programs.amber.enable` | `boolean` | Whether to enable amber. |
 | `programs.amber.package` | `null or package` | The amber package to use. |

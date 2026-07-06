@@ -5,7 +5,7 @@
 All options under `programs.streamdeck-ui`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `programs.streamdeck-ui.autoStart` | | |
-| `programs.streamdeck-ui.enable` | | |
-| `programs.streamdeck-ui.package` | | |
+| --- | --- | --- |
+| `programs.streamdeck-ui.autoStart` | `boolean` | Whether streamdeck-ui should be started automatically. |
+| `programs.streamdeck-ui.enable` | `boolean` | Whether to enable streamdeck-ui. |
+| `programs.streamdeck-ui.package` | `package` | The streamdeck-ui package to use. |

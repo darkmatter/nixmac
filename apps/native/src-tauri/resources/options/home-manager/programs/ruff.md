@@ -5,7 +5,7 @@
 All options under `programs.ruff`.
 
 | Option | Type | Description |
-| ------------------------ | ----------------- | -------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.ruff.enable` | `boolean` | Whether to enable ruff, an extremely fast Python linter and code formatter, written in Rust. |
 | `programs.ruff.package` | `null or package` | The ruff package to use. |
-| `programs.ruff.settings` | `TOML value` | Ruff configuration. For available settings see https://docs.astral.sh/ruff/settings . |
+| `programs.ruff.settings` | `TOML value` | Ruff configuration. For available settings see <https://docs.astral.sh/ruff/settings>. |

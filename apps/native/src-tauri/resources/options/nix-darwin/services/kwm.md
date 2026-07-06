@@ -5,7 +5,7 @@
 All options under `services.kwm`.
 
 | Option | Type | Description |
-| ------------------------ | -------------------------------- | --------------------------------------------- |
+| --- | --- | --- |
 | `services.kwm.enable` | `boolean` | Whether to enable the khd window manager. |
-| `services.kwm.kwmConfig` | `strings concatenated with “\n”` | Config to use for kwmrc . |
+| `services.kwm.kwmConfig` | `strings concatenated with "\n"` | Config to use for {file}`kwmrc`. |
 | `services.kwm.package` | `absolute path` | This option specifies the kwm package to use. |

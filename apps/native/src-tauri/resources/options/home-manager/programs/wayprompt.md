@@ -5,7 +5,7 @@
 All options under `programs.wayprompt`.
 
 | Option | Type | Description |
-| ----------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.wayprompt.enable` | `boolean` | Whether to enable Wayprompt, a password-prompter for Wayland. |
 | `programs.wayprompt.package` | `null or package` | The wayprompt package to use. |
-| `programs.wayprompt.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration for wayprompt written to $XDG_CONFIG_HOME/wayprompt/config.ini . See wayprompt (5) for a list of available options. Note that colours can be either 6-hex-digit RGB or 8-hex-digit RGBA values. |
+| `programs.wayprompt.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration for wayprompt written to {file}`$XDG_CONFIG_HOME/wayprompt/config.ini`. See {manpage}`wayprompt(5)` for a list of available options. Note that colours can be either 6-hex-digit RGB or 8-hex-digit RGBA values. |

@@ -5,25 +5,25 @@
 All options under `services.ttyd`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.ttyd.caFile` | | |
-| `services.ttyd.certFile` | | |
-| `services.ttyd.checkOrigin` | | |
-| `services.ttyd.clientOptions` | | |
-| `services.ttyd.enable` | | |
-| `services.ttyd.enableIPv6` | | |
-| `services.ttyd.enableSSL` | | |
-| `services.ttyd.entrypoint` | | |
-| `services.ttyd.indexFile` | | |
-| `services.ttyd.interface` | | |
-| `services.ttyd.keyFile` | | |
-| `services.ttyd.logLevel` | | |
-| `services.ttyd.maxClients` | | |
-| `services.ttyd.passwordFile` | | |
-| `services.ttyd.port` | | |
-| `services.ttyd.signal` | | |
-| `services.ttyd.socket` | | |
-| `services.ttyd.terminalType` | | |
-| `services.ttyd.user` | | |
-| `services.ttyd.username` | | |
-| `services.ttyd.writeable` | | |
+| --- | --- | --- |
+| `services.ttyd.caFile` | `null or absolute path` | SSL CA file path for client certificate verification. |
+| `services.ttyd.certFile` | `null or absolute path` | SSL certificate file path. |
+| `services.ttyd.checkOrigin` | `boolean` | Whether to allow a websocket connection from a different origin. |
+| `services.ttyd.clientOptions` | `attribute set of string` | Attribute set of client options for xtermjs. <https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/> |
+| `services.ttyd.enable` | `boolean` | Whether to enable ttyd daemon. |
+| `services.ttyd.enableIPv6` | `boolean` | Whether or not to enable IPv6 support. |
+| `services.ttyd.enableSSL` | `boolean` | Whether or not to enable SSL (https) support. |
+| `services.ttyd.entrypoint` | `list of string` | Which command ttyd runs. |
+| `services.ttyd.indexFile` | `null or absolute path` | Custom index.html path |
+| `services.ttyd.interface` | `null or string` | Network interface to bind. |
+| `services.ttyd.keyFile` | `null or absolute path` | SSL key file path. For insecurely putting the keyFile in the globally readable store use `pkgs.writeText "ttydKeyFile" "SSLKEY"`. |
+| `services.ttyd.logLevel` | `signed integer` | Set log level. |
+| `services.ttyd.maxClients` | `signed integer` | Maximum clients to support (0, no limit) |
+| `services.ttyd.passwordFile` | `null or absolute path` | File containing the password to use for basic http authentication. For insecurely putting the password in the globally readable store use `pkgs.writeText "ttydpw" "MyPassword"`. |
+| `services.ttyd.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on (use 0 for random port) |
+| `services.ttyd.signal` | `8 bit unsigned integer; between 0 and 255 (both inclusive)` | Signal to send to the command on session close. |
+| `services.ttyd.socket` | `null or absolute path` | UNIX domain socket path to bind. |
+| `services.ttyd.terminalType` | `string` | Terminal type to report. |
+| `services.ttyd.user` | `string` | Which unix user ttyd should run as. |
+| `services.ttyd.username` | `null or string` | Username for basic http authentication. |
+| `services.ttyd.writeable` | `null or boolean` | Allow clients to write to the TTY. |

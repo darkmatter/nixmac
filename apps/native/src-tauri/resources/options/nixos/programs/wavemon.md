@@ -5,5 +5,5 @@
 All options under `programs.wavemon`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `programs.wavemon.enable` | | |
+| --- | --- | --- |
+| `programs.wavemon.enable` | `boolean` | Whether to add wavemon to the global environment and configure a setcap wrapper for it. |

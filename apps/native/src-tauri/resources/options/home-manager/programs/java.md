@@ -5,6 +5,6 @@
 All options under `programs.java`.
 
 | Option | Type | Description |
-| ----------------------- | --------- | ---------------------------------------------------------------- |
-| `programs.java.enable` | `boolean` | Install the Java development kit and set the JAVA_HOME variable. |
+| --- | --- | --- |
+| `programs.java.enable` | `boolean` | Install the Java development kit and set the {env}`JAVA_HOME` variable. |
 | `programs.java.package` | `package` | The java package to use. |

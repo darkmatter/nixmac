@@ -5,8 +5,8 @@
 All options under `services.exo`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.exo.enable` | | |
-| `services.exo.environmentVariables` | | |
-| `services.exo.extraArgs` | | |
-| `services.exo.package` | | |
+| --- | --- | --- |
+| `services.exo.enable` | `boolean` | Whether to enable exo local AI cluster node. |
+| `services.exo.environmentVariables` | `attribute set of string` | Environment variables for the exo service. See <https://github.com/exo-explore/exo#environment-variables> for supported environment variables. |
+| `services.exo.extraArgs` | `list of string` | Extra command-line arguments passed to {command}`exo`. |
+| `services.exo.package` | `package` | The exo package to use. |

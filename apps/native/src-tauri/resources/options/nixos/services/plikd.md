@@ -5,7 +5,7 @@
 All options under `services.plikd`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.plikd.enable` | | |
-| `services.plikd.openFirewall` | | |
-| `services.plikd.settings` | | |
+| --- | --- | --- |
+| `services.plikd.enable` | `boolean` | Whether to enable plikd, a temporary file upload system. |
+| `services.plikd.openFirewall` | `boolean` | Open ports in the firewall for the plikd. |
+| `services.plikd.settings` | `TOML value` | Configuration for plikd, see <https://github.com/root-gg/plik/blob/master/server/plikd.cfg> for supported values. |

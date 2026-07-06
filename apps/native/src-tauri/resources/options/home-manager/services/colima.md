@@ -5,8 +5,8 @@
 All options under `services.colima`.
 
 | Option | Type | Description |
-| ---------------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `services.colima.bashPackage` | `package` | The bashNonInteractive package to use. Used by colima’s internal scripts. |
+| --- | --- | --- |
+| `services.colima.bashPackage` | `package` | The bashNonInteractive package to use. Used by colima's internal scripts. |
 | `services.colima.colimaHomeDir` | `string` | Directory to store colima configuration. This also sets $COLIMA_HOME. |
 | `services.colima.coreutilsPackage` | `package` | The coreutils package to use. Used in various ways by colima. |
 | `services.colima.curlPackage` | `package` | The curl package to use. Used by colima to download images. |
@@ -16,5 +16,11 @@ All options under `services.colima`.
 | `services.colima.limaHomeDir` | `null or string` | Directory to store lima files. This also sets $LIMA_HOME. |
 | `services.colima.package` | `package` | The colima package to use. |
 | `services.colima.perlPackage` | `package` | The perl package to use. Used by colima during image download for the shasum command. |
-| `services.colima.profiles` | `attribute set of (submodule)` | Profiles allow multiple colima configurations. The default profile is active by default. If you have used colima before, you may need to delete existing configuration using colima delete or use a different profile. |
+| `services.colima.profiles` | `attribute set of (submodule)` | Profiles allow multiple colima configurations. The default profile is active by default. If you have used colima before, you may need to delete existing configuration using `colima delete` or use a different profile. Note that removing a configured profile will not delete the corresponding Colima instance. You will need to manually run `colima delete <profile-name>` to remove the instance and release resources. |
+| `services.colima.profiles.<name>.isActive` | `boolean` | Whether to set this profile as: - active docker context - active kubernetes context - active incus remote Exactly one or zero profiles should have this option set. |
+| `services.colima.profiles.<name>.isService` | `boolean` | Whether this profile will run as a service. |
+| `services.colima.profiles.<name>.logFile` | `absolute path` | Combined stdout and stderr log file for the Colima service. |
+| `services.colima.profiles.<name>.name` | `string` | The profile's name. |
+| `services.colima.profiles.<name>.setDockerHost` | `boolean` | Set this context as $DOCKER_HOST. Exactly one or zero profiles should have this option set. |
+| `services.colima.profiles.<name>.settings` | `YAML 1.1 value` | Colima configuration settings, see <https://github.com/abiosoft/colima/blob/main/embedded/defaults/colima.yaml> or run `colima template`. |
 | `services.colima.sshPackage` | `package` | The openssh package to use. Used by colima to manage the vm. |

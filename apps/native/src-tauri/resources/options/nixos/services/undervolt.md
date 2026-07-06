@@ -5,20 +5,20 @@
 All options under `services.undervolt`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.undervolt.analogioOffset` | | |
-| `services.undervolt.coreOffset` | | |
-| `services.undervolt.enable` | | |
-| `services.undervolt.gpuOffset` | | |
-| `services.undervolt.p1.limit` | | |
-| `services.undervolt.p1.window` | | |
-| `services.undervolt.p2.limit` | | |
-| `services.undervolt.p2.window` | | |
-| `services.undervolt.package` | | |
-| `services.undervolt.temp` | | |
-| `services.undervolt.tempAc` | | |
-| `services.undervolt.tempBat` | | |
-| `services.undervolt.turbo` | | |
-| `services.undervolt.uncoreOffset` | | |
-| `services.undervolt.useTimer` | | |
-| `services.undervolt.verbose` | | |
+| --- | --- | --- |
+| `services.undervolt.analogioOffset` | `null or signed integer` | The amount of voltage in mV to offset analogio by. |
+| `services.undervolt.coreOffset` | `null or signed integer` | The amount of voltage in mV to offset the CPU cores by. |
+| `services.undervolt.enable` | `boolean` | Whether to enable Undervolting service for Intel CPUs. Warning: This service is not endorsed by Intel and may permanently damage your hardware. Use at your own risk . |
+| `services.undervolt.gpuOffset` | `null or signed integer` | The amount of voltage in mV to offset the GPU by. |
+| `services.undervolt.p1.limit` | `null or signed integer` | The P1 Power Limit in Watts. Both limit and window must be set. |
+| `services.undervolt.p1.window` | `null or floating point number or signed integer` | The P1 Time Window in seconds. Both limit and window must be set. |
+| `services.undervolt.p2.limit` | `null or signed integer` | The P2 Power Limit in Watts. Both limit and window must be set. |
+| `services.undervolt.p2.window` | `null or floating point number or signed integer` | The P2 Time Window in seconds. Both limit and window must be set. |
+| `services.undervolt.package` | `package` | The undervolt package to use. |
+| `services.undervolt.temp` | `null or signed integer` | The temperature target in Celsius degrees. |
+| `services.undervolt.tempAc` | `null or signed integer` | The temperature target on AC power in Celsius degrees. |
+| `services.undervolt.tempBat` | `null or signed integer` | The temperature target on battery power in Celsius degrees. |
+| `services.undervolt.turbo` | `null or signed integer` | Changes the Intel Turbo feature status (1 is disabled and 0 is enabled). |
+| `services.undervolt.uncoreOffset` | `null or signed integer` | The amount of voltage in mV to offset uncore by. |
+| `services.undervolt.useTimer` | `boolean` | Whether to set a timer that applies the undervolt settings every 30s. This will cause spam in the journal but might be required for some hardware under specific conditions. Enable this if your undervolt settings don't hold. |
+| `services.undervolt.verbose` | `boolean` | Whether to enable verbose logging. |

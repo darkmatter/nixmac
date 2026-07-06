@@ -5,26 +5,20 @@
 All options under `services.samba`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.samba.configText` | | |
-| `services.samba.defaultShare` | | |
-| `services.samba.enable` | | |
-| `services.samba.enableNmbd` | | |
-| `services.samba.enableWinbindd` | | |
-| `services.samba.extraConfig` | | |
-| `services.samba.invalidUsers` | | |
-| `services.samba.nmbd.enable` | | |
-| `services.samba.nmbd.extraArgs` | | |
-| `services.samba.nsswins` | | |
-| `services.samba.openFirewall` | | |
-| `services.samba.package` | | |
-| `services.samba.securityType` | | |
-| `services.samba.settings` | | |
-| `services.samba.shares` | | |
-| `services.samba.smbd.enable` | | |
-| `services.samba.smbd.extraArgs` | | |
-| `services.samba.syncPasswordsByPam` | | |
-| `services.samba.usershares.enable` | | |
-| `services.samba.usershares.group` | | |
-| `services.samba.winbindd.enable` | | |
-| `services.samba.winbindd.extraArgs` | | |
+| --- | --- | --- |
+| `services.samba.enable` | `boolean` | Whether to enable Samba, the SMB/CIFS protocol. |
+| `services.samba.nmbd.enable` | `boolean` | Whether to enable Samba's nmbd, which replies to NetBIOS over IP name service requests. It also participates in the browsing protocols which make up the Windows "Network Neighborhood" view. |
+| `services.samba.nmbd.extraArgs` | `list of string` | Extra arguments to pass to the nmbd service. |
+| `services.samba.nsswins` | `boolean` | Whether to enable WINS NSS (Name Service Switch) plug-in. Enabling it allows applications to resolve WINS/NetBIOS names (a.k.a. Windows machine names) by transparently querying the winbindd daemon . |
+| `services.samba.openFirewall` | `boolean` | Whether to enable opening the default ports in the firewall for Samba. |
+| `services.samba.package` | `package` | The samba package to use. |
+| `services.samba.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string) or a non-empty list of them)` | Configuration file for the Samba suite in ini format. This file is located in /etc/samba/smb.conf Refer to <https://www.samba.org/samba/docs/current/man-html/smb.conf.5.html> for all available options. |
+| `services.samba.settings.global."invalid users"` | `list of string` | List of users who are denied to login via Samba. |
+| `services.samba.settings.global."passwd program"` | `string` | Path to a program that can be used to set UNIX user passwords. |
+| `services.samba.settings.global.security` | `one of "auto", "user", "domain", "ads"` | Samba security type. |
+| `services.samba.smbd.enable` | `boolean` | Whether to enable Samba's smbd daemon. |
+| `services.samba.smbd.extraArgs` | `list of string` | Extra arguments to pass to the smbd service. |
+| `services.samba.usershares.enable` | `boolean` | Whether to enable user-configurable Samba shares. |
+| `services.samba.usershares.group` | `string` | Name of the group members of which will be allowed to create usershares. The group will be created automatically. |
+| `services.samba.winbindd.enable` | `boolean` | Whether to enable Samba's winbindd, which provides a number of services to the Name Service Switch capability found in most modern C libraries, to arbitrary applications via PAM and ntlm_auth and to Samba itself. |
+| `services.samba.winbindd.extraArgs` | `list of string` | Extra arguments to pass to the winbindd service. |

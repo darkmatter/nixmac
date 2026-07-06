@@ -5,16 +5,16 @@
 All options under `services.bitlbee`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.bitlbee.authBackend` | | |
-| `services.bitlbee.authMode` | | |
-| `services.bitlbee.configDir` | | |
-| `services.bitlbee.enable` | | |
-| `services.bitlbee.extraDefaults` | | |
-| `services.bitlbee.extraSettings` | | |
-| `services.bitlbee.hostName` | | |
-| `services.bitlbee.interface` | | |
-| `services.bitlbee.libpurple_plugins` | | |
-| `services.bitlbee.plugins` | | |
-| `services.bitlbee.portNumber` | | |
-| `services.bitlbee.protocols` | | |
+| --- | --- | --- |
+| `services.bitlbee.authBackend` | `one of "storage", "pam"` | How users are authenticated storage -- save passwords internally pam -- Linux PAM authentication |
+| `services.bitlbee.authMode` | `one of "Open", "Closed", "Registered"` | The following authentication modes are available: Open -- Accept connections from anyone, use NickServ for user authentication. Closed -- Require authorization (using the PASS command during login) before allowing the user to connect at all. Registered -- Only allow registered users to use this server; this disables the register- and the account command until the user identifies himself. |
+| `services.bitlbee.configDir` | `absolute path` | Specify an alternative directory to store all the per-user configuration files. |
+| `services.bitlbee.enable` | `boolean` | Whether to run the BitlBee IRC to other chat network gateway. Running it allows you to access the MSN, Jabber, Yahoo! and ICQ chat networks via an IRC client. |
+| `services.bitlbee.extraDefaults` | `strings concatenated with "\n"` | Will be inserted in the Default section of the config file. |
+| `services.bitlbee.extraSettings` | `strings concatenated with "\n"` | Will be inserted in the Settings section of the config file. |
+| `services.bitlbee.hostName` | `string` | Normally, BitlBee gets a hostname using getsockname(). If you have a nicer alias for your BitlBee daemon, you can set it here and BitlBee will identify itself with that name instead. |
+| `services.bitlbee.interface` | `string` | The interface the BitlBee daemon will be listening to. If `127.0.0.1`, only clients on the local host can connect to it; if `0.0.0.0`, clients can access it from any network interface. |
+| `services.bitlbee.libpurple_plugins` | `list of package` | The list of libpurple plugins to install. |
+| `services.bitlbee.plugins` | `list of package` | The list of bitlbee plugins to install. |
+| `services.bitlbee.portNumber` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Number of the port BitlBee will be listening to. |
+| `services.bitlbee.protocols` | `string` | This option allows to remove the support of protocol, even if compiled in. If nothing is given, there are no restrictions. |

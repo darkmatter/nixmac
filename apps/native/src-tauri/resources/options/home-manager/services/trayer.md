@@ -5,7 +5,7 @@
 All options under `services.trayer`.
 
 | Option | Type | Description |
-| -------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.trayer.enable` | `boolean` | Whether to enable trayer, the lightweight GTK2+ systray for UNIX desktops. |
 | `services.trayer.package` | `package` | The trayer package to use. |
-| `services.trayer.settings` | `attribute set of (null or string or boolean or signed integer)` | Trayer configuration as a set of attributes. Further details can be found in trayer’s README . |
+| `services.trayer.settings` | `attribute set of (null or string or boolean or signed integer)` | Trayer configuration as a set of attributes. Further details can be found in [trayer's README](https://github.com/sargon/trayer-srg/blob/master/README). {var}`SetDockType` : boolean (default: `true`) {var}`SetPartialStrut` : boolean (default: `true`) {var}`align` : one of "left", "right", "center" (default: `"center"`) {var}`alpha` : signed integer (default: `127`) {var}`distance` : signed integer (default: `0`) {var}`distancefrom` : one of "left", "right", "top", "bottom" (default: `"top"`) {var}`edge` : one of "left", "right", "top", "bottom", "none" (default: `"bottom"`) {var}`expand` : boolean (default: `true`) {var}`height` : signed integer (default: `26`) {var}`heighttype` : one of "request", "pixel" (default: `"pixel"`) {var}`iconspacing` : signed integer (default: `0`) {var}`margin` : signed integer (default: `0`) {var}`monitor` : unsigned integer, meaning >=0, or value "primary" (singular enum) (default: `0`) {var}`padding` : signed integer (default: `0`) {var}`tint` : string (default: `"0xFFFFFFFF"`) {var}`transparent` : boolean (default: `false`) {var}`width` : signed integer (default: `100`) {var}`widthtype` : one of "request", "pixel", "percent" (default: `"percent"`) |

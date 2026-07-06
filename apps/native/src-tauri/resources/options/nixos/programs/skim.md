@@ -5,8 +5,7 @@
 All options under `programs.skim`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `programs.skim.enable` | | |
-| `programs.skim.fuzzyCompletion` | | |
-| `programs.skim.keybindings` | | |
-| `programs.skim.package` | | |
+| --- | --- | --- |
+| `programs.skim.enable` | `boolean` | Whether to enable skim fuzzy finder. |
+| `programs.skim.keybindings` | `boolean` | Whether to enable skim keybindings. |
+| `programs.skim.package` | `package` | The skim package to use. |

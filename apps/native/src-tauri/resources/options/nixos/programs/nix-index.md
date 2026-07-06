@@ -5,9 +5,9 @@
 All options under `programs.nix-index`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `programs.nix-index.enable` | | |
-| `programs.nix-index.enableBashIntegration` | | |
-| `programs.nix-index.enableFishIntegration` | | |
-| `programs.nix-index.enableZshIntegration` | | |
-| `programs.nix-index.package` | | |
+| --- | --- | --- |
+| `programs.nix-index.enable` | `boolean` | Whether to enable nix-index, a file database for nixpkgs. |
+| `programs.nix-index.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
+| `programs.nix-index.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
+| `programs.nix-index.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
+| `programs.nix-index.package` | `package` | The nix-index package to use. |

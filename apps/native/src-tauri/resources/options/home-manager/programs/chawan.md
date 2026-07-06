@@ -5,7 +5,7 @@
 All options under `programs.chawan`.
 
 | Option | Type | Description |
-| -------------------------- | ----------------- | -------------------------------------------- |
+| --- | --- | --- |
 | `programs.chawan.enable` | `boolean` | Whether to enable chawan, A TUI web browser. |
 | `programs.chawan.package` | `null or package` | The chawan package to use. |
-| `programs.chawan.settings` | `TOML value` | Configuration options for chawan. |
+| `programs.chawan.settings` | `TOML value` | Configuration options for chawan. See {manpage}`cha-config(5)` |

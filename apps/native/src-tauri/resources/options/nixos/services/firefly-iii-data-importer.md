@@ -5,13 +5,13 @@
 All options under `services.firefly-iii-data-importer`.
 
 | Option | Type | Description |
-| ------------------------------------------------ | ---- | ----------- |
-| `services.firefly-iii-data-importer.dataDir` | | |
-| `services.firefly-iii-data-importer.enable` | | |
-| `services.firefly-iii-data-importer.enableNginx` | | |
-| `services.firefly-iii-data-importer.group` | | |
-| `services.firefly-iii-data-importer.package` | | |
-| `services.firefly-iii-data-importer.poolConfig` | | |
-| `services.firefly-iii-data-importer.settings` | | |
-| `services.firefly-iii-data-importer.user` | | |
-| `services.firefly-iii-data-importer.virtualHost` | | |
+| --- | --- | --- |
+| `services.firefly-iii-data-importer.dataDir` | `absolute path` | The place where firefly-iii data importer stores its state. |
+| `services.firefly-iii-data-importer.enable` | `boolean` | Whether to enable Firefly III Data Importer. |
+| `services.firefly-iii-data-importer.enableNginx` | `boolean` | Whether to enable nginx or not. If enabled, an nginx virtual host will be created for access to firefly-iii data importer. If not enabled, then you may use `${config.services.firefly-iii-data-importer.package}` as your document root in whichever webserver you wish to setup. |
+| `services.firefly-iii-data-importer.group` | `string` | Group under which firefly-iii-data-importer runs. It is best to set this to the group of whatever webserver is being used as the frontend. |
+| `services.firefly-iii-data-importer.package` | `package` | The firefly-iii-data-importer package served by php-fpm and the webserver of choice. This option can be used to point the webserver to the correct root. It may also be used to set the package to a different version, say a development version. |
+| `services.firefly-iii-data-importer.poolConfig` | `attribute set of (string or signed integer or boolean)` | Options for the Firefly III Data Importer PHP pool. See the documentation on <literal>php-fpm.conf</literal> for details on configuration directives. |
+| `services.firefly-iii-data-importer.settings` | `open submodule of attribute set of (string or signed integer or boolean)` | Options for firefly-iii data importer configuration. Refer to <https://github.com/firefly-iii/data-importer/blob/main/.env.example> for details on supported values. All <option>\_FILE values supported by upstream are supported here. APP_URL will be the same as `services.firefly-iii-data-importer.virtualHost` if the former is unset in `services.firefly-iii-data-importer.settings`. |
+| `services.firefly-iii-data-importer.user` | `string` | User account under which firefly-iii-data-importer runs. |
+| `services.firefly-iii-data-importer.virtualHost` | `string` | The hostname at which you wish firefly-iii-data-importer to be served. If you have enabled nginx using `services.firefly-iii-data-importer.enableNginx` then this will be used. |

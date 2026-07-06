@@ -5,11 +5,9 @@
 All options under `services.guacamole-server`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.guacamole-server.enable` | | |
-| `services.guacamole-server.extraEnvironment` | | |
-| `services.guacamole-server.host` | | |
-| `services.guacamole-server.logbackXml` | | |
-| `services.guacamole-server.package` | | |
-| `services.guacamole-server.port` | | |
-| `services.guacamole-server.userMappingXml` | | |
+| --- | --- | --- |
+| `services.guacamole-server.enable` | `boolean` | Whether to enable Apache Guacamole Server (guacd). |
+| `services.guacamole-server.extraEnvironment` | `attribute set of string` | Environment variables to pass to guacd. |
+| `services.guacamole-server.host` | `string` | The host name or IP address the server should listen to. |
+| `services.guacamole-server.package` | `package` | The guacamole-server package to use. |
+| `services.guacamole-server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port the guacd server should listen to. |

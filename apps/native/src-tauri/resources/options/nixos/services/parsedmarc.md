@@ -5,13 +5,34 @@
 All options under `services.parsedmarc`.
 
 | Option | Type | Description |
-| ------------------------------------------------------- | ---- | ----------- |
-| `services.parsedmarc.enable` | | |
-| `services.parsedmarc.provision.elasticsearch` | | |
-| `services.parsedmarc.provision.geoIp` | | |
-| `services.parsedmarc.provision.grafana.dashboard` | | |
-| `services.parsedmarc.provision.grafana.datasource` | | |
-| `services.parsedmarc.provision.localMail.enable` | | |
-| `services.parsedmarc.provision.localMail.hostname` | | |
-| `services.parsedmarc.provision.localMail.recipientName` | | |
-| `services.parsedmarc.settings` | | |
+| --- | --- | --- |
+| `services.parsedmarc.enable` | `boolean` | Whether to enable parsedmarc, a DMARC report monitoring service . |
+| `services.parsedmarc.provision.elasticsearch` | `boolean` | Whether to set up and use a local instance of Elasticsearch. |
+| `services.parsedmarc.provision.geoIp` | `boolean` | Whether to enable and configure the [geoipupdate](#opt-services.geoipupdate.enable) service to automatically fetch GeoIP databases. Not crucial, but recommended for full functionality. To finish the setup, you need to manually set the [](#opt-services.geoipupdate.settings.AccountID) and [](#opt-services.geoipupdate.settings.LicenseKey) options. |
+| `services.parsedmarc.provision.grafana.dashboard` | `boolean` | Whether the official parsedmarc grafana dashboard should be provisioned to the local grafana instance. |
+| `services.parsedmarc.provision.grafana.datasource` | `boolean` | Whether the automatically provisioned Elasticsearch instance should be added as a grafana datasource. Has no effect unless [](#opt-services.parsedmarc.provision.elasticsearch) is also enabled. |
+| `services.parsedmarc.provision.localMail.enable` | `boolean` | Whether Postfix and Dovecot should be set up to receive mail locally. parsedmarc will be configured to watch the local inbox as the automatically created user specified in [](#opt-services.parsedmarc.provision.localMail.recipientName) |
+| `services.parsedmarc.provision.localMail.hostname` | `string` | The hostname to use when configuring Postfix. Should correspond to the host's fully qualified domain name and the domain part of the email address which receives DMARC reports. You also have to set up an MX record pointing to this domain name. |
+| `services.parsedmarc.provision.localMail.recipientName` | `string` | The DMARC mail recipient name, i.e. the name part of the email address which receives DMARC reports. A local user with this name will be set up and assigned a randomized password on service start. |
+| `services.parsedmarc.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration parameters to set in {file}`parsedmarc.ini`. For a full list of available parameters, see <https://domainaware.github.io/parsedmarc/#configuration-file>. Settings containing secret data should be set to an attribute set containing the attribute `_secret` - a string pointing to a file containing the value the option should be set to. See the example to get a better picture of this: in the resulting {file}`parsedmarc.ini` file, the `splunk_hec.token` key will be set to the contents of the {file}`/run/keys/splunk_token` file. |
+| `services.parsedmarc.settings.elasticsearch.cert_path` | `absolute path` | The path to a TLS certificate bundle used to verify the server's certificate. |
+| `services.parsedmarc.settings.elasticsearch.hosts` | `list of string` | A list of Elasticsearch hosts to push parsed reports to. |
+| `services.parsedmarc.settings.elasticsearch.password` | `null or absolute path or attribute set of absolute path` | The password to use when connecting to Elasticsearch, if required. Always handled as a secret whether the value is wrapped in a `{ _secret = ...; }` attrset or not (refer to [](#opt-services.parsedmarc.settings) for details). |
+| `services.parsedmarc.settings.elasticsearch.ssl` | `boolean` | Whether to use an encrypted SSL/TLS connection. |
+| `services.parsedmarc.settings.elasticsearch.user` | `null or string` | Username to use when connecting to Elasticsearch, if required. |
+| `services.parsedmarc.settings.general.save_aggregate` | `boolean` | Save aggregate report data to Elasticsearch and/or Splunk. |
+| `services.parsedmarc.settings.general.save_forensic` | `boolean` | Save forensic report data to Elasticsearch and/or Splunk. |
+| `services.parsedmarc.settings.imap.host` | `string` | The IMAP server hostname or IP address. |
+| `services.parsedmarc.settings.imap.password` | `null or absolute path or attribute set of absolute path` | The IMAP server password. Always handled as a secret whether the value is wrapped in a `{ _secret = ...; }` attrset or not (refer to [](#opt-services.parsedmarc.settings) for details). |
+| `services.parsedmarc.settings.imap.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The IMAP server port. |
+| `services.parsedmarc.settings.imap.ssl` | `boolean` | Use an encrypted SSL/TLS connection. |
+| `services.parsedmarc.settings.imap.user` | `null or string` | The IMAP server username. |
+| `services.parsedmarc.settings.mailbox.delete` | `boolean` | Delete messages after processing them, instead of archiving them. |
+| `services.parsedmarc.settings.mailbox.watch` | `boolean` | Use the IMAP IDLE command to process messages as they arrive. |
+| `services.parsedmarc.settings.smtp.from` | `null or string` | The `From` address to use for the outgoing mail. |
+| `services.parsedmarc.settings.smtp.host` | `null or string` | The SMTP server hostname or IP address. |
+| `services.parsedmarc.settings.smtp.password` | `null or absolute path or attribute set of absolute path` | The SMTP server password. Always handled as a secret whether the value is wrapped in a `{ _secret = ...; }` attrset or not (refer to [](#opt-services.parsedmarc.settings) for details). |
+| `services.parsedmarc.settings.smtp.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The SMTP server port. |
+| `services.parsedmarc.settings.smtp.ssl` | `null or boolean` | Use an encrypted SSL/TLS connection. |
+| `services.parsedmarc.settings.smtp.to` | `null or (list of string)` | The addresses to send outgoing mail to. |
+| `services.parsedmarc.settings.smtp.user` | `null or string` | The SMTP server username. |

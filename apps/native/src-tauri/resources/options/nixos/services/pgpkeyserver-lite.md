@@ -5,9 +5,9 @@
 All options under `services.pgpkeyserver-lite`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.pgpkeyserver-lite.enable` | | |
-| `services.pgpkeyserver-lite.hkpAddress` | | |
-| `services.pgpkeyserver-lite.hkpPort` | | |
-| `services.pgpkeyserver-lite.hostname` | | |
-| `services.pgpkeyserver-lite.package` | | |
+| --- | --- | --- |
+| `services.pgpkeyserver-lite.enable` | `boolean` | Whether to enable pgpkeyserver-lite on a nginx vHost proxying to a gpg keyserver. |
+| `services.pgpkeyserver-lite.hkpAddress` | `string` | Which IP address the sks-keyserver is listening on. |
+| `services.pgpkeyserver-lite.hkpPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Which port the sks-keyserver is listening on. |
+| `services.pgpkeyserver-lite.hostname` | `string` | Which hostname to set the vHost to that is proxying to sks. |
+| `services.pgpkeyserver-lite.package` | `package` | The pgpkeyserver-lite package to use. |

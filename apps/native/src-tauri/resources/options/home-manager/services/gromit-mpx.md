@@ -5,10 +5,16 @@
 All options under `services.gromit-mpx`.
 
 | Option | Type | Description |
-| ----------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.gromit-mpx.enable` | `boolean` | Whether to enable Gromit-MPX annotation tool. |
-| `services.gromit-mpx.hotKey` | `null or string or (positive integer, meaning >0)` | A keysym or raw keycode that toggles the activation state of gromit-mpx. Set to null to disable the hotkey in which case you’ll have to activate gromit-mpx manually using the command line. |
+| `services.gromit-mpx.hotKey` | `null or string or (positive integer, meaning >0)` | A keysym or raw keycode that toggles the activation state of gromit-mpx. Set to `null` to disable the hotkey in which case you'll have to activate gromit-mpx manually using the command line. |
 | `services.gromit-mpx.opacity` | `float between 0.0 and 1.0 (inclusive)` | Opacity of the drawing overlay. |
 | `services.gromit-mpx.package` | `package` | The gromit-mpx package to use. |
 | `services.gromit-mpx.tools` | `list of (submodule)` | Tool definitions for gromit-mpx to use. |
-| `services.gromit-mpx.undoKey` | `null or string or (positive integer, meaning >0)` | A keysym or raw keycode that causes gromit-mpx to undo the last stroke. Use this key along with the shift key to redo an undone stoke. Set to null to disable the undo hotkey. |
+| `services.gromit-mpx.tools.*.arrowSize` | `null or (positive integer, meaning >0)` | If not `null`, automatically draw an arrow at the end of a stroke with the given size. |
+| `services.gromit-mpx.tools.*.color` | `string` | The stroke (or recolor) color of the tool. |
+| `services.gromit-mpx.tools.*.device` | `string` | Use this tool with the given xinput device. The device with the name default works with any input. |
+| `services.gromit-mpx.tools.*.modifiers` | `list of (one of "1", "2", "3", "4", "5", "SHIFT", "CONTROL", "ALT", "META")` | Only activate this tool if the given modifiers are also active. |
+| `services.gromit-mpx.tools.*.size` | `positive integer, meaning >0` | The tool size. |
+| `services.gromit-mpx.tools.*.type` | `one of "pen", "eraser", "recolor"` | Which type of tool this is. |
+| `services.gromit-mpx.undoKey` | `null or string or (positive integer, meaning >0)` | A keysym or raw keycode that causes gromit-mpx to undo the last stroke. Use this key along with the shift key to redo an undone stoke. Set to `null` to disable the undo hotkey. |

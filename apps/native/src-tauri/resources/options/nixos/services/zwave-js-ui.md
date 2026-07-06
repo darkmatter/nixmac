@@ -5,8 +5,8 @@
 All options under `services.zwave-js-ui`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.zwave-js-ui.enable` | | |
-| `services.zwave-js-ui.package` | | |
-| `services.zwave-js-ui.serialPort` | | |
-| `services.zwave-js-ui.settings` | | |
+| --- | --- | --- |
+| `services.zwave-js-ui.enable` | `boolean` | Whether to enable zwave-js-ui. |
+| `services.zwave-js-ui.package` | `package` | The zwave-js-ui package to use. |
+| `services.zwave-js-ui.serialPort` | `absolute path` | Serial port for the Z-Wave controller. Only used to grant permissions to the device; must be additionally configured in the application |
+| `services.zwave-js-ui.settings` | `open submodule of attribute set of (null or string or absolute path or package)` | Extra environment variables passed to the zwave-js-ui process. Check <https://zwave-js.github.io/zwave-js-ui/#/guide/env-vars> for possible options |

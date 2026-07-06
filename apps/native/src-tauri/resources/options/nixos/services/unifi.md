@@ -5,14 +5,12 @@
 All options under `services.unifi`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.unifi.dataDir` | | |
-| `services.unifi.enable` | | |
-| `services.unifi.extraJvmOptions` | | |
-| `services.unifi.initialJavaHeapSize` | | |
-| `services.unifi.jrePackage` | | |
-| `services.unifi.maximumJavaHeapSize` | | |
-| `services.unifi.mongodbPackage` | | |
-| `services.unifi.openFirewall` | | |
-| `services.unifi.openPorts` | | |
-| `services.unifi.unifiPackage` | | |
+| --- | --- | --- |
+| `services.unifi.enable` | `boolean` | Whether or not to enable the unifi controller service. |
+| `services.unifi.extraJvmOptions` | `list of string` | Set extra options to pass to the JVM. |
+| `services.unifi.initialJavaHeapSize` | `null or signed integer` | Set the initial heap size for the JVM in MB. If this option isn't set, the JVM will decide this value at runtime. |
+| `services.unifi.jrePackage` | `package` | The jdk package to use. Check the UniFi controller release notes to ensure it is supported. |
+| `services.unifi.maximumJavaHeapSize` | `null or signed integer` | Set the maximum heap size for the JVM in MB. If this option isn't set, the JVM will decide this value at runtime. |
+| `services.unifi.mongodbPackage` | `package` | The mongodb package to use. |
+| `services.unifi.openFirewall` | `boolean` | Whether or not to open the minimum required ports on the firewall. This is necessary to allow firmware upgrades and device discovery to work. For remote login, you should additionally open (or forward) port 8443. |
+| `services.unifi.unifiPackage` | `package` | The unifi package to use. |

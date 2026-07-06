@@ -5,7 +5,7 @@
 All options under `services.logiops`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.logiops.config` | | |
-| `services.logiops.enable` | | |
-| `services.logiops.package` | | |
+| --- | --- | --- |
+| `services.logiops.config` | `attribute set of (libconfig value)` | The standard libconfig-style config for LogiOps. |
+| `services.logiops.enable` | `boolean` | Whether to enable LogiOps, a unofficial userspace driver for HID++ Logitech devices. |
+| `services.logiops.package` | `package` | The logiops package to use. |

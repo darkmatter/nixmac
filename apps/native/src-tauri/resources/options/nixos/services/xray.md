@@ -5,8 +5,8 @@
 All options under `services.xray`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.xray.enable` | | |
-| `services.xray.package` | | |
-| `services.xray.settings` | | |
-| `services.xray.settingsFile` | | |
+| --- | --- | --- |
+| `services.xray.enable` | `boolean` | Whether to run xray server. Either `settingsFile` or `settings` must be specified. |
+| `services.xray.package` | `package` | The xray package to use. |
+| `services.xray.settings` | `null or (attribute set of unspecified value)` | The configuration object. Either `settingsFile` or `settings` must be specified. See <https://www.v2fly.org/en_US/config/overview.html>. |
+| `services.xray.settingsFile` | `null or absolute path` | The absolute path to the configuration file. Either `settingsFile` or `settings` must be specified. See <https://www.v2fly.org/en_US/config/overview.html>. |

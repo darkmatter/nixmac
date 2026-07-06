@@ -5,6 +5,6 @@
 All options under `services.twingate`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.twingate.enable` | | |
-| `services.twingate.package` | | |
+| --- | --- | --- |
+| `services.twingate.enable` | `boolean` | Whether to enable Twingate Client daemon. |
+| `services.twingate.package` | `package` | The twingate package to use. |

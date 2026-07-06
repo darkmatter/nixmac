@@ -5,10 +5,10 @@
 All options under `programs.equibop`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `programs.equibop.enable` | | |
-| `programs.equibop.equicord.extraQuickCss` | | |
-| `programs.equibop.equicord.settings` | | |
-| `programs.equibop.equicord.themes` | | |
-| `programs.equibop.package` | | |
-| `programs.equibop.settings` | | |
+| --- | --- | --- |
+| `programs.equibop.enable` | `boolean` | Whether to enable Custom Discord App aiming to give you better performance and improve linux support. |
+| `programs.equibop.equicord.extraQuickCss` | `strings concatenated with "\n"` | Additional CSS rules. |
+| `programs.equibop.equicord.settings` | `JSON value` | Equicord settings written to {file}`$XDG_CONFIG_HOME/equibop/settings/settings.json`. See <https://github.com/Equicord/Equicord/blob/main/src/api/Settings.ts> for available options. |
+| `programs.equibop.equicord.themes` | `attribute set of (strings concatenated with "\n" or absolute path)` | Themes to add for Equicord, they can be enabled by setting `programs.equibop.equicord.settings.enabledThemes` to `[ "THEME_NAME.css" ]` |
+| `programs.equibop.package` | `null or package` | The equibop package to use. |
+| `programs.equibop.settings` | `JSON value` | Equibop settings written to {file}`$XDG_CONFIG_HOME/equibop/settings.json`. See <https://github.com/Equicord/Equibop/blob/main/src/shared/settings.d.ts> for available options. |

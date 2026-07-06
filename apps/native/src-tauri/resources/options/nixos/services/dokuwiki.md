@@ -5,6 +5,23 @@
 All options under `services.dokuwiki`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.dokuwiki.sites` | | |
-| `services.dokuwiki.webserver` | | |
+| --- | --- | --- |
+| `services.dokuwiki.sites` | `attribute set of (submodule)` | Specification of one or more DokuWiki sites to serve |
+| `services.dokuwiki.sites.<name>.acl` | `null or (list of (submodule))` | Access Control Lists: see <https://www.dokuwiki.org/acl> Mutually exclusive with services.dokuwiki.aclFile Set this to a value other than null to take precedence over aclFile option. Warning: Consider using aclFile instead if you do not want to store the ACL in the world-readable Nix store. |
+| `services.dokuwiki.sites.<name>.acl.*.actor` | `string` | User or group to restrict |
+| `services.dokuwiki.sites.<name>.acl.*.level` | `one of 4, 16, 2, 0, 1, 8, "create", "delete", "edit", "none", "read", "upload"` | Permission level to restrict the actor(s) to. See <https://www.dokuwiki.org/acl#background_info> for explanation |
+| `services.dokuwiki.sites.<name>.acl.*.page` | `string` | Page or namespace to restrict |
+| `services.dokuwiki.sites.<name>.aclFile` | `null or string` | Location of the dokuwiki acl rules. Mutually exclusive with services.dokuwiki.acl which is preferred. Consult documentation <https://www.dokuwiki.org/acl> for further instructions. Example: <https://github.com/splitbrain/dokuwiki/blob/master/conf/acl.auth.php.dist> |
+| `services.dokuwiki.sites.<name>.extraConfigs` | `attribute set of absolute path` | Path(s) to additional configuration files that are then linked to the 'conf' directory. |
+| `services.dokuwiki.sites.<name>.mergedConfig` | `unspecified value` | Read only representation of the final configuration. |
+| `services.dokuwiki.sites.<name>.package` | `package` | The dokuwiki package to use. |
+| `services.dokuwiki.sites.<name>.phpOptions` | `attribute set of string` | Options for PHP's php.ini file for this dokuwiki site. |
+| `services.dokuwiki.sites.<name>.phpPackage` | `package` | The php package to use. |
+| `services.dokuwiki.sites.<name>.plugins` | `list of absolute path` | List of path(s) to respective plugin(s) which are copied into the 'plugin' directory. ::: {.note} These plugins need to be packaged before use, see example. ::: |
+| `services.dokuwiki.sites.<name>.pluginsConfig` | `attribute set of boolean` | List of the dokuwiki (un)loaded plugins. |
+| `services.dokuwiki.sites.<name>.poolConfig` | `attribute set of (string or signed integer or boolean)` | Options for the DokuWiki PHP pool. See the documentation on `php-fpm.conf` for details on configuration directives. |
+| `services.dokuwiki.sites.<name>.settings` | `attribute set of anything` | Structural DokuWiki configuration. Refer to <https://www.dokuwiki.org/config> for details and supported values. Settings can either be directly set from nix, loaded from a file using `._file` or obtained from any PHP function calls using `._raw`. |
+| `services.dokuwiki.sites.<name>.stateDir` | `absolute path` | Location of the DokuWiki state directory. |
+| `services.dokuwiki.sites.<name>.templates` | `list of absolute path` | List of path(s) to respective template(s) which are copied into the 'tpl' directory. ::: {.note} These templates need to be packaged before use, see example. ::: |
+| `services.dokuwiki.sites.<name>.usersFile` | `null or string` | Location of the dokuwiki users file. List of users. Format: login:passwordhash:Real Name:email:groups,comma,separated Create passwordHash easily by using: mkpasswd -5 password `pwgen 8 1` Example: <https://github.com/splitbrain/dokuwiki/blob/master/conf/users.auth.php.dist> |
+| `services.dokuwiki.webserver` | `one of "nginx", "caddy"` | Whether to use nginx or caddy for virtual host management. Further nginx configuration can be done by adapting `services.nginx.virtualHosts.<name>`. See [](#opt-services.nginx.virtualHosts) for further information. Further caddy configuration can be done by adapting `services.caddy.virtualHosts.<name>`. See [](#opt-services.caddy.virtualHosts) for further information. |

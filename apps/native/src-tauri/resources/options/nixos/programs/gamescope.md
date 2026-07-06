@@ -5,10 +5,10 @@
 All options under `programs.gamescope`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `programs.gamescope.args` | | |
-| `programs.gamescope.capSysNice` | | |
-| `programs.gamescope.enable` | | |
-| `programs.gamescope.enableWsi` | | |
-| `programs.gamescope.env` | | |
-| `programs.gamescope.package` | | |
+| --- | --- | --- |
+| `programs.gamescope.args` | `list of string` | Arguments passed to GameScope on startup. |
+| `programs.gamescope.capSysNice` | `boolean` | Add cap_sys_nice capability to the GameScope binary so that it may renice itself. |
+| `programs.gamescope.enable` | `boolean` | Whether to enable gamescope, the SteamOS session compositing window manager. |
+| `programs.gamescope.enableWsi` | `boolean` | Whether to enable gamescope-wsi, the Vulkan WSI layer, alongside gamescope. |
+| `programs.gamescope.env` | `attribute set of string` | Default environment variables available to the GameScope process, overridable at runtime. |
+| `programs.gamescope.package` | `package` | The gamescope package to use. |

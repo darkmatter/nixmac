@@ -5,19 +5,19 @@
 All options under `services.hologram-server`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---- | ----------- |
-| `services.hologram-server.awsAccount` | | |
-| `services.hologram-server.awsDefaultRole` | | |
-| `services.hologram-server.cacheTimeoutSeconds` | | |
-| `services.hologram-server.enable` | | |
-| `services.hologram-server.enableLdapRoles` | | |
-| `services.hologram-server.groupClassAttr` | | |
-| `services.hologram-server.ldapBaseDN` | | |
-| `services.hologram-server.ldapBindDN` | | |
-| `services.hologram-server.ldapBindPassword` | | |
-| `services.hologram-server.ldapHost` | | |
-| `services.hologram-server.ldapInsecure` | | |
-| `services.hologram-server.ldapUserAttr` | | |
-| `services.hologram-server.listenAddress` | | |
-| `services.hologram-server.roleAttr` | | |
-| `services.hologram-server.statsAddress` | | |
+| --- | --- | --- |
+| `services.hologram-server.awsAccount` | `string` | AWS account number |
+| `services.hologram-server.awsDefaultRole` | `string` | AWS default role |
+| `services.hologram-server.cacheTimeoutSeconds` | `signed integer` | How often (in seconds) to refresh the LDAP cache |
+| `services.hologram-server.enable` | `boolean` | Whether to enable the Hologram server for AWS instance credentials |
+| `services.hologram-server.enableLdapRoles` | `boolean` | Whether to assign user roles based on the user's LDAP group memberships |
+| `services.hologram-server.groupClassAttr` | `string` | The objectclass attribute to search for groups when enableLdapRoles is true |
+| `services.hologram-server.ldapBaseDN` | `string` | The base DN for your Hologram users |
+| `services.hologram-server.ldapBindDN` | `string` | DN of account to use to query the LDAP server |
+| `services.hologram-server.ldapBindPassword` | `string` | Password of account to use to query the LDAP server |
+| `services.hologram-server.ldapHost` | `string` | Address of the LDAP server to use |
+| `services.hologram-server.ldapInsecure` | `boolean` | Whether to connect to LDAP over SSL or not |
+| `services.hologram-server.ldapUserAttr` | `string` | The LDAP attribute for usernames |
+| `services.hologram-server.listenAddress` | `string` | Address and port to listen on |
+| `services.hologram-server.roleAttr` | `string` | Which LDAP group attribute to search for authorized role ARNs |
+| `services.hologram-server.statsAddress` | `string` | Address of statsd server |

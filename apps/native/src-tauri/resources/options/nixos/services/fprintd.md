@@ -5,8 +5,8 @@
 All options under `services.fprintd`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.fprintd.enable` | | |
-| `services.fprintd.package` | | |
-| `services.fprintd.tod.driver` | | |
-| `services.fprintd.tod.enable` | | |
+| --- | --- | --- |
+| `services.fprintd.enable` | `boolean` | Whether to enable fprintd daemon and PAM module for fingerprint readers handling. |
+| `services.fprintd.package` | `package` | fprintd package to use. |
+| `services.fprintd.tod.driver` | `package` | Touch OEM Drivers (TOD) package to use. |
+| `services.fprintd.tod.enable` | `boolean` | Whether to enable Touch OEM Drivers library support. |

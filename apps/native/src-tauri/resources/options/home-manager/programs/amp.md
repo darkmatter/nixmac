@@ -5,7 +5,7 @@
 All options under `programs.amp`.
 
 | Option | Type | Description |
-| ----------------------- | ----------------- | ------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.amp.enable` | `boolean` | Whether to enable amp. |
 | `programs.amp.package` | `null or package` | The amp package to use. |
-| `programs.amp.settings` | `YAML 1.1 value` | Configuration settings for amp. All the details can be found here: https://amp.rs/docs/configuration/ . |
+| `programs.amp.settings` | `YAML 1.1 value` | Configuration settings for amp. All the details can be found here: <https://amp.rs/docs/configuration/>. |

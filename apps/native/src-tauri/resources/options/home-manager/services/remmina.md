@@ -5,7 +5,7 @@
 All options under `services.remmina`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---------------- | ------------------------------------------------------------------ |
+| --- | --- | --- |
 | `services.remmina.addRdpMimeTypeAssoc` | `boolean` | Whether to enable Remmina RDP file open option. |
 | `services.remmina.enable` | `boolean` | Whether to enable Remmina. |
 | `services.remmina.package` | `package` | The remmina package to use. |

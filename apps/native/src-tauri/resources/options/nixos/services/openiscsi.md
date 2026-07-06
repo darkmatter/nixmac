@@ -5,11 +5,11 @@
 All options under `services.openiscsi`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.openiscsi.discoverPortal` | | |
-| `services.openiscsi.enable` | | |
-| `services.openiscsi.enableAutoLoginOut` | | |
-| `services.openiscsi.extraConfig` | | |
-| `services.openiscsi.extraConfigFile` | | |
-| `services.openiscsi.name` | | |
-| `services.openiscsi.package` | | |
+| --- | --- | --- |
+| `services.openiscsi.discoverPortal` | `null or string` | Portal to discover targets on |
+| `services.openiscsi.enable` | `boolean` | Whether to enable the openiscsi iscsi daemon. |
+| `services.openiscsi.enableAutoLoginOut` | `boolean` | Whether to enable automatic login and logout of all automatic targets. You probably do not want this . |
+| `services.openiscsi.extraConfig` | `string` | Lines to append to default iscsid.conf |
+| `services.openiscsi.extraConfigFile` | `null or string` | Append an additional file's contents to /etc/iscsid.conf. Use a non-store path and store passwords in this file. |
+| `services.openiscsi.name` | `string` | Name of this iscsi initiator |
+| `services.openiscsi.package` | `package` | The openiscsi package to use. |

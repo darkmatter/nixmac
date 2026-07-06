@@ -5,5 +5,5 @@
 All options under `programs.criu`.
 
 | Option | Type | Description |
-| ---------------------- | ---- | ----------- |
-| `programs.criu.enable` | | |
+| --- | --- | --- |
+| `programs.criu.enable` | `boolean` | Install {command}`criu` along with necessary kernel options. |

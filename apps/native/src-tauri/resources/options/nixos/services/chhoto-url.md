@@ -5,8 +5,22 @@
 All options under `services.chhoto-url`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.chhoto-url.enable` | | |
-| `services.chhoto-url.environmentFiles` | | |
-| `services.chhoto-url.package` | | |
-| `services.chhoto-url.settings` | | |
+| --- | --- | --- |
+| `services.chhoto-url.enable` | `boolean` | Whether to enable Chhoto URL. |
+| `services.chhoto-url.environmentFiles` | `list of absolute path` | Files to load environment variables from in addition to [](#opt-services.chhoto-url.settings). This is useful to avoid putting secrets into the nix store. See <https://github.com/SinTan1729/chhoto-url/blob/main/compose.yaml> for a list of options. |
+| `services.chhoto-url.package` | `package` | The chhoto-url package to use. |
+| `services.chhoto-url.settings` | `open submodule of attribute set of (string or signed integer or boolean)` | Configuration of Chhoto URL. See <https://github.com/SinTan1729/chhoto-url/blob/main/compose.yaml> for a list of options. |
+| `services.chhoto-url.settings.allow_capital_letters` | `boolean` | Whether to allow capital letters in slugs. |
+| `services.chhoto-url.settings.cache_control_header` | `null or string` | The Cache-Control header to send. |
+| `services.chhoto-url.settings.custom_landing_directory` | `null or absolute path` | The path of a directory which contains a custom landing page. |
+| `services.chhoto-url.settings.db_url` | `absolute path` | The path of the sqlite database. |
+| `services.chhoto-url.settings.disable_frontend` | `boolean` | Whether to disable the frontend. |
+| `services.chhoto-url.settings.hash_algorithm` | `null or value "Argon2" (singular enum)` | The hash algorithm to use for passwords and API keys. Set to `null` if you want to provide these secrets as plaintext. |
+| `services.chhoto-url.settings.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to listen on. |
+| `services.chhoto-url.settings.public_mode` | `boolean` | Whether to enable public mode. |
+| `services.chhoto-url.settings.public_mode_expiry_delay` | `null or (unsigned integer, meaning >=0)` | The maximum expiry delay in seconds to force in public mode. |
+| `services.chhoto-url.settings.redirect_method` | `one of "TEMPORARY", "PERMANENT"` | The redirect method to use. |
+| `services.chhoto-url.settings.site_url` | `null or string` | The URL under which Chhoto URL is externally reachable. |
+| `services.chhoto-url.settings.slug_length` | `signed integer` | The length of auto-generated slugs. |
+| `services.chhoto-url.settings.slug_style` | `one of "Pair", "UID"` | The slug style to use for auto-generated URLs. |
+| `services.chhoto-url.settings.try_longer_slugs` | `boolean` | Whether to try a longer UID upon collision. |

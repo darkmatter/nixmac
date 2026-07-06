@@ -5,8 +5,8 @@
 All options under `services.glpiAgent`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.glpiAgent.enable` | | |
-| `services.glpiAgent.package` | | |
-| `services.glpiAgent.settings` | | |
-| `services.glpiAgent.stateDir` | | |
+| --- | --- | --- |
+| `services.glpiAgent.enable` | `boolean` | Whether to enable GLPI Agent. |
+| `services.glpiAgent.package` | `package` | The glpi-agent package to use. |
+| `services.glpiAgent.settings` | `attribute set of (boolean or signed integer or string or list of string)` | GLPI Agent configuration options. See <https://glpi-agent.readthedocs.io/en/latest/configuration.html> for all available options. The 'server' option is mandatory and must point to your GLPI server. |
+| `services.glpiAgent.stateDir` | `string` | Directory where GLPI Agent stores its state. |

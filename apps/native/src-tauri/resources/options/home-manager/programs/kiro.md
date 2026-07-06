@@ -5,9 +5,19 @@
 All options under `programs.kiro`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `programs.kiro.argvSettings` | | |
-| `programs.kiro.enable` | | |
-| `programs.kiro.mutableExtensionsDir` | | |
-| `programs.kiro.package` | | |
-| `programs.kiro.profiles` | | |
+| --- | --- | --- |
+| `programs.kiro.argvSettings` | `absolute path or JSON value` | Configuration written to Kiro's {file}`argv.json`. This can be a JSON object or a path to a custom JSON file. |
+| `programs.kiro.enable` | `boolean` | Whether to enable Kiro. |
+| `programs.kiro.mutableExtensionsDir` | `boolean` | Whether extensions can be installed or updated manually or by Kiro. Mutually exclusive to programs.kiro.profiles. |
+| `programs.kiro.package` | `null or package` | The kiro package to use. Version of Kiro to install. |
+| `programs.kiro.profiles` | `attribute set of (submodule)` | A list of all Kiro profiles. Mutually exclusive to programs.kiro.mutableExtensionsDir |
+| `programs.kiro.profiles.<name>.enableExtensionUpdateCheck` | `null or boolean` | Whether to enable update notifications for extensions. Can only be set for the default profile, but it applies to all profiles. |
+| `programs.kiro.profiles.<name>.enableMcpIntegration` | `boolean` | Whether to integrate the MCP servers config from {option}`programs.mcp.servers` into {option}`programs.kiro.profiles.<name>.userMcp`. Note: Settings defined in {option}`programs.mcp.servers` are merged with {option}`programs.kiro.profiles.<name>.userMcp`, with Kiro settings taking precedence. |
+| `programs.kiro.profiles.<name>.enableUpdateCheck` | `null or boolean` | Whether to enable update checks/notifications. Can only be set for the default profile, but it applies to all profiles. |
+| `programs.kiro.profiles.<name>.extensions` | `list of package` | The extensions Kiro should be started with. |
+| `programs.kiro.profiles.<name>.globalSnippets` | `JSON value` | Defines global user snippets. |
+| `programs.kiro.profiles.<name>.keybindings` | `absolute path or list of (open submodule of (JSON value))` | Keybindings written to Kiro's {file}`keybindings.json`. This can be a JSON object or a path to a custom JSON file. |
+| `programs.kiro.profiles.<name>.languageSnippets` | `JSON value` | Defines user snippets for different languages. |
+| `programs.kiro.profiles.<name>.userMcp` | `absolute path or JSON value` | Configuration written to Kiro's {file}`mcp.json`. This can be a JSON object or a path to a custom JSON file. |
+| `programs.kiro.profiles.<name>.userSettings` | `absolute path or JSON value` | Configuration written to Kiro's {file}`settings.json`. This can be a JSON object or a path to a custom JSON file. |
+| `programs.kiro.profiles.<name>.userTasks` | `absolute path or JSON value` | Configuration written to Kiro's {file}`tasks.json`. This can be a JSON object or a path to a custom JSON file. |

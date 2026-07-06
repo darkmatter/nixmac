@@ -5,8 +5,7 @@
 All options under `programs.tuxclocker`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `programs.tuxclocker.enable` | | |
-| `programs.tuxclocker.enableAMD` | | |
-| `programs.tuxclocker.enabledNVIDIADevices` | | |
-| `programs.tuxclocker.useUnfree` | | |
+| --- | --- | --- |
+| `programs.tuxclocker.enable` | `boolean` | Whether to enable TuxClocker, a hardware control and monitoring program . |
+| `programs.tuxclocker.enabledNVIDIADevices` | `list of signed integer` | Enable NVIDIA GPU controls for a device by index. Sets the `Coolbits` Xorg option to enable all TuxClocker controls. |
+| `programs.tuxclocker.useUnfree` | `boolean` | Whether to use components requiring unfree dependencies. Disabling this allows you to get everything from the binary cache. |

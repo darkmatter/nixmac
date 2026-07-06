@@ -5,5 +5,5 @@
 All options under `services.zeitgeist`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.zeitgeist.enable` | | |
+| --- | --- | --- |
+| `services.zeitgeist.enable` | `boolean` | Whether to enable zeitgeist, a service which logs the users' activities and events. |

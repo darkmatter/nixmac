@@ -5,16 +5,16 @@
 All options under `services.microsocks`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.microsocks.authOnce` | | |
-| `services.microsocks.authPasswordFile` | | |
-| `services.microsocks.authUsername` | | |
-| `services.microsocks.disableLogging` | | |
-| `services.microsocks.enable` | | |
-| `services.microsocks.execWrapper` | | |
-| `services.microsocks.group` | | |
-| `services.microsocks.ip` | | |
-| `services.microsocks.outgoingBindIp` | | |
-| `services.microsocks.package` | | |
-| `services.microsocks.port` | | |
-| `services.microsocks.user` | | |
+| --- | --- | --- |
+| `services.microsocks.authOnce` | `boolean` | If true, once a specific ip address authed successfully with user/pass, it is added to a whitelist and may use the proxy without auth. |
+| `services.microsocks.authPasswordFile` | `null or absolute path` | Path to a file containing the password for authentication. |
+| `services.microsocks.authUsername` | `null or string` | Optional username to use for authentication. |
+| `services.microsocks.disableLogging` | `boolean` | If true, microsocks will not log any messages to stdout/stderr. |
+| `services.microsocks.enable` | `boolean` | Whether to enable Tiny, portable SOCKS5 server with very moderate resource usage. |
+| `services.microsocks.execWrapper` | `null or string` | An optional command to prepend to the microsocks command (such as proxychains, or a VPN exclude command). |
+| `services.microsocks.group` | `string` | Group microsocks runs as. |
+| `services.microsocks.ip` | `string` | IP on which microsocks should listen. Defaults to 127.0.0.1 for security reasons. |
+| `services.microsocks.outgoingBindIp` | `null or string` | Specifies which ip outgoing connections are bound to |
+| `services.microsocks.package` | `package` | The microsocks package to use. |
+| `services.microsocks.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which microsocks should listen. |
+| `services.microsocks.user` | `string` | User microsocks runs as. |

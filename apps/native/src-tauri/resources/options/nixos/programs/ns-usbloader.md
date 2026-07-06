@@ -5,5 +5,5 @@
 All options under `programs.ns-usbloader`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `programs.ns-usbloader.enable` | | |
+| --- | --- | --- |
+| `programs.ns-usbloader.enable` | `boolean` | Whether to enable ns-usbloader application with udev rules applied. |

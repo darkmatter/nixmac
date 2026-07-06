@@ -5,7 +5,11 @@
 All options under `services.actkbd`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.actkbd.bindings` | | |
-| `services.actkbd.enable` | | |
-| `services.actkbd.extraConfig` | | |
+| --- | --- | --- |
+| `services.actkbd.bindings` | `list of (submodule)` | Key bindings for {command}`actkbd`. See {command}`actkbd` {file}`README` for documentation. The example shows a piece of what {option}`sound.mediaKeys.enable` does when enabled. |
+| `services.actkbd.bindings.*.attributes` | `list of string` | List of attributes. |
+| `services.actkbd.bindings.*.command` | `string` | What to run. |
+| `services.actkbd.bindings.*.events` | `list of (one of "key", "rep", "rel")` | List of events to match. |
+| `services.actkbd.bindings.*.keys` | `list of signed integer` | List of keycodes to match. |
+| `services.actkbd.enable` | `boolean` | Whether to enable the {command}`actkbd` key mapping daemon. Turning this on will start an {command}`actkbd` instance for every evdev input that has at least one key (which is okay even for systems with tiny memory footprint, since actkbd normally uses \<100 bytes of memory per instance). This allows binding keys globally without the need for e.g. X11. |
+| `services.actkbd.extraConfig` | `strings concatenated with "\n"` | Literal contents to append to the end of actkbd configuration file. |

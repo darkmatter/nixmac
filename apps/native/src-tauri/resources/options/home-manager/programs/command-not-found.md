@@ -5,6 +5,6 @@
 All options under `programs.command-not-found`.
 
 | Option | Type | Description |
-| ----------------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------- |
-| `programs.command-not-found.dbPath` | `absolute path` | Absolute path to programs.sqlite . By default this file will be provided by your channel (nixexprs.tar.xz). |
+| --- | --- | --- |
+| `programs.command-not-found.dbPath` | `absolute path` | Absolute path to {file}`programs.sqlite`. By default this file will be provided by your channel (nixexprs.tar.xz). |
 | `programs.command-not-found.enable` | `boolean` | Whether to enable command-not-found hook for interactive shell. |

@@ -5,7 +5,7 @@
 All options under `services.fusuma`.
 
 | Option | Type | Description |
-| ------------------------------- | ----------------- | -------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.fusuma.enable` | `boolean` | Whether to enable the fusuma systemd service to automatically enable touchpad gesture. |
 | `services.fusuma.extraPackages` | `list of package` | Extra packages needs to bring to the scope of fusuma service. |
 | `services.fusuma.package` | `package` | The fusuma package to use. |

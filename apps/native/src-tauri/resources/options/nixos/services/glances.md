@@ -5,9 +5,9 @@
 All options under `services.glances`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.glances.enable` | | |
-| `services.glances.extraArgs` | | |
-| `services.glances.openFirewall` | | |
-| `services.glances.package` | | |
-| `services.glances.port` | | |
+| --- | --- | --- |
+| `services.glances.enable` | `boolean` | Whether to enable Glances. |
+| `services.glances.extraArgs` | `list of string` | Extra command-line arguments to pass to glances. See <https://glances.readthedocs.io/en/latest/cmds.html> for all available options. |
+| `services.glances.openFirewall` | `boolean` | Open port in the firewall for glances. |
+| `services.glances.package` | `package` | The glances package to use. |
+| `services.glances.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port the server will isten on. |

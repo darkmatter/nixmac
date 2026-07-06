@@ -5,10 +5,10 @@
 All options under `services.yandex-disk`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.yandex-disk.directory` | | |
-| `services.yandex-disk.enable` | | |
-| `services.yandex-disk.excludes` | | |
-| `services.yandex-disk.password` | | |
-| `services.yandex-disk.user` | | |
-| `services.yandex-disk.username` | | |
+| --- | --- | --- |
+| `services.yandex-disk.directory` | `absolute path` | The directory to use for Yandex.Disk storage |
+| `services.yandex-disk.enable` | `boolean` | Whether to enable Yandex-disk client. See <https://disk.yandex.ru/> |
+| `services.yandex-disk.excludes` | `strings concatenated with ","` | Comma-separated list of directories which are excluded from synchronization. |
+| `services.yandex-disk.password` | `string` | Your yandex.com password. Warning: it will be world-readable in /nix/store. |
+| `services.yandex-disk.user` | `null or string` | The user the yandex-disk daemon should run as. |
+| `services.yandex-disk.username` | `string` | Your yandex.com login name. |

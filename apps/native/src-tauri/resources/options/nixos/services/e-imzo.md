@@ -5,6 +5,6 @@
 All options under `services.e-imzo`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.e-imzo.enable` | | |
-| `services.e-imzo.package` | | |
+| --- | --- | --- |
+| `services.e-imzo.enable` | `boolean` | Whether to enable E-IMZO. |
+| `services.e-imzo.package` | `package` | The e-imzo package to use. Official mirror deletes old versions as soon as they release new one. Feel free to use either unstable or your own custom e-imzo package and ping maintainer. |

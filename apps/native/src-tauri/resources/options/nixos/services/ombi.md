@@ -5,11 +5,11 @@
 All options under `services.ombi`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.ombi.dataDir` | | |
-| `services.ombi.enable` | | |
-| `services.ombi.group` | | |
-| `services.ombi.openFirewall` | | |
-| `services.ombi.package` | | |
-| `services.ombi.port` | | |
-| `services.ombi.user` | | |
+| --- | --- | --- |
+| `services.ombi.dataDir` | `string` | The directory where Ombi stores its data files. |
+| `services.ombi.enable` | `boolean` | Whether to enable Ombi, a web application that automatically gives your shared Plex or Emby users the ability to request content by themselves! Optionally see <https://docs.ombi.app/info/reverse-proxy> on how to set up a reverse proxy . |
+| `services.ombi.group` | `string` | Group under which Ombi runs. |
+| `services.ombi.openFirewall` | `boolean` | Open ports in the firewall for the Ombi web interface. |
+| `services.ombi.package` | `package` | The ombi package to use. |
+| `services.ombi.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port for the Ombi web interface. |
+| `services.ombi.user` | `string` | User account under which Ombi runs. |

@@ -5,56 +5,58 @@
 All options under `services.gitea`.
 
 | Option | Type | Description |
-| ------------------------------------------------------- | ---- | ----------- |
-| `services.gitea.appName` | | |
-| `services.gitea.camoHmacKeyFile` | | |
-| `services.gitea.captcha.enable` | | |
-| `services.gitea.captcha.requireForExternalRegistration` | | |
-| `services.gitea.captcha.requireForLogin` | | |
-| `services.gitea.captcha.secretFile` | | |
-| `services.gitea.captcha.siteKey` | | |
-| `services.gitea.captcha.type` | | |
-| `services.gitea.captcha.url` | | |
-| `services.gitea.cookieSecure` | | |
-| `services.gitea.customDir` | | |
-| `services.gitea.database.createDatabase` | | |
-| `services.gitea.database.host` | | |
-| `services.gitea.database.name` | | |
-| `services.gitea.database.password` | | |
-| `services.gitea.database.passwordFile` | | |
-| `services.gitea.database.path` | | |
-| `services.gitea.database.port` | | |
-| `services.gitea.database.socket` | | |
-| `services.gitea.database.type` | | |
-| `services.gitea.database.user` | | |
-| `services.gitea.disableRegistration` | | |
-| `services.gitea.domain` | | |
-| `services.gitea.dump.backupDir` | | |
-| `services.gitea.dump.enable` | | |
-| `services.gitea.dump.file` | | |
-| `services.gitea.dump.interval` | | |
-| `services.gitea.dump.type` | | |
-| `services.gitea.enable` | | |
-| `services.gitea.enableUnixSocket` | | |
-| `services.gitea.extraConfig` | | |
-| `services.gitea.group` | | |
-| `services.gitea.httpAddress` | | |
-| `services.gitea.httpPort` | | |
-| `services.gitea.lfs.contentDir` | | |
-| `services.gitea.lfs.enable` | | |
-| `services.gitea.log.level` | | |
-| `services.gitea.log.rootPath` | | |
-| `services.gitea.mailerPasswordFile` | | |
-| `services.gitea.metricsTokenFile` | | |
-| `services.gitea.minioAccessKeyId` | | |
-| `services.gitea.minioSecretAccessKey` | | |
-| `services.gitea.package` | | |
-| `services.gitea.repositoryRoot` | | |
-| `services.gitea.rootUrl` | | |
-| `services.gitea.settings` | | |
-| `services.gitea.ssh.clonePort` | | |
-| `services.gitea.ssh.enable` | | |
-| `services.gitea.stateDir` | | |
-| `services.gitea.staticRootPath` | | |
-| `services.gitea.useWizard` | | |
-| `services.gitea.user` | | |
+| --- | --- | --- |
+| `services.gitea.appName` | `string` | Application name. |
+| `services.gitea.camoHmacKeyFile` | `null or string` | Path to a file containing the camo HMAC key. |
+| `services.gitea.captcha.enable` | `boolean` | Enables Gitea to display a CAPTCHA challenge on registration. |
+| `services.gitea.captcha.requireForExternalRegistration` | `boolean` | Displays a CAPTCHA challenge for users that register externally. |
+| `services.gitea.captcha.requireForLogin` | `boolean` | Displays a CAPTCHA challenge whenever a user logs in. |
+| `services.gitea.captcha.secretFile` | `null or string` | Path to a file containing the CAPTCHA secret key. |
+| `services.gitea.captcha.siteKey` | `null or string` | CAPTCHA site key to use for Gitea. |
+| `services.gitea.captcha.type` | `one of "image", "recaptcha", "hcaptcha", "mcaptcha", "cfturnstile"` | The type of CAPTCHA to use for Gitea. |
+| `services.gitea.captcha.url` | `null or string` | CAPTCHA url to use for Gitea. Only relevant for `recaptcha` and `mcaptcha`. |
+| `services.gitea.customDir` | `string` | Gitea custom directory. Used for config, custom templates and other options. |
+| `services.gitea.database.createDatabase` | `boolean` | Whether to create a local database automatically. |
+| `services.gitea.database.host` | `string` | Database host address. |
+| `services.gitea.database.name` | `string` | Database name. |
+| `services.gitea.database.password` | `string` | The password corresponding to {option}`database.user`. Warning: this is stored in cleartext in the Nix store! Use {option}`database.passwordFile` instead. |
+| `services.gitea.database.passwordFile` | `null or absolute path` | A file containing the password corresponding to {option}`database.user`. |
+| `services.gitea.database.path` | `string` | Path to the sqlite3 database file. |
+| `services.gitea.database.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Database host port. |
+| `services.gitea.database.socket` | `null or absolute path` | Path to the unix socket file to use for authentication. |
+| `services.gitea.database.type` | `one of "sqlite3", "mysql", "postgres"` | Database engine to use. |
+| `services.gitea.database.user` | `string` | Database user. |
+| `services.gitea.dump.backupDir` | `string` | Path to the dump files. |
+| `services.gitea.dump.enable` | `boolean` | Enable a timer that runs gitea dump to generate backup-files of the current gitea database and repositories. |
+| `services.gitea.dump.file` | `null or string` | Filename to be used for the dump. If `null` a default name is chosen by gitea. |
+| `services.gitea.dump.interval` | `string` | Run a gitea dump at this interval. Runs by default at 04:31 every day. The format is described in {manpage}`systemd.time(7)`. |
+| `services.gitea.dump.type` | `one of "zip", "rar", "tar", "sz", "tar.gz", "tar.xz", "tar.bz2", "tar.br", "tar.lz4", "tar.zst"` | Archive format used to store the dump file. |
+| `services.gitea.enable` | `boolean` | Enable Gitea Service. |
+| `services.gitea.extraConfig` | `null or string` | Configuration lines appended to the generated gitea configuration file. |
+| `services.gitea.group` | `string` | Group under which gitea runs. |
+| `services.gitea.lfs.contentDir` | `string` | Where to store LFS files. |
+| `services.gitea.lfs.enable` | `boolean` | Enables git-lfs support. |
+| `services.gitea.mailerPasswordFile` | `null or string` | Path to a file containing the SMTP password. |
+| `services.gitea.metricsTokenFile` | `null or string` | Path to a file containing the metrics authentication token. |
+| `services.gitea.minioAccessKeyId` | `null or string` | Path to a file containing the Minio access key id. |
+| `services.gitea.minioSecretAccessKey` | `null or string` | Path to a file containing the Minio secret access key. |
+| `services.gitea.package` | `package` | The gitea package to use. |
+| `services.gitea.repositoryRoot` | `string` | Path to the git repositories. |
+| `services.gitea.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Gitea configuration. Refer to <https://docs.gitea.io/en-us/config-cheat-sheet/> for details on supported values. |
+| `services.gitea.settings.log.LEVEL` | `one of "Trace", "Debug", "Info", "Warn", "Error", "Critical"` | General log level. |
+| `services.gitea.settings.log.ROOT_PATH` | `string` | Root path for log files. |
+| `services.gitea.settings.mailer.ENABLED` | `boolean` | Whether to use an email service to send notifications. |
+| `services.gitea.settings.mailer.PROTOCOL` | `one of <null>, "smtp", "smtps", "smtp+starttls", "smtp+unix", "sendmail", "dummy"` | Which mail server protocol to use. |
+| `services.gitea.settings.mailer.SENDMAIL_PATH` | `string` | Path to sendmail binary or script. |
+| `services.gitea.settings.server.DISABLE_SSH` | `boolean` | Disable external SSH feature. |
+| `services.gitea.settings.server.DOMAIN` | `string` | Domain name of your server. |
+| `services.gitea.settings.server.HTTP_ADDR` | `string or absolute path` | Listen address. Must be a path when using a unix socket. |
+| `services.gitea.settings.server.HTTP_PORT` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listen port. Ignored when using a unix socket. |
+| `services.gitea.settings.server.PROTOCOL` | `one of "http", "https", "fcgi", "http+unix", "fcgi+unix"` | Listen protocol. `+unix` means "over unix", not "in addition to." |
+| `services.gitea.settings.server.ROOT_URL` | `string` | Full public URL of gitea server. |
+| `services.gitea.settings.server.SSH_PORT` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | SSH port displayed in clone URL. The option is required to configure a service when the external visible port differs from the local listening port i.e. if port forwarding is used. |
+| `services.gitea.settings.server.STATIC_ROOT_PATH` | `string or absolute path` | Upper level of template and static files path. |
+| `services.gitea.settings.service.DISABLE_REGISTRATION` | `boolean` | By default any user can create an account on this `gitea` instance. This can be disabled by using this option. *Note:* please keep in mind that this should be added after the initial deploy as the first registered user will be the administrator. |
+| `services.gitea.settings.session.COOKIE_SECURE` | `boolean` | Marks session cookies as "secure" as a hint for browsers to only send them via HTTPS. This option is recommend, if gitea is being served over HTTPS. |
+| `services.gitea.stateDir` | `string` | Gitea data directory. |
+| `services.gitea.user` | `string` | User account under which gitea runs. |

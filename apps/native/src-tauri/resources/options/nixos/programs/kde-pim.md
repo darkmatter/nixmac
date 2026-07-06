@@ -5,8 +5,8 @@
 All options under `programs.kde-pim`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `programs.kde-pim.enable` | | |
-| `programs.kde-pim.kmail` | | |
-| `programs.kde-pim.kontact` | | |
-| `programs.kde-pim.merkuro` | | |
+| --- | --- | --- |
+| `programs.kde-pim.enable` | `boolean` | Whether to enable KDE PIM base packages. |
+| `programs.kde-pim.kmail` | `boolean` | Whether to enable KMail. |
+| `programs.kde-pim.kontact` | `boolean` | Whether to enable Kontact. |
+| `programs.kde-pim.merkuro` | `boolean` | Whether to enable Merkuro. |

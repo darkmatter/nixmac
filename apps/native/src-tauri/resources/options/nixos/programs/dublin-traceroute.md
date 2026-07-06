@@ -5,6 +5,6 @@
 All options under `programs.dublin-traceroute`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `programs.dublin-traceroute.enable` | | |
-| `programs.dublin-traceroute.package` | | |
+| --- | --- | --- |
+| `programs.dublin-traceroute.enable` | `boolean` | Whether to enable dublin-traceroute (including setcap wrapper). |
+| `programs.dublin-traceroute.package` | `package` | The dublin-traceroute package to use. |

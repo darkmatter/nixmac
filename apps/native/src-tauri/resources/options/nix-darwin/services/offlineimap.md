@@ -5,10 +5,10 @@
 All options under `services.offlineimap`.
 
 | Option | Type | Description |
-| ------------------------------------ | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| --- | --- | --- |
 | `services.offlineimap.enable` | `boolean` | Whether to enable Offlineimap, a software to dispose your mailbox(es) as a local Maildir(s). |
-| `services.offlineimap.extraConfig` | `strings concatenated with “\n”` | Additional text to be appended to offlineimaprc . |
+| `services.offlineimap.extraConfig` | `strings concatenated with "\n"` | Additional text to be appended to {file}`offlineimaprc`. |
 | `services.offlineimap.package` | `package` | Offlineimap derivation to use. |
-| `services.offlineimap.path` | `list of absolute path` | List of derivations to put in Offlineimap’s path. |
+| `services.offlineimap.path` | `list of absolute path` | List of derivations to put in Offlineimap's path. |
 | `services.offlineimap.runQuick` | `boolean` | Run only quick synchronizations. Ignore any flag updates on IMAP servers. If a flag on the remote IMAP changes, and we have the message locally, it will be left untouched in a quick run. |
 | `services.offlineimap.startInterval` | `null or signed integer` | Optional key to start offlineimap services each N seconds |

@@ -5,7 +5,7 @@
 All options under `programs.visidata`.
 
 | Option | Type | Description |
-| ------------------------------ | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.visidata.enable` | `boolean` | Whether to enable Visidata. |
 | `programs.visidata.package` | `null or package` | The visidata package to use. |
-| `programs.visidata.visidatarc` | `strings concatenated with “\n”` | Configuration settings and Python function declarations to be written to ~/.visidatarc. All available options can be found here: https://www.visidata.org/docs/ . |
+| `programs.visidata.visidatarc` | `strings concatenated with "\n"` | Configuration settings and Python function declarations to be written to ~/.visidatarc. All available options can be found here: <https://www.visidata.org/docs/>. |

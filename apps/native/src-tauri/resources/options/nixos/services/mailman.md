@@ -5,36 +5,32 @@
 All options under `services.mailman`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.mailman.enable` | | |
-| `services.mailman.enablePostfix` | | |
-| `services.mailman.extraPythonPackages` | | |
-| `services.mailman.hyperkitty.baseUrl` | | |
-| `services.mailman.hyperkitty.enable` | | |
-| `services.mailman.hyperkittyApiKey` | | |
-| `services.mailman.hyperkittyBaseUrl` | | |
-| `services.mailman.ldap.attrMap.email` | | |
-| `services.mailman.ldap.attrMap.firstName` | | |
-| `services.mailman.ldap.attrMap.lastName` | | |
-| `services.mailman.ldap.attrMap.username` | | |
-| `services.mailman.ldap.bindDn` | | |
-| `services.mailman.ldap.bindPasswordFile` | | |
-| `services.mailman.ldap.enable` | | |
-| `services.mailman.ldap.groupSearch.ou` | | |
-| `services.mailman.ldap.groupSearch.query` | | |
-| `services.mailman.ldap.groupSearch.type` | | |
-| `services.mailman.ldap.serverUri` | | |
-| `services.mailman.ldap.superUserGroup` | | |
-| `services.mailman.ldap.userSearch.ou` | | |
-| `services.mailman.ldap.userSearch.query` | | |
-| `services.mailman.package` | | |
-| `services.mailman.packageSet` | | |
-| `services.mailman.restApiPassFile` | | |
-| `services.mailman.serve.enable` | | |
-| `services.mailman.serve.uwsgiSettings` | | |
-| `services.mailman.serve.virtualRoot` | | |
-| `services.mailman.settings` | | |
-| `services.mailman.siteOwner` | | |
-| `services.mailman.webHosts` | | |
-| `services.mailman.webSettings` | | |
-| `services.mailman.webUser` | | |
+| --- | --- | --- |
+| `services.mailman.enable` | `boolean` | Enable Mailman on this host. Requires an active MTA on the host (e.g. Postfix). |
+| `services.mailman.enablePostfix` | `boolean` | Enable Postfix integration. Requires an active Postfix installation. If you want to use another MTA, set this option to false and configure settings in services.mailman.settings.mta. Refer to the Mailman manual for more info. |
+| `services.mailman.hyperkitty.baseUrl` | `string` | Where can Mailman connect to Hyperkitty's internal API, preferably on localhost? |
+| `services.mailman.hyperkitty.enable` | `boolean` | Whether to enable the Hyperkitty archiver for Mailman. |
+| `services.mailman.ldap.attrMap.email` | `string` | LDAP-attribute that corresponds to the `email`-attribute in mailman. |
+| `services.mailman.ldap.attrMap.firstName` | `string` | LDAP-attribute that corresponds to the `firstName`-attribute in mailman. |
+| `services.mailman.ldap.attrMap.lastName` | `string` | LDAP-attribute that corresponds to the `lastName`-attribute in mailman. |
+| `services.mailman.ldap.attrMap.username` | `string` | LDAP-attribute that corresponds to the `username`-attribute in mailman. |
+| `services.mailman.ldap.bindDn` | `string` | Service account to bind against. |
+| `services.mailman.ldap.bindPasswordFile` | `string` | Path to the file containing the bind password of the service account defined by [](#opt-services.mailman.ldap.bindDn). |
+| `services.mailman.ldap.enable` | `boolean` | Whether to enable LDAP auth. |
+| `services.mailman.ldap.groupSearch.ou` | `string` | Organizational unit to look up a group. |
+| `services.mailman.ldap.groupSearch.query` | `string` | Query to find a group associated to a user in the LDAP database. |
+| `services.mailman.ldap.groupSearch.type` | `one of "posixGroup", "groupOfNames", "memberDNGroup", "nestedMemberDNGroup", "nestedGroupOfNames", "groupOfUniqueNames", "nestedGroupOfUniqueNames", "activeDirectoryGroup", "nestedActiveDirectoryGroup", "organizationalRoleGroup", "nestedOrganizationalRoleGroup"` | Type of group to perform a group search against. |
+| `services.mailman.ldap.serverUri` | `string` | LDAP host to connect against. |
+| `services.mailman.ldap.superUserGroup` | `null or string` | Group where a user must be a member of to gain superuser rights. |
+| `services.mailman.ldap.userSearch.ou` | `string` | Organizational unit to look up a user. |
+| `services.mailman.ldap.userSearch.query` | `string` | Query to find a user in the LDAP database. |
+| `services.mailman.packageSet` | `attribute set` | The mailmanPackages package to use. |
+| `services.mailman.restApiPassFile` | `null or string` | Path to the file containing the value for `MAILMAN_REST_API_PASS`. |
+| `services.mailman.serve.enable` | `boolean` | Whether to enable automatic nginx and uwsgi setup for mailman-web. |
+| `services.mailman.serve.uwsgiSettings` | `JSON value` | Extra configuration to merge into uwsgi config. |
+| `services.mailman.serve.virtualRoot` | `string` | Path to mount the mailman-web django application on. |
+| `services.mailman.settings` | `attribute set of attribute set of string` | Settings for mailman.cfg |
+| `services.mailman.siteOwner` | `string` | Certain messages that must be delivered to a human, but which can't be delivered to a list owner (e.g. a bounce from a list owner), will be sent to this address. It should point to a human. |
+| `services.mailman.webHosts` | `list of string` | The list of hostnames and/or IP addresses from which the Mailman Web UI will accept requests. By default, "localhost" and "127.0.0.1" are enabled. All additional names under which your web server accepts requests for the UI must be listed here or incoming requests will be rejected. |
+| `services.mailman.webSettings` | `attribute set` | Overrides for the default mailman-web Django settings. |
+| `services.mailman.webUser` | `string` | User to run mailman-web as |

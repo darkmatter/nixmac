@@ -5,9 +5,12 @@
 All options under `services.vmalert`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.vmalert.enable` | | |
-| `services.vmalert.instances` | | |
-| `services.vmalert.package` | | |
-| `services.vmalert.rules` | | |
-| `services.vmalert.settings` | | |
+| --- | --- | --- |
+| `services.vmalert.instances` | `attribute set of (submodule)` | Define multiple instances of vmalert. |
+| `services.vmalert.instances.<name>.enable` | `boolean` | Wether to enable VictoriaMetrics's `vmalert`. `vmalert` evaluates alerting and recording rules against a data source, sends notifications via Alertmanager. |
+| `services.vmalert.instances.<name>.rules` | `YAML 1.1 value` | A list of the given alerting or recording rules against configured `"datasource.url"` compatible with Prometheus HTTP API for `vmalert` to execute. Refer to <https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/app/vmalert/README.md#rules> for details on supported values. |
+| `services.vmalert.instances.<name>.settings` | `open submodule of attribute set of (boolean or signed integer or absolute path or string or list of (boolean or signed integer or absolute path or string))` | `vmalert` configuration, passed via command line flags. Refer to <https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/app/vmalert/README.md#configuration> for details on supported values. |
+| `services.vmalert.instances.<name>.settings."datasource.url"` | `non-empty string` | Datasource compatible with Prometheus HTTP API. |
+| `services.vmalert.instances.<name>.settings."notifier.url"` | `list of non-empty string` | Prometheus Alertmanager URL. List all Alertmanager URLs if it runs in the cluster mode to ensure high availability. |
+| `services.vmalert.instances.<name>.settings.rule` | `list of absolute path` | Path to the files with alerting and/or recording rules. ::: {.note} Consider using the {option}`services.vmalert.instances.<name>.rules` option as a convenient alternative for declaring rules directly in the `nix` language. ::: |
+| `services.vmalert.package` | `package` | The victoriametrics package to use. |

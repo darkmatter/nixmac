@@ -5,11 +5,9 @@
 All options under `services.greetd`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.greetd.enable` | | |
-| `services.greetd.greeterManagesPlymouth` | | |
-| `services.greetd.package` | | |
-| `services.greetd.restart` | | |
-| `services.greetd.settings` | | |
-| `services.greetd.useTextGreeter` | | |
-| `services.greetd.vt` | | |
+| --- | --- | --- |
+| `services.greetd.enable` | `boolean` | Whether to enable greetd, a minimal and flexible login manager daemon. |
+| `services.greetd.package` | `package` | The greetd package to use. |
+| `services.greetd.restart` | `boolean` | Whether to restart greetd when it terminates (e.g. on failure). This is usually desirable so a user can always log in, but should be disabled when using 'settings.initial_session' (autologin), because every greetd restart will trigger the autologin again. |
+| `services.greetd.settings` | `TOML value` | greetd configuration ([documentation](https://man.sr.ht/~kennylevinsen/greetd/)) as a Nix attribute set. |
+| `services.greetd.useTextGreeter` | `boolean` | Whether the greeter uses text-based user interfaces (For example, tuigreet). When set to true, some systemd service configuration will be adjusted to avoid systemd boot messages interrupt TUI. |

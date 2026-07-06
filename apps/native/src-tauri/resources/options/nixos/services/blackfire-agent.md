@@ -5,6 +5,8 @@
 All options under `services.blackfire-agent`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.blackfire-agent.enable` | | |
-| `services.blackfire-agent.settings` | | |
+| --- | --- | --- |
+| `services.blackfire-agent.enable` | `boolean` | Whether to enable Blackfire profiler agent. |
+| `services.blackfire-agent.settings` | `open submodule of attribute set of string` | See <https://blackfire.io/docs/up-and-running/configuration/agent> |
+| `services.blackfire-agent.settings.server-id` | `string` | Sets the server id used to authenticate with Blackfire You can find your personal server-id at <https://blackfire.io/my/settings/credentials> |
+| `services.blackfire-agent.settings.server-token` | `string` | Sets the server token used to authenticate with Blackfire You can find your personal server-token at <https://blackfire.io/my/settings/credentials> |

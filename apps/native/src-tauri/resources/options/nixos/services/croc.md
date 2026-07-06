@@ -5,9 +5,9 @@
 All options under `services.croc`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.croc.debug` | | |
-| `services.croc.enable` | | |
-| `services.croc.openFirewall` | | |
-| `services.croc.pass` | | |
-| `services.croc.ports` | | |
+| --- | --- | --- |
+| `services.croc.debug` | `boolean` | Whether to enable debug logs. |
+| `services.croc.enable` | `boolean` | Whether to enable croc relay. |
+| `services.croc.openFirewall` | `boolean` | Whether to enable opening of the peer port(s) in the firewall. |
+| `services.croc.pass` | `absolute path or string` | Password or passwordfile for the relay. |
+| `services.croc.ports` | `list of 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Ports of the relay. |

@@ -5,35 +5,33 @@
 All options under `services.bird-lg`.
 
 | Option | Type | Description |
-| ------------------------------------------------ | ---- | ----------- |
-| `services.bird-lg.frontend.bgpMapInfo` | | |
-| `services.bird-lg.frontend.dnsInterface` | | |
-| `services.bird-lg.frontend.domain` | | |
-| `services.bird-lg.frontend.enable` | | |
-| `services.bird-lg.frontend.extraArgs` | | |
-| `services.bird-lg.frontend.listenAddress` | | |
-| `services.bird-lg.frontend.listenAddresses` | | |
-| `services.bird-lg.frontend.nameFilter` | | |
-| `services.bird-lg.frontend.navbar.allServers` | | |
-| `services.bird-lg.frontend.navbar.allServersURL` | | |
-| `services.bird-lg.frontend.navbar.brand` | | |
-| `services.bird-lg.frontend.navbar.brandURL` | | |
-| `services.bird-lg.frontend.netSpecificMode` | | |
-| `services.bird-lg.frontend.protocolFilter` | | |
-| `services.bird-lg.frontend.proxyPort` | | |
-| `services.bird-lg.frontend.servers` | | |
-| `services.bird-lg.frontend.timeout` | | |
-| `services.bird-lg.frontend.titleBrand` | | |
-| `services.bird-lg.frontend.whois` | | |
-| `services.bird-lg.group` | | |
-| `services.bird-lg.package` | | |
-| `services.bird-lg.proxy.allowedIPs` | | |
-| `services.bird-lg.proxy.birdSocket` | | |
-| `services.bird-lg.proxy.enable` | | |
-| `services.bird-lg.proxy.extraArgs` | | |
-| `services.bird-lg.proxy.listenAddress` | | |
-| `services.bird-lg.proxy.listenAddresses` | | |
-| `services.bird-lg.proxy.traceroute.binary` | | |
-| `services.bird-lg.proxy.traceroute.flags` | | |
-| `services.bird-lg.proxy.traceroute.rawOutput` | | |
-| `services.bird-lg.user` | | |
+| --- | --- | --- |
+| `services.bird-lg.frontend.bgpMapInfo` | `list of string` | Information displayed in bgpmap. |
+| `services.bird-lg.frontend.dnsInterface` | `string` | DNS zone to query ASN information. |
+| `services.bird-lg.frontend.domain` | `string` | Server name domain suffixes. |
+| `services.bird-lg.frontend.enable` | `boolean` | Whether to enable Bird Looking Glass Frontend Webserver. |
+| `services.bird-lg.frontend.extraArgs` | `list of string` | Extra parameters documented [here](https://github.com/xddxdd/bird-lg-go#frontend). :::{.note} Passing lines (plain strings) is deprecated in favour of passing lists of strings. ::: |
+| `services.bird-lg.frontend.listenAddresses` | `string or list of string` | Address to listen on. |
+| `services.bird-lg.frontend.nameFilter` | `string` | Protocol names to hide in summary tables (RE2 syntax), |
+| `services.bird-lg.frontend.navbar.allServers` | `string` | Text of 'All server' button in the navigation bar. |
+| `services.bird-lg.frontend.navbar.allServersURL` | `string` | URL of 'All servers' button. |
+| `services.bird-lg.frontend.navbar.brand` | `string` | Brand to show in the navigation bar . |
+| `services.bird-lg.frontend.navbar.brandURL` | `string` | URL of the brand to show in the navigation bar. |
+| `services.bird-lg.frontend.netSpecificMode` | `string` | Apply network-specific changes for some networks. |
+| `services.bird-lg.frontend.protocolFilter` | `list of string` | Information displayed in bgpmap. |
+| `services.bird-lg.frontend.proxyPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port bird-lg-proxy is running on. |
+| `services.bird-lg.frontend.servers` | `list of string` | Server name prefixes. |
+| `services.bird-lg.frontend.timeout` | `signed integer` | Time before request timed out, in seconds. |
+| `services.bird-lg.frontend.titleBrand` | `string` | Prefix of page titles in browser tabs. |
+| `services.bird-lg.frontend.whois` | `string` | Whois server for queries. |
+| `services.bird-lg.group` | `string` | Group to run the service. |
+| `services.bird-lg.package` | `package` | The bird-lg package to use. |
+| `services.bird-lg.proxy.allowedIPs` | `list of string` | List of IPs or networks to allow (default all allowed). |
+| `services.bird-lg.proxy.birdSocket` | `string` | Bird control socket path. |
+| `services.bird-lg.proxy.enable` | `boolean` | Whether to enable Bird Looking Glass Proxy. |
+| `services.bird-lg.proxy.extraArgs` | `list of string` | Extra parameters documented [here](https://github.com/xddxdd/bird-lg-go#proxy). |
+| `services.bird-lg.proxy.listenAddresses` | `string or list of string` | Address to listen on. |
+| `services.bird-lg.proxy.traceroute.binary` | `string` | Traceroute's binary path. |
+| `services.bird-lg.proxy.traceroute.flags` | `list of string` | Flags for traceroute process |
+| `services.bird-lg.proxy.traceroute.rawOutput` | `boolean` | Display traceroute output in raw format. |
+| `services.bird-lg.user` | `string` | User to run the service. |

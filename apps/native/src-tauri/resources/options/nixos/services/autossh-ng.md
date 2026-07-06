@@ -5,5 +5,10 @@
 All options under `services.autossh-ng`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.autossh-ng.sessions` | | |
+| --- | --- | --- |
+| `services.autossh-ng.sessions` | `attribute set of (submodule)` | Set of SSH sessions to start as systemd services. Each service is named 'autossh-ng-{session.name}'. |
+| `services.autossh-ng.sessions.<name>.destination` | `string` | Destination to connect to |
+| `services.autossh-ng.sessions.<name>.extraArguments` | `strings concatenated with " "` | Arguments to be passed to the ssh process process. Some meaningful options include -D (open SOCKS proxy on local port), -R (forward remote port), -L (forward local port), -v (Enable debug), -i (identity file to use). Check ssh manual for the complete list. |
+| `services.autossh-ng.sessions.<name>.hostKeyChecking` | `boolean` | Whether to enable host key checking. The advantage of enabling host key checking is that it protects against AitM attacks, on the other hand disabling host key checking makes the autossh connection resilient against host key rotations of the destination machine. |
+| `services.autossh-ng.sessions.<name>.knownHostsFile` | `absolute path` | If you enabled host key checking, use this file to verify destination host keys against. |
+| `services.autossh-ng.sessions.<name>.user` | `string` | Name of the user the local session should run as |

@@ -5,6 +5,6 @@
 All options under `services.svnserve`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.svnserve.enable` | | |
-| `services.svnserve.svnBaseDir` | | |
+| --- | --- | --- |
+| `services.svnserve.enable` | `boolean` | Whether to enable svnserve to serve Subversion repositories through the SVN protocol. |
+| `services.svnserve.svnBaseDir` | `string` | Base directory from which Subversion repositories are accessed. |

@@ -5,7 +5,7 @@
 All options under `programs.niri`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `programs.niri.enable` | | |
-| `programs.niri.package` | | |
-| `programs.niri.useNautilus` | | |
+| --- | --- | --- |
+| `programs.niri.enable` | `boolean` | Whether to enable Niri, a scrollable-tiling Wayland compositor. |
+| `programs.niri.package` | `package` | The niri package to use. |
+| `programs.niri.useNautilus` | `boolean` | Whether to enable Nautilus as file-chooser for xdg-desktop-portal-gnome. |

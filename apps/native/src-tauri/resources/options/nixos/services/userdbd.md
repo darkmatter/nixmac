@@ -5,7 +5,6 @@
 All options under `services.userdbd`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.userdbd.enable` | | |
-| `services.userdbd.enableSSHSupport` | | |
-| `services.userdbd.silenceHighSystemUsers` | | |
+| --- | --- | --- |
+| `services.userdbd.enable` | `boolean` | Whether to enable the systemd JSON user/group record lookup service . |
+| `services.userdbd.enableSSHSupport` | `boolean` | Whether to enable exposing OpenSSH public keys defined in userdb. Be aware that this enables modifying public keys at runtime, either by users managed by {option}`services.homed`, or globally via drop-in files . |

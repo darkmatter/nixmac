@@ -5,6 +5,6 @@
 All options under `services.polkit-gnome`.
 
 | Option | Type | Description |
-| ------------------------------- | --------- | ---------------------------------------- |
+| --- | --- | --- |
 | `services.polkit-gnome.enable` | `boolean` | Whether to enable GNOME Policykit Agent. |
 | `services.polkit-gnome.package` | `package` | The polkit_gnome package to use. |

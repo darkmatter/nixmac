@@ -5,8 +5,8 @@
 All options under `services.u9fs`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.u9fs.enable` | | |
-| `services.u9fs.extraArgs` | | |
-| `services.u9fs.listenStreams` | | |
-| `services.u9fs.user` | | |
+| --- | --- | --- |
+| `services.u9fs.enable` | `boolean` | Whether to run the u9fs 9P server for Unix. |
+| `services.u9fs.extraArgs` | `string` | Extra arguments to pass on invocation, see {command}`man 4 u9fs` |
+| `services.u9fs.listenStreams` | `list of string` | Sockets to listen for clients on. See {command}`man 5 systemd.socket` for socket syntax. |
+| `services.u9fs.user` | `string` | User to run u9fs under. |

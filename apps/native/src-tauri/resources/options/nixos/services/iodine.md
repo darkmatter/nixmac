@@ -5,10 +5,14 @@
 All options under `services.iodine`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.iodine.clients` | | |
-| `services.iodine.server.domain` | | |
-| `services.iodine.server.enable` | | |
-| `services.iodine.server.extraConfig` | | |
-| `services.iodine.server.ip` | | |
-| `services.iodine.server.passwordFile` | | |
+| --- | --- | --- |
+| `services.iodine.clients` | `attribute set of (submodule)` | Each attribute of this option defines a systemd service that runs iodine. Many or none may be defined. The name of each service is `iodine-«name»` where «name» is the name of the corresponding attribute name. |
+| `services.iodine.clients.<name>.extraConfig` | `string` | Additional command line parameters |
+| `services.iodine.clients.<name>.passwordFile` | `string` | Path to a file containing the password. |
+| `services.iodine.clients.<name>.relay` | `string` | DNS server to use as an intermediate relay to the iodined server |
+| `services.iodine.clients.<name>.server` | `string` | Hostname of server running iodined |
+| `services.iodine.server.domain` | `string` | Domain or subdomain of which nameservers point to us |
+| `services.iodine.server.enable` | `boolean` | enable iodined server |
+| `services.iodine.server.extraConfig` | `string` | Additional command line parameters |
+| `services.iodine.server.ip` | `string` | The assigned ip address or ip range |
+| `services.iodine.server.passwordFile` | `string` | File that contains password |

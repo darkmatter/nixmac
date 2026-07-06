@@ -5,9 +5,9 @@
 All options under `services.dnscache`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.dnscache.clientIps` | | |
-| `services.dnscache.domainServers` | | |
-| `services.dnscache.enable` | | |
-| `services.dnscache.forwardOnly` | | |
-| `services.dnscache.ip` | | |
+| --- | --- | --- |
+| `services.dnscache.clientIps` | `list of string` | Client IP addresses (or prefixes) from which to accept connections. |
+| `services.dnscache.domainServers` | `attribute set of list of string` | Table of {hostname: server} pairs to use as authoritative servers for hosts (and subhosts). If entry for @ is not specified predefined list of root servers is used. |
+| `services.dnscache.enable` | `boolean` | Whether to run the dnscache caching dns server. |
+| `services.dnscache.forwardOnly` | `boolean` | Whether to treat root servers (for @) as caching servers, requesting addresses the same way a client does. This is needed if you want to use e.g. Google DNS as your upstream DNS. |
+| `services.dnscache.ip` | `string` | IP address on which to listen for connections. |

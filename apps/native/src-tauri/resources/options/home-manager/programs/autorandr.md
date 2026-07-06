@@ -5,8 +5,33 @@
 All options under `programs.autorandr`.
 
 | Option | Type | Description |
-| ----------------------------- | ------------------------------ | --------------------------------- |
+| --- | --- | --- |
 | `programs.autorandr.enable` | `boolean` | Whether to enable Autorandr. |
 | `programs.autorandr.hooks` | `submodule` | Global hook scripts |
+| `programs.autorandr.hooks.postswitch` | `attribute set of strings concatenated with "\n"` | Postswitch hook executed after mode switch. |
+| `programs.autorandr.hooks.predetect` | `attribute set of strings concatenated with "\n"` | Predetect hook executed before autorandr attempts to run xrandr. |
+| `programs.autorandr.hooks.preswitch` | `attribute set of strings concatenated with "\n"` | Preswitch hook executed before mode switch. |
 | `programs.autorandr.package` | `null or package` | The autorandr package to use. |
 | `programs.autorandr.profiles` | `attribute set of (submodule)` | Autorandr profiles specification. |
+| `programs.autorandr.profiles.<name>.config` | `attribute set of (submodule)` | Per output profile configuration. |
+| `programs.autorandr.profiles.<name>.config.<name>.crtc` | `null or (unsigned integer, meaning >=0)` | Output video display controller. |
+| `programs.autorandr.profiles.<name>.config.<name>.dpi` | `null or (positive integer, meaning >0)` | Output DPI configuration. |
+| `programs.autorandr.profiles.<name>.config.<name>.enable` | `boolean` | Whether to enable the output. |
+| `programs.autorandr.profiles.<name>.config.<name>.extraConfig` | `strings concatenated with "\n"` | Extra lines to append to this profile's config. |
+| `programs.autorandr.profiles.<name>.config.<name>.filter` | `null or one of "bilinear", "nearest"` | Interpolation method to be used for scaling the output. |
+| `programs.autorandr.profiles.<name>.config.<name>.gamma` | `string` | Output gamma configuration. |
+| `programs.autorandr.profiles.<name>.config.<name>.mode` | `string` | Output resolution. |
+| `programs.autorandr.profiles.<name>.config.<name>.position` | `string` | Output position |
+| `programs.autorandr.profiles.<name>.config.<name>.primary` | `boolean` | Whether output should be marked as primary |
+| `programs.autorandr.profiles.<name>.config.<name>.rate` | `string` | Output framerate. |
+| `programs.autorandr.profiles.<name>.config.<name>.rotate` | `null or one of "normal", "left", "right", "inverted"` | Output rotate configuration. |
+| `programs.autorandr.profiles.<name>.config.<name>.scale` | `null or (submodule)` | Output scale configuration. Either configure by pixels or a scaling factor. When using pixel method the {manpage}`xrandr(1)` option `--scale-from` will be used; when using factor method the option `--scale` will be used. This option is a shortcut version of the transform option and they are mutually exclusive. |
+| `programs.autorandr.profiles.<name>.config.<name>.scale.method` | `one of "factor", "pixel"` | Output scaling method. |
+| `programs.autorandr.profiles.<name>.config.<name>.scale.x` | `floating point number or (positive integer, meaning >0)` | Horizontal scaling factor/pixels. |
+| `programs.autorandr.profiles.<name>.config.<name>.scale.y` | `floating point number or (positive integer, meaning >0)` | Vertical scaling factor/pixels. |
+| `programs.autorandr.profiles.<name>.config.<name>.transform` | `null or (3×3 matrix of floating point numbers)` | Refer to {manpage}`xrandr(1)` for the documentation of the transform matrix. |
+| `programs.autorandr.profiles.<name>.fingerprint` | `attribute set of string` | Output name to EDID mapping. Use `autorandr --fingerprint` to get current setup values. |
+| `programs.autorandr.profiles.<name>.hooks` | `submodule` | Profile hook scripts. |
+| `programs.autorandr.profiles.<name>.hooks.postswitch` | `strings concatenated with "\n"` | Postswitch hook executed after mode switch. |
+| `programs.autorandr.profiles.<name>.hooks.predetect` | `strings concatenated with "\n"` | Predetect hook executed before autorandr attempts to run xrandr. |
+| `programs.autorandr.profiles.<name>.hooks.preswitch` | `strings concatenated with "\n"` | Preswitch hook executed before mode switch. |

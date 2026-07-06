@@ -5,8 +5,8 @@
 All options under `services.howdy`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.howdy.control` | | |
-| `services.howdy.enable` | | |
-| `services.howdy.package` | | |
-| `services.howdy.settings` | | |
+| --- | --- | --- |
+| `services.howdy.control` | `string` | PAM control flag to use for Howdy. Sets the {option}`security.pam.howdy.control` option. Refer to {manpage}`pam.conf(5)` for options. |
+| `services.howdy.enable` | `boolean` | Whether to enable Howdy and its PAM module for face recognition. See `services.linux-enable-ir-emitter` for enabling the IR emitter support. ::: {.caution} Howdy is not a safe alternative to unlocking with your password. It can be fooled using a well-printed photo. Do **not** use it as the sole authentication method for your system. ::: ::: {.note} By default, the {option}`config.services.howdy.control` option is set to `"required"`, meaning it will act as a second-factor authentication in most services. To change this, set the option to `"sufficient"`. ::: |
+| `services.howdy.package` | `package` | The howdy package to use. |
+| `services.howdy.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Howdy configuration file. Refer to <https://github.com/boltgolt/howdy/blob/d3ab99382f88f043d15f15c1450ab69433892a1c/howdy/src/config.ini> for options. |

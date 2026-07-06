@@ -5,14 +5,11 @@
 All options under `services.kmscon`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.kmscon.autologinUser` | | |
-| `services.kmscon.config` | | |
-| `services.kmscon.enable` | | |
-| `services.kmscon.extraConfig` | | |
-| `services.kmscon.extraOptions` | | |
-| `services.kmscon.fonts` | | |
-| `services.kmscon.hwRender` | | |
-| `services.kmscon.package` | | |
-| `services.kmscon.term` | | |
-| `services.kmscon.useXkbConfig` | | |
+| --- | --- | --- |
+| `services.kmscon.config` | `open submodule of attribute set of (boolean or signed integer or string)` | Configuration for kmscon. See {manpage}`kmscon.conf(5)` for available options. |
+| `services.kmscon.config.hwaccel` | `boolean` | Whether to enable use hardware acceleration for rendering. |
+| `services.kmscon.config.libseat` | `boolean` | Whether to use libseat for session management. This is the default for kmscon newer than 10.0.0 and prevents launching another GUI from kmscon by `kmscon-launch-gui`. |
+| `services.kmscon.enable` | `boolean` | Whether to enable use kmscon instead of autovt. Kmscon is a simple terminal emulator based on linux kernel mode setting (KMS). It is an attempt to replace the in-kernel VT implementation with a userspace console . |
+| `services.kmscon.extraOptions` | `strings concatenated with " "` | Extra flags to pass to kmscon. |
+| `services.kmscon.package` | `package` | The kmscon package to use. |
+| `services.kmscon.useXkbConfig` | `boolean` | Whether to enable configure keymap from xserver keyboard settings. If enabled, configurations under `services.xserver.xkb` will be injected into kmscon's configuration . |

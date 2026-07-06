@@ -5,11 +5,21 @@
 All options under `programs.alot`.
 
 | Option | Type | Description |
-| --------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.alot.bindings` | `submodule` | Keybindings. |
+| `programs.alot.bindings.bufferlist` | `attribute set of string` | Bufferlist mode keybindings. |
+| `programs.alot.bindings.envelope` | `attribute set of string` | Envelope mode keybindings. |
+| `programs.alot.bindings.global` | `attribute set of string` | Global keybindings. |
+| `programs.alot.bindings.search` | `attribute set of string` | Search mode keybindings. |
+| `programs.alot.bindings.taglist` | `attribute set of string` | Taglist mode keybindings. |
+| `programs.alot.bindings.thread` | `attribute set of string` | Thread mode keybindings. |
 | `programs.alot.enable` | `boolean` | Whether to enable the Alot mail user agent. Alot uses the Notmuch email system and will therefore be automatically enabled for each email account that is managed by Notmuch. |
-| `programs.alot.extraConfig` | `strings concatenated with “\n”` | Extra lines added to alot configuration file. |
-| `programs.alot.hooks` | `strings concatenated with “\n”` | Content of the hooks file. |
+| `programs.alot.extraConfig` | `strings concatenated with "\n"` | Extra lines added to alot configuration file. |
+| `programs.alot.hooks` | `strings concatenated with "\n"` | Content of the hooks file. |
 | `programs.alot.package` | `null or package` | The alot package to use. |
 | `programs.alot.settings` | `attribute set of (string or signed integer or boolean or floating point number)` | Configuration options added to alot configuration file. |
 | `programs.alot.tags` | `attribute set of (submodule)` | How to display the tags. |
+| `programs.alot.tags.<name>.focus` | `null or string` | How to display the tag when focused. |
+| `programs.alot.tags.<name>.normal` | `null or string` | How to display the tag when unfocused. See <https://alot.readthedocs.io/en/latest/configuration/theming.html#tagstring-formatting>. |
+| `programs.alot.tags.<name>.translated` | `null or string` | Fixed string representation for this tag. The tag can be hidden from view, if the key translated is set to `""`, the empty string. |
+| `programs.alot.tags.<name>.translation` | `null or string` | A pair of strings that define a regular substitution to compute the string representation on the fly using `re.sub`. |

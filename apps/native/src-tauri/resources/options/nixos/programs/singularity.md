@@ -5,11 +5,11 @@
 All options under `programs.singularity`.
 
 | Option | Type | Description |
-| -------------------------------------------------- | ---- | ----------- |
-| `programs.singularity.enable` | | |
-| `programs.singularity.enableExternalLocalStateDir` | | |
-| `programs.singularity.enableFakeroot` | | |
-| `programs.singularity.enableSuid` | | |
-| `programs.singularity.package` | | |
-| `programs.singularity.packageOverriden` | | |
-| `programs.singularity.systemBinPaths` | | |
+| --- | --- | --- |
+| `programs.singularity.enable` | `boolean` | Whether to install Singularity/Apptainer with system-level overriding such as SUID support. |
+| `programs.singularity.enableExternalLocalStateDir` | `boolean` | Whether to use top-level directories as LOCALSTATEDIR instead of the store path ones. This affects the SESSIONDIR of Apptainer/Singularity. If set to true, the SESSIONDIR will become `/var/lib/${projectName}/mnt/session`. |
+| `programs.singularity.enableFakeroot` | `boolean` | Whether to enable the `--fakeroot` support of Singularity/Apptainer. This option is deprecated and has no effect. `--fakeroot` support is enabled automatically, as `systemBinPaths = [ "/run/wrappers/bin" ]` is always specified. |
+| `programs.singularity.enableSuid` | `boolean` | Whether to enable the SUID support of Singularity/Apptainer. |
+| `programs.singularity.package` | `package` | The singularity package to use. |
+| `programs.singularity.packageOverriden` | `null or package` | This option provides access to the overridden result of `programs.singularity.package`. For example, the following configuration makes all the Nixpkgs packages use the overridden `singularity`: `Nix { config, lib, pkgs, ... }: {   nixpkgs.overlays = [     (final: prev: {       _singularity-orig = prev.singularity;       singularity = config.programs.singularity.packageOverriden;     })   ];   programs.singularity.enable = true;   programs.singularity.package = pkgs._singularity-orig; } ` Use `lib.mkForce` to forcefully specify the overridden package. |
+| `programs.singularity.systemBinPaths` | `list of absolute path` | (Extra) system-wide /\*\*/bin paths for Apptainer/Singularity to find command-line utilities in. `"/run/wrappers/bin"` is included by default to make utilities with SUID bit set available to Apptainer/Singularity. Use `lib.mkForce` to shadow the default values. |

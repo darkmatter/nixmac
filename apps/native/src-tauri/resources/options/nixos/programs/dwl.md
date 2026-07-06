@@ -5,7 +5,7 @@
 All options under `programs.dwl`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `programs.dwl.enable` | | |
-| `programs.dwl.extraSessionCommands` | | |
-| `programs.dwl.package` | | |
+| --- | --- | --- |
+| `programs.dwl.enable` | `boolean` | Whether to enable Dwl is a compact, hackable compositor for Wayland based on wlroots. You can manually launch Dwl by executing "exec dwl" on a TTY. . |
+| `programs.dwl.extraSessionCommands` | `strings concatenated with "\n"` | Shell commands executed just before dwl is started. |
+| `programs.dwl.package` | `package` | The dwl package to use. |

@@ -5,96 +5,1971 @@
 All options under `services.prometheus`.
 
 | Option | Type | Description |
-| ------------------------------------------------------------ | ---- | ----------- |
-| `services.prometheus.alertmanager-ntfy.enable` | | |
-| `services.prometheus.alertmanager-ntfy.extraConfigFiles` | | |
-| `services.prometheus.alertmanager-ntfy.package` | | |
-| `services.prometheus.alertmanager-ntfy.settings` | | |
-| `services.prometheus.alertmanager.checkConfig` | | |
-| `services.prometheus.alertmanager.clusterPeers` | | |
-| `services.prometheus.alertmanager.configText` | | |
-| `services.prometheus.alertmanager.configuration` | | |
-| `services.prometheus.alertmanager.enable` | | |
-| `services.prometheus.alertmanager.environmentFile` | | |
-| `services.prometheus.alertmanager.extraFlags` | | |
-| `services.prometheus.alertmanager.group` | | |
-| `services.prometheus.alertmanager.listenAddress` | | |
-| `services.prometheus.alertmanager.logFormat` | | |
-| `services.prometheus.alertmanager.logLevel` | | |
-| `services.prometheus.alertmanager.openFirewall` | | |
-| `services.prometheus.alertmanager.package` | | |
-| `services.prometheus.alertmanager.port` | | |
-| `services.prometheus.alertmanager.user` | | |
-| `services.prometheus.alertmanager.webExternalUrl` | | |
-| `services.prometheus.alertmanagerGotify.bindAddress` | | |
-| `services.prometheus.alertmanagerGotify.debug` | | |
-| `services.prometheus.alertmanagerGotify.defaultPriority` | | |
-| `services.prometheus.alertmanagerGotify.dispatchErrors` | | |
-| `services.prometheus.alertmanagerGotify.enable` | | |
-| `services.prometheus.alertmanagerGotify.environmentFile` | | |
-| `services.prometheus.alertmanagerGotify.extendedDetails` | | |
-| `services.prometheus.alertmanagerGotify.gotifyEndpoint.host` | | |
-| `services.prometheus.alertmanagerGotify.gotifyEndpoint.port` | | |
-| `services.prometheus.alertmanagerGotify.gotifyEndpoint.tls` | | |
-| `services.prometheus.alertmanagerGotify.messageAnnotation` | | |
-| `services.prometheus.alertmanagerGotify.metrics.namespace` | | |
-| `services.prometheus.alertmanagerGotify.metrics.path` | | |
-| `services.prometheus.alertmanagerGotify.metrics.username` | | |
-| `services.prometheus.alertmanagerGotify.openFirewall` | | |
-| `services.prometheus.alertmanagerGotify.package` | | |
-| `services.prometheus.alertmanagerGotify.port` | | |
-| `services.prometheus.alertmanagerGotify.priorityAnnotation` | | |
-| `services.prometheus.alertmanagerGotify.timeout` | | |
-| `services.prometheus.alertmanagerGotify.titleAnnotation` | | |
-| `services.prometheus.alertmanagerGotify.webhookPath` | | |
-| `services.prometheus.alertmanagerIrcRelay.enable` | | |
-| `services.prometheus.alertmanagerIrcRelay.extraFlags` | | |
-| `services.prometheus.alertmanagerIrcRelay.package` | | |
-| `services.prometheus.alertmanagerIrcRelay.settings` | | |
-| `services.prometheus.alertmanagerNotificationQueueCapacity` | | |
-| `services.prometheus.alertmanagerTimeout` | | |
-| `services.prometheus.alertmanagerURL` | | |
-| `services.prometheus.alertmanagerWebhookLogger.enable` | | |
-| `services.prometheus.alertmanagerWebhookLogger.extraFlags` | | |
-| `services.prometheus.alertmanagerWebhookLogger.package` | | |
-| `services.prometheus.alertmanagers` | | |
-| `services.prometheus.checkConfig` | | |
-| `services.prometheus.configText` | | |
-| `services.prometheus.enable` | | |
-| `services.prometheus.enableAgentMode` | | |
-| `services.prometheus.enableReload` | | |
-| `services.prometheus.environmentFile` | | |
-| `services.prometheus.exporters` | | |
-| `services.prometheus.extraFlags` | | |
-| `services.prometheus.globalConfig` | | |
-| `services.prometheus.listenAddress` | | |
-| `services.prometheus.package` | | |
-| `services.prometheus.port` | | |
-| `services.prometheus.pushgateway.enable` | | |
-| `services.prometheus.pushgateway.extraFlags` | | |
-| `services.prometheus.pushgateway.log.format` | | |
-| `services.prometheus.pushgateway.log.level` | | |
-| `services.prometheus.pushgateway.package` | | |
-| `services.prometheus.pushgateway.persistMetrics` | | |
-| `services.prometheus.pushgateway.persistence.interval` | | |
-| `services.prometheus.pushgateway.stateDir` | | |
-| `services.prometheus.pushgateway.web.external-url` | | |
-| `services.prometheus.pushgateway.web.listen-address` | | |
-| `services.prometheus.pushgateway.web.route-prefix` | | |
-| `services.prometheus.pushgateway.web.telemetry-path` | | |
-| `services.prometheus.remoteRead` | | |
-| `services.prometheus.remoteWrite` | | |
-| `services.prometheus.retentionTime` | | |
-| `services.prometheus.ruleFiles` | | |
-| `services.prometheus.rules` | | |
-| `services.prometheus.sachet.address` | | |
-| `services.prometheus.sachet.configuration` | | |
-| `services.prometheus.sachet.enable` | | |
-| `services.prometheus.sachet.port` | | |
-| `services.prometheus.scrapeConfigs` | | |
-| `services.prometheus.stateDir` | | |
-| `services.prometheus.webConfigFile` | | |
-| `services.prometheus.webExternalUrl` | | |
-| `services.prometheus.xmpp-alerts.configuration` | | |
-| `services.prometheus.xmpp-alerts.enable` | | |
-| `services.prometheus.xmpp-alerts.settings` | | |
+| --- | --- | --- |
+| `services.prometheus.alertmanager-ntfy.enable` | `boolean` | Whether to enable alertmanager-ntfy. |
+| `services.prometheus.alertmanager-ntfy.extraConfigFiles` | `list of absolute path` | Config files to merge into the settings defined in [](#opt-services.prometheus.alertmanager-ntfy.settings). This is useful to avoid putting secrets into the Nix store. See <https://github.com/alexbakker/alertmanager-ntfy> for more information. |
+| `services.prometheus.alertmanager-ntfy.package` | `package` | The alertmanager-ntfy package to use. |
+| `services.prometheus.alertmanager-ntfy.settings` | `open submodule of (YAML 1.1 value)` | Configuration of alertmanager-ntfy. See <https://github.com/alexbakker/alertmanager-ntfy> for more information. |
+| `services.prometheus.alertmanager-ntfy.settings.http.addr` | `string` | The address to listen on. |
+| `services.prometheus.alertmanager-ntfy.settings.ntfy.baseurl` | `string` | The base URL of the ntfy.sh instance. |
+| `services.prometheus.alertmanager-ntfy.settings.ntfy.notification.priority` | `string` | The ntfy.sh message priority (see <https://docs.ntfy.sh/publish/#message-priority> for more information). Can either be a hardcoded string or a gval expression that evaluates to a string. |
+| `services.prometheus.alertmanager-ntfy.settings.ntfy.notification.tags` | `list of (submodule)` | Tags to add to ntfy.sh messages. See <https://docs.ntfy.sh/publish/#tags-emojis> for more information. |
+| `services.prometheus.alertmanager-ntfy.settings.ntfy.notification.tags.*.condition` | `null or string` | The condition under which this tag should be added. Tags with no condition are always included. |
+| `services.prometheus.alertmanager-ntfy.settings.ntfy.notification.tags.*.tag` | `string` | The tag to add. See <https://docs.ntfy.sh/emojis> for a list of all supported emojis. |
+| `services.prometheus.alertmanager-ntfy.settings.ntfy.notification.templates.description` | `string` | The ntfy.sh message description template. |
+| `services.prometheus.alertmanager-ntfy.settings.ntfy.notification.templates.title` | `string` | The ntfy.sh message title template. |
+| `services.prometheus.alertmanager-ntfy.settings.ntfy.notification.topic` | `string` | __Note:__ when using ntfy.sh and other public instances it is recommended to set this option to an empty string and set the actual topic via [](#opt-services.prometheus.alertmanager-ntfy.extraConfigFiles) since the `topic` in `ntfy.sh` is essentially a password. The topic to which alerts should be published. Can either be a hardcoded string or a gval expression that evaluates to a string. |
+| `services.prometheus.alertmanager.checkConfig` | `boolean` | Check configuration with `amtool check-config`. The call to `amtool` is subject to sandboxing by Nix. If you use credentials stored in external files (`environmentFile`, etc), they will not be visible to `amtool` and it will report errors, despite a correct configuration. |
+| `services.prometheus.alertmanager.clusterPeers` | `list of string` | Initial peers for HA cluster. |
+| `services.prometheus.alertmanager.configText` | `null or strings concatenated with "\n"` | Alertmanager configuration as YAML text. If non-null, this option defines the text that is written to alertmanager.yml. If null, the contents of alertmanager.yml is generated from the structured config options. The contents of the resulting config file are processed using envsubst. `$` needs to be escaped as `$$` to be preserved. |
+| `services.prometheus.alertmanager.configuration` | `null or (attribute set)` | Alertmanager configuration as nix attribute set. The contents of the resulting config file are processed using envsubst. `$` needs to be escaped as `$$` to be preserved. |
+| `services.prometheus.alertmanager.enable` | `boolean` | Whether to enable Prometheus Alertmanager. |
+| `services.prometheus.alertmanager.environmentFile` | `null or absolute path` | File to load as environment file. Environment variables from this file will be interpolated into the config file using envsubst with this syntax: `$ENVIRONMENT ${VARIABLE}` |
+| `services.prometheus.alertmanager.extraFlags` | `list of string` | Extra commandline options when launching the Alertmanager. |
+| `services.prometheus.alertmanager.listenAddress` | `string` | Address to listen on for the web interface and API. Empty string will listen on all interfaces. "localhost" will listen on 127.0.0.1 (but not ::1). |
+| `services.prometheus.alertmanager.logFormat` | `null or string` | If set use a syslog logger or JSON logging. |
+| `services.prometheus.alertmanager.logLevel` | `one of "debug", "info", "warn", "error", "fatal"` | Only log messages with the given severity or above. |
+| `services.prometheus.alertmanager.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.alertmanager.package` | `package` | The prometheus-alertmanager package to use. |
+| `services.prometheus.alertmanager.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on for the web interface and API. |
+| `services.prometheus.alertmanager.webExternalUrl` | `null or string` | The URL under which Alertmanager is externally reachable (for example, if Alertmanager is served via a reverse proxy). Used for generating relative and absolute links back to Alertmanager itself. If the URL has a path portion, it will be used to prefix all HTTP endoints served by Alertmanager. If omitted, relevant URL components will be derived automatically. |
+| `services.prometheus.alertmanagerGotify.bindAddress` | `string` | The address the server will listen on (bind address). |
+| `services.prometheus.alertmanagerGotify.debug` | `boolean` | Enables extended logs for debugging purposes. Should be disabled in productive mode. |
+| `services.prometheus.alertmanagerGotify.defaultPriority` | `signed integer` | The default priority for messages sent to gotify. |
+| `services.prometheus.alertmanagerGotify.dispatchErrors` | `boolean` | When enabled, alerts will be tried to dispatch with an error message regarding faulty templating or missing fields to help debugging. |
+| `services.prometheus.alertmanagerGotify.enable` | `boolean` | Whether to enable alertmagager-gotify. |
+| `services.prometheus.alertmanagerGotify.environmentFile` | `null or absolute path` | File containing additional config environment variables for alertmanager-gotify-bridge. This is especially for secrets like GOTIFY_TOKEN and AUTH_PASSWORD. |
+| `services.prometheus.alertmanagerGotify.extendedDetails` | `boolean` | When enabled, alerts are presented in HTML format and include colorized status (FIR|RES), alert start time, and a link to the generator of the alert. |
+| `services.prometheus.alertmanagerGotify.gotifyEndpoint.host` | `string` | The hostname or ip your gotify endpoint is running. |
+| `services.prometheus.alertmanagerGotify.gotifyEndpoint.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port your gotify endpoint is running. |
+| `services.prometheus.alertmanagerGotify.gotifyEndpoint.tls` | `boolean` | If your gotify endpoint uses https, leave this option set to default |
+| `services.prometheus.alertmanagerGotify.messageAnnotation` | `string` | Annotation holding the alert message. |
+| `services.prometheus.alertmanagerGotify.metrics.namespace` | `string` | The namescape of the metrics. |
+| `services.prometheus.alertmanagerGotify.metrics.path` | `string` | The path under which the metrics will be exposed. |
+| `services.prometheus.alertmanagerGotify.metrics.username` | `string` | The username used to access your metrics. |
+| `services.prometheus.alertmanagerGotify.openFirewall` | `boolean` | Opens the bridge port in the firewall. |
+| `services.prometheus.alertmanagerGotify.package` | `package` | The alertmanager-gotify-bridge package to use. |
+| `services.prometheus.alertmanagerGotify.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The local port the bridge is listening on. |
+| `services.prometheus.alertmanagerGotify.priorityAnnotation` | `string` | Annotation holding the priority of the alert. |
+| `services.prometheus.alertmanagerGotify.timeout` | `positive integer, meaning >0` | The time between sending a message and the timeout. |
+| `services.prometheus.alertmanagerGotify.titleAnnotation` | `string` | Annotation holding the title of the alert |
+| `services.prometheus.alertmanagerGotify.webhookPath` | `string` | The URL path to handle requests on. |
+| `services.prometheus.alertmanagerIrcRelay.enable` | `boolean` | Whether to enable Alertmanager IRC Relay. |
+| `services.prometheus.alertmanagerIrcRelay.extraFlags` | `list of string` | Extra command line options to pass to alertmanager-irc-relay. |
+| `services.prometheus.alertmanagerIrcRelay.package` | `package` | The alertmanager-irc-relay package to use. |
+| `services.prometheus.alertmanagerIrcRelay.settings` | `YAML 1.1 value` | Configuration for Alertmanager IRC Relay as a Nix attribute set. For a reference, check out the [example configuration](https://github.com/google/alertmanager-irc-relay#configuring-and-running-the-bot) and the [source code](https://github.com/google/alertmanager-irc-relay/blob/master/config.go). Note: The webhook's URL MUST point to the IRC channel where the message should be posted. For `#mychannel` from the example, this would be `http://localhost:8080/mychannel`. |
+| `services.prometheus.alertmanagerNotificationQueueCapacity` | `signed integer` | The capacity of the queue for pending alert manager notifications. |
+| `services.prometheus.alertmanagerWebhookLogger.enable` | `boolean` | Whether to enable Alertmanager Webhook Logger. |
+| `services.prometheus.alertmanagerWebhookLogger.extraFlags` | `list of string` | Extra command line options to pass to alertmanager-webhook-logger. |
+| `services.prometheus.alertmanagerWebhookLogger.package` | `package` | The alertmanager-webhook-logger package to use. |
+| `services.prometheus.alertmanagers` | `list of (attribute set)` | A list of alertmanagers to send alerts to. See [the official documentation](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#alertmanager_config) for more information. |
+| `services.prometheus.checkConfig` | `boolean or value "syntax-only" (singular enum)` | Check configuration with `promtool check`. The call to `promtool` is subject to sandboxing by Nix. If you use credentials stored in external files (`password_file`, `bearer_token_file`, etc), they will not be visible to `promtool` and it will report errors, despite a correct configuration. To resolve this, you may set this option to `"syntax-only"` in order to only syntax check the Prometheus configuration. |
+| `services.prometheus.configText` | `null or strings concatenated with "\n"` | If non-null, this option defines the text that is written to prometheus.yml. If null, the contents of prometheus.yml is generated from the structured config options. |
+| `services.prometheus.enable` | `boolean` | Whether to enable Prometheus monitoring daemon. |
+| `services.prometheus.enableAgentMode` | `boolean` | Whether to enable agent mode. |
+| `services.prometheus.enableReload` | `boolean` | Reload prometheus when configuration file changes (instead of restart). The following property holds: switching to a configuration (`switch-to-configuration`) that changes the prometheus configuration only finishes successfully when prometheus has finished loading the new configuration. |
+| `services.prometheus.exporters` | `submodule` | Prometheus exporter configuration |
+| `services.prometheus.exporters.apcupsd.apcupsdAddress` | `string` | Address of the apcupsd Network Information Server (NIS). |
+| `services.prometheus.exporters.apcupsd.apcupsdNetwork` | `one of "tcp", "tcp4", "tcp6"` | Network of the apcupsd Network Information Server (NIS): one of "tcp", "tcp4", or "tcp6". |
+| `services.prometheus.exporters.apcupsd.enable` | `boolean` | Whether to enable the prometheus apcupsd exporter. |
+| `services.prometheus.exporters.apcupsd.extraFlags` | `list of string` | Extra commandline options to pass to the apcupsd exporter. |
+| `services.prometheus.exporters.apcupsd.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.apcupsd.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.apcupsd.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.apcupsd.openFirewall` is true. |
+| `services.prometheus.exporters.apcupsd.group` | `string` | Group under which the apcupsd exporter shall be run. |
+| `services.prometheus.exporters.apcupsd.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.apcupsd.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.apcupsd.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.apcupsd.user` | `string` | User name under which the apcupsd exporter shall be run. |
+| `services.prometheus.exporters.artifactory.artiAccessToken` | `string` | Access token for authentication against JFrog Artifactory API. One of the password or access token needs to be set. |
+| `services.prometheus.exporters.artifactory.artiPassword` | `string` | Password for authentication against JFrog Artifactory API. One of the password or access token needs to be set. |
+| `services.prometheus.exporters.artifactory.artiUsername` | `string` | Username for authentication against JFrog Artifactory API. |
+| `services.prometheus.exporters.artifactory.enable` | `boolean` | Whether to enable the prometheus artifactory exporter. |
+| `services.prometheus.exporters.artifactory.extraFlags` | `list of string` | Extra commandline options to pass to the artifactory exporter. |
+| `services.prometheus.exporters.artifactory.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.artifactory.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.artifactory.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.artifactory.openFirewall` is true. |
+| `services.prometheus.exporters.artifactory.group` | `string` | Group under which the artifactory exporter shall be run. |
+| `services.prometheus.exporters.artifactory.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.artifactory.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.artifactory.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.artifactory.scrapeUri` | `string` | URI on which to scrape JFrog Artifactory. |
+| `services.prometheus.exporters.artifactory.user` | `string` | User name under which the artifactory exporter shall be run. |
+| `services.prometheus.exporters.bind.bindGroups` | `list of (one of "server", "view", "tasks")` | List of statistics to collect. Available: [server, view, tasks] |
+| `services.prometheus.exporters.bind.bindTimeout` | `string` | Timeout for trying to get stats from Bind. |
+| `services.prometheus.exporters.bind.bindURI` | `string` | HTTP XML API address of an Bind server. |
+| `services.prometheus.exporters.bind.bindVersion` | `one of "xml.v2", "xml.v3", "auto"` | BIND statistics version. Can be detected automatically. |
+| `services.prometheus.exporters.bind.enable` | `boolean` | Whether to enable the prometheus bind exporter. |
+| `services.prometheus.exporters.bind.extraFlags` | `list of string` | Extra commandline options to pass to the bind exporter. |
+| `services.prometheus.exporters.bind.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.bind.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.bind.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.bind.openFirewall` is true. |
+| `services.prometheus.exporters.bind.group` | `string` | Group under which the bind exporter shall be run. |
+| `services.prometheus.exporters.bind.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.bind.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.bind.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.bind.user` | `string` | User name under which the bind exporter shall be run. |
+| `services.prometheus.exporters.bird.birdSocket` | `absolute path` | Path to BIRD2 (or BIRD1 v4) socket. |
+| `services.prometheus.exporters.bird.birdVersion` | `one of 1, 2` | Specifies whether BIRD1 or BIRD2 is in use. |
+| `services.prometheus.exporters.bird.enable` | `boolean` | Whether to enable the prometheus bird exporter. |
+| `services.prometheus.exporters.bird.extraFlags` | `list of string` | Extra commandline options to pass to the bird exporter. |
+| `services.prometheus.exporters.bird.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.bird.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.bird.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.bird.openFirewall` is true. |
+| `services.prometheus.exporters.bird.group` | `string` | Group under which the bird exporter shall be run. |
+| `services.prometheus.exporters.bird.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.bird.newMetricFormat` | `boolean` | Enable the new more-generic metric format. |
+| `services.prometheus.exporters.bird.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.bird.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.bird.user` | `string` | User name under which the bird exporter shall be run. |
+| `services.prometheus.exporters.bitcoin.enable` | `boolean` | Whether to enable the prometheus bitcoin exporter. |
+| `services.prometheus.exporters.bitcoin.extraEnv` | `attribute set of string` | Extra environment variables for the exporter. |
+| `services.prometheus.exporters.bitcoin.extraFlags` | `list of string` | Extra commandline options to pass to the bitcoin exporter. |
+| `services.prometheus.exporters.bitcoin.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.bitcoin.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.bitcoin.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.bitcoin.openFirewall` is true. |
+| `services.prometheus.exporters.bitcoin.group` | `string` | Group under which the bitcoin exporter shall be run. |
+| `services.prometheus.exporters.bitcoin.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.bitcoin.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.bitcoin.package` | `package` | The prometheus-bitcoin-exporter package to use. |
+| `services.prometheus.exporters.bitcoin.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.bitcoin.refreshSeconds` | `unsigned integer, meaning >=0` | How often to ask bitcoind for metrics. |
+| `services.prometheus.exporters.bitcoin.rpcHost` | `string` | RPC host. |
+| `services.prometheus.exporters.bitcoin.rpcPasswordFile` | `absolute path` | File containing RPC password. |
+| `services.prometheus.exporters.bitcoin.rpcPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | RPC port number. |
+| `services.prometheus.exporters.bitcoin.rpcScheme` | `one of "http", "https"` | Whether to connect to bitcoind over http or https. |
+| `services.prometheus.exporters.bitcoin.rpcUser` | `string` | RPC user name. |
+| `services.prometheus.exporters.bitcoin.user` | `string` | User name under which the bitcoin exporter shall be run. |
+| `services.prometheus.exporters.blackbox.configFile` | `absolute path` | Path to configuration file. |
+| `services.prometheus.exporters.blackbox.enable` | `boolean` | Whether to enable the prometheus blackbox exporter. |
+| `services.prometheus.exporters.blackbox.enableConfigCheck` | `boolean` | Whether to run a correctness check for the configuration file. This depends on the configuration file residing in the nix-store. Paths passed as string will be copied to the store. |
+| `services.prometheus.exporters.blackbox.extraFlags` | `list of string` | Extra commandline options to pass to the blackbox exporter. |
+| `services.prometheus.exporters.blackbox.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.blackbox.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.blackbox.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.blackbox.openFirewall` is true. |
+| `services.prometheus.exporters.blackbox.group` | `string` | Group under which the blackbox exporter shall be run. |
+| `services.prometheus.exporters.blackbox.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.blackbox.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.blackbox.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.blackbox.user` | `string` | User name under which the blackbox exporter shall be run. |
+| `services.prometheus.exporters.borgmatic.configFile` | `absolute path` | The path to the borgmatic config file |
+| `services.prometheus.exporters.borgmatic.enable` | `boolean` | Whether to enable the prometheus borgmatic exporter. |
+| `services.prometheus.exporters.borgmatic.extraFlags` | `list of string` | Extra commandline options to pass to the borgmatic exporter. |
+| `services.prometheus.exporters.borgmatic.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.borgmatic.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.borgmatic.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.borgmatic.openFirewall` is true. |
+| `services.prometheus.exporters.borgmatic.group` | `string` | Group under which the borgmatic exporter shall be run. |
+| `services.prometheus.exporters.borgmatic.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.borgmatic.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.borgmatic.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.borgmatic.user` | `string` | User name under which the borgmatic exporter shall be run. |
+| `services.prometheus.exporters.buildkite-agent.enable` | `boolean` | Whether to enable the prometheus buildkite-agent exporter. |
+| `services.prometheus.exporters.buildkite-agent.endpoint` | `string` | The Buildkite Agent API endpoint. |
+| `services.prometheus.exporters.buildkite-agent.extraFlags` | `list of string` | Extra commandline options to pass to the buildkite-agent exporter. |
+| `services.prometheus.exporters.buildkite-agent.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.buildkite-agent.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.buildkite-agent.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.buildkite-agent.openFirewall` is true. |
+| `services.prometheus.exporters.buildkite-agent.group` | `string` | Group under which the buildkite-agent exporter shall be run. |
+| `services.prometheus.exporters.buildkite-agent.interval` | `string` | How often to update metrics. |
+| `services.prometheus.exporters.buildkite-agent.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.buildkite-agent.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.buildkite-agent.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.buildkite-agent.queues` | `null or (list of string)` | Which specific queues to process. |
+| `services.prometheus.exporters.buildkite-agent.tokenPath` | `null or absolute path` | The token from your Buildkite "Agents" page. A run-time path to the token file, which is supposed to be provisioned outside of Nix store. |
+| `services.prometheus.exporters.buildkite-agent.user` | `string` | User name under which the buildkite-agent exporter shall be run. |
+| `services.prometheus.exporters.chrony.chronyServerAddress` | `string` | ChronyServerAddress of the chrony server side command port. (Not enabled by default.) Defaults to the local unix socket. |
+| `services.prometheus.exporters.chrony.disabledCollectors` | `list of string` | Collectors to disable which are enabled by default. Disable sources.with-ntpdata for network scraper. Option requires unix socket. |
+| `services.prometheus.exporters.chrony.enable` | `boolean` | Whether to enable the prometheus chrony exporter. |
+| `services.prometheus.exporters.chrony.enabledCollectors` | `list of string` | Collectors to enable. Currently all collectors are enabled by default. |
+| `services.prometheus.exporters.chrony.extraFlags` | `list of string` | Extra commandline options to pass to the chrony exporter. |
+| `services.prometheus.exporters.chrony.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.chrony.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.chrony.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.chrony.openFirewall` is true. |
+| `services.prometheus.exporters.chrony.group` | `string` | Group under which the chrony exporter shall be run. This allows the exporter to talk to chrony using a unix socket, which is owned by chrony group. The service startup with the default group chrony will fail without local chrony instance. |
+| `services.prometheus.exporters.chrony.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.chrony.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.chrony.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.chrony.user` | `string` | User name under which the chrony exporter shall be run. This allows the exporter to talk to chrony using a unix socket, which is owned by chrony. The exporter startup with the default user chrony will fail without local chrony instance. |
+| `services.prometheus.exporters.collectd.collectdBinary.authFile` | `null or absolute path` | File mapping user names to pre-shared keys (passwords). |
+| `services.prometheus.exporters.collectd.collectdBinary.enable` | `boolean` | Whether to enable collectd binary protocol receiver. |
+| `services.prometheus.exporters.collectd.collectdBinary.listenAddress` | `string` | Address to listen on for binary network packets. |
+| `services.prometheus.exporters.collectd.collectdBinary.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Network address on which to accept collectd binary network packets. |
+| `services.prometheus.exporters.collectd.collectdBinary.securityLevel` | `one of "None", "Sign", "Encrypt"` | Minimum required security level for accepted packets. |
+| `services.prometheus.exporters.collectd.enable` | `boolean` | Whether to enable the prometheus collectd exporter. |
+| `services.prometheus.exporters.collectd.extraFlags` | `list of string` | Extra commandline options to pass to the collectd exporter. |
+| `services.prometheus.exporters.collectd.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.collectd.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.collectd.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.collectd.openFirewall` is true. |
+| `services.prometheus.exporters.collectd.group` | `string` | Group under which the collectd exporter shall be run. |
+| `services.prometheus.exporters.collectd.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.collectd.logFormat` | `one of "logfmt", "json"` | Set the log format. |
+| `services.prometheus.exporters.collectd.logLevel` | `one of "debug", "info", "warn", "error", "fatal"` | Only log messages with the given severity or above. |
+| `services.prometheus.exporters.collectd.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.collectd.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.collectd.user` | `string` | User name under which the collectd exporter shall be run. |
+| `services.prometheus.exporters.deluge.delugeHost` | `string` | Hostname where deluge server is running. |
+| `services.prometheus.exporters.deluge.delugePassword` | `null or string` | Password to connect to deluge server. This stores the password unencrypted in the nix store and is thus considered unsafe. Prefer using the delugePasswordFile option. |
+| `services.prometheus.exporters.deluge.delugePasswordFile` | `null or absolute path` | File containing the password to connect to deluge server. |
+| `services.prometheus.exporters.deluge.delugePort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port where deluge server is listening. |
+| `services.prometheus.exporters.deluge.delugeUser` | `string` | User to connect to deluge server. |
+| `services.prometheus.exporters.deluge.enable` | `boolean` | Whether to enable the prometheus deluge exporter. |
+| `services.prometheus.exporters.deluge.exportPerTorrentMetrics` | `boolean` | Enable per-torrent metrics. This may significantly increase the number of time series depending on the number of torrents in your Deluge instance. |
+| `services.prometheus.exporters.deluge.extraFlags` | `list of string` | Extra commandline options to pass to the deluge exporter. |
+| `services.prometheus.exporters.deluge.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.deluge.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.deluge.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.deluge.openFirewall` is true. |
+| `services.prometheus.exporters.deluge.group` | `string` | Group under which the deluge exporter shall be run. |
+| `services.prometheus.exporters.deluge.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.deluge.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.deluge.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.deluge.user` | `string` | User name under which the deluge exporter shall be run. |
+| `services.prometheus.exporters.dmarc.debug` | `boolean` | Whether to declare enable `--debug`. |
+| `services.prometheus.exporters.dmarc.deduplicationMaxSeconds` | `unsigned integer, meaning >=0` | How long individual report IDs will be remembered to avoid counting double delivered reports twice. |
+| `services.prometheus.exporters.dmarc.enable` | `boolean` | Whether to enable the prometheus dmarc exporter. |
+| `services.prometheus.exporters.dmarc.extraFlags` | `list of string` | Extra commandline options to pass to the dmarc exporter. |
+| `services.prometheus.exporters.dmarc.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.dmarc.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.dmarc.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.dmarc.openFirewall` is true. |
+| `services.prometheus.exporters.dmarc.folders.done` | `string` | IMAP mailbox that successfully processed reports are moved to. |
+| `services.prometheus.exporters.dmarc.folders.error` | `string` | IMAP mailbox that emails are moved to that could not be processed. |
+| `services.prometheus.exporters.dmarc.folders.inbox` | `string` | IMAP mailbox that is checked for incoming DMARC aggregate reports |
+| `services.prometheus.exporters.dmarc.group` | `string` | Group under which the dmarc exporter shall be run. |
+| `services.prometheus.exporters.dmarc.imap.host` | `string` | Hostname of IMAP server to connect to. |
+| `services.prometheus.exporters.dmarc.imap.passwordFile` | `string` | File containing the login password for the IMAP connection. |
+| `services.prometheus.exporters.dmarc.imap.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port of the IMAP server to connect to. |
+| `services.prometheus.exporters.dmarc.imap.username` | `string` | Login username for the IMAP connection. |
+| `services.prometheus.exporters.dmarc.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.dmarc.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.dmarc.pollIntervalSeconds` | `unsigned integer, meaning >=0` | How often to poll the IMAP server in seconds. |
+| `services.prometheus.exporters.dmarc.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.dmarc.user` | `string` | User name under which the dmarc exporter shall be run. |
+| `services.prometheus.exporters.dnsmasq.dnsmasqListenAddress` | `string` | Address on which dnsmasq listens. |
+| `services.prometheus.exporters.dnsmasq.enable` | `boolean` | Whether to enable the prometheus dnsmasq exporter. |
+| `services.prometheus.exporters.dnsmasq.extraFlags` | `list of string` | Extra commandline options to pass to the dnsmasq exporter. |
+| `services.prometheus.exporters.dnsmasq.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.dnsmasq.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.dnsmasq.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.dnsmasq.openFirewall` is true. |
+| `services.prometheus.exporters.dnsmasq.group` | `string` | Group under which the dnsmasq exporter shall be run. |
+| `services.prometheus.exporters.dnsmasq.leasesPath` | `absolute path` | Path to the `dnsmasq.leases` file. |
+| `services.prometheus.exporters.dnsmasq.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.dnsmasq.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.dnsmasq.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.dnsmasq.user` | `string` | User name under which the dnsmasq exporter shall be run. |
+| `services.prometheus.exporters.dnssec.configuration` | `null or (attribute set)` | dnssec exporter configuration as nix attribute set. See <https://github.com/chrj/prometheus-dnssec-exporter/blob/master/README.md> for the description of the configuration file format. |
+| `services.prometheus.exporters.dnssec.enable` | `boolean` | Whether to enable the prometheus dnssec exporter. |
+| `services.prometheus.exporters.dnssec.extraFlags` | `list of string` | Extra commandline options when launching Prometheus. |
+| `services.prometheus.exporters.dnssec.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.dnssec.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.dnssec.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.dnssec.openFirewall` is true. |
+| `services.prometheus.exporters.dnssec.group` | `string` | Group under which the dnssec exporter shall be run. |
+| `services.prometheus.exporters.dnssec.listenAddress` | `null or string` | Listen address as host IP and port definition. |
+| `services.prometheus.exporters.dnssec.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.dnssec.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.dnssec.resolvers` | `list of string` | DNSSEC capable resolver to be used for the check. |
+| `services.prometheus.exporters.dnssec.timeout` | `null or string` | DNS request timeout duration. |
+| `services.prometheus.exporters.dnssec.user` | `string` | User name under which the dnssec exporter shall be run. |
+| `services.prometheus.exporters.domain.enable` | `boolean` | Whether to enable the prometheus domain exporter. |
+| `services.prometheus.exporters.domain.extraFlags` | `list of string` | Extra commandline options to pass to the domain exporter. |
+| `services.prometheus.exporters.domain.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.domain.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.domain.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.domain.openFirewall` is true. |
+| `services.prometheus.exporters.domain.group` | `string` | Group under which the domain exporter shall be run. |
+| `services.prometheus.exporters.domain.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.domain.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.domain.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.domain.user` | `string` | User name under which the domain exporter shall be run. |
+| `services.prometheus.exporters.dovecot.enable` | `boolean` | Whether to enable the prometheus dovecot exporter. |
+| `services.prometheus.exporters.dovecot.extraFlags` | `list of string` | Extra commandline options to pass to the dovecot exporter. |
+| `services.prometheus.exporters.dovecot.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.dovecot.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.dovecot.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.dovecot.openFirewall` is true. |
+| `services.prometheus.exporters.dovecot.group` | `string` | Group under which the dovecot exporter shall be run. |
+| `services.prometheus.exporters.dovecot.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.dovecot.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.dovecot.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.dovecot.scopes` | `list of string` | Stats scopes to query. |
+| `services.prometheus.exporters.dovecot.socketPath` | `absolute path` | Path under which the stats socket is placed. The user/group under which the exporter runs, should be able to access the socket in order to scrape the metrics successfully. Please keep in mind that the stats module has changed in [Dovecot 2.3+](https://wiki2.dovecot.org/Upgrading/2.3) which is not [compatible with this exporter](https://github.com/kumina/dovecot_exporter/issues/8). The following extra config has to be passed to Dovecot to ensure that recent versions work with this exporter: `{   services.prometheus.exporters.dovecot.enable = true;   services.prometheus.exporters.dovecot.socketPath = "/var/run/dovecot2/old-stats";   services.dovecot2.mailPlugins.globally.enable = [ "old_stats" ];   services.dovecot2.extraConfig = ''     service old-stats {       unix_listener old-stats {         user = dovecot-exporter         group = dovecot-exporter         mode = 0660       }       fifo_listener old-stats-mail {         mode = 0660         user = dovecot         group = dovecot       }       fifo_listener old-stats-user {         mode = 0660         user = dovecot         group = dovecot       }     }     plugin {       old_stats_refresh = 30 secs       old_stats_track_cmds = yes     }   ''; }` |
+| `services.prometheus.exporters.dovecot.telemetryPath` | `string` | Path under which to expose metrics. |
+| `services.prometheus.exporters.dovecot.user` | `string` | User name under which the dovecot exporter shall be run. |
+| `services.prometheus.exporters.ebpf.enable` | `boolean` | Whether to enable the prometheus ebpf exporter. |
+| `services.prometheus.exporters.ebpf.extraFlags` | `list of string` | Extra commandline options to pass to the ebpf exporter. |
+| `services.prometheus.exporters.ebpf.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.ebpf.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.ebpf.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.ebpf.openFirewall` is true. |
+| `services.prometheus.exporters.ebpf.group` | `string` | Group under which the ebpf exporter shall be run. |
+| `services.prometheus.exporters.ebpf.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.ebpf.names` | `list of string` | List of eBPF programs to load |
+| `services.prometheus.exporters.ebpf.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.ebpf.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.ebpf.user` | `string` | User name under which the ebpf exporter shall be run. |
+| `services.prometheus.exporters.ecoflow.debug` | `string` | Enable debug log messages. Disabled by default. Set to "1" to enable. |
+| `services.prometheus.exporters.ecoflow.ecoflowAccessKeyFile` | `absolute path` | Path to the file with your personal api access string from the Ecoflow development website <https://developer-eu.ecoflow.com>. Do to share or commit your plaintext scecrets to a public repo use: agenix or soaps. |
+| `services.prometheus.exporters.ecoflow.ecoflowDevicesFile` | `absolute path` | File must contain one line, example: R3300000,R3400000,NC430000,.... The list of devices serial numbers separated by comma. For instance: SN1,SN2,SN3. Instead of "devicesFile" you can specify "devicesPrettynamesFile" which will also work. You can specify both. Do to share or commit your plaintext serial numbers to a public repo use: agenix or soaps. |
+| `services.prometheus.exporters.ecoflow.ecoflowDevicesPrettyNamesFile` | `absolute path` | File must contain one line, example: {"R3300000":"Delta 2","R3400000":"Delta Pro",...} The key/value map of custom names for your devices. Key is a serial number, value is a device name you want to see in Grafana Dashboard. It's helpful to see a meaningful name in Grafana dashboard instead of a serialnumber. Do to share or commit your plaintext serial numbers to a public repo use: agenix or soaps. |
+| `services.prometheus.exporters.ecoflow.ecoflowEmailFile` | `absolute path` | Path to the file with your personal ecoflow app login email address. Do to share or commit your plaintext scecrets to a public repo use: agenix or soaps. |
+| `services.prometheus.exporters.ecoflow.ecoflowPasswordFile` | `absolute path` | Path to the file with your personal ecoflow app login email password. Do to share or commit your plaintext passwords to a public repo use: agenix or soaps here! |
+| `services.prometheus.exporters.ecoflow.ecoflowSecretKeyFile` | `absolute path` | Path to the file with your personal api secret string from the Ecoflow development website <https://developer-eu.ecoflow.com>. Do to share or commit your plaintext scecrets to a public repo use: agenix or soaps. |
+| `services.prometheus.exporters.ecoflow.enable` | `boolean` | Whether to enable the prometheus ecoflow exporter. |
+| `services.prometheus.exporters.ecoflow.exporterType` | `one of "rest", "mqtt"` | The type of exporter you'd like to use. Possible values: "rest" and "mqtt". Default value is "rest". Choose "rest" for the ecoflow online cloud api use "rest" and define: accessKey, secretKey. Choose "mqtt" for the lan realtime integration use "mqtt" and define: email, password, devices. |
+| `services.prometheus.exporters.ecoflow.extraFlags` | `list of string` | Extra commandline options to pass to the ecoflow exporter. |
+| `services.prometheus.exporters.ecoflow.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.ecoflow.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.ecoflow.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.ecoflow.openFirewall` is true. |
+| `services.prometheus.exporters.ecoflow.group` | `string` | Group under which the ecoflow exporter shall be run. |
+| `services.prometheus.exporters.ecoflow.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.ecoflow.mqttDeviceOfflineThreshold` | `positive integer, meaning >0` | The threshold in seconds which indicates how long we should wait for a metric message from MQTT broker. Default value: 60 seconds. If we don't receive message within 60 seconds we consider that device is offline. If we don't receive messages within the threshold for all devices, we'll try to reconnect to the MQTT broker. There is a strange behavior that MQTT stop sends messages if you open Ecoflow mobile app and then close it). |
+| `services.prometheus.exporters.ecoflow.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.ecoflow.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.ecoflow.prefix` | `string` | The prefix that will be added to all metrics. Default value is ecoflow. For instance metric bms_bmsStatus.minCellTemp will be exported to prometheus as ecoflow.bms_bmsStatus.minCellTemp. With default value "ecoflow" you can use Grafana Dashboard with ID 17812 without any changes. |
+| `services.prometheus.exporters.ecoflow.scrapingInterval` | `positive integer, meaning >0` | Scrapping interval in seconds. How often should the exporter execute requests to Ecoflow Rest API in order to get the data. Default value is 30 seconds. Align this value with your prometheus scraper interval settings. |
+| `services.prometheus.exporters.ecoflow.user` | `string` | User name under which the ecoflow exporter shall be run. |
+| `services.prometheus.exporters.elasticsearch.enable` | `boolean` | Whether to enable the prometheus elasticsearch exporter. |
+| `services.prometheus.exporters.elasticsearch.environmentFile` | `null or absolute path` | Path to an environment file, as defined in {manpage}`systemd.exec(5)`, used to pass credentials to the exporter without exposing them in the process arguments. It should contain either `ES_USERNAME` and `ES_PASSWORD`, or `ES_API_KEY`. |
+| `services.prometheus.exporters.elasticsearch.extraFlags` | `list of string` | Extra commandline options to pass to the elasticsearch exporter. |
+| `services.prometheus.exporters.elasticsearch.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.elasticsearch.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.elasticsearch.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.elasticsearch.openFirewall` is true. |
+| `services.prometheus.exporters.elasticsearch.group` | `string` | Group under which the elasticsearch exporter shall be run. |
+| `services.prometheus.exporters.elasticsearch.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.elasticsearch.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.elasticsearch.package` | `package` | The prometheus-elasticsearch-exporter package to use. |
+| `services.prometheus.exporters.elasticsearch.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.elasticsearch.url` | `string` | URI of the Elasticsearch (or OpenSearch) node to scrape, passed as `--es.uri`. Any credentials embedded here are overridden by the `ES_USERNAME`/`ES_PASSWORD` or `ES_API_KEY` environment variables when {option}`environmentFile` is set. |
+| `services.prometheus.exporters.elasticsearch.user` | `string` | User name under which the elasticsearch exporter shall be run. |
+| `services.prometheus.exporters.exportarr-bazarr.apiKeyFile` | `null or absolute path` | File containing the api-key. |
+| `services.prometheus.exporters.exportarr-bazarr.enable` | `boolean` | Whether to enable the prometheus exportarr-bazarr exporter. |
+| `services.prometheus.exporters.exportarr-bazarr.environment` | `attribute set of string` | See [the configuration guide](https://github.com/onedr0p/exportarr#configuration) for available options. |
+| `services.prometheus.exporters.exportarr-bazarr.extraFlags` | `list of string` | Extra commandline options to pass to the exportarr-bazarr exporter. |
+| `services.prometheus.exporters.exportarr-bazarr.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.exportarr-bazarr.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.exportarr-bazarr.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.exportarr-bazarr.openFirewall` is true. |
+| `services.prometheus.exporters.exportarr-bazarr.group` | `string` | Group under which the exportarr-bazarr exporter shall be run. |
+| `services.prometheus.exporters.exportarr-bazarr.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.exportarr-bazarr.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.exportarr-bazarr.package` | `package` | The exportarr package to use. |
+| `services.prometheus.exporters.exportarr-bazarr.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.exportarr-bazarr.url` | `string` | The full URL to Sonarr, Radarr, or Lidarr. |
+| `services.prometheus.exporters.exportarr-bazarr.user` | `string` | User name under which the exportarr-bazarr exporter shall be run. |
+| `services.prometheus.exporters.exportarr-lidarr.apiKeyFile` | `null or absolute path` | File containing the api-key. |
+| `services.prometheus.exporters.exportarr-lidarr.enable` | `boolean` | Whether to enable the prometheus exportarr-lidarr exporter. |
+| `services.prometheus.exporters.exportarr-lidarr.environment` | `attribute set of string` | See [the configuration guide](https://github.com/onedr0p/exportarr#configuration) for available options. |
+| `services.prometheus.exporters.exportarr-lidarr.extraFlags` | `list of string` | Extra commandline options to pass to the exportarr-lidarr exporter. |
+| `services.prometheus.exporters.exportarr-lidarr.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.exportarr-lidarr.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.exportarr-lidarr.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.exportarr-lidarr.openFirewall` is true. |
+| `services.prometheus.exporters.exportarr-lidarr.group` | `string` | Group under which the exportarr-lidarr exporter shall be run. |
+| `services.prometheus.exporters.exportarr-lidarr.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.exportarr-lidarr.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.exportarr-lidarr.package` | `package` | The exportarr package to use. |
+| `services.prometheus.exporters.exportarr-lidarr.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.exportarr-lidarr.url` | `string` | The full URL to Sonarr, Radarr, or Lidarr. |
+| `services.prometheus.exporters.exportarr-lidarr.user` | `string` | User name under which the exportarr-lidarr exporter shall be run. |
+| `services.prometheus.exporters.exportarr-prowlarr.apiKeyFile` | `null or absolute path` | File containing the api-key. |
+| `services.prometheus.exporters.exportarr-prowlarr.enable` | `boolean` | Whether to enable the prometheus exportarr-prowlarr exporter. |
+| `services.prometheus.exporters.exportarr-prowlarr.environment` | `attribute set of string` | See [the configuration guide](https://github.com/onedr0p/exportarr#configuration) for available options. |
+| `services.prometheus.exporters.exportarr-prowlarr.extraFlags` | `list of string` | Extra commandline options to pass to the exportarr-prowlarr exporter. |
+| `services.prometheus.exporters.exportarr-prowlarr.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.exportarr-prowlarr.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.exportarr-prowlarr.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.exportarr-prowlarr.openFirewall` is true. |
+| `services.prometheus.exporters.exportarr-prowlarr.group` | `string` | Group under which the exportarr-prowlarr exporter shall be run. |
+| `services.prometheus.exporters.exportarr-prowlarr.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.exportarr-prowlarr.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.exportarr-prowlarr.package` | `package` | The exportarr package to use. |
+| `services.prometheus.exporters.exportarr-prowlarr.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.exportarr-prowlarr.url` | `string` | The full URL to Sonarr, Radarr, or Lidarr. |
+| `services.prometheus.exporters.exportarr-prowlarr.user` | `string` | User name under which the exportarr-prowlarr exporter shall be run. |
+| `services.prometheus.exporters.exportarr-radarr.apiKeyFile` | `null or absolute path` | File containing the api-key. |
+| `services.prometheus.exporters.exportarr-radarr.enable` | `boolean` | Whether to enable the prometheus exportarr-radarr exporter. |
+| `services.prometheus.exporters.exportarr-radarr.environment` | `attribute set of string` | See [the configuration guide](https://github.com/onedr0p/exportarr#configuration) for available options. |
+| `services.prometheus.exporters.exportarr-radarr.extraFlags` | `list of string` | Extra commandline options to pass to the exportarr-radarr exporter. |
+| `services.prometheus.exporters.exportarr-radarr.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.exportarr-radarr.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.exportarr-radarr.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.exportarr-radarr.openFirewall` is true. |
+| `services.prometheus.exporters.exportarr-radarr.group` | `string` | Group under which the exportarr-radarr exporter shall be run. |
+| `services.prometheus.exporters.exportarr-radarr.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.exportarr-radarr.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.exportarr-radarr.package` | `package` | The exportarr package to use. |
+| `services.prometheus.exporters.exportarr-radarr.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.exportarr-radarr.url` | `string` | The full URL to Sonarr, Radarr, or Lidarr. |
+| `services.prometheus.exporters.exportarr-radarr.user` | `string` | User name under which the exportarr-radarr exporter shall be run. |
+| `services.prometheus.exporters.exportarr-readarr.apiKeyFile` | `null or absolute path` | File containing the api-key. |
+| `services.prometheus.exporters.exportarr-readarr.enable` | `boolean` | Whether to enable the prometheus exportarr-readarr exporter. |
+| `services.prometheus.exporters.exportarr-readarr.environment` | `attribute set of string` | See [the configuration guide](https://github.com/onedr0p/exportarr#configuration) for available options. |
+| `services.prometheus.exporters.exportarr-readarr.extraFlags` | `list of string` | Extra commandline options to pass to the exportarr-readarr exporter. |
+| `services.prometheus.exporters.exportarr-readarr.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.exportarr-readarr.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.exportarr-readarr.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.exportarr-readarr.openFirewall` is true. |
+| `services.prometheus.exporters.exportarr-readarr.group` | `string` | Group under which the exportarr-readarr exporter shall be run. |
+| `services.prometheus.exporters.exportarr-readarr.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.exportarr-readarr.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.exportarr-readarr.package` | `package` | The exportarr package to use. |
+| `services.prometheus.exporters.exportarr-readarr.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.exportarr-readarr.url` | `string` | The full URL to Sonarr, Radarr, or Lidarr. |
+| `services.prometheus.exporters.exportarr-readarr.user` | `string` | User name under which the exportarr-readarr exporter shall be run. |
+| `services.prometheus.exporters.exportarr-sonarr.apiKeyFile` | `null or absolute path` | File containing the api-key. |
+| `services.prometheus.exporters.exportarr-sonarr.enable` | `boolean` | Whether to enable the prometheus exportarr-sonarr exporter. |
+| `services.prometheus.exporters.exportarr-sonarr.environment` | `attribute set of string` | See [the configuration guide](https://github.com/onedr0p/exportarr#configuration) for available options. |
+| `services.prometheus.exporters.exportarr-sonarr.extraFlags` | `list of string` | Extra commandline options to pass to the exportarr-sonarr exporter. |
+| `services.prometheus.exporters.exportarr-sonarr.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.exportarr-sonarr.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.exportarr-sonarr.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.exportarr-sonarr.openFirewall` is true. |
+| `services.prometheus.exporters.exportarr-sonarr.group` | `string` | Group under which the exportarr-sonarr exporter shall be run. |
+| `services.prometheus.exporters.exportarr-sonarr.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.exportarr-sonarr.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.exportarr-sonarr.package` | `package` | The exportarr package to use. |
+| `services.prometheus.exporters.exportarr-sonarr.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.exportarr-sonarr.url` | `string` | The full URL to Sonarr, Radarr, or Lidarr. |
+| `services.prometheus.exporters.exportarr-sonarr.user` | `string` | User name under which the exportarr-sonarr exporter shall be run. |
+| `services.prometheus.exporters.fail2ban.enable` | `boolean` | Whether to enable the prometheus fail2ban exporter. |
+| `services.prometheus.exporters.fail2ban.exitOnError` | `boolean` | When set to true the exporter will immediately exit on a fail2ban socket connection error |
+| `services.prometheus.exporters.fail2ban.extraFlags` | `list of string` | Extra commandline options to pass to the fail2ban exporter. |
+| `services.prometheus.exporters.fail2ban.fail2banSocket` | `string` | Path to the fail2ban server socket. Permissions will be set automatically if fail2ban runs on this system. |
+| `services.prometheus.exporters.fail2ban.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.fail2ban.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.fail2ban.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.fail2ban.openFirewall` is true. |
+| `services.prometheus.exporters.fail2ban.group` | `string` | Group under which the fail2ban exporter shall be run. |
+| `services.prometheus.exporters.fail2ban.host` | `string` | The host that the fail2ban exporter should listen on |
+| `services.prometheus.exporters.fail2ban.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.fail2ban.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.fail2ban.passwordFile` | `null or absolute path` | File that contains the password to protect endpoints with HTTP basic authentication |
+| `services.prometheus.exporters.fail2ban.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.fail2ban.user` | `string` | User name under which the fail2ban exporter shall be run. |
+| `services.prometheus.exporters.fail2ban.username` | `null or string` | Username to protect endpoints with HTTP basic authentication |
+| `services.prometheus.exporters.fastly.configFile` | `null or absolute path` | Path to a fastly-exporter configuration file. Example one can be generated with `fastly-exporter --config-file-example`. |
+| `services.prometheus.exporters.fastly.enable` | `boolean` | Whether to enable the prometheus fastly exporter. |
+| `services.prometheus.exporters.fastly.environmentFile` | `absolute path` | An environment file containg at least the FASTLY_API_TOKEN= environment variable. |
+| `services.prometheus.exporters.fastly.extraFlags` | `list of string` | Extra commandline options to pass to the fastly exporter. |
+| `services.prometheus.exporters.fastly.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.fastly.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.fastly.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.fastly.openFirewall` is true. |
+| `services.prometheus.exporters.fastly.group` | `string` | Group under which the fastly exporter shall be run. |
+| `services.prometheus.exporters.fastly.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.fastly.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.fastly.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.fastly.user` | `string` | User name under which the fastly exporter shall be run. |
+| `services.prometheus.exporters.flow.asn` | `positive integer, meaning >0` | The ASN being monitored. |
+| `services.prometheus.exporters.flow.brokers` | `list of string` | List of Kafka brokers to connect to. |
+| `services.prometheus.exporters.flow.enable` | `boolean` | Whether to enable the prometheus flow exporter. |
+| `services.prometheus.exporters.flow.extraFlags` | `list of string` | Extra commandline options to pass to the flow exporter. |
+| `services.prometheus.exporters.flow.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.flow.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.flow.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.flow.openFirewall` is true. |
+| `services.prometheus.exporters.flow.group` | `string` | Group under which the flow exporter shall be run. |
+| `services.prometheus.exporters.flow.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.flow.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.flow.partitions` | `list of signed integer` | The number of the partitions to consume, none means all. |
+| `services.prometheus.exporters.flow.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.flow.topic` | `string` | The Kafka topic to consume from. |
+| `services.prometheus.exporters.flow.user` | `string` | User name under which the flow exporter shall be run. |
+| `services.prometheus.exporters.fritz.enable` | `boolean` | Whether to enable the prometheus fritz exporter. |
+| `services.prometheus.exporters.fritz.extraFlags` | `list of string` | Extra commandline options to pass to the fritz exporter. |
+| `services.prometheus.exporters.fritz.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.fritz.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.fritz.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.fritz.openFirewall` is true. |
+| `services.prometheus.exporters.fritz.group` | `string` | Group under which the fritz exporter shall be run. |
+| `services.prometheus.exporters.fritz.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.fritz.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.fritz.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.fritz.settings` | `open submodule of (YAML 1.1 value)` | Configuration settings for fritz-exporter. |
+| `services.prometheus.exporters.fritz.settings.devices` | `list of (open submodule of (YAML 1.1 value))` | Fritz!-devices to monitor using the exporter. |
+| `services.prometheus.exporters.fritz.settings.devices.*.host_info` | `boolean` | Enable extended host info for this device. *Warning*: This will heavily increase scrape time. |
+| `services.prometheus.exporters.fritz.settings.devices.*.hostname` | `string` | Hostname under which the target device is reachable. |
+| `services.prometheus.exporters.fritz.settings.devices.*.name` | `string` | Name to use for the device. |
+| `services.prometheus.exporters.fritz.settings.devices.*.password_file` | `absolute path` | Path to a file which contains the password to authenticate with the target device. Needs to be readable by the user the exporter runs under. |
+| `services.prometheus.exporters.fritz.settings.devices.*.username` | `string` | Username to authenticate with the target device. |
+| `services.prometheus.exporters.fritz.settings.log_level` | `one of "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"` | Log level to use for the exporter. |
+| `services.prometheus.exporters.fritz.user` | `string` | User name under which the fritz exporter shall be run. |
+| `services.prometheus.exporters.fritzbox.enable` | `boolean` | Whether to enable the prometheus fritzbox exporter. |
+| `services.prometheus.exporters.fritzbox.extraFlags` | `list of string` | Extra commandline options to pass to the fritzbox exporter. |
+| `services.prometheus.exporters.fritzbox.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.fritzbox.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.fritzbox.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.fritzbox.openFirewall` is true. |
+| `services.prometheus.exporters.fritzbox.gatewayAddress` | `string` | The hostname or IP of the FRITZ!Box. |
+| `services.prometheus.exporters.fritzbox.gatewayPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port of the FRITZ!Box UPnP service. |
+| `services.prometheus.exporters.fritzbox.group` | `string` | Group under which the fritzbox exporter shall be run. |
+| `services.prometheus.exporters.fritzbox.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.fritzbox.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.fritzbox.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.fritzbox.user` | `string` | User name under which the fritzbox exporter shall be run. |
+| `services.prometheus.exporters.frr.disabledCollectors` | `list of string` | Collectors to disable which are enabled by default. |
+| `services.prometheus.exporters.frr.enable` | `boolean` | Whether to enable the prometheus frr exporter. |
+| `services.prometheus.exporters.frr.enabledCollectors` | `list of string` | Collectors to enable. The collectors listed here are enabled in addition to the default ones. |
+| `services.prometheus.exporters.frr.extraFlags` | `list of string` | Extra commandline options to pass to the frr exporter. |
+| `services.prometheus.exporters.frr.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.frr.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.frr.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.frr.openFirewall` is true. |
+| `services.prometheus.exporters.frr.group` | `string` | Group under which the frr exporter shall be run. The exporter talks to frr using a unix socket, which is owned by frrvty group. |
+| `services.prometheus.exporters.frr.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.frr.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.frr.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.frr.user` | `string` | User name under which the frr exporter shall be run. The exporter talks to frr using a unix socket, which is owned by frr. |
+| `services.prometheus.exporters.graphite.enable` | `boolean` | Whether to enable the prometheus graphite exporter. |
+| `services.prometheus.exporters.graphite.extraFlags` | `list of string` | Extra commandline options to pass to the graphite exporter. |
+| `services.prometheus.exporters.graphite.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.graphite.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.graphite.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.graphite.openFirewall` is true. |
+| `services.prometheus.exporters.graphite.graphitePort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to use for the graphite server. |
+| `services.prometheus.exporters.graphite.group` | `string` | Group under which the graphite exporter shall be run. |
+| `services.prometheus.exporters.graphite.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.graphite.mappingSettings` | `open submodule of (YAML 1.1 value)` | Mapping configuration for the exporter, see <https://github.com/prometheus/graphite_exporter#yaml-config> for available options. |
+| `services.prometheus.exporters.graphite.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.graphite.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.graphite.user` | `string` | User name under which the graphite exporter shall be run. |
+| `services.prometheus.exporters.idrac.configuration` | `null or (attribute set)` | Configuration for iDRAC exporter, as a nix attribute set. Configuration reference: <https://github.com/mrlhansen/idrac_exporter/#configuration> Mutually exclusive with `configurationPath` option. |
+| `services.prometheus.exporters.idrac.configurationPath` | `null or absolute path` | Path to the service's config file. This path can either be a computed path in /nix/store or a path in the local filesystem. The config file should NOT be stored in /nix/store as it will contain passwords and/or keys in plain text. Mutually exclusive with `configuration` option. Configuration reference: <https://github.com/mrlhansen/idrac_exporter/#configuration> |
+| `services.prometheus.exporters.idrac.enable` | `boolean` | Whether to enable the prometheus idrac exporter. |
+| `services.prometheus.exporters.idrac.extraFlags` | `list of string` | Extra commandline options to pass to the idrac exporter. |
+| `services.prometheus.exporters.idrac.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.idrac.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.idrac.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.idrac.openFirewall` is true. |
+| `services.prometheus.exporters.idrac.group` | `string` | Group under which the idrac exporter shall be run. |
+| `services.prometheus.exporters.idrac.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.idrac.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.idrac.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.idrac.user` | `string` | User name under which the idrac exporter shall be run. |
+| `services.prometheus.exporters.imap-mailstat.accounts` | `attribute set of (submodule)` | Accounts to monitor |
+| `services.prometheus.exporters.imap-mailstat.accounts.<name>.mailaddress` | `null or string` | Your email address (at the moment used as login name) |
+| `services.prometheus.exporters.imap-mailstat.accounts.<name>.password` | `null or string` | |
+| `services.prometheus.exporters.imap-mailstat.accounts.<name>.serveraddress` | `null or string` | mailserver name or address |
+| `services.prometheus.exporters.imap-mailstat.accounts.<name>.serverport` | `null or signed integer` | imap port number (at the moment only tls connection is supported) |
+| `services.prometheus.exporters.imap-mailstat.accounts.<name>.starttls` | `null or boolean` | set to true for using STARTTLS to start a TLS connection |
+| `services.prometheus.exporters.imap-mailstat.accounts.<name>.username` | `null or string` | If empty string mailaddress value is used |
+| `services.prometheus.exporters.imap-mailstat.configurationFile` | `absolute path` | File containing the configuration |
+| `services.prometheus.exporters.imap-mailstat.enable` | `boolean` | Whether to enable the prometheus imap-mailstat exporter. |
+| `services.prometheus.exporters.imap-mailstat.extraFlags` | `list of string` | Extra commandline options to pass to the imap-mailstat exporter. |
+| `services.prometheus.exporters.imap-mailstat.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.imap-mailstat.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.imap-mailstat.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.imap-mailstat.openFirewall` is true. |
+| `services.prometheus.exporters.imap-mailstat.group` | `string` | Group under which the imap-mailstat exporter shall be run. |
+| `services.prometheus.exporters.imap-mailstat.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.imap-mailstat.oldestUnseenDate` | `boolean` | Enable metric with timestamp of oldest unseen mail |
+| `services.prometheus.exporters.imap-mailstat.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.imap-mailstat.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.imap-mailstat.user` | `string` | User name under which the imap-mailstat exporter shall be run. |
+| `services.prometheus.exporters.influxdb.enable` | `boolean` | Whether to enable the prometheus influxdb exporter. |
+| `services.prometheus.exporters.influxdb.extraFlags` | `list of string` | Extra commandline options to pass to the influxdb exporter. |
+| `services.prometheus.exporters.influxdb.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.influxdb.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.influxdb.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.influxdb.openFirewall` is true. |
+| `services.prometheus.exporters.influxdb.group` | `string` | Group under which the influxdb exporter shall be run. |
+| `services.prometheus.exporters.influxdb.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.influxdb.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.influxdb.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.influxdb.sampleExpiry` | `string` | How long a sample is valid for |
+| `services.prometheus.exporters.influxdb.udpBindAddress` | `string` | Address on which to listen for udp packets |
+| `services.prometheus.exporters.influxdb.user` | `string` | User name under which the influxdb exporter shall be run. |
+| `services.prometheus.exporters.ipmi.configFile` | `null or absolute path` | Path to configuration file. |
+| `services.prometheus.exporters.ipmi.enable` | `boolean` | Whether to enable the prometheus ipmi exporter. |
+| `services.prometheus.exporters.ipmi.extraFlags` | `list of string` | Extra commandline options to pass to the ipmi exporter. |
+| `services.prometheus.exporters.ipmi.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.ipmi.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.ipmi.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.ipmi.openFirewall` is true. |
+| `services.prometheus.exporters.ipmi.group` | `string` | Group under which the ipmi exporter shall be run. |
+| `services.prometheus.exporters.ipmi.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.ipmi.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.ipmi.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.ipmi.user` | `string` | User name under which the ipmi exporter shall be run. |
+| `services.prometheus.exporters.ipmi.webConfigFile` | `null or absolute path` | Path to configuration file that can enable TLS or authentication. |
+| `services.prometheus.exporters.jitsi.enable` | `boolean` | Whether to enable the prometheus jitsi exporter. |
+| `services.prometheus.exporters.jitsi.extraFlags` | `list of string` | Extra commandline options to pass to the jitsi exporter. |
+| `services.prometheus.exporters.jitsi.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.jitsi.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.jitsi.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.jitsi.openFirewall` is true. |
+| `services.prometheus.exporters.jitsi.group` | `string` | Group under which the jitsi exporter shall be run. |
+| `services.prometheus.exporters.jitsi.interval` | `string` | How often to scrape new data |
+| `services.prometheus.exporters.jitsi.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.jitsi.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.jitsi.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.jitsi.url` | `string` | Jitsi Videobridge metrics URL to monitor. This is usually /colibri/stats on port 8080 of the jitsi videobridge host. |
+| `services.prometheus.exporters.jitsi.user` | `string` | User name under which the jitsi exporter shall be run. |
+| `services.prometheus.exporters.json.configFile` | `absolute path` | Path to configuration file. |
+| `services.prometheus.exporters.json.enable` | `boolean` | Whether to enable the prometheus json exporter. |
+| `services.prometheus.exporters.json.extraFlags` | `list of string` | Extra commandline options to pass to the json exporter. |
+| `services.prometheus.exporters.json.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.json.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.json.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.json.openFirewall` is true. |
+| `services.prometheus.exporters.json.group` | `string` | Group under which the json exporter shall be run. |
+| `services.prometheus.exporters.json.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.json.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.json.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.json.user` | `string` | User name under which the json exporter shall be run. |
+| `services.prometheus.exporters.junos-czerwonk.configuration` | `null or (attribute set)` | JunOS exporter configuration as nix attribute set. Mutually exclusive with the `configurationFile` option. |
+| `services.prometheus.exporters.junos-czerwonk.configurationFile` | `null or absolute path` | Specify the JunOS exporter configuration file to use. |
+| `services.prometheus.exporters.junos-czerwonk.enable` | `boolean` | Whether to enable the prometheus junos-czerwonk exporter. |
+| `services.prometheus.exporters.junos-czerwonk.environmentFile` | `null or string` | File containing env-vars to be substituted into the exporter's config. |
+| `services.prometheus.exporters.junos-czerwonk.extraFlags` | `list of string` | Extra commandline options to pass to the junos-czerwonk exporter. |
+| `services.prometheus.exporters.junos-czerwonk.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.junos-czerwonk.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.junos-czerwonk.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.junos-czerwonk.openFirewall` is true. |
+| `services.prometheus.exporters.junos-czerwonk.group` | `string` | Group under which the junos-czerwonk exporter shall be run. |
+| `services.prometheus.exporters.junos-czerwonk.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.junos-czerwonk.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.junos-czerwonk.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.junos-czerwonk.telemetryPath` | `string` | Path under which to expose metrics. |
+| `services.prometheus.exporters.junos-czerwonk.user` | `string` | User name under which the junos-czerwonk exporter shall be run. |
+| `services.prometheus.exporters.kafka.enable` | `boolean` | Whether to enable the prometheus kafka exporter. |
+| `services.prometheus.exporters.kafka.environmentFile` | `null or absolute path` | File containing the credentials to access the repository, in the format of an EnvironmentFile as described by systemd.exec(5) |
+| `services.prometheus.exporters.kafka.extraFlags` | `list of string` | Extra commandline options to pass to the kafka exporter. |
+| `services.prometheus.exporters.kafka.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.kafka.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.kafka.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.kafka.openFirewall` is true. |
+| `services.prometheus.exporters.kafka.group` | `string` | Group under which the kafka exporter shall be run. |
+| `services.prometheus.exporters.kafka.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.kafka.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.kafka.package` | `package` | The kminion package to use. |
+| `services.prometheus.exporters.kafka.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.kafka.user` | `string` | User name under which the kafka exporter shall be run. |
+| `services.prometheus.exporters.kea.enable` | `boolean` | Whether to enable the prometheus kea exporter. |
+| `services.prometheus.exporters.kea.extraFlags` | `list of string` | Extra commandline options to pass to the kea exporter. |
+| `services.prometheus.exporters.kea.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.kea.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.kea.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.kea.openFirewall` is true. |
+| `services.prometheus.exporters.kea.group` | `string` | Group under which the kea exporter shall be run. |
+| `services.prometheus.exporters.kea.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.kea.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.kea.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.kea.targets` | `list of string` | Paths or URLs to the Kea control socket. |
+| `services.prometheus.exporters.kea.user` | `string` | User name under which the kea exporter shall be run. |
+| `services.prometheus.exporters.keylight.enable` | `boolean` | Whether to enable the prometheus keylight exporter. |
+| `services.prometheus.exporters.keylight.extraFlags` | `list of string` | Extra commandline options to pass to the keylight exporter. |
+| `services.prometheus.exporters.keylight.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.keylight.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.keylight.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.keylight.openFirewall` is true. |
+| `services.prometheus.exporters.keylight.group` | `string` | Group under which the keylight exporter shall be run. |
+| `services.prometheus.exporters.keylight.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.keylight.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.keylight.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.keylight.user` | `string` | User name under which the keylight exporter shall be run. |
+| `services.prometheus.exporters.klipper.enable` | `boolean` | Whether to enable the prometheus klipper exporter. |
+| `services.prometheus.exporters.klipper.extraFlags` | `list of string` | Extra commandline options to pass to the klipper exporter. |
+| `services.prometheus.exporters.klipper.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.klipper.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.klipper.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.klipper.openFirewall` is true. |
+| `services.prometheus.exporters.klipper.group` | `string` | Group under which the klipper exporter shall be run. |
+| `services.prometheus.exporters.klipper.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.klipper.moonrakerApiKey` | `string` | API Key to authenticate with the Moonraker APIs. Only needed if the host running the exporter is not a trusted client to Moonraker. |
+| `services.prometheus.exporters.klipper.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.klipper.package` | `package` | The prometheus-klipper-exporter package to use. |
+| `services.prometheus.exporters.klipper.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.klipper.user` | `string` | User name under which the klipper exporter shall be run. |
+| `services.prometheus.exporters.knot.enable` | `boolean` | Whether to enable the prometheus knot exporter. |
+| `services.prometheus.exporters.knot.extraFlags` | `list of string` | Extra commandline options to pass to the knot exporter. |
+| `services.prometheus.exporters.knot.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.knot.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.knot.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.knot.openFirewall` is true. |
+| `services.prometheus.exporters.knot.group` | `string` | Group under which the knot exporter shall be run. |
+| `services.prometheus.exporters.knot.knotLibraryPath` | `null or string` | Path to the library of `knot-dns`. |
+| `services.prometheus.exporters.knot.knotSocketPath` | `string` | Socket path of {manpage}`knotd(8)`. |
+| `services.prometheus.exporters.knot.knotSocketTimeout` | `positive integer, meaning >0` | Timeout in seconds. |
+| `services.prometheus.exporters.knot.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.knot.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.knot.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.knot.user` | `string` | User name under which the knot exporter shall be run. |
+| `services.prometheus.exporters.libvirt.enable` | `boolean` | Whether to enable the prometheus libvirt exporter. |
+| `services.prometheus.exporters.libvirt.extraFlags` | `list of string` | Extra commandline options to pass to the libvirt exporter. |
+| `services.prometheus.exporters.libvirt.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.libvirt.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.libvirt.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.libvirt.openFirewall` is true. |
+| `services.prometheus.exporters.libvirt.group` | `string` | Group under which the libvirt exporter shall be run. |
+| `services.prometheus.exporters.libvirt.libvirtUri` | `string` | Libvirt URI from which to extract metrics |
+| `services.prometheus.exporters.libvirt.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.libvirt.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.libvirt.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.libvirt.user` | `string` | User name under which the libvirt exporter shall be run. |
+| `services.prometheus.exporters.lnd.enable` | `boolean` | Whether to enable the prometheus lnd exporter. |
+| `services.prometheus.exporters.lnd.extraFlags` | `list of string` | Extra commandline options to pass to the lnd exporter. |
+| `services.prometheus.exporters.lnd.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.lnd.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.lnd.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.lnd.openFirewall` is true. |
+| `services.prometheus.exporters.lnd.group` | `string` | Group under which the lnd exporter shall be run. |
+| `services.prometheus.exporters.lnd.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.lnd.lndHost` | `string` | lnd instance gRPC address:port. |
+| `services.prometheus.exporters.lnd.lndMacaroonDir` | `absolute path` | Path to lnd macaroons. |
+| `services.prometheus.exporters.lnd.lndTlsPath` | `absolute path` | Path to lnd TLS certificate. |
+| `services.prometheus.exporters.lnd.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.lnd.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.lnd.user` | `string` | User name under which the lnd exporter shall be run. |
+| `services.prometheus.exporters.mail.configFile` | `null or absolute path` | Specify the mailexporter configuration file to use. |
+| `services.prometheus.exporters.mail.configuration` | `null or (submodule)` | Specify the mailexporter configuration file to use. |
+| `services.prometheus.exporters.mail.configuration.disableFileDeletion` | `boolean` | Disables the exporter's function to delete probing mails. |
+| `services.prometheus.exporters.mail.configuration.mailCheckTimeout` | `string` | Timeout until mails are considered "didn't make it". |
+| `services.prometheus.exporters.mail.configuration.monitoringInterval` | `string` | Time interval between two probe attempts. |
+| `services.prometheus.exporters.mail.configuration.servers` | `list of (submodule)` | List of servers that should be probed. *Note:* if your mailserver has {manpage}`rspamd(8)` configured, it can happen that emails from this exporter are marked as spam. It's possible to work around the issue with a config like this: `{   services.rspamd.locals."multimap.conf".text = ''     ALLOWLIST_PROMETHEUS {       filter = "email:domain:tld";       type = "from";       map = "${pkgs.writeText "allowmap" "domain.tld"}";       score = -100.0;     }   ''; }` |
+| `services.prometheus.exporters.mail.configuration.servers.*.detectionDir` | `absolute path` | Directory in which new mails for the exporter user are placed. Note that this needs to exist when the exporter starts. |
+| `services.prometheus.exporters.mail.configuration.servers.*.from` | `string` | Content of 'From' Header for probing mails. |
+| `services.prometheus.exporters.mail.configuration.servers.*.login` | `null or string` | Username to use for SMTP authentication. |
+| `services.prometheus.exporters.mail.configuration.servers.*.name` | `string` | Value for label 'configname' which will be added to all metrics. |
+| `services.prometheus.exporters.mail.configuration.servers.*.passphrase` | `null or string` | Password to use for SMTP authentication. |
+| `services.prometheus.exporters.mail.configuration.servers.*.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to use for SMTP. |
+| `services.prometheus.exporters.mail.configuration.servers.*.server` | `string` | Hostname of the server that should be probed. |
+| `services.prometheus.exporters.mail.configuration.servers.*.to` | `string` | Content of 'To' Header for probing mails. |
+| `services.prometheus.exporters.mail.enable` | `boolean` | Whether to enable the prometheus mail exporter. |
+| `services.prometheus.exporters.mail.environmentFile` | `null or string` | File containing env-vars to be substituted into the exporter's config. |
+| `services.prometheus.exporters.mail.extraFlags` | `list of string` | Extra commandline options to pass to the mail exporter. |
+| `services.prometheus.exporters.mail.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.mail.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.mail.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.mail.openFirewall` is true. |
+| `services.prometheus.exporters.mail.group` | `string` | Group under which the mail exporter shall be run. |
+| `services.prometheus.exporters.mail.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.mail.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.mail.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.mail.telemetryPath` | `string` | Path under which to expose metrics. |
+| `services.prometheus.exporters.mail.user` | `string` | User name under which the mail exporter shall be run. |
+| `services.prometheus.exporters.mailman3.enable` | `boolean` | Whether to enable the prometheus mailman3 exporter. |
+| `services.prometheus.exporters.mailman3.extraFlags` | `list of string` | Extra commandline options to pass to the mailman3 exporter. |
+| `services.prometheus.exporters.mailman3.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.mailman3.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.mailman3.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.mailman3.openFirewall` is true. |
+| `services.prometheus.exporters.mailman3.group` | `string` | Group under which the mailman3 exporter shall be run. |
+| `services.prometheus.exporters.mailman3.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.mailman3.logLevel` | `one of "debug", "info", "warning", "error", "critical"` | Detail level to log. |
+| `services.prometheus.exporters.mailman3.mailman.addr` | `string` | Mailman3 Core REST API address. |
+| `services.prometheus.exporters.mailman3.mailman.passFile` | `string` | Mailman3 Core REST API password. |
+| `services.prometheus.exporters.mailman3.mailman.user` | `string` | Mailman3 Core REST API username. |
+| `services.prometheus.exporters.mailman3.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.mailman3.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.mailman3.user` | `string` | User name under which the mailman3 exporter shall be run. |
+| `services.prometheus.exporters.mikrotik.configFile` | `null or absolute path` | Path to a mikrotik exporter configuration file. Mutually exclusive with {option}`configuration` option. |
+| `services.prometheus.exporters.mikrotik.configuration` | `null or (attribute set)` | Mikrotik exporter configuration as nix attribute set. Mutually exclusive with {option}`configFile` option. See <https://github.com/nshttpd/mikrotik-exporter/blob/master/README.md> for the description of the configuration file format. |
+| `services.prometheus.exporters.mikrotik.enable` | `boolean` | Whether to enable the prometheus mikrotik exporter. |
+| `services.prometheus.exporters.mikrotik.extraFlags` | `list of string` | Extra commandline options to pass to the mikrotik exporter. |
+| `services.prometheus.exporters.mikrotik.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.mikrotik.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.mikrotik.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.mikrotik.openFirewall` is true. |
+| `services.prometheus.exporters.mikrotik.group` | `string` | Group under which the mikrotik exporter shall be run. |
+| `services.prometheus.exporters.mikrotik.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.mikrotik.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.mikrotik.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.mikrotik.user` | `string` | User name under which the mikrotik exporter shall be run. |
+| `services.prometheus.exporters.modemmanager.enable` | `boolean` | Whether to enable the prometheus modemmanager exporter. |
+| `services.prometheus.exporters.modemmanager.extraFlags` | `list of string` | Extra commandline options to pass to the modemmanager exporter. |
+| `services.prometheus.exporters.modemmanager.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.modemmanager.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.modemmanager.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.modemmanager.openFirewall` is true. |
+| `services.prometheus.exporters.modemmanager.group` | `string` | Group under which the modemmanager exporter shall be run. |
+| `services.prometheus.exporters.modemmanager.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.modemmanager.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.modemmanager.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.modemmanager.refreshRate` | `string` | How frequently ModemManager will refresh the extended signal quality information for each modem. The duration should be specified in seconds ("5s"), minutes ("1m"), or hours ("1h"). |
+| `services.prometheus.exporters.modemmanager.user` | `string` | User name under which the modemmanager exporter shall be run. |
+| `services.prometheus.exporters.mongodb.collStats` | `list of string` | List of comma separared databases.collections to get $collStats |
+| `services.prometheus.exporters.mongodb.collectAll` | `boolean` | Enable all collectors. Same as specifying all --collector.<name> |
+| `services.prometheus.exporters.mongodb.collector` | `list of string` | Enabled collectors |
+| `services.prometheus.exporters.mongodb.enable` | `boolean` | Whether to enable the prometheus mongodb exporter. |
+| `services.prometheus.exporters.mongodb.extraFlags` | `list of string` | Extra commandline options to pass to the mongodb exporter. |
+| `services.prometheus.exporters.mongodb.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.mongodb.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.mongodb.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.mongodb.openFirewall` is true. |
+| `services.prometheus.exporters.mongodb.group` | `string` | Group under which the mongodb exporter shall be run. |
+| `services.prometheus.exporters.mongodb.indexStats` | `list of string` | List of comma separared databases.collections to get $indexStats |
+| `services.prometheus.exporters.mongodb.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.mongodb.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.mongodb.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.mongodb.telemetryPath` | `string` | Metrics expose path |
+| `services.prometheus.exporters.mongodb.uri` | `string` | MongoDB URI to connect to. |
+| `services.prometheus.exporters.mongodb.user` | `string` | User name under which the mongodb exporter shall be run. |
+| `services.prometheus.exporters.mqtt.enable` | `boolean` | Whether to enable the prometheus mqtt exporter. |
+| `services.prometheus.exporters.mqtt.environmentFile` | `null or absolute path` | File to load as environment file. Useful for e.g. setting `MQTT_PASSWORD` without putting any secrets into the Nix store. |
+| `services.prometheus.exporters.mqtt.esphomeTopicPrefixes` | `list of string` | MQTT topic used for ESPHome messages. |
+| `services.prometheus.exporters.mqtt.extraFlags` | `list of string` | Extra commandline options to pass to the mqtt exporter. |
+| `services.prometheus.exporters.mqtt.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.mqtt.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.mqtt.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.mqtt.openFirewall` is true. |
+| `services.prometheus.exporters.mqtt.group` | `string` | Group under which the mqtt exporter shall be run. |
+| `services.prometheus.exporters.mqtt.hubitatTopicPrefixes` | `list of string` | MQTT topic used for Hubitat messages. |
+| `services.prometheus.exporters.mqtt.keepFullTopic` | `boolean` | Whether to enable Keep entire topic instead of the first two elements only. Usecase: Shelly 3EM. |
+| `services.prometheus.exporters.mqtt.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.mqtt.logLevel` | `one of "CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"` | Logging level |
+| `services.prometheus.exporters.mqtt.logMqttMessage` | `boolean` | Whether to enable Log MQTT original message, only if `LOG_LEVEL` is set to DEBUG.. |
+| `services.prometheus.exporters.mqtt.mqttAddress` | `string` | IP or hostname of MQTT broker. |
+| `services.prometheus.exporters.mqtt.mqttClientId` | `null or string` | Set client ID manually for MQTT connection |
+| `services.prometheus.exporters.mqtt.mqttExposeClientId` | `boolean` | Whether to enable Expose the client ID as a label in Prometheus metrics.. |
+| `services.prometheus.exporters.mqtt.mqttIgnoredTopics` | `list of string` | Lists of topics to ignore. Accepts wildcards. |
+| `services.prometheus.exporters.mqtt.mqttKeepAlive` | `signed integer` | Keep alive interval to maintain connection with MQTT broker. |
+| `services.prometheus.exporters.mqtt.mqttPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | TCP port of MQTT broker. |
+| `services.prometheus.exporters.mqtt.mqttTopic` | `string` | Topic path to subscribe to. |
+| `services.prometheus.exporters.mqtt.mqttUsername` | `null or string` | Username which should be used to authenticate against the MQTT broker. |
+| `services.prometheus.exporters.mqtt.mqttV5Protocol` | `boolean` | Whether to enable Force to use MQTT protocol v5 instead of 3.1.1.. |
+| `services.prometheus.exporters.mqtt.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.mqtt.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.mqtt.prometheusPrefix` | `string` | Prefix added to the metric name. |
+| `services.prometheus.exporters.mqtt.topicLabel` | `string` | Define the Prometheus label for the topic. |
+| `services.prometheus.exporters.mqtt.user` | `string` | User name under which the mqtt exporter shall be run. |
+| `services.prometheus.exporters.mqtt.zigbee2MqttAvailability` | `boolean` | Whether to enable Normalize sensor name for device availability metric added by Zigbee2MQTT.. |
+| `services.prometheus.exporters.mqtt.zwaveTopicPrefix` | `string` | MQTT topic used for Zwavejs2Mqtt messages. |
+| `services.prometheus.exporters.mysqld.configFile` | `absolute path` | Path to the services config file. See <https://github.com/prometheus/mysqld_exporter#running> for more information about the available options. ::: {.warn} Please do not store this file in the nix store if you choose to include any credentials here, as it would be world-readable. ::: |
+| `services.prometheus.exporters.mysqld.enable` | `boolean` | Whether to enable the prometheus mysqld exporter. |
+| `services.prometheus.exporters.mysqld.extraFlags` | `list of string` | Extra commandline options to pass to the mysqld exporter. |
+| `services.prometheus.exporters.mysqld.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.mysqld.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.mysqld.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.mysqld.openFirewall` is true. |
+| `services.prometheus.exporters.mysqld.group` | `string` | Group under which the mysqld exporter shall be run. |
+| `services.prometheus.exporters.mysqld.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.mysqld.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.mysqld.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.mysqld.runAsLocalSuperUser` | `boolean` | Whether to run the exporter as {option}`services.mysql.user`. |
+| `services.prometheus.exporters.mysqld.telemetryPath` | `string` | Path under which to expose metrics. |
+| `services.prometheus.exporters.mysqld.user` | `string` | User name under which the mysqld exporter shall be run. |
+| `services.prometheus.exporters.nats.enable` | `boolean` | Whether to enable the prometheus nats exporter. |
+| `services.prometheus.exporters.nats.extraFlags` | `list of string` | Extra commandline options to pass to the nats exporter. |
+| `services.prometheus.exporters.nats.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.nats.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.nats.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.nats.openFirewall` is true. |
+| `services.prometheus.exporters.nats.group` | `string` | Group under which the nats exporter shall be run. |
+| `services.prometheus.exporters.nats.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.nats.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.nats.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.nats.url` | `string` | NATS monitor endpoint to query. |
+| `services.prometheus.exporters.nats.user` | `string` | User name under which the nats exporter shall be run. |
+| `services.prometheus.exporters.nextcloud.enable` | `boolean` | Whether to enable the prometheus nextcloud exporter. |
+| `services.prometheus.exporters.nextcloud.extraFlags` | `list of string` | Extra commandline options to pass to the nextcloud exporter. |
+| `services.prometheus.exporters.nextcloud.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.nextcloud.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.nextcloud.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.nextcloud.openFirewall` is true. |
+| `services.prometheus.exporters.nextcloud.group` | `string` | Group under which the nextcloud exporter shall be run. |
+| `services.prometheus.exporters.nextcloud.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.nextcloud.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.nextcloud.passwordFile` | `null or absolute path` | File containing the password for connecting to Nextcloud. Make sure that this file is readable by the exporter user. |
+| `services.prometheus.exporters.nextcloud.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.nextcloud.timeout` | `string` | Timeout for getting server info document. |
+| `services.prometheus.exporters.nextcloud.tokenFile` | `null or absolute path` | File containing the token for connecting to Nextcloud. Make sure that this file is readable by the exporter user. |
+| `services.prometheus.exporters.nextcloud.url` | `string` | URL to the Nextcloud serverinfo page. Adding the path to the serverinfo API is optional, it defaults to `/ocs/v2.php/apps/serverinfo/api/v1/info`. |
+| `services.prometheus.exporters.nextcloud.user` | `string` | User name under which the nextcloud exporter shall be run. |
+| `services.prometheus.exporters.nextcloud.username` | `string` | Username for connecting to Nextcloud. Note that this account needs to have admin privileges in Nextcloud. Unused when using token authentication. |
+| `services.prometheus.exporters.nginx.constLabels` | `list of string` | A list of constant labels that will be used in every metric. |
+| `services.prometheus.exporters.nginx.enable` | `boolean` | Whether to enable the prometheus nginx exporter. |
+| `services.prometheus.exporters.nginx.extraFlags` | `list of string` | Extra commandline options to pass to the nginx exporter. |
+| `services.prometheus.exporters.nginx.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.nginx.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.nginx.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.nginx.openFirewall` is true. |
+| `services.prometheus.exporters.nginx.group` | `string` | Group under which the nginx exporter shall be run. |
+| `services.prometheus.exporters.nginx.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.nginx.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.nginx.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.nginx.scrapeUri` | `string` | Address to access the nginx status page. Can be enabled with services.nginx.statusPage = true. |
+| `services.prometheus.exporters.nginx.sslVerify` | `boolean` | Whether to perform certificate verification for https. |
+| `services.prometheus.exporters.nginx.telemetryPath` | `string` | Path under which to expose metrics. |
+| `services.prometheus.exporters.nginx.user` | `string` | User name under which the nginx exporter shall be run. |
+| `services.prometheus.exporters.nginxlog.enable` | `boolean` | Whether to enable the prometheus nginxlog exporter. |
+| `services.prometheus.exporters.nginxlog.extraFlags` | `list of string` | Extra commandline options to pass to the nginxlog exporter. |
+| `services.prometheus.exporters.nginxlog.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.nginxlog.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.nginxlog.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.nginxlog.openFirewall` is true. |
+| `services.prometheus.exporters.nginxlog.group` | `string` | Group under which the nginxlog exporter shall be run. |
+| `services.prometheus.exporters.nginxlog.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.nginxlog.metricsEndpoint` | `string` | Path under which to expose metrics. |
+| `services.prometheus.exporters.nginxlog.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.nginxlog.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.nginxlog.settings` | `submodule` | All settings of nginxlog expressed as an Nix attrset. Check the official documentation for the corresponding YAML settings that can all be used here: <https://github.com/martin-helmich/prometheus-nginxlog-exporter> The `listen` object is already generated by `port`, `listenAddress` and `metricsEndpoint` and will be merged with the value of `settings` before writing it as JSON. |
+| `services.prometheus.exporters.nginxlog.settings.consul` | `null or (attribute set of anything)` | Consul integration options. For more information see the [example config](https://github.com/martin-helmich/prometheus-nginxlog-exporter#configuration-file). This is disabled by default. |
+| `services.prometheus.exporters.nginxlog.settings.namespaces` | `list of attribute set of anything` | Namespaces to collect the metrics for. For more information see the [example config](https://github.com/martin-helmich/prometheus-nginxlog-exporter#configuration-file). |
+| `services.prometheus.exporters.nginxlog.user` | `string` | User name under which the nginxlog exporter shall be run. |
+| `services.prometheus.exporters.node-cert.enable` | `boolean` | Whether to enable the prometheus node-cert exporter. |
+| `services.prometheus.exporters.node-cert.excludeGlobs` | `list of string` | List files matching a pattern to include. Uses Go blob pattern. |
+| `services.prometheus.exporters.node-cert.excludePaths` | `list of string` | List of paths to exclute from searching for SSL certificates. |
+| `services.prometheus.exporters.node-cert.extraFlags` | `list of string` | Extra commandline options to pass to the node-cert exporter. |
+| `services.prometheus.exporters.node-cert.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.node-cert.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.node-cert.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.node-cert.openFirewall` is true. |
+| `services.prometheus.exporters.node-cert.group` | `string` | Group under which the node-cert exporter shall be run. |
+| `services.prometheus.exporters.node-cert.includeGlobs` | `list of string` | List files matching a pattern to include. Uses Go blob pattern. |
+| `services.prometheus.exporters.node-cert.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.node-cert.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.node-cert.paths` | `list of string` | List of paths to search for SSL certificates. |
+| `services.prometheus.exporters.node-cert.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.node-cert.user` | `string` | User owning the certs. |
+| `services.prometheus.exporters.node.disabledCollectors` | `list of string` | Collectors to disable which are enabled by default. |
+| `services.prometheus.exporters.node.enable` | `boolean` | Whether to enable the prometheus node exporter. |
+| `services.prometheus.exporters.node.enabledCollectors` | `list of string` | Collectors to enable. The collectors listed here are enabled in addition to the default ones. |
+| `services.prometheus.exporters.node.extraFlags` | `list of string` | Extra commandline options to pass to the node exporter. |
+| `services.prometheus.exporters.node.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.node.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.node.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.node.openFirewall` is true. |
+| `services.prometheus.exporters.node.group` | `string` | Group under which the node exporter shall be run. |
+| `services.prometheus.exporters.node.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.node.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.node.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.node.user` | `string` | User name under which the node exporter shall be run. |
+| `services.prometheus.exporters.nut.enable` | `boolean` | Whether to enable the prometheus nut exporter. |
+| `services.prometheus.exporters.nut.extraFlags` | `list of string` | Extra commandline options to pass to the nut exporter. |
+| `services.prometheus.exporters.nut.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.nut.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.nut.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.nut.openFirewall` is true. |
+| `services.prometheus.exporters.nut.group` | `string` | Group under which the nut exporter shall be run. |
+| `services.prometheus.exporters.nut.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.nut.nutServer` | `string` | Hostname or address of the NUT server |
+| `services.prometheus.exporters.nut.nutUser` | `string` | The user to log in into NUT server. If set, passwordPath should also be set. Default NUT configs usually permit reading variables without authentication. |
+| `services.prometheus.exporters.nut.nutVariables` | `list of string` | List of NUT variable names to monitor. If no variables are set, all numeric variables will be exported automatically. See the [upstream docs](https://github.com/DRuggeri/nut_exporter?tab=readme-ov-file#variables-and-information) for more information. |
+| `services.prometheus.exporters.nut.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.nut.passwordPath` | `null or absolute path` | A run-time path to the nutUser password file, which should be provisioned outside of Nix store. |
+| `services.prometheus.exporters.nut.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.nut.user` | `string` | User name under which the nut exporter shall be run. |
+| `services.prometheus.exporters.nvidia-gpu.enable` | `boolean` | Whether to enable the prometheus nvidia-gpu exporter. |
+| `services.prometheus.exporters.nvidia-gpu.extraFlags` | `list of string` | Extra commandline options to pass to the nvidia-gpu exporter. |
+| `services.prometheus.exporters.nvidia-gpu.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.nvidia-gpu.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.nvidia-gpu.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.nvidia-gpu.openFirewall` is true. |
+| `services.prometheus.exporters.nvidia-gpu.group` | `string` | Group under which the nvidia-gpu exporter shall be run. |
+| `services.prometheus.exporters.nvidia-gpu.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.nvidia-gpu.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.nvidia-gpu.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.nvidia-gpu.user` | `string` | User name under which the nvidia-gpu exporter shall be run. |
+| `services.prometheus.exporters.opnsense.apiKeyFile` | `null or absolute path` | File containing the api key. |
+| `services.prometheus.exporters.opnsense.apiSecretFile` | `null or absolute path` | File containing the api secret. |
+| `services.prometheus.exporters.opnsense.disabledExporter` | `list of string` | Collectors to enable or disable. All collectors are enabled by default. |
+| `services.prometheus.exporters.opnsense.enable` | `boolean` | Whether to enable the prometheus opnsense exporter. |
+| `services.prometheus.exporters.opnsense.enabledExporter` | `list of string` | Collectors to enable or disable. All collectors are enabled by default. |
+| `services.prometheus.exporters.opnsense.extraFlags` | `list of string` | Extra commandline options to pass to the opnsense exporter. |
+| `services.prometheus.exporters.opnsense.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.opnsense.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.opnsense.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.opnsense.openFirewall` is true. |
+| `services.prometheus.exporters.opnsense.group` | `string` | Group under which the opnsense exporter shall be run. |
+| `services.prometheus.exporters.opnsense.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.opnsense.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.opnsense.opnsenseServerAddress` | `string` | Opnsense IP address of the opnsense appliance. Defaults to 192.168.1.1 |
+| `services.prometheus.exporters.opnsense.opnsenseServerProtocol` | `one of "http", "https"` | Opnsense metrics scraper protocol to use. Defaults to https. |
+| `services.prometheus.exporters.opnsense.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.opnsense.user` | `string` | User name under which the opensense exporter shall be run. |
+| `services.prometheus.exporters.pgbouncer.connectionEnvFile` | `null or string` | File that must contain the environment variable `PGBOUNCER_EXPORTER_CONNECTION_STRING` which is set to the connection string used by pgbouncer. I.e. the format is supposed to look like this: `PGBOUNCER_EXPORTER_CONNECTION_STRING="postgres://admin@localhost:6432/pgbouncer?sslmode=require"` NOTE: You MUST keep pgbouncer as database name (special internal db)! NOTE: `services.pgbouncer.settings.pgbouncer.ignore_startup_parameters` MUST contain "extra_float_digits". Mutually exclusive with [](#opt-services.prometheus.exporters.pgbouncer.connectionString). |
+| `services.prometheus.exporters.pgbouncer.connectionString` | `null or string` | Connection string for accessing pgBouncer. NOTE: You MUST keep pgbouncer as database name (special internal db)!!! NOTE: ignore_startup_parameters MUST contain "extra_float_digits". NOTE: Admin user (with password or passwordless) MUST exist in the auth_file if auth_type other than "any" is used. WARNING: this secret is stored in the world-readable Nix store! Use [](#opt-services.prometheus.exporters.pgbouncer.connectionEnvFile) if the URL contains a secret. |
+| `services.prometheus.exporters.pgbouncer.enable` | `boolean` | Whether to enable the prometheus pgbouncer exporter. |
+| `services.prometheus.exporters.pgbouncer.extraFlags` | `list of string` | Extra commandline options when launching Prometheus. |
+| `services.prometheus.exporters.pgbouncer.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.pgbouncer.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.pgbouncer.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.pgbouncer.openFirewall` is true. |
+| `services.prometheus.exporters.pgbouncer.group` | `string` | Group under which the pgbouncer exporter shall be run. |
+| `services.prometheus.exporters.pgbouncer.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.pgbouncer.logFormat` | `one of "logfmt", "json"` | Output format of log messages. One of: [logfmt, json] |
+| `services.prometheus.exporters.pgbouncer.logLevel` | `one of "debug", "info", "warn", "error"` | Only log messages with the given severity or above. |
+| `services.prometheus.exporters.pgbouncer.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.pgbouncer.package` | `package` | The prometheus-pgbouncer-exporter package to use. |
+| `services.prometheus.exporters.pgbouncer.pidFile` | `null or string` | Path to PgBouncer pid file. If provided, the standard process metrics get exported for the PgBouncer process, prefixed with 'pgbouncer_process\_...'. The pgbouncer_process exporter needs to have read access to files owned by the PgBouncer process. Depends on the availability of /proc. <https://prometheus.io/docs/instrumenting/writing_clientlibs/#process-metrics>. |
+| `services.prometheus.exporters.pgbouncer.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.pgbouncer.telemetryPath` | `string` | Path under which to expose metrics. |
+| `services.prometheus.exporters.pgbouncer.user` | `string` | User name under which the pgbouncer exporter shall be run. |
+| `services.prometheus.exporters.pgbouncer.webConfigFile` | `null or absolute path` | Path to configuration file that can enable TLS or authentication. |
+| `services.prometheus.exporters.pgbouncer.webSystemdSocket` | `boolean` | Use systemd socket activation listeners instead of port listeners (Linux only). |
+| `services.prometheus.exporters.php-fpm.enable` | `boolean` | Whether to enable the prometheus php-fpm exporter. |
+| `services.prometheus.exporters.php-fpm.environmentFile` | `null or absolute path` | Environment file as defined in {manpage}`systemd.exec(5)`. Secrets may be passed to the service without adding them to the world-readable Nix store, by specifying placeholder variables as the option value in Nix and setting these variables accordingly in the environment file. Environment variables from this file will be interpolated into the config file using envsubst with this syntax: `$ENVIRONMENT ${VARIABLE}` For variables to use see [options and defaults](https://github.com/hipages/php-fpm_exporter#options-and-defaults). The main use is to set the PHP_FPM_SCRAPE_URI that indicate how to connect to PHP-FPM process. `  # Content of the environment file   PHP_FPM_SCRAPE_URI="unix:///tmp/php.sock;/status"` Note that this file needs to be available on the host on which this exporter is running. |
+| `services.prometheus.exporters.php-fpm.extraFlags` | `list of string` | Extra commandline options to pass to the php-fpm exporter. |
+| `services.prometheus.exporters.php-fpm.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.php-fpm.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.php-fpm.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.php-fpm.openFirewall` is true. |
+| `services.prometheus.exporters.php-fpm.group` | `string` | Group under which the php-fpm exporter shall be run. |
+| `services.prometheus.exporters.php-fpm.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.php-fpm.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.php-fpm.package` | `package` | The prometheus-php-fpm-exporter package to use. |
+| `services.prometheus.exporters.php-fpm.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.php-fpm.telemetryPath` | `string` | Path under which to expose metrics. |
+| `services.prometheus.exporters.php-fpm.user` | `string` | User name under which the php-fpm exporter shall be run. |
+| `services.prometheus.exporters.pihole.apiToken` | `string` | Pi-Hole API token which can be used instead of a password |
+| `services.prometheus.exporters.pihole.enable` | `boolean` | Whether to enable the prometheus pihole exporter. |
+| `services.prometheus.exporters.pihole.extraFlags` | `list of string` | Extra commandline options to pass to the pihole exporter. |
+| `services.prometheus.exporters.pihole.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.pihole.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.pihole.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.pihole.openFirewall` is true. |
+| `services.prometheus.exporters.pihole.group` | `string` | Group under which the pihole exporter shall be run. |
+| `services.prometheus.exporters.pihole.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.pihole.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.pihole.password` | `string` | The password to login into Pi-Hole. An api token can be used instead. |
+| `services.prometheus.exporters.pihole.piholeHostname` | `string` | Hostname or address where to find the Pi-Hole webinterface |
+| `services.prometheus.exporters.pihole.piholePort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port Pi-Hole webinterface is reachable on |
+| `services.prometheus.exporters.pihole.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.pihole.protocol` | `one of "http", "https"` | The protocol which is used to connect to Pi-Hole |
+| `services.prometheus.exporters.pihole.timeout` | `string` | Controls the timeout to connect to a Pi-Hole instance |
+| `services.prometheus.exporters.pihole.user` | `string` | User name under which the pihole exporter shall be run. |
+| `services.prometheus.exporters.ping.enable` | `boolean` | Whether to enable the prometheus ping exporter. |
+| `services.prometheus.exporters.ping.extraFlags` | `list of string` | Extra commandline options to pass to the ping exporter. |
+| `services.prometheus.exporters.ping.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.ping.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.ping.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.ping.openFirewall` is true. |
+| `services.prometheus.exporters.ping.group` | `string` | Group under which the ping exporter shall be run. |
+| `services.prometheus.exporters.ping.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.ping.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.ping.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.ping.settings` | `YAML 1.1 value` | Configuration for ping_exporter, see <https://github.com/czerwonk/ping_exporter> for supported values. |
+| `services.prometheus.exporters.ping.telemetryPath` | `string` | Path under which to expose metrics. |
+| `services.prometheus.exporters.ping.user` | `string` | User name under which the ping exporter shall be run. |
+| `services.prometheus.exporters.postfix.enable` | `boolean` | Whether to enable the prometheus postfix exporter. |
+| `services.prometheus.exporters.postfix.extraFlags` | `list of string` | Extra commandline options to pass to the postfix exporter. |
+| `services.prometheus.exporters.postfix.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.postfix.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.postfix.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.postfix.openFirewall` is true. |
+| `services.prometheus.exporters.postfix.group` | `string` | Group under which the postfix exporter shall be run. It should match the group that is allowed to access the `showq` socket in the `queue/public/` directory. Defaults to `services.postfix.setgidGroup` when postfix is enabled. |
+| `services.prometheus.exporters.postfix.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.postfix.logfilePath` | `absolute path` | Path where Postfix writes log entries. This file will be truncated by this exporter! |
+| `services.prometheus.exporters.postfix.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.postfix.package` | `package` | The prometheus-postfix-exporter package to use. |
+| `services.prometheus.exporters.postfix.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.postfix.showqPath` | `absolute path` | Path where Postfix places its showq socket. |
+| `services.prometheus.exporters.postfix.systemd.enable` | `boolean` | Whether to enable reading metrics from the systemd journal instead of from a logfile |
+| `services.prometheus.exporters.postfix.systemd.journalPath` | `null or absolute path` | Path to the systemd journal. |
+| `services.prometheus.exporters.postfix.systemd.slice` | `null or string` | Name of the postfix systemd slice. This overrides the {option}`systemd.unit`. |
+| `services.prometheus.exporters.postfix.systemd.unit` | `string` | Name of the postfix systemd unit. |
+| `services.prometheus.exporters.postfix.telemetryPath` | `string` | Path under which to expose metrics. |
+| `services.prometheus.exporters.postfix.user` | `string` | User name under which the postfix exporter shall be run. |
+| `services.prometheus.exporters.postgres.dataSourceName` | `string` | Accepts PostgreSQL URI form and key=value form arguments. |
+| `services.prometheus.exporters.postgres.enable` | `boolean` | Whether to enable the prometheus postgres exporter. |
+| `services.prometheus.exporters.postgres.environmentFile` | `null or absolute path` | Environment file as defined in {manpage}`systemd.exec(5)`. Secrets may be passed to the service without adding them to the world-readable Nix store, by specifying placeholder variables as the option value in Nix and setting these variables accordingly in the environment file. Environment variables from this file will be interpolated into the config file using envsubst with this syntax: `$ENVIRONMENT ${VARIABLE}` The main use is to set the DATA_SOURCE_NAME that contains the postgres password note that contents from this file will override dataSourceName if you have set it from nix. `  # Content of the environment file   DATA_SOURCE_NAME=postgresql://username:password@localhost:5432/postgres?sslmode=disable` Note that this file needs to be available on the host on which this exporter is running. |
+| `services.prometheus.exporters.postgres.extraFlags` | `list of string` | Extra commandline options to pass to the postgres exporter. |
+| `services.prometheus.exporters.postgres.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.postgres.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.postgres.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.postgres.openFirewall` is true. |
+| `services.prometheus.exporters.postgres.group` | `string` | Group under which the postgres exporter shall be run. |
+| `services.prometheus.exporters.postgres.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.postgres.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.postgres.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.postgres.runAsLocalSuperUser` | `boolean` | Whether to run the exporter as the local 'postgres' super user. |
+| `services.prometheus.exporters.postgres.telemetryPath` | `string` | Path under which to expose metrics. |
+| `services.prometheus.exporters.postgres.user` | `string` | User name under which the postgres exporter shall be run. |
+| `services.prometheus.exporters.process.enable` | `boolean` | Whether to enable the prometheus process exporter. |
+| `services.prometheus.exporters.process.extraFlags` | `list of string` | Extra commandline options to pass to the process exporter. |
+| `services.prometheus.exporters.process.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.process.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.process.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.process.openFirewall` is true. |
+| `services.prometheus.exporters.process.group` | `string` | Group under which the process exporter shall be run. |
+| `services.prometheus.exporters.process.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.process.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.process.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.process.settings.process_names` | `list of anything` | All settings expressed as an Nix attrset. Check the official documentation for the corresponding YAML settings that can all be used here: <https://github.com/ncabatoff/process-exporter> |
+| `services.prometheus.exporters.process.user` | `string` | User name under which the process exporter shall be run. |
+| `services.prometheus.exporters.pve.collectors.cluster` | `boolean` | Collect PVE cluster info |
+| `services.prometheus.exporters.pve.collectors.config` | `boolean` | Collect PVE onboot status |
+| `services.prometheus.exporters.pve.collectors.node` | `boolean` | Collect PVE node info |
+| `services.prometheus.exporters.pve.collectors.replication` | `boolean` | Collect PVE replication info |
+| `services.prometheus.exporters.pve.collectors.resources` | `boolean` | Collect PVE resources info |
+| `services.prometheus.exporters.pve.collectors.status` | `boolean` | Collect Node/VM/CT status |
+| `services.prometheus.exporters.pve.collectors.version` | `boolean` | Collect PVE version info |
+| `services.prometheus.exporters.pve.configFile` | `null or absolute path` | Path to the service's config file. This path can either be a computed path in /nix/store or a path in the local filesystem. The config file should NOT be stored in /nix/store as it will contain passwords and/or keys in plain text. If both configFile and environmentFile are provided, the configFile option will be ignored. Configuration reference: <https://github.com/prometheus-pve/prometheus-pve-exporter/#authentication> |
+| `services.prometheus.exporters.pve.enable` | `boolean` | Whether to enable the prometheus pve exporter. |
+| `services.prometheus.exporters.pve.environmentFile` | `null or absolute path` | Path to the service's environment file. This path can either be a computed path in /nix/store or a path in the local filesystem. The environment file should NOT be stored in /nix/store as it contains passwords and/or keys in plain text. Environment reference: <https://github.com/prometheus-pve/prometheus-pve-exporter#authentication> |
+| `services.prometheus.exporters.pve.extraFlags` | `list of string` | Extra commandline options to pass to the pve exporter. |
+| `services.prometheus.exporters.pve.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.pve.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.pve.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.pve.openFirewall` is true. |
+| `services.prometheus.exporters.pve.group` | `string` | Group under which the pve exporter shall be run. |
+| `services.prometheus.exporters.pve.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.pve.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.pve.package` | `package` | The prometheus-pve-exporter package to use. |
+| `services.prometheus.exporters.pve.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.pve.server.certFile` | `null or absolute path` | Path to a SSL certificate file for the server |
+| `services.prometheus.exporters.pve.server.keyFile` | `null or absolute path` | Path to a SSL private key file for the server |
+| `services.prometheus.exporters.pve.user` | `string` | User name under which the pve exporter shall be run. |
+| `services.prometheus.exporters.py-air-control.deviceHostname` | `string` | The hostname of the air purification device from which to scrape the metrics. |
+| `services.prometheus.exporters.py-air-control.enable` | `boolean` | Whether to enable the prometheus py-air-control exporter. |
+| `services.prometheus.exporters.py-air-control.extraFlags` | `list of string` | Extra commandline options to pass to the py-air-control exporter. |
+| `services.prometheus.exporters.py-air-control.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.py-air-control.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.py-air-control.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.py-air-control.openFirewall` is true. |
+| `services.prometheus.exporters.py-air-control.group` | `string` | Group under which the py-air-control exporter shall be run. |
+| `services.prometheus.exporters.py-air-control.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.py-air-control.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.py-air-control.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.py-air-control.protocol` | `string` | The protocol to use when communicating with the air purification device. Available: [http, coap, plain_coap] |
+| `services.prometheus.exporters.py-air-control.stateDir` | `string` | Directory below `/var/lib` to store runtime data. This directory will be created automatically using systemd's StateDirectory mechanism. |
+| `services.prometheus.exporters.py-air-control.user` | `string` | User name under which the py-air-control exporter shall be run. |
+| `services.prometheus.exporters.rasdaemon.databasePath` | `absolute path` | Path to the RAS daemon machine check event database. |
+| `services.prometheus.exporters.rasdaemon.enable` | `boolean` | Whether to enable the prometheus rasdaemon exporter. |
+| `services.prometheus.exporters.rasdaemon.enabledCollectors` | `list of (one of "aer", "mce", "mc", "extlog", "devlink", "disk")` | List of error types to collect from the event database. |
+| `services.prometheus.exporters.rasdaemon.extraFlags` | `list of string` | Extra commandline options to pass to the rasdaemon exporter. |
+| `services.prometheus.exporters.rasdaemon.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.rasdaemon.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.rasdaemon.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.rasdaemon.openFirewall` is true. |
+| `services.prometheus.exporters.rasdaemon.group` | `string` | Group under which the rasdaemon exporter shall be run. |
+| `services.prometheus.exporters.rasdaemon.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.rasdaemon.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.rasdaemon.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.rasdaemon.user` | `string` | User name under which the rasdaemon exporter shall be run. |
+| `services.prometheus.exporters.redis.enable` | `boolean` | Whether to enable the prometheus redis exporter. |
+| `services.prometheus.exporters.redis.extraFlags` | `list of string` | Extra commandline options to pass to the redis exporter. |
+| `services.prometheus.exporters.redis.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.redis.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.redis.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.redis.openFirewall` is true. |
+| `services.prometheus.exporters.redis.group` | `string` | Group under which the redis exporter shall be run. |
+| `services.prometheus.exporters.redis.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.redis.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.redis.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.redis.user` | `string` | User name under which the redis exporter shall be run. |
+| `services.prometheus.exporters.restic.enable` | `boolean` | Whether to enable the prometheus restic exporter. |
+| `services.prometheus.exporters.restic.environmentFile` | `null or absolute path` | File containing the credentials to access the repository, in the format of an EnvironmentFile as described by {manpage}`systemd.exec(5)` |
+| `services.prometheus.exporters.restic.extraFlags` | `list of string` | Extra commandline options to pass to the restic exporter. |
+| `services.prometheus.exporters.restic.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.restic.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.restic.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.restic.openFirewall` is true. |
+| `services.prometheus.exporters.restic.group` | `string` | Group under which the restic exporter shall be run. |
+| `services.prometheus.exporters.restic.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.restic.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.restic.passwordFile` | `absolute path` | File containing the password to the repository. |
+| `services.prometheus.exporters.restic.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.restic.rcloneConfig` | `attribute set of (string or boolean)` | Configuration for the rclone remote being used for backup. See the remote's specific options under rclone's docs at <https://rclone.org/docs/>. When specifying option names, use the "config" name specified in the docs. For example, to set `--b2-hard-delete` for a B2 remote, use `hard_delete = true` in the attribute set. ::: {.warning} Secrets set in here will be world-readable in the Nix store! Consider using the {option}`rcloneConfigFile` option instead to specify secret values separately. Note that options set here will override those set in the config file. ::: |
+| `services.prometheus.exporters.restic.rcloneConfigFile` | `null or absolute path` | Path to the file containing rclone configuration. This file must contain configuration for the remote specified in this backup set and also must be readable by root. ::: {.caution} Options set in `rcloneConfig` will override those set in this file. ::: |
+| `services.prometheus.exporters.restic.rcloneOptions` | `attribute set of (string or boolean)` | Options to pass to rclone to control its behavior. See <https://rclone.org/docs/#options> for available options. When specifying option names, strip the leading `--`. To set a flag such as `--drive-use-trash`, which does not take a value, set the value to the Boolean `true`. |
+| `services.prometheus.exporters.restic.refreshInterval` | `unsigned integer, meaning >=0` | Refresh interval for the metrics in seconds. Computing the metrics is an expensive task, keep this value as high as possible. |
+| `services.prometheus.exporters.restic.repository` | `null or string` | URI pointing to the repository to monitor. |
+| `services.prometheus.exporters.restic.repositoryFile` | `null or absolute path` | Path to the file containing the URI for the repository to monitor. |
+| `services.prometheus.exporters.restic.user` | `string` | User name under which the restic exporter shall be run. |
+| `services.prometheus.exporters.rtl_433.channels` | `list of (submodule)` | List of channel matchers to export. |
+| `services.prometheus.exporters.rtl_433.channels.*.channel` | `signed integer` | Channel to match. |
+| `services.prometheus.exporters.rtl_433.channels.*.location` | `string` | Location to match. |
+| `services.prometheus.exporters.rtl_433.channels.*.name` | `string` | Name to match. |
+| `services.prometheus.exporters.rtl_433.enable` | `boolean` | Whether to enable the prometheus rtl_433 exporter. |
+| `services.prometheus.exporters.rtl_433.extraFlags` | `list of string` | Extra commandline options to pass to the rtl_433 exporter. |
+| `services.prometheus.exporters.rtl_433.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.rtl_433.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.rtl_433.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.rtl_433.openFirewall` is true. |
+| `services.prometheus.exporters.rtl_433.group` | `string` | Group under which the rtl_433 exporter shall be run. |
+| `services.prometheus.exporters.rtl_433.ids` | `list of (submodule)` | List of ID matchers to export. |
+| `services.prometheus.exporters.rtl_433.ids.*.id` | `signed integer` | ID to match. |
+| `services.prometheus.exporters.rtl_433.ids.*.location` | `string` | Location to match. |
+| `services.prometheus.exporters.rtl_433.ids.*.name` | `string` | Name to match. |
+| `services.prometheus.exporters.rtl_433.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.rtl_433.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.rtl_433.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.rtl_433.rtl433Flags` | `string` | Flags passed verbatim to rtl_433 binary. Having `-C si` (the default) is recommended since only Celsius temperatures are parsed. |
+| `services.prometheus.exporters.rtl_433.user` | `string` | User name under which the rtl_433 exporter shall be run. |
+| `services.prometheus.exporters.sabnzbd.enable` | `boolean` | Whether to enable the prometheus sabnzbd exporter. |
+| `services.prometheus.exporters.sabnzbd.extraFlags` | `list of string` | Extra commandline options to pass to the sabnzbd exporter. |
+| `services.prometheus.exporters.sabnzbd.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.sabnzbd.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.sabnzbd.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.sabnzbd.openFirewall` is true. |
+| `services.prometheus.exporters.sabnzbd.group` | `string` | Group under which the sabnzbd exporter shall be run. |
+| `services.prometheus.exporters.sabnzbd.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.sabnzbd.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.sabnzbd.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.sabnzbd.servers` | `list of (submodule)` | List of sabnzbd servers to connect to. |
+| `services.prometheus.exporters.sabnzbd.servers.*.apiKeyFile` | `string` | The path to a file containing the API key. The file is securely passed to the service by leveraging systemd credentials. No special permissions need to be set on this file. |
+| `services.prometheus.exporters.sabnzbd.servers.*.baseUrl` | `string` | Base URL of the sabnzbd server. |
+| `services.prometheus.exporters.sabnzbd.user` | `string` | User name under which the sabnzbd exporter shall be run. |
+| `services.prometheus.exporters.script.enable` | `boolean` | Whether to enable the prometheus script exporter. |
+| `services.prometheus.exporters.script.extraFlags` | `list of string` | Extra commandline options to pass to the script exporter. |
+| `services.prometheus.exporters.script.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.script.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.script.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.script.openFirewall` is true. |
+| `services.prometheus.exporters.script.group` | `string` | Group under which the script exporter shall be run. |
+| `services.prometheus.exporters.script.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.script.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.script.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.script.settings` | `YAML 1.1 value` | Free-form configuration for script_exporter, expressed as a Nix attrset and rendered to YAML. **Migration note:** The previous format using `script = "sleep 5"` is no longer supported. You must use `command` (list) and `args` (list), e.g. `{ command = [ "sleep" ]; args = [ "5" ]; }`. See the official documentation for all available options: <https://github.com/ricoberger/script_exporter#configuration-file> |
+| `services.prometheus.exporters.script.user` | `string` | User name under which the script exporter shall be run. |
+| `services.prometheus.exporters.shelly.enable` | `boolean` | Whether to enable the prometheus shelly exporter. |
+| `services.prometheus.exporters.shelly.extraFlags` | `list of string` | Extra commandline options to pass to the shelly exporter. |
+| `services.prometheus.exporters.shelly.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.shelly.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.shelly.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.shelly.openFirewall` is true. |
+| `services.prometheus.exporters.shelly.group` | `string` | Group under which the shelly exporter shall be run. |
+| `services.prometheus.exporters.shelly.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.shelly.metrics-file` | `absolute path` | Path to the JSON file with the metric definitions |
+| `services.prometheus.exporters.shelly.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.shelly.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.shelly.user` | `string` | User name under which the shelly exporter shall be run. |
+| `services.prometheus.exporters.smartctl.devices` | `list of string` | Paths to the disks that will be monitored. Will autodiscover all disks if none given. |
+| `services.prometheus.exporters.smartctl.enable` | `boolean` | Whether to enable the prometheus smartctl exporter. |
+| `services.prometheus.exporters.smartctl.extraFlags` | `list of string` | Extra commandline options to pass to the smartctl exporter. |
+| `services.prometheus.exporters.smartctl.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.smartctl.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.smartctl.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.smartctl.openFirewall` is true. |
+| `services.prometheus.exporters.smartctl.group` | `string` | Group under which the smartctl exporter shall be run. |
+| `services.prometheus.exporters.smartctl.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.smartctl.maxInterval` | `string` | Interval that limits how often a disk can be queried. |
+| `services.prometheus.exporters.smartctl.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.smartctl.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.smartctl.user` | `string` | User name under which the smartctl exporter shall be run. |
+| `services.prometheus.exporters.smokeping.buckets` | `strings concatenated with ","` | List of buckets to use for the response duration histogram. |
+| `services.prometheus.exporters.smokeping.enable` | `boolean` | Whether to enable the prometheus smokeping exporter. |
+| `services.prometheus.exporters.smokeping.extraFlags` | `list of string` | Extra commandline options to pass to the smokeping exporter. |
+| `services.prometheus.exporters.smokeping.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.smokeping.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.smokeping.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.smokeping.openFirewall` is true. |
+| `services.prometheus.exporters.smokeping.group` | `string` | Group under which the smokeping exporter shall be run. |
+| `services.prometheus.exporters.smokeping.hosts` | `list of string` | List of endpoints to probe. |
+| `services.prometheus.exporters.smokeping.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.smokeping.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.smokeping.pingInterval` | `Go duration (https://golang.org/pkg/time/#ParseDuration)` | Interval between pings. |
+| `services.prometheus.exporters.smokeping.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.smokeping.telemetryPath` | `string` | Path under which to expose metrics. |
+| `services.prometheus.exporters.smokeping.user` | `string` | User name under which the smokeping exporter shall be run. |
+| `services.prometheus.exporters.snmp.configuration` | `null or (attribute set)` | Snmp exporter configuration as nix attribute set. Mutually exclusive with 'configurationPath' option. |
+| `services.prometheus.exporters.snmp.configurationPath` | `null or absolute path` | Path to a snmp exporter configuration file. Mutually exclusive with 'configuration' option. |
+| `services.prometheus.exporters.snmp.enable` | `boolean` | Whether to enable the prometheus snmp exporter. |
+| `services.prometheus.exporters.snmp.enableConfigCheck` | `boolean` | Whether to run a correctness check for the configuration file. This depends on the configuration file residing in the nix-store. Paths passed as string will be copied to the store. |
+| `services.prometheus.exporters.snmp.environmentFile` | `null or absolute path` | EnvironmentFile as defined in {manpage}`systemd.exec(5)`. Secrets may be passed to the service without adding them to the world-readable Nix store, by specifying placeholder variables as the option value in Nix and setting these variables accordingly in the environment file. Environment variables from this file will be interpolated into the config file using envsubst with this syntax: `$ENVIRONMENT ${VARIABLE}` For variables to use see [Prometheus Configuration](https://github.com/prometheus/snmp_exporter#prometheus-configuration). If the file path is set to this option, the parameter `--config.expand-environment-variables` is implicitly added to `ExecStart`. Note that this file needs to be available on the host on which this exporter is running. |
+| `services.prometheus.exporters.snmp.extraFlags` | `list of string` | Extra commandline options to pass to the snmp exporter. |
+| `services.prometheus.exporters.snmp.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.snmp.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.snmp.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.snmp.openFirewall` is true. |
+| `services.prometheus.exporters.snmp.group` | `string` | Group under which the snmp exporter shall be run. |
+| `services.prometheus.exporters.snmp.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.snmp.logFormat` | `one of "logfmt", "json"` | Output format of log messages. |
+| `services.prometheus.exporters.snmp.logLevel` | `one of "debug", "info", "warn", "error"` | Only log messages with the given severity or above. |
+| `services.prometheus.exporters.snmp.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.snmp.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.snmp.user` | `string` | User name under which the snmp exporter shall be run. |
+| `services.prometheus.exporters.speedtest.enable` | `boolean` | Whether to enable the prometheus speedtest exporter. |
+| `services.prometheus.exporters.speedtest.extraFlags` | `list of string` | Extra commandline options to pass to the speedtest exporter. |
+| `services.prometheus.exporters.speedtest.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.speedtest.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.speedtest.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.speedtest.openFirewall` is true. |
+| `services.prometheus.exporters.speedtest.group` | `string` | Group under which the speedtest exporter shall be run. |
+| `services.prometheus.exporters.speedtest.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.speedtest.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.speedtest.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.speedtest.serverFallback` | `boolean` | If the configured serverID is unavailable, fall back to the closest available server. |
+| `services.prometheus.exporters.speedtest.serverID` | `signed integer` | Speedtest.net server ID to run tests against. -1 picks the closest server to your location. |
+| `services.prometheus.exporters.speedtest.user` | `string` | User name under which the speedtest exporter shall be run. |
+| `services.prometheus.exporters.sql.configFile` | `null or absolute path` | Path to configuration file. |
+| `services.prometheus.exporters.sql.configuration` | `null or (submodule)` | Exporter configuration as nix attribute set. Mutually exclusive with 'configFile' option. |
+| `services.prometheus.exporters.sql.configuration.jobs` | `attribute set of (submodule)` | An attrset of metrics scraping jobs to run. |
+| `services.prometheus.exporters.sql.configuration.jobs.<name>.connections` | `list of string` | A list of connection strings of the SQL servers to scrape metrics from |
+| `services.prometheus.exporters.sql.configuration.jobs.<name>.interval` | `string` | How often to run this job, specified in [Go duration](https://golang.org/pkg/time/#ParseDuration) format. |
+| `services.prometheus.exporters.sql.configuration.jobs.<name>.queries` | `attribute set of (submodule)` | SQL queries to run. |
+| `services.prometheus.exporters.sql.configuration.jobs.<name>.queries.<name>.help` | `null or string` | A human-readable description of this metric. |
+| `services.prometheus.exporters.sql.configuration.jobs.<name>.queries.<name>.labels` | `list of string` | A set of columns that will be used as Prometheus labels. |
+| `services.prometheus.exporters.sql.configuration.jobs.<name>.queries.<name>.query` | `string` | The SQL query to run. |
+| `services.prometheus.exporters.sql.configuration.jobs.<name>.queries.<name>.values` | `list of string` | A set of columns that will be used as values of this metric. |
+| `services.prometheus.exporters.sql.configuration.jobs.<name>.startupSql` | `list of string` | A list of SQL statements to execute once after making a connection. |
+| `services.prometheus.exporters.sql.enable` | `boolean` | Whether to enable the prometheus sql exporter. |
+| `services.prometheus.exporters.sql.extraFlags` | `list of string` | Extra commandline options to pass to the sql exporter. |
+| `services.prometheus.exporters.sql.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.sql.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.sql.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.sql.openFirewall` is true. |
+| `services.prometheus.exporters.sql.group` | `string` | Group under which the sql exporter shall be run. |
+| `services.prometheus.exporters.sql.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.sql.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.sql.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.sql.user` | `string` | User name under which the sql exporter shall be run. |
+| `services.prometheus.exporters.statsd.enable` | `boolean` | Whether to enable the prometheus statsd exporter. |
+| `services.prometheus.exporters.statsd.extraFlags` | `list of string` | Extra commandline options to pass to the statsd exporter. |
+| `services.prometheus.exporters.statsd.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.statsd.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.statsd.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.statsd.openFirewall` is true. |
+| `services.prometheus.exporters.statsd.group` | `string` | Group under which the statsd exporter shall be run. |
+| `services.prometheus.exporters.statsd.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.statsd.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.statsd.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.statsd.user` | `string` | User name under which the statsd exporter shall be run. |
+| `services.prometheus.exporters.storagebox.enable` | `boolean` | Whether to enable the prometheus storagebox exporter. |
+| `services.prometheus.exporters.storagebox.extraFlags` | `list of string` | Extra commandline options to pass to the storagebox exporter. |
+| `services.prometheus.exporters.storagebox.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.storagebox.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.storagebox.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.storagebox.openFirewall` is true. |
+| `services.prometheus.exporters.storagebox.group` | `string` | Group under which the storagebox exporter shall be run. |
+| `services.prometheus.exporters.storagebox.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.storagebox.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.storagebox.package` | `package` | The prometheus-storagebox-exporter package to use. |
+| `services.prometheus.exporters.storagebox.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.storagebox.tokenFile` | `absolute path not in the Nix store` | File that contains the Hetzner API token to use. |
+| `services.prometheus.exporters.storagebox.user` | `string` | User name under which the storagebox exporter shall be run. |
+| `services.prometheus.exporters.surfboard.enable` | `boolean` | Whether to enable the prometheus surfboard exporter. |
+| `services.prometheus.exporters.surfboard.extraFlags` | `list of string` | Extra commandline options to pass to the surfboard exporter. |
+| `services.prometheus.exporters.surfboard.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.surfboard.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.surfboard.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.surfboard.openFirewall` is true. |
+| `services.prometheus.exporters.surfboard.group` | `string` | Group under which the surfboard exporter shall be run. |
+| `services.prometheus.exporters.surfboard.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.surfboard.modemAddress` | `string` | The hostname or IP of the cable modem. |
+| `services.prometheus.exporters.surfboard.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.surfboard.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.surfboard.user` | `string` | User name under which the surfboard exporter shall be run. |
+| `services.prometheus.exporters.systemd.enable` | `boolean` | Whether to enable the prometheus systemd exporter. |
+| `services.prometheus.exporters.systemd.extraFlags` | `list of string` | Extra commandline options to pass to the systemd exporter. |
+| `services.prometheus.exporters.systemd.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.systemd.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.systemd.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.systemd.openFirewall` is true. |
+| `services.prometheus.exporters.systemd.group` | `string` | Group under which the systemd exporter shall be run. |
+| `services.prometheus.exporters.systemd.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.systemd.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.systemd.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.systemd.user` | `string` | User name under which the systemd exporter shall be run. |
+| `services.prometheus.exporters.tailscale.enable` | `boolean` | Whether to enable the prometheus tailscale exporter. |
+| `services.prometheus.exporters.tailscale.environmentFile` | `absolute path` | Environment file containg at least the TAILSCALE_TAILNET, TAILSCALE_OAUTH_CLIENT_ID, and TAILSCALE_OAUTH_CLIENT_SECRET environment variables. |
+| `services.prometheus.exporters.tailscale.extraFlags` | `list of string` | Extra commandline options to pass to the tailscale exporter. |
+| `services.prometheus.exporters.tailscale.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.tailscale.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.tailscale.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.tailscale.openFirewall` is true. |
+| `services.prometheus.exporters.tailscale.group` | `string` | Group under which the tailscale exporter shall be run. |
+| `services.prometheus.exporters.tailscale.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.tailscale.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.tailscale.package` | `package` | The prometheus-tailscale-exporter package to use. |
+| `services.prometheus.exporters.tailscale.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.tailscale.user` | `string` | User name under which the tailscale exporter shall be run. |
+| `services.prometheus.exporters.tibber.apiTokenPath` | `absolute path` | Add here the path to your personal Tibber API Token ('Bearer Token') File. Get your personal Tibber API Token here: <https://developer.tibber.com> Do not share your personal plaintext Tibber API Token via github. (see: ryantm/agenix, mic92/sops) |
+| `services.prometheus.exporters.tibber.enable` | `boolean` | Whether to enable the prometheus tibber exporter. |
+| `services.prometheus.exporters.tibber.extraFlags` | `list of string` | Extra commandline options to pass to the tibber exporter. |
+| `services.prometheus.exporters.tibber.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.tibber.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.tibber.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.tibber.openFirewall` is true. |
+| `services.prometheus.exporters.tibber.group` | `string` | Group under which the tibber exporter shall be run. |
+| `services.prometheus.exporters.tibber.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.tibber.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.tibber.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.tibber.user` | `string` | User name under which the tibber exporter shall be run. |
+| `services.prometheus.exporters.unbound.enable` | `boolean` | Whether to enable the prometheus unbound exporter. |
+| `services.prometheus.exporters.unbound.extraFlags` | `list of string` | Extra commandline options to pass to the unbound exporter. |
+| `services.prometheus.exporters.unbound.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.unbound.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.unbound.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.unbound.openFirewall` is true. |
+| `services.prometheus.exporters.unbound.group` | `string` | Group under which the unbound exporter shall be run. |
+| `services.prometheus.exporters.unbound.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.unbound.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.unbound.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.unbound.telemetryPath` | `string` | Path under which to expose metrics. |
+| `services.prometheus.exporters.unbound.unbound.ca` | `null or absolute path` | Path to the Unbound server certificate authority |
+| `services.prometheus.exporters.unbound.unbound.certificate` | `null or absolute path` | Path to the Unbound control socket certificate |
+| `services.prometheus.exporters.unbound.unbound.host` | `string` | Path to the unbound control socket. Supports unix domain sockets, as well as the TCP interface. |
+| `services.prometheus.exporters.unbound.unbound.key` | `null or absolute path` | Path to the Unbound control socket key. |
+| `services.prometheus.exporters.unbound.user` | `string` | User name under which the unbound exporter shall be run. |
+| `services.prometheus.exporters.unpoller.controllers` | `list of (submodule)` | List of Unifi controllers to poll. Use defaults if empty. |
+| `services.prometheus.exporters.unpoller.controllers.*.hash_pii` | `boolean` | Hash, with md5, client names and MAC addresses. This attempts to protect personally identifiable information. |
+| `services.prometheus.exporters.unpoller.controllers.*.pass` | `absolute path` | Path of a file containing the password for the unifi service user. This file needs to be readable by the unifi-poller user. |
+| `services.prometheus.exporters.unpoller.controllers.*.save_alarms` | `boolean` | Collect and save data from UniFi alarms to influxdb and Loki. |
+| `services.prometheus.exporters.unpoller.controllers.*.save_anomalies` | `boolean` | Collect and save data from UniFi anomalies to influxdb and Loki. |
+| `services.prometheus.exporters.unpoller.controllers.*.save_dpi` | `boolean` | Collect and save data from deep packet inspection. Adds around 150 data points and impacts performance. |
+| `services.prometheus.exporters.unpoller.controllers.*.save_events` | `boolean` | Collect and save data from UniFi events to influxdb and Loki. |
+| `services.prometheus.exporters.unpoller.controllers.*.save_ids` | `boolean` | Collect and save data from the intrusion detection system to influxdb and Loki. |
+| `services.prometheus.exporters.unpoller.controllers.*.save_sites` | `boolean` | Collect and save site data. |
+| `services.prometheus.exporters.unpoller.controllers.*.sites` | `one of "default", "all" or list of string` | List of site names for which statistics should be exported. Or the string "default" for the default site or the string "all" for all sites. |
+| `services.prometheus.exporters.unpoller.controllers.*.url` | `string` | URL of the Unifi controller. |
+| `services.prometheus.exporters.unpoller.controllers.*.user` | `string` | Unifi service user name. |
+| `services.prometheus.exporters.unpoller.controllers.*.verify_ssl` | `boolean` | Verify the Unifi controller's certificate. |
+| `services.prometheus.exporters.unpoller.enable` | `boolean` | Whether to enable the prometheus unpoller exporter. |
+| `services.prometheus.exporters.unpoller.extraFlags` | `list of string` | Extra commandline options to pass to the unpoller exporter. |
+| `services.prometheus.exporters.unpoller.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.unpoller.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.unpoller.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.unpoller.openFirewall` is true. |
+| `services.prometheus.exporters.unpoller.group` | `string` | Group under which the unpoller exporter shall be run. |
+| `services.prometheus.exporters.unpoller.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.unpoller.log.debug` | `boolean` | Whether to enable debug logging including line numbers, high resolution timestamps, per-device logs. |
+| `services.prometheus.exporters.unpoller.log.prometheusErrors` | `boolean` | Whether to enable emitting errors to prometheus. |
+| `services.prometheus.exporters.unpoller.log.quiet` | `boolean` | Whether to enable startup and error logs only. |
+| `services.prometheus.exporters.unpoller.loki.interval` | `string` | How often the events are polled and pushed to Loki. |
+| `services.prometheus.exporters.unpoller.loki.pass` | `absolute path` | Path of a file containing the password for Loki. This file needs to be readable by the unifi-poller user. |
+| `services.prometheus.exporters.unpoller.loki.tenant_id` | `string` | Tenant ID to use in Loki. |
+| `services.prometheus.exporters.unpoller.loki.timeout` | `string` | Should be increased in case of timeout errors. |
+| `services.prometheus.exporters.unpoller.loki.url` | `string` | URL of the Loki host. |
+| `services.prometheus.exporters.unpoller.loki.user` | `string` | Username for Loki. |
+| `services.prometheus.exporters.unpoller.loki.verify_ssl` | `boolean` | Verify Loki's certificate. |
+| `services.prometheus.exporters.unpoller.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.unpoller.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.unpoller.user` | `string` | User name under which the unpoller exporter shall be run. |
+| `services.prometheus.exporters.v2ray.enable` | `boolean` | Whether to enable the prometheus v2ray exporter. |
+| `services.prometheus.exporters.v2ray.extraFlags` | `list of string` | Extra commandline options to pass to the v2ray exporter. |
+| `services.prometheus.exporters.v2ray.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.v2ray.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.v2ray.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.v2ray.openFirewall` is true. |
+| `services.prometheus.exporters.v2ray.group` | `string` | Group under which the v2ray exporter shall be run. |
+| `services.prometheus.exporters.v2ray.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.v2ray.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.v2ray.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.v2ray.user` | `string` | User name under which the v2ray exporter shall be run. |
+| `services.prometheus.exporters.v2ray.v2rayEndpoint` | `string` | v2ray grpc api endpoint |
+| `services.prometheus.exporters.varnish.enable` | `boolean` | Whether to enable the prometheus varnish exporter. |
+| `services.prometheus.exporters.varnish.extraFlags` | `list of string` | Extra commandline options to pass to the varnish exporter. |
+| `services.prometheus.exporters.varnish.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.varnish.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.varnish.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.varnish.openFirewall` is true. |
+| `services.prometheus.exporters.varnish.group` | `string` | Group under which the varnish exporter shall be run. |
+| `services.prometheus.exporters.varnish.healthPath` | `null or string` | Path under which to expose healthcheck. Disabled unless configured. |
+| `services.prometheus.exporters.varnish.instance` | `null or string` | varnishstat -n value. |
+| `services.prometheus.exporters.varnish.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.varnish.noExit` | `boolean` | Do not exit server on Varnish scrape errors. |
+| `services.prometheus.exporters.varnish.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.varnish.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.varnish.raw` | `boolean` | Enable raw stdout logging without timestamps. |
+| `services.prometheus.exporters.varnish.telemetryPath` | `string` | Path under which to expose metrics. |
+| `services.prometheus.exporters.varnish.user` | `string` | User name under which the varnish exporter shall be run. |
+| `services.prometheus.exporters.varnish.varnishStatPath` | `string` | Path to varnishstat. |
+| `services.prometheus.exporters.varnish.verbose` | `boolean` | Enable verbose logging. |
+| `services.prometheus.exporters.varnish.withGoMetrics` | `boolean` | Export go runtime and http handler metrics. |
+| `services.prometheus.exporters.wireguard.enable` | `boolean` | Whether to enable the prometheus wireguard exporter. |
+| `services.prometheus.exporters.wireguard.extraFlags` | `list of string` | Extra commandline options to pass to the wireguard exporter. |
+| `services.prometheus.exporters.wireguard.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.wireguard.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.wireguard.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.wireguard.openFirewall` is true. |
+| `services.prometheus.exporters.wireguard.group` | `string` | Group under which the wireguard exporter shall be run. |
+| `services.prometheus.exporters.wireguard.interfaces` | `list of string` | Specifies the interface(s) passed to the wg show <interface> dump parameter. By default all interfaces are used. |
+| `services.prometheus.exporters.wireguard.latestHandshakeDelay` | `boolean` | Adds the `wireguard_latest_handshake_delay_seconds` metric that automatically calculates the seconds passed since the last handshake. |
+| `services.prometheus.exporters.wireguard.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.wireguard.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.wireguard.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.wireguard.prependSudo` | `boolean` | Whether or no to prepend sudo to wg commands. |
+| `services.prometheus.exporters.wireguard.singleSubnetPerField` | `boolean` | By default, all allowed IPs and subnets are comma-separated in the `allowed_ips` field. With this option enabled, a single IP and subnet will be listed in fields like `allowed_ip_0`, `allowed_ip_1` and so on. |
+| `services.prometheus.exporters.wireguard.user` | `string` | User name under which the wireguard exporter shall be run. |
+| `services.prometheus.exporters.wireguard.verbose` | `boolean` | Whether to enable verbose logging mode for prometheus-wireguard-exporter. |
+| `services.prometheus.exporters.wireguard.wireguardConfig` | `null or absolute path or string` | Path to the Wireguard Config to [add the peer's name to the stats of a peer](https://github.com/MindFlavor/prometheus_wireguard_exporter/tree/2.0.0#usage). Please note that `networking.wg-quick` is required for this feature as `networking.wireguard` uses {manpage}`wg(8)` to set the peers up. |
+| `services.prometheus.exporters.wireguard.withRemoteIp` | `boolean` | Whether or not the remote IP of a WireGuard peer should be exposed via prometheus. |
+| `services.prometheus.exporters.xray.enable` | `boolean` | Whether to enable the prometheus xray exporter. |
+| `services.prometheus.exporters.xray.extraFlags` | `list of string` | Extra commandline options to pass to the xray exporter. |
+| `services.prometheus.exporters.xray.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.xray.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.xray.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.xray.openFirewall` is true. |
+| `services.prometheus.exporters.xray.group` | `string` | Group under which the xray exporter shall be run. |
+| `services.prometheus.exporters.xray.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.xray.logPath` | `string` | Path to Xray access log file. Set to empty string to disable user metrics. |
+| `services.prometheus.exporters.xray.logTimeWindow` | `signed integer` | Time window in minutes for user metrics. |
+| `services.prometheus.exporters.xray.metricsPath` | `string` | Path under which to expose metrics. |
+| `services.prometheus.exporters.xray.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.xray.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.xray.scrapeTimeout` | `signed integer` | Timeout in seconds for every individual scrape. |
+| `services.prometheus.exporters.xray.user` | `string` | User name under which the xray exporter shall be run. |
+| `services.prometheus.exporters.xray.withUserMetrics` | `boolean` | Collect user metrics from the Xray access log. |
+| `services.prometheus.exporters.xray.xrayEndpoint` | `string` | Xray gRPC API endpoint. |
+| `services.prometheus.exporters.zfs-siebenmann.depth` | `signed integer` | Depth of the vdev tree to report on. 0 is the pool, 1 is top level vdevs, 2 is devices too. |
+| `services.prometheus.exporters.zfs-siebenmann.enable` | `boolean` | Whether to enable the prometheus zfs-siebenmann exporter. |
+| `services.prometheus.exporters.zfs-siebenmann.extraFlags` | `list of string` | Extra commandline options to pass to the zfs-siebenmann exporter. |
+| `services.prometheus.exporters.zfs-siebenmann.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.zfs-siebenmann.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.zfs-siebenmann.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.zfs-siebenmann.openFirewall` is true. |
+| `services.prometheus.exporters.zfs-siebenmann.fullPath` | `boolean` | Report the full path of disks. |
+| `services.prometheus.exporters.zfs-siebenmann.group` | `string` | Group under which the zfs-siebenmann exporter shall be run. |
+| `services.prometheus.exporters.zfs-siebenmann.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.zfs-siebenmann.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.zfs-siebenmann.pools` | `list of string` | Name of the pool(s) to collect, repeat for multiple pools (default: all pools). |
+| `services.prometheus.exporters.zfs-siebenmann.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.zfs-siebenmann.user` | `string` | User name under which the zfs-siebenmann exporter shall be run. |
+| `services.prometheus.exporters.zfs.enable` | `boolean` | Whether to enable the prometheus zfs exporter. |
+| `services.prometheus.exporters.zfs.extraFlags` | `list of string` | Extra commandline options to pass to the zfs exporter. |
+| `services.prometheus.exporters.zfs.firewallFilter` | `null or string` | Specify a filter for iptables to use when {option}`services.prometheus.exporters.zfs.openFirewall` is true. It is used as `ip46tables -I nixos-fw firewallFilter -j nixos-fw-accept`. |
+| `services.prometheus.exporters.zfs.firewallRules` | `null or strings concatenated with "\n"` | Specify rules for nftables to add to the input chain when {option}`services.prometheus.exporters.zfs.openFirewall` is true. |
+| `services.prometheus.exporters.zfs.group` | `string` | Group under which the zfs exporter shall be run. |
+| `services.prometheus.exporters.zfs.listenAddress` | `string` | Address to listen on. |
+| `services.prometheus.exporters.zfs.openFirewall` | `boolean` | Open port in firewall for incoming connections. |
+| `services.prometheus.exporters.zfs.pools` | `null or (list of string)` | Name of the pool(s) to collect, repeat for multiple pools (default: all pools). |
+| `services.prometheus.exporters.zfs.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.exporters.zfs.telemetryPath` | `string` | Path under which to expose metrics. |
+| `services.prometheus.exporters.zfs.user` | `string` | User name under which the zfs exporter shall be run. |
+| `services.prometheus.extraFlags` | `list of string` | Extra commandline options when launching Prometheus. |
+| `services.prometheus.globalConfig` | `submodule` | Parameters that are valid in all configuration contexts. They also serve as defaults for other configuration sections |
+| `services.prometheus.globalConfig.evaluation_interval` | `null or string` | How frequently to evaluate rules by default. Defaults to `1m` in prometheus when set to `null`. |
+| `services.prometheus.globalConfig.external_labels` | `null or (attribute set of string)` | The labels to add to any time series or alerts when communicating with external systems (federation, remote storage, Alertmanager). |
+| `services.prometheus.globalConfig.query_log_file` | `null or string` | Path to the file prometheus should write its query log to. |
+| `services.prometheus.globalConfig.scrape_interval` | `null or string` | How frequently to scrape targets by default. Defaults to `1m` in prometheus when set to `null`. |
+| `services.prometheus.globalConfig.scrape_timeout` | `null or string` | How long until a scrape request times out. Defaults to `10s` in prometheus when set to `null`. |
+| `services.prometheus.listenAddress` | `string` | Address to listen on for the web interface, API, and telemetry. |
+| `services.prometheus.package` | `package` | The prometheus package to use. |
+| `services.prometheus.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.prometheus.pushgateway.enable` | `boolean` | Whether to enable Prometheus Pushgateway. |
+| `services.prometheus.pushgateway.extraFlags` | `list of string` | Extra commandline options when launching the Pushgateway. |
+| `services.prometheus.pushgateway.log.format` | `null or string` | Set the log target and format. `null` will default to `logger:stderr`. |
+| `services.prometheus.pushgateway.log.level` | `null or one of "debug", "info", "warn", "error", "fatal"` | Only log messages with the given severity or above. `null` will default to `info`. |
+| `services.prometheus.pushgateway.package` | `package` | The prometheus-pushgateway package to use. |
+| `services.prometheus.pushgateway.persistMetrics` | `boolean` | Whether to persist metrics to a file. When enabled metrics will be saved to a file called `metrics` in the directory `/var/lib/pushgateway`. The directory below `/var/lib` can be set using {option}`services.prometheus.pushgateway.stateDir`. |
+| `services.prometheus.pushgateway.persistence.interval` | `null or string` | The minimum interval at which to write out the persistence file. `null` will default to `5m`. |
+| `services.prometheus.pushgateway.stateDir` | `string` | Directory below `/var/lib` to store metrics. This directory will be created automatically using systemd's StateDirectory mechanism when {option}`services.prometheus.pushgateway.persistMetrics` is enabled. |
+| `services.prometheus.pushgateway.web.external-url` | `null or string` | The URL under which Pushgateway is externally reachable. |
+| `services.prometheus.pushgateway.web.listen-address` | `null or string` | Address to listen on for the web interface, API and telemetry. `null` will default to `:9091`. |
+| `services.prometheus.pushgateway.web.route-prefix` | `null or string` | Prefix for the internal routes of web endpoints. Defaults to the path of {option}`services.prometheus.pushgateway.web.external-url`. |
+| `services.prometheus.pushgateway.web.telemetry-path` | `null or string` | Path under which to expose metrics. `null` will default to `/metrics`. |
+| `services.prometheus.remoteRead` | `list of (submodule)` | Parameters of the endpoints to query from. See [the official documentation](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#remote_read) for more information. |
+| `services.prometheus.remoteRead.*.basic_auth` | `null or (submodule)` | Sets the `Authorization` header on every remote read request with the configured username and password. password and password_file are mutually exclusive. |
+| `services.prometheus.remoteRead.*.basic_auth.password` | `null or string` | HTTP password |
+| `services.prometheus.remoteRead.*.basic_auth.password_file` | `null or string` | HTTP password file |
+| `services.prometheus.remoteRead.*.basic_auth.username` | `string` | HTTP username |
+| `services.prometheus.remoteRead.*.bearer_token` | `null or string` | Sets the `Authorization` header on every remote read request with the configured bearer token. It is mutually exclusive with `bearer_token_file`. |
+| `services.prometheus.remoteRead.*.bearer_token_file` | `null or string` | Sets the `Authorization` header on every remote read request with the bearer token read from the configured file. It is mutually exclusive with `bearer_token`. |
+| `services.prometheus.remoteRead.*.headers` | `null or (attribute set of string)` | Custom HTTP headers to be sent along with each remote read request. Be aware that headers that are set by Prometheus itself can't be overwritten. |
+| `services.prometheus.remoteRead.*.name` | `null or string` | Name of the remote read config, which if specified must be unique among remote read configs. The name will be used in metrics and logging in place of a generated value to help users distinguish between remote read configs. |
+| `services.prometheus.remoteRead.*.proxy_url` | `null or string` | Optional Proxy URL. |
+| `services.prometheus.remoteRead.*.read_recent` | `null or boolean` | Whether reads should be made for queries for time ranges that the local storage should have complete data for. |
+| `services.prometheus.remoteRead.*.remote_timeout` | `null or string` | Timeout for requests to the remote read endpoint. |
+| `services.prometheus.remoteRead.*.required_matchers` | `null or (attribute set of string)` | An optional list of equality matchers which have to be present in a selector to query the remote read endpoint. |
+| `services.prometheus.remoteRead.*.tls_config` | `null or (submodule)` | Configures the remote read request's TLS settings. |
+| `services.prometheus.remoteRead.*.tls_config.ca_file` | `null or string` | CA certificate to validate API server certificate with. |
+| `services.prometheus.remoteRead.*.tls_config.cert_file` | `null or string` | Certificate file for client cert authentication to the server. |
+| `services.prometheus.remoteRead.*.tls_config.insecure_skip_verify` | `null or boolean` | Disable validation of the server certificate. |
+| `services.prometheus.remoteRead.*.tls_config.key_file` | `null or string` | Key file for client cert authentication to the server. |
+| `services.prometheus.remoteRead.*.tls_config.server_name` | `null or string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.remoteRead.*.url` | `string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.remoteWrite` | `list of (submodule)` | Parameters of the endpoints to send samples to. See [the official documentation](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#remote_write) for more information. |
+| `services.prometheus.remoteWrite.*.basic_auth` | `null or (submodule)` | Sets the `Authorization` header on every remote write request with the configured username and password. password and password_file are mutually exclusive. |
+| `services.prometheus.remoteWrite.*.basic_auth.password` | `null or string` | HTTP password |
+| `services.prometheus.remoteWrite.*.basic_auth.password_file` | `null or string` | HTTP password file |
+| `services.prometheus.remoteWrite.*.basic_auth.username` | `string` | HTTP username |
+| `services.prometheus.remoteWrite.*.bearer_token` | `null or string` | Sets the `Authorization` header on every remote write request with the configured bearer token. It is mutually exclusive with `bearer_token_file`. |
+| `services.prometheus.remoteWrite.*.bearer_token_file` | `null or string` | Sets the `Authorization` header on every remote write request with the bearer token read from the configured file. It is mutually exclusive with `bearer_token`. |
+| `services.prometheus.remoteWrite.*.headers` | `null or (attribute set of string)` | Custom HTTP headers to be sent along with each remote write request. Be aware that headers that are set by Prometheus itself can't be overwritten. |
+| `services.prometheus.remoteWrite.*.metadata_config` | `null or (submodule)` | Configures the sending of series metadata to remote storage. Metadata configuration is subject to change at any point or be removed in future releases. |
+| `services.prometheus.remoteWrite.*.metadata_config.send` | `null or boolean` | Whether metric metadata is sent to remote storage or not. |
+| `services.prometheus.remoteWrite.*.metadata_config.send_interval` | `null or string` | How frequently metric metadata is sent to remote storage. |
+| `services.prometheus.remoteWrite.*.name` | `null or string` | Name of the remote write config, which if specified must be unique among remote write configs. The name will be used in metrics and logging in place of a generated value to help users distinguish between remote write configs. |
+| `services.prometheus.remoteWrite.*.proxy_url` | `null or string` | Optional Proxy URL. |
+| `services.prometheus.remoteWrite.*.queue_config` | `null or (submodule)` | Configures the queue used to write to remote storage. |
+| `services.prometheus.remoteWrite.*.queue_config.batch_send_deadline` | `null or string` | Maximum time a sample will wait in buffer. |
+| `services.prometheus.remoteWrite.*.queue_config.capacity` | `null or signed integer` | Number of samples to buffer per shard before we block reading of more samples from the WAL. It is recommended to have enough capacity in each shard to buffer several requests to keep throughput up while processing occasional slow remote requests. |
+| `services.prometheus.remoteWrite.*.queue_config.max_backoff` | `null or string` | Maximum retry delay. |
+| `services.prometheus.remoteWrite.*.queue_config.max_samples_per_send` | `null or signed integer` | Maximum number of samples per send. |
+| `services.prometheus.remoteWrite.*.queue_config.max_shards` | `null or signed integer` | Maximum number of shards, i.e. amount of concurrency. |
+| `services.prometheus.remoteWrite.*.queue_config.min_backoff` | `null or string` | Initial retry delay. Gets doubled for every retry. |
+| `services.prometheus.remoteWrite.*.queue_config.min_shards` | `null or signed integer` | Minimum number of shards, i.e. amount of concurrency. |
+| `services.prometheus.remoteWrite.*.remote_timeout` | `null or string` | Timeout for requests to the remote write endpoint. |
+| `services.prometheus.remoteWrite.*.sigv4` | `null or (submodule)` | Configures AWS Signature Version 4 settings. |
+| `services.prometheus.remoteWrite.*.sigv4.access_key` | `null or string` | The Access Key ID. |
+| `services.prometheus.remoteWrite.*.sigv4.profile` | `null or string` | The named AWS profile used to authenticate. |
+| `services.prometheus.remoteWrite.*.sigv4.region` | `null or string` | The AWS region. |
+| `services.prometheus.remoteWrite.*.sigv4.role_arn` | `null or string` | The AWS role ARN. |
+| `services.prometheus.remoteWrite.*.sigv4.secret_key` | `null or string` | The Secret Access Key. |
+| `services.prometheus.remoteWrite.*.tls_config` | `null or (submodule)` | Configures the remote write request's TLS settings. |
+| `services.prometheus.remoteWrite.*.tls_config.ca_file` | `null or string` | CA certificate to validate API server certificate with. |
+| `services.prometheus.remoteWrite.*.tls_config.cert_file` | `null or string` | Certificate file for client cert authentication to the server. |
+| `services.prometheus.remoteWrite.*.tls_config.insecure_skip_verify` | `null or boolean` | Disable validation of the server certificate. |
+| `services.prometheus.remoteWrite.*.tls_config.key_file` | `null or string` | Key file for client cert authentication to the server. |
+| `services.prometheus.remoteWrite.*.tls_config.server_name` | `null or string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.remoteWrite.*.url` | `string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.remoteWrite.*.write_relabel_configs` | `null or (list of (submodule))` | List of remote write relabel configurations. |
+| `services.prometheus.remoteWrite.*.write_relabel_configs.*.action` | `null or one of "replace", "lowercase", "uppercase", "keep", "drop", "hashmod", "labelmap", "labeldrop", "labelkeep"` | Action to perform based on regex matching. Defaults to `replace` in prometheus when set to `null`. |
+| `services.prometheus.remoteWrite.*.write_relabel_configs.*.modulus` | `null or signed integer` | Modulus to take of the hash of the source label values. |
+| `services.prometheus.remoteWrite.*.write_relabel_configs.*.regex` | `null or string` | Regular expression against which the extracted value is matched. Defaults to `(.*)` in prometheus when set to `null`. |
+| `services.prometheus.remoteWrite.*.write_relabel_configs.*.replacement` | `null or string` | Replacement value against which a regex replace is performed if the regular expression matches. Defaults to `$1` in prometheus when set to `null`. |
+| `services.prometheus.remoteWrite.*.write_relabel_configs.*.separator` | `null or string` | Separator placed between concatenated source label values. Defaults to `;` in prometheus when set to `null`. |
+| `services.prometheus.remoteWrite.*.write_relabel_configs.*.source_labels` | `null or (list of string)` | The source labels select values from existing labels. Their content is concatenated using the configured separator and matched against the configured regular expression. |
+| `services.prometheus.remoteWrite.*.write_relabel_configs.*.target_label` | `null or string` | Label to which the resulting value is written in a replace action. It is mandatory for replace actions. |
+| `services.prometheus.retentionTime` | `null or string` | How long to retain samples in storage. |
+| `services.prometheus.ruleFiles` | `list of absolute path` | Any additional rules files to include in this configuration. |
+| `services.prometheus.rules` | `list of string` | Alerting and/or Recording rules to evaluate at runtime. |
+| `services.prometheus.sachet.address` | `string` | The address Sachet will listen to. |
+| `services.prometheus.sachet.configuration` | `null or (attribute set)` | Sachet's configuration as a nix attribute set. |
+| `services.prometheus.sachet.enable` | `boolean` | Whether to enable Sachet, an SMS alerting tool for the Prometheus Alertmanager. |
+| `services.prometheus.sachet.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port Sachet will listen to. |
+| `services.prometheus.scrapeConfigs` | `list of (submodule)` | A list of scrape configurations. |
+| `services.prometheus.scrapeConfigs.*.authorization` | `null or (attribute set)` | Sets the `Authorization` header on every scrape request with the configured credentials. |
+| `services.prometheus.scrapeConfigs.*.azure_sd_configs` | `null or (list of (submodule))` | List of Azure service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.azure_sd_configs.*.authentication_method` | `null or one of "OAuth", "ManagedIdentity"` | The authentication method, either OAuth or ManagedIdentity. See <https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview> Defaults to `OAuth` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.azure_sd_configs.*.client_id` | `null or string` | Optional client ID. Only required with authentication_method OAuth. |
+| `services.prometheus.scrapeConfigs.*.azure_sd_configs.*.client_secret` | `null or string` | Optional client secret. Only required with authentication_method OAuth. |
+| `services.prometheus.scrapeConfigs.*.azure_sd_configs.*.environment` | `null or string` | The Azure environment. Defaults to `AzurePublicCloud` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.azure_sd_configs.*.follow_redirects` | `null or boolean` | Configure whether HTTP requests follow HTTP 3xx redirects. Defaults to `true` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.azure_sd_configs.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to scrape metrics from. If using the public IP address, this must instead be specified in the relabeling rule. Defaults to `80` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.azure_sd_configs.*.proxy_url` | `null or string` | Optional proxy URL. |
+| `services.prometheus.scrapeConfigs.*.azure_sd_configs.*.refresh_interval` | `null or string` | Refresh interval to re-read the instance list. Defaults to `300s` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.azure_sd_configs.*.subscription_id` | `string` | The subscription ID. |
+| `services.prometheus.scrapeConfigs.*.azure_sd_configs.*.tenant_id` | `null or string` | Optional tenant ID. Only required with authentication_method OAuth. |
+| `services.prometheus.scrapeConfigs.*.azure_sd_configs.*.tls_config` | `null or (submodule)` | TLS configuration. |
+| `services.prometheus.scrapeConfigs.*.azure_sd_configs.*.tls_config.ca_file` | `null or string` | CA certificate to validate API server certificate with. |
+| `services.prometheus.scrapeConfigs.*.azure_sd_configs.*.tls_config.cert_file` | `null or string` | Certificate file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.azure_sd_configs.*.tls_config.insecure_skip_verify` | `null or boolean` | Disable validation of the server certificate. |
+| `services.prometheus.scrapeConfigs.*.azure_sd_configs.*.tls_config.key_file` | `null or string` | Key file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.azure_sd_configs.*.tls_config.server_name` | `null or string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.scrapeConfigs.*.basic_auth` | `null or (submodule)` | Sets the `Authorization` header on every scrape request with the configured username and password. password and password_file are mutually exclusive. |
+| `services.prometheus.scrapeConfigs.*.basic_auth.password` | `null or string` | HTTP password |
+| `services.prometheus.scrapeConfigs.*.basic_auth.password_file` | `null or string` | HTTP password file |
+| `services.prometheus.scrapeConfigs.*.basic_auth.username` | `string` | HTTP username |
+| `services.prometheus.scrapeConfigs.*.bearer_token` | `null or string` | Sets the `Authorization` header on every scrape request with the configured bearer token. It is mutually exclusive with {option}`bearer_token_file`. |
+| `services.prometheus.scrapeConfigs.*.bearer_token_file` | `null or string` | Sets the `Authorization` header on every scrape request with the bearer token read from the configured file. It is mutually exclusive with {option}`bearer_token`. |
+| `services.prometheus.scrapeConfigs.*.body_size_limit` | `null or string` | An uncompressed response body larger than this many bytes will cause the scrape to fail. 0 means no limit. Example: 100MB. This is an experimental feature, this behaviour could change or be removed in the future. Defaults to `0` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs` | `null or (list of (submodule))` | List of Consul service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.allow_stale` | `null or boolean` | Allow stale Consul results (see <https://www.consul.io/api/index.html#consistency-modes>). Will reduce load on Consul. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.authorization` | `null or (submodule)` | Optional `Authorization` header configuration. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.authorization.credentials` | `null or string` | Sets the credentials. It is mutually exclusive with `credentials_file`. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.authorization.credentials_file` | `null or string` | Sets the credentials to the credentials read from the configured file. It is mutually exclusive with `credentials`. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.authorization.type` | `null or string` | Sets the authentication type. Defaults to `Bearer` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.basic_auth` | `null or (submodule)` | Optional HTTP basic authentication information. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.basic_auth.password` | `null or string` | HTTP password |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.basic_auth.password_file` | `null or string` | HTTP password file |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.basic_auth.username` | `string` | HTTP username |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.datacenter` | `null or string` | Consul datacenter |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.follow_redirects` | `null or boolean` | Configure whether HTTP requests follow HTTP 3xx redirects. Defaults to `true` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.node_meta` | `null or (attribute set of string)` | Node metadata used to filter nodes for a given service. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.oauth2` | `null or (submodule)` | Optional OAuth 2.0 configuration. Cannot be used at the same time as basic_auth or authorization. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.oauth2.client_id` | `null or string` | OAuth client ID. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.oauth2.client_secret` | `null or string` | OAuth client secret. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.oauth2.client_secret_file` | `null or string` | Read the client secret from a file. It is mutually exclusive with `client_secret`. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.oauth2.endpoint_params` | `null or (attribute set of string)` | Optional parameters to append to the token URL. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.oauth2.scopes` | `null or (list of string)` | Scopes for the token request. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.oauth2.token_url` | `null or string` | The URL to fetch the token from. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.password` | `null or string` | Consul password |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.proxy_url` | `null or string` | Optional proxy URL. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.refresh_interval` | `null or string` | The time after which the provided names are refreshed. On large setup it might be a good idea to increase this value because the catalog will change all the time. Defaults to `30s` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.scheme` | `null or string` | Consul scheme Defaults to `http` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.server` | `null or string` | Consul server to query. Defaults to `localhost:8500` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.services` | `null or (list of string)` | A list of services for which targets are retrieved. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.tag_separator` | `null or string` | The string by which Consul tags are joined into the tag label. Defaults to `,` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.tags` | `null or (list of string)` | An optional list of tags used to filter nodes for a given service. Services must contain all tags in the list. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.tls_config` | `null or (submodule)` | Configures the Consul request's TLS settings. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.tls_config.ca_file` | `null or string` | CA certificate to validate API server certificate with. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.tls_config.cert_file` | `null or string` | Certificate file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.tls_config.insecure_skip_verify` | `null or boolean` | Disable validation of the server certificate. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.tls_config.key_file` | `null or string` | Key file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.tls_config.server_name` | `null or string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.token` | `null or string` | Consul token |
+| `services.prometheus.scrapeConfigs.*.consul_sd_configs.*.username` | `null or string` | Consul username |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs` | `null or (list of (submodule))` | List of DigitalOcean service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.authorization` | `null or (submodule)` | Optional `Authorization` header configuration. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.authorization.credentials` | `null or string` | Sets the credentials. It is mutually exclusive with `credentials_file`. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.authorization.credentials_file` | `null or string` | Sets the credentials to the credentials read from the configured file. It is mutually exclusive with `credentials`. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.authorization.type` | `null or string` | Sets the authentication type. Defaults to `Bearer` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.basic_auth` | `null or (submodule)` | Optional HTTP basic authentication information. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.basic_auth.password` | `null or string` | HTTP password |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.basic_auth.password_file` | `null or string` | HTTP password file |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.basic_auth.username` | `string` | HTTP username |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.follow_redirects` | `null or boolean` | Configure whether HTTP requests follow HTTP 3xx redirects. Defaults to `true` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.oauth2` | `null or (submodule)` | Optional OAuth 2.0 configuration. Cannot be used at the same time as basic_auth or authorization. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.oauth2.client_id` | `null or string` | OAuth client ID. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.oauth2.client_secret` | `null or string` | OAuth client secret. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.oauth2.client_secret_file` | `null or string` | Read the client secret from a file. It is mutually exclusive with `client_secret`. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.oauth2.endpoint_params` | `null or (attribute set of string)` | Optional parameters to append to the token URL. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.oauth2.scopes` | `null or (list of string)` | Scopes for the token request. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.oauth2.token_url` | `null or string` | The URL to fetch the token from. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to scrape metrics from. Defaults to `80` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.proxy_url` | `null or string` | Optional proxy URL. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.refresh_interval` | `null or string` | The time after which the droplets are refreshed. Defaults to `60s` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.tls_config` | `null or (submodule)` | TLS configuration. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.tls_config.ca_file` | `null or string` | CA certificate to validate API server certificate with. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.tls_config.cert_file` | `null or string` | Certificate file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.tls_config.insecure_skip_verify` | `null or boolean` | Disable validation of the server certificate. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.tls_config.key_file` | `null or string` | Key file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.digitalocean_sd_configs.*.tls_config.server_name` | `null or string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.scrapeConfigs.*.dns_sd_configs` | `null or (list of (submodule))` | List of DNS service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.dns_sd_configs.*.names` | `list of string` | A list of DNS SRV record names to be queried. |
+| `services.prometheus.scrapeConfigs.*.dns_sd_configs.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port number used if the query type is not SRV. |
+| `services.prometheus.scrapeConfigs.*.dns_sd_configs.*.refresh_interval` | `null or string` | The time after which the provided names are refreshed. Defaults to `30s` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.dns_sd_configs.*.type` | `null or one of "SRV", "A", "AAAA", "MX", "NS"` | The type of DNS query to perform. Defaults to `SRV` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs` | `null or (list of (submodule))` | List of Docker service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.authorization` | `null or (submodule)` | Optional `Authorization` header configuration. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.authorization.credentials` | `null or string` | Sets the credentials. It is mutually exclusive with `credentials_file`. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.authorization.credentials_file` | `null or string` | Sets the credentials to the credentials read from the configured file. It is mutually exclusive with `credentials`. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.authorization.type` | `null or string` | Sets the authentication type. Defaults to `Bearer` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.basic_auth` | `null or (submodule)` | Optional HTTP basic authentication information. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.basic_auth.password` | `null or string` | HTTP password |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.basic_auth.password_file` | `null or string` | HTTP password file |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.basic_auth.username` | `string` | HTTP username |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.filters` | `null or (list of (submodule))` | Optional filters to limit the discovery process to a subset of available resources. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.filters.*.name` | `string` | Name of the filter. The available filters are listed in the upstream documentation: Services: <https://docs.docker.com/engine/api/v1.40/#operation/ServiceList> Tasks: <https://docs.docker.com/engine/api/v1.40/#operation/TaskList> Nodes: <https://docs.docker.com/engine/api/v1.40/#operation/NodeList> |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.filters.*.values` | `string` | Value for the filter. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.follow_redirects` | `null or boolean` | Configure whether HTTP requests follow HTTP 3xx redirects. Defaults to `true` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.host` | `string` | Address of the Docker daemon. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.host_networking_host` | `null or string` | The host to use if the container is in host networking mode. Defaults to `localhost` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.oauth2` | `null or (submodule)` | Optional OAuth 2.0 configuration. Cannot be used at the same time as basic_auth or authorization. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.oauth2.client_id` | `null or string` | OAuth client ID. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.oauth2.client_secret` | `null or string` | OAuth client secret. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.oauth2.client_secret_file` | `null or string` | Read the client secret from a file. It is mutually exclusive with `client_secret`. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.oauth2.endpoint_params` | `null or (attribute set of string)` | Optional parameters to append to the token URL. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.oauth2.scopes` | `null or (list of string)` | Scopes for the token request. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.oauth2.token_url` | `null or string` | The URL to fetch the token from. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to scrape metrics from, when `role` is nodes, and for discovered tasks and services that don't have published ports. Defaults to `80` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.proxy_url` | `null or string` | Optional proxy URL. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.refresh_interval` | `null or string` | The time after which the containers are refreshed. Defaults to `60s` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.tls_config` | `null or (submodule)` | TLS configuration. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.tls_config.ca_file` | `null or string` | CA certificate to validate API server certificate with. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.tls_config.cert_file` | `null or string` | Certificate file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.tls_config.insecure_skip_verify` | `null or boolean` | Disable validation of the server certificate. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.tls_config.key_file` | `null or string` | Key file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.docker_sd_configs.*.tls_config.server_name` | `null or string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs` | `null or (list of (submodule))` | List of Docker Swarm service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.authorization` | `null or (submodule)` | Optional `Authorization` header configuration. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.authorization.credentials` | `null or string` | Sets the credentials. It is mutually exclusive with `credentials_file`. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.authorization.credentials_file` | `null or string` | Sets the credentials to the credentials read from the configured file. It is mutually exclusive with `credentials`. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.authorization.type` | `null or string` | Sets the authentication type. Defaults to `Bearer` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.basic_auth` | `null or (submodule)` | Optional HTTP basic authentication information. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.basic_auth.password` | `null or string` | HTTP password |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.basic_auth.password_file` | `null or string` | HTTP password file |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.basic_auth.username` | `string` | HTTP username |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.filters` | `null or (list of (submodule))` | Optional filters to limit the discovery process to a subset of available resources. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.filters.*.name` | `string` | Name of the filter. The available filters are listed in the upstream documentation: Services: <https://docs.docker.com/engine/api/v1.40/#operation/ServiceList> Tasks: <https://docs.docker.com/engine/api/v1.40/#operation/TaskList> Nodes: <https://docs.docker.com/engine/api/v1.40/#operation/NodeList> |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.filters.*.values` | `string` | Value for the filter. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.follow_redirects` | `null or boolean` | Configure whether HTTP requests follow HTTP 3xx redirects. Defaults to `true` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.host` | `string` | Address of the Docker daemon. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.oauth2` | `null or (submodule)` | Optional OAuth 2.0 configuration. Cannot be used at the same time as basic_auth or authorization. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.oauth2.client_id` | `null or string` | OAuth client ID. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.oauth2.client_secret` | `null or string` | OAuth client secret. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.oauth2.client_secret_file` | `null or string` | Read the client secret from a file. It is mutually exclusive with `client_secret`. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.oauth2.endpoint_params` | `null or (attribute set of string)` | Optional parameters to append to the token URL. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.oauth2.scopes` | `null or (list of string)` | Scopes for the token request. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.oauth2.token_url` | `null or string` | The URL to fetch the token from. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to scrape metrics from, when `role` is nodes, and for discovered tasks and services that don't have published ports. Defaults to `80` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.proxy_url` | `null or string` | Optional proxy URL. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.refresh_interval` | `null or string` | The time after which the containers are refreshed. Defaults to `60s` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.role` | `one of "services", "tasks", "nodes"` | Role of the targets to retrieve. Must be `services`, `tasks`, or `nodes`. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.tls_config` | `null or (submodule)` | TLS configuration. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.tls_config.ca_file` | `null or string` | CA certificate to validate API server certificate with. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.tls_config.cert_file` | `null or string` | Certificate file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.tls_config.insecure_skip_verify` | `null or boolean` | Disable validation of the server certificate. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.tls_config.key_file` | `null or string` | Key file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.dockerswarm_sd_configs.*.tls_config.server_name` | `null or string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.scrapeConfigs.*.ec2_sd_configs` | `null or (list of (submodule))` | List of EC2 service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.ec2_sd_configs.*.access_key` | `null or string` | The AWS API key id. If blank, the environment variable `AWS_ACCESS_KEY_ID` is used. |
+| `services.prometheus.scrapeConfigs.*.ec2_sd_configs.*.endpoint` | `null or string` | Custom endpoint to be used. |
+| `services.prometheus.scrapeConfigs.*.ec2_sd_configs.*.filters` | `null or (list of (submodule))` | Filters can be used optionally to filter the instance list by other criteria. |
+| `services.prometheus.scrapeConfigs.*.ec2_sd_configs.*.filters.*.name` | `string` | See [this list](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeInstances.html) for the available filters. |
+| `services.prometheus.scrapeConfigs.*.ec2_sd_configs.*.filters.*.values` | `list of string` | Value of the filter. |
+| `services.prometheus.scrapeConfigs.*.ec2_sd_configs.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to scrape metrics from. If using the public IP address, this must instead be specified in the relabeling rule. Defaults to `80` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.ec2_sd_configs.*.profile` | `null or string` | Named AWS profile used to connect to the API. |
+| `services.prometheus.scrapeConfigs.*.ec2_sd_configs.*.refresh_interval` | `null or string` | Refresh interval to re-read the instance list. Defaults to `60s` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.ec2_sd_configs.*.region` | `string` | The AWS Region. If blank, the region from the instance metadata is used. |
+| `services.prometheus.scrapeConfigs.*.ec2_sd_configs.*.role_arn` | `null or string` | AWS Role ARN, an alternative to using AWS API keys. |
+| `services.prometheus.scrapeConfigs.*.ec2_sd_configs.*.secret_key` | `null or string` | The AWS API key secret. If blank, the environment variable `AWS_SECRET_ACCESS_KEY` is used. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs` | `null or (list of (submodule))` | List of Eureka service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.authorization` | `null or (submodule)` | Optional `Authorization` header configuration. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.authorization.credentials` | `null or string` | Sets the credentials. It is mutually exclusive with `credentials_file`. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.authorization.credentials_file` | `null or string` | Sets the credentials to the credentials read from the configured file. It is mutually exclusive with `credentials`. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.authorization.type` | `null or string` | Sets the authentication type. Defaults to `Bearer` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.basic_auth` | `null or (submodule)` | Optional HTTP basic authentication information. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.basic_auth.password` | `null or string` | HTTP password |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.basic_auth.password_file` | `null or string` | HTTP password file |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.basic_auth.username` | `string` | HTTP username |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.follow_redirects` | `null or boolean` | Configure whether HTTP requests follow HTTP 3xx redirects. Defaults to `true` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.oauth2` | `null or (submodule)` | Optional OAuth 2.0 configuration. Cannot be used at the same time as basic_auth or authorization. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.oauth2.client_id` | `null or string` | OAuth client ID. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.oauth2.client_secret` | `null or string` | OAuth client secret. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.oauth2.client_secret_file` | `null or string` | Read the client secret from a file. It is mutually exclusive with `client_secret`. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.oauth2.endpoint_params` | `null or (attribute set of string)` | Optional parameters to append to the token URL. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.oauth2.scopes` | `null or (list of string)` | Scopes for the token request. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.oauth2.token_url` | `null or string` | The URL to fetch the token from. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.proxy_url` | `null or string` | Optional proxy URL. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.server` | `string` | The URL to connect to the Eureka server. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.tls_config` | `null or (submodule)` | TLS configuration. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.tls_config.ca_file` | `null or string` | CA certificate to validate API server certificate with. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.tls_config.cert_file` | `null or string` | Certificate file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.tls_config.insecure_skip_verify` | `null or boolean` | Disable validation of the server certificate. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.tls_config.key_file` | `null or string` | Key file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.eureka_sd_configs.*.tls_config.server_name` | `null or string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.scrapeConfigs.*.fallback_scrape_protocol` | `null or string` | Fallback protocol to use if a scrape returns blank, unparseable, or otherwise invalid Content-Type. |
+| `services.prometheus.scrapeConfigs.*.file_sd_configs` | `null or (list of (submodule))` | List of file service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.file_sd_configs.*.files` | `list of string` | Patterns for files from which target groups are extracted. Refer to the Prometheus documentation for permitted filename patterns and formats. |
+| `services.prometheus.scrapeConfigs.*.file_sd_configs.*.refresh_interval` | `null or string` | Refresh interval to re-read the files. Defaults to `5m` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.gce_sd_configs` | `null or (list of (submodule))` | List of Google Compute Engine service discovery configurations. See [the relevant Prometheus configuration docs](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#gce_sd_config) for more detail. |
+| `services.prometheus.scrapeConfigs.*.gce_sd_configs.*.filter` | `null or string` | Filter can be used optionally to filter the instance list by other criteria Syntax of this filter string is described here in the filter query parameter section: <https://cloud.google.com/compute/docs/reference/latest/instances/list>. |
+| `services.prometheus.scrapeConfigs.*.gce_sd_configs.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to scrape metrics from. If using the public IP address, this must instead be specified in the relabeling rule. Defaults to `80` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.gce_sd_configs.*.project` | `string` | The GCP Project. |
+| `services.prometheus.scrapeConfigs.*.gce_sd_configs.*.refresh_interval` | `null or string` | Refresh interval to re-read the cloud instance list. Defaults to `60s` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.gce_sd_configs.*.tag_separator` | `null or string` | The tag separator used to separate concatenated GCE instance network tags. See the GCP documentation on network tags for more information: <https://cloud.google.com/vpc/docs/add-remove-network-tags> Defaults to `,` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.gce_sd_configs.*.zone` | `string` | The zone of the scrape targets. If you need multiple zones use multiple gce_sd_configs. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs` | `null or (list of (submodule))` | List of Hetzner service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.authorization` | `null or (submodule)` | Optional `Authorization` header configuration. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.authorization.credentials` | `null or string` | Sets the credentials. It is mutually exclusive with `credentials_file`. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.authorization.credentials_file` | `null or string` | Sets the credentials to the credentials read from the configured file. It is mutually exclusive with `credentials`. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.authorization.type` | `null or string` | Sets the authentication type. Defaults to `Bearer` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.basic_auth` | `null or (submodule)` | Optional HTTP basic authentication information. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.basic_auth.password` | `null or string` | HTTP password |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.basic_auth.password_file` | `null or string` | HTTP password file |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.basic_auth.username` | `string` | HTTP username |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.follow_redirects` | `null or boolean` | Configure whether HTTP requests follow HTTP 3xx redirects. Defaults to `true` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.oauth2` | `null or (submodule)` | Optional OAuth 2.0 configuration. Cannot be used at the same time as basic_auth or authorization. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.oauth2.client_id` | `null or string` | OAuth client ID. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.oauth2.client_secret` | `null or string` | OAuth client secret. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.oauth2.client_secret_file` | `null or string` | Read the client secret from a file. It is mutually exclusive with `client_secret`. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.oauth2.endpoint_params` | `null or (attribute set of string)` | Optional parameters to append to the token URL. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.oauth2.scopes` | `null or (list of string)` | Scopes for the token request. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.oauth2.token_url` | `null or string` | The URL to fetch the token from. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to scrape metrics from. Defaults to `80` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.proxy_url` | `null or string` | Optional proxy URL. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.refresh_interval` | `null or string` | The time after which the servers are refreshed. Defaults to `60s` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.role` | `one of "robot", "hcloud"` | The Hetzner role of entities that should be discovered. One of `robot` or `hcloud`. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.tls_config` | `null or (submodule)` | TLS configuration. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.tls_config.ca_file` | `null or string` | CA certificate to validate API server certificate with. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.tls_config.cert_file` | `null or string` | Certificate file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.tls_config.insecure_skip_verify` | `null or boolean` | Disable validation of the server certificate. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.tls_config.key_file` | `null or string` | Key file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.hetzner_sd_configs.*.tls_config.server_name` | `null or string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.scrapeConfigs.*.honor_labels` | `null or boolean` | Controls how Prometheus handles conflicts between labels that are already present in scraped data and labels that Prometheus would attach server-side ("job" and "instance" labels, manually configured target labels, and labels generated by service discovery implementations). If honor_labels is set to "true", label conflicts are resolved by keeping label values from the scraped data and ignoring the conflicting server-side labels. If honor_labels is set to "false", label conflicts are resolved by renaming conflicting labels in the scraped data to "exported\_\<original-label>" (for example "exported_instance", "exported_job") and then attaching server-side labels. This is useful for use cases such as federation, where all labels specified in the target should be preserved. Defaults to `false` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.honor_timestamps` | `null or boolean` | honor_timestamps controls whether Prometheus respects the timestamps present in scraped data. If honor_timestamps is set to `true`, the timestamps of the metrics exposed by the target will be used. If honor_timestamps is set to `false`, the timestamps of the metrics exposed by the target will be ignored. Defaults to `true` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.http_sd_configs` | `null or (list of (submodule))` | List of HTTP service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.http_sd_configs.*.basic_auth` | `null or (submodule)` | Authentication information used to authenticate to the API server. password and password_file are mutually exclusive. |
+| `services.prometheus.scrapeConfigs.*.http_sd_configs.*.basic_auth.password` | `null or string` | HTTP password |
+| `services.prometheus.scrapeConfigs.*.http_sd_configs.*.basic_auth.password_file` | `null or string` | HTTP password file |
+| `services.prometheus.scrapeConfigs.*.http_sd_configs.*.basic_auth.username` | `string` | HTTP username |
+| `services.prometheus.scrapeConfigs.*.http_sd_configs.*.follow_redirects` | `null or boolean` | Configure whether HTTP requests follow HTTP 3xx redirects. Defaults to `true` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.http_sd_configs.*.proxy_url` | `null or string` | Optional proxy URL. |
+| `services.prometheus.scrapeConfigs.*.http_sd_configs.*.refresh_interval` | `null or string` | Refresh interval to re-query the endpoint. Defaults to `60s` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.http_sd_configs.*.tls_config` | `null or (submodule)` | Configures the scrape request's TLS settings. |
+| `services.prometheus.scrapeConfigs.*.http_sd_configs.*.tls_config.ca_file` | `null or string` | CA certificate to validate API server certificate with. |
+| `services.prometheus.scrapeConfigs.*.http_sd_configs.*.tls_config.cert_file` | `null or string` | Certificate file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.http_sd_configs.*.tls_config.insecure_skip_verify` | `null or boolean` | Disable validation of the server certificate. |
+| `services.prometheus.scrapeConfigs.*.http_sd_configs.*.tls_config.key_file` | `null or string` | Key file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.http_sd_configs.*.tls_config.server_name` | `null or string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.scrapeConfigs.*.http_sd_configs.*.url` | `string` | URL from which the targets are fetched. |
+| `services.prometheus.scrapeConfigs.*.job_name` | `string` | The job name assigned to scraped metrics by default. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs` | `null or (list of (submodule))` | List of Kubernetes service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.api_server` | `null or string` | The API server addresses. If left empty, Prometheus is assumed to run inside of the cluster and will discover API servers automatically and use the pod's CA certificate and bearer token file at /var/run/secrets/kubernetes.io/serviceaccount/. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.authorization` | `null or (submodule)` | Optional `Authorization` header configuration. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.authorization.credentials` | `null or string` | Sets the credentials. It is mutually exclusive with `credentials_file`. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.authorization.credentials_file` | `null or string` | Sets the credentials to the credentials read from the configured file. It is mutually exclusive with `credentials`. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.authorization.type` | `null or string` | Sets the authentication type. Defaults to `Bearer` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.basic_auth` | `null or (submodule)` | Optional HTTP basic authentication information. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.basic_auth.password` | `null or string` | HTTP password |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.basic_auth.password_file` | `null or string` | HTTP password file |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.basic_auth.username` | `string` | HTTP username |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.follow_redirects` | `null or boolean` | Configure whether HTTP requests follow HTTP 3xx redirects. Defaults to `true` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.kubeconfig_file` | `null or string` | Optional path to a kubeconfig file. Note that api_server and kube_config are mutually exclusive. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.namespaces` | `null or (submodule)` | Optional namespace discovery. If omitted, all namespaces are used. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.namespaces.names` | `null or (list of string)` | Namespace name. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.oauth2` | `null or (submodule)` | Optional OAuth 2.0 configuration. Cannot be used at the same time as basic_auth or authorization. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.oauth2.client_id` | `null or string` | OAuth client ID. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.oauth2.client_secret` | `null or string` | OAuth client secret. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.oauth2.client_secret_file` | `null or string` | Read the client secret from a file. It is mutually exclusive with `client_secret`. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.oauth2.endpoint_params` | `null or (attribute set of string)` | Optional parameters to append to the token URL. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.oauth2.scopes` | `null or (list of string)` | Scopes for the token request. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.oauth2.token_url` | `null or string` | The URL to fetch the token from. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.proxy_url` | `null or string` | Optional proxy URL. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.role` | `one of "endpoints", "service", "pod", "node", "ingress"` | The Kubernetes role of entities that should be discovered. One of endpoints, service, pod, node, or ingress. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.selectors` | `null or (list of (submodule))` | Optional label and field selectors to limit the discovery process to a subset of available resources. See <https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/> and <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/> to learn more about the possible filters that can be used. Endpoints role supports pod, service and endpoints selectors, other roles only support selectors matching the role itself (e.g. node role can only contain node selectors). Note: When making decision about using field/label selector make sure that this is the best approach - it will prevent Prometheus from reusing single list/watch for all scrape configs. This might result in a bigger load on the Kubernetes API, because per each selector combination there will be additional LIST/WATCH. On the other hand, if you just want to monitor small subset of pods in large cluster it's recommended to use selectors. Decision, if selectors should be used or not depends on the particular situation. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.selectors.*.field` | `null or string` | Selector field |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.selectors.*.label` | `null or string` | Selector label |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.selectors.*.role` | `string` | Selector role |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.tls_config` | `null or (submodule)` | TLS configuration. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.tls_config.ca_file` | `null or string` | CA certificate to validate API server certificate with. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.tls_config.cert_file` | `null or string` | Certificate file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.tls_config.insecure_skip_verify` | `null or boolean` | Disable validation of the server certificate. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.tls_config.key_file` | `null or string` | Key file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.kubernetes_sd_configs.*.tls_config.server_name` | `null or string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs` | `null or (list of (submodule))` | List of Kuma service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.authorization` | `null or (submodule)` | Optional `Authorization` header configuration. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.authorization.credentials` | `null or string` | Sets the credentials. It is mutually exclusive with `credentials_file`. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.authorization.credentials_file` | `null or string` | Sets the credentials to the credentials read from the configured file. It is mutually exclusive with `credentials`. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.authorization.type` | `null or string` | Sets the authentication type. Defaults to `Bearer` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.basic_auth` | `null or (submodule)` | Optional HTTP basic authentication information. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.basic_auth.password` | `null or string` | HTTP password |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.basic_auth.password_file` | `null or string` | HTTP password file |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.basic_auth.username` | `string` | HTTP username |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.fetch_timeout` | `null or string` | The time after which the monitoring assignments are refreshed. Defaults to `2m` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.follow_redirects` | `null or boolean` | Configure whether HTTP requests follow HTTP 3xx redirects. Defaults to `true` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.oauth2` | `null or (submodule)` | Optional OAuth 2.0 configuration. Cannot be used at the same time as basic_auth or authorization. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.oauth2.client_id` | `null or string` | OAuth client ID. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.oauth2.client_secret` | `null or string` | OAuth client secret. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.oauth2.client_secret_file` | `null or string` | Read the client secret from a file. It is mutually exclusive with `client_secret`. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.oauth2.endpoint_params` | `null or (attribute set of string)` | Optional parameters to append to the token URL. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.oauth2.scopes` | `null or (list of string)` | Scopes for the token request. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.oauth2.token_url` | `null or string` | The URL to fetch the token from. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.proxy_url` | `null or string` | Optional proxy URL. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.refresh_interval` | `null or string` | The time to wait between polling update requests. Defaults to `30s` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.server` | `string` | Address of the Kuma Control Plane's MADS xDS server. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.tls_config` | `null or (submodule)` | TLS configuration. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.tls_config.ca_file` | `null or string` | CA certificate to validate API server certificate with. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.tls_config.cert_file` | `null or string` | Certificate file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.tls_config.insecure_skip_verify` | `null or boolean` | Disable validation of the server certificate. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.tls_config.key_file` | `null or string` | Key file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.kuma_sd_configs.*.tls_config.server_name` | `null or string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.scrapeConfigs.*.label_limit` | `null or signed integer` | Per-scrape limit on number of labels that will be accepted for a sample. If more than this number of labels are present post metric-relabeling, the entire scrape will be treated as failed. 0 means no limit. Defaults to `0` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.label_name_length_limit` | `null or signed integer` | Per-scrape limit on length of labels name that will be accepted for a sample. If a label name is longer than this number post metric-relabeling, the entire scrape will be treated as failed. 0 means no limit. Defaults to `0` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.label_value_length_limit` | `null or signed integer` | Per-scrape limit on length of labels value that will be accepted for a sample. If a label value is longer than this number post metric-relabeling, the entire scrape will be treated as failed. 0 means no limit. Defaults to `0` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.lightsail_sd_configs` | `null or (list of (submodule))` | List of Lightsail service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.lightsail_sd_configs.*.access_key` | `null or string` | The AWS API keys. If blank, the environment variable `AWS_ACCESS_KEY_ID` is used. |
+| `services.prometheus.scrapeConfigs.*.lightsail_sd_configs.*.endpoint` | `null or string` | Custom endpoint to be used. |
+| `services.prometheus.scrapeConfigs.*.lightsail_sd_configs.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to scrape metrics from. If using the public IP address, this must instead be specified in the relabeling rule. Defaults to `80` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.lightsail_sd_configs.*.profile` | `null or string` | Named AWS profile used to connect to the API. |
+| `services.prometheus.scrapeConfigs.*.lightsail_sd_configs.*.refresh_interval` | `null or string` | Refresh interval to re-read the instance list. Defaults to `60s` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.lightsail_sd_configs.*.region` | `null or string` | The AWS region. If blank, the region from the instance metadata is used. |
+| `services.prometheus.scrapeConfigs.*.lightsail_sd_configs.*.role_arn` | `null or string` | AWS Role ARN, an alternative to using AWS API keys. |
+| `services.prometheus.scrapeConfigs.*.lightsail_sd_configs.*.secret_key` | `null or string` | The AWS API keys. If blank, the environment variable `AWS_SECRET_ACCESS_KEY` is used. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs` | `null or (list of (submodule))` | List of Linode service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.authorization` | `null or (submodule)` | Optional `Authorization` header configuration. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.authorization.credentials` | `null or string` | Sets the credentials. It is mutually exclusive with `credentials_file`. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.authorization.credentials_file` | `null or string` | Sets the credentials to the credentials read from the configured file. It is mutually exclusive with `credentials`. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.authorization.type` | `null or string` | Sets the authentication type. Defaults to `Bearer` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.basic_auth` | `null or (submodule)` | Optional HTTP basic authentication information. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.basic_auth.password` | `null or string` | HTTP password |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.basic_auth.password_file` | `null or string` | HTTP password file |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.basic_auth.username` | `string` | HTTP username |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.follow_redirects` | `null or boolean` | Configure whether HTTP requests follow HTTP 3xx redirects. Defaults to `true` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.oauth2` | `null or (submodule)` | Optional OAuth 2.0 configuration. Cannot be used at the same time as basic_auth or authorization. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.oauth2.client_id` | `null or string` | OAuth client ID. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.oauth2.client_secret` | `null or string` | OAuth client secret. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.oauth2.client_secret_file` | `null or string` | Read the client secret from a file. It is mutually exclusive with `client_secret`. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.oauth2.endpoint_params` | `null or (attribute set of string)` | Optional parameters to append to the token URL. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.oauth2.scopes` | `null or (list of string)` | Scopes for the token request. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.oauth2.token_url` | `null or string` | The URL to fetch the token from. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to scrape metrics from. Defaults to `80` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.proxy_url` | `null or string` | Optional proxy URL. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.refresh_interval` | `null or string` | The time after which the linode instances are refreshed. Defaults to `60s` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.tag_separator` | `null or string` | The string by which Linode Instance tags are joined into the tag label. Defaults to `,` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.tls_config` | `null or (submodule)` | TLS configuration. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.tls_config.ca_file` | `null or string` | CA certificate to validate API server certificate with. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.tls_config.cert_file` | `null or string` | Certificate file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.tls_config.insecure_skip_verify` | `null or boolean` | Disable validation of the server certificate. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.tls_config.key_file` | `null or string` | Key file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.linode_sd_configs.*.tls_config.server_name` | `null or string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs` | `null or (list of (submodule))` | List of Marathon service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.auth_token` | `null or string` | Optional authentication information for token-based authentication: <https://docs.mesosphere.com/1.11/security/ent/iam-api/#passing-an-authentication-token> It is mutually exclusive with `auth_token_file` and other authentication mechanisms. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.auth_token_file` | `null or string` | Optional authentication information for token-based authentication: <https://docs.mesosphere.com/1.11/security/ent/iam-api/#passing-an-authentication-token> It is mutually exclusive with `auth_token` and other authentication mechanisms. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.authorization` | `null or (submodule)` | Optional `Authorization` header configuration. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.authorization.credentials` | `null or string` | Sets the credentials. It is mutually exclusive with `credentials_file`. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.authorization.credentials_file` | `null or string` | Sets the credentials to the credentials read from the configured file. It is mutually exclusive with `credentials`. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.authorization.type` | `null or string` | Sets the authentication type. Defaults to `Bearer` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.basic_auth` | `null or (submodule)` | Optional HTTP basic authentication information. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.basic_auth.password` | `null or string` | HTTP password |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.basic_auth.password_file` | `null or string` | HTTP password file |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.basic_auth.username` | `string` | HTTP username |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.follow_redirects` | `null or boolean` | Configure whether HTTP requests follow HTTP 3xx redirects. Defaults to `true` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.oauth2` | `null or (submodule)` | Optional OAuth 2.0 configuration. Cannot be used at the same time as basic_auth or authorization. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.oauth2.client_id` | `null or string` | OAuth client ID. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.oauth2.client_secret` | `null or string` | OAuth client secret. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.oauth2.client_secret_file` | `null or string` | Read the client secret from a file. It is mutually exclusive with `client_secret`. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.oauth2.endpoint_params` | `null or (attribute set of string)` | Optional parameters to append to the token URL. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.oauth2.scopes` | `null or (list of string)` | Scopes for the token request. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.oauth2.token_url` | `null or string` | The URL to fetch the token from. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.proxy_url` | `null or string` | Optional proxy URL. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.refresh_interval` | `null or string` | Polling interval. Defaults to `30s` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.servers` | `list of string` | List of URLs to be used to contact Marathon servers. You need to provide at least one server URL. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.tls_config` | `null or (submodule)` | TLS configuration. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.tls_config.ca_file` | `null or string` | CA certificate to validate API server certificate with. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.tls_config.cert_file` | `null or string` | Certificate file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.tls_config.insecure_skip_verify` | `null or boolean` | Disable validation of the server certificate. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.tls_config.key_file` | `null or string` | Key file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.marathon_sd_configs.*.tls_config.server_name` | `null or string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.scrapeConfigs.*.metric_relabel_configs` | `null or (list of (submodule))` | List of metric relabel configurations. |
+| `services.prometheus.scrapeConfigs.*.metric_relabel_configs.*.action` | `null or one of "replace", "lowercase", "uppercase", "keep", "drop", "hashmod", "labelmap", "labeldrop", "labelkeep"` | Action to perform based on regex matching. Defaults to `replace` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.metric_relabel_configs.*.modulus` | `null or signed integer` | Modulus to take of the hash of the source label values. |
+| `services.prometheus.scrapeConfigs.*.metric_relabel_configs.*.regex` | `null or string` | Regular expression against which the extracted value is matched. Defaults to `(.*)` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.metric_relabel_configs.*.replacement` | `null or string` | Replacement value against which a regex replace is performed if the regular expression matches. Defaults to `$1` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.metric_relabel_configs.*.separator` | `null or string` | Separator placed between concatenated source label values. Defaults to `;` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.metric_relabel_configs.*.source_labels` | `null or (list of string)` | The source labels select values from existing labels. Their content is concatenated using the configured separator and matched against the configured regular expression. |
+| `services.prometheus.scrapeConfigs.*.metric_relabel_configs.*.target_label` | `null or string` | Label to which the resulting value is written in a replace action. It is mandatory for replace actions. |
+| `services.prometheus.scrapeConfigs.*.metrics_path` | `null or string` | The HTTP resource path on which to fetch metrics from targets. Defaults to `/metrics` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.nerve_sd_configs` | `null or (list of (submodule))` | List of AirBnB's Nerve service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.nerve_sd_configs.*.paths` | `list of string` | Paths can point to a single service, or the root of a tree of services. |
+| `services.prometheus.scrapeConfigs.*.nerve_sd_configs.*.servers` | `list of string` | The Zookeeper servers. |
+| `services.prometheus.scrapeConfigs.*.nerve_sd_configs.*.timeout` | `null or string` | Timeout value. Defaults to `10s` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs` | `null or (list of (submodule))` | List of OpenStack service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.all_tenants` | `null or boolean` | Whether the service discovery should list all instances for all projects. It is only relevant for the 'instance' role and usually requires admin permissions. Defaults to `false` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.application_credential_id` | `null or string` | The application_credential_id or application_credential_name fields are required if using an application credential to authenticate. Some providers allow you to create an application credential to authenticate rather than a password. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.application_credential_name` | `null or string` | The application_credential_id or application_credential_name fields are required if using an application credential to authenticate. Some providers allow you to create an application credential to authenticate rather than a password. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.application_credential_secret` | `null or string` | The application_credential_secret field is required if using an application credential to authenticate. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.availability` | `null or one of "public", "admin", "internal"` | The availability of the endpoint to connect to. Must be one of public, admin or internal. Defaults to `public` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.domain_id` | `null or string` | At most one of domain_id and domain_name must be provided if using username with Identity V3. Otherwise, either are optional. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.domain_name` | `null or string` | At most one of domain_id and domain_name must be provided if using username with Identity V3. Otherwise, either are optional. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.identity_endpoint` | `null or string` | identity_endpoint specifies the HTTP endpoint that is required to work with the Identity API of the appropriate version. While it's ultimately needed by all of the identity services, it will often be populated by a provider-level function. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.password` | `null or string` | password for the Identity V2 and V3 APIs. Consult with your provider's control panel to discover your account's preferred method of authentication. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to scrape metrics from. If using the public IP address, this must instead be specified in the relabeling rule. Defaults to `80` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.project_id` | `null or string` | The project_id and project_name fields are optional for the Identity V2 API. Some providers allow you to specify a project_name instead of the project_id. Some require both. Your provider's authentication policies will determine how these fields influence authentication. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.project_name` | `null or string` | The project_id and project_name fields are optional for the Identity V2 API. Some providers allow you to specify a project_name instead of the project_id. Some require both. Your provider's authentication policies will determine how these fields influence authentication. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.refresh_interval` | `null or string` | Refresh interval to re-read the instance list. Defaults to `60s` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.region` | `string` | The OpenStack Region. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.role` | `string` | The OpenStack role of entities that should be discovered. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.tls_config` | `null or (submodule)` | TLS configuration. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.tls_config.ca_file` | `null or string` | CA certificate to validate API server certificate with. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.tls_config.cert_file` | `null or string` | Certificate file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.tls_config.insecure_skip_verify` | `null or boolean` | Disable validation of the server certificate. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.tls_config.key_file` | `null or string` | Key file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.tls_config.server_name` | `null or string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.userid` | `null or string` | username is required if using Identity V2 API. Consult with your provider's control panel to discover your account's username. In Identity V3, either userid or a combination of username and domain_id or domain_name are needed. |
+| `services.prometheus.scrapeConfigs.*.openstack_sd_configs.*.username` | `null or string` | username is required if using Identity V2 API. Consult with your provider's control panel to discover your account's username. In Identity V3, either userid or a combination of username and domain_id or domain_name are needed. |
+| `services.prometheus.scrapeConfigs.*.params` | `null or (attribute set of list of string)` | Optional HTTP URL parameters. |
+| `services.prometheus.scrapeConfigs.*.proxy_url` | `null or string` | Optional proxy URL. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs` | `null or (list of (submodule))` | List of PuppetDB service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.authorization` | `null or (submodule)` | Optional `Authorization` header configuration. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.authorization.credentials` | `null or string` | Sets the credentials. It is mutually exclusive with `credentials_file`. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.authorization.credentials_file` | `null or string` | Sets the credentials to the credentials read from the configured file. It is mutually exclusive with `credentials`. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.authorization.type` | `null or string` | Sets the authentication type. Defaults to `Bearer` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.basic_auth` | `null or (submodule)` | Optional HTTP basic authentication information. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.basic_auth.password` | `null or string` | HTTP password |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.basic_auth.password_file` | `null or string` | HTTP password file |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.basic_auth.username` | `string` | HTTP username |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.follow_redirects` | `null or boolean` | Configure whether HTTP requests follow HTTP 3xx redirects. Defaults to `true` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.include_parameters` | `null or boolean` | Whether to include the parameters as meta labels. Due to the differences between parameter types and Prometheus labels, some parameters might not be rendered. The format of the parameters might also change in future releases. Note: Enabling this exposes parameters in the Prometheus UI and API. Make sure that you don't have secrets exposed as parameters if you enable this. Defaults to `false` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.oauth2` | `null or (submodule)` | Optional OAuth 2.0 configuration. Cannot be used at the same time as basic_auth or authorization. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.oauth2.client_id` | `null or string` | OAuth client ID. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.oauth2.client_secret` | `null or string` | OAuth client secret. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.oauth2.client_secret_file` | `null or string` | Read the client secret from a file. It is mutually exclusive with `client_secret`. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.oauth2.endpoint_params` | `null or (attribute set of string)` | Optional parameters to append to the token URL. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.oauth2.scopes` | `null or (list of string)` | Scopes for the token request. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.oauth2.token_url` | `null or string` | The URL to fetch the token from. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to scrape metrics from. Defaults to `80` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.proxy_url` | `null or string` | Optional proxy URL. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.query` | `string` | Puppet Query Language (PQL) query. Only resources are supported. <https://puppet.com/docs/puppetdb/latest/api/query/v4/pql.html> |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.refresh_interval` | `null or string` | Refresh interval to re-read the resources list. Defaults to `60s` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.tls_config` | `null or (submodule)` | TLS configuration. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.tls_config.ca_file` | `null or string` | CA certificate to validate API server certificate with. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.tls_config.cert_file` | `null or string` | Certificate file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.tls_config.insecure_skip_verify` | `null or boolean` | Disable validation of the server certificate. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.tls_config.key_file` | `null or string` | Key file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.tls_config.server_name` | `null or string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.scrapeConfigs.*.puppetdb_sd_configs.*.url` | `string` | The URL of the PuppetDB root query endpoint. |
+| `services.prometheus.scrapeConfigs.*.relabel_configs` | `null or (list of (submodule))` | List of relabel configurations. |
+| `services.prometheus.scrapeConfigs.*.relabel_configs.*.action` | `null or one of "replace", "lowercase", "uppercase", "keep", "drop", "hashmod", "labelmap", "labeldrop", "labelkeep"` | Action to perform based on regex matching. Defaults to `replace` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.relabel_configs.*.modulus` | `null or signed integer` | Modulus to take of the hash of the source label values. |
+| `services.prometheus.scrapeConfigs.*.relabel_configs.*.regex` | `null or string` | Regular expression against which the extracted value is matched. Defaults to `(.*)` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.relabel_configs.*.replacement` | `null or string` | Replacement value against which a regex replace is performed if the regular expression matches. Defaults to `$1` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.relabel_configs.*.separator` | `null or string` | Separator placed between concatenated source label values. Defaults to `;` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.relabel_configs.*.source_labels` | `null or (list of string)` | The source labels select values from existing labels. Their content is concatenated using the configured separator and matched against the configured regular expression. |
+| `services.prometheus.scrapeConfigs.*.relabel_configs.*.target_label` | `null or string` | Label to which the resulting value is written in a replace action. It is mandatory for replace actions. |
+| `services.prometheus.scrapeConfigs.*.sample_limit` | `null or signed integer` | Per-scrape limit on number of scraped samples that will be accepted. If more than this number of samples are present after metric relabelling the entire scrape will be treated as failed. 0 means no limit. Defaults to `0` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.scaleway_sd_configs` | `null or (list of (submodule))` | List of Scaleway service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.scaleway_sd_configs.*.access_key` | `string` | Access key to use. <https://console.scaleway.com/project/credentials> |
+| `services.prometheus.scrapeConfigs.*.scaleway_sd_configs.*.api_url` | `null or string` | API URL to use when doing the server listing requests. Defaults to `https://api.scaleway.com` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.scaleway_sd_configs.*.follow_redirects` | `null or boolean` | Configure whether HTTP requests follow HTTP 3xx redirects. Defaults to `true` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.scaleway_sd_configs.*.name_filter` | `null or string` | Specify a name filter (works as a LIKE) to apply on the server listing request. |
+| `services.prometheus.scrapeConfigs.*.scaleway_sd_configs.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to scrape metrics from. Defaults to `80` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.scaleway_sd_configs.*.project_id` | `string` | Project ID of the targets. |
+| `services.prometheus.scrapeConfigs.*.scaleway_sd_configs.*.proxy_url` | `null or string` | Optional proxy URL. |
+| `services.prometheus.scrapeConfigs.*.scaleway_sd_configs.*.refresh_interval` | `null or string` | Refresh interval to re-read the managed targets list. Defaults to `60s` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.scaleway_sd_configs.*.role` | `one of "instance", "baremetal"` | Role of the targets to retrieve. Must be `instance` or `baremetal`. |
+| `services.prometheus.scrapeConfigs.*.scaleway_sd_configs.*.secret_key` | `null or string` | Secret key to use when listing targets. <https://console.scaleway.com/project/credentials> It is mutually exclusive with `secret_key_file`. |
+| `services.prometheus.scrapeConfigs.*.scaleway_sd_configs.*.secret_key_file` | `null or string` | Sets the secret key with the credentials read from the configured file. It is mutually exclusive with `secret_key`. |
+| `services.prometheus.scrapeConfigs.*.scaleway_sd_configs.*.tags_filter` | `null or (list of string)` | Specify a tag filter (a server needs to have all defined tags to be listed) to apply on the server listing request. |
+| `services.prometheus.scrapeConfigs.*.scaleway_sd_configs.*.tls_config` | `null or (submodule)` | TLS configuration. |
+| `services.prometheus.scrapeConfigs.*.scaleway_sd_configs.*.tls_config.ca_file` | `null or string` | CA certificate to validate API server certificate with. |
+| `services.prometheus.scrapeConfigs.*.scaleway_sd_configs.*.tls_config.cert_file` | `null or string` | Certificate file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.scaleway_sd_configs.*.tls_config.insecure_skip_verify` | `null or boolean` | Disable validation of the server certificate. |
+| `services.prometheus.scrapeConfigs.*.scaleway_sd_configs.*.tls_config.key_file` | `null or string` | Key file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.scaleway_sd_configs.*.tls_config.server_name` | `null or string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.scrapeConfigs.*.scaleway_sd_configs.*.zone` | `null or string` | Zone is the availability zone of your targets (e.g. fr-par-1). Defaults to `fr-par-1` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.scheme` | `null or one of "http", "https"` | The URL scheme with which to fetch metrics from targets. Defaults to `http` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.scrape_interval` | `null or string` | How frequently to scrape targets from this job. Defaults to the globally configured default. |
+| `services.prometheus.scrapeConfigs.*.scrape_protocols` | `null or (list of string)` | The protocols to negotiate during a scrape with the client. |
+| `services.prometheus.scrapeConfigs.*.scrape_timeout` | `null or string` | Per-target timeout when scraping this job. Defaults to the globally configured default. |
+| `services.prometheus.scrapeConfigs.*.serverset_sd_configs` | `null or (list of (submodule))` | List of Zookeeper Serverset service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.serverset_sd_configs.*.paths` | `list of string` | Paths can point to a single service, or the root of a tree of services. |
+| `services.prometheus.scrapeConfigs.*.serverset_sd_configs.*.servers` | `list of string` | The Zookeeper servers. |
+| `services.prometheus.scrapeConfigs.*.serverset_sd_configs.*.timeout` | `null or string` | Timeout value. Defaults to `10s` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.static_configs` | `null or (list of (submodule))` | List of labeled target groups for this job. |
+| `services.prometheus.scrapeConfigs.*.static_configs.*.labels` | `attribute set of string` | Labels assigned to all metrics scraped from the targets. |
+| `services.prometheus.scrapeConfigs.*.static_configs.*.targets` | `list of string` | The targets specified by the target group. |
+| `services.prometheus.scrapeConfigs.*.target_limit` | `null or signed integer` | Per-scrape config limit on number of unique targets that will be accepted. If more than this number of targets are present after target relabeling, Prometheus will mark the targets as failed without scraping them. 0 means no limit. This is an experimental feature, this behaviour could change in the future. Defaults to `0` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.tls_config` | `null or (submodule)` | Configures the scrape request's TLS settings. |
+| `services.prometheus.scrapeConfigs.*.tls_config.ca_file` | `null or string` | CA certificate to validate API server certificate with. |
+| `services.prometheus.scrapeConfigs.*.tls_config.cert_file` | `null or string` | Certificate file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.tls_config.insecure_skip_verify` | `null or boolean` | Disable validation of the server certificate. |
+| `services.prometheus.scrapeConfigs.*.tls_config.key_file` | `null or string` | Key file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.tls_config.server_name` | `null or string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.scrapeConfigs.*.triton_sd_configs` | `null or (list of (submodule))` | List of Triton Serverset service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.triton_sd_configs.*.account` | `string` | The account to use for discovering new targets. |
+| `services.prometheus.scrapeConfigs.*.triton_sd_configs.*.dns_suffix` | `string` | The DNS suffix which should be applied to target. |
+| `services.prometheus.scrapeConfigs.*.triton_sd_configs.*.endpoint` | `string` | The Triton discovery endpoint (e.g. `cmon.us-east-3b.triton.zone`). This is often the same value as dns_suffix. |
+| `services.prometheus.scrapeConfigs.*.triton_sd_configs.*.groups` | `null or (list of string)` | A list of groups for which targets are retrieved, only supported when targeting the `container` role. If omitted all containers owned by the requesting account are scraped. |
+| `services.prometheus.scrapeConfigs.*.triton_sd_configs.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to use for discovery and metric scraping. Defaults to `9163` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.triton_sd_configs.*.refresh_interval` | `null or string` | The interval which should be used for refreshing targets. Defaults to `60s` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.triton_sd_configs.*.role` | `null or one of "container", "cn"` | The type of targets to discover, can be set to: - "container" to discover virtual machines (SmartOS zones, lx/KVM/bhyve branded zones) running on Triton - "cn" to discover compute nodes (servers/global zones) making up the Triton infrastructure Defaults to `container` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.triton_sd_configs.*.tls_config` | `null or (submodule)` | TLS configuration. |
+| `services.prometheus.scrapeConfigs.*.triton_sd_configs.*.tls_config.ca_file` | `null or string` | CA certificate to validate API server certificate with. |
+| `services.prometheus.scrapeConfigs.*.triton_sd_configs.*.tls_config.cert_file` | `null or string` | Certificate file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.triton_sd_configs.*.tls_config.insecure_skip_verify` | `null or boolean` | Disable validation of the server certificate. |
+| `services.prometheus.scrapeConfigs.*.triton_sd_configs.*.tls_config.key_file` | `null or string` | Key file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.triton_sd_configs.*.tls_config.server_name` | `null or string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.scrapeConfigs.*.triton_sd_configs.*.version` | `null or signed integer` | The Triton discovery API version. Defaults to `1` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs` | `null or (list of (submodule))` | List of Uyuni Serverset service discovery configurations. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.authorization` | `null or (submodule)` | Optional `Authorization` header configuration. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.authorization.credentials` | `null or string` | Sets the credentials. It is mutually exclusive with `credentials_file`. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.authorization.credentials_file` | `null or string` | Sets the credentials to the credentials read from the configured file. It is mutually exclusive with `credentials`. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.authorization.type` | `null or string` | Sets the authentication type. Defaults to `Bearer` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.basic_auth` | `null or (submodule)` | Optional HTTP basic authentication information. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.basic_auth.password` | `null or string` | HTTP password |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.basic_auth.password_file` | `null or string` | HTTP password file |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.basic_auth.username` | `string` | HTTP username |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.entitlement` | `null or string` | The entitlement string to filter eligible systems. Defaults to `monitoring_entitled` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.follow_redirects` | `null or boolean` | Configure whether HTTP requests follow HTTP 3xx redirects. Defaults to `true` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.oauth2` | `null or (submodule)` | Optional OAuth 2.0 configuration. Cannot be used at the same time as basic_auth or authorization. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.oauth2.client_id` | `null or string` | OAuth client ID. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.oauth2.client_secret` | `null or string` | OAuth client secret. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.oauth2.client_secret_file` | `null or string` | Read the client secret from a file. It is mutually exclusive with `client_secret`. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.oauth2.endpoint_params` | `null or (attribute set of string)` | Optional parameters to append to the token URL. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.oauth2.scopes` | `null or (list of string)` | Scopes for the token request. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.oauth2.token_url` | `null or string` | The URL to fetch the token from. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.password` | `string` | Credentials are used to authenticate the requests to Uyuni API. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.proxy_url` | `null or string` | Optional proxy URL. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.refresh_interval` | `null or string` | Refresh interval to re-read the managed targets list. Defaults to `60s` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.separator` | `null or string` | The string by which Uyuni group names are joined into the groups label Defaults to `,` in prometheus when set to `null`. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.server` | `string` | The URL to connect to the Uyuni server. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.tls_config` | `null or (submodule)` | TLS configuration. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.tls_config.ca_file` | `null or string` | CA certificate to validate API server certificate with. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.tls_config.cert_file` | `null or string` | Certificate file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.tls_config.insecure_skip_verify` | `null or boolean` | Disable validation of the server certificate. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.tls_config.key_file` | `null or string` | Key file for client cert authentication to the server. |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.tls_config.server_name` | `null or string` | ServerName extension to indicate the name of the server. http://tools.ietf.org/html/rfc4366#section-3.1 |
+| `services.prometheus.scrapeConfigs.*.uyuni_sd_configs.*.username` | `string` | Credentials are used to authenticate the requests to Uyuni API. |
+| `services.prometheus.stateDir` | `string` | Directory below `/var/lib` to store Prometheus metrics data. This directory will be created automatically using systemd's StateDirectory mechanism. |
+| `services.prometheus.webConfigFile` | `null or absolute path` | Specifies which file should be used as web.config.file and be passed on startup. See <https://prometheus.io/docs/prometheus/latest/configuration/https/> for valid options. |
+| `services.prometheus.webExternalUrl` | `null or string` | The URL under which Prometheus is externally reachable (for example, if Prometheus is served via a reverse proxy). |
+| `services.prometheus.xmpp-alerts.enable` | `boolean` | Whether to enable XMPP Web hook service for Alertmanager. |
+| `services.prometheus.xmpp-alerts.settings` | `YAML 1.1 value` | Configuration for prometheus xmpp-alerts, see <https://github.com/jelmer/prometheus-xmpp-alerts/blob/master/xmpp-alerts.yml.example> for supported values. |

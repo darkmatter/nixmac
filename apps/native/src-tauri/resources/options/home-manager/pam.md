@@ -5,7 +5,7 @@
 All options under `pam`.
 
 | Option | Type | Description |
-| ------------------------------------ | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pam.sessionVariables` | `attribute set` | Environment variables that will be set for the PAM session. The variable values must be as described in pam_env.conf (5) . |
-| `pam.yubico.authorizedYubiKeys.ids` | `list of string of length 12` | List of authorized YubiKey token IDs. Refer to https://developers.yubico.com/yubico-pam for details on how to obtain the token ID of a YubiKey. |
-| `pam.yubico.authorizedYubiKeys.path` | `string` | File path to write the authorized YubiKeys, relative to HOME . |
+| --- | --- | --- |
+| `pam.sessionVariables` | `attribute set` | Environment variables that will be set for the PAM session. The variable values must be as described in {manpage}`pam_env.conf(5)`. Note, this option will become deprecated in the future and its use is therefore discouraged. |
+| `pam.yubico.authorizedYubiKeys.ids` | `list of string of length 12` | List of authorized YubiKey token IDs. Refer to <https://developers.yubico.com/yubico-pam> for details on how to obtain the token ID of a YubiKey. |
+| `pam.yubico.authorizedYubiKeys.path` | `string` | File path to write the authorized YubiKeys, relative to {env}`HOME`. |

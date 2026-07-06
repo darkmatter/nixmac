@@ -5,9 +5,9 @@
 All options under `programs.alacritty`.
 
 | Option | Type | Description |
-| --------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.alacritty.enable` | `boolean` | Whether to enable Alacritty. |
 | `programs.alacritty.package` | `null or package` | The alacritty package to use. |
-| `programs.alacritty.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/alacritty/alacritty.yml or $XDG_CONFIG_HOME/alacritty/alacritty.toml (the latter being used for alacritty 0.13 and later). See https://github.com/alacritty/alacritty/tree/master#configuration for more info. |
-| `programs.alacritty.theme` | `null or string` | A theme from the alacritty-theme repository to import in the configuration. See https://github.com/alacritty/alacritty-theme/tree/master/themes for a list of available themes. If you would like to import your own theme, use programs.alacritty.settings.general.import or programs.alacritty.settings.colors directly. |
+| `programs.alacritty.settings` | `TOML value` | Configuration written to {file}`$XDG_CONFIG_HOME/alacritty/alacritty.yml` or {file}`$XDG_CONFIG_HOME/alacritty/alacritty.toml` (the latter being used for alacritty 0.13 and later). See <https://github.com/alacritty/alacritty/tree/master#configuration> for more info. |
+| `programs.alacritty.theme` | `null or string` | A theme from the [alacritty-theme](https://github.com/alacritty/alacritty-theme) repository to import in the configuration. See <https://github.com/alacritty/alacritty-theme/tree/master/themes> for a list of available themes. If you would like to import your own theme, use {option}`programs.alacritty.settings.general.import` or {option}`programs.alacritty.settings.colors` directly. |
 | `programs.alacritty.themePackage` | `package` | The alacritty-theme package to use. |

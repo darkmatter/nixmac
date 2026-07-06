@@ -5,12 +5,13 @@
 All options under `services.part-db`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.part-db.enable` | | |
-| `services.part-db.enableNginx` | | |
-| `services.part-db.enablePostgresql` | | |
-| `services.part-db.package` | | |
-| `services.part-db.phpPackage` | | |
-| `services.part-db.poolConfig` | | |
-| `services.part-db.settings` | | |
-| `services.part-db.virtualHost` | | |
+| --- | --- | --- |
+| `services.part-db.enable` | `boolean` | Whether to enable PartDB. |
+| `services.part-db.enableNginx` | `boolean` | Whether to enable nginx or not. If enabled, an nginx virtual host will be created for access to part-db. If not enabled, then you may use `${config.services.part-db.package}/public` as your document root in whichever webserver you wish to setup. |
+| `services.part-db.enablePostgresql` | `boolean` | Whether to configure the postgresql database for part-db. If enabled, a database and user will be created for part-db. |
+| `services.part-db.package` | `package` | The part-db package to use. |
+| `services.part-db.phpPackage` | `package` | The php package to use. |
+| `services.part-db.poolConfig` | `attribute set of (string or signed integer or boolean)` | Options for the PartDB PHP pool. See the documentation on <literal>php-fpm.conf</literal> for details on configuration directives. |
+| `services.part-db.settings` | `open submodule of attribute set of (string or signed integer or boolean)` | Options for part-db configuration. Refer to <https://github.com/Part-DB/Part-DB-server/blob/master/.env> for details on supported values. All <option>\_FILE values supported by upstream are supported here. |
+| `services.part-db.settings.DATABASE_URL` | `string` | The postgresql database server to connect to. Defauls to local postgresql unix socket |
+| `services.part-db.virtualHost` | `string` | The virtualHost at which you wish part-db to be served. |

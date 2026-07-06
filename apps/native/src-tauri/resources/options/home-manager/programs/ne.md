@@ -5,11 +5,11 @@
 All options under `programs.ne`.
 
 | Option | Type | Description |
-| ---------------------------------- | ------------------------------------------------- | --------------------------------------------- |
-| `programs.ne.automaticPreferences` | `attribute set of strings concatenated with “\n”` | Automatic preferences files for ne. |
-| `programs.ne.defaultPreferences` | `strings concatenated with “\n”` | Default preferences for ne. |
+| --- | --- | --- |
+| `programs.ne.automaticPreferences` | `attribute set of strings concatenated with "\n"` | Automatic preferences files for ne. |
+| `programs.ne.defaultPreferences` | `strings concatenated with "\n"` | Default preferences for ne. Equivalent to `programs.ne.automaticPreferences.".default"`. |
 | `programs.ne.enable` | `boolean` | Whether to enable ne. |
-| `programs.ne.keybindings` | `strings concatenated with “\n”` | Keybinding file for ne. |
-| `programs.ne.menus` | `strings concatenated with “\n”` | Menu configuration file for ne. |
+| `programs.ne.keybindings` | `strings concatenated with "\n"` | Keybinding file for ne. |
+| `programs.ne.menus` | `strings concatenated with "\n"` | Menu configuration file for ne. |
 | `programs.ne.package` | `null or package` | The ne package to use. |
-| `programs.ne.virtualExtensions` | `strings concatenated with “\n”` | Virtual extensions configuration file for ne. |
+| `programs.ne.virtualExtensions` | `strings concatenated with "\n"` | Virtual extensions configuration file for ne. |

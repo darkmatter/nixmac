@@ -5,7 +5,7 @@
 All options under `services.rumno`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.rumno.enable` | | |
-| `services.rumno.extraArgs` | | |
-| `services.rumno.package` | | |
+| --- | --- | --- |
+| `services.rumno.enable` | `boolean` | Whether to enable rumno visual pop-up notification manager. |
+| `services.rumno.extraArgs` | `list of string` | Extra command-line arguments to pass to the rumno daemon. |
+| `services.rumno.package` | `package` | The rumno package to use. |

@@ -5,5 +5,5 @@
 All options under `image`.
 
 | Option | Type | Description |
-| --------------- | ---- | ----------- |
-| `image.modules` | | |
+| --- | --- | --- |
+| `image.modules` | `attribute set of module` | image-specific NixOS Modules used for `system.build.images`. |

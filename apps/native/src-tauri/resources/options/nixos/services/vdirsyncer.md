@@ -5,7 +5,18 @@
 All options under `services.vdirsyncer`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.vdirsyncer.enable` | | |
-| `services.vdirsyncer.jobs` | | |
-| `services.vdirsyncer.package` | | |
+| --- | --- | --- |
+| `services.vdirsyncer.enable` | `boolean` | Whether to enable vdirsyncer. |
+| `services.vdirsyncer.jobs` | `attribute set of (submodule)` | vdirsyncer job configurations |
+| `services.vdirsyncer.jobs.<name>.additionalGroups` | `list of string` | additional groups to add the dynamic user to |
+| `services.vdirsyncer.jobs.<name>.config.general` | `attribute set` | general configuration |
+| `services.vdirsyncer.jobs.<name>.config.pairs` | `attribute set of (attribute set)` | vdirsyncer pair configurations |
+| `services.vdirsyncer.jobs.<name>.config.statusPath` | `null or string` | vdirsyncer's status path |
+| `services.vdirsyncer.jobs.<name>.config.storages` | `attribute set of (attribute set)` | vdirsyncer storage configurations |
+| `services.vdirsyncer.jobs.<name>.configFile` | `null or absolute path` | existing configuration file |
+| `services.vdirsyncer.jobs.<name>.enable` | `boolean` | Whether to enable this vdirsyncer job. |
+| `services.vdirsyncer.jobs.<name>.forceDiscover` | `boolean` | Run `yes \| vdirsyncer discover` prior to `vdirsyncer sync` |
+| `services.vdirsyncer.jobs.<name>.group` | `null or string` | group to run vdirsyncer as |
+| `services.vdirsyncer.jobs.<name>.timerConfig` | `attribute set` | systemd timer configuration |
+| `services.vdirsyncer.jobs.<name>.user` | `null or string` | User account to run vdirsyncer as, otherwise as a systemd dynamic user |
+| `services.vdirsyncer.package` | `package` | The vdirsyncer package to use. |

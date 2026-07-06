@@ -5,7 +5,7 @@
 All options under `services.riemann-dash`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.riemann-dash.config` | | |
-| `services.riemann-dash.dataDir` | | |
-| `services.riemann-dash.enable` | | |
+| --- | --- | --- |
+| `services.riemann-dash.config` | `strings concatenated with "\n"` | Contents added to the end of the riemann-dash configuration file. |
+| `services.riemann-dash.dataDir` | `string` | Location of the riemann-base dir. The dashboard configuration file is is stored to this directory. The directory is created automatically on service start, and owner is set to the riemanndash user. |
+| `services.riemann-dash.enable` | `boolean` | Enable the riemann-dash dashboard daemon. |

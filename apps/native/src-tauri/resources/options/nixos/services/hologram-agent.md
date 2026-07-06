@@ -5,7 +5,7 @@
 All options under `services.hologram-agent`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.hologram-agent.dialAddress` | | |
-| `services.hologram-agent.enable` | | |
-| `services.hologram-agent.httpPort` | | |
+| --- | --- | --- |
+| `services.hologram-agent.dialAddress` | `string` | Hologram server and port. |
+| `services.hologram-agent.enable` | `boolean` | Whether to enable the Hologram agent for AWS instance credentials |
+| `services.hologram-agent.httpPort` | `string` | Port for metadata service to listen on. |

@@ -5,15 +5,13 @@
 All options under `services.mbpfan`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.mbpfan.aggressive` | | |
-| `services.mbpfan.enable` | | |
-| `services.mbpfan.highTemp` | | |
-| `services.mbpfan.lowTemp` | | |
-| `services.mbpfan.maxFanSpeed` | | |
-| `services.mbpfan.maxTemp` | | |
-| `services.mbpfan.minFanSpeed` | | |
-| `services.mbpfan.package` | | |
-| `services.mbpfan.pollingInterval` | | |
-| `services.mbpfan.settings` | | |
-| `services.mbpfan.verbose` | | |
+| --- | --- | --- |
+| `services.mbpfan.aggressive` | `boolean` | If true, favors higher default fan speeds. |
+| `services.mbpfan.enable` | `boolean` | Whether to enable mbpfan, fan controller daemon for Apple Macs and MacBooks. |
+| `services.mbpfan.package` | `package` | The mbpfan package to use. |
+| `services.mbpfan.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | INI configuration for Mbpfan. |
+| `services.mbpfan.settings.general.high_temp` | `signed integer` | If temperature is above this, fan speed will gradually increase. |
+| `services.mbpfan.settings.general.low_temp` | `signed integer` | If temperature is below this, fans will run at minimum speed. |
+| `services.mbpfan.settings.general.max_temp` | `signed integer` | If temperature is above this, fans will run at maximum speed. |
+| `services.mbpfan.settings.general.polling_interval` | `signed integer` | The polling interval. |
+| `services.mbpfan.verbose` | `boolean` | If true, sets the log level to verbose. |

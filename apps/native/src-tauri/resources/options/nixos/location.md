@@ -5,7 +5,7 @@
 All options under `location`.
 
 | Option | Type | Description |
-| -------------------- | ---- | ----------- |
-| `location.latitude` | | |
-| `location.longitude` | | |
-| `location.provider` | | |
+| --- | --- | --- |
+| `location.latitude` | `floating point number` | Your current latitude, between `-90.0` and `90.0`. Must be provided along with longitude. |
+| `location.longitude` | `floating point number` | Your current longitude, between between `-180.0` and `180.0`. Must be provided along with latitude. |
+| `location.provider` | `one of "manual", "geoclue2"` | The location provider to use for determining your location. If set to `manual` you must also provide latitude/longitude. |

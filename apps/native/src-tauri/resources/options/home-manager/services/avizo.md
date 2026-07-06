@@ -5,7 +5,7 @@
 All options under `services.avizo`.
 
 | Option | Type | Description |
-| ------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| --- | --- | --- |
 | `services.avizo.enable` | `boolean` | Whether to enable avizo, a simple notification daemon. |
 | `services.avizo.package` | `package` | The avizo package to use. |
 | `services.avizo.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | The settings that will be written to the avizo configuration file. |

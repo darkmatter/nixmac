@@ -5,7 +5,7 @@
 All options under `services.haste-server`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.haste-server.enable` | | |
-| `services.haste-server.openFirewall` | | |
-| `services.haste-server.settings` | | |
+| --- | --- | --- |
+| `services.haste-server.enable` | `boolean` | Whether to enable haste-server. |
+| `services.haste-server.openFirewall` | `boolean` | Whether to enable firewall passthrough for haste-server. |
+| `services.haste-server.settings` | `JSON value` | Configuration for haste-server. For documentation see [project readme](https://github.com/toptal/haste-server#settings) |

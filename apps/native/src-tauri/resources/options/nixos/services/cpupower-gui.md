@@ -5,5 +5,5 @@
 All options under `services.cpupower-gui`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.cpupower-gui.enable` | | |
+| --- | --- | --- |
+| `services.cpupower-gui.enable` | `boolean` | Enables dbus/systemd service needed by cpupower-gui. These services are responsible for retrieving and modifying cpu power saving settings. |

@@ -5,7 +5,7 @@
 All options under `programs.fuse`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `programs.fuse.enable` | | |
-| `programs.fuse.mountMax` | | |
-| `programs.fuse.userAllowOther` | | |
+| --- | --- | --- |
+| `programs.fuse.enable` | `boolean` | Whether to enable fuse. |
+| `programs.fuse.mountMax` | `integer between 0 and 32767 (both inclusive)` | Set the maximum number of FUSE mounts allowed to non-root users. |
+| `programs.fuse.userAllowOther` | `boolean` | Allow non-root users to specify the allow_other or allow_root mount options, see mount.fuse3(8). |

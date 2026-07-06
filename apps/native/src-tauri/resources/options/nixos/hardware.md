@@ -5,353 +5,374 @@
 All options under `hardware`.
 
 | Option | Type | Description |
-| --------------------------------------------------------------------- | ---- | ----------- |
-| `hardware.acpilight.enable` | | |
-| `hardware.alsa.cardAliases` | | |
-| `hardware.alsa.config` | | |
-| `hardware.alsa.controls` | | |
-| `hardware.alsa.defaultDevice.capture` | | |
-| `hardware.alsa.defaultDevice.playback` | | |
-| `hardware.alsa.deviceAliases` | | |
-| `hardware.alsa.enable` | | |
-| `hardware.alsa.enableBluetooth` | | |
-| `hardware.alsa.enableOSSEmulation` | | |
-| `hardware.alsa.enablePersistence` | | |
-| `hardware.alsa.enableRecorder` | | |
-| `hardware.alsa.plugins` | | |
-| `hardware.amdgpu.amdvlk` | | |
-| `hardware.amdgpu.initrd.enable` | | |
-| `hardware.amdgpu.legacySupport.enable` | | |
-| `hardware.amdgpu.opencl.enable` | | |
-| `hardware.amdgpu.overdrive.enable` | | |
-| `hardware.amdgpu.overdrive.ppfeaturemask` | | |
-| `hardware.amdgpu.zluda.enable` | | |
-| `hardware.amdgpu.zluda.package` | | |
-| `hardware.apple.touchBar.enable` | | |
-| `hardware.apple.touchBar.package` | | |
-| `hardware.apple.touchBar.settings` | | |
-| `hardware.bladeRF.enable` | | |
-| `hardware.block.defaultScheduler` | | |
-| `hardware.block.defaultSchedulerExclude` | | |
-| `hardware.block.defaultSchedulerRotational` | | |
-| `hardware.block.scheduler` | | |
-| `hardware.bluetooth.config` | | |
-| `hardware.bluetooth.disabledPlugins` | | |
-| `hardware.bluetooth.enable` | | |
-| `hardware.bluetooth.extraConfig` | | |
-| `hardware.bluetooth.hsphfpd.enable` | | |
-| `hardware.bluetooth.input` | | |
-| `hardware.bluetooth.network` | | |
-| `hardware.bluetooth.package` | | |
-| `hardware.bluetooth.powerOnBoot` | | |
-| `hardware.bluetooth.settings` | | |
-| `hardware.brightnessctl` | | |
-| `hardware.brillo.enable` | | |
-| `hardware.bumblebee.connectDisplay` | | |
-| `hardware.bumblebee.driver` | | |
-| `hardware.bumblebee.enable` | | |
-| `hardware.bumblebee.group` | | |
-| `hardware.bumblebee.pmMethod` | | |
-| `hardware.ckb-next.enable` | | |
-| `hardware.ckb-next.gid` | | |
-| `hardware.ckb-next.package` | | |
-| `hardware.ckb.enable` | | |
-| `hardware.ckb.package` | | |
-| `hardware.coral.pcie.enable` | | |
-| `hardware.coral.usb.enable` | | |
-| `hardware.cpu.amd.microcodePackage` | | |
-| `hardware.cpu.amd.ryzen-smu.enable` | | |
-| `hardware.cpu.amd.sev.enable` | | |
-| `hardware.cpu.amd.sev.group` | | |
-| `hardware.cpu.amd.sev.mode` | | |
-| `hardware.cpu.amd.sev.user` | | |
-| `hardware.cpu.amd.sevGuest.enable` | | |
-| `hardware.cpu.amd.sevGuest.group` | | |
-| `hardware.cpu.amd.sevGuest.mode` | | |
-| `hardware.cpu.amd.sevGuest.user` | | |
-| `hardware.cpu.amd.updateMicrocode` | | |
-| `hardware.cpu.intel.microcodePackage` | | |
-| `hardware.cpu.intel.npu.enable` | | |
-| `hardware.cpu.intel.sgx.enableDcapCompat` | | |
-| `hardware.cpu.intel.sgx.provision.enable` | | |
-| `hardware.cpu.intel.sgx.provision.group` | | |
-| `hardware.cpu.intel.sgx.provision.mode` | | |
-| `hardware.cpu.intel.sgx.provision.user` | | |
-| `hardware.cpu.intel.updateMicrocode` | | |
-| `hardware.cpu.x86.msr.enable` | | |
-| `hardware.cpu.x86.msr.group` | | |
-| `hardware.cpu.x86.msr.mode` | | |
-| `hardware.cpu.x86.msr.owner` | | |
-| `hardware.cpu.x86.msr.settings` | | |
-| `hardware.decklink.enable` | | |
-| `hardware.deviceTree.base` | | |
-| `hardware.deviceTree.dtbSource` | | |
-| `hardware.deviceTree.dtboBuildExtraIncludePaths` | | |
-| `hardware.deviceTree.dtboBuildExtraPreprocessorFlags` | | |
-| `hardware.deviceTree.enable` | | |
-| `hardware.deviceTree.filter` | | |
-| `hardware.deviceTree.kernelPackage` | | |
-| `hardware.deviceTree.name` | | |
-| `hardware.deviceTree.overlays` | | |
-| `hardware.deviceTree.package` | | |
-| `hardware.digitalbitbox.enable` | | |
-| `hardware.digitalbitbox.package` | | |
-| `hardware.display.edid.enable` | | |
-| `hardware.display.edid.linuxhw` | | |
-| `hardware.display.edid.modelines` | | |
-| `hardware.display.edid.packages` | | |
-| `hardware.display.outputs` | | |
-| `hardware.enableAllFirmware` | | |
-| `hardware.enableAllHardware` | | |
-| `hardware.enableKSM` | | |
-| `hardware.enableRedistributableFirmware` | | |
-| `hardware.facetimehd.enable` | | |
-| `hardware.facetimehd.withCalibration` | | |
-| `hardware.facter.debug.nix-diff` | | |
-| `hardware.facter.debug.nvd` | | |
-| `hardware.facter.detected.bluetooth.enable` | | |
-| `hardware.facter.detected.boot.disk.kernelModules` | | |
-| `hardware.facter.detected.boot.graphics.kernelModules` | | |
-| `hardware.facter.detected.boot.initrd.networking.kernelModules` | | |
-| `hardware.facter.detected.boot.keyboard.kernelModules` | | |
-| `hardware.facter.detected.camera.ipu6.enable` | | |
-| `hardware.facter.detected.dhcp.enable` | | |
-| `hardware.facter.detected.dhcp.interfaces` | | |
-| `hardware.facter.detected.fingerprint.enable` | | |
-| `hardware.facter.detected.graphics.amd.enable` | | |
-| `hardware.facter.detected.graphics.enable` | | |
-| `hardware.facter.detected.networking.intel._2200BG.enable` | | |
-| `hardware.facter.detected.networking.intel._3945ABG.enable` | | |
-| `hardware.facter.detected.uefi.supported` | | |
-| `hardware.facter.detected.virtualisation.hyperv.enable` | | |
-| `hardware.facter.detected.virtualisation.none.enable` | | |
-| `hardware.facter.detected.virtualisation.oracle.enable` | | |
-| `hardware.facter.detected.virtualisation.parallels.enable` | | |
-| `hardware.facter.detected.virtualisation.qemu.enable` | | |
-| `hardware.facter.detected.virtualisation.virtio_scsi.enable` | | |
-| `hardware.facter.enable` | | |
-| `hardware.facter.report` | | |
-| `hardware.facter.reportPath` | | |
-| `hardware.fancontrol.config` | | |
-| `hardware.fancontrol.enable` | | |
-| `hardware.firmware` | | |
-| `hardware.firmwareCompression` | | |
-| `hardware.flipperzero.enable` | | |
-| `hardware.flirc.enable` | | |
-| `hardware.fw-fanctrl.config` | | |
-| `hardware.fw-fanctrl.disableBatteryTempCheck` | | |
-| `hardware.fw-fanctrl.ectoolPackage` | | |
-| `hardware.fw-fanctrl.enable` | | |
-| `hardware.fw-fanctrl.package` | | |
-| `hardware.gkraken.enable` | | |
-| `hardware.glasgow.enable` | | |
-| `hardware.gpgSmartcards.enable` | | |
-| `hardware.graphics.enable` | | |
-| `hardware.graphics.enable32Bit` | | |
-| `hardware.graphics.extraPackages` | | |
-| `hardware.graphics.extraPackages32` | | |
-| `hardware.graphics.package` | | |
-| `hardware.graphics.package32` | | |
-| `hardware.hackrf.enable` | | |
-| `hardware.hid-fanatecff.enable` | | |
-| `hardware.i2c.enable` | | |
-| `hardware.i2c.group` | | |
-| `hardware.infiniband.enable` | | |
-| `hardware.infiniband.guids` | | |
-| `hardware.inputmodule.enable` | | |
-| `hardware.intel-gpu-tools.enable` | | |
-| `hardware.ipu6.enable` | | |
-| `hardware.ipu6.platform` | | |
-| `hardware.ipu6.videoDeviceNumber` | | |
-| `hardware.keyboard.qmk.enable` | | |
-| `hardware.keyboard.qmk.keychronSupport` | | |
-| `hardware.keyboard.teck.enable` | | |
-| `hardware.keyboard.uhk.enable` | | |
-| `hardware.keyboard.zsa.enable` | | |
-| `hardware.kryoflux.enable` | | |
-| `hardware.kryoflux.package` | | |
-| `hardware.ksm.enable` | | |
-| `hardware.ksm.sleep` | | |
-| `hardware.ledger.enable` | | |
-| `hardware.libftdi.enable` | | |
-| `hardware.libftdi.package` | | |
-| `hardware.libjaylink.enable` | | |
-| `hardware.libjaylink.package` | | |
-| `hardware.logitech.enable` | | |
-| `hardware.logitech.enableGraphical` | | |
-| `hardware.logitech.lcd.devices` | | |
-| `hardware.logitech.lcd.enable` | | |
-| `hardware.logitech.lcd.startWhenNeeded` | | |
-| `hardware.logitech.wireless.enable` | | |
-| `hardware.logitech.wireless.enableGraphical` | | |
-| `hardware.mcelog.enable` | | |
-| `hardware.mwProCapture.enable` | | |
-| `hardware.new-lg4ff.enable` | | |
-| `hardware.nfc-nci.enable` | | |
-| `hardware.nfc-nci.enableIFD` | | |
-| `hardware.nfc-nci.settings` | | |
-| `hardware.nitrokey.enable` | | |
-| `hardware.nvidia-container-toolkit.csv-files` | | |
-| `hardware.nvidia-container-toolkit.device-name-strategy` | | |
-| `hardware.nvidia-container-toolkit.disable-hooks` | | |
-| `hardware.nvidia-container-toolkit.discovery-mode` | | |
-| `hardware.nvidia-container-toolkit.enable` | | |
-| `hardware.nvidia-container-toolkit.enable-hooks` | | |
-| `hardware.nvidia-container-toolkit.extraArgs` | | |
-| `hardware.nvidia-container-toolkit.mount-nvidia-docker-1-directories` | | |
-| `hardware.nvidia-container-toolkit.mount-nvidia-executables` | | |
-| `hardware.nvidia-container-toolkit.mounts` | | |
-| `hardware.nvidia-container-toolkit.package` | | |
-| `hardware.nvidia-container-toolkit.suppressNvidiaDriverAssertion` | | |
-| `hardware.nvidia.branch` | | |
-| `hardware.nvidia.datacenter.enable` | | |
-| `hardware.nvidia.datacenter.settings` | | |
-| `hardware.nvidia.dynamicBoost.enable` | | |
-| `hardware.nvidia.enabled` | | |
-| `hardware.nvidia.forceFullCompositionPipeline` | | |
-| `hardware.nvidia.gsp.enable` | | |
-| `hardware.nvidia.modesetting.enable` | | |
-| `hardware.nvidia.moduleParams` | | |
-| `hardware.nvidia.nvidiaPersistenced` | | |
-| `hardware.nvidia.nvidiaSettings` | | |
-| `hardware.nvidia.open` | | |
-| `hardware.nvidia.package` | | |
-| `hardware.nvidia.powerManagement.enable` | | |
-| `hardware.nvidia.powerManagement.finegrained` | | |
-| `hardware.nvidia.powerManagement.kernelSuspendNotifier` | | |
-| `hardware.nvidia.prime.allowExternalGpu` | | |
-| `hardware.nvidia.prime.amdgpuBusId` | | |
-| `hardware.nvidia.prime.intelBusId` | | |
-| `hardware.nvidia.prime.nvidiaBusId` | | |
-| `hardware.nvidia.prime.offload.enable` | | |
-| `hardware.nvidia.prime.offload.enableOffloadCmd` | | |
-| `hardware.nvidia.prime.offload.offloadCmdMainProgram` | | |
-| `hardware.nvidia.prime.reverseSync.enable` | | |
-| `hardware.nvidia.prime.reverseSync.setupCommands.enable` | | |
-| `hardware.nvidia.prime.sync.enable` | | |
-| `hardware.nvidia.videoAcceleration` | | |
-| `hardware.nvidiaOptimus.disable` | | |
-| `hardware.onlykey.enable` | | |
-| `hardware.opengl.driSupport` | | |
-| `hardware.opengl.driSupport32Bit` | | |
-| `hardware.opengl.enable` | | |
-| `hardware.opengl.extraPackages` | | |
-| `hardware.opengl.extraPackages32` | | |
-| `hardware.opengl.package` | | |
-| `hardware.opengl.package32` | | |
-| `hardware.opengl.s3tcSupport` | | |
-| `hardware.openrazer.batteryNotifier` | | |
-| `hardware.openrazer.devicesOffOnScreensaver` | | |
-| `hardware.openrazer.enable` | | |
-| `hardware.openrazer.keyStatistics` | | |
-| `hardware.openrazer.mouseBatteryNotifier` | | |
-| `hardware.openrazer.packages.daemon` | | |
-| `hardware.openrazer.packages.kernel` | | |
-| `hardware.openrazer.syncEffectsEnabled` | | |
-| `hardware.openrazer.users` | | |
-| `hardware.openrazer.verboseLogging` | | |
-| `hardware.opentabletdriver.blacklistedKernelModules` | | |
-| `hardware.opentabletdriver.daemon.enable` | | |
-| `hardware.opentabletdriver.enable` | | |
-| `hardware.opentabletdriver.package` | | |
-| `hardware.parallels.autoMountShares` | | |
-| `hardware.parallels.enable` | | |
-| `hardware.parallels.package` | | |
-| `hardware.pcmcia.config` | | |
-| `hardware.pcmcia.enable` | | |
-| `hardware.pcmcia.firmware` | | |
-| `hardware.printers.ensureDefaultPrinter` | | |
-| `hardware.printers.ensurePrinters` | | |
-| `hardware.pulseaudio` | | |
-| `hardware.raid.HPSmartArray.enable` | | |
-| `hardware.rasdaemon.config` | | |
-| `hardware.rasdaemon.enable` | | |
-| `hardware.rasdaemon.extraModules` | | |
-| `hardware.rasdaemon.labels` | | |
-| `hardware.rasdaemon.mainboard` | | |
-| `hardware.rasdaemon.package` | | |
-| `hardware.rasdaemon.record` | | |
-| `hardware.rasdaemon.testing` | | |
-| `hardware.rtl-sdr.enable` | | |
-| `hardware.rtl-sdr.package` | | |
-| `hardware.saleae-logic.enable` | | |
-| `hardware.saleae-logic.package` | | |
-| `hardware.sane.backends-package` | | |
-| `hardware.sane.brscan4.enable` | | |
-| `hardware.sane.brscan4.netDevices` | | |
-| `hardware.sane.brscan5.enable` | | |
-| `hardware.sane.brscan5.netDevices` | | |
-| `hardware.sane.configDir` | | |
-| `hardware.sane.disabledDefaultBackends` | | |
-| `hardware.sane.drivers.scanSnap.enable` | | |
-| `hardware.sane.drivers.scanSnap.package` | | |
-| `hardware.sane.dsseries.enable` | | |
-| `hardware.sane.enable` | | |
-| `hardware.sane.extraBackends` | | |
-| `hardware.sane.netConf` | | |
-| `hardware.sane.openFirewall` | | |
-| `hardware.sane.snapshot` | | |
-| `hardware.sata.timeout.deciSeconds` | | |
-| `hardware.sata.timeout.drives` | | |
-| `hardware.sata.timeout.enable` | | |
-| `hardware.sensor.hddtemp.dbEntries` | | |
-| `hardware.sensor.hddtemp.drives` | | |
-| `hardware.sensor.hddtemp.enable` | | |
-| `hardware.sensor.hddtemp.extraArgs` | | |
-| `hardware.sensor.hddtemp.unit` | | |
-| `hardware.sensor.iio.enable` | | |
-| `hardware.sensor.iio.package` | | |
-| `hardware.sheep_net.enable` | | |
-| `hardware.spacenavd.enable` | | |
-| `hardware.steam-hardware.enable` | | |
-| `hardware.system76.enableAll` | | |
-| `hardware.system76.firmware-daemon.enable` | | |
-| `hardware.system76.kernel-modules.enable` | | |
-| `hardware.system76.power-daemon.enable` | | |
-| `hardware.tenstorrent.enable` | | |
-| `hardware.trackpoint.device` | | |
-| `hardware.trackpoint.draghys` | | |
-| `hardware.trackpoint.drift_time` | | |
-| `hardware.trackpoint.emulateWheel` | | |
-| `hardware.trackpoint.enable` | | |
-| `hardware.trackpoint.ext_dev` | | |
-| `hardware.trackpoint.fakeButtons` | | |
-| `hardware.trackpoint.inertia` | | |
-| `hardware.trackpoint.jenks` | | |
-| `hardware.trackpoint.mindrag` | | |
-| `hardware.trackpoint.press_to_select` | | |
-| `hardware.trackpoint.reach` | | |
-| `hardware.trackpoint.sensitivity` | | |
-| `hardware.trackpoint.skipback` | | |
-| `hardware.trackpoint.speed` | | |
-| `hardware.trackpoint.thresh` | | |
-| `hardware.trackpoint.upthresh` | | |
-| `hardware.trackpoint.ztime` | | |
-| `hardware.tuxedo-drivers.enable` | | |
-| `hardware.tuxedo-drivers.settings.charging-priority` | | |
-| `hardware.tuxedo-drivers.settings.charging-profile` | | |
-| `hardware.tuxedo-drivers.settings.fn-lock` | | |
-| `hardware.tuxedo-keyboard` | | |
-| `hardware.tuxedo-rs.enable` | | |
-| `hardware.tuxedo-rs.tailor-gui.enable` | | |
-| `hardware.u2f` | | |
-| `hardware.ubertooth.enable` | | |
-| `hardware.ubertooth.group` | | |
-| `hardware.uinput.enable` | | |
-| `hardware.uni-sync.devices` | | |
-| `hardware.uni-sync.enable` | | |
-| `hardware.uni-sync.package` | | |
-| `hardware.usb-modeswitch.enable` | | |
-| `hardware.usbStorage.manageShutdown` | | |
-| `hardware.usbStorage.manageStartStop` | | |
-| `hardware.usbWwan` | | |
-| `hardware.video.hidpi.enable` | | |
-| `hardware.wirelessRegulatoryDatabase` | | |
-| `hardware.wooting.enable` | | |
-| `hardware.xone.enable` | | |
-| `hardware.xow` | | |
-| `hardware.xpad-noone.enable` | | |
-| `hardware.xpadneo.enable` | | |
-| `hardware.xpadneo.quirks` | | |
-| `hardware.xpadneo.rumbleAttenuation` | | |
-| `hardware.xpadneo.settings` | | |
+| --- | --- | --- |
+| `hardware.acpilight.enable` | `boolean` | Enable acpilight. This will allow brightness control via xbacklight from users in the video group |
+| `hardware.alsa.cardAliases` | `attribute set of (submodule)` | Assign custom names and reorder the sound cards. ::: {.note} You can find the card ids by looking at `/proc/asound/cards`. ::: |
+| `hardware.alsa.cardAliases.<name>.driver` | `string` | Name of the kernel module that provides the card. |
+| `hardware.alsa.cardAliases.<name>.id` | `signed integer` | The ID of the sound card |
+| `hardware.alsa.config` | `strings concatenated with "\n"` | The content of the system-wide ALSA configuration (/etc/asound.conf). Documentation of the configuration language and examples can be found in the unofficial ALSA wiki: <https://alsa.opensrc.org/Asoundrc> |
+| `hardware.alsa.controls` | `attribute set of (submodule)` | Virtual volume controls (softvols) to add to a sound card. These can be used to control the volume of specific applications or a digital output device (HDMI video card). |
+| `hardware.alsa.controls.<name>.card` | `string` | Name of the PCM card to control (slave). |
+| `hardware.alsa.controls.<name>.device` | `string` | Name of the PCM device to control (slave). |
+| `hardware.alsa.controls.<name>.maxVolume` | `floating point number` | The maximum volume in dB. |
+| `hardware.alsa.controls.<name>.name` | `null or string` | Name of the control, as it appears in `alsamixer`. If null it will be the same as the softvol device name. |
+| `hardware.alsa.defaultDevice.capture` | `string` | The default capture device (i.e. microphone). Leave empty to let ALSA pick the default automatically. ::: {.note} The device can be changed at runtime by setting the ALSA_AUDIO_IN environment variables (but only before starting a program). ::: |
+| `hardware.alsa.defaultDevice.playback` | `string` | The default playback device. Leave empty to let ALSA pick the default automatically. ::: {.note} The device can be changed at runtime by setting the ALSA_AUDIO_OUT environment variables (but only before starting a program). ::: |
+| `hardware.alsa.deviceAliases` | `attribute set of string` | Assign custom names to sound cards. |
+| `hardware.alsa.enable` | `boolean` | Whether to set up the user space part of the Advanced Linux Sound Architecture (ALSA) ::: {.warning} Enable this option only if you want to use ALSA as your main sound system, not if you're using a sound server (e.g. PulseAudio or Pipewire). ::: |
+| `hardware.alsa.enableBluetooth` | `boolean` | Whether to enable Bluetooth audio support via BlueALSA. |
+| `hardware.alsa.enableOSSEmulation` | `boolean` | Whether to enable the OSS emulation. |
+| `hardware.alsa.enablePersistence` | `boolean` | Whether to enable ALSA sound card state saving on shutdown. This is generally not necessary if you're using an external sound server. |
+| `hardware.alsa.enableRecorder` | `boolean` | Whether to set up a loopback device that continuously records and allows to play back audio from the computer. The loopback device is named `pcm.recorder`, audio can be saved by capturing from this device as with any microphone. ::: {.note} By default the output is duplicated to the recorder assuming stereo audio, for a more complex layout you have to override the pcm.splitter device using `hardware.alsa.config`. See the generated /etc/asound.conf for its definition. ::: |
+| `hardware.alsa.plugins` | `list of package` | List of ALSA plugins to be added to the search path. |
+| `hardware.amdgpu.initrd.enable` | `boolean` | Whether to enable loading `amdgpu` kernelModule in stage 1. Can fix lower resolution in boot screen during initramfs phase . |
+| `hardware.amdgpu.legacySupport.enable` | `boolean` | Whether to enable using `amdgpu` kernel driver instead of `radeon` for Southern Islands (Radeon HD 7000) series and Sea Islands (Radeon HD 8000) series cards. Note: this removes support for analog video outputs, which is only available in the `radeon` driver . |
+| `hardware.amdgpu.opencl.enable` | `boolean` | Whether to enable OpenCL support using ROCM runtime library. |
+| `hardware.amdgpu.overdrive.enable` | `boolean` | Whether to enable `amdgpu` overdrive mode for overclocking. |
+| `hardware.amdgpu.overdrive.ppfeaturemask` | `string` | Sets the `amdgpu.ppfeaturemask` kernel option. It can be used to enable the overdrive bit. Default is `0xfffd7fff` as it is less likely to cause flicker issues. Setting it to `0xffffffff` enables all features, but also can be unstable. See [the kernel documentation](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/drivers/gpu/drm/amd/include/amd_shared.h#n169) for more information. |
+| `hardware.amdgpu.zluda.enable` | `boolean` | Whether to enable CUDA support using ZLUDA runtime library. |
+| `hardware.amdgpu.zluda.package` | `package` | The zluda package to use. |
+| `hardware.apple.touchBar.enable` | `boolean` | Whether to enable support for the Touch Bar on some Apple laptops using tiny-dfr. |
+| `hardware.apple.touchBar.package` | `package` | The tiny-dfr package to use. |
+| `hardware.apple.touchBar.settings` | `TOML value` | Configuration for tiny-dfr. See [example configuration][1] for available options. \[1\]: https://github.com/WhatAmISupposedToPutHere/tiny-dfr/blob/master/share/tiny-dfr/config.toml |
+| `hardware.bladeRF.enable` | `boolean` | Enables udev rules for BladeRF devices. By default grants access to users in the "bladerf" group. You may want to install the libbladeRF package. |
+| `hardware.block.defaultScheduler` | `null or udev rule value` | Default block I/O scheduler. Unless `null`, the value is assigned through a udev rule matching all block devices. |
+| `hardware.block.defaultSchedulerExclude` | `null or udev rule value` | Device name pattern to exclude from default scheduler assignment through {option}`config.hardware.block.defaultScheduler` and {option}`config.hardware.block.defaultSchedulerRotational`. By default this excludes loop devices which generally do not benefit from extra I/O scheduling in addition to the scheduling already performed for their backing devices. This setting does not affect {option}`config.hardware.block.scheduler`. |
+| `hardware.block.defaultSchedulerRotational` | `null or udev rule value` | Default block I/O scheduler for rotational drives (e.g. hard disks). Unless `null`, the value is assigned through a udev rule matching all rotational block devices. This option takes precedence over {option}`config.hardware.block.defaultScheduler`. |
+| `hardware.block.scheduler` | `attribute set of udev rule value` | Assign block I/O scheduler by device name pattern. Names are matched using the {manpage}`udev(7)` pattern syntax: `*` : Matches zero or more characters. `?` : Matches any single character. `[]` : Matches any single character specified in the brackets. Ranges are supported via the `-` character. `\|` : Separates alternative patterns. Please note that overlapping patterns may produce unexpected results. More complex configurations requiring these should instead be specified directly through custom udev rules, for example via [{option}`config.services.udev.extraRules`](#opt-services.udev.extraRules), to ensure correct ordering. Available schedulers depend on the kernel configuration but modern Linux systems typically support: `none` : No‐operation scheduler with no re‐ordering of requests. Suitable for devices with fast random I/O such as NVMe SSDs. [`mq-deadline`](https://www.kernel.org/doc/html/latest/block/deadline-iosched.html) : Simple latency‐oriented general‐purpose scheduler. [`kyber`](https://www.kernel.org/doc/html/latest/block/kyber-iosched.html) : Simple latency‐oriented scheduler for fast multi‐queue devices like NVMe SSDs. [`bfq`](https://www.kernel.org/doc/html/latest/block/bfq-iosched.html) : Complex fairness‐oriented scheduler. Higher processing overhead, but good interactive response, especially with slower devices. Schedulers assigned through this option take precedence over {option}`config.hardware.block.defaultScheduler` and {option}`config.hardware.block.defaultSchedulerRotational` but may be overridden by other udev rules. |
+| `hardware.bluetooth.disabledPlugins` | `list of string` | Built-in plugins to disable |
+| `hardware.bluetooth.enable` | `boolean` | Whether to enable support for Bluetooth. |
+| `hardware.bluetooth.hsphfpd.enable` | `boolean` | Whether to enable support for hsphfpd[-prototype] implementation. |
+| `hardware.bluetooth.input` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Set configuration for the input service (/etc/bluetooth/input.conf). See <https://github.com/bluez/bluez/blob/master/profiles/input/input.conf> for full list of options. |
+| `hardware.bluetooth.network` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Set configuration for the network service (/etc/bluetooth/network.conf). See <https://github.com/bluez/bluez/blob/master/profiles/network/network.conf> for full list of options. |
+| `hardware.bluetooth.package` | `package` | The bluez package to use. |
+| `hardware.bluetooth.powerOnBoot` | `boolean` | Whether to power up the default Bluetooth controller on boot. |
+| `hardware.bluetooth.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Set configuration for system-wide bluetooth (/etc/bluetooth/main.conf). See <https://github.com/bluez/bluez/blob/master/src/main.conf> for full list of options. |
+| `hardware.brillo.enable` | `boolean` | Whether to enable brillo in userspace. This will allow brightness control from users in the video group . |
+| `hardware.bumblebee.connectDisplay` | `boolean` | Set to true if you intend to connect your discrete card to a monitor. This option will set up your Nvidia card for EDID discovery and to turn on the monitor signal. Only nvidia driver is supported so far. |
+| `hardware.bumblebee.driver` | `one of "nvidia", "nouveau"` | Set driver used by bumblebeed. Supported are nouveau and nvidia. |
+| `hardware.bumblebee.enable` | `boolean` | Enable the bumblebee daemon to manage Optimus hybrid video cards. This should power off secondary GPU until its use is requested by running an application with optirun. |
+| `hardware.bumblebee.group` | `string` | Group for bumblebee socket |
+| `hardware.bumblebee.pmMethod` | `one of "auto", "bbswitch", "switcheroo", "none"` | Set preferred power management method for unused card. |
+| `hardware.ckb-next.enable` | `boolean` | Whether to enable the Corsair keyboard/mouse driver. |
+| `hardware.ckb-next.gid` | `null or signed integer` | Limit access to the ckb daemon to a particular group. |
+| `hardware.ckb-next.package` | `package` | The ckb-next package to use. |
+| `hardware.coral.pcie.enable` | `boolean` | Whether to enable Coral PCIe support. |
+| `hardware.coral.usb.enable` | `boolean` | Whether to enable Coral USB support. |
+| `hardware.cpu.amd.microcodePackage` | `package` | The microcode-amd package to use. |
+| `hardware.cpu.amd.ryzen-smu.enable` | `boolean` | Whether to enable ryzen_smu, a linux kernel driver that exposes access to the SMU (System Management Unit) for certain AMD Ryzen Processors. WARNING: Damage cause by use of your AMD processor outside of official AMD specifications or outside of factory settings are not covered under any AMD product warranty and may not be covered by your board or system manufacturer's warranty . |
+| `hardware.cpu.amd.sev.enable` | `boolean` | Whether to enable access to the AMD SEV device. |
+| `hardware.cpu.amd.sev.group` | `string` | Group to assign to the SEV device. |
+| `hardware.cpu.amd.sev.mode` | `string` | Mode to set for the SEV device. |
+| `hardware.cpu.amd.sev.user` | `string` | Owner to assign to the SEV device. |
+| `hardware.cpu.amd.sevGuest.enable` | `boolean` | Whether to enable access to the AMD SEV guest device. |
+| `hardware.cpu.amd.sevGuest.group` | `string` | Group to assign to the SEV guest device. |
+| `hardware.cpu.amd.sevGuest.mode` | `string` | Mode to set for the SEV guest device. |
+| `hardware.cpu.amd.sevGuest.user` | `string` | Owner to assign to the SEV guest device. |
+| `hardware.cpu.amd.updateMicrocode` | `boolean` | Update the CPU microcode for AMD processors. |
+| `hardware.cpu.intel.microcodePackage` | `package` | The microcode-intel package to use. |
+| `hardware.cpu.intel.npu.enable` | `boolean` | Whether to enable Intel NPU support. |
+| `hardware.cpu.intel.sgx.enableDcapCompat` | `boolean` | Whether to enable backward compatibility for SGX software build for the out-of-tree Intel SGX DCAP driver. Creates symbolic links for the SGX devices `/dev/sgx_enclave` and `/dev/sgx_provision` to make them available as `/dev/sgx/enclave` and `/dev/sgx/provision`, respectively. |
+| `hardware.cpu.intel.sgx.provision.enable` | `boolean` | Whether to enable access to the Intel SGX provisioning device. |
+| `hardware.cpu.intel.sgx.provision.group` | `string` | Group to assign to the SGX provisioning device. |
+| `hardware.cpu.intel.sgx.provision.mode` | `string` | Mode to set for the SGX provisioning device. |
+| `hardware.cpu.intel.sgx.provision.user` | `string` | Owner to assign to the SGX provisioning device. |
+| `hardware.cpu.intel.updateMicrocode` | `boolean` | Update the CPU microcode for Intel processors. |
+| `hardware.cpu.x86.msr.enable` | `boolean` | Whether to enable the `msr` (Model-Specific Registers) kernel module and configure `udev` rules for its devices (usually `/dev/cpu/*/msr`). |
+| `hardware.cpu.x86.msr.group` | `string` | Group to set for devices of the `msr` kernel subsystem. |
+| `hardware.cpu.x86.msr.mode` | `string` | Mode to set for devices of the `msr` kernel subsystem. |
+| `hardware.cpu.x86.msr.owner` | `string` | Owner to set for devices of the `msr` kernel subsystem. |
+| `hardware.cpu.x86.msr.settings` | `open submodule of attribute set of (boolean or signed integer or string)` | Parameters for the `msr` kernel module. |
+| `hardware.cpu.x86.msr.settings.allow-writes` | `null or one of "on", "off"` | Whether to allow writes to MSRs (`"on"`) or not (`"off"`). |
+| `hardware.decklink.enable` | `boolean` | Whether to enable hardware support for the Blackmagic Design Decklink audio/video interfaces. |
+| `hardware.deviceTree.dtbSource` | `absolute path` | Path to dtb directory that overlays and other processing will be applied to. Uses device trees bundled with the Linux kernel by default. |
+| `hardware.deviceTree.dtboBuildExtraIncludePaths` | `list of absolute path` | Additional include paths that will be passed to the preprocessor when creating the final .dts to compile into .dtbo |
+| `hardware.deviceTree.dtboBuildExtraPreprocessorFlags` | `list of string` | Additional flags to pass to the preprocessor during dtbo compilations |
+| `hardware.deviceTree.enable` | `boolean` | Build device tree files. These are used to describe the non-discoverable hardware of a system. |
+| `hardware.deviceTree.filter` | `null or string` | Only include .dtb files matching glob expression. |
+| `hardware.deviceTree.kernelPackage` | `absolute path` | Kernel package where device tree include directory is from. Also used as default source of dtb package to apply overlays to |
+| `hardware.deviceTree.name` | `null or string` | The name of an explicit dtb to be loaded, relative to the dtb base. Useful in extlinux scenarios if the bootloader doesn't pick the right .dtb file from FDTDIR. |
+| `hardware.deviceTree.overlays` | `list of ((submodule) or absolute path convertible to it)` | List of overlays to apply to base device-tree (.dtb) files. |
+| `hardware.deviceTree.overlays.*.dtboFile` | `null or absolute path` | Path to .dtbo compiled overlay file. |
+| `hardware.deviceTree.overlays.*.dtsFile` | `null or absolute path` | Path to .dts overlay file, overlay is applied to each .dtb file matching "compatible" of the overlay. |
+| `hardware.deviceTree.overlays.*.dtsText` | `null or string` | Literal DTS contents, overlay is applied to each .dtb file matching "compatible" of the overlay. |
+| `hardware.deviceTree.overlays.*.filter` | `null or string` | Only apply to .dtb files matching glob expression. |
+| `hardware.deviceTree.overlays.*.name` | `string` | Name of this overlay |
+| `hardware.digitalbitbox.enable` | `boolean` | Enables udev rules for Digital Bitbox devices. |
+| `hardware.digitalbitbox.package` | `package` | The digitalbitbox package to use. This can be used to install a package with udev rules that differ from the defaults. |
+| `hardware.display.edid.enable` | `boolean` | Enables handling of EDID files |
+| `hardware.display.edid.linuxhw` | `attribute set of list of string` | Exposes EDID files from users-sourced database at <https://github.com/linuxhw/EDID> Attribute names will be mapped to EDID filenames `<NAME>.bin`. Attribute values are lists of `awk` regexp patterns that (together) must match exactly one line in either of: - [AnalogDisplay.md](https://raw.githubusercontent.com/linuxhw/EDID/master/AnalogDisplay.md) - [DigitalDisplay.md](https://raw.githubusercontent.com/linuxhw/EDID/master/DigitalDisplay.md) There is no universal way of locating your device config, but here are some practical tips: 1. locate your device: - find your model number (second column) - locate manufacturer (first column) and go through the list manually 2. narrow down results using other columns until there is only one left: - `Name` column - production date (`Made` column) - resolution `Res` - screen diagonal (`Inch` column) - as a last resort use `ID` from the last column |
+| `hardware.display.edid.modelines` | `attribute set of string` | Attribute set of XFree86 Modelines automatically converted and exposed as `edid/<name>.bin` files in initrd. See for more information: - <https://en.wikipedia.org/wiki/XFree86_Modeline> |
+| `hardware.display.edid.packages` | `list of package` | List of packages containing EDID binary files at `$out/lib/firmware/edid`. Such files will be available for use in `drm.edid_firmware` kernel parameter as `edid/<filename>`. You can craft one directly here or use sibling options `linuxhw` and `modelines`. |
+| `hardware.display.outputs` | `attribute set of (submodule)` | Hardware/kernel-level configuration of specific outputs. |
+| `hardware.display.outputs.<name>.edid` | `null or string` | An EDID filename to be used for configured display, as in `edid/<filename>`. See for more information: - `hardware.display.edid.packages` - <https://wiki.archlinux.org/title/Kernel_mode_setting#Forcing_modes_and_EDID> |
+| `hardware.display.outputs.<name>.mode` | `null or string` | A `video` kernel parameter (framebuffer mode) configuration for the specific output: <xres>x<yres>[M][R]\[-<bpp>\]\[@<refresh>\][i][m][eDd] See for more information: - <https://docs.kernel.org/fb/modedb.html> - <https://wiki.archlinux.org/title/Kernel_mode_setting#Forcing_modes> |
+| `hardware.enableAllFirmware` | `boolean` | Whether to enable all firmware, including [unfree packages that must be explictly allowed](https://nixos.org/manual/nixpkgs/unstable/#sec-allow-unfree). Alternatively, use the {option}`hardware.enableRedistributableFirmware` option. |
+| `hardware.enableAllHardware` | `boolean` | Whether to enable Enable support for most hardware. |
+| `hardware.enableRedistributableFirmware` | `boolean` | Whether to enable firmware with a license allowing redistribution. |
+| `hardware.facetimehd.enable` | `boolean` | Whether to enable the facetimehd kernel module. |
+| `hardware.facetimehd.withCalibration` | `boolean` | Whether to include sensor calibration files for facetimehd. This makes colors look much better but is experimental, see <https://github.com/patjak/facetimehd/wiki/Extracting-the-sensor-calibration-files> for details. |
+| `hardware.facter.debug.nix-diff` | `package` | A shell application which will produce a nix-diff of the system closure with and without facter enabled. |
+| `hardware.facter.debug.nvd` | `package` | A shell application which will produce an nvd diff of the system closure with and without facter enabled. |
+| `hardware.facter.detected.bluetooth.enable` | `boolean` | Whether to enable Enable the Facter bluetooth module. |
+| `hardware.facter.detected.boot.disk.kernelModules` | `list of string` | List of kernel modules that are needed to access the disk. |
+| `hardware.facter.detected.boot.graphics.kernelModules` | `list of string` | List of kernel modules to load at boot for the graphics card. |
+| `hardware.facter.detected.boot.initrd.networking.kernelModules` | `list of string` | List of kernel modules to include in the initrd to support networking. |
+| `hardware.facter.detected.boot.keyboard.kernelModules` | `list of string` | List of kernel modules to include in the initrd to support the keyboard. |
+| `hardware.facter.detected.camera.ipu6.enable` | `boolean` | Whether to enable webcams using ipu6 from Intel. |
+| `hardware.facter.detected.dhcp.enable` | `boolean` | Whether to enable Facter dhcp module. |
+| `hardware.facter.detected.dhcp.interfaces` | `list of string` | List of network interface names to configure with DHCP. Defaults to auto-detected physical interfaces. |
+| `hardware.facter.detected.fingerprint.enable` | `boolean` | Whether to enable Fingerprint devices. |
+| `hardware.facter.detected.graphics.amd.enable` | `boolean` | Whether to enable Enable the AMD Graphics module. |
+| `hardware.facter.detected.graphics.enable` | `boolean` | Whether to enable Enable the Graphics module. |
+| `hardware.facter.detected.networking.intel._2200BG.enable` | `boolean` | Whether to enable the Facter Intel 2200BG module. |
+| `hardware.facter.detected.networking.intel._3945ABG.enable` | `boolean` | Whether to enable the Facter Intel 3945ABG module. |
+| `hardware.facter.detected.uefi.supported` | `boolean` | Whether to enable the facter uefi module. |
+| `hardware.facter.detected.virtualisation.hyperv.enable` | `boolean` | Whether to enable Enable the Facter Virtualisation Hyper-V module. |
+| `hardware.facter.detected.virtualisation.none.enable` | `boolean` | Whether to enable Enable the Facter Virtualisation None module. |
+| `hardware.facter.detected.virtualisation.oracle.enable` | `boolean` | Whether to enable Enable the Facter Virtualisation Oracle module. |
+| `hardware.facter.detected.virtualisation.parallels.enable` | `boolean` | Whether to enable Enable the Facter Virtualisation Parallels module. |
+| `hardware.facter.detected.virtualisation.qemu.enable` | `boolean` | Whether to enable Enable the Facter Virtualisation Qemu module. |
+| `hardware.facter.detected.virtualisation.virtio_scsi.enable` | `boolean` | Whether to enable Enable the Facter Virtualisation Virtio SCSI module. |
+| `hardware.facter.enable` | `boolean` | Whether to enable automatic hardware configuration using a report generated by nixos-facter. See <https://nix-community.github.io/nixos-facter/> for more information. |
+| `hardware.facter.report` | `attribute set of anything` | Hardware report data generated by nixos-facter. See <https://nix-community.github.io/nixos-facter/> for more information. |
+| `hardware.facter.reportPath` | `null or absolute path` | Path to a hardware report generated by nixos-facter. To generate a report, run the following as root: `nix-shell -p nixos-facter --run nixos-facter > facter.json` See <https://nix-community.github.io/nixos-facter/> for more information. |
+| `hardware.fancontrol.config` | `strings concatenated with "\n"` | Required fancontrol configuration file content. See {manpage}`pwmconfig(8)` from the lm_sensors package. |
+| `hardware.fancontrol.enable` | `boolean` | Whether to enable software fan control (requires fancontrol.config). |
+| `hardware.firmware` | `list of package` | List of packages containing firmware files. Such files will be loaded automatically if the kernel asks for them (i.e., when it has detected specific hardware that requires firmware to function). If multiple packages contain firmware files with the same name, the first package in the list takes precedence. Note that you must rebuild your system if you add files to any of these directories. |
+| `hardware.firmwareCompression` | `one of "xz", "zstd", "none"` | Whether to compress firmware files. Defaults depend on the kernel version. For kernels older than 5.3, firmware files are not compressed. For kernels 5.3 and newer, firmware files are compressed with xz. For kernels 5.19 and newer, firmware files are compressed with zstd. |
+| `hardware.flipperzero.enable` | `boolean` | Whether to enable udev rules and software for Flipper Zero devices. |
+| `hardware.flirc.enable` | `boolean` | Whether to enable software to configure a Flirc USB device. |
+| `hardware.fw-fanctrl.config` | `open submodule of attribute set of (JSON value)` | Additional config entries for the fw-fanctrl service (documentation: <https://github.com/TamtamHero/fw-fanctrl/blob/main/doc/configuration.md>) |
+| `hardware.fw-fanctrl.config.defaultStrategy` | `string` | Default strategy to use |
+| `hardware.fw-fanctrl.config.strategies` | `attribute set of (submodule)` | Additional strategies which can be used by fw-fanctrl |
+| `hardware.fw-fanctrl.config.strategies.<name>.fanSpeedUpdateFrequency` | `unsigned integer, meaning >=0` | How often the fan speed should be updated in seconds |
+| `hardware.fw-fanctrl.config.strategies.<name>.movingAverageInterval` | `unsigned integer, meaning >=0` | Interval (seconds) of the last temperatures to use to calculate the average temperature |
+| `hardware.fw-fanctrl.config.strategies.<name>.speedCurve` | `list of (submodule)` | How should the speed curve look like |
+| `hardware.fw-fanctrl.config.strategies.<name>.speedCurve.*.speed` | `integer between 0 and 100 (both inclusive)` | Percent how fast the fan should run at |
+| `hardware.fw-fanctrl.config.strategies.<name>.speedCurve.*.temp` | `signed integer` | Temperature in °C at which the fan speed should be changed |
+| `hardware.fw-fanctrl.config.strategyOnDischarging` | `string` | Default strategy on discharging |
+| `hardware.fw-fanctrl.disableBatteryTempCheck` | `boolean` | Disable checking battery temperature sensor |
+| `hardware.fw-fanctrl.ectoolPackage` | `package` | The fw-ectool package to use. |
+| `hardware.fw-fanctrl.enable` | `boolean` | Whether to enable the fw-fanctrl systemd service and install the needed packages. |
+| `hardware.fw-fanctrl.package` | `package` | The fw-fanctrl package to use. |
+| `hardware.glasgow.enable` | `boolean` | Enables Glasgow udev rules and ensures 'plugdev' group exists. This is a prerequisite to using Glasgow without being root. |
+| `hardware.gpgSmartcards.enable` | `boolean` | Whether to enable udev rules for gnupg smart cards. |
+| `hardware.graphics.enable` | `boolean` | Whether to enable hardware accelerated graphics drivers. This is required to allow most graphical applications and environments to use hardware rendering, video encode/decode acceleration, etc. This option should be enabled by default by the corresponding modules, so you do not usually have to set it yourself. |
+| `hardware.graphics.enable32Bit` | `boolean` | On 64-bit systems, whether to also install 32-bit drivers for 32-bit applications (such as Wine). |
+| `hardware.graphics.extraPackages` | `list of package` | Additional packages to add to the default graphics driver lookup path. This can be used to add OpenCL drivers, VA-API/VDPAU drivers, etc. ::: {.note} intel-media-driver supports hardware Broadwell (2014) or newer. Older hardware should use the mostly unmaintained intel-vaapi-driver driver. ::: |
+| `hardware.graphics.extraPackages32` | `list of package` | Additional packages to add to 32-bit graphics driver lookup path on 64-bit systems. Used when {option}`enable32Bit` is set. This can be used to add OpenCL drivers, VA-API/VDPAU drivers, etc. ::: {.note} intel-media-driver supports hardware Broadwell (2014) or newer. Older hardware should use the mostly unmaintained intel-vaapi-driver driver. ::: |
+| `hardware.graphics.package` | `package` | The package that provides the default driver set. |
+| `hardware.graphics.package32` | `package` | The package that provides the 32-bit driver set. Used when {option}`enable32Bit` is enabled. |
+| `hardware.hackrf.enable` | `boolean` | Enables hackrf udev rules and ensures 'plugdev' group exists. This is a prerequisite to using HackRF devices without being root, since HackRF USB descriptors will be owned by plugdev through udev. Ensure your user is a member of the 'plugdev' group after enabling. |
+| `hardware.hid-fanatecff.enable` | `boolean` | Whether to enable hid-fanatecff, a Linux kernel driver that aims to add support for Fanatec devices. |
+| `hardware.i2c.enable` | `boolean` | Whether to enable i2c devices support. By default access is granted to users in the "i2c" group (will be created if non-existent) and any user with a seat, meaning logged on the computer locally . |
+| `hardware.i2c.group` | `string` | Grant access to i2c devices (/dev/i2c-*) to users in this group. |
+| `hardware.infiniband.enable` | `boolean` | Whether to enable Infiniband support. |
+| `hardware.infiniband.guids` | `list of string` | A list of infiniband port guids on the system. This is discoverable using `ibstat -p` |
+| `hardware.inputmodule.enable` | `boolean` | Whether to enable Support for Framework input modules. |
+| `hardware.intel-gpu-tools.enable` | `boolean` | Whether to enable a setcap wrapper for intel-gpu-tools. |
+| `hardware.ipu6.enable` | `boolean` | Whether to enable support for Intel IPU6/MIPI cameras. |
+| `hardware.ipu6.platform` | `one of "ipu6", "ipu6ep", "ipu6epmtl"` | Choose the version for your hardware platform. Use `ipu6` for Tiger Lake, `ipu6ep` for Alder Lake or Raptor Lake, and `ipu6epmtl` for Meteor Lake. |
+| `hardware.ipu6.videoDeviceNumber` | `signed integer` | v4l2loopback device number for the relay output (`/dev/videoN`). Must be fixed so application camera permission grants, which are keyed to the PipeWire node name (derived from the sysfs device path), survive reboots. Choose a number above the IPU6 raw node range (typically 3-34) and any other v4l2loopback devices on the system. |
+| `hardware.keyboard.qmk.enable` | `boolean` | Whether to enable non-root access to the firmware of QMK keyboards. |
+| `hardware.keyboard.qmk.keychronSupport` | `boolean` | Whether to enable udev rules for keychron QMK based keyboards. |
+| `hardware.keyboard.teck.enable` | `boolean` | Whether to enable non-root access to the firmware of TECK keyboards. |
+| `hardware.keyboard.uhk.enable` | `boolean` | Whether to enable non-root access to the firmware of UHK keyboards. You need it when you want to flash a new firmware on the keyboard. Access to the keyboard is granted to users in the "input" group. You may want to install the uhk-agent package . |
+| `hardware.keyboard.zsa.enable` | `boolean` | Whether to enable udev rules for keyboards from ZSA like the ErgoDox EZ, Planck EZ and Moonlander Mark I. You need it when you want to flash a new configuration on the keyboard or use their live training in the browser. You may want to install the wally-cli package . |
+| `hardware.kryoflux.enable` | `boolean` | Enables kryoflux udev rules, ensures 'floppy' group exists. This is a prerequisite to using devices supported by kryoflux without being root, since kryoflux device descriptors will be owned by floppy through udev. |
+| `hardware.kryoflux.package` | `package` | The kryoflux package to use. |
+| `hardware.ksm.enable` | `boolean` | Whether to enable Linux kernel Same-Page Merging. |
+| `hardware.ksm.sleep` | `null or signed integer` | How many milliseconds ksmd should sleep between scans. Setting it to `null` uses the kernel's default time. |
+| `hardware.ledger.enable` | `boolean` | Whether to enable udev rules for Ledger devices. |
+| `hardware.libftdi.enable` | `boolean` | Whether to enable udev rules for devices supported by libftdi. |
+| `hardware.libftdi.package` | `package` | The libftdi1 package to use. |
+| `hardware.libjaylink.enable` | `boolean` | Whether to enable udev rules for devices supported by libjaylink. Add users to the `jlink` group in order to grant them access . |
+| `hardware.libjaylink.package` | `package` | The libjaylink package to use. |
+| `hardware.logitech.lcd.devices` | `list of string` | List of USB device ids supported by g15daemon. You most likely do not need to change this. |
+| `hardware.logitech.lcd.enable` | `boolean` | Whether to enable support for Logitech LCD Devices. |
+| `hardware.logitech.lcd.startWhenNeeded` | `boolean` | Only run the service when an actual supported device is plugged. |
+| `hardware.logitech.wireless.enable` | `boolean` | Whether to enable support for Logitech Wireless Devices. |
+| `hardware.logitech.wireless.enableGraphical` | `boolean` | Enable graphical support applications. |
+| `hardware.mcelog.enable` | `boolean` | Enable the Machine Check Exception logger. |
+| `hardware.mwProCapture.enable` | `boolean` | Whether to enable the Magewell Pro Capture family kernel module. |
+| `hardware.new-lg4ff.enable` | `boolean` | Enables improved Linux module drivers for Logitech driving wheels. This will replace the existing in-kernel hid-logitech modules. Works most notably on the Logitech G25, G27, G29 and Driving Force (GT). |
+| `hardware.nfc-nci.enable` | `boolean` | Whether to enable PN5xx kernel module with udev rules, libnfc-nci userland, and optional ifdnfc-nci PC/SC driver. |
+| `hardware.nfc-nci.enableIFD` | `boolean` | Register ifdnfc-nci as a serial reader with pcscd. |
+| `hardware.nfc-nci.settings` | `attribute set` | Configuration to be written to the libncf-nci configuration files. To understand the configuration format, refer to <https://github.com/NXPNFCLinux/linux_libnfc-nci/tree/master/conf>. |
+| `hardware.nitrokey.enable` | `boolean` | Enables udev rules for Nitrokey devices. |
+| `hardware.nvidia-container-toolkit.csv-files` | `list of absolute path` | The path to the list of CSV files to use when generating the CDI specification in CSV mode. |
+| `hardware.nvidia-container-toolkit.device-name-strategy` | `one of "index", "uuid", "type-index"` | Specify the strategy for generating device names, passed to `nvidia-ctk cdi generate`. This will affect how you reference the device using `nvidia.com/gpu=` in the container runtime. |
+| `hardware.nvidia-container-toolkit.disable-hooks` | `list of non-empty string` | List of hooks to disable when generating the CDI specification. Each hook name will be passed as `--disable-hook <hook-name>` to nvidia-ctk. Set to an empty list to disable no hooks. |
+| `hardware.nvidia-container-toolkit.discovery-mode` | `one of "auto", "csv", "nvml", "wsl"` | The mode to use when discovering the available entities. |
+| `hardware.nvidia-container-toolkit.enable` | `boolean` | Enable dynamic CDI configuration for Nvidia devices by running nvidia-container-toolkit on boot. |
+| `hardware.nvidia-container-toolkit.enable-hooks` | `list of non-empty string` | List of hooks to enable when generating the CDI specification. Each hook name will be passed as `--enable-hook <hook-name>` to nvidia-ctk. Set to an empty list to enable no hooks. |
+| `hardware.nvidia-container-toolkit.extraArgs` | `list of string` | Extra arguments to be passed to nvidia-ctk. |
+| `hardware.nvidia-container-toolkit.mount-nvidia-docker-1-directories` | `boolean` | Mount nvidia-docker-1 directories on containers: /usr/local/nvidia/lib and /usr/local/nvidia/lib64. |
+| `hardware.nvidia-container-toolkit.mount-nvidia-executables` | `boolean` | Mount executables nvidia-smi, nvidia-cuda-mps-control, nvidia-cuda-mps-server, nvidia-debugdump, nvidia-powerd and nvidia-ctk on containers. |
+| `hardware.nvidia-container-toolkit.mounts` | `list of (submodule)` | Mounts to be added to every container under the Nvidia CDI profile. |
+| `hardware.nvidia-container-toolkit.mounts.*.containerPath` | `string` | Container path. |
+| `hardware.nvidia-container-toolkit.mounts.*.hostPath` | `string` | Host path. |
+| `hardware.nvidia-container-toolkit.mounts.*.mountOptions` | `list of string` | Mount options. |
+| `hardware.nvidia-container-toolkit.package` | `package` | The nvidia-container-toolkit package to use. |
+| `hardware.nvidia-container-toolkit.suppressNvidiaDriverAssertion` | `boolean` | Suppress the assertion for installing Nvidia driver. Useful in WSL where drivers are mounted from Windows, not provided by NixOS. |
+| `hardware.nvidia.branch` | `one of the available driver branches in `pkgs/os-specific/linux/nvidia-x11/default.nix\`\` | The branch of the NVIDIA driver to use. Note: if {option}`hardware.nvidia.package` is set, it overrides this option. Commonly interesting branches for end users: - production, new_feature, beta: NVIDIA's official production / new feature / beta release branches. - stable: The default; the highest stable version. - latest: Whichever is newer of `production` and `new_feature`. - bleeding_edge: Whichever is newer of `latest` and `beta`. - legacy_580: The long-lived 580 series (LTSB), for GPUs that newer driver branches no longer support (often Maxwell through Volta; roughly GeForce GTX 9xx through 10xx, plus rare Volta cards like TITAN V). - vulkan_beta: The Vulkan developer beta driver, for users interested in testing new Vulkan features. |
+| `hardware.nvidia.datacenter.enable` | `boolean` | Whether to enable Data Center drivers for NVIDIA cards on a NVLink topology . |
+| `hardware.nvidia.datacenter.settings` | `attribute set of (atom (null, bool, int, float or string))` | Additional configuration options for fabricmanager. |
+| `hardware.nvidia.dynamicBoost.enable` | `boolean` | Whether to enable dynamic Boost balances power between the CPU and the GPU for improved performance on supported laptops using the nvidia-powerd daemon. For more information, see the NVIDIA docs, on Chapter 23. Dynamic Boost on Linux . |
+| `hardware.nvidia.enabled` | `boolean` | True if NVIDIA support is enabled |
+| `hardware.nvidia.forceFullCompositionPipeline` | `boolean` | Whether to enable forcefully the full composition pipeline. This sometimes fixes screen tearing issues. This has been reported to reduce the performance of some OpenGL applications and may produce issues in WebGL. It also drastically increases the time the driver needs to clock down after load . |
+| `hardware.nvidia.gsp.enable` | `boolean` | Whether to enable the GPU System Processor (GSP) on the video card . |
+| `hardware.nvidia.modesetting.enable` | `boolean` | Whether to enable kernel modesetting when using the NVIDIA proprietary driver. Enabling this fixes screen tearing when using Optimus via PRIME (see {option}`hardware.nvidia.prime.sync.enable`. This is not enabled by default because it is not officially supported by NVIDIA and would not work with SLI. Enabling this and using version 545 or newer of the proprietary NVIDIA driver causes it to provide its own framebuffer device, which can cause Wayland compositors to work when they otherwise wouldn't. . |
+| `hardware.nvidia.moduleParams` | `attribute set of attribute set of raw value` | Additional parameters to pass to the NVIDIA kernel module. |
+| `hardware.nvidia.nvidiaPersistenced` | `boolean` | Whether to enable nvidia-persistenced a update for NVIDIA GPU headless mode, i.e. It ensures all GPUs stay awake even during headless mode . |
+| `hardware.nvidia.nvidiaSettings` | `boolean` | Whether to enable nvidia-settings, NVIDIA's GUI configuration tool . |
+| `hardware.nvidia.open` | `null or boolean` | Whether to enable the open source NVIDIA kernel module. |
+| `hardware.nvidia.package` | `package` | The NVIDIA driver package to use. Prefer using {option}`hardware.nvidia.branch` when possible. If you set this option, it is recommended to pick a package from `config.boot.kernelPackages.nvidiaPackages` so the driver build matches your configured kernel. For custom versions, you can use `nvidiaPackages.mkDriver`; see `pkgs/os-specific/linux/nvidia-x11/default.nix` for examples. |
+| `hardware.nvidia.powerManagement.enable` | `boolean` | Whether to enable experimental power management through systemd. For more information, see the NVIDIA docs, on Chapter 21. Configuring Power Management Support . |
+| `hardware.nvidia.powerManagement.finegrained` | `boolean` | Whether to enable experimental power management of PRIME offload. For more information, see the NVIDIA docs, on Chapter 22. PCI-Express Runtime D3 (RTD3) Power Management . |
+| `hardware.nvidia.powerManagement.kernelSuspendNotifier` | `boolean` | Whether to enable NVIDIA driver support for kernel suspend notifiers, which allows the driver to be notified of suspend and resume events by the kernel, rather than relying on systemd services. Requires NVIDIA driver version 595 or newer, and the open source kernel modules. . |
+| `hardware.nvidia.prime.allowExternalGpu` | `boolean` | Whether to enable configuring X to allow external NVIDIA GPUs when using Prime [Reverse] sync optimus . |
+| `hardware.nvidia.prime.amdgpuBusId` | `string matching the pattern ([[:print:]]+:[0-9]{1,3}(@[0-9]{1,10})?:[0-9]{1,2}:[0-9])?` | Bus ID of the AMD APU. You can find it using lspci; for example if lspci shows the AMD APU at "0001:02:03.4", set this option to "PCI:2@1:3:4". lspci might omit the PCI domain (0001 in above example) if it is zero. In which case, use "@0" instead. Please be aware that this option takes decimal address while lspci reports hexadecimal address. So for device at domain "10000", use "@65536". |
+| `hardware.nvidia.prime.intelBusId` | `string matching the pattern ([[:print:]]+:[0-9]{1,3}(@[0-9]{1,10})?:[0-9]{1,2}:[0-9])?` | Bus ID of the Intel GPU. You can find it using lspci; for example if lspci shows the Intel GPU at "0001:02:03.4", set this option to "PCI:2@1:3:4". lspci might omit the PCI domain (0001 in above example) if it is zero. In which case, use "@0" instead. Please be aware that this option takes decimal address while lspci reports hexadecimal address. So for device at domain "10000", use "@65536". |
+| `hardware.nvidia.prime.nvidiaBusId` | `string matching the pattern ([[:print:]]+:[0-9]{1,3}(@[0-9]{1,10})?:[0-9]{1,2}:[0-9])?` | Bus ID of the NVIDIA GPU. You can find it using lspci; for example if lspci shows the NVIDIA GPU at "0001:02:03.4", set this option to "PCI:2@1:3:4". lspci might omit the PCI domain (0001 in above example) if it is zero. In which case, use "@0" instead. Please be aware that this option takes decimal address while lspci reports hexadecimal address. So for device at domain "10000", use "@65536". |
+| `hardware.nvidia.prime.offload.enable` | `boolean` | Whether to enable render offload support using the NVIDIA proprietary driver via PRIME. If this is enabled, then the bus IDs of the NVIDIA and Intel/AMD GPUs have to be specified ({option}`hardware.nvidia.prime.nvidiaBusId` and {option}`hardware.nvidia.prime.intelBusId` or {option}`hardware.nvidia.prime.amdgpuBusId`) . |
+| `hardware.nvidia.prime.offload.enableOffloadCmd` | `boolean` | Whether to enable adding a `nvidia-offload` convenience script to {option}`environment.systemPackages` for offloading programs to an nvidia device. To work, you must also enable {option}`hardware.nvidia.prime.offload.enable` or {option}`hardware.nvidia.prime.reverseSync.enable`. Example usage: `nvidia-offload sauerbraten_client` This script can be renamed with {option}`hardware.nvidia.prime.offload.enableOffloadCmd`. . |
+| `hardware.nvidia.prime.offload.offloadCmdMainProgram` | `string` | Specifies the CLI name of the {option}`hardware.nvidia.prime.offload.enableOffloadCmd` convenience script for offloading programs to an nvidia device. |
+| `hardware.nvidia.prime.reverseSync.enable` | `boolean` | Whether to enable NVIDIA Optimus support using the NVIDIA proprietary driver via reverse PRIME. If enabled, the Intel/AMD GPU will be used for all rendering, while enabling output to displays attached only to the NVIDIA GPU without a multiplexer. Warning: This feature is relatively new, depending on your system this might work poorly. AMD support, especially so. See: <https://forums.developer.nvidia.com/t/the-all-new-outputsink-feature-aka-reverse-prime/129828> Note that this option only has any effect if the "nvidia" driver is specified in {option}`services.xserver.videoDrivers`, and it should preferably be the only driver there. If this is enabled, then the bus IDs of the NVIDIA and Intel/AMD GPUs have to be specified ({option}`hardware.nvidia.prime.nvidiaBusId` and {option}`hardware.nvidia.prime.intelBusId` or {option}`hardware.nvidia.prime.amdgpuBusId`). If you enable this, you may want to also enable kernel modesetting for the NVIDIA driver ({option}`hardware.nvidia.modesetting.enable`) in order to prevent tearing. Note that this configuration will only be successful when a display manager for which the {option}`services.xserver.displayManager.setupCommands` option is supported is used . |
+| `hardware.nvidia.prime.reverseSync.setupCommands.enable` | `boolean` | Whether to enable configure the display manager to be able to use the outputs attached to the NVIDIA GPU. Disable in order to configure the NVIDIA GPU outputs manually using xrandr. Note that this configuration will only be successful when a display manager for which the {option}`services.xserver.displayManager.setupCommands` option is supported is used . |
+| `hardware.nvidia.prime.sync.enable` | `boolean` | Whether to enable NVIDIA Optimus support using the NVIDIA proprietary driver via PRIME. If enabled, the NVIDIA GPU will be always on and used for all rendering, while enabling output to displays attached only to the integrated Intel/AMD GPU without a multiplexer. Note that this option only has any effect if the "nvidia" driver is specified in {option}`services.xserver.videoDrivers`, and it should preferably be the only driver there. If this is enabled, then the bus IDs of the NVIDIA and Intel/AMD GPUs have to be specified ({option}`hardware.nvidia.prime.nvidiaBusId` and {option}`hardware.nvidia.prime.intelBusId` or {option}`hardware.nvidia.prime.amdgpuBusId`). If you enable this, you may want to also enable kernel modesetting for the NVIDIA driver ({option}`hardware.nvidia.modesetting.enable`) in order to prevent tearing. Note that this configuration will only be successful when a display manager for which the {option}`services.xserver.displayManager.setupCommands` option is supported is used . |
+| `hardware.nvidia.videoAcceleration` | `boolean` | Whether to enable video acceleration (VA-API). |
+| `hardware.nvidiaOptimus.disable` | `boolean` | Completely disable the NVIDIA graphics card and use the integrated graphics processor instead. |
+| `hardware.onlykey.enable` | `boolean` | Enable OnlyKey device (https://crp.to/p/) support. |
+| `hardware.openrazer.batteryNotifier` | `submodule` | Settings for device battery notifications. |
+| `hardware.openrazer.batteryNotifier.enable` | `boolean` | Mouse battery notifier. |
+| `hardware.openrazer.batteryNotifier.frequency` | `signed integer` | How often battery notifications should be shown (in seconds). A value of 0 disables notifications. |
+| `hardware.openrazer.batteryNotifier.percentage` | `signed integer` | At what battery percentage the device should reach before sending notifications. |
+| `hardware.openrazer.devicesOffOnScreensaver` | `boolean` | Turn off the devices when the systems screensaver kicks in. |
+| `hardware.openrazer.enable` | `boolean` | Whether to enable OpenRazer drivers and userspace daemon . |
+| `hardware.openrazer.keyStatistics` | `boolean` | Collects number of keypresses per hour per key used to generate a heatmap. |
+| `hardware.openrazer.packages.daemon` | `package` | The openrazer-daemon package to use. |
+| `hardware.openrazer.packages.kernel` | `package` | The openrazer kernel package to use. |
+| `hardware.openrazer.syncEffectsEnabled` | `boolean` | Set the sync effects flag to true so any assignment of effects will work across devices. |
+| `hardware.openrazer.users` | `list of string` | Usernames to be added to the "openrazer" group, so that they can start and interact with the OpenRazer userspace daemon. |
+| `hardware.openrazer.verboseLogging` | `boolean` | Whether to enable verbose logging. Logs debug messages. |
+| `hardware.opentabletdriver.blacklistedKernelModules` | `list of string` | Blacklist of kernel modules known to conflict with OpenTabletDriver. |
+| `hardware.opentabletdriver.daemon.enable` | `boolean` | Whether to start OpenTabletDriver daemon as a systemd user service. |
+| `hardware.opentabletdriver.enable` | `boolean` | Enable OpenTabletDriver udev rules, user service and blacklist kernel modules known to conflict with OpenTabletDriver. |
+| `hardware.opentabletdriver.package` | `package` | The opentabletdriver package to use. |
+| `hardware.parallels.enable` | `boolean` | This enables Parallels Tools for Linux guests. |
+| `hardware.parallels.package` | `package` | The prl-tools package to use. |
+| `hardware.pcmcia.config` | `null or absolute path` | Path to the configuration file which maps the memory, IRQs and ports used by the PCMCIA hardware. |
+| `hardware.pcmcia.enable` | `boolean` | Enable this option to support PCMCIA card. |
+| `hardware.pcmcia.firmware` | `list of absolute path` | List of firmware used to handle specific PCMCIA card. |
+| `hardware.printers.ensureDefaultPrinter` | `null or printable string without spaces, # and /` | Ensures the named printer is the default CUPS printer / printer queue. |
+| `hardware.printers.ensurePrinters` | `list of (submodule)` | Will regularly ensure that the given CUPS printers are configured as declared here. If a printer's options are manually changed afterwards, they will be overwritten eventually. This option will never delete any printer, even if removed from this list. You can check existing printers with {command}`lpstat -s` and remove printers with {command}`lpadmin -x <printer-name>`. Printers not listed here can still be manually configured. |
+| `hardware.printers.ensurePrinters.*.description` | `null or string` | Optional human-readable description. |
+| `hardware.printers.ensurePrinters.*.deviceUri` | `string` | How to reach the printer. {command}`lpinfo -v` shows a list of supported device URIs and schemes. |
+| `hardware.printers.ensurePrinters.*.location` | `null or string` | Optional human-readable location. |
+| `hardware.printers.ensurePrinters.*.model` | `string` | Location of the ppd driver file for the printer. {command}`lpinfo -m` shows a list of supported models. |
+| `hardware.printers.ensurePrinters.*.name` | `printable string without spaces, # and /` | Name of the printer / printer queue. May contain any printable characters except "/", "#", and space. |
+| `hardware.printers.ensurePrinters.*.ppdOptions` | `attribute set of string` | Sets PPD options for the printer. {command}`lpoptions [-p printername] -l` shows supported PPD options for the given printer. |
+| `hardware.raid.HPSmartArray.enable` | `boolean` | Whether to enable HP Smart Array kernel modules and CLI utility. |
+| `hardware.rasdaemon.config` | `strings concatenated with "\n"` | rasdaemon configuration, currently only used for CE PFA for details, read rasdaemon.outPath/etc/sysconfig/rasdaemon's comments |
+| `hardware.rasdaemon.enable` | `boolean` | Whether to enable RAS logging daemon. |
+| `hardware.rasdaemon.extraModules` | `list of string` | extra kernel modules to load |
+| `hardware.rasdaemon.labels` | `strings concatenated with "\n"` | Additional memory module label descriptions to be placed in /etc/ras/dimm_labels.d/labels |
+| `hardware.rasdaemon.mainboard` | `strings concatenated with "\n"` | Custom mainboard description, see {manpage}`ras-mc-ctl(8)` for more details. |
+| `hardware.rasdaemon.package` | `package` | The rasdaemon package to use. |
+| `hardware.rasdaemon.record` | `boolean` | record events via sqlite3, required for ras-mc-ctl |
+| `hardware.rasdaemon.testing` | `boolean` | Whether to enable error injection infrastructure. |
+| `hardware.rtl-sdr.enable` | `boolean` | Enables rtl-sdr udev rules, ensures 'plugdev' group exists, and blacklists DVB kernel modules. This is a prerequisite to using devices supported by rtl-sdr without being root, since rtl-sdr USB descriptors will be owned by plugdev through udev. |
+| `hardware.rtl-sdr.package` | `package` | The rtl-sdr package to use. |
+| `hardware.saleae-logic.enable` | `boolean` | Whether to enable udev rules for Saleae Logic devices. |
+| `hardware.saleae-logic.package` | `package` | Saleae Logic package to use. |
+| `hardware.sane.backends-package` | `package` | The sane-backends package to use. |
+| `hardware.sane.brscan4.enable` | `boolean` | When enabled, will automatically register the "brscan4" sane backend and bring configuration files to their expected location. |
+| `hardware.sane.brscan4.netDevices` | `attribute set of (submodule)` | The list of network devices that will be registered against the brscan4 sane backend. |
+| `hardware.sane.brscan4.netDevices.<name>.ip` | `null or string` | The ip address of the device. If undefined, you will have to provide a nodename. |
+| `hardware.sane.brscan4.netDevices.<name>.model` | `string` | The model of the network device. |
+| `hardware.sane.brscan4.netDevices.<name>.name` | `string` | The friendly name you give to the network device. If undefined, the name of attribute will be used. |
+| `hardware.sane.brscan4.netDevices.<name>.nodename` | `null or string` | The node name of the device. If undefined, you will have to provide an ip. |
+| `hardware.sane.brscan5.enable` | `boolean` | Whether to enable the Brother brscan5 sane backend. |
+| `hardware.sane.brscan5.netDevices` | `attribute set of (submodule)` | The list of network devices that will be registered against the brscan5 sane backend. |
+| `hardware.sane.brscan5.netDevices.<name>.ip` | `null or string` | The ip address of the device. If undefined, you will have to provide a nodename. |
+| `hardware.sane.brscan5.netDevices.<name>.model` | `string` | The model of the network device. |
+| `hardware.sane.brscan5.netDevices.<name>.name` | `string` | The friendly name you give to the network device. If undefined, the name of attribute will be used. |
+| `hardware.sane.brscan5.netDevices.<name>.nodename` | `null or string` | The node name of the device. If undefined, you will have to provide an ip. |
+| `hardware.sane.disabledDefaultBackends` | `list of string` | Names of backends which are enabled by default but should be disabled. See `$SANE_CONFIG_DIR/dll.conf` for the list of possible names. |
+| `hardware.sane.drivers.scanSnap.enable` | `boolean` | Whether to enable drivers for the Fujitsu ScanSnap scanners. The driver files are unfree and extracted from the Windows driver image. |
+| `hardware.sane.drivers.scanSnap.package` | `package` | The epjitsu package to use. Useful if you want to extract the driver files yourself. The process is described in the {file}`/etc/sane.d/epjitsu.conf` file in the `sane-backends` package. |
+| `hardware.sane.dsseries.enable` | `boolean` | When enabled, will automatically register the "dsseries" SANE backend. This supports the Brother DSmobile scanner series, including the DS-620, DS-720D, DS-820W, and DS-920DW scanners. |
+| `hardware.sane.enable` | `boolean` | Enable support for SANE scanners. ::: {.note} Users in the "scanner" group will gain access to the scanner, or the "lp" group if it's also a printer. ::: |
+| `hardware.sane.extraBackends` | `list of absolute path` | Packages providing extra SANE backends to enable. ::: {.note} The example contains the package for HP scanners, and the package for Apple AirScan and Microsoft WSD support (supports many vendors/devices). ::: |
+| `hardware.sane.netConf` | `strings concatenated with "\n"` | Network hosts that should be probed for remote scanners. |
+| `hardware.sane.openFirewall` | `boolean` | Open ports needed for discovery of scanners on the local network, e.g. needed for Canon scanners (BJNP protocol). |
+| `hardware.sane.snapshot` | `boolean` | Use a development snapshot of SANE scanner drivers. |
+| `hardware.sata.timeout.deciSeconds` | `signed integer` | Set SCT Error Recovery Control timeout in deciseconds for use in RAID configurations. Values are as follows: 0 = disable SCT ERT 70 = default in consumer drives (7 seconds) Maximum is disk dependant but probably 60 seconds. |
+| `hardware.sata.timeout.drives` | `list of (submodule)` | List of drives for which to configure the timeout. |
+| `hardware.sata.timeout.drives.*.idBy` | `one of "path", "wwn"` | The method to identify the drive. |
+| `hardware.sata.timeout.drives.*.name` | `string` | Drive name without the full path. |
+| `hardware.sata.timeout.enable` | `boolean` | Whether to enable SATA drive timeouts. |
+| `hardware.sensor.hddtemp.dbEntries` | `list of string` | Additional DB entries |
+| `hardware.sensor.hddtemp.drives` | `list of string` | List of drives to monitor. If you pass /dev/disk/by-path/* entries the symlinks will be resolved as hddtemp doesn't like names with colons. |
+| `hardware.sensor.hddtemp.enable` | `boolean` | Enable this option to support HDD/SSD temperature sensors. |
+| `hardware.sensor.hddtemp.extraArgs` | `list of string` | Additional arguments passed to the daemon. |
+| `hardware.sensor.hddtemp.unit` | `one of "C", "F"` | Celsius or Fahrenheit |
+| `hardware.sensor.iio.enable` | `boolean` | Enable this option to support IIO sensors with iio-sensor-proxy. IIO sensors are used for orientation and ambient light sensors on some mobile devices. |
+| `hardware.sensor.iio.package` | `package` | The iio-sensor-proxy package to use. |
+| `hardware.sheep_net.enable` | `boolean` | Enables sheep_net udev rules, ensures 'sheep_net' group exists, and adds sheep-net to boot.kernelModules and boot.extraModulePackages |
+| `hardware.spacenavd.enable` | `boolean` | Whether to enable spacenavd to support 3DConnexion devices. |
+| `hardware.steam-hardware.enable` | `boolean` | Enable udev rules for Steam hardware such as the Steam Controller, other supported controllers and the HTC Vive |
+| `hardware.system76.enableAll` | `boolean` | Whether to enable all recommended configuration for system76 systems. |
+| `hardware.system76.firmware-daemon.enable` | `boolean` | Whether to enable the system76 firmware daemon |
+| `hardware.system76.kernel-modules.enable` | `boolean` | Whether to make the system76 out-of-tree kernel modules available |
+| `hardware.system76.power-daemon.enable` | `boolean` | Whether to enable the system76 power daemon |
+| `hardware.tenstorrent.enable` | `boolean` | Whether to enable Tenstorrent driver & utilities. |
+| `hardware.trackpoint.device` | `string` | The device name of the trackpoint. You can check with xinput. Some newer devices (example x1c6) use "TPPS/2 Elan TrackPoint". |
+| `hardware.trackpoint.draghys` | `signed integer` | The drag hysteresis controls how hard it is to drag with z-axis pressed. |
+| `hardware.trackpoint.drift_time` | `signed integer` | This parameter controls the period of time to test for a 'hands off' condition (i.e. when no force is applied) before a drift (noise) calibration occurs. IBM Trackpoints have a feature to compensate for drift by recalibrating themselves periodically. By default, if for 0.5 seconds there is no change in position, it's used as the new zero. This duration is too low. Often, the calibration happens when the trackpoint is in fact being used. |
+| `hardware.trackpoint.emulateWheel` | `boolean` | Enable scrolling while holding the middle mouse button. |
+| `hardware.trackpoint.enable` | `boolean` | Enable sensitivity and speed configuration for trackpoints. |
+| `hardware.trackpoint.ext_dev` | `boolean` | Disable or enable external pointing device. |
+| `hardware.trackpoint.fakeButtons` | `boolean` | Switch to "bare" PS/2 mouse support in case Trackpoint buttons are not recognized properly. This can happen for example on models like the L430, T450, T450s, on which the Trackpoint buttons are actually a part of the Synaptics touchpad. |
+| `hardware.trackpoint.inertia` | `signed integer` | Negative inertia factor. High values cause the cursor to snap backward when the trackpoint is released. |
+| `hardware.trackpoint.jenks` | `signed integer` | Minimum curvature in degrees required to generate a double click without a release. |
+| `hardware.trackpoint.mindrag` | `signed integer` | Minimum amount of force needed to trigger dragging. |
+| `hardware.trackpoint.press_to_select` | `boolean` | Setting this to true will enable the Press to Select functions like tapping the control stick to simulate a left click, and setting false will disable it. |
+| `hardware.trackpoint.reach` | `signed integer` | Backup range for z-axis press. |
+| `hardware.trackpoint.sensitivity` | `signed integer` | Trackpoint sensitivity. |
+| `hardware.trackpoint.skipback` | `boolean` | When the skipback bit is set, backup cursor movement during releases from drags will be suppressed. The default value for this bit is 0. |
+| `hardware.trackpoint.speed` | `signed integer` | Speed of the trackpoint cursor. |
+| `hardware.trackpoint.thresh` | `signed integer` | Minimum value for z-axis force required to trigger a press or release, relative to the running average. |
+| `hardware.trackpoint.upthresh` | `signed integer` | The offset from the running average required to generate a select (click) on z-axis on release. |
+| `hardware.trackpoint.ztime` | `signed integer` | This attribute determines how sharp a press has to be in order to be recognized. |
+| `hardware.tuxedo-drivers.enable` | `boolean` | Whether to enable The tuxedo-drivers driver enables access to the following on TUXEDO notebooks: - Driver for Fn-keys - SysFS control of brightness/color/mode for most TUXEDO keyboards - Hardware I/O driver for TUXEDO Control Center For more inforation it is best to check at the source code description: <https://gitlab.com/tuxedocomputers/development/packages/tuxedo-drivers> . |
+| `hardware.tuxedo-drivers.settings.charging-priority` | `null or one of "charge_battery", "performance"` | These options manage the trade-off between battery charging and CPU performance when the USB-C power supply cannot provide sufficient power for both simultaneously: - `charge_battery` prioritizes battery charging (driver default) - `performance` prioritizes maximum CPU performance |
+| `hardware.tuxedo-drivers.settings.charging-profile` | `null or one of "high_capacity", "balanced", "stationary"` | The maximum charge level to help reduce battery wear: - `high_capacity` charges to 100% (driver default) - `balanced` charges to 90% - `stationary` charges to 80% (maximum lifespan) **Note:** Regardless of the configured charging profile, the operating system will always report the battery as being charged to 100%. |
+| `hardware.tuxedo-drivers.settings.fn-lock` | `null or boolean` | Enables or disables the laptop keyboard's Function (Fn) lock at boot. When set to `true`, the Fn lock is enabled, allowing the function keys (F1–F12) to control brightness, volume etc. |
+| `hardware.tuxedo-rs.enable` | `boolean` | Whether to enable Rust utilities for interacting with hardware from TUXEDO Computers. |
+| `hardware.tuxedo-rs.tailor-gui.enable` | `boolean` | Whether to enable tailor-gui, an alternative to TUXEDO Control Center, written in Rust. |
+| `hardware.ubertooth.enable` | `boolean` | Whether to enable Ubertooth software and its udev rules. |
+| `hardware.ubertooth.group` | `string` | Group for Ubertooth's udev rules. |
+| `hardware.uinput.enable` | `boolean` | Whether to enable uinput support. |
+| `hardware.uni-sync.devices` | `list of (submodule)` | List of controllers with their configurations. |
+| `hardware.uni-sync.devices.*.channels` | `list of (submodule)` | List of channels connected to the controller. |
+| `hardware.uni-sync.devices.*.channels.*.mode` | `one of "Manual", "PWM"` | "PWM" to enable PWM sync. "Manual" to set speed. |
+| `hardware.uni-sync.devices.*.channels.*.speed` | `signed integer` | Fan speed as percentage (clamped between 0 and 100). |
+| `hardware.uni-sync.devices.*.device_id` | `string` | Unique device ID displayed at each startup. |
+| `hardware.uni-sync.devices.*.sync_rgb` | `boolean` | Enable ARGB header sync. |
+| `hardware.uni-sync.enable` | `boolean` | Whether to enable udev rules and software for Lian Li Uni Controllers. |
+| `hardware.uni-sync.package` | `package` | The uni-sync package to use. |
+| `hardware.usb-modeswitch.enable` | `boolean` | Enable this option to support certain USB WLAN and WWAN adapters. These network adapters initial present themselves as Flash Drives containing their drivers. This option enables automatic switching to the networking mode. |
+| `hardware.usbStorage.manageShutdown` | `boolean` | Enable this option to gracefully spin-down external storage during shutdown. If you suspect improper head parking after poweroff, install `smartmontools` and check for the `Power-Off_Retract_Count` field for an increment. |
+| `hardware.wirelessRegulatoryDatabase` | `boolean` | Whether to enable loading the wireless regulatory database at boot. |
+| `hardware.wooting.enable` | `boolean` | Whether to enable support for Wooting keyboards. |
+| `hardware.xone.enable` | `boolean` | Whether to enable the xone driver for Xbox One and Xbox Series X|S accessories. |
+| `hardware.xpad-noone.enable` | `boolean` | Whether to enable the Xpad driver from the Linux kernel with support for Xbox One controllers removed. |
+| `hardware.xpadneo.enable` | `boolean` | Whether to enable the xpadneo driver for Xbox One wireless controllers. |
+| `hardware.xpadneo.quirks` | `attribute set of 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Controller-specific quirk flags, keyed by MAC address. Flags are combined as a bitmask to address compatibility issues with specific controllers. The value is a sum of individual flag values. For example, to apply flags 1, 2, and 4, use `7` (1 + 2 + 4). To apply flags 2, 4, and 32, use `38` (2 + 4 + 32). See <https://github.com/atar-axis/xpadneo/blob/master/docs/CONFIGURATION.md> for available quirk flags and their values. |
+| `hardware.xpadneo.rumbleAttenuation` | `submodule` | Force feedback attenuation settings. Higher values reduce rumble strength. See <https://github.com/atar-axis/xpadneo/blob/master/docs/CONFIGURATION.md> for more information. |
+| `hardware.xpadneo.rumbleAttenuation.overall` | `integer between 0 and 100 (both inclusive)` | Overall force feedback attenuation as a percentage. `0` means full rumble, `100` means no rumble. Applies to both main and trigger rumble. |
+| `hardware.xpadneo.rumbleAttenuation.triggers` | `null or integer between 0 and 100 (both inclusive)` | Extra attenuation for trigger rumble as a percentage, applied on top of {option}`overall`. For example, `overall = 50` and `triggers = 50` results in 50% main rumble and 25% trigger rumble. Set to `100` to disable trigger rumble while keeping main rumble. `null` means no extra trigger attenuation. |
+| `hardware.xpadneo.settings` | `attribute set of (signed integer or string)` | Kernel module parameters for hid_xpadneo. These are passed directly to the module via modprobe. See <https://github.com/atar-axis/xpadneo/blob/master/docs/CONFIGURATION.md> for available parameters and their values. |

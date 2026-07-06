@@ -5,7 +5,9 @@
 All options under `services.knot-resolver`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.knot-resolver.enable` | | |
-| `services.knot-resolver.managerPackage` | | |
-| `services.knot-resolver.settings` | | |
+| --- | --- | --- |
+| `services.knot-resolver.enable` | `boolean` | Whether to enable knot-resolver (version 6) domain name server. DNSSEC validation is turned on by default. If you want to use knot-resolver 5, please use services.kresd. |
+| `services.knot-resolver.managerPackage` | `package` | The knot-resolver-manager_6 package to use. |
+| `services.knot-resolver.settings` | `open submodule of (YAML 1.1 value)` | Nix-based (RFC 42) configuration for Knot Resolver. For configuration reference (described as YAML) see <https://www.knot-resolver.cz/documentation/latest/config-overview.html> |
+| `services.knot-resolver.settings.network.listen` | `list of (open submodule of (YAML 1.1 value))` | List of interfaces to listen to and its configuration. |
+| `services.knot-resolver.settings.workers` | `value "auto" (singular enum) or (unsigned integer, meaning >=0)` | The number of running kresd (Knot Resolver daemon) workers. If set to 'auto', it is equal to number of CPUs available. |

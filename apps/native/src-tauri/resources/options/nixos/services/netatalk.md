@@ -5,11 +5,8 @@
 All options under `services.netatalk`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.netatalk.enable` | | |
-| `services.netatalk.extmap` | | |
-| `services.netatalk.extraConfig` | | |
-| `services.netatalk.homes` | | |
-| `services.netatalk.port` | | |
-| `services.netatalk.settings` | | |
-| `services.netatalk.volumes` | | |
+| --- | --- | --- |
+| `services.netatalk.enable` | `boolean` | Whether to enable the Netatalk AFP fileserver. |
+| `services.netatalk.extmap` | `strings concatenated with "\n"` | File name extension mappings. See {manpage}`extmap.conf(5)`. for more information. |
+| `services.netatalk.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | TCP port to be used for AFP. |
+| `services.netatalk.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration for Netatalk. See {manpage}`afp.conf(5)`. |

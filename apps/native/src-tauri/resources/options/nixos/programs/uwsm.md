@@ -5,7 +5,11 @@
 All options under `programs.uwsm`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `programs.uwsm.enable` | | |
-| `programs.uwsm.package` | | |
-| `programs.uwsm.waylandCompositors` | | |
+| --- | --- | --- |
+| `programs.uwsm.enable` | `boolean` | Whether to enable uwsm, which wraps standalone Wayland compositors with a set of Systemd units on the fly. This essentially binds the wayland compositor into `graphical-session-pre.target`, `graphical-session.target`, `xdg-desktop-autostart.target`. This is useful for Wayland compositors like Hyprland, Sway, Wayfire, etc. that do not start these targets and services on their own. ::: {.note} You must configure `waylandCompositors` suboptions as well so that UWSM knows which compositors to manage. Additionally, this by default uses `dbus-broker` as the dbus implementation for better compatibility. If you dislike this behavior you can set `services.dbus.implementation = lib.mkForce "dbus"` in your configuration. ::: If you are having trouble starting a service that depends on `graphical-session.target`, while using a WM, enabling this option might help . |
+| `programs.uwsm.package` | `package` | The uwsm package to use. |
+| `programs.uwsm.waylandCompositors` | `attribute set of (submodule)` | Configuration for UWSM-managed Wayland Compositors. This creates a desktop entry file which will be used by Display Managers like GDM, to allow starting the UWSM managed session. |
+| `programs.uwsm.waylandCompositors.<name>.binPath` | `absolute path` | The wayland-compositor binary path that will be called by UWSM. It is recommended to use the `/run/current-system/sw/bin/` path instead of `lib.getExe pkgs.<compositor>` to avoid version mismatch of the compositor used by UWSM and the one installed in the system. |
+| `programs.uwsm.waylandCompositors.<name>.comment` | `string` | The comment field of the desktop entry file. |
+| `programs.uwsm.waylandCompositors.<name>.extraArgs` | `list of string` | Extra command-line arguments pass to to the compsitor. |
+| `programs.uwsm.waylandCompositors.<name>.prettyName` | `string` | The full name of the desktop entry file. |

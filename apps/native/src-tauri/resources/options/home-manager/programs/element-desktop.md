@@ -5,8 +5,8 @@
 All options under `programs.element-desktop`.
 
 | Option | Type | Description |
-| ----------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.element-desktop.enable` | `boolean` | Whether to enable element-desktop. |
 | `programs.element-desktop.package` | `null or package` | The element-desktop package to use. |
-| `programs.element-desktop.profiles` | `attribute set of (JSON value)` | Extra profiles for Element. Those can be accessed using the “–profile $NAME” flag. The same warning and options apply here. |
-| `programs.element-desktop.settings` | `JSON value` | Configuration settings for Element’s default profiles. WARNING: Element doesn’t combine this config with the defaults, so make sure to configure most options. For details about this behavior and available configuration options see: https://github.com/element-hq/element-web/blob/develop/docs/config.md |
+| `programs.element-desktop.profiles` | `attribute set of (JSON value)` | Extra profiles for Element. Those can be accessed using the "--profile $NAME" flag. The same warning and options apply here. |
+| `programs.element-desktop.settings` | `JSON value` | Configuration settings for Element's default profiles. WARNING: Element doesn't combine this config with the defaults, so make sure to configure most options. For details about this behavior and available configuration options see: <https://github.com/element-hq/element-web/blob/develop/docs/config.md> |

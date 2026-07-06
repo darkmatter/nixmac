@@ -5,10 +5,10 @@
 All options under `programs.mods`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---------------- | --------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.mods.enable` | `boolean` | Whether to enable mods. |
 | `programs.mods.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.mods.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
 | `programs.mods.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
 | `programs.mods.package` | `package` | The mods package to use. |
-| `programs.mods.settings` | `YAML 1.1 value` | Configuration written to $XDG_CONFIG_HOME/mods/mods.yml . |
+| `programs.mods.settings` | `YAML 1.1 value` | Configuration written to {file}`$XDG_CONFIG_HOME/mods/mods.yml`. See <https://github.com/charmbracelet/mods/blob/main/config_template.yml> for the full list of options. |

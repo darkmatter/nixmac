@@ -5,8 +5,8 @@
 All options under `services.clight`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.clight.enable` | | |
-| `services.clight.settings` | | |
-| `services.clight.temperature.day` | | |
-| `services.clight.temperature.night` | | |
+| --- | --- | --- |
+| `services.clight.enable` | `boolean` | Whether to enable clight. |
+| `services.clight.settings` | `attribute set of (null or signed integer or string or boolean or floating point number or list of (signed integer or string or boolean or floating point number) or attribute set of (signed integer or string or boolean or floating point number or list of (signed integer or string or boolean or floating point number)))` | Additional configuration to extend clight.conf. See <https://github.com/FedeDP/Clight/blob/master/Extra/clight.conf> for a sample configuration file. |
+| `services.clight.temperature.day` | `signed integer` | Colour temperature to use during the day, between `1000` and `25000` K. |
+| `services.clight.temperature.night` | `signed integer` | Colour temperature to use at night, between `1000` and `25000` K. |

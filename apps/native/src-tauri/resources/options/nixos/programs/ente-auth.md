@@ -5,6 +5,6 @@
 All options under `programs.ente-auth`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `programs.ente-auth.enable` | | |
-| `programs.ente-auth.package` | | |
+| --- | --- | --- |
+| `programs.ente-auth.enable` | `boolean` | Whether to enable Ente Auth. |
+| `programs.ente-auth.package` | `package` | The ente-auth package to use. |

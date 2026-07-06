@@ -5,5 +5,5 @@
 All options under `programs.geary`.
 
 | Option | Type | Description |
-| ----------------------- | ---- | ----------- |
-| `programs.geary.enable` | | |
+| --- | --- | --- |
+| `programs.geary.enable` | `boolean` | Whether to enable Geary, a Mail client for GNOME. |

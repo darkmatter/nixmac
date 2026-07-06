@@ -5,12 +5,12 @@
 All options under `services.owncast`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.owncast.dataDir` | | |
-| `services.owncast.enable` | | |
-| `services.owncast.group` | | |
-| `services.owncast.listen` | | |
-| `services.owncast.openFirewall` | | |
-| `services.owncast.port` | | |
-| `services.owncast.rtmp-port` | | |
-| `services.owncast.user` | | |
+| --- | --- | --- |
+| `services.owncast.dataDir` | `string` | The directory where owncast stores its data files. If left as the default value this directory will automatically be created before the owncast server starts, otherwise the sysadmin is responsible for ensuring the directory exists with appropriate ownership and permissions. |
+| `services.owncast.enable` | `boolean` | Whether to enable owncast, a video live streaming solution. |
+| `services.owncast.group` | `string` | Group under which owncast runs. |
+| `services.owncast.listen` | `string` | The IP address to bind the owncast web server to. |
+| `services.owncast.openFirewall` | `boolean` | Open the appropriate ports in the firewall for owncast. |
+| `services.owncast.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | TCP port where owncast web-gui listens. |
+| `services.owncast.rtmp-port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | TCP port where owncast rtmp service listens. |
+| `services.owncast.user` | `string` | User account under which owncast runs. |

@@ -5,14 +5,14 @@
 All options under `services.dnsdist`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.dnsdist.dnscrypt.certLifetime` | | |
-| `services.dnsdist.dnscrypt.enable` | | |
-| `services.dnsdist.dnscrypt.listenAddress` | | |
-| `services.dnsdist.dnscrypt.listenPort` | | |
-| `services.dnsdist.dnscrypt.providerKey` | | |
-| `services.dnsdist.dnscrypt.providerName` | | |
-| `services.dnsdist.enable` | | |
-| `services.dnsdist.extraConfig` | | |
-| `services.dnsdist.listenAddress` | | |
-| `services.dnsdist.listenPort` | | |
+| --- | --- | --- |
+| `services.dnsdist.dnscrypt.certLifetime` | `positive integer, meaning >0` | The lifetime (in minutes) of the resolver certificate. This will be automatically rotated before expiration. |
+| `services.dnsdist.dnscrypt.enable` | `boolean` | Whether to enable a DNSCrypt endpoint to dnsdist. |
+| `services.dnsdist.dnscrypt.listenAddress` | `string` | Listen IP address of the endpoint |
+| `services.dnsdist.dnscrypt.listenPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listen port of the endpoint |
+| `services.dnsdist.dnscrypt.providerKey` | `null or absolute path` | The filepath to the provider secret key. If not given a new provider key pair will be generated in /var/lib/dnsdist on the first run. ::: {.note} The file must be readable by the dnsdist user/group. ::: |
+| `services.dnsdist.dnscrypt.providerName` | `string` | The name that will be given to this DNSCrypt resolver. ::: {.note} The provider name must start with `2.dnscrypt-cert.`. ::: |
+| `services.dnsdist.enable` | `boolean` | Whether to enable dnsdist domain name server. |
+| `services.dnsdist.extraConfig` | `strings concatenated with "\n"` | Extra lines to be added verbatim to dnsdist.conf. |
+| `services.dnsdist.listenAddress` | `string` | Listen IP address |
+| `services.dnsdist.listenPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listen port |

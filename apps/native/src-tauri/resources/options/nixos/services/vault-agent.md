@@ -5,5 +5,11 @@
 All options under `services.vault-agent`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.vault-agent.instances` | | |
+| --- | --- | --- |
+| `services.vault-agent.instances` | `attribute set of (submodule)` | Attribute set of vault-agent instances. Creates independent `vault-agent-${name}.service` systemd units for each instance defined here. |
+| `services.vault-agent.instances.<name>.enable` | `boolean` | Whether to enable this vault-agent instance. |
+| `services.vault-agent.instances.<name>.group` | `string` | Group under which this instance runs. |
+| `services.vault-agent.instances.<name>.package` | `package` | The vault package to use. |
+| `services.vault-agent.instances.<name>.settings` | `open submodule of (JSON value)` | Free-form settings written directly to the {file}`config.json` file. Refer to <https://developer.hashicorp.com/vault/docs/agent#configuration-file-options> for supported values. ::: {.note} Resulting format is JSON not HCL. Refer to <https://www.hcl2json.com/> if you are unsure how to convert HCL options to JSON. ::: |
+| `services.vault-agent.instances.<name>.settings.pid_file` | `string` | Path to use for the pid file. |
+| `services.vault-agent.instances.<name>.user` | `string` | User under which this instance runs. |

@@ -5,12 +5,12 @@
 All options under `services.pdudaemon`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.pdudaemon.bindAddress` | | |
-| `services.pdudaemon.enable` | | |
-| `services.pdudaemon.listener` | | |
-| `services.pdudaemon.logLevel` | | |
-| `services.pdudaemon.openFirewall` | | |
-| `services.pdudaemon.package` | | |
-| `services.pdudaemon.pdus` | | |
-| `services.pdudaemon.port` | | |
+| --- | --- | --- |
+| `services.pdudaemon.bindAddress` | `string` | Bind address for the PDUDaemon. |
+| `services.pdudaemon.enable` | `boolean` | Whether to enable PDUDaemon. |
+| `services.pdudaemon.listener` | `one of "http", "tcp"` | Which kind of listener to provide. |
+| `services.pdudaemon.logLevel` | `one of "debug", "info", "warning", "error"` | PDUDaemon log level. |
+| `services.pdudaemon.openFirewall` | `boolean` | Whether to automatically open the PDUDaemon listen port in the firewall. |
+| `services.pdudaemon.package` | `package` | The pdudaemon package to use. |
+| `services.pdudaemon.pdus` | `attribute set of anything` | Structural pdus section of PDUDaemon's pdudaemon.conf. Refer to <https://github.com/pdudaemon/pdudaemon/blob/main/share/pdudaemon.conf> for more examples. |
+| `services.pdudaemon.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to bind to. |

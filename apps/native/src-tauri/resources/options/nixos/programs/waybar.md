@@ -5,7 +5,7 @@
 All options under `programs.waybar`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `programs.waybar.enable` | | |
-| `programs.waybar.package` | | |
-| `programs.waybar.systemd.target` | | |
+| --- | --- | --- |
+| `programs.waybar.enable` | `boolean` | Whether to enable waybar, a highly customizable Wayland bar for Sway and Wlroots based compositors. |
+| `programs.waybar.package` | `package` | The waybar package to use. |
+| `programs.waybar.systemd.target` | `string` | The systemd target that will automatically start the Waybar service. |

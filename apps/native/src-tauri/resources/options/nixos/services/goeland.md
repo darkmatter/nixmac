@@ -5,8 +5,8 @@
 All options under `services.goeland`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.goeland.enable` | | |
-| `services.goeland.schedule` | | |
-| `services.goeland.settings` | | |
-| `services.goeland.stateDir` | | |
+| --- | --- | --- |
+| `services.goeland.enable` | `boolean` | Whether to enable goeland, an alternative to rss2email. |
+| `services.goeland.schedule` | `string` | How often to run goeland, in systemd time format. |
+| `services.goeland.settings` | `TOML value` | Configuration of goeland. See the [example config file](https://github.com/slurdge/goeland/blob/master/cmd/asset/config.default.toml) for the available options. |
+| `services.goeland.stateDir` | `absolute path` | The data directory for goeland where the database will reside if using the unseen filter. If left as the default value this directory will automatically be created before the goeland server starts, otherwise you are responsible for ensuring the directory exists with appropriate ownership and permissions. |

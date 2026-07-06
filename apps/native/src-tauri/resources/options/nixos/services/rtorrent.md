@@ -5,15 +5,15 @@
 All options under `services.rtorrent`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.rtorrent.configText` | | |
-| `services.rtorrent.dataDir` | | |
-| `services.rtorrent.dataPermissions` | | |
-| `services.rtorrent.downloadDir` | | |
-| `services.rtorrent.enable` | | |
-| `services.rtorrent.group` | | |
-| `services.rtorrent.openFirewall` | | |
-| `services.rtorrent.package` | | |
-| `services.rtorrent.port` | | |
-| `services.rtorrent.rpcSocket` | | |
-| `services.rtorrent.user` | | |
+| --- | --- | --- |
+| `services.rtorrent.configText` | `strings concatenated with "\n"` | The content of {file}`rtorrent.rc`. The [modernized configuration template](https://rtorrent-docs.readthedocs.io/en/latest/cookbook.html#modernized-configuration-template) with the values specified in this module will be prepended using mkBefore. You can use mkForce to overwrite the config completely. |
+| `services.rtorrent.dataDir` | `string` | The directory where rtorrent stores its data files. |
+| `services.rtorrent.dataPermissions` | `string` | Unix Permissions in octal on the rtorrent directory. |
+| `services.rtorrent.downloadDir` | `string` | Where to put downloaded files. |
+| `services.rtorrent.enable` | `boolean` | Whether to enable rtorrent. |
+| `services.rtorrent.group` | `string` | Group under which rtorrent runs. |
+| `services.rtorrent.openFirewall` | `boolean` | Whether to open the firewall for the port in {option}`services.rtorrent.port`. |
+| `services.rtorrent.package` | `package` | The rtorrent package to use. |
+| `services.rtorrent.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The rtorrent port. |
+| `services.rtorrent.rpcSocket` | `string` | RPC socket path. |
+| `services.rtorrent.user` | `string` | User account under which rtorrent runs. |

@@ -5,26 +5,26 @@
 All options under `xdg`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `xdg.autostart.enable` | | |
-| `xdg.icons.enable` | | |
-| `xdg.icons.fallbackCursorThemes` | | |
-| `xdg.menus.enable` | | |
-| `xdg.mime.addedAssociations` | | |
-| `xdg.mime.defaultApplications` | | |
-| `xdg.mime.enable` | | |
-| `xdg.mime.removedAssociations` | | |
-| `xdg.portal.config` | | |
-| `xdg.portal.configPackages` | | |
-| `xdg.portal.enable` | | |
-| `xdg.portal.extraPortals` | | |
-| `xdg.portal.gtkUsePortal` | | |
-| `xdg.portal.lxqt.enable` | | |
-| `xdg.portal.lxqt.styles` | | |
-| `xdg.portal.wlr.enable` | | |
-| `xdg.portal.wlr.settings` | | |
-| `xdg.portal.xdgOpenUsePortal` | | |
-| `xdg.sounds.enable` | | |
-| `xdg.terminal-exec.enable` | | |
-| `xdg.terminal-exec.package` | | |
-| `xdg.terminal-exec.settings` | | |
+| --- | --- | --- |
+| `xdg.autostart.enable` | `boolean` | Whether to enable auto-starting of desktop applications according to the [XDG Autostart specification](https://specifications.freedesktop.org/autostart-spec/latest).. |
+| `xdg.autostart.install` | `boolean` | Whether to enable install desktop files following the [XDG Autostart specification](https://specifications.freedesktop.org/autostart-spec/latest) into `/etc/xdg/autostart/`. These are handled by your desktop environment or [`systemd-xdg-autostart-generator`](https://www.freedesktop.org/software/systemd/man/latest/systemd-xdg-autostart-generator.html). . |
+| `xdg.icons.enable` | `boolean` | Whether to install files to support the [XDG Icon Theme specification](https://specifications.freedesktop.org/icon-theme-spec/latest). |
+| `xdg.icons.fallbackCursorThemes` | `list of string` | Names of the fallback cursor themes, in order of preference, to be used when no other icon source can be found. Set to `[]` to disable the fallback entirely. |
+| `xdg.menus.enable` | `boolean` | Whether to install files to support the [XDG Desktop Menu specification](https://specifications.freedesktop.org/menu-spec/latest). |
+| `xdg.mime.addedAssociations` | `attribute set of (string or ((list of string) or string) convertible to it)` | Adds associations between mimetypes and applications. See the [specifications](https://specifications.freedesktop.org/mime-apps-spec/latest/associations) for more information. Globs in all variations are supported. |
+| `xdg.mime.defaultApplications` | `attribute set of (string or ((list of string) or string) convertible to it)` | Sets the default applications for given mimetypes. See the [specifications](https://specifications.freedesktop.org/mime-apps-spec/latest/default) for more information. Globs in all variations are supported. |
+| `xdg.mime.enable` | `boolean` | Whether to install files to support the [XDG Shared MIME-info specification](https://specifications.freedesktop.org/shared-mime-info-spec/latest) and the [XDG MIME Applications specification](https://specifications.freedesktop.org/mime-apps-spec/latest). |
+| `xdg.mime.removedAssociations` | `attribute set of (string or ((list of string) or string) convertible to it)` | Removes associations between mimetypes and applications. See the [specifications](https://specifications.freedesktop.org/mime-apps-spec/latest/associations) for more information. Globs in all variations are supported. |
+| `xdg.portal.config` | `attribute set of attribute set of (string or ((list of string) or string) convertible to it)` | Sets which portal backend should be used to provide the implementation for the requested interface. For details check {manpage}`portals.conf(5)`. Configs will be linked to {file}`/etc/xdg/xdg-desktop-portal/` with the name {file}`$desktop-portals.conf` for {file}`xdg.portal.config.$desktop` and {file}`portals.conf` for {file}`xdg.portal.config.common` as an exception. |
+| `xdg.portal.configPackages` | `list of package` | List of packages that provide XDG desktop portal configuration, usually in the form of {file}`share/xdg-desktop-portal/$desktop-portals.conf`. Note that configs in `xdg.portal.config` will be preferred if set. |
+| `xdg.portal.enable` | `boolean` | Whether to enable [xdg desktop integration](https://github.com/flatpak/xdg-desktop-portal). |
+| `xdg.portal.extraPortals` | `list of package` | List of additional portals to add to path. Portals allow interaction with system, like choosing files or taking screenshots. At minimum, a desktop portal implementation should be listed. GNOME and KDE already adds `xdg-desktop-portal-gtk`; and `xdg-desktop-portal-kde` respectively. On other desktop environments you probably want to add them yourself. |
+| `xdg.portal.lxqt.enable` | `boolean` | Whether to enable the desktop portal for the LXQt desktop environment. This will add the `lxqt.xdg-desktop-portal-lxqt` package (with the extra Qt styles) into the {option}`xdg.portal.extraPortals` option . |
+| `xdg.portal.lxqt.styles` | `list of package` | Extra Qt styles that will be available to the `lxqt.xdg-desktop-portal-lxqt`. |
+| `xdg.portal.wlr.enable` | `boolean` | Whether to enable desktop portal for wlroots-based desktops. This will add the `xdg-desktop-portal-wlr` package into the {option}`xdg.portal.extraPortals` option, and provide the configuration file . |
+| `xdg.portal.wlr.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration for `xdg-desktop-portal-wlr`. See {manpage}`xdg-desktop-portal-wlr(5)` for supported values. |
+| `xdg.portal.xdgOpenUsePortal` | `boolean` | Sets environment variable `NIXOS_XDG_OPEN_USE_PORTAL` to `1` This will make `xdg-open` use the portal to open programs, which resolves bugs involving programs opening inside FHS envs or with unexpected env vars set from wrappers. See [#160923](https://github.com/NixOS/nixpkgs/issues/160923) for more info. |
+| `xdg.sounds.enable` | `boolean` | Whether to install files to support the [XDG Sound Theme specification](https://www.freedesktop.org/wiki/Specifications/sound-theme-spec/). |
+| `xdg.terminal-exec.enable` | `boolean` | Whether to enable xdg-terminal-exec, the [proposed](https://gitlab.freedesktop.org/xdg/xdg-specs/-/merge_requests/46) Default Terminal Execution Specification. |
+| `xdg.terminal-exec.package` | `package` | The xdg-terminal-exec package to use. |
+| `xdg.terminal-exec.settings` | `attribute set of list of string` | Configuration options for the Default Terminal Execution Specification. The keys are the desktop environments that are matched (case-insensitively) against `$XDG_CURRENT_DESKTOP`, or `default` which is used when the current desktop environment is not found in the configuration. The values are a list of terminals' [desktop file IDs](https://specifications.freedesktop.org/desktop-entry-spec/latest/ar01s02.html#desktop-file-id) to try in order of decreasing priority. |

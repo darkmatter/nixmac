@@ -5,7 +5,9 @@
 All options under `services.networkd-dispatcher`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.networkd-dispatcher.enable` | | |
-| `services.networkd-dispatcher.extraArgs` | | |
-| `services.networkd-dispatcher.rules` | | |
+| --- | --- | --- |
+| `services.networkd-dispatcher.enable` | `boolean` | Whether to enable Networkd-dispatcher service for systemd-networkd connection status change. See [upstream instructions](https://gitlab.com/craftyguy/networkd-dispatcher) for usage . |
+| `services.networkd-dispatcher.extraArgs` | `list of string` | Extra arguments to pass to the networkd-dispatcher command. |
+| `services.networkd-dispatcher.rules` | `attribute set of (submodule)` | Declarative configuration of networkd-dispatcher rules. See [upstream instructions](https://gitlab.com/craftyguy/networkd-dispatcher) for an introduction and example scripts. |
+| `services.networkd-dispatcher.rules.<name>.onState` | `list of (one of "routable", "dormant", "no-carrier", "off", "carrier", "degraded", "configuring", "configured", "enslaved")` | List of names of the systemd-networkd operational states which should trigger the script. See {manpage}`networkctl(1)` for a description of the specific state type. |
+| `services.networkd-dispatcher.rules.<name>.script` | `strings concatenated with "\n"` | Shell commands executed on specified operational states. |

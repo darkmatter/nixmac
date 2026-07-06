@@ -5,9 +5,9 @@
 All options under `services.ipfs`.
 
 | Option | Type | Description |
-| --------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| --- | --- | --- |
 | `services.ipfs.enable` | `boolean` | Whether to enable the ipfs daemon. |
 | `services.ipfs.enableGarbageCollection` | `boolean` | Passes --enable-gc flag to ipfs daemon. |
 | `services.ipfs.ipfsPath` | `null or absolute path` | Set the IPFS_PATH environment variable. |
-| `services.ipfs.logFile` | `null or absolute path` | The logfile to use for the ipfs service. Alternatively sudo launchctl debug system/org.nixos.ipfs --stderr can be used to stream the logs to a shell after restarting the service with sudo launchctl kickstart -k system/org.nixos.ipfs . |
+| `services.ipfs.logFile` | `null or absolute path` | The logfile to use for the ipfs service. Alternatively {command}`sudo launchctl debug system/org.nixos.ipfs --stderr` can be used to stream the logs to a shell after restarting the service with {command}`sudo launchctl kickstart -k system/org.nixos.ipfs`. |
 | `services.ipfs.package` | `package` | The ipfs package to use. |

@@ -5,5 +5,5 @@
 All options under `programs.udevil`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `programs.udevil.enable` | | |
+| --- | --- | --- |
+| `programs.udevil.enable` | `boolean` | Whether to enable udevil, to mount filesystems without password. |

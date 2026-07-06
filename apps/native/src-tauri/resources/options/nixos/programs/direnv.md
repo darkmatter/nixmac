@@ -5,19 +5,18 @@
 All options under `programs.direnv`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `programs.direnv.angrr.autoUse` | | |
-| `programs.direnv.angrr.enable` | | |
-| `programs.direnv.direnvrcExtra` | | |
-| `programs.direnv.enable` | | |
-| `programs.direnv.enableBashIntegration` | | |
-| `programs.direnv.enableFishIntegration` | | |
-| `programs.direnv.enableXonshIntegration` | | |
-| `programs.direnv.enableZshIntegration` | | |
-| `programs.direnv.finalPackage` | | |
-| `programs.direnv.loadInNixShell` | | |
-| `programs.direnv.nix-direnv.enable` | | |
-| `programs.direnv.nix-direnv.package` | | |
-| `programs.direnv.package` | | |
-| `programs.direnv.settings` | | |
-| `programs.direnv.silent` | | |
+| --- | --- | --- |
+| `programs.direnv.angrr.autoUse` | `boolean` | Whether to automatically use angrr before loading .envrc. |
+| `programs.direnv.angrr.enable` | `boolean` | Whether to enable angrr direnv integration. |
+| `programs.direnv.direnvrcExtra` | `strings concatenated with "\n"` | Extra lines to append to the sourced direnvrc |
+| `programs.direnv.enable` | `boolean` | Whether to enable direnv integration. Takes care of both installation and setting up the sourcing of the shell. Additionally enables nix-direnv integration. Note that you need to logout and login for this change to apply . |
+| `programs.direnv.enableBashIntegration` | `boolean` | Whether to enable Bash integration . |
+| `programs.direnv.enableFishIntegration` | `boolean` | Whether to enable Fish integration . |
+| `programs.direnv.enableXonshIntegration` | `boolean` | Whether to enable Xonsh integration . |
+| `programs.direnv.enableZshIntegration` | `boolean` | Whether to enable Zsh integration . |
+| `programs.direnv.loadInNixShell` | `boolean` | Whether to enable loading direnv in `nix-shell` `nix shell` or `nix develop` . |
+| `programs.direnv.nix-direnv.enable` | `boolean` | Whether to enable a faster, persistent implementation of use_nix and use_flake, to replace the builtin one . |
+| `programs.direnv.nix-direnv.package` | `package` | The nix-direnv package to use |
+| `programs.direnv.package` | `package` | The direnv package to use. |
+| `programs.direnv.settings` | `TOML value` | Direnv configuration. Refer to {manpage}`direnv.toml(1)`. |
+| `programs.direnv.silent` | `boolean` | Whether to enable the hiding of direnv logging . |

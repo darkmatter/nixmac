@@ -5,9 +5,11 @@
 All options under `programs.gradle`.
 
 | Option | Type | Description |
-| ----------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.gradle.enable` | `boolean` | Whether to enable Gradle Build Tool. |
-| `programs.gradle.home` | `string` | The Gradle home directory, relative to home.homeDirectory . |
-| `programs.gradle.initScripts` | `attribute set of (submodule)` | Definition of init scripts to link into the Gradle home directory. |
+| `programs.gradle.home` | `string` | The Gradle home directory, relative to [](#opt-home.homeDirectory). If set, the {env}`GRADLE_USER_HOME` environment variable will be set accordingly. Defaults to {file}`.gradle`. |
+| `programs.gradle.initScripts` | `attribute set of (submodule)` | Definition of init scripts to link into the Gradle home directory. For more information about init scripts, including naming conventions see https://docs.gradle.org/current/userguide/init_scripts.html. |
+| `programs.gradle.initScripts.<name>.source` | `absolute path` | Path of the init script file. If `text` is non-null then this option will automatically point to a file containing that text. |
+| `programs.gradle.initScripts.<name>.text` | `null or strings concatenated with "\n"` | Text of the init script file. if this option is null then `source` must be set. |
 | `programs.gradle.package` | `null or package` | The gradle package to use. |
-| `programs.gradle.settings` | `open submodule of attribute set of (string, package, bool, int or float)` | Key value pairs to write to gradle.properties in the Gradle home directory. |
+| `programs.gradle.settings` | `open submodule of attribute set of (string, package, bool, int or float)` | Key value pairs to write to {file}`gradle.properties` in the Gradle home directory. |

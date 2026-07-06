@@ -5,391 +5,426 @@
 All options under `boot`.
 
 | Option | Type | Description |
-| ----------------------------------------------------------------------- | ---- | ----------- |
-| `boot.bcache.enable` | | |
-| `boot.bcachefs.modulePackage` | | |
-| `boot.bcachefs.package` | | |
-| `boot.binfmt.addEmulatedSystemsToNixSandbox` | | |
-| `boot.binfmt.emulatedSystems` | | |
-| `boot.binfmt.preferStaticEmulators` | | |
-| `boot.binfmt.registrations` | | |
-| `boot.binfmtMiscRegistrations` | | |
-| `boot.blacklistedKernelModules` | | |
-| `boot.bootMount` | | |
-| `boot.bootspec.enable` | | |
-| `boot.bootspec.enableValidation` | | |
-| `boot.bootspec.extensions` | | |
-| `boot.bootspec.filename` | | |
-| `boot.bootspec.package` | | |
-| `boot.bootspec.validator` | | |
-| `boot.bootspec.writer` | | |
-| `boot.cleanTmpDir` | | |
-| `boot.consoleLogLevel` | | |
-| `boot.copyKernels` | | |
-| `boot.crashDump.enable` | | |
-| `boot.crashDump.kernelParams` | | |
-| `boot.crashDump.reservedMemory` | | |
-| `boot.devShmSize` | | |
-| `boot.devSize` | | |
-| `boot.earlyVconsoleSetup` | | |
-| `boot.enableContainers` | | |
-| `boot.extraGrubEntries` | | |
-| `boot.extraGrubEntriesBeforeNixos` | | |
-| `boot.extraModprobeConfig` | | |
-| `boot.extraModulePackages` | | |
-| `boot.extraSystemdUnitPaths` | | |
-| `boot.extraTTYs` | | |
-| `boot.growPartition` | | |
-| `boot.grubDevice` | | |
-| `boot.grubSplashImage` | | |
-| `boot.hardwareScan` | | |
-| `boot.initrd.allowMissingModules` | | |
-| `boot.initrd.availableKernelModules` | | |
-| `boot.initrd.checkJournalingFS` | | |
-| `boot.initrd.clevis.devices` | | |
-| `boot.initrd.clevis.enable` | | |
-| `boot.initrd.clevis.package` | | |
-| `boot.initrd.clevis.useTang` | | |
-| `boot.initrd.clevisLuksAskpass.enable` | | |
-| `boot.initrd.clevisLuksAskpass.package` | | |
-| `boot.initrd.clevisLuksAskpass.useTang` | | |
-| `boot.initrd.compressor` | | |
-| `boot.initrd.compressorArgs` | | |
-| `boot.initrd.enable` | | |
-| `boot.initrd.extraFiles` | | |
-| `boot.initrd.extraFirmwarePaths` | | |
-| `boot.initrd.extraUdevRulesCommands` | | |
-| `boot.initrd.extraUtilsCommands` | | |
-| `boot.initrd.extraUtilsCommandsTest` | | |
-| `boot.initrd.includeDefaultModules` | | |
-| `boot.initrd.kernelModules` | | |
-| `boot.initrd.luks.cryptoModules` | | |
-| `boot.initrd.luks.devices` | | |
-| `boot.initrd.luks.enable` | | |
-| `boot.initrd.luks.fido2Support` | | |
-| `boot.initrd.luks.forceLuksSupportInInitrd` | | |
-| `boot.initrd.luks.gpgSupport` | | |
-| `boot.initrd.luks.mitigateDMAAttacks` | | |
-| `boot.initrd.luks.reusePassphrases` | | |
-| `boot.initrd.luks.yubikeySupport` | | |
-| `boot.initrd.mdadmConf` | | |
-| `boot.initrd.network.enable` | | |
-| `boot.initrd.network.flushBeforeStage2` | | |
-| `boot.initrd.network.ifstate.allowIfstateToDrasticlyIncreaseInitrdSize` | | |
-| `boot.initrd.network.ifstate.cleanupSettings` | | |
-| `boot.initrd.network.ifstate.enable` | | |
-| `boot.initrd.network.ifstate.package` | | |
-| `boot.initrd.network.ifstate.settings` | | |
-| `boot.initrd.network.openvpn.configuration` | | |
-| `boot.initrd.network.openvpn.enable` | | |
-| `boot.initrd.network.postCommands` | | |
-| `boot.initrd.network.ssh.authorizedKeyFiles` | | |
-| `boot.initrd.network.ssh.authorizedKeys` | | |
-| `boot.initrd.network.ssh.enable` | | |
-| `boot.initrd.network.ssh.extraConfig` | | |
-| `boot.initrd.network.ssh.hostDSSKey` | | |
-| `boot.initrd.network.ssh.hostECDSAKey` | | |
-| `boot.initrd.network.ssh.hostKeys` | | |
-| `boot.initrd.network.ssh.hostRSAKey` | | |
-| `boot.initrd.network.ssh.ignoreEmptyHostKeys` | | |
-| `boot.initrd.network.ssh.port` | | |
-| `boot.initrd.network.ssh.shell` | | |
-| `boot.initrd.network.udhcpc.enable` | | |
-| `boot.initrd.network.udhcpc.extraArgs` | | |
-| `boot.initrd.nix-store-veritysetup.enable` | | |
-| `boot.initrd.osRelease` | | |
-| `boot.initrd.postDeviceCommands` | | |
-| `boot.initrd.postMountCommands` | | |
-| `boot.initrd.postResumeCommands` | | |
-| `boot.initrd.preDeviceCommands` | | |
-| `boot.initrd.preFailCommands` | | |
-| `boot.initrd.preLVMCommands` | | |
-| `boot.initrd.prepend` | | |
-| `boot.initrd.secrets` | | |
-| `boot.initrd.services.bcache.enable` | | |
-| `boot.initrd.services.lvm.enable` | | |
-| `boot.initrd.services.resolved.enable` | | |
-| `boot.initrd.services.swraid.enable` | | |
-| `boot.initrd.services.swraid.mdadmConf` | | |
-| `boot.initrd.services.udev.binPackages` | | |
-| `boot.initrd.services.udev.packages` | | |
-| `boot.initrd.services.udev.rules` | | |
-| `boot.initrd.stage1Greeting` | | |
-| `boot.initrd.supportedFilesystems` | | |
-| `boot.initrd.systemd.additionalUpstreamUnits` | | |
-| `boot.initrd.systemd.automounts` | | |
-| `boot.initrd.systemd.contents` | | |
-| `boot.initrd.systemd.dbus.enable` | | |
-| `boot.initrd.systemd.dmVerity.enable` | | |
-| `boot.initrd.systemd.emergencyAccess` | | |
-| `boot.initrd.systemd.enable` | | |
-| `boot.initrd.systemd.enableTpm2` | | |
-| `boot.initrd.systemd.extraBin` | | |
-| `boot.initrd.systemd.extraConfig` | | |
-| `boot.initrd.systemd.fido2.enable` | | |
-| `boot.initrd.systemd.groups` | | |
-| `boot.initrd.systemd.initrdBin` | | |
-| `boot.initrd.systemd.managerEnvironment` | | |
-| `boot.initrd.systemd.mounts` | | |
-| `boot.initrd.systemd.network.config` | | |
-| `boot.initrd.systemd.network.enable` | | |
-| `boot.initrd.systemd.network.links` | | |
-| `boot.initrd.systemd.network.netdevs` | | |
-| `boot.initrd.systemd.network.networks` | | |
-| `boot.initrd.systemd.network.units` | | |
-| `boot.initrd.systemd.network.wait-online.anyInterface` | | |
-| `boot.initrd.systemd.network.wait-online.enable` | | |
-| `boot.initrd.systemd.network.wait-online.extraArgs` | | |
-| `boot.initrd.systemd.network.wait-online.ignoredInterfaces` | | |
-| `boot.initrd.systemd.network.wait-online.timeout` | | |
-| `boot.initrd.systemd.package` | | |
-| `boot.initrd.systemd.packages` | | |
-| `boot.initrd.systemd.paths` | | |
-| `boot.initrd.systemd.repart.device` | | |
-| `boot.initrd.systemd.repart.discard` | | |
-| `boot.initrd.systemd.repart.empty` | | |
-| `boot.initrd.systemd.repart.enable` | | |
-| `boot.initrd.systemd.repart.extraArgs` | | |
-| `boot.initrd.systemd.root` | | |
-| `boot.initrd.systemd.services` | | |
-| `boot.initrd.systemd.settings.Manager` | | |
-| `boot.initrd.systemd.shell.enable` | | |
-| `boot.initrd.systemd.slices` | | |
-| `boot.initrd.systemd.sockets` | | |
-| `boot.initrd.systemd.storePaths` | | |
-| `boot.initrd.systemd.strip` | | |
-| `boot.initrd.systemd.suppressedStorePaths` | | |
-| `boot.initrd.systemd.suppressedUnits` | | |
-| `boot.initrd.systemd.targets` | | |
-| `boot.initrd.systemd.timers` | | |
-| `boot.initrd.systemd.tmpfiles.settings` | | |
-| `boot.initrd.systemd.tpm2.enable` | | |
-| `boot.initrd.systemd.tpm2.pcrphases.enable` | | |
-| `boot.initrd.systemd.units` | | |
-| `boot.initrd.systemd.users` | | |
-| `boot.initrd.unl0kr.allowVendorDrivers` | | |
-| `boot.initrd.unl0kr.enable` | | |
-| `boot.initrd.unl0kr.package` | | |
-| `boot.initrd.unl0kr.settings` | | |
-| `boot.initrd.verbose` | | |
-| `boot.isContainer` | | |
-| `boot.isNspawnContainer` | | |
-| `boot.iscsi-initiator.discoverPortal` | | |
-| `boot.iscsi-initiator.extraConfig` | | |
-| `boot.iscsi-initiator.extraConfigFile` | | |
-| `boot.iscsi-initiator.extraIscsiCommands` | | |
-| `boot.iscsi-initiator.logLevel` | | |
-| `boot.iscsi-initiator.loginAll` | | |
-| `boot.iscsi-initiator.name` | | |
-| `boot.iscsi-initiator.target` | | |
-| `boot.kernel.enable` | | |
-| `boot.kernel.features` | | |
-| `boot.kernel.randstructSeed` | | |
-| `boot.kernel.sysctl` | | |
-| `boot.kernel.sysfs` | | |
-| `boot.kernelModules` | | |
-| `boot.kernelPackages` | | |
-| `boot.kernelParams` | | |
-| `boot.kernelPatches` | | |
-| `boot.kexec.enable` | | |
-| `boot.loader.efi.canTouchEfiVariables` | | |
-| `boot.loader.efi.efiSysMountPoint` | | |
-| `boot.loader.external.enable` | | |
-| `boot.loader.external.installHook` | | |
-| `boot.loader.generationsDir.copyKernels` | | |
-| `boot.loader.generationsDir.enable` | | |
-| `boot.loader.generic-extlinux-compatible.configurationLimit` | | |
-| `boot.loader.generic-extlinux-compatible.enable` | | |
-| `boot.loader.generic-extlinux-compatible.mirroredBoots` | | |
-| `boot.loader.generic-extlinux-compatible.populateCmd` | | |
-| `boot.loader.generic-extlinux-compatible.useGenerationDeviceTree` | | |
-| `boot.loader.grub.backgroundColor` | | |
-| `boot.loader.grub.bootDevice` | | |
-| `boot.loader.grub.configurationLimit` | | |
-| `boot.loader.grub.configurationName` | | |
-| `boot.loader.grub.copyKernels` | | |
-| `boot.loader.grub.default` | | |
-| `boot.loader.grub.device` | | |
-| `boot.loader.grub.devices` | | |
-| `boot.loader.grub.efiInstallAsRemovable` | | |
-| `boot.loader.grub.efiSupport` | | |
-| `boot.loader.grub.enable` | | |
-| `boot.loader.grub.enableCryptodisk` | | |
-| `boot.loader.grub.entryOptions` | | |
-| `boot.loader.grub.extraConfig` | | |
-| `boot.loader.grub.extraEntries` | | |
-| `boot.loader.grub.extraEntriesBeforeNixOS` | | |
-| `boot.loader.grub.extraFiles` | | |
-| `boot.loader.grub.extraGrubInstallArgs` | | |
-| `boot.loader.grub.extraInitrd` | | |
-| `boot.loader.grub.extraInstallCommands` | | |
-| `boot.loader.grub.extraPerEntryConfig` | | |
-| `boot.loader.grub.extraPrepareConfig` | | |
-| `boot.loader.grub.font` | | |
-| `boot.loader.grub.fontSize` | | |
-| `boot.loader.grub.forceInstall` | | |
-| `boot.loader.grub.forcei686` | | |
-| `boot.loader.grub.fsIdentifier` | | |
-| `boot.loader.grub.gfxmodeBios` | | |
-| `boot.loader.grub.gfxmodeEfi` | | |
-| `boot.loader.grub.gfxpayloadBios` | | |
-| `boot.loader.grub.gfxpayloadEfi` | | |
-| `boot.loader.grub.ipxe` | | |
-| `boot.loader.grub.memtest86.enable` | | |
-| `boot.loader.grub.memtest86.params` | | |
-| `boot.loader.grub.mirroredBoots` | | |
-| `boot.loader.grub.splashImage` | | |
-| `boot.loader.grub.splashMode` | | |
-| `boot.loader.grub.storePath` | | |
-| `boot.loader.grub.subEntryOptions` | | |
-| `boot.loader.grub.theme` | | |
-| `boot.loader.grub.timeout` | | |
-| `boot.loader.grub.timeoutStyle` | | |
-| `boot.loader.grub.trustedBoot` | | |
-| `boot.loader.grub.useOSProber` | | |
-| `boot.loader.grub.users` | | |
-| `boot.loader.grub.version` | | |
-| `boot.loader.grub.zfsPackage` | | |
-| `boot.loader.grub.zfsSupport` | | |
-| `boot.loader.gummiboot.enable` | | |
-| `boot.loader.gummiboot.timeout` | | |
-| `boot.loader.initScript.enable` | | |
-| `boot.loader.limine.additionalFiles` | | |
-| `boot.loader.limine.biosDevice` | | |
-| `boot.loader.limine.biosSupport` | | |
-| `boot.loader.limine.efiInstallAsRemovable` | | |
-| `boot.loader.limine.efiSupport` | | |
-| `boot.loader.limine.enable` | | |
-| `boot.loader.limine.enableEditor` | | |
-| `boot.loader.limine.enrollConfig` | | |
-| `boot.loader.limine.extraConfig` | | |
-| `boot.loader.limine.extraEntries` | | |
-| `boot.loader.limine.force` | | |
-| `boot.loader.limine.forceMbr` | | |
-| `boot.loader.limine.maxGenerations` | | |
-| `boot.loader.limine.package` | | |
-| `boot.loader.limine.panicOnChecksumMismatch` | | |
-| `boot.loader.limine.partitionIndex` | | |
-| `boot.loader.limine.resolution` | | |
-| `boot.loader.limine.secureBoot.autoEnrollKeys.enable` | | |
-| `boot.loader.limine.secureBoot.autoEnrollKeys.extraArgs` | | |
-| `boot.loader.limine.secureBoot.autoGenerateKeys` | | |
-| `boot.loader.limine.secureBoot.enable` | | |
-| `boot.loader.limine.secureBoot.sbctl` | | |
-| `boot.loader.limine.style.backdrop` | | |
-| `boot.loader.limine.style.graphicalTerminal.background` | | |
-| `boot.loader.limine.style.graphicalTerminal.brightBackground` | | |
-| `boot.loader.limine.style.graphicalTerminal.brightForeground` | | |
-| `boot.loader.limine.style.graphicalTerminal.brightPalette` | | |
-| `boot.loader.limine.style.graphicalTerminal.font.scale` | | |
-| `boot.loader.limine.style.graphicalTerminal.font.spacing` | | |
-| `boot.loader.limine.style.graphicalTerminal.foreground` | | |
-| `boot.loader.limine.style.graphicalTerminal.margin` | | |
-| `boot.loader.limine.style.graphicalTerminal.marginGradient` | | |
-| `boot.loader.limine.style.graphicalTerminal.palette` | | |
-| `boot.loader.limine.style.interface.branding` | | |
-| `boot.loader.limine.style.interface.brandingColor` | | |
-| `boot.loader.limine.style.interface.helpColor` | | |
-| `boot.loader.limine.style.interface.helpColorBright` | | |
-| `boot.loader.limine.style.interface.helpHidden` | | |
-| `boot.loader.limine.style.interface.resolution` | | |
-| `boot.loader.limine.style.wallpaperStyle` | | |
-| `boot.loader.limine.style.wallpapers` | | |
-| `boot.loader.limine.validateChecksums` | | |
-| `boot.loader.raspberryPi` | | |
-| `boot.loader.refind.additionalFiles` | | |
-| `boot.loader.refind.efiInstallAsRemovable` | | |
-| `boot.loader.refind.enable` | | |
-| `boot.loader.refind.extraConfig` | | |
-| `boot.loader.refind.maxGenerations` | | |
-| `boot.loader.refind.package` | | |
-| `boot.loader.supportsInitrdSecrets` | | |
-| `boot.loader.systemd-boot.configurationLimit` | | |
-| `boot.loader.systemd-boot.consoleMode` | | |
-| `boot.loader.systemd-boot.editor` | | |
-| `boot.loader.systemd-boot.edk2-uefi-shell.enable` | | |
-| `boot.loader.systemd-boot.edk2-uefi-shell.sortKey` | | |
-| `boot.loader.systemd-boot.enable` | | |
-| `boot.loader.systemd-boot.extraEntries` | | |
-| `boot.loader.systemd-boot.extraFiles` | | |
-| `boot.loader.systemd-boot.extraInstallCommands` | | |
-| `boot.loader.systemd-boot.graceful` | | |
-| `boot.loader.systemd-boot.installDeviceTree` | | |
-| `boot.loader.systemd-boot.memtest86.enable` | | |
-| `boot.loader.systemd-boot.memtest86.entryFilename` | | |
-| `boot.loader.systemd-boot.memtest86.sortKey` | | |
-| `boot.loader.systemd-boot.netbootxyz.enable` | | |
-| `boot.loader.systemd-boot.netbootxyz.entryFilename` | | |
-| `boot.loader.systemd-boot.netbootxyz.sortKey` | | |
-| `boot.loader.systemd-boot.rebootForBitlocker` | | |
-| `boot.loader.systemd-boot.sortKey` | | |
-| `boot.loader.systemd-boot.windows` | | |
-| `boot.loader.systemd-boot.xbootldrMountPoint` | | |
-| `boot.loader.timeout` | | |
-| `boot.modprobeConfig.enable` | | |
-| `boot.modprobeConfig.useUbuntuModuleBlacklist` | | |
-| `boot.nixStoreMountOpts` | | |
-| `boot.plymouth.enable` | | |
-| `boot.plymouth.extraConfig` | | |
-| `boot.plymouth.font` | | |
-| `boot.plymouth.logo` | | |
-| `boot.plymouth.package` | | |
-| `boot.plymouth.theme` | | |
-| `boot.plymouth.themePackages` | | |
-| `boot.plymouth.tpm2-totp.enable` | | |
-| `boot.plymouth.tpm2-totp.package` | | |
-| `boot.postBootCommands` | | |
-| `boot.readOnlyNixStore` | | |
-| `boot.resumeDevice` | | |
-| `boot.runSize` | | |
-| `boot.specialFileSystems` | | |
-| `boot.stage2Greeting` | | |
-| `boot.supportedFilesystems` | | |
-| `boot.swraid.enable` | | |
-| `boot.swraid.mdadmConf` | | |
-| `boot.systemd.services` | | |
-| `boot.systemd.sockets` | | |
-| `boot.systemd.targets` | | |
-| `boot.systemdExecutable` | | |
-| `boot.tmp.cleanOnBoot` | | |
-| `boot.tmp.tmpfsHugeMemoryPages` | | |
-| `boot.tmp.tmpfsSize` | | |
-| `boot.tmp.useTmpfs` | | |
-| `boot.tmp.useZram` | | |
-| `boot.tmp.zramSettings.compression-algorithm` | | |
-| `boot.tmp.zramSettings.fs-type` | | |
-| `boot.tmp.zramSettings.options` | | |
-| `boot.tmp.zramSettings.zram-size` | | |
-| `boot.tmpOnTmpfs` | | |
-| `boot.tmpOnTmpfsSize` | | |
-| `boot.uki.configFile` | | |
-| `boot.uki.name` | | |
-| `boot.uki.settings` | | |
-| `boot.uki.tries` | | |
-| `boot.uki.version` | | |
-| `boot.uvesafb.enable` | | |
-| `boot.uvesafb.gfx-mode` | | |
-| `boot.uvesafb.v86d.package` | | |
-| `boot.vesa` | | |
-| `boot.zfs.allowHibernation` | | |
-| `boot.zfs.devNodes` | | |
-| `boot.zfs.enableLegacyCrypto` | | |
-| `boot.zfs.enableUnstable` | | |
-| `boot.zfs.enabled` | | |
-| `boot.zfs.extraPools` | | |
-| `boot.zfs.forceImportAll` | | |
-| `boot.zfs.forceImportRoot` | | |
-| `boot.zfs.modulePackage` | | |
-| `boot.zfs.package` | | |
-| `boot.zfs.passwordTimeout` | | |
-| `boot.zfs.pools` | | |
-| `boot.zfs.removeLinuxDRM` | | |
-| `boot.zfs.requestEncryptionCredentials` | | |
-| `boot.zfs.unsafeAllowHibernation` | | |
-| `boot.zfs.useKeyringForCredentials` | | |
-| `boot.zswap.acceptThresholdPercent` | | |
-| `boot.zswap.compressor` | | |
-| `boot.zswap.enable` | | |
-| `boot.zswap.maxPoolPercent` | | |
-| `boot.zswap.shrinkerEnabled` | | |
-| `boot.zswap.zpool` | | |
+| --- | --- | --- |
+| `boot.bcache.enable` | `boolean` | Whether to enable bcache mount support. |
+| `boot.bcachefs.package` | `package` | The bcachefs-tools package to use. This package should also provide a passthru 'kernelModule' attribute to build the out-of-tree kernel module. |
+| `boot.binfmt.addEmulatedSystemsToNixSandbox` | `boolean` | Whether to add the {option}`boot.binfmt.emulatedSystems` to {option}`nix.settings.extra-platforms`. Disable this to use remote builders for those platforms, while allowing testing binaries locally. |
+| `boot.binfmt.emulatedSystems` | `list of (one of "aarch64-linux", "aarch64_be-linux", "alpha-linux", "armv6l-linux", "armv7l-linux", "i386-linux", "i486-linux", "i586-linux", "i686-linux", "i686-windows", "loongarch64-linux", "mips-linux", "mips64-linux", "mips64-linuxabin32", "mips64el-linux", "mips64el-linuxabin32", "mipsel-linux", "powerpc-linux", "powerpc64-linux", "powerpc64le-linux", "riscv32-linux", "riscv64-linux", "s390x-linux", "sparc-linux", "sparc64-linux", "wasm32-wasi", "wasm64-wasi", "x86_64-linux", "x86_64-windows")` | List of systems to emulate. Will also configure Nix to support your new systems. Warning: the builder can execute all emulated systems within the same build, which introduces impurities in the case of cross compilation. |
+| `boot.binfmt.preferStaticEmulators` | `boolean` | Whether to use static emulators when available. This enables the kernel to preload the emulator binaries when the binfmt registrations are added, obviating the need to make the emulator binaries available inside chroots and chroot-like sandboxes. |
+| `boot.binfmt.registrations` | `attribute set of (submodule)` | Extra binary formats to register with the kernel. See <https://www.kernel.org/doc/html/latest/admin-guide/binfmt-misc.html> for more details. |
+| `boot.binfmt.registrations.<name>.fixBinary` | `boolean` | Whether to open the interpreter file as soon as the registration is loaded, rather than waiting for a relevant file to be invoked. See the description of the 'F' flag in the kernel docs for more details. |
+| `boot.binfmt.registrations.<name>.interpreter` | `absolute path` | The interpreter to invoke to run the program. Note that the actual registration will point to /run/binfmt/${name}, so the kernel interpreter length limit doesn't apply. |
+| `boot.binfmt.registrations.<name>.magicOrExtension` | `string` | The magic number or extension to match on. |
+| `boot.binfmt.registrations.<name>.mask` | `null or string` | A mask to be ANDed with the byte sequence of the file before matching |
+| `boot.binfmt.registrations.<name>.matchCredentials` | `boolean` | Whether to launch with the credentials and security token of the binary, not the interpreter (e.g. setuid bit). See the description of the 'C' flag in the kernel docs for more details. Implies/requires openBinary = true. |
+| `boot.binfmt.registrations.<name>.offset` | `null or signed integer` | The byte offset of the magic number used for recognition. |
+| `boot.binfmt.registrations.<name>.openBinary` | `boolean` | Whether to pass the binary to the interpreter as an open file descriptor, instead of a path. |
+| `boot.binfmt.registrations.<name>.preserveArgvZero` | `boolean` | Whether to pass the original argv[0] to the interpreter. See the description of the 'P' flag in the kernel docs for more details; |
+| `boot.binfmt.registrations.<name>.recognitionType` | `one of "magic", "extension"` | Whether to recognize executables by magic number or extension. |
+| `boot.binfmt.registrations.<name>.wrapInterpreterInShell` | `boolean` | Whether to wrap the interpreter in a shell script. This allows a shell command to be set as the interpreter. |
+| `boot.blacklistedKernelModules` | `(attribute set of boolean) or (list of string) convertible to it` | Set of names of kernel modules that should not be loaded automatically by the hardware probing code. This can either be a list of modules or an attrset. In an attrset, names that are set to `true` represent modules that will be blacklisted. |
+| `boot.bootspec.enableValidation` | `boolean` | Whether to enable the validation of bootspec documents for each build. This will introduce Go in the build-time closure as we are relying on [Cuelang](https://cuelang.org/) for schema validation. Enable this option if you want to ascertain that your documents are correct . |
+| `boot.bootspec.extensions` | `attribute set of anything` | User-defined data that extends the bootspec document. To reduce incompatibility and prevent names from clashing between applications, it is **highly recommended** to use a unique namespace for your extensions. |
+| `boot.bootspec.package` | `package` | The bootspec package to use. |
+| `boot.consoleLogLevel` | `signed integer` | The kernel console `loglevel`. All Kernel Messages with a log level smaller than this setting will be printed to the console. |
+| `boot.crashDump.enable` | `boolean` | If enabled, NixOS will set up a kernel that will boot on crash, and leave the user in systemd rescue to be able to save the crashed kernel dump at /proc/vmcore. It also activates the NMI watchdog. |
+| `boot.crashDump.kernelParams` | `list of string` | Parameters that will be passed to the kernel kexec-ed on crash. |
+| `boot.crashDump.reservedMemory` | `string` | The amount of memory reserved for the crashdump kernel. If you choose a too high value, dmesg will mention "crashkernel reservation failed". |
+| `boot.devShmSize` | `string` | Size limit for the /dev/shm tmpfs. Look at {manpage}`mount(8)`, tmpfs size option, for the accepted syntax. |
+| `boot.devSize` | `string` | Size limit for the /dev tmpfs. Look at {manpage}`mount(8)`, tmpfs size option, for the accepted syntax. |
+| `boot.enableContainers` | `boolean` | Whether to enable support for NixOS containers. |
+| `boot.extraModprobeConfig` | `strings concatenated with "\n"` | Any additional configuration to be appended to the generated {file}`modprobe.conf`. This is typically used to specify module options. See {manpage}`modprobe.d(5)` for details. |
+| `boot.extraModulePackages` | `list of package` | A list of additional packages supplying kernel modules. |
+| `boot.extraSystemdUnitPaths` | `list of string` | Additional paths that get appended to the SYSTEMD_UNIT_PATH environment variable that can contain mutable unit files. |
+| `boot.growPartition` | `boolean` | Whether to enable growing the root partition on boot. |
+| `boot.hardwareScan` | `boolean` | Whether to try to load kernel modules for all detected hardware. Usually this does a good job of providing you with the modules you need, but sometimes it can crash the system or cause other nasty effects. |
+| `boot.initrd.allowMissingModules` | `boolean` | Whether the initrd can be built even though modules listed in {option}`boot.initrd.kernelModules` or {option}`boot.initrd.availableKernelModules` are missing from the kernel. This is useful when combining configurations that include a lot of modules, such as {option}`hardware.enableAllHardware`, with kernels that don't provide as many modules as typical NixOS kernels. Note that enabling this is discouraged. Instead, try disabling individual modules by setting e.g. `boot.initrd.availableKernelModules.foo = lib.mkForce false;` |
+| `boot.initrd.availableKernelModules` | `(attribute set of boolean) or (list of string) convertible to it` | The set of kernel modules in the initial ramdisk used during the boot process. This set must include all modules necessary for mounting the root device. That is, it should include modules for the physical device (e.g., SCSI drivers) and for the file system (e.g., ext3). The set specified here is automatically closed under the module dependency relation, i.e., all dependencies of the modules list here are included automatically. The modules listed here are available in the initrd, but are only loaded on demand (e.g., the ext3 module is loaded automatically when an ext3 filesystem is mounted, and modules for PCI devices are loaded when they match the PCI ID of a device in your system). To force a module to be loaded, include it in {option}`boot.initrd.kernelModules`. This can either be a list of modules, or an attrset. In an attrset, names that are set to `true` represent modules that will be included. Note that setting these names to `false` does not prevent the module from being loaded. For that, use {option}`boot.blacklistedKernelModules`. |
+| `boot.initrd.checkJournalingFS` | `boolean` | Whether to run {command}`fsck` on journaling filesystems such as ext3. |
+| `boot.initrd.clevis.devices` | `attribute set of (submodule)` | Encrypted devices that need to be unlocked at boot using Clevis |
+| `boot.initrd.clevis.devices.<name>.secretFile` | `absolute path` | Clevis JWE file used to decrypt the device at boot, in concert with the chosen pin (one of TPM2, Tang server, or SSS). |
+| `boot.initrd.clevis.enable` | `boolean` | Whether to enable Clevis in initrd. |
+| `boot.initrd.clevis.package` | `package` | The clevis package to use. |
+| `boot.initrd.clevis.useTang` | `boolean` | Whether the Clevis JWE file used to decrypt the devices uses a Tang server as a pin. |
+| `boot.initrd.clevisLuksAskpass.enable` | `boolean` | Whether to enable clevis-luks-askpass in initrd. Watches for systemd password requests during boot and answers them using clevis tokens bound to LUKS headers. Runs in parallel with the interactive password prompt. If clevis cannot unlock a device (tang unreachable, no binding, etc.) the user can still type the passphrase. Prerequisites: - Bind clevis to each LUKS device: clevis luks bind -d /dev/xxx tang '{"url":"..."}' - Configure networking in the initrd so tang servers are reachable . |
+| `boot.initrd.clevisLuksAskpass.package` | `package` | The clevis package to use. |
+| `boot.initrd.clevisLuksAskpass.useTang` | `boolean` | Whether the Clevis headers used to decrypt the devices uses a Tang server as a pin. |
+| `boot.initrd.compressor` | `string or function that evaluates to a(n) string` | The compressor to use on the initrd image. May be any of: - The name of one of the predefined compressors, see {file}`pkgs/build-support/kernel/initrd-compressor-meta.nix` for the definitions. - A function which, given the nixpkgs package set, returns the path to a compressor tool, e.g. `pkgs: "${pkgs.pigz}/bin/pigz"` - (not recommended, because it does not work when cross-compiling) the full path to a compressor tool, e.g. `"${pkgs.pigz}/bin/pigz"` The given program should read data from stdin and write it to stdout compressed. |
+| `boot.initrd.compressorArgs` | `null or (list of string)` | Arguments to pass to the compressor for the initrd image, or null to use the compressor's defaults. |
+| `boot.initrd.enable` | `boolean` | Whether to enable the NixOS initial RAM disk (initrd). This may be needed to perform some initialisation tasks (like mounting network/encrypted file systems) before continuing the boot process. |
+| `boot.initrd.extraFiles` | `attribute set of (submodule)` | Extra files to link and copy in to the initrd. |
+| `boot.initrd.extraFiles.<name>.source` | `package` | The object to make available inside the initrd. |
+| `boot.initrd.extraFirmwarePaths` | `list of string` | Other firmware files (relative to `"${config.hardware.firmware}/lib/firmware"`) to include in the final initrd we are building. |
+| `boot.initrd.includeDefaultModules` | `boolean` | This option, if set, adds a collection of default kernel modules to {option}`boot.initrd.availableKernelModules` and {option}`boot.initrd.kernelModules`. |
+| `boot.initrd.kernelModules` | `(attribute set of boolean) or (list of string) convertible to it` | Set of modules that are always loaded by the initrd. This can either be a list of modules, or an attrset. In an attrset, names that are set to `true` represent modules that will be included. Note that setting these names to `false` does not prevent the module from being loaded. For that, use {option}`boot.blacklistedKernelModules`. |
+| `boot.initrd.luks.cryptoModules` | `list of string` | A list of cryptographic kernel modules needed to decrypt the root device(s). The default includes all common modules. |
+| `boot.initrd.luks.devices` | `attribute set of (submodule)` | The encrypted disk that should be opened before the root filesystem is mounted. Both LVM-over-LUKS and LUKS-over-LVM setups are supported. The unencrypted devices can be accessed as {file}`/dev/mapper/«name»`. |
+| `boot.initrd.luks.devices.<name>.allowDiscards` | `boolean` | Whether to allow TRIM requests to the underlying device. This option has security implications; please read the LUKS documentation before activating it. This option is incompatible with authenticated encryption (dm-crypt stacked over dm-integrity). |
+| `boot.initrd.luks.devices.<name>.bypassWorkqueues` | `boolean` | Whether to bypass dm-crypt's internal read and write workqueues. Enabling this should improve performance on SSDs; see [here](<https://wiki.archlinux.org/index.php/Dm-crypt/Specialties#Disable_workqueue_for_increased_solid_state_drive_(SSD)_performance>) for more information. Needs Linux 5.9 or later. |
+| `boot.initrd.luks.devices.<name>.crypttabExtraOpts` | `list of (optionally newline-terminated) single-line string` | Only used with systemd stage 1. Extra options to append to the last column of the generated crypttab file. |
+| `boot.initrd.luks.devices.<name>.device` | `string` | Path of the underlying encrypted block device. |
+| `boot.initrd.luks.devices.<name>.fallbackToPassword` | `boolean` | Whether to fallback to interactive passphrase prompt if the keyfile cannot be found. This will prevent unattended boot should the keyfile go missing. |
+| `boot.initrd.luks.devices.<name>.fido2.credential` | `null or string` | The FIDO2 credential ID. |
+| `boot.initrd.luks.devices.<name>.fido2.credentials` | `list of string` | List of FIDO2 credential IDs. Use this if you have multiple FIDO2 keys you want to use for the same luks device. |
+| `boot.initrd.luks.devices.<name>.fido2.gracePeriod` | `signed integer` | Time in seconds to wait for the FIDO2 key. |
+| `boot.initrd.luks.devices.<name>.fido2.passwordLess` | `boolean` | Defines whatever to use an empty string as a default salt. Enable only when your device is PIN protected, such as [Trezor](https://trezor.io/). |
+| `boot.initrd.luks.devices.<name>.gpgCard` | `null or (submodule)` | The option to use this LUKS device with a GPG encrypted luks password by the GPG Smartcard. If null (the default), GPG-Smartcard will be disabled for this device. |
+| `boot.initrd.luks.devices.<name>.gpgCard.encryptedPass` | `absolute path` | Path to the GPG encrypted passphrase. |
+| `boot.initrd.luks.devices.<name>.gpgCard.gracePeriod` | `signed integer` | Time in seconds to wait for the GPG Smartcard. |
+| `boot.initrd.luks.devices.<name>.gpgCard.publicKey` | `absolute path` | Path to the Public Key. |
+| `boot.initrd.luks.devices.<name>.header` | `null or string` | The name of the file or block device that should be used as header for the encrypted device. |
+| `boot.initrd.luks.devices.<name>.keyFile` | `null or string` | The name of the file (can be a raw device or a partition) that should be used as the decryption key for the encrypted device. If not specified, you will be prompted for a passphrase instead. |
+| `boot.initrd.luks.devices.<name>.keyFileOffset` | `null or signed integer` | The offset of the key file. Use this in combination with `keyFileSize` to use part of a file as key file (often the case if a raw device or partition is used as a key file). If not specified, the key begins at the first byte of `keyFile`. |
+| `boot.initrd.luks.devices.<name>.keyFileSize` | `null or signed integer` | The size of the key file. Use this if only the beginning of the key file should be used as a key (often the case if a raw device or partition is used as key file). If not specified, the whole `keyFile` will be used decryption, instead of just the first `keyFileSize` bytes. |
+| `boot.initrd.luks.devices.<name>.keyFileTimeout` | `null or signed integer` | The amount of time in seconds for a keyFile to appear before timing out and trying passwords. |
+| `boot.initrd.luks.devices.<name>.postOpenCommands` | `strings concatenated with "\n"` | Commands that should be run right after we have mounted our LUKS device. |
+| `boot.initrd.luks.devices.<name>.preLVM` | `boolean` | Whether the luksOpen will be attempted before LVM scan or after it. |
+| `boot.initrd.luks.devices.<name>.preOpenCommands` | `strings concatenated with "\n"` | Commands that should be run right before we try to mount our LUKS device. This can be useful, if the keys needed to open the drive is on another partition. |
+| `boot.initrd.luks.devices.<name>.tryEmptyPassphrase` | `boolean` | If keyFile fails then try an empty passphrase first before prompting for password. |
+| `boot.initrd.luks.devices.<name>.yubikey` | `null or (submodule)` | The options to use for this LUKS device in YubiKey-PBA. If null (the default), YubiKey-PBA will be disabled for this device. |
+| `boot.initrd.luks.devices.<name>.yubikey.gracePeriod` | `signed integer` | Time in seconds to wait for the YubiKey. |
+| `boot.initrd.luks.devices.<name>.yubikey.iterationStep` | `signed integer` | How much the iteration count for PBKDF2 is increased at each successful authentication. |
+| `boot.initrd.luks.devices.<name>.yubikey.keyLength` | `signed integer` | Length of the LUKS slot key derived with PBKDF2 in byte. |
+| `boot.initrd.luks.devices.<name>.yubikey.saltLength` | `signed integer` | Length of the new salt in byte (64 is the effective maximum). |
+| `boot.initrd.luks.devices.<name>.yubikey.slot` | `signed integer` | Which slot on the YubiKey to challenge. |
+| `boot.initrd.luks.devices.<name>.yubikey.storage.device` | `absolute path` | An unencrypted device that will temporarily be mounted in stage-1. Must contain the current salt to create the challenge for this LUKS device. |
+| `boot.initrd.luks.devices.<name>.yubikey.storage.fsType` | `string` | The filesystem of the unencrypted device. |
+| `boot.initrd.luks.devices.<name>.yubikey.storage.path` | `string` | Absolute path of the salt on the unencrypted device with that device's root directory as "/". |
+| `boot.initrd.luks.devices.<name>.yubikey.twoFactor` | `boolean` | Whether to use a passphrase and a YubiKey (true), or only a YubiKey (false). |
+| `boot.initrd.luks.fido2Support` | `boolean` | Enables support for authenticating with FIDO2 devices. |
+| `boot.initrd.luks.gpgSupport` | `boolean` | Enables support for authenticating with a GPG encrypted password. |
+| `boot.initrd.luks.mitigateDMAAttacks` | `boolean` | Unless enabled, encryption keys can be easily recovered by an attacker with physical access to any machine with PCMCIA, ExpressCard, ThunderBolt or FireWire port. More information is available at <https://en.wikipedia.org/wiki/DMA_attack>. This option blacklists FireWire drivers, but doesn't remove them. You can manually load the drivers if you need to use a FireWire device, but don't forget to unload them! |
+| `boot.initrd.luks.reusePassphrases` | `boolean` | When opening a new LUKS device try reusing last successful passphrase. Useful for mounting a number of devices that use the same passphrase without retyping it several times. Such setup can be useful if you use {command}`cryptsetup luksSuspend`. Different LUKS devices will still have different master keys even when using the same passphrase. |
+| `boot.initrd.luks.yubikeySupport` | `boolean` | Enables support for authenticating with a YubiKey on LUKS devices. See the NixOS wiki for information on how to properly setup a LUKS device and a YubiKey to work with this feature. |
+| `boot.initrd.network.enable` | `boolean` | Add network connectivity support to initrd. The network may be configured using the `ip` kernel parameter, as described in [the kernel documentation](https://www.kernel.org/doc/Documentation/filesystems/nfs/nfsroot.txt). Otherwise, if {option}`networking.useDHCP` is enabled, an IP address is acquired using DHCP. You should add the module(s) required for your network card to boot.initrd.availableKernelModules. `lspci -v \| grep -iA8 'network\\|ethernet'` will tell you which. |
+| `boot.initrd.network.flushBeforeStage2` | `boolean` | Whether to clear the configuration of the interfaces that were set up in the initrd right before stage 2 takes over. Stage 2 will do the regular network configuration based on the NixOS networking options. The default is false when systemd is enabled in initrd, because the systemd-networkd documentation suggests it. |
+| `boot.initrd.network.ifstate.allowIfstateToDrasticlyIncreaseInitrdSize` | `boolean` | IfState in initrd drastically increases the size of initrd, your boot partition may be too small and/or you may have significantly fewer generations. By setting this option, you acknowledge this fact and keep it in mind when reporting issues. |
+| `boot.initrd.network.ifstate.cleanupSettings` | `YAML 1.1 value` | Content of IfState's initrd cleanup configuration file. See <https://ifstate.net/2.0/schema/> for details. This configuration gets applied before systemd switches to stage two. The goal is to deconfigurate the whole network in order to prevent access to services, before the firewall is configured. The stage two IfState configuration will start after the firewall is configured. |
+| `boot.initrd.network.ifstate.enable` | `boolean` | Whether to enable initrd networking using IfState. |
+| `boot.initrd.network.ifstate.package` | `package` | The initrd IfState package to use. |
+| `boot.initrd.network.ifstate.settings` | `YAML 1.1 value` | Content of IfState's initrd configuration file. See <https://ifstate.net/2.2/schema/> for details. |
+| `boot.initrd.network.openvpn.configuration` | `absolute path` | The configuration file for OpenVPN. ::: {.warning} Unless your bootloader supports initrd secrets, this configuration is stored insecurely in the global Nix store. ::: |
+| `boot.initrd.network.openvpn.enable` | `boolean` | Starts an OpenVPN client during initrd boot. It can be used to e.g. remotely accessing the SSH service controlled by {option}`boot.initrd.network.ssh` or other network services included. Service is killed when stage-1 boot is finished. |
+| `boot.initrd.network.postCommands` | `strings concatenated with "\n"` | Shell commands to be executed after stage 1 of the boot has initialised the network. |
+| `boot.initrd.network.ssh.authorizedKeyFiles` | `list of absolute path` | Authorized keys taken from files for the root user on initrd. You can combine the `authorizedKeyFiles` and `authorizedKeys` options. |
+| `boot.initrd.network.ssh.authorizedKeys` | `list of string` | Authorized keys for the root user on initrd. You can combine the `authorizedKeys` and `authorizedKeyFiles` options. |
+| `boot.initrd.network.ssh.enable` | `boolean` | Start SSH service during initrd boot. It can be used to debug failing boot on a remote server, enter pasphrase for an encrypted partition etc. Service is killed when stage-1 boot is finished. The sshd configuration is largely inherited from {option}`services.openssh`. |
+| `boot.initrd.network.ssh.extraConfig` | `strings concatenated with "\n"` | Verbatim contents of {file}`sshd_config`. |
+| `boot.initrd.network.ssh.hostKeys` | `list of (string or absolute path)` | Specify SSH host keys to import into the initrd. To generate keys, use {manpage}`ssh-keygen(1)` as root: `ssh-keygen -t rsa -N "" -f /etc/secrets/initrd/ssh_host_rsa_key ssh-keygen -t ed25519 -N "" -f /etc/secrets/initrd/ssh_host_ed25519_key` ::: {.warning} Unless your bootloader supports initrd secrets, these keys are stored insecurely in the global Nix store. Do NOT use your regular SSH host private keys for this purpose or you'll expose them to regular users! Additionally, even if your initrd supports secrets, if you're using initrd SSH to unlock an encrypted disk then using your regular host keys exposes the private keys on your unencrypted boot partition. ::: |
+| `boot.initrd.network.ssh.ignoreEmptyHostKeys` | `boolean` | Allow leaving {option}`config.boot.initrd.network.ssh.hostKeys` empty, to deploy ssh host keys out of band. |
+| `boot.initrd.network.ssh.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which SSH initrd service should listen. |
+| `boot.initrd.network.ssh.shell` | `null or string` | Login shell of the remote user. Can be used to limit actions user can do. |
+| `boot.initrd.network.udhcpc.enable` | `boolean` | Enables the udhcpc service during stage 1 of the boot process. This defaults to {option}`networking.useDHCP`. Therefore, this useful if useDHCP is off but the initramfs should do dhcp. |
+| `boot.initrd.network.udhcpc.extraArgs` | `list of string` | Additional command-line arguments passed verbatim to udhcpc if {option}`boot.initrd.network.enable` and {option}`boot.initrd.network.udhcpc.enable` are enabled. |
+| `boot.initrd.nix-store-veritysetup.enable` | `boolean` | Whether to enable nix-store-veritysetup. |
+| `boot.initrd.postDeviceCommands` | `strings concatenated with "\n"` | Shell commands to be executed immediately after stage 1 of the boot has loaded kernel modules and created device nodes in {file}`/dev`. |
+| `boot.initrd.postMountCommands` | `strings concatenated with "\n"` | Shell commands to be executed immediately after the stage 1 filesystems have been mounted. |
+| `boot.initrd.postResumeCommands` | `strings concatenated with "\n"` | Shell commands to be executed immediately after attempting to resume. |
+| `boot.initrd.preDeviceCommands` | `strings concatenated with "\n"` | Shell commands to be executed before udev is started to create device nodes. |
+| `boot.initrd.preFailCommands` | `strings concatenated with "\n"` | Shell commands to be executed before the failure prompt is shown. |
+| `boot.initrd.preLVMCommands` | `strings concatenated with "\n"` | Shell commands to be executed immediately before LVM discovery. |
+| `boot.initrd.prepend` | `list of string` | Other initrd files to prepend to the final initrd we are building. |
+| `boot.initrd.secrets` | `attribute set of (null or absolute path)` | Secrets to append to the initrd. The attribute name is the path the secret should have inside the initrd, the value is the path it should be copied from (or null for the same path inside and out). Note that `nixos-rebuild switch` will generate the initrd also for past generations, so if secrets are moved or deleted you will also have to garbage collect the generations that use those secrets. |
+| `boot.initrd.services.bcache.enable` | `boolean` | *This will only be used when systemd is used in stage 1.* Whether to enable bcache support in the initrd. |
+| `boot.initrd.services.lvm.enable` | `boolean` | *This will only be used when systemd is used in stage 1.* Whether to enable booting from LVM2 in the initrd. |
+| `boot.initrd.services.resolved.enable` | `unspecified value` | Whether to enable resolved for stage 1 networking. Uses the toplevel 'services.resolved' options for 'resolved.conf' |
+| `boot.initrd.services.udev.binPackages` | `list of absolute path` | *This will only be used when systemd is used in stage 1.* Packages to search for binaries that are referenced by the udev rules in stage 1. This list always contains /bin of the initrd. |
+| `boot.initrd.services.udev.packages` | `list of absolute path` | *This will only be used when systemd is used in stage 1.* List of packages containing {command}`udev` rules that will be copied to stage 1. All files found in {file}`«pkg»/etc/udev/rules.d` and {file}`«pkg»/lib/udev/rules.d` will be included. |
+| `boot.initrd.services.udev.rules` | `strings concatenated with "\n"` | {command}`udev` rules to include in the initrd *only*. They'll be written into file {file}`99-local.rules`. Thus they are read and applied after the essential initrd rules. |
+| `boot.initrd.stage1Greeting` | `string` | The greeting message displayed during NixOS stage 1 boot. |
+| `boot.initrd.supportedFilesystems` | `(attribute set of boolean) or (list of string) convertible to it` | Names of supported filesystem types, or an attribute set of file system types and their state. The set form may be used together with `lib.mkForce` to explicitly disable support for specific filesystems, e.g. to disable ZFS with an unsupported kernel. |
+| `boot.initrd.systemd.additionalUpstreamUnits` | `list of string` | Additional units shipped with systemd that shall be enabled. |
+| `boot.initrd.systemd.automounts` | `list of (submodule)` | Definition of systemd automount units. This is a list instead of an attrSet, because systemd mandates the names to be derived from the 'where' attribute. |
+| `boot.initrd.systemd.contents` | `attribute set of (submodule)` | Set of files that have to be linked into the initrd |
+| `boot.initrd.systemd.contents.<name>.dlopen.features` | `list of (optionally newline-terminated) single-line string` | Features to enable via dlopen ELF notes. These will be in addition to anything included via 'usePriority', regardless of their priority. |
+| `boot.initrd.systemd.contents.<name>.dlopen.usePriority` | `one of "required", "recommended", "suggested"` | Priority of dlopen ELF notes to include. "required" is minimal, "recommended" includes "required", and "suggested" includes "recommended". See: <https://systemd.io/ELF_DLOPEN_METADATA/> |
+| `boot.initrd.systemd.contents.<name>.enable` | `boolean` | Whether to enable copying of this file and symlinking it. |
+| `boot.initrd.systemd.contents.<name>.source` | `absolute path` | Path of the source file. |
+| `boot.initrd.systemd.contents.<name>.target` | `null or absolute path` | Path of the symlink. |
+| `boot.initrd.systemd.contents.<name>.text` | `null or strings concatenated with "\n"` | Text of the file. |
+| `boot.initrd.systemd.dbus.enable` | `boolean` | Whether to enable dbus in stage 1. |
+| `boot.initrd.systemd.dmVerity.enable` | `boolean` | Mount verity-protected block devices in the initrd. Enabling this option allows to use `systemd-veritysetup` and `systemd-veritysetup-generator` in the initrd. |
+| `boot.initrd.systemd.emergencyAccess` | `boolean or null or (string, not containing newlines or colons)` | Set to true for unauthenticated emergency access, and false or null for no emergency access. Can also be set to a hashed super user password to allow authenticated access to the emergency mode. For emergency access after initrd, use `systemd.enableEmergencyMode` instead. |
+| `boot.initrd.systemd.enable` | `boolean` | Whether to enable systemd in initrd. The unit options such as {option}`boot.initrd.systemd.services` are the same as their stage 2 counterparts such as {option}`systemd.services`, except that `restartTriggers` and `reloadTriggers` are not supported. |
+| `boot.initrd.systemd.extraBin` | `attribute set of absolute path` | Tools to add to /bin |
+| `boot.initrd.systemd.fido2.enable` | `boolean` | Whether to enable systemd FIDO2 support. |
+| `boot.initrd.systemd.groups` | `attribute set of (submodule)` | Groups to include in initrd. |
+| `boot.initrd.systemd.groups.<name>.gid` | `signed integer` | ID of the group in initrd. |
+| `boot.initrd.systemd.initrdBin` | `list of package` | Packages to include in /bin for the stage 1 emergency shell. |
+| `boot.initrd.systemd.managerEnvironment` | `attribute set of (null or string or absolute path or package)` | Environment variables of PID 1. These variables are *not* passed to started units. |
+| `boot.initrd.systemd.mounts` | `list of (submodule)` | Definition of systemd mount units. This is a list instead of an attrSet, because systemd mandates the names to be derived from the 'where' attribute. |
+| `boot.initrd.systemd.network.config` | `submodule` | Definition of global systemd network config. |
+| `boot.initrd.systemd.network.enable` | `boolean` | Whether to enable networkd or not. |
+| `boot.initrd.systemd.network.links` | `attribute set of (submodule)` | Definition of systemd network links. |
+| `boot.initrd.systemd.network.netdevs` | `attribute set of (submodule)` | Definition of systemd network devices. |
+| `boot.initrd.systemd.network.networks` | `attribute set of (submodule)` | Definition of systemd networks. |
+| `boot.initrd.systemd.network.wait-online.anyInterface` | `boolean` | Whether to consider the network online when any interface is online, as opposed to all of them. This is useful on portable machines with a wired and a wireless interface, for example. This is on by default if {option}`networking.useDHCP` is enabled. |
+| `boot.initrd.systemd.network.wait-online.enable` | `boolean` | Whether to enable the systemd-networkd-wait-online service. systemd-networkd-wait-online can timeout and fail if there are no network interfaces available for it to manage. When systemd-networkd is enabled but a different service is responsible for managing the system's internet connection (for example, NetworkManager or connman are used to manage WiFi connections), this service is unnecessary and can be disabled. |
+| `boot.initrd.systemd.network.wait-online.extraArgs` | `list of string` | Extra command-line arguments to pass to systemd-networkd-wait-online. These also affect per-interface `systemd-network-wait-online@` services. See {manpage}`systemd-networkd-wait-online.service(8)` for all available options. |
+| `boot.initrd.systemd.network.wait-online.ignoredInterfaces` | `list of string` | Network interfaces to be ignored when deciding if the system is online. |
+| `boot.initrd.systemd.network.wait-online.timeout` | `unsigned integer, meaning >=0` | Time to wait for the network to come online, in seconds. Set to 0 to disable. |
+| `boot.initrd.systemd.package` | `package` | The systemd package to use. |
+| `boot.initrd.systemd.packages` | `list of package` | Packages providing systemd units and hooks. |
+| `boot.initrd.systemd.paths` | `attribute set of (submodule)` | Definition of systemd path units. |
+| `boot.initrd.systemd.repart.device` | `null or string` | The device to operate on. If `device == null`, systemd-repart will operate on the device backing the root partition. So in order to dynamically *create* the root partition in the initrd you need to set a device. |
+| `boot.initrd.systemd.repart.discard` | `boolean` | Controls whether to issue the BLKDISCARD I/O control command on the space taken up by any added partitions or on the space in between them. Usually, it's a good idea to issue this request since it tells the underlying hardware that the covered blocks shall be considered empty, improving performance. See {manpage}`systemd-repart(8)` for details. |
+| `boot.initrd.systemd.repart.empty` | `one of "refuse", "allow", "require", "force", "create"` | Controls how to operate on empty devices that contain no partition table yet. See {manpage}`systemd-repart(8)` for details. |
+| `boot.initrd.systemd.repart.enable` | `boolean` | Grow and add partitions to a partition table at boot time in the initrd. systemd-repart only works with GPT partition tables. To run systemd-repart after the initrd, see `options.systemd.repart.enable`. |
+| `boot.initrd.systemd.repart.extraArgs` | `list of string` | Extra command-line arguments to pass to systemd-repart. See {manpage}`systemd-repart(8)` for all available options. |
+| `boot.initrd.systemd.root` | `null or one of "fstab", "gpt-auto"` | Controls how systemd will interpret the root FS in initrd. See {manpage}`kernel-command-line(7)`. NixOS currently does not allow specifying the root file system itself this way. Instead, the `fstab` value is used in order to interpret the root file system specified with the `fileSystems` option. If root shall be omitted, set this option to `null`. |
+| `boot.initrd.systemd.services` | `attribute set of (submodule)` | Definition of systemd service units. |
+| `boot.initrd.systemd.settings.Manager` | `open submodule of attribute set of (systemd option)` | Options for the global systemd service manager used in initrd. See {manpage}`systemd-system.conf(5)` man page for available options. |
+| `boot.initrd.systemd.slices` | `attribute set of (submodule)` | Definition of slice configurations. |
+| `boot.initrd.systemd.sockets` | `attribute set of (submodule)` | Definition of systemd socket units. |
+| `boot.initrd.systemd.storePaths` | `list of ((submodule) or ((optionally newline-terminated) single-line string or package) convertible to it)` | Store paths to copy into the initrd as well. |
+| `boot.initrd.systemd.storePaths.*.dlopen.features` | `list of (optionally newline-terminated) single-line string` | Features to enable via dlopen ELF notes. These will be in addition to anything included via 'usePriority', regardless of their priority. |
+| `boot.initrd.systemd.storePaths.*.dlopen.usePriority` | `one of "required", "recommended", "suggested"` | Priority of dlopen ELF notes to include. "required" is minimal, "recommended" includes "required", and "suggested" includes "recommended". See: <https://systemd.io/ELF_DLOPEN_METADATA/> |
+| `boot.initrd.systemd.storePaths.*.enable` | `boolean` | Whether to enable copying of this file and symlinking it. |
+| `boot.initrd.systemd.storePaths.*.source` | `absolute path` | Path of the source file. |
+| `boot.initrd.systemd.storePaths.*.target` | `null or absolute path` | Path of the symlink. |
+| `boot.initrd.systemd.suppressedStorePaths` | `list of (optionally newline-terminated) single-line string` | Store paths specified in the storePaths option that should not be copied. |
+| `boot.initrd.systemd.suppressedUnits` | `list of string` | A list of units to skip when generating system systemd configuration directory. This has priority over upstream units, {option}`boot.initrd.systemd.units`, and {option}`boot.initrd.systemd.additionalUpstreamUnits`. The main purpose of this is to prevent a upstream systemd unit from being added to the initrd with any modifications made to it by other NixOS modules. |
+| `boot.initrd.systemd.targets` | `attribute set of (submodule)` | Definition of systemd target units. |
+| `boot.initrd.systemd.timers` | `attribute set of (submodule)` | Definition of systemd timer units. |
+| `boot.initrd.systemd.tmpfiles.settings` | `attribute set of attribute set of attribute set of (submodule)` | Similar to {option}`systemd.tmpfiles.settings` but the rules are only applied by systemd-tmpfiles before `initrd-switch-root.target`. See {manpage}`bootup(7)`. |
+| `boot.initrd.systemd.tmpfiles.settings.<config-name>.<path>.<tmpfiles-type>.age` | `string` | Delete a file when it reaches a certain age. If a file or directory is older than the current time minus the age field, it is deleted. If set to `"-"` no automatic clean-up is done. |
+| `boot.initrd.systemd.tmpfiles.settings.<config-name>.<path>.<tmpfiles-type>.argument` | `string` | An argument whose meaning depends on the type of operation. Please see the upstream documentation for the meaning of this parameter in different situations: {manpage}`tmpfiles.d(5)` |
+| `boot.initrd.systemd.tmpfiles.settings.<config-name>.<path>.<tmpfiles-type>.group` | `string` | The group of the file. This may either be a numeric ID or a user/group name. If omitted or when set to `"-"`, the user and group of the user who invokes systemd-tmpfiles is used. |
+| `boot.initrd.systemd.tmpfiles.settings.<config-name>.<path>.<tmpfiles-type>.mode` | `string` | The file access mode to use when creating this file or directory. |
+| `boot.initrd.systemd.tmpfiles.settings.<config-name>.<path>.<tmpfiles-type>.type` | `string` | The type of operation to perform on the file. The type consists of a single letter and optionally one or more modifier characters. Please see the upstream documentation for the available types and more details: {manpage}`tmpfiles.d(5)` |
+| `boot.initrd.systemd.tmpfiles.settings.<config-name>.<path>.<tmpfiles-type>.user` | `string` | The user of the file. This may either be a numeric ID or a user/group name. If omitted or when set to `"-"`, the user and group of the user who invokes systemd-tmpfiles is used. |
+| `boot.initrd.systemd.tpm2.enable` | `boolean` | Whether to enable systemd initrd TPM2 support. |
+| `boot.initrd.systemd.tpm2.pcrphases.enable` | `boolean` | Whether to enable systemd initrd boot phase measurements. |
+| `boot.initrd.systemd.units` | `attribute set of (submodule)` | Definition of systemd units. |
+| `boot.initrd.systemd.users` | `attribute set of (submodule)` | Users to include in initrd. |
+| `boot.initrd.systemd.users.<name>.group` | `(optionally newline-terminated) single-line string` | Group the user belongs to in initrd. |
+| `boot.initrd.systemd.users.<name>.shell` | `absolute path, not containing newlines or colons` | The path to the user's shell in initrd. |
+| `boot.initrd.systemd.users.<name>.uid` | `signed integer` | ID of the user in initrd. |
+| `boot.initrd.unl0kr.allowVendorDrivers` | `boolean` | Whether to load additional drivers for certain vendors (I.E: Wacom, Intel, etc.) |
+| `boot.initrd.unl0kr.enable` | `boolean` | Whether to enable the unl0kr on-screen keyboard in initrd to unlock LUKS. |
+| `boot.initrd.unl0kr.package` | `package` | The buffybox package to use. |
+| `boot.initrd.unl0kr.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration for `unl0kr`. See `unl0kr.conf(5)` for supported values. Alternatively, visit `https://gitlab.postmarketos.org/postmarketOS/buffybox/-/blob/3.2.0/unl0kr/unl0kr.conf` |
+| `boot.initrd.verbose` | `boolean` | Verbosity of the initrd. Please note that disabling verbosity removes only the mandatory messages generated by the NixOS scripts. For a completely silent boot, you might also want to set the two following configuration options: - `boot.consoleLogLevel = 0;` - `boot.kernelParams = [ "quiet" "udev.log_level=3" ];` |
+| `boot.isContainer` | `boolean` | Whether this NixOS machine is a lightweight container running in another NixOS system. |
+| `boot.isNspawnContainer` | `boolean` | Whether the machine is running in an nspawn container. This option is added because [](#opt-boot.isContainer) is heavily used for non-nspawn environments as well, hence nspawn-specific settings are guarded by this option. |
+| `boot.iscsi-initiator.discoverPortal` | `null or string` | iSCSI portal to boot from. |
+| `boot.iscsi-initiator.extraConfig` | `null or strings concatenated with "\n"` | Extra lines to append to /etc/iscsid.conf |
+| `boot.iscsi-initiator.extraConfigFile` | `null or string` | Append an additional file's contents to `/etc/iscsid.conf`. Use a non-store path and store passwords in this file. Note: the file specified here must be available in the initrd, see: `boot.initrd.secrets`. |
+| `boot.iscsi-initiator.extraIscsiCommands` | `strings concatenated with "\n"` | Extra iscsi commands to run in the initrd. |
+| `boot.iscsi-initiator.logLevel` | `signed integer` | Higher numbers elicits more logs. |
+| `boot.iscsi-initiator.loginAll` | `boolean` | Do not log into a specific target on the portal, but to all that we discover. This overrides setting target. |
+| `boot.iscsi-initiator.name` | `null or string` | Name of the iSCSI initiator to boot from. Note, booting from iscsi requires networkd based networking. |
+| `boot.iscsi-initiator.target` | `null or string` | Name of the iSCSI target to boot from. |
+| `boot.kernel.enable` | `boolean` | Whether to enable the Linux kernel. This is useful for systemd-like containers which do not require a kernel. |
+| `boot.kernel.randstructSeed` | `string` | Provides a custom seed for the {var}`RANDSTRUCT` security option of the Linux kernel. Note that {var}`RANDSTRUCT` is only enabled in NixOS hardened kernels. Using a custom seed requires building the kernel and dependent packages locally, since this customization happens at build time. |
+| `boot.kernel.sysctl` | `open submodule of attribute set of (sysctl option value)` | Runtime parameters of the Linux kernel, as set by {manpage}`sysctl(8)`. Note that sysctl parameters names must be enclosed in quotes (e.g. `"vm.swappiness"` instead of `vm.swappiness`). The value of each parameter may be a string, integer, boolean, or null (signifying the option will not appear at all). |
+| `boot.kernel.sysctl."net.core.rmem_max"` | `null or (unsigned integer, meaning >=0)` | The maximum receive socket buffer size in bytes. In case of conflicting values, the highest will be used. |
+| `boot.kernel.sysctl."net.core.wmem_max"` | `null or (unsigned integer, meaning >=0)` | The maximum send socket buffer size in bytes. In case of conflicting values, the highest will be used. |
+| `boot.kernel.sysfs` | `open submodule of nested attribute set of null or sysfs attribute values` | sysfs attributes to be set as soon as they become available. Attribute names represent path components in the sysfs filesystem and cannot be `.` or `..` nor contain any slash character (`/`). Names may contain shell‐style glob patterns (`*`, `?` and `[…]`) matching a single path component, these should however be used with caution, as they may produce unexpected results if attribute paths overlap. Values will be converted to strings, with list elements concatenated with commata and booleans converted to numeric values (`0` or `1`). `null` values are ignored, allowing removal of values defined in other modules, as are empty attribute sets. List values defined in different modules will _not_ be concatenated. This option may only be used for attributes which can be set idempotently, as the configured values might be written more than once. |
+| `boot.kernelModules` | `(attribute set of boolean) or (list of string) convertible to it` | The set of kernel modules to be loaded in the second stage of the boot process. Note that modules that are needed to mount the root file system should be added to {option}`boot.initrd.availableKernelModules` or {option}`boot.initrd.kernelModules`. This can either be a list of modules, or an attrset. In an attrset, names that are set to `true` represent modules that will be included. Note that setting these names to `false` does not prevent the module from being loaded. For that, use {option}`boot.blacklistedKernelModules`. |
+| `boot.kernelPackages` | `raw value` | This option allows you to override the Linux kernel used by NixOS. Since things like external kernel module packages are tied to the kernel you're using, it also overrides those. This option is a function that takes Nixpkgs as an argument (as a convenience), and returns an attribute set containing at the very least an attribute {var}`kernel`. Additional attributes may be needed depending on your configuration. For instance, if you use the NVIDIA X driver, then it also needs to contain an attribute {var}`nvidia_x11`. Please note that we strictly support kernel versions that are maintained by the Linux developers only. More information on the availability of kernel versions is documented [in the Linux section of the manual](https://nixos.org/manual/nixos/unstable/index.html#sec-kernel-config). |
+| `boot.kernelParams` | `list of string, with spaces inside double quotes` | Parameters added to the kernel command line. |
+| `boot.kernelPatches` | `list of (attribute set)` | A list of additional patches to apply to the kernel. Every item should be an attribute set with the following attributes: `nix {   name = "foo";                 # descriptive name, required    patch = ./foo.patch;          # path or derivation that contains the patch source                                 # (required, but can be null if only config changes                                 # are needed)    structuredExtraConfig = {     # attrset of extra configuration parameters without the CONFIG_ prefix     FOO = lib.kernel.yes;       # (optional)   };                            # values should generally be lib.kernel.yes,                                 # lib.kernel.no or lib.kernel.module    features = {                  # attrset of extra "features" the kernel is considered to have     foo = true;                 # (may be checked by other NixOS modules, optional)   };    extraConfig = "FOO y";        # extra configuration options in string form without the CONFIG_ prefix                                 # (optional, multiple lines allowed to specify multiple options)                                 # (deprecated, use structuredExtraConfig instead) } ` There's a small set of existing kernel patches in Nixpkgs, available as `pkgs.kernelPatches`, that follow this format and can be used directly. |
+| `boot.kexec.enable` | `boolean` | Whether to enable kexec. |
+| `boot.loader.efi.canTouchEfiVariables` | `boolean` | Whether the installation process is allowed to modify EFI boot variables. |
+| `boot.loader.efi.efiSysMountPoint` | `string` | Where the EFI System Partition is mounted. |
+| `boot.loader.external.enable` | `boolean` | Whether to enable using an external tool to install your bootloader. |
+| `boot.loader.external.installHook` | `absolute path` | The full path to a program of your choosing which performs the bootloader installation process. The program will be called with an argument pointing to the output of the system's toplevel. |
+| `boot.loader.generationsDir.copyKernels` | `boolean` | Whether to copy the necessary boot files into /boot, so /nix/store is not needed by the boot loader. |
+| `boot.loader.generationsDir.enable` | `boolean` | Whether to create symlinks to the system generations under `/boot`. When enabled, `/boot/default/kernel`, `/boot/default/initrd`, etc., are updated to point to the current generation's kernel image, initial RAM disk, and other bootstrap files. This optional is not necessary with boot loaders such as GNU GRUB for which the menu is updated to point to the latest bootstrap files. However, it is needed for U-Boot on platforms where the boot command line is stored in flash memory rather than in a menu file. |
+| `boot.loader.generic-extlinux-compatible.configurationLimit` | `signed integer` | Maximum number of configurations in the boot menu. |
+| `boot.loader.generic-extlinux-compatible.enable` | `boolean` | Whether to generate an extlinux-compatible configuration file under `/boot/extlinux.conf`. For instance, U-Boot's generic distro boot support uses this file format. See [U-boot's documentation](https://u-boot.readthedocs.io/en/latest/develop/distro.html) for more information. |
+| `boot.loader.generic-extlinux-compatible.mirroredBoots` | `list of (submodule)` | Mirror the boot configuration to multiple paths. |
+| `boot.loader.generic-extlinux-compatible.mirroredBoots.*.path` | `string` | The path to the boot directory where the extlinux-compatible configuration files will be written. |
+| `boot.loader.generic-extlinux-compatible.populateCmd` | `string` | Contains the builder command used to populate an image, honoring all options except the `-c <path-to-default-configuration>` argument. Useful to have for sdImage.populateRootCommands |
+| `boot.loader.generic-extlinux-compatible.useGenerationDeviceTree` | `boolean` | Whether to generate Device Tree-related directives in the extlinux configuration. When enabled, the bootloader will attempt to load the device tree binaries from the generation's kernel. Note that this affects all generations, regardless of the setting value used in their configurations. |
+| `boot.loader.grub.backgroundColor` | `null or string` | Background color to be used for GRUB to fill the areas the image isn't filling. |
+| `boot.loader.grub.configurationLimit` | `signed integer` | Maximum of configurations in boot menu. GRUB has problems when there are too many entries. |
+| `boot.loader.grub.configurationName` | `string` | GRUB entry name instead of default. |
+| `boot.loader.grub.copyKernels` | `boolean` | Whether the GRUB menu builder should copy kernels and initial ramdisks to /boot. This is done automatically if /boot is on a different partition than /. |
+| `boot.loader.grub.default` | `signed integer or string` | Index of the default menu item to be booted. Can also be set to "saved", which will make GRUB select the menu item that was used at the last boot. |
+| `boot.loader.grub.device` | `string` | The device on which the GRUB boot loader will be installed. The special value `nodev` means that a GRUB boot menu will be generated, but GRUB itself will not actually be installed. To install GRUB on multiple devices, use `boot.loader.grub.devices`. |
+| `boot.loader.grub.devices` | `list of string` | The devices on which the boot loader, GRUB, will be installed. Can be used instead of `device` to install GRUB onto multiple devices. |
+| `boot.loader.grub.efiInstallAsRemovable` | `boolean` | Whether to invoke `grub-install` with `--removable`. Unless you turn this on, GRUB will install itself somewhere in `boot.loader.efi.efiSysMountPoint` (exactly where depends on other config variables). If you've set `boot.loader.efi.canTouchEfiVariables` *AND* you are currently booted in UEFI mode, then GRUB will use `efibootmgr` to modify the boot order in the EFI variables of your firmware to include this location. If you are *not* booted in UEFI mode at the time GRUB is being installed, the NVRAM will not be modified, and your system will not find GRUB at boot time. However, GRUB will still return success so you may miss the warning that gets printed ("`efibootmgr: EFI variables are not supported on this system.`"). If you turn this feature on, GRUB will install itself in a special location within `efiSysMountPoint` (namely `EFI/boot/boot$arch.efi`) which the firmwares are hardcoded to try first, regardless of NVRAM EFI variables. To summarize, turn this on if: - You are installing NixOS and want it to boot in UEFI mode, but you are currently booted in legacy mode - You want to make a drive that will boot regardless of the NVRAM state of the computer (like a USB "removable" drive) - You simply dislike the idea of depending on NVRAM state to make your drive bootable |
+| `boot.loader.grub.efiSupport` | `boolean` | Whether GRUB should be built with EFI support. |
+| `boot.loader.grub.enable` | `boolean` | Whether to enable the GNU GRUB boot loader. |
+| `boot.loader.grub.enableCryptodisk` | `boolean` | Enable support for encrypted partitions. GRUB should automatically unlock the correct encrypted partition and look for filesystems. |
+| `boot.loader.grub.entryOptions` | `null or string` | Options applied to the primary NixOS menu entry. |
+| `boot.loader.grub.extraConfig` | `strings concatenated with "\n"` | Additional GRUB commands inserted in the configuration file just before the menu entries. |
+| `boot.loader.grub.extraEntries` | `strings concatenated with "\n"` | Any additional entries you want added to the GRUB boot menu. |
+| `boot.loader.grub.extraEntriesBeforeNixOS` | `boolean` | Whether extraEntries are included before the default option. |
+| `boot.loader.grub.extraFiles` | `attribute set of absolute path` | A set of files to be copied to {file}`/boot`. Each attribute name denotes the destination file name in {file}`/boot`, while the corresponding attribute value specifies the source file. |
+| `boot.loader.grub.extraGrubInstallArgs` | `list of string` | Additional arguments passed to `grub-install`. A use case for this is to build specific GRUB2 modules directly into the GRUB2 kernel image, so that they are available and activated even in the `grub rescue` shell. They are also necessary when the BIOS/UEFI is bugged and cannot correctly read large disks (e.g. above 2 TB), so GRUB2's own `nativedisk` and related modules can be used to use its own disk drivers. The example shows one such case. This is also useful for booting from USB. See the [ GRUB source code ](https://git.savannah.gnu.org/cgit/grub.git/tree/grub-core/commands/nativedisk.c?h=grub-2.04#n326) for which disk modules are available. The list elements are passed directly as `argv` arguments to the `grub-install` program, in order. |
+| `boot.loader.grub.extraInstallCommands` | `strings concatenated with "\n"` | Additional shell commands inserted in the bootloader installer script after generating menu entries. |
+| `boot.loader.grub.extraPerEntryConfig` | `strings concatenated with "\n"` | Additional GRUB commands inserted in the configuration file at the start of each NixOS menu entry. |
+| `boot.loader.grub.extraPrepareConfig` | `strings concatenated with "\n"` | Additional bash commands to be run at the script that prepares the GRUB menu entries. |
+| `boot.loader.grub.font` | `null or absolute path` | Path to a TrueType, OpenType, or pf2 font to be used by Grub. |
+| `boot.loader.grub.fontSize` | `null or signed integer` | Font size for the grub menu. Ignored unless `font` is set to a ttf or otf font. |
+| `boot.loader.grub.forceInstall` | `boolean` | Whether to try and forcibly install GRUB even if problems are detected. It is not recommended to enable this unless you know what you are doing. |
+| `boot.loader.grub.forcei686` | `boolean` | Whether to force the use of a ia32 boot loader on x64 systems. Required to install and run NixOS on 64bit x86 systems with 32bit (U)EFI. |
+| `boot.loader.grub.fsIdentifier` | `one of "uuid", "label", "provided"` | Determines how GRUB will identify devices when generating the configuration file. A value of uuid / label signifies that grub will always resolve the uuid or label of the device before using it in the configuration. A value of provided means that GRUB will use the device name as show in {command}`df` or {command}`mount`. Note, zfs zpools / datasets are ignored and will always be mounted using their labels. |
+| `boot.loader.grub.gfxmodeBios` | `string` | The gfxmode to pass to GRUB when loading a graphical boot interface under BIOS. |
+| `boot.loader.grub.gfxmodeEfi` | `string` | The gfxmode to pass to GRUB when loading a graphical boot interface under EFI. |
+| `boot.loader.grub.gfxpayloadBios` | `string` | The gfxpayload to pass to GRUB when loading a graphical boot interface under BIOS. |
+| `boot.loader.grub.gfxpayloadEfi` | `string` | The gfxpayload to pass to GRUB when loading a graphical boot interface under EFI. |
+| `boot.loader.grub.ipxe` | `attribute set of (absolute path or string)` | Set of iPXE scripts available for booting from the GRUB boot menu. |
+| `boot.loader.grub.memtest86.enable` | `boolean` | Make Memtest86+, a memory testing program, available from the GRUB boot menu. |
+| `boot.loader.grub.memtest86.params` | `list of string` | Parameters added to the Memtest86+ command line. As of memtest86+ 5.01 the following list of (apparently undocumented) parameters are accepted: - `console=...`, set up a serial console. Examples: `console=ttyS0`, `console=ttyS0,9600` or `console=ttyS0,115200n8`. - `btrace`, enable boot trace. - `maxcpus=N`, limit number of CPUs. - `onepass`, run one pass and exit if there are no errors. - `tstlist=...`, list of tests to run. Example: `0,1,2`. - `cpumask=...`, set a CPU mask, to select CPUs to use for testing. This list of command line options was obtained by reading the Memtest86+ source code. |
+| `boot.loader.grub.mirroredBoots` | `list of (submodule)` | Mirror the boot configuration to multiple partitions and install grub to the respective devices corresponding to those partitions. |
+| `boot.loader.grub.mirroredBoots.*.devices` | `list of string` | The path to the devices which will have the GRUB MBR written. Note these are typically device paths and not paths to partitions. |
+| `boot.loader.grub.mirroredBoots.*.efiBootloaderId` | `null or string` | The id of the bootloader to store in efi nvram. The default is to name it NixOS and append the path or efiSysMountPoint. This is only used if `boot.loader.efi.canTouchEfiVariables` is true. |
+| `boot.loader.grub.mirroredBoots.*.efiSysMountPoint` | `null or string` | The path to the efi system mount point. Usually this is the same partition as the above path and can be left as null. |
+| `boot.loader.grub.mirroredBoots.*.path` | `string` | The path to the boot directory where GRUB will be written. Generally this boot path should double as an EFI path. |
+| `boot.loader.grub.splashImage` | `null or absolute path` | Background image used for GRUB. Set to `null` to run GRUB in text mode. ::: {.note} File must be one of .png, .tga, .jpg, or .jpeg. JPEG images must not be progressive. The image will be scaled if necessary to fit the screen. ::: |
+| `boot.loader.grub.splashMode` | `one of "normal", "stretch"` | Whether to stretch the image or show the image in the top-left corner unstretched. |
+| `boot.loader.grub.storePath` | `string` | Path to the Nix store when looking for kernels at boot. Only makes sense when copyKernels is false. |
+| `boot.loader.grub.subEntryOptions` | `null or string` | Options applied to the secondary NixOS submenu entry. |
+| `boot.loader.grub.theme` | `null or absolute path` | Path to the grub theme to be used. |
+| `boot.loader.grub.timeoutStyle` | `one of "menu", "countdown", "hidden"` | - `menu` shows the menu. - `countdown` uses a text-mode countdown. - `hidden` hides GRUB entirely. When using a theme, the default value (`menu`) is appropriate for the graphical countdown. When attempting to do flicker-free boot, `hidden` should be used. See the [GRUB documentation section about `timeout_style`](https://www.gnu.org/software/grub/manual/grub/html_node/timeout.html). ::: {.note} If this option is set to ‘countdown’ or ‘hidden’ [...] and ESC or F4 are pressed, or SHIFT is held down during that time, it will display the menu and wait for input. ::: From: [Simple configuration handling page, under GRUB_TIMEOUT_STYLE](https://www.gnu.org/software/grub/manual/grub/html_node/Simple-configuration.html). |
+| `boot.loader.grub.useOSProber` | `boolean` | If set to true, append entries for other OSs detected by os-prober. |
+| `boot.loader.grub.users` | `attribute set of (submodule)` | User accounts for GRUB. When specified, the GRUB command line and all boot options except the default are password-protected. All passwords and hashes provided will be stored in /boot/grub/grub.cfg, and will be visible to any local user who can read this file. Additionally, any passwords and hashes provided directly in a Nix configuration (as opposed to external files) will be copied into the Nix store, and will be visible to all local users. |
+| `boot.loader.grub.users.<name>.hashedPassword` | `null or string` | Specifies the password hash for the account, generated with grub-mkpasswd-pbkdf2. This hash will be copied to the Nix store, and will be visible to all local users. |
+| `boot.loader.grub.users.<name>.hashedPasswordFile` | `null or string` | Specifies the path to a file containing the password hash for the account, generated with grub-mkpasswd-pbkdf2. This hash will be stored in /boot/grub/grub.cfg, and will be visible to any local user who can read this file. |
+| `boot.loader.grub.users.<name>.password` | `null or string` | Specifies the clear text password for the account. This password will be copied to the Nix store, and will be visible to all local users. |
+| `boot.loader.grub.users.<name>.passwordFile` | `null or string` | Specifies the path to a file containing the clear text password for the account. This password will be stored in /boot/grub/grub.cfg, and will be visible to any local user who can read this file. |
+| `boot.loader.grub.zfsSupport` | `boolean` | Whether GRUB should be built against libzfs. |
+| `boot.loader.initScript.enable` | `boolean` | Some systems require a /sbin/init script which is started. Or having it makes starting NixOS easier. This applies to some kind of hosting services and user mode linux. Additionally this script will create /boot/init-other-configurations-contents.txt containing contents of remaining configurations. You can copy paste them into /sbin/init manually running a rescue system or such. |
+| `boot.loader.limine.additionalFiles` | `attribute set of absolute path` | A set of files to be copied to {file}`/boot`. Each attribute name denotes the destination file name in {file}`/boot`, while the corresponding attribute value specifies the source file. |
+| `boot.loader.limine.biosDevice` | `string` | Device to install the BIOS version of limine on. |
+| `boot.loader.limine.biosSupport` | `boolean` | Whether or not to install limine for BIOS. |
+| `boot.loader.limine.efiInstallAsRemovable` | `boolean` | Whether or not to install the limine EFI files as removable. See {option}`boot.loader.grub.efiInstallAsRemovable` |
+| `boot.loader.limine.efiSupport` | `boolean` | Whether or not to install the limine EFI files. |
+| `boot.loader.limine.enable` | `boolean` | Whether to enable the Limine Bootloader. |
+| `boot.loader.limine.enableEditor` | `boolean` | Whether to allow editing the boot entries before booting them. It is recommended to set this to false, as it allows gaining root access by passing `init=/bin/sh` as a kernel parameter. |
+| `boot.loader.limine.enrollConfig` | `boolean` | Whether or not to enroll the config. Only works on EFI! |
+| `boot.loader.limine.extraConfig` | `strings concatenated with "\n"` | A string which is prepended to limine.conf. The config format can be found [here](https://github.com/limine-bootloader/limine/blob/trunk/CONFIG.md). |
+| `boot.loader.limine.extraEntries` | `strings concatenated with "\n"` | A string which is appended to the end of limine.conf. The config format can be found [here](https://github.com/limine-bootloader/limine/blob/trunk/CONFIG.md). |
+| `boot.loader.limine.force` | `boolean` | Force installation even if the safety checks fail, use absolutely only if necessary! |
+| `boot.loader.limine.maxGenerations` | `null or signed integer` | Maximum number of latest generations in the boot menu. Useful to prevent boot partition of running out of disk space. `null` means no limit i.e. all generations that were not garbage collected yet. |
+| `boot.loader.limine.package` | `package` | The limine package to use. |
+| `boot.loader.limine.panicOnChecksumMismatch` | `boolean` | Whether or not checksum validation failure should be a fatal error at boot time. |
+| `boot.loader.limine.partitionIndex` | `null or signed integer` | The 1-based index of the dedicated partition for limine's second stage. |
+| `boot.loader.limine.resolution` | `null or string` | The framebuffer resolution to set when booting Linux entries. This controls the GOP mode that Limine sets before handing off to the kernel, which affects early boot graphics (e.g., simpledrm, efifb). Format: `<width>x<height>` or `<width>x<height>x<bpp>`. If bpp is omitted, defaults to 32. Note: Refresh rate is not supported because the UEFI GOP protocol only defines framebuffer dimensions and pixel format, not display timing. Refresh rate is determined later by the GPU driver based on EDID. This is distinct from {option}`boot.loader.limine.style.interface.resolution` which only affects the Limine bootloader's own menu interface. |
+| `boot.loader.limine.secureBoot.autoEnrollKeys.enable` | `boolean` | Enroll automatically generated keys |
+| `boot.loader.limine.secureBoot.autoEnrollKeys.extraArgs` | `list of string` | Extra arguments passed to sbctl |
+| `boot.loader.limine.secureBoot.autoGenerateKeys` | `boolean` | Generate keys automatically when none exists during bootloader installation |
+| `boot.loader.limine.secureBoot.enable` | `boolean` | Whether to use sign the limine binary with sbctl. ::: {.note} This requires you to already have generated the keys and enrolled them with {command}`sbctl`. To create keys use {command}`sbctl create-keys`. To enroll them first reset secure boot to "Setup Mode". This is device specific. Then enroll them using {command}`sbctl enroll-keys -m -f`. You can now rebuild your system with this option enabled. Afterwards turn setup mode off and enable secure boot. ::: |
+| `boot.loader.limine.secureBoot.sbctl` | `package` | The sbctl package to use. |
+| `boot.loader.limine.style.backdrop` | `null or string` | Color to fill the rest of the screen with when wallpaper_style is centered in RRGGBB format. |
+| `boot.loader.limine.style.graphicalTerminal.background` | `null or string` | Text background color (TTRRGGBB). TT is transparency. |
+| `boot.loader.limine.style.graphicalTerminal.brightBackground` | `null or string` | Text background bright color (RRGGBB). |
+| `boot.loader.limine.style.graphicalTerminal.brightForeground` | `null or string` | Text foreground bright color (RRGGBB). |
+| `boot.loader.limine.style.graphicalTerminal.brightPalette` | `null or string` | A ; seperated array of 8 colors in the format RRGGBB: dark gray, bright red, bright green, yellow, bright blue, bright magenta, bright cyan, and white. |
+| `boot.loader.limine.style.graphicalTerminal.font.scale` | `null or string` | The scale of the font in the format <width>x<height>. |
+| `boot.loader.limine.style.graphicalTerminal.font.spacing` | `null or signed integer` | The horizontal spacing between characters in pixels. |
+| `boot.loader.limine.style.graphicalTerminal.foreground` | `null or string` | Text foreground color (RRGGBB). |
+| `boot.loader.limine.style.graphicalTerminal.margin` | `null or signed integer` | The amount of margin around the terminal. |
+| `boot.loader.limine.style.graphicalTerminal.marginGradient` | `null or signed integer` | The thickness in pixels for the margin around the terminal. |
+| `boot.loader.limine.style.graphicalTerminal.palette` | `null or string` | A ; seperated array of 8 colors in the format RRGGBB: black, red, green, brown, blue, magenta, cyan, and gray. |
+| `boot.loader.limine.style.interface.branding` | `null or string` | The title at the top of the screen. |
+| `boot.loader.limine.style.interface.brandingColor` | `null or string` | Color of the title at the top of the screen in RRGGBB format (Limine defaults to #00AAAA (cyan)). |
+| `boot.loader.limine.style.interface.helpColor` | `null or string` | Color of the help text displayed beside keybinds in RRGGBB format (Limine defaults to #00AA00 (dark green)). |
+| `boot.loader.limine.style.interface.helpColorBright` | `null or string` | Color of the bright help text used for the auto-boot countdown digit in RRGGBB format (Limine defaults to #55FF55 (bright green)). |
+| `boot.loader.limine.style.interface.helpHidden` | `boolean` | Whether or not to hide the keybinds at the top of the screen. |
+| `boot.loader.limine.style.interface.resolution` | `null or string` | The resolution of the interface. |
+| `boot.loader.limine.style.wallpaperStyle` | `one of "centered", "stretched", "tiled"` | How the wallpaper should be fit to the screen. |
+| `boot.loader.limine.style.wallpapers` | `list of absolute path` | A list of wallpapers. If more than one is specified, a random one will be selected at boot. |
+| `boot.loader.limine.validateChecksums` | `boolean` | Whether to validate file checksums before booting. |
+| `boot.loader.refind.additionalFiles` | `attribute set of absolute path` | A set of files to be copied to {file}`/boot`. Each attribute name denotes the destination file name in {file}`/boot`, while the corresponding attribute value specifies the source file. |
+| `boot.loader.refind.efiInstallAsRemovable` | `boolean` | Whether or not to install the rEFInd EFI files as removable. See {option}`boot.loader.grub.efiInstallAsRemovable` |
+| `boot.loader.refind.enable` | `boolean` | Whether to enable the rEFInd boot loader. |
+| `boot.loader.refind.extraConfig` | `strings concatenated with "\n"` | A string which is prepended to refind.conf. |
+| `boot.loader.refind.maxGenerations` | `null or signed integer` | Maximum number of latest generations in the boot menu. Useful to prevent boot partition of running out of disk space. `null` means no limit i.e. all generations that were not garbage collected yet. |
+| `boot.loader.refind.package` | `package` | The refind package to use. |
+| `boot.loader.systemd-boot.bootCounting.enable` | `boolean` | Whether to enable [Automatic Boot Assessment](https://systemd.io/AUTOMATIC_BOOT_ASSESSMENT/). New boot entries are written with a boot counter in the file name. On each boot, systemd-boot decrements the counter; once the booted system reaches `boot-complete.target`, `systemd-bless-boot.service` removes the counter and marks the entry as good. An entry whose counter reaches zero is considered bad and will be skipped in favour of an older generation . |
+| `boot.loader.systemd-boot.bootCounting.tries` | `positive integer, meaning >0` | Number of boot attempts a freshly written entry is given before it is considered bad. |
+| `boot.loader.systemd-boot.configurationLimit` | `null or signed integer` | Maximum number of latest generations in the boot menu. Useful to prevent boot partition running out of disk space. `null` means no limit i.e. all generations that have not been garbage collected yet. |
+| `boot.loader.systemd-boot.consoleMode` | `one of "0", "1", "2", "5", "auto", "max", "keep"` | The resolution of the console. The following values are valid: - `"0"`: Standard UEFI 80x25 mode - `"1"`: 80x50 mode, not supported by all devices - `"2"`: The first non-standard mode provided by the device firmware, if any - `"5"`: Applicable for SteamDeck where this mode represent horizontal mode - `"auto"`: Pick a suitable mode automatically using heuristics - `"max"`: Pick the highest-numbered available mode - `"keep"`: Keep the mode selected by firmware (the default) |
+| `boot.loader.systemd-boot.editor` | `boolean` | Whether to allow editing the kernel command-line before boot. It is recommended to set this to false, as it allows gaining root access by passing init=/bin/sh as a kernel parameter. However, it is enabled by default for backwards compatibility. |
+| `boot.loader.systemd-boot.edk2-uefi-shell.enable` | `boolean` | Make the EDK2 UEFI Shell available from the systemd-boot menu. It can be used to manually boot other operating systems or for debugging. |
+| `boot.loader.systemd-boot.edk2-uefi-shell.sortKey` | `string` | `systemd-boot` orders the menu entries by their sort keys, so if you want something to appear after all the NixOS entries, it should start with {file}`o` or onwards. See also {option}`boot.loader.systemd-boot.sortKey`.. |
+| `boot.loader.systemd-boot.enable` | `boolean` | Whether to enable the systemd-boot (formerly gummiboot) EFI boot manager. For more information about systemd-boot: <https://www.freedesktop.org/wiki/Software/systemd/systemd-boot/> |
+| `boot.loader.systemd-boot.extraEntries` | `attribute set of strings concatenated with "\n"` | Any additional entries you want added to the `systemd-boot` menu. These entries will be copied to {file}`$BOOT/loader/entries`. Each attribute name denotes the destination file name, and the corresponding attribute value is the contents of the entry. To control the ordering of the entry in the boot menu, use the sort-key field, see <https://uapi-group.org/specifications/specs/boot_loader_specification/#sorting> and {option}`boot.loader.systemd-boot.sortKey`. |
+| `boot.loader.systemd-boot.extraFiles` | `attribute set of absolute path` | A set of files to be copied to {file}`$BOOT`. Each attribute name denotes the destination file name in {file}`$BOOT`, while the corresponding attribute value specifies the source file. |
+| `boot.loader.systemd-boot.extraInstallCommands` | `strings concatenated with "\n"` | Additional shell commands inserted in the bootloader installer script after generating menu entries. It can be used to expand on extra boot entries that cannot incorporate certain pieces of information (such as the resulting `init=` kernel parameter). |
+| `boot.loader.systemd-boot.graceful` | `boolean` | Invoke `bootctl install` with the `--graceful` option, which ignores errors when EFI variables cannot be written or when the EFI System Partition cannot be found. Currently only applies to random seed operations. Only enable this option if `systemd-boot` otherwise fails to install, as the scope or implication of the `--graceful` option may change in the future. |
+| `boot.loader.systemd-boot.installDeviceTree` | `unspecified value` | Install the devicetree blob specified by `config.hardware.deviceTree.name` to the ESP and instruct systemd-boot to pass this DTB to linux. |
+| `boot.loader.systemd-boot.memtest86.enable` | `boolean` | Make Memtest86+ available from the systemd-boot menu. Memtest86+ is a program for testing memory. |
+| `boot.loader.systemd-boot.memtest86.sortKey` | `string` | `systemd-boot` orders the menu entries by their sort keys, so if you want something to appear after all the NixOS entries, it should start with {file}`o` or onwards. See also {option}`boot.loader.systemd-boot.sortKey`. |
+| `boot.loader.systemd-boot.netbootxyz.enable` | `boolean` | Make `netboot.xyz` available from the `systemd-boot` menu. `netboot.xyz` is a menu system that allows you to boot OS installers and utilities over the network. |
+| `boot.loader.systemd-boot.netbootxyz.sortKey` | `string` | `systemd-boot` orders the menu entries by their sort keys, so if you want something to appear after all the NixOS entries, it should start with {file}`o` or onwards. See also {option}`boot.loader.systemd-boot.sortKey`. |
+| `boot.loader.systemd-boot.rebootForBitlocker` | `boolean` | Enable *EXPERIMENTAL* BitLocker support. Try to detect BitLocker encrypted drives along with an active TPM. If both are found and Windows Boot Manager is selected in the boot menu, set the "BootNext" EFI variable and restart the system. The firmware will then start Windows Boot Manager directly, leaving the TPM PCRs in expected states so that Windows can unseal the encryption key. |
+| `boot.loader.systemd-boot.sortKey` | `string` | The sort key used for the NixOS bootloader entries. This key determines sorting relative to non-NixOS entries. See also <https://uapi-group.org/specifications/specs/boot_loader_specification/#sorting> This option can also be used to control the sorting of NixOS specialisations. By default, specialisations inherit the sort key of their parent generation and will have the same value for both the sort-key and the version (i.e. the generation number), systemd-boot will therefore sort them based on their file name, meaning that in your boot menu you will have each main generation directly followed by its specialisations sorted alphabetically by their names. If you want a different ordering for a specialisation, you can override its sort-key which will cause the specialisation to be uncoupled from its parent generation. It will then be sorted by its new sort-key just like any other boot entry. The sort-key is stored in the generation's bootspec, which means that generations keep their sort-keys even if the original definition of the generation was removed from the NixOS configuration. It also means that updating the sort-key will only affect new generations, while old ones will keep the sort-key that they were originally built with. |
+| `boot.loader.systemd-boot.windows` | `attribute set of (submodule)` | Make Windows bootable from systemd-boot. This option is not necessary when Windows and NixOS use the same EFI System Partition (ESP). In that case, Windows will automatically be detected by systemd-boot. However, if Windows is installed on a separate drive or ESP, you can use this option to add a menu entry for each installation manually. The attribute name is used for the title of the menu entry and internal file names. |
+| `boot.loader.systemd-boot.windows.<name>.efiDeviceHandle` | `string` | The device handle of the EFI System Partition (ESP) where the Windows bootloader is located. This is the device handle that the EDK2 UEFI Shell uses to load the bootloader. To find this handle, follow these steps: 1. Set {option}`boot.loader.systemd-boot.edk2-uefi-shell.enable` to `true` 2. Run `nixos-rebuild boot` 3. Reboot and select "EDK2 UEFI Shell" from the systemd-boot menu 4. Run `map -c` to list all consistent device handles 5. For each device handle (for example, `HD0c1`), run `ls HD0c1:\EFI` 6. If the output contains the directory `Microsoft`, you might have found the correct device handle 7. Run `HD0c1:\EFI\Microsoft\Boot\Bootmgfw.efi` to check if Windows boots correctly 8. If it does, this device handle is the one you need (in this example, `HD0c1`) This option is required, there is no useful default. |
+| `boot.loader.systemd-boot.windows.<name>.sortKey` | `string` | `systemd-boot` orders the menu entries by their sort keys, so if you want something to appear after all the NixOS entries, it should start with {file}`o` or onwards. See also {option}`boot.loader.systemd-boot.sortKey`.. |
+| `boot.loader.systemd-boot.windows.<name>.title` | `string` | The title of the boot menu entry. |
+| `boot.loader.systemd-boot.xbootldrMountPoint` | `null or string` | Where the XBOOTLDR partition is mounted. If set, this partition will be used as $BOOT to store boot loader entries and extra files instead of the EFI partition. As per the bootloader specification, it is recommended that the EFI and XBOOTLDR partitions be mounted at `/efi` and `/boot`, respectively. |
+| `boot.loader.timeout` | `null or signed integer` | Timeout (in seconds) until loader boots the default menu item. Use null if the loader menu should be displayed indefinitely. |
+| `boot.modprobeConfig.enable` | `boolean` | Whether to enable modprobe config. This is useful for systems like containers which do not require a kernel. |
+| `boot.modprobeConfig.useUbuntuModuleBlacklist` | `boolean` | Whether to enable Ubuntu distro's module blacklist. |
+| `boot.nixStoreMountOpts` | `list of non-empty string` | Defines the mount options used on a bind mount for the {file}`/nix/store`. This affects the whole system except the nix store daemon, which will undo the bind mount. `ro` enforces immutability of the Nix store. The store daemon should already not put device mappers or suid binaries in the store, meaning `nosuid` and `nodev` enforce what should already be the case. |
+| `boot.plymouth.enable` | `boolean` | Whether to enable Plymouth boot splash screen. |
+| `boot.plymouth.extraConfig` | `strings concatenated with "\n"` | Literal string to append to `configFile` and the config file generated by the plymouth module. |
+| `boot.plymouth.font` | `absolute path` | Font file made available for displaying text on the splash screen. |
+| `boot.plymouth.logo` | `absolute path` | Logo which is displayed on the splash screen. Currently supports PNG file format only. |
+| `boot.plymouth.package` | `package` | The plymouth package to use. |
+| `boot.plymouth.theme` | `string` | Splash screen theme. |
+| `boot.plymouth.themePackages` | `list of package` | Extra theme packages for plymouth. |
+| `boot.plymouth.tpm2-totp.enable` | `boolean` | Whether to display a TOTP during boot using tpm2-totp and Plymouth. |
+| `boot.plymouth.tpm2-totp.package` | `package` | The tpm2-totp package to use. |
+| `boot.postBootCommands` | `strings concatenated with "\n"` | Shell commands to be executed just before systemd is started. |
+| `boot.resumeDevice` | `string` | Device for manual resume attempt during boot. This should be used primarily if you want to resume from file. If left empty, the swap partitions are used. Specify here the device where the file resides. You should also use {var}`boot.kernelParams` to specify `«resume_offset»`. |
+| `boot.runSize` | `string` | Size limit for the /run tmpfs. Look at {manpage}`mount(8)`, tmpfs size option, for the accepted syntax. |
+| `boot.specialFileSystems.<name>.depends` | `list of string (with check: non-empty without trailing slash)` | List of paths that should be mounted before this one. This filesystem's {option}`device` and {option}`mountPoint` are always checked and do not need to be included explicitly. If a path is added to this list, any other filesystem whose mount point is a parent of the path will be mounted before this filesystem. The paths do not need to actually be the {option}`mountPoint` of some other filesystem. This is useful for mounts which require keys and/or configuration files residing on another filesystem. |
+| `boot.specialFileSystems.<name>.device` | `null or string (with check: non-empty)` | The device as passed to `mount`. This can be any of: - a filename of a block special device such as `/dev/sdc3` - a tag such as `UUID=fdd68895-c307-4549-8c9c-90e44c71f5b7` - (for bind mounts only) the source path - something else depending on the {option}`fsType`. For example, `nfs` device may look like `knuth.cwi.nl:/dir` This is called `device` in {manpage}`mount(8)` and `fs_spec` in {manpage}`fstab(5)`. |
+| `boot.specialFileSystems.<name>.enable` | `boolean` | Whether to enable the filesystem mount. |
+| `boot.specialFileSystems.<name>.fsType` | `string (with check: non-empty)` | Type of the file system. This is the `fstype` passed to `-t` in the {manpage}`mount(8)` command, and is called `fs_vfstype` in {manpage}`fstab(5)`. |
+| `boot.specialFileSystems.<name>.mountPoint` | `string (with check: non-empty without trailing slash)` | Location where the file system will be mounted. This is called `mountpoint` in {manpage}`mount(8)` and `fs_file` in {manpage}`fstab(5)` |
+| `boot.specialFileSystems.<name>.options` | `non-empty (list of string (with check: non-empty))` | Options used to mount the file system. This is called `options` in {manpage}`mount(8)` and `fs_mntops` in {manpage}`fstab(5)` Some options that can be used for all mounts are documented in {manpage}`mount(8)` under `FILESYSTEM-INDEPENDENT MOUNT OPTIONS`. Options that systemd understands are documented in {manpage}`systemd.mount(5)` under `FSTAB`. Each filesystem supports additional options, see the docs for that filesystem. |
+| `boot.specialFileSystems.<name>.stratis.poolUuid` | `null or string` | UUID of the stratis pool that the fs is located in This is only relevant if you are using [stratis](https://stratis-storage.github.io/). |
+| `boot.stage2Greeting` | `string` | The greeting message displayed during NixOS stage 2 boot. |
+| `boot.supportedFilesystems` | `(attribute set of boolean) or (list of string) convertible to it` | Names of supported filesystem types, or an attribute set of file system types and their state. The set form may be used together with `lib.mkForce` to explicitly disable support for specific filesystems, e.g. to disable ZFS with an unsupported kernel. |
+| `boot.swraid.enable` | `boolean` | Whether to enable support for Linux MD RAID arrays. When this is enabled, mdadm will be added to the system path, and MD RAID arrays will be detected and activated automatically, both in stage-1 (initramfs) and in stage-2 (the final NixOS system). This should be enabled if you want to be able to access and/or boot from MD RAID arrays. {command}`nixos-generate-config` should detect it correctly in the standard installation procedure. |
+| `boot.swraid.mdadmConf` | `strings concatenated with "\n"` | Contents of {file}`/etc/mdadm.conf`. |
+| `boot.systemdExecutable` | `string` | The program to execute to start systemd. |
+| `boot.tmp.cleanOnBoot` | `boolean` | Whether to delete all files in {file}`/tmp` during boot. |
+| `boot.tmp.tmpfsHugeMemoryPages` | `one of "never", "always", "within_size", "advise"` | - `never` - Do not allocate huge memory pages. This is the default. - `always` - Attempt to allocate huge memory page every time a new page is needed. - `within_size` - Only allocate huge memory pages if it will be fully within i_size. Also respect madvise(2) hints. Recommended. - `advise` - Only allocate huge memory pages if requested with madvise(2). |
+| `boot.tmp.tmpfsSize` | `string or (positive integer, meaning >0)` | Size of tmpfs in percentage. Percentage is defined by systemd. |
+| `boot.tmp.useTmpfs` | `boolean` | Whether to mount a tmpfs on {file}`/tmp` during boot. ::: {.note} Large Nix builds can fail if the mounted tmpfs is not large enough. In such a case either increase the tmpfsSize or disable this option. ::: |
+| `boot.tmp.useZram` | `boolean` | Whether to mount a zram device on {file}`/tmp` during boot. ::: {.note} Large Nix builds can fail if the mounted zram device is not large enough. In such a case either increase the zramSettings.zram-size or disable this option. ::: |
+| `boot.tmp.zramSettings.compression-algorithm` | `string` | The compression algorithm to use for the zram device. See: <https://github.com/systemd/zram-generator/blob/main/zram-generator.conf.example> |
+| `boot.tmp.zramSettings.fs-type` | `string` | The file system to put on the device. See: <https://github.com/systemd/zram-generator/blob/main/zram-generator.conf.example> |
+| `boot.tmp.zramSettings.options` | `string` | By default, file systems and swap areas are trimmed on-the-go by setting "discard". Setting this to the empty string clears the option. See: <https://github.com/systemd/zram-generator/blob/main/zram-generator.conf.example> |
+| `boot.tmp.zramSettings.zram-size` | `string` | The size of the zram device, as a function of MemTotal, both in MB. For example, if the machine has 1 GiB, and zram-size=ram/4, then the zram device will have 256 MiB. Fractions in the range 0.1–0.5 are recommended See: <https://github.com/systemd/zram-generator/blob/main/zram-generator.conf.example> |
+| `boot.uki.configFile` | `absolute path` | The configuration file passed to {manpage}`ukify(1)` to create the UKI. By default this configuration file is created from {option}`boot.uki.settings`. |
+| `boot.uki.name` | `string` | Name of the UKI |
+| `boot.uki.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | The configuration settings for ukify. These control what the UKI contains and how it is built. |
+| `boot.uki.tries` | `null or (unsigned integer, meaning >=0)` | Number of boot attempts before this UKI is considered bad. If no tries are specified (the default) automatic boot assessment remains inactive. See documentation on [Automatic Boot Assessment](https://systemd.io/AUTOMATIC_BOOT_ASSESSMENT/) and [boot counting](https://uapi-group.org/specifications/specs/boot_loader_specification/#boot-counting) for more information. |
+| `boot.uki.version` | `null or string` | Version of the image or generation the UKI belongs to |
+| `boot.uvesafb.enable` | `boolean` | Whether to enable uvesafb. |
+| `boot.uvesafb.gfx-mode` | `string` | Screen resolution in modedb format. See [uvesafb](https://docs.kernel.org/fb/uvesafb.html) and [modedb](https://docs.kernel.org/fb/modedb.html) documentation for more details. The default value is a sensible default but may be not ideal for all setups. |
+| `boot.uvesafb.v86d.package` | `package` | Which v86d package to use with uvesafb |
+| `boot.zfs.devNodes` | `absolute path` | Name of directory from which to import ZFS device, this is passed to `zpool import` as the value of the `-d` option. For guidance on choosing this value, see [the ZFS documentation](https://openzfs.github.io/openzfs-docs/Project%20and%20Community/FAQ.html#selecting-dev-names-when-creating-a-pool-linux). |
+| `boot.zfs.enabled` | `boolean` | True if ZFS filesystem support is enabled |
+| `boot.zfs.extraPools` | `list of string` | Name or GUID of extra ZFS pools that you wish to import during boot. Usually this is not necessary. Instead, you should set the mountpoint property of ZFS filesystems to `legacy` and add the ZFS filesystems to NixOS's {option}`fileSystems` option, which makes NixOS automatically import the associated pool. However, in some cases (e.g. if you have many filesystems) it may be preferable to exclusively use ZFS commands to manage filesystems. If so, since NixOS/systemd will not be managing those filesystems, you will need to specify the ZFS pool here so that NixOS automatically imports it on every boot. |
+| `boot.zfs.forceImportAll` | `boolean` | Forcibly import all ZFS pool(s). It is highly recommended to keep this option disabled as it bypasses ZFS safeguard that protect your pools. See {option}`boot.zfs.forceImportRoot` for details. |
+| `boot.zfs.forceImportRoot` | `boolean` | Forcibly import the ZFS root pool(s) during early boot. It is highly recommended to keep this option disabled as it bypasses ZFS safeguard that protect your pools. If NixOS fails to boot because it cannot import the root pool, you should boot with the `zfs_force=1` option as a kernel parameter (e.g. by manually editing the kernel params via your bootloader). You should only need to do this after unclean shutdowns. |
+| `boot.zfs.package` | `package` | Configured ZFS userland tools package. |
+| `boot.zfs.passwordTimeout` | `signed integer` | Timeout in seconds to wait for password entry for decrypt at boot. Defaults to 0, which waits forever. |
+| `boot.zfs.pools` | `attribute set of (submodule)` | Configuration for individual pools to override global defaults. |
+| `boot.zfs.pools.<name>.devNodes` | `absolute path` | Name of directory from which to import ZFS device, this is passed to `zpool import` as the value of the `-d` option. For guidance on choosing this value, see [the ZFS documentation](https://openzfs.github.io/openzfs-docs/Project%20and%20Community/FAQ.html#selecting-dev-names-when-creating-a-pool-linux). |
+| `boot.zfs.removeLinuxDRM` | `boolean` | Patch the kernel to change symbols needed by ZFS from EXPORT_SYMBOL_GPL to EXPORT_SYMBOL. Currently has no effect, but may again in future if a kernel update breaks ZFS due to symbols being newly changed to GPL. |
+| `boot.zfs.requestEncryptionCredentials` | `boolean or list of string` | If true on import encryption keys or passwords for all encrypted datasets are requested. To only decrypt selected datasets supply a list of dataset names instead. For root pools the encryption key can be supplied via both an interactive prompt (keylocation=prompt) and from a file (keylocation=file://). |
+| `boot.zfs.tzpfms.backends` | `non-empty (list of (one of "TPM2", "TPM1.X"))` | TPM backends to include in for tzpfms. |
+| `boot.zfs.tzpfms.datasets` | `non-empty (list of string)` | Explicit list of ZFS datasets to unlock with TPM at boot. |
+| `boot.zfs.tzpfms.enable` | `boolean` | Whether to enable TPM-backed ZFS encryption using tzpfms. Supports both TPM 2.0 & TPM 1.x. . |
+| `boot.zfs.tzpfms.package` | `package` | The tzpfms package to use. |
+| `boot.zfs.unsafeAllowHibernation` | `boolean` | Allow hibernation (suspend to disk) support. This is generally considered **UNSAFE**, is not well supported by openzfs, and could lead to corruption and data loss. |
+| `boot.zfs.useKeyringForCredentials` | `boolean` | Whether to enable Uses the kernel keyring for encryption credentials with keyname=zfs-<poolname>. |
+| `boot.zswap.acceptThresholdPercent` | `integer between 1 and 100 (both inclusive)` | Threshold percentage at which zswap starts accepting pages again after the pool becomes full (1-100). This parameter provides hysteresis to prevent pool oscillation. When the pool usage drops below this threshold, zswap starts accepting new pages. Default is 90% as recommended by kernel documentation. |
+| `boot.zswap.compressor` | `one of "zstd", "lz4", "lzo", "lz4hc", "deflate", "842"` | Compression algorithm to use for zswap. Available options: - 'zstd': Best compression ratio, excellent for Nix builds (default) - 'lz4': Fastest compression, lowest latency - 'lz4hc': High-compression variant of lz4, slower but better ratio - 'lzo': Good balance of speed and compression (kernel default) - 'deflate': Higher compression, slower processing - '842': Hardware-accelerated compression on supported systems Note: The chosen algorithm must be supported by your kernel configuration. |
+| `boot.zswap.enable` | `boolean` | Whether to enable Zswap (Compressed Cache for Swap Pages). |
+| `boot.zswap.maxPoolPercent` | `integer between 1 and 100 (both inclusive)` | The maximum percentage of system memory that Zswap can occupy (1-100). Higher values provide more compression cache but increase memory pressure. Default is 25% (higher than kernel default of 20%) for better Nix build performance. Recommended ranges: - Desktop systems: 15-25% - Low-memory systems: 30-50% - Server systems: 10-20% |
+| `boot.zswap.shrinkerEnabled` | `boolean` | Enable the zswap shrinker to reclaim memory when under pressure. When enabled, the shrinker will automatically reclaim compressed pages from the zswap pool when the system is under memory pressure, helping to prevent out-of-memory situations. It is recommended to keep this enabled for most workloads, especially on systems with limited memory. |
+| `boot.zswap.zpool` | `one of "zsmalloc", "zbud"` | Kernel zpool allocator. 'zsmalloc' is strongly recommended for kernels >= 6.3 as it offers the best density. For older kernels, 'zbud' is the fallback. Note: 'z3fold' was removed from Linux kernel 6.8 and later. |

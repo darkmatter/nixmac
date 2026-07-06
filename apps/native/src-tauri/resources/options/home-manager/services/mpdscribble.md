@@ -5,9 +5,12 @@
 All options under `services.mpdscribble`.
 
 | Option | Type | Description |
-| -------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.mpdscribble.enable` | `boolean` | Whether to enable mpdscribble, an MPD client which submits info about tracks being played to Last.fm (formerly AudioScrobbler) . |
-| `services.mpdscribble.endpoints` | `attribute set of (submodule)` | Endpoints to scrobble to. If the endpoint is one of “jamendo”, “last.fm”, “libre.fm”, “listenbrainz” the url is set automatically. |
+| `services.mpdscribble.endpoints` | `attribute set of (submodule)` | Endpoints to scrobble to. If the endpoint is one of "jamendo", "last.fm", "libre.fm", "listenbrainz" the url is set automatically. |
+| `services.mpdscribble.endpoints.<name>.passwordFile` | `null or string` | File containing the password, either as MD5SUM or cleartext. |
+| `services.mpdscribble.endpoints.<name>.url` | `string` | The url endpoint where the scrobble API is listening. |
+| `services.mpdscribble.endpoints.<name>.username` | `string` | Username for the scrobble service. |
 | `services.mpdscribble.host` | `string` | Host for the mpdscribble daemon to search for a mpd daemon on. |
 | `services.mpdscribble.journalInterval` | `signed integer` | How often should mpdscribble save the journal file? [seconds] |
 | `services.mpdscribble.package` | `package` | The mpdscribble package to use. |

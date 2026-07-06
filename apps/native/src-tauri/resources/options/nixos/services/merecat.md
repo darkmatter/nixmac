@@ -5,6 +5,6 @@
 All options under `services.merecat`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.merecat.enable` | | |
-| `services.merecat.settings` | | |
+| --- | --- | --- |
+| `services.merecat.enable` | `boolean` | Whether to enable Merecat HTTP server. |
+| `services.merecat.settings` | `attribute set of (atom (null, bool, int, float or string))` | Merecat configuration. Refer to {manpage}`merecat(8)` for details on supported values. |

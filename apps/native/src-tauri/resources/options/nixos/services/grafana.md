@@ -5,73 +5,167 @@
 All options under `services.grafana`.
 
 | Option | Type | Description |
-| ------------------------------------------------------------ | ---- | ----------- |
-| `services.grafana.addr` | | |
-| `services.grafana.analytics.reporting.enable` | | |
-| `services.grafana.auth.anonymous.enable` | | |
-| `services.grafana.auth.anonymous.org_name` | | |
-| `services.grafana.auth.anonymous.org_role` | | |
-| `services.grafana.auth.azuread.allowSignUp` | | |
-| `services.grafana.auth.azuread.allowedDomains` | | |
-| `services.grafana.auth.azuread.allowedGroups` | | |
-| `services.grafana.auth.azuread.clientId` | | |
-| `services.grafana.auth.azuread.clientSecretFile` | | |
-| `services.grafana.auth.azuread.enable` | | |
-| `services.grafana.auth.azuread.tenantId` | | |
-| `services.grafana.auth.disableLoginForm` | | |
-| `services.grafana.auth.google.allowSignUp` | | |
-| `services.grafana.auth.google.clientId` | | |
-| `services.grafana.auth.google.clientSecretFile` | | |
-| `services.grafana.auth.google.enable` | | |
-| `services.grafana.certFile` | | |
-| `services.grafana.certKey` | | |
-| `services.grafana.dataDir` | | |
-| `services.grafana.database.connMaxLifetime` | | |
-| `services.grafana.database.host` | | |
-| `services.grafana.database.name` | | |
-| `services.grafana.database.password` | | |
-| `services.grafana.database.passwordFile` | | |
-| `services.grafana.database.path` | | |
-| `services.grafana.database.type` | | |
-| `services.grafana.database.user` | | |
-| `services.grafana.declarativePlugins` | | |
-| `services.grafana.domain` | | |
-| `services.grafana.enable` | | |
-| `services.grafana.extraOptions` | | |
-| `services.grafana.openFirewall` | | |
-| `services.grafana.package` | | |
-| `services.grafana.port` | | |
-| `services.grafana.protocol` | | |
-| `services.grafana.provision.alerting.contactPoints.path` | | |
-| `services.grafana.provision.alerting.contactPoints.settings` | | |
-| `services.grafana.provision.alerting.muteTimings.path` | | |
-| `services.grafana.provision.alerting.muteTimings.settings` | | |
-| `services.grafana.provision.alerting.policies.path` | | |
-| `services.grafana.provision.alerting.policies.settings` | | |
-| `services.grafana.provision.alerting.rules.path` | | |
-| `services.grafana.provision.alerting.rules.settings` | | |
-| `services.grafana.provision.alerting.templates.path` | | |
-| `services.grafana.provision.alerting.templates.settings` | | |
-| `services.grafana.provision.dashboards` | | |
-| `services.grafana.provision.datasources` | | |
-| `services.grafana.provision.enable` | | |
-| `services.grafana.provision.notifiers` | | |
-| `services.grafana.rootUrl` | | |
-| `services.grafana.security.adminPassword` | | |
-| `services.grafana.security.adminPasswordFile` | | |
-| `services.grafana.security.adminUser` | | |
-| `services.grafana.security.secretKey` | | |
-| `services.grafana.security.secretKeyFile` | | |
-| `services.grafana.server.serveFromSubPath` | | |
-| `services.grafana.settings` | | |
-| `services.grafana.smtp.enable` | | |
-| `services.grafana.smtp.fromAddress` | | |
-| `services.grafana.smtp.password` | | |
-| `services.grafana.smtp.passwordFile` | | |
-| `services.grafana.smtp.user` | | |
-| `services.grafana.socket` | | |
-| `services.grafana.staticRootPath` | | |
-| `services.grafana.users.allowOrgCreate` | | |
-| `services.grafana.users.allowSignUp` | | |
-| `services.grafana.users.autoAssignOrg` | | |
-| `services.grafana.users.autoAssignOrgRole` | | |
+| --- | --- | --- |
+| `services.grafana.dataDir` | `absolute path` | Data directory. |
+| `services.grafana.declarativePlugins` | `null or (list of absolute path)` | If non-null, then a list of packages containing Grafana plugins to install. If set, plugins cannot be manually installed. Keep in mind that this turns off drilldown: for this to work, you need to add `grafana-metricsdrilldown-app`, `grafana-lokiexplore-app`, `grafana-exploretraces-app` and `grafana-pyroscope-app` to this option. |
+| `services.grafana.enable` | `boolean` | Whether to enable grafana. |
+| `services.grafana.openFirewall` | `boolean` | Open the ports in the firewall for the server. |
+| `services.grafana.package` | `package` | The grafana package to use. |
+| `services.grafana.provision.alerting.contactPoints.path` | `null or absolute path` | Path to YAML contact points configuration. Can't be used with [](#opt-services.grafana.provision.alerting.contactPoints.settings) simultaneously. Can be either a directory or a single YAML file. Will end up in the store. |
+| `services.grafana.provision.alerting.contactPoints.settings` | `null or (submodule)` | Grafana contact points configuration in Nix. Can't be used with [](#opt-services.grafana.provision.alerting.contactPoints.path) simultaneously. See <https://grafana.com/docs/grafana/latest/administration/provisioning/#contact-points> for supported options. |
+| `services.grafana.provision.alerting.contactPoints.settings.apiVersion` | `signed integer` | Config file version. |
+| `services.grafana.provision.alerting.contactPoints.settings.contactPoints` | `list of (open submodule of (YAML 1.1 value))` | List of contact points to import or update. |
+| `services.grafana.provision.alerting.contactPoints.settings.contactPoints.*.name` | `string` | Name of the contact point. Required. |
+| `services.grafana.provision.alerting.contactPoints.settings.deleteContactPoints` | `list of (submodule)` | List of receivers that should be deleted. |
+| `services.grafana.provision.alerting.contactPoints.settings.deleteContactPoints.*.orgId` | `signed integer` | Organization ID, default = 1. |
+| `services.grafana.provision.alerting.contactPoints.settings.deleteContactPoints.*.uid` | `string` | Unique identifier for the receiver. Required. |
+| `services.grafana.provision.alerting.muteTimings.path` | `null or absolute path` | Path to YAML mute timings configuration. Can't be used with [](#opt-services.grafana.provision.alerting.muteTimings.settings) simultaneously. Can be either a directory or a single YAML file. Will end up in the store. |
+| `services.grafana.provision.alerting.muteTimings.settings` | `null or (submodule)` | Grafana mute timings configuration in Nix. Can't be used with [](#opt-services.grafana.provision.alerting.muteTimings.path) simultaneously. See <https://grafana.com/docs/grafana/latest/administration/provisioning/#mute-timings> for supported options. |
+| `services.grafana.provision.alerting.muteTimings.settings.apiVersion` | `signed integer` | Config file version. |
+| `services.grafana.provision.alerting.muteTimings.settings.deleteMuteTimes` | `list of (submodule)` | List of mute time intervals that should be deleted. |
+| `services.grafana.provision.alerting.muteTimings.settings.deleteMuteTimes.*.name` | `string` | Name of the mute time interval, must be unique. Required. |
+| `services.grafana.provision.alerting.muteTimings.settings.deleteMuteTimes.*.orgId` | `signed integer` | Organization ID, default = 1. |
+| `services.grafana.provision.alerting.muteTimings.settings.muteTimes` | `list of (open submodule of (YAML 1.1 value))` | List of mute time intervals to import or update. |
+| `services.grafana.provision.alerting.muteTimings.settings.muteTimes.*.name` | `string` | Name of the mute time interval, must be unique. Required. |
+| `services.grafana.provision.alerting.policies.path` | `null or absolute path` | Path to YAML notification policies configuration. Can't be used with [](#opt-services.grafana.provision.alerting.policies.settings) simultaneously. Can be either a directory or a single YAML file. Will end up in the store. |
+| `services.grafana.provision.alerting.policies.settings` | `null or (submodule)` | Grafana notification policies configuration in Nix. Can't be used with [](#opt-services.grafana.provision.alerting.policies.path) simultaneously. See <https://grafana.com/docs/grafana/latest/administration/provisioning/#notification-policies> for supported options. |
+| `services.grafana.provision.alerting.policies.settings.apiVersion` | `signed integer` | Config file version. |
+| `services.grafana.provision.alerting.policies.settings.policies` | `list of (open submodule of (YAML 1.1 value))` | List of contact points to import or update. |
+| `services.grafana.provision.alerting.policies.settings.resetPolicies` | `list of signed integer` | List of orgIds that should be reset to the default policy. |
+| `services.grafana.provision.alerting.rules.path` | `null or absolute path` | Path to YAML rules configuration. Can't be used with [](#opt-services.grafana.provision.alerting.rules.settings) simultaneously. Can be either a directory or a single YAML file. Will end up in the store. |
+| `services.grafana.provision.alerting.rules.settings` | `null or (submodule)` | Grafana rules configuration in Nix. Can't be used with [](#opt-services.grafana.provision.alerting.rules.path) simultaneously. See <https://grafana.com/docs/grafana/latest/administration/provisioning/#rules> for supported options. |
+| `services.grafana.provision.alerting.rules.settings.apiVersion` | `signed integer` | Config file version. |
+| `services.grafana.provision.alerting.rules.settings.deleteRules` | `list of (submodule)` | List of alert rule UIDs that should be deleted. |
+| `services.grafana.provision.alerting.rules.settings.deleteRules.*.orgId` | `signed integer` | Organization ID, default = 1 |
+| `services.grafana.provision.alerting.rules.settings.deleteRules.*.uid` | `string` | Unique identifier for the rule. Required. |
+| `services.grafana.provision.alerting.rules.settings.groups` | `list of (open submodule of (YAML 1.1 value))` | List of rule groups to import or update. |
+| `services.grafana.provision.alerting.rules.settings.groups.*.folder` | `string` | Name of the folder the rule group will be stored in. Required. |
+| `services.grafana.provision.alerting.rules.settings.groups.*.interval` | `string` | Interval that the rule group should be evaluated at. Required. |
+| `services.grafana.provision.alerting.rules.settings.groups.*.name` | `string` | Name of the rule group. Required. |
+| `services.grafana.provision.alerting.templates.path` | `null or absolute path` | Path to YAML templates configuration. Can't be used with [](#opt-services.grafana.provision.alerting.templates.settings) simultaneously. Can be either a directory or a single YAML file. Will end up in the store. |
+| `services.grafana.provision.alerting.templates.settings` | `null or (submodule)` | Grafana templates configuration in Nix. Can't be used with [](#opt-services.grafana.provision.alerting.templates.path) simultaneously. See <https://grafana.com/docs/grafana/latest/administration/provisioning/#templates> for supported options. |
+| `services.grafana.provision.alerting.templates.settings.apiVersion` | `signed integer` | Config file version. |
+| `services.grafana.provision.alerting.templates.settings.deleteTemplates` | `list of (submodule)` | List of alert rule UIDs that should be deleted. |
+| `services.grafana.provision.alerting.templates.settings.deleteTemplates.*.name` | `string` | Name of the template, must be unique. Required. |
+| `services.grafana.provision.alerting.templates.settings.deleteTemplates.*.orgId` | `signed integer` | Organization ID, default = 1. |
+| `services.grafana.provision.alerting.templates.settings.templates` | `list of (open submodule of (YAML 1.1 value))` | List of templates to import or update. |
+| `services.grafana.provision.alerting.templates.settings.templates.*.name` | `string` | Name of the template, must be unique. Required. |
+| `services.grafana.provision.alerting.templates.settings.templates.*.template` | `string` | Alerting with a custom text template |
+| `services.grafana.provision.dashboards` | `submodule` | Declaratively provision Grafana's dashboards. |
+| `services.grafana.provision.dashboards.path` | `null or absolute path` | Path to YAML dashboard configuration. Can't be used with [](#opt-services.grafana.provision.dashboards.settings) simultaneously. Can be either a directory or a single YAML file. Will end up in the store. |
+| `services.grafana.provision.dashboards.settings` | `null or (submodule)` | Grafana dashboard configuration in Nix. Can't be used with [](#opt-services.grafana.provision.dashboards.path) simultaneously. See <https://grafana.com/docs/grafana/latest/administration/provisioning/#dashboards> for supported options. |
+| `services.grafana.provision.dashboards.settings.apiVersion` | `signed integer` | Config file version. |
+| `services.grafana.provision.dashboards.settings.providers` | `list of (open submodule of (YAML 1.1 value))` | List of dashboards to insert/update. |
+| `services.grafana.provision.dashboards.settings.providers.*.name` | `string` | A unique provider name. |
+| `services.grafana.provision.dashboards.settings.providers.*.options.path` | `absolute path` | Path grafana will watch for dashboards. Required when using the 'file' type. |
+| `services.grafana.provision.dashboards.settings.providers.*.type` | `string` | Dashboard provider type. |
+| `services.grafana.provision.datasources` | `submodule` | Declaratively provision Grafana's datasources. |
+| `services.grafana.provision.datasources.path` | `null or absolute path` | Path to YAML datasource configuration. Can't be used with [](#opt-services.grafana.provision.datasources.settings) simultaneously. Can be either a directory or a single YAML file. Will end up in the store. |
+| `services.grafana.provision.datasources.settings` | `null or (submodule)` | Grafana datasource configuration in Nix. Can't be used with [](#opt-services.grafana.provision.datasources.path) simultaneously. See <https://grafana.com/docs/grafana/latest/administration/provisioning/#data-sources> for supported options. |
+| `services.grafana.provision.datasources.settings.apiVersion` | `signed integer` | Config file version. |
+| `services.grafana.provision.datasources.settings.datasources` | `list of (open submodule of (YAML 1.1 value))` | List of datasources to insert/update. |
+| `services.grafana.provision.datasources.settings.datasources.*.access` | `one of "proxy", "direct"` | Access mode. proxy or direct (Server or Browser in the UI). Required. |
+| `services.grafana.provision.datasources.settings.datasources.*.editable` | `boolean` | Allow users to edit datasources from the UI. |
+| `services.grafana.provision.datasources.settings.datasources.*.jsonData` | `null or (attribute set)` | Extra data for datasource plugins. |
+| `services.grafana.provision.datasources.settings.datasources.*.name` | `string` | Name of the datasource. Required. |
+| `services.grafana.provision.datasources.settings.datasources.*.secureJsonData` | `null or (attribute set)` | Datasource specific secure configuration. Please note that the contents of this option will end up in a world-readable Nix store. Use the file provider pointing at a reasonably secured file in the local filesystem to work around that. Look at the documentation for details: <https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#file-provider> |
+| `services.grafana.provision.datasources.settings.datasources.*.type` | `string` | Datasource type. Required. |
+| `services.grafana.provision.datasources.settings.datasources.*.uid` | `null or string` | Custom UID which can be used to reference this datasource in other parts of the configuration, if not specified will be generated automatically. |
+| `services.grafana.provision.datasources.settings.datasources.*.url` | `string` | Url of the datasource. |
+| `services.grafana.provision.datasources.settings.deleteDatasources` | `list of (submodule)` | List of datasources that should be deleted from the database. |
+| `services.grafana.provision.datasources.settings.deleteDatasources.*.name` | `string` | Name of the datasource to delete. |
+| `services.grafana.provision.datasources.settings.deleteDatasources.*.orgId` | `signed integer` | Organization ID of the datasource to delete. |
+| `services.grafana.provision.datasources.settings.prune` | `boolean` | When `true`, provisioned datasources from this file will be deleted automatically when removed from {option}`services.grafana.provision.datasources.settings.datasources`. |
+| `services.grafana.provision.enable` | `boolean` | Whether to enable provision. |
+| `services.grafana.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string) or a non-empty list of them)` | Grafana settings. See <https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/> for available options. INI format is used. |
+| `services.grafana.settings.analytics.check_for_plugin_updates` | `boolean` | When set to `false`, disables checking for new versions of installed plugins from https://grafana.com. When enabled, the check for a new plugin runs every 10 minutes. It will notify, via the UI, when a new plugin update exists. The check itself will not prompt any auto-updates of the plugin, nor will it send any sensitive information. |
+| `services.grafana.settings.analytics.check_for_updates` | `boolean` | When set to `false`, disables checking for new versions of Grafana from Grafana's GitHub repository. When enabled, the check for a new version runs every 10 minutes. It will notify, via the UI, when a new version is available. The check itself will not prompt any auto-updates of the Grafana software, nor will it send any sensitive information. |
+| `services.grafana.settings.analytics.feedback_links_enabled` | `boolean` | Set to `false` to remove all feedback links from the UI. |
+| `services.grafana.settings.analytics.reporting_enabled` | `boolean` | When enabled Grafana will send anonymous usage statistics to `stats.grafana.org`. No IP addresses are being tracked, only simple counters to track running instances, versions, dashboard and error counts. Counters are sent every 24 hours. |
+| `services.grafana.settings.database.ca_cert_path` | `null or string` | The path to the CA certificate to use. |
+| `services.grafana.settings.database.cache_mode` | `one of "private", "shared"` | For `sqlite3` only. [Shared cache](https://www.sqlite.org/sharedcache.html) setting used for connecting to the database. |
+| `services.grafana.settings.database.client_cert_path` | `null or string` | The path to the client cert. Only if server requires client authentication. |
+| `services.grafana.settings.database.client_key_path` | `null or string` | The path to the client key. Only if server requires client authentication. |
+| `services.grafana.settings.database.conn_max_lifetime` | `signed integer` | Sets the maximum amount of time a connection may be reused. The default is 14400 (which means 14400 seconds or 4 hours). For MySQL, this setting should be shorter than the `wait_timeout` variable. |
+| `services.grafana.settings.database.host` | `string` | Only applicable to MySQL or Postgres. Includes IP or hostname and port or in case of Unix sockets the path to it. For example, for MySQL running on the same host as Grafana: `host = "127.0.0.1:3306"` or with Unix sockets: `host = "/var/run/mysqld/mysqld.sock"` |
+| `services.grafana.settings.database.isolation_level` | `null or one of "READ-UNCOMMITTED", "READ-COMMITTED", "REPEATABLE-READ", "SERIALIZABLE"` | Only the MySQL driver supports isolation levels in Grafana. In case the value is empty, the driver's default isolation level is applied. |
+| `services.grafana.settings.database.locking_attempt_timeout_sec` | `signed integer` | For `mysql`, if the `migrationLocking` feature toggle is set, specify the time (in seconds) to wait before failing to lock the database for the migrations. |
+| `services.grafana.settings.database.log_queries` | `boolean` | Set to `true` to log the sql calls and execution times |
+| `services.grafana.settings.database.max_idle_conn` | `signed integer` | The maximum number of connections in the idle connection pool. |
+| `services.grafana.settings.database.max_open_conn` | `signed integer` | The maximum number of open connections to the database. |
+| `services.grafana.settings.database.name` | `string` | The name of the Grafana database. |
+| `services.grafana.settings.database.password` | `string` | The database user's password (not applicable for `sqlite3`). Please note that the contents of this option will end up in a world-readable Nix store. Use the file provider pointing at a reasonably secured file in the local filesystem to work around that. Look at the documentation for details: <https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#file-provider> |
+| `services.grafana.settings.database.path` | `absolute path` | Only applicable to `sqlite3` database. The file path where the database will be stored. |
+| `services.grafana.settings.database.query_retries` | `signed integer` | This setting applies to `sqlite3` only and controls the number of times the system retries a query when the database is locked. |
+| `services.grafana.settings.database.server_cert_name` | `null or string` | The common name field of the certificate used by the `mysql` or `postgres` server. Not necessary if `ssl_mode` is set to `skip-verify`. |
+| `services.grafana.settings.database.ssl_mode` | `one of "disable", "require", "verify-full", "true", "false", "skip-verify"` | For Postgres, use either `disable`, `require` or `verify-full`. For MySQL, use either `true`, `false`, or `skip-verify`. |
+| `services.grafana.settings.database.transaction_retries` | `signed integer` | This setting applies to `sqlite3` only and controls the number of times the system retries a transaction when the database is locked. |
+| `services.grafana.settings.database.type` | `one of "mysql", "sqlite3", "postgres"` | Database type. |
+| `services.grafana.settings.database.user` | `string` | The database user (not applicable for `sqlite3`). |
+| `services.grafana.settings.database.wal` | `boolean` | For `sqlite3` only. Setting to enable/disable [Write-Ahead Logging](https://sqlite.org/wal.html). |
+| `services.grafana.settings.paths.plugins` | `absolute path` | Directory where grafana will automatically scan and look for plugins |
+| `services.grafana.settings.paths.provisioning` | `absolute path` | Folder that contains provisioning config files that grafana will apply on startup and while running. Don't change the value of this option if you are planning to use `services.grafana.provision` options. |
+| `services.grafana.settings.plugins.preinstall_disabled` | `boolean` | When set to `true`, disables the Background Plugin Installer, which runs before Grafana starts. This component causes issues with `declarativePlugins` and is disabled by default if those are used. |
+| `services.grafana.settings.security.admin_email` | `string` | The email of the default Grafana Admin, created on startup. |
+| `services.grafana.settings.security.admin_password` | `string` | Default admin password. Please note that the contents of this option will end up in a world-readable Nix store. Use the file provider pointing at a reasonably secured file in the local filesystem to work around that. Look at the documentation for details: <https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#file-provider> |
+| `services.grafana.settings.security.admin_user` | `string` | Default admin username. |
+| `services.grafana.settings.security.allow_embedding` | `boolean` | When `false`, the HTTP header `X-Frame-Options: deny` will be set in Grafana HTTP responses which will instruct browsers to not allow rendering Grafana in a `<frame>`, `<iframe>`, `<embed>` or `<object>`. The main goal is to mitigate the risk of [Clickjacking](https://owasp.org/www-community/attacks/Clickjacking). |
+| `services.grafana.settings.security.content_security_policy` | `boolean` | Set to `true` to add the `Content-Security-Policy` header to your requests. CSP allows to control resources that the user agent can load and helps prevent XSS attacks. |
+| `services.grafana.settings.security.content_security_policy_report_only` | `boolean` | Set to `true` to add the `Content-Security-Policy-Report-Only` header to your requests. CSP in Report Only mode enables you to experiment with policies by monitoring their effects without enforcing them. You can enable both policies simultaneously. |
+| `services.grafana.settings.security.cookie_samesite` | `one of "lax", "strict", "none", "disabled"` | Sets the `SameSite` cookie attribute and prevents the browser from sending this cookie along with cross-site requests. The main goal is to mitigate the risk of cross-origin information leakage. This setting also provides some protection against cross-site request forgery attacks (CSRF), [read more about SameSite here](https://owasp.org/www-community/SameSite). Using value `disabled` does not add any `SameSite` attribute to cookies. |
+| `services.grafana.settings.security.cookie_secure` | `boolean` | Set to `true` if you host Grafana behind HTTPS. |
+| `services.grafana.settings.security.csrf_additional_headers` | `string or list of string` | List of allowed headers to be set by the user. Suggested to use for if authentication lives behind reverse proxies. |
+| `services.grafana.settings.security.csrf_trusted_origins` | `string or list of string` | List of additional allowed URLs to pass by the CSRF check. Suggested when authentication comes from an IdP. |
+| `services.grafana.settings.security.data_source_proxy_whitelist` | `string or list of string` | Define a whitelist of allowed IP addresses or domains, with ports, to be used in data source URLs with the Grafana data source proxy. Format: `ip_or_domain:port` separated by spaces. PostgreSQL, MySQL, and MSSQL data sources do not use the proxy and are therefore unaffected by this setting. |
+| `services.grafana.settings.security.disable_brute_force_login_protection` | `boolean` | Set to `true` to disable [brute force login protection](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html#account-lockout). |
+| `services.grafana.settings.security.disable_gravatar` | `boolean` | Set to `true` to disable the use of Gravatar for user profile images. |
+| `services.grafana.settings.security.disable_initial_admin_creation` | `boolean` | Disable creation of admin user on first start of Grafana. |
+| `services.grafana.settings.security.secret_key` | `null or string` | Secret key used for signing data source settings like secrets and passwords. Set this to a unique, random string in production, generated for example by running `openssl rand -hex 32`. If you change this later you will need to update data source settings to re-encode them. <https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#secret_key> Please note that the contents of this option will end up in a world-readable Nix store. Use the file provider pointing at a reasonably secured file in the local filesystem to work around that. Look at the documentation for details: <https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#file-provider> |
+| `services.grafana.settings.security.strict_transport_security` | `boolean` | Set to `true` if you want to enable HTTP `Strict-Transport-Security` (HSTS) response header. Only use this when HTTPS is enabled in your configuration, or when there is another upstream system that ensures your application does HTTPS (like a frontend load balancer). HSTS tells browsers that the site should only be accessed using HTTPS. |
+| `services.grafana.settings.security.strict_transport_security_max_age_seconds` | `signed integer` | Sets how long a browser should cache HSTS in seconds. Only applied if `strict_transport_security` is enabled. |
+| `services.grafana.settings.security.strict_transport_security_preload` | `boolean` | Set to `true` to enable HSTS `preloading` option. Only applied if `strict_transport_security` is enabled. |
+| `services.grafana.settings.security.strict_transport_security_subdomains` | `boolean` | Set to `true` to enable HSTS `includeSubDomains` option. Only applied if `strict_transport_security` is enabled. |
+| `services.grafana.settings.security.x_content_type_options` | `boolean` | Set to `false` to disable the `X-Content-Type-Options` response header. The `X-Content-Type-Options` response HTTP header is a marker used by the server to indicate that the MIME types advertised in the `Content-Type` headers should not be changed and be followed. |
+| `services.grafana.settings.security.x_xss_protection` | `boolean` | Set to `true` to enable the `X-XSS-Protection` header, which tells browsers to stop pages from loading when they detect reflected cross-site scripting (XSS) attacks. __Note:__ this is the default in Grafana, it's turned off here since it's [recommended to not use this header anymore](https://owasp.org/www-project-secure-headers/#x-xss-protection). |
+| `services.grafana.settings.server.cdn_url` | `null or string` | Specify a full HTTP URL address to the root of your Grafana CDN assets. Grafana will add edition and version paths. For example, given a cdn url like `https://cdn.myserver.com` grafana will try to load a javascript file from `http://cdn.myserver.com/grafana-oss/7.4.0/public/build/app.<hash>.js`. |
+| `services.grafana.settings.server.cert_file` | `null or string` | Path to the certificate file (if `protocol` is set to `https` or `h2`). |
+| `services.grafana.settings.server.cert_key` | `null or string` | Path to the certificate key file (if `protocol` is set to `https` or `h2`). |
+| `services.grafana.settings.server.domain` | `string` | The public facing domain name used to access grafana from a browser. This setting is only used in the default value of the `root_url` setting. If you set the latter manually, this option does not have to be specified. |
+| `services.grafana.settings.server.enable_gzip` | `boolean` | Set this option to `true` to enable HTTP compression, this can improve transfer speed and bandwidth utilization. It is recommended that most users set it to `true`. By default it is set to `false` for compatibility reasons. |
+| `services.grafana.settings.server.enforce_domain` | `boolean` | Redirect to correct domain if the host header does not match the domain. Prevents DNS rebinding attacks. |
+| `services.grafana.settings.server.http_addr` | `string` | Listening address. ::: {.note} This setting intentionally varies from upstream's default to be a bit more secure by default. ::: |
+| `services.grafana.settings.server.http_port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listening port. |
+| `services.grafana.settings.server.protocol` | `one of "http", "https", "h2", "socket"` | Which protocol to listen. |
+| `services.grafana.settings.server.read_timeout` | `string` | Sets the maximum time using a duration format (5s/5m/5ms) before timing out read of an incoming request and closing idle connections. 0 means there is no timeout for reading the request. |
+| `services.grafana.settings.server.root_url` | `string` | This is the full URL used to access Grafana from a web browser. This is important if you use Google or GitHub OAuth authentication (for the callback URL to be correct). This setting is also important if you have a reverse proxy in front of Grafana that exposes it through a subpath. In that case add the subpath to the end of this URL setting. |
+| `services.grafana.settings.server.router_logging` | `boolean` | Set to `true` for Grafana to log all HTTP requests (not just errors). These are logged as Info level events to the Grafana log. |
+| `services.grafana.settings.server.serve_from_sub_path` | `boolean` | Serve Grafana from subpath specified in the `root_url` setting. By default it is set to `false` for compatibility reasons. By enabling this setting and using a subpath in `root_url` above, e.g. `root_url = "http://localhost:3000/grafana"`, Grafana is accessible on `http://localhost:3000/grafana`. If accessed without subpath, Grafana will redirect to an URL with the subpath. |
+| `services.grafana.settings.server.socket` | `string` | Path where the socket should be created when `protocol=socket`. Make sure that Grafana has appropriate permissions before you change this setting. |
+| `services.grafana.settings.server.socket_gid` | `signed integer` | GID where the socket should be set when `protocol=socket`. Make sure that the target group is in the group of Grafana process and that Grafana process is the file owner before you change this setting. It is recommended to set the gid as http server user gid. Not set when the value is -1. |
+| `services.grafana.settings.server.socket_mode` | `string` | Mode where the socket should be set when `protocol=socket`. Make sure that Grafana process is the file owner before you change this setting. |
+| `services.grafana.settings.server.static_root_path` | `string` | Root path for static assets. |
+| `services.grafana.settings.smtp.cert_file` | `null or string` | File path to a cert file. |
+| `services.grafana.settings.smtp.ehlo_identity` | `null or string` | Name to be used as client identity for EHLO in SMTP dialog. |
+| `services.grafana.settings.smtp.enabled` | `boolean` | Whether to enable SMTP. |
+| `services.grafana.settings.smtp.from_address` | `string` | Address used when sending out emails. |
+| `services.grafana.settings.smtp.from_name` | `string` | Name to be used as client identity for EHLO in SMTP dialog. |
+| `services.grafana.settings.smtp.host` | `string` | Host to connect to. |
+| `services.grafana.settings.smtp.key_file` | `null or string` | File path to a key file. |
+| `services.grafana.settings.smtp.password` | `string` | Password used for authentication. Please note that the contents of this option will end up in a world-readable Nix store. Use the file provider pointing at a reasonably secured file in the local filesystem to work around that. Look at the documentation for details: <https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#file-provider> |
+| `services.grafana.settings.smtp.skip_verify` | `boolean` | Verify SSL for SMTP server. |
+| `services.grafana.settings.smtp.startTLS_policy` | `null or one of "OpportunisticStartTLS", "MandatoryStartTLS", "NoStartTLS"` | StartTLS policy when connecting to server. |
+| `services.grafana.settings.smtp.user` | `null or string` | User used for authentication. |
+| `services.grafana.settings.users.allow_org_create` | `boolean` | Set to `false` to prohibit users from creating new organizations. |
+| `services.grafana.settings.users.allow_sign_up` | `boolean` | Set to false to prohibit users from being able to sign up / create user accounts. The admin user can still create users. |
+| `services.grafana.settings.users.auto_assign_org` | `boolean` | Set to `true` to automatically add new users to the main organization (id 1). When set to `false,` new users automatically cause a new organization to be created for that new user. The organization will be created even if the `allow_org_create` setting is set to `false`. |
+| `services.grafana.settings.users.auto_assign_org_id` | `signed integer` | Set this value to automatically add new users to the provided org. This requires `auto_assign_org` to be set to `true`. Please make sure that this organization already exists. |
+| `services.grafana.settings.users.auto_assign_org_role` | `one of "Viewer", "Editor", "Admin"` | The role new users will be assigned for the main organization (if the `auto_assign_org` setting is set to `true`). |
+| `services.grafana.settings.users.default_language` | `string` | This setting configures the default UI language, which must be a supported IETF language tag, such as `en-US`. |
+| `services.grafana.settings.users.default_theme` | `one of "dark", "light", "system"` | Sets the default UI theme. `system` matches the user's system theme. |
+| `services.grafana.settings.users.hidden_users` | `string` | This is a comma-separated list of usernames. Users specified here are hidden in the Grafana UI. They are still visible to Grafana administrators and to themselves. |
+| `services.grafana.settings.users.home_page` | `string` | Path to a custom home page. Users are only redirected to this if the default home dashboard is used. It should match a frontend route and contain a leading slash. |
+| `services.grafana.settings.users.login_hint` | `string` | Text used as placeholder text on login page for login/username input. |
+| `services.grafana.settings.users.password_hint` | `string` | Text used as placeholder text on login page for password input. |
+| `services.grafana.settings.users.user_invite_max_lifetime_duration` | `string` | The duration in time a user invitation remains valid before expiring. This setting should be expressed as a duration. Examples: `6h` (hours), `2d` (days), `1w` (week). The minimum supported duration is `15m` (15 minutes). |
+| `services.grafana.settings.users.verify_email_enabled` | `boolean` | Require email validation before sign up completes. |
+| `services.grafana.settings.users.viewers_can_edit` | `boolean` | Viewers can access and use Explore and perform temporary edits on panels in dashboards they have access to. They cannot save their changes. |

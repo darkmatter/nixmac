@@ -5,12 +5,17 @@
 All options under `services.quickwit`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.quickwit.dataDir` | | |
-| `services.quickwit.enable` | | |
-| `services.quickwit.extraFlags` | | |
-| `services.quickwit.group` | | |
-| `services.quickwit.package` | | |
-| `services.quickwit.restartIfChanged` | | |
-| `services.quickwit.settings` | | |
-| `services.quickwit.user` | | |
+| --- | --- | --- |
+| `services.quickwit.dataDir` | `absolute path` | Data directory for Quickwit. If you change this, you need to manually create the directory. You also need to create the `quickwit` user and group, or change [](#opt-services.quickwit.user) and [](#opt-services.quickwit.group) to existing ones with access to the directory. |
+| `services.quickwit.enable` | `boolean` | Whether to enable Quickwit. |
+| `services.quickwit.extraFlags` | `list of string` | Extra command line options to pass to Quickwit. |
+| `services.quickwit.group` | `string` | The group quickwit runs as. Should be left at default unless you have very specific needs. |
+| `services.quickwit.package` | `package` | The Quickwit package to use. |
+| `services.quickwit.restartIfChanged` | `boolean` | Automatically restart the service on config change. This can be set to false to defer restarts on a server or cluster. Please consider the security implications of inadvertently running an older version, and the possibility of unexpected behavior caused by inconsistent versions across a cluster when disabling this option. |
+| `services.quickwit.settings` | `open submodule of (YAML 1.1 value)` | Quickwit configuration. |
+| `services.quickwit.settings.grpc_listen_port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to listen on for gRPC traffic. |
+| `services.quickwit.settings.listen_address` | `string` | Listen address of Quickwit. |
+| `services.quickwit.settings.rest` | `open submodule of (YAML 1.1 value)` | Rest server configuration for Quickwit |
+| `services.quickwit.settings.rest.listen_port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to listen on for HTTP REST traffic. |
+| `services.quickwit.settings.version` | `floating point number` | Configuration file version. |
+| `services.quickwit.user` | `string` | The user Quickwit runs as. Should be left at default unless you have very specific needs. |

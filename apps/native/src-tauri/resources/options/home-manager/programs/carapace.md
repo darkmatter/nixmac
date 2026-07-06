@@ -5,11 +5,11 @@
 All options under `programs.carapace`.
 
 | Option | Type | Description |
-| -------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.carapace.enable` | `boolean` | Whether to enable carapace, a multi-shell multi-command argument completer. |
 | `programs.carapace.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.carapace.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
 | `programs.carapace.enableNushellIntegration` | `boolean` | Whether to enable Nushell integration. |
 | `programs.carapace.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
-| `programs.carapace.ignoreCase` | `boolean` | Whether to enable case-insensitive matching for carapace completions. When enabled, the carapace binary is wrapped with CARAPACE_MATCH set to 1 . |
+| `programs.carapace.ignoreCase` | `boolean` | Whether to enable case-insensitive matching for carapace completions. When enabled, the carapace binary is wrapped with {env}`CARAPACE_MATCH` set to `1`. |
 | `programs.carapace.package` | `package` | The carapace package to use. |

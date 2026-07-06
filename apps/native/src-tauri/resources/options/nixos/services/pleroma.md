@@ -5,11 +5,11 @@
 All options under `services.pleroma`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.pleroma.configs` | | |
-| `services.pleroma.enable` | | |
-| `services.pleroma.group` | | |
-| `services.pleroma.package` | | |
-| `services.pleroma.secretConfigFile` | | |
-| `services.pleroma.stateDir` | | |
-| `services.pleroma.user` | | |
+| --- | --- | --- |
+| `services.pleroma.configs` | `list of string` | Pleroma public configuration. This list gets appended from left to right into /etc/pleroma/config.exs. Elixir evaluates its configuration imperatively, meaning you can override a setting by appending a new str to this NixOS option list. *DO NOT STORE ANY PLEROMA SECRET HERE*, use [services.pleroma.secretConfigFile](#opt-services.pleroma.secretConfigFile) instead. This setting is going to be stored in a file part of the Nix store. The Nix store being world-readable, it's not the right place to store any secret Have a look to Pleroma section in the NixOS manual for more information. |
+| `services.pleroma.enable` | `boolean` | Whether to enable pleroma. |
+| `services.pleroma.group` | `string` | Group account under which pleroma runs. |
+| `services.pleroma.package` | `package` | The pleroma package to use. |
+| `services.pleroma.secretConfigFile` | `string` | Path to the file containing your secret pleroma configuration. *DO NOT POINT THIS OPTION TO THE NIX STORE*, the store being world-readable, it'll compromise all your secrets. |
+| `services.pleroma.stateDir` | `string` | Directory where the pleroma service will save the uploads and static files. |
+| `services.pleroma.user` | `string` | User account under which pleroma runs. |

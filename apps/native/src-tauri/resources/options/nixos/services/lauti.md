@@ -5,8 +5,8 @@
 All options under `services.lauti`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.lauti.dataDir` | | |
-| `services.lauti.enable` | | |
-| `services.lauti.secrets` | | |
-| `services.lauti.settings` | | |
+| --- | --- | --- |
+| `services.lauti.dataDir` | `absolute path` | Data directory for Lauti |
+| `services.lauti.enable` | `boolean` | Whether to enable Lauti community event calendar web app. |
+| `services.lauti.secrets` | `list of absolute path` | A list of files containing the various secrets. Should be in the format expected by systemd's `EnvironmentFile` directory. |
+| `services.lauti.settings` | `attribute set of string` | Settings to configure web service. See <https://codeberg.org/Klasse-Methode/lauti/src/branch/main/DEPLOYMENT.md> for available options. |

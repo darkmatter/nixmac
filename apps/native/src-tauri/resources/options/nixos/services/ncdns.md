@@ -5,16 +5,16 @@
 All options under `services.ncdns`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.ncdns.address` | | |
-| `services.ncdns.dnssec.enable` | | |
-| `services.ncdns.dnssec.keys.private` | | |
-| `services.ncdns.dnssec.keys.public` | | |
-| `services.ncdns.dnssec.keys.zonePrivate` | | |
-| `services.ncdns.dnssec.keys.zonePublic` | | |
-| `services.ncdns.enable` | | |
-| `services.ncdns.identity.address` | | |
-| `services.ncdns.identity.hostmaster` | | |
-| `services.ncdns.identity.hostname` | | |
-| `services.ncdns.port` | | |
-| `services.ncdns.settings` | | |
+| --- | --- | --- |
+| `services.ncdns.address` | `string` | The IP address the ncdns resolver will bind to. Leave this unchanged if you do not wish to directly expose the resolver. |
+| `services.ncdns.dnssec.enable` | `boolean` | Whether to enable DNSSEC support in ncdns. This will generate KSK and ZSK keypairs (unless provided via the options {option}`services.ncdns.dnssec.publicKey`, {option}`services.ncdns.dnssec.privateKey` etc.) and add a trust anchor to recursive resolvers . |
+| `services.ncdns.dnssec.keys.private` | `absolute path` | Path to the file containing the KSK private key. |
+| `services.ncdns.dnssec.keys.public` | `absolute path` | Path to the file containing the KSK public key. The key can be generated using the `dnssec-keygen` command, provided by the package `bind` as follows: `$ dnssec-keygen -a RSASHA256 -3 -b 2048 -f KSK bit` |
+| `services.ncdns.dnssec.keys.zonePrivate` | `absolute path` | Path to the file containing the ZSK private key. |
+| `services.ncdns.dnssec.keys.zonePublic` | `absolute path` | Path to the file containing the ZSK public key. The key can be generated using the `dnssec-keygen` command, provided by the package `bind` as follows: `$ dnssec-keygen -a RSASHA256 -3 -b 2048 bit` |
+| `services.ncdns.enable` | `boolean` | Whether to enable ncdns, a Go daemon to bridge Namecoin to DNS. To resolve .bit domains set `services.namecoind.enable = true;` and an RPC username/password . |
+| `services.ncdns.identity.address` | `string` | The IP address the hostname specified in {option}`services.ncdns.identity.hostname` should resolve to. If you are only using ncdns locally you can ignore this. |
+| `services.ncdns.identity.hostmaster` | `string` | An email address for the SOA record at the bit zone. If you are only using ncdns locally you can ignore this. |
+| `services.ncdns.identity.hostname` | `string` | The hostname of this ncdns instance, which defaults to the machine hostname. If specified, ncdns lists the hostname as an NS record at the zone apex: `bit. IN NS ns1.example.com.` If unset ncdns will generate an internal pseudo-hostname under the zone, which will resolve to the value of {option}`services.ncdns.identity.address`. If you are only using ncdns locally you can ignore this. |
+| `services.ncdns.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port the ncdns resolver will bind to. |
+| `services.ncdns.settings` | `TOML value` | ncdns settings. Use this option to configure ncds settings not exposed in a NixOS option or to bypass one. See the example ncdns.conf file at <https://github.com/namecoin/ncdns/blob/master/_doc/ncdns.conf.example> for the available options. |

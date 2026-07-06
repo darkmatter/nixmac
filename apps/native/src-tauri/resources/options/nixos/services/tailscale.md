@@ -5,29 +5,34 @@
 All options under `services.tailscale`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---- | ----------- |
-| `services.tailscale.authKeyFile` | | |
-| `services.tailscale.authKeyParameters` | | |
-| `services.tailscale.derper.configureNginx` | | |
-| `services.tailscale.derper.domain` | | |
-| `services.tailscale.derper.enable` | | |
-| `services.tailscale.derper.openFirewall` | | |
-| `services.tailscale.derper.package` | | |
-| `services.tailscale.derper.port` | | |
-| `services.tailscale.derper.stunPort` | | |
-| `services.tailscale.derper.verifyClients` | | |
-| `services.tailscale.disableTaildrop` | | |
-| `services.tailscale.disableUpstreamLogging` | | |
-| `services.tailscale.enable` | | |
-| `services.tailscale.extraDaemonFlags` | | |
-| `services.tailscale.extraSetFlags` | | |
-| `services.tailscale.extraUpFlags` | | |
-| `services.tailscale.interfaceName` | | |
-| `services.tailscale.openFirewall` | | |
-| `services.tailscale.package` | | |
-| `services.tailscale.permitCertUid` | | |
-| `services.tailscale.port` | | |
-| `services.tailscale.serve.configFile` | | |
-| `services.tailscale.serve.enable` | | |
-| `services.tailscale.serve.services` | | |
-| `services.tailscale.useRoutingFeatures` | | |
+| --- | --- | --- |
+| `services.tailscale.authKeyFile` | `null or absolute path` | A file containing the auth key. Tailscale will be automatically started if provided. Services that bind to Tailscale IPs should order using {option}`systemd.services.<name>.after` `tailscaled-autoconnect.service`. |
+| `services.tailscale.authKeyParameters` | `submodule` | Extra parameters to pass after the auth key. See <https://tailscale.com/kb/1215/oauth-clients#registering-new-nodes-using-oauth-credentials> |
+| `services.tailscale.authKeyParameters.baseURL` | `null or string` | Base URL for the Tailscale API. |
+| `services.tailscale.authKeyParameters.ephemeral` | `null or boolean` | Whether to register as an ephemeral node. |
+| `services.tailscale.authKeyParameters.preauthorized` | `null or boolean` | Whether to skip manual device approval. |
+| `services.tailscale.derper.configureNginx` | `boolean` | Whether to enable nginx reverse proxy for derper. When enabled, nginx will proxy requests to the derper service. |
+| `services.tailscale.derper.domain` | `string` | Domain name under which the derper server is reachable. |
+| `services.tailscale.derper.enable` | `boolean` | Whether to enable Tailscale Derper. See upstream doc <https://tailscale.com/kb/1118/custom-derp-servers> how to configure it on clients. |
+| `services.tailscale.derper.openFirewall` | `boolean` | Whether to open the firewall for the specified port. Derper requires the used ports to be opened, otherwise it doesn't work as expected. |
+| `services.tailscale.derper.package` | `package` | The derper package to use. |
+| `services.tailscale.derper.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port the derper process will listen on. This is not the port tailscale will connect to. |
+| `services.tailscale.derper.stunPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | STUN port to listen on. See online docs <https://tailscale.com/kb/1118/custom-derp-servers#prerequisites> on how to configure a different external port. |
+| `services.tailscale.derper.verifyClients` | `boolean` | Whether to verify clients against a locally running tailscale daemon if they are allowed to connect to this node or not. |
+| `services.tailscale.disableTaildrop` | `boolean` | Whether to disable the Taildrop feature for sending files between nodes. |
+| `services.tailscale.disableUpstreamLogging` | `boolean` | Whether to disable Tailscaled from sending debug logging upstream. |
+| `services.tailscale.enable` | `boolean` | Whether to enable Tailscale client daemon. |
+| `services.tailscale.extraDaemonFlags` | `list of string` | Extra flags to pass to {command}`tailscaled`. |
+| `services.tailscale.extraSetFlags` | `list of string` | Extra flags to pass to {command}`tailscale set`. |
+| `services.tailscale.extraUpFlags` | `list of string` | Extra flags to pass to {command}`tailscale up`. Only applied if {option}`services.tailscale.authKeyFile` is specified. |
+| `services.tailscale.interfaceName` | `string` | The interface name for tunnel traffic. Use "userspace-networking" (beta) to not use TUN. |
+| `services.tailscale.openFirewall` | `boolean` | Whether to open the firewall for the specified port. |
+| `services.tailscale.package` | `package` | The tailscale package to use. |
+| `services.tailscale.permitCertUid` | `null or non-empty string` | Username or user ID of the user allowed to to fetch Tailscale TLS certificates for the node. |
+| `services.tailscale.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to listen on for tunnel traffic (0=autoselect). |
+| `services.tailscale.serve.configFile` | `null or absolute path` | Path to a Tailscale Serve configuration file in JSON format. If set, this takes precedence over {option}`services.tailscale.serve.services`. See <https://tailscale.com/kb/1589/tailscale-services-configuration-file> for the configuration format. |
+| `services.tailscale.serve.enable` | `boolean` | Whether to enable Tailscale Serve configuration. |
+| `services.tailscale.serve.services` | `attribute set of (submodule)` | Services to configure for Tailscale Serve. Each attribute name should be the service name (without the `svc:` prefix). The `svc:` prefix will be added automatically. See <https://tailscale.com/kb/1589/tailscale-services-configuration-file> for details. |
+| `services.tailscale.serve.services.<name>.advertised` | `null or boolean` | Whether the service should accept new connections. Defaults to `true` when not specified. |
+| `services.tailscale.serve.services.<name>.endpoints` | `attribute set of string` | Map of incoming traffic patterns to local targets. Keys should be in the format `<protocol>:<port>` or `<protocol>:<port-range>`. Currently only `tcp` protocol is supported. Values should be in the format `<protocol>://<host:port>` where protocol is `http`, `https`, or `tcp`. |
+| `services.tailscale.useRoutingFeatures` | `one of "none", "client", "server", "both"` | Enables settings required for Tailscale's routing features like subnet routers and exit nodes. To use these these features, you will still need to call `sudo tailscale up` with the relevant flags like `--advertise-exit-node` and `--exit-node`. When set to `client` or `both`, reverse path filtering will be set to loose instead of strict. When set to `server` or `both`, IP forwarding will be enabled. |

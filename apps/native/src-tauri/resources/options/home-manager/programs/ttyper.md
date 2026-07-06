@@ -5,7 +5,7 @@
 All options under `programs.ttyper`.
 
 | Option | Type | Description |
-| -------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.ttyper.enable` | `boolean` | Whether to enable ttyper, a terminal-based typing test. |
 | `programs.ttyper.package` | `null or package` | The ttyper package to use. |
-| `programs.ttyper.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/ttyper/config.toml . See https://github.com/max-niederman/ttyper for all available options, including supported languages and theme keys. |
+| `programs.ttyper.settings` | `TOML value` | Configuration written to {file}`$XDG_CONFIG_HOME/ttyper/config.toml`. See <https://github.com/max-niederman/ttyper> for all available options, including supported languages and theme keys. |

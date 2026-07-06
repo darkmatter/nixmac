@@ -5,6 +5,6 @@
 All options under `programs.oddjobd`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `programs.oddjobd.enable` | | |
-| `programs.oddjobd.package` | | |
+| --- | --- | --- |
+| `programs.oddjobd.enable` | `boolean` | Whether to enable oddjob, a D-Bus service which runs odd jobs on behalf of client applications. |
+| `programs.oddjobd.package` | `package` | The oddjob package to use. |

@@ -5,8 +5,8 @@
 All options under `services.g810-led`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.g810-led.earlySetup` | | |
-| `services.g810-led.enable` | | |
-| `services.g810-led.package` | | |
-| `services.g810-led.profile` | | |
+| --- | --- | --- |
+| `services.g810-led.earlySetup` | `boolean` | Whether to enable g810-led in early stage initrd. |
+| `services.g810-led.enable` | `boolean` | Whether to enable g810-led, a Linux LED controller for some Logitech G Keyboards. |
+| `services.g810-led.package` | `package` | The g810-led package to use. |
+| `services.g810-led.profile` | `null or strings concatenated with "\n"` | Keyboard profile to apply at boot time. The upstream repository provides [example configurations](https://github.com/MatMoul/g810-led/tree/master/sample_profiles). |

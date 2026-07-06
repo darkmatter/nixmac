@@ -5,10 +5,10 @@
 All options under `services.nscd`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.nscd.config` | | |
-| `services.nscd.enable` | | |
-| `services.nscd.enableNsncd` | | |
-| `services.nscd.group` | | |
-| `services.nscd.package` | | |
-| `services.nscd.user` | | |
+| --- | --- | --- |
+| `services.nscd.config` | `strings concatenated with "\n"` | Configuration to use for Name Service Cache Daemon. Only used in case glibc-nscd is used. |
+| `services.nscd.enable` | `boolean` | Whether to enable the Name Service Cache Daemon. Disabling this is strongly discouraged, as this effectively disables NSS Lookups from all non-glibc NSS modules, including the ones provided by systemd. |
+| `services.nscd.enableNsncd` | `boolean` | Whether to use nsncd instead of nscd from glibc. This is a nscd-compatible daemon, that proxies lookups, without any caching. Using nscd from glibc is discouraged. |
+| `services.nscd.group` | `string` | User group under which nscd runs. |
+| `services.nscd.package` | `package` | package containing the nscd binary to be used by the service. Ignored when enableNsncd is set to true. |
+| `services.nscd.user` | `string` | User account under which nscd runs. |

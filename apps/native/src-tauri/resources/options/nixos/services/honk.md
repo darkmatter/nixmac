@@ -5,13 +5,13 @@
 All options under `services.honk`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.honk.enable` | | |
-| `services.honk.extraCSS` | | |
-| `services.honk.extraJS` | | |
-| `services.honk.host` | | |
-| `services.honk.package` | | |
-| `services.honk.passwordFile` | | |
-| `services.honk.port` | | |
-| `services.honk.servername` | | |
-| `services.honk.username` | | |
+| --- | --- | --- |
+| `services.honk.enable` | `boolean` | Whether to enable the Honk server. |
+| `services.honk.extraCSS` | `null or absolute path` | An extra CSS file to be loaded by the client. |
+| `services.honk.extraJS` | `null or absolute path` | An extra JavaScript file to be loaded by the client. |
+| `services.honk.host` | `string` | The host name or IP address the server should listen to. |
+| `services.honk.package` | `package` | The honk package to use. |
+| `services.honk.passwordFile` | `absolute path` | Password for admin account. NOTE: Should be string not a store path, to prevent the password from being world readable |
+| `services.honk.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port the server should listen to. |
+| `services.honk.servername` | `string` | The server name. |
+| `services.honk.username` | `string` | The admin account username. |

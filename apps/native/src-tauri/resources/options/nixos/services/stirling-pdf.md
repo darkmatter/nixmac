@@ -5,8 +5,8 @@
 All options under `services.stirling-pdf`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.stirling-pdf.enable` | | |
-| `services.stirling-pdf.environment` | | |
-| `services.stirling-pdf.environmentFiles` | | |
-| `services.stirling-pdf.package` | | |
+| --- | --- | --- |
+| `services.stirling-pdf.enable` | `boolean` | Whether to enable the stirling-pdf service. |
+| `services.stirling-pdf.environment` | `attribute set of (string or signed integer or boolean)` | Environment variables for the stirling-pdf app. See <https://github.com/Stirling-Tools/Stirling-PDF#customisation> for available options. |
+| `services.stirling-pdf.environmentFiles` | `list of absolute path` | Files containing additional environment variables to pass to Stirling PDF. Secrets should be added in environmentFiles instead of environment. |
+| `services.stirling-pdf.package` | `package` | The stirling-pdf package to use. |

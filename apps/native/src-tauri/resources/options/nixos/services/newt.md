@@ -5,12 +5,9 @@
 All options under `services.newt`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.newt.blueprint` | | |
-| `services.newt.enable` | | |
-| `services.newt.endpoint` | | |
-| `services.newt.environmentFile` | | |
-| `services.newt.id` | | |
-| `services.newt.logLevel` | | |
-| `services.newt.package` | | |
-| `services.newt.settings` | | |
+| --- | --- | --- |
+| `services.newt.blueprint` | `YAML 1.1 value` | Blueprint for declarative settings, see [Newt Blueprint docs](https://docs.pangolin.net/manage/blueprints#blueprints) for more information. |
+| `services.newt.enable` | `boolean` | Whether to enable Newt, user space tunnel client for Pangolin. |
+| `services.newt.environmentFile` | `null or absolute path` | Path to a file containing sensitive environment variables for Newt. See [Client credentials](https://docs.pangolin.net/manage/clients/credentials) for more information. These will overwrite anything defined in the config. The file should contain environment-variable assignments like: NEWT_ID=2ix2t8xk22ubpfy NEWT_SECRET=nnisrfsdfc7prqsp9ewo1dvtvci50j5uiqotez00dgap0ii2 |
+| `services.newt.package` | `package` | The fosrl-newt package to use. |
+| `services.newt.settings` | `value coercible to CLI argument` | Settings for Newt module, see [Newt CLI docs](https://github.com/fosrl/newt?tab=readme-ov-file#cli-args) for more information. |

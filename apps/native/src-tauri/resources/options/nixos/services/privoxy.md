@@ -5,16 +5,15 @@
 All options under `services.privoxy`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.privoxy.actionsFiles` | | |
-| `services.privoxy.certsLifetime` | | |
-| `services.privoxy.enable` | | |
-| `services.privoxy.enableEditActions` | | |
-| `services.privoxy.enableTor` | | |
-| `services.privoxy.extraConfig` | | |
-| `services.privoxy.filterFiles` | | |
-| `services.privoxy.inspectHttps` | | |
-| `services.privoxy.listenAddress` | | |
-| `services.privoxy.settings` | | |
-| `services.privoxy.userActions` | | |
-| `services.privoxy.userFilters` | | |
+| --- | --- | --- |
+| `services.privoxy.certsLifetime` | `tmpfiles.d(5) age format` | If `inspectHttps` is enabled, the time generated HTTPS certificates will be stored in a temporary directory for reuse. Once the lifetime has expired the directory will cleared and the certificate will have to be generated again, on-demand. Depending on the traffic, you may want to reduce the lifetime to limit the disk usage, since Privoxy itself never deletes the certificates. ::: {.note} The format is that of the {manpage}`tmpfiles.d(5)` Age parameter. ::: |
+| `services.privoxy.enable` | `boolean` | Whether to enable Privoxy, non-caching filtering proxy. |
+| `services.privoxy.enableTor` | `boolean` | Whether to configure Privoxy to use Tor's faster SOCKS port, suitable for HTTP. |
+| `services.privoxy.inspectHttps` | `boolean` | Whether to configure Privoxy to inspect HTTPS requests, meaning all encrypted traffic will be filtered as well. This works by decrypting and re-encrypting the requests using a per-domain generated certificate. To issue per-domain certificates, Privoxy must be provided with a CA certificate, using the `ca-cert-file`, `ca-key-file` settings. ::: {.warning} The CA certificate must also be added to the system trust roots, otherwise browsers will reject all Privoxy certificates as invalid. You can do so by using the option {option}`security.pki.certificateFiles`. ::: |
+| `services.privoxy.settings` | `open submodule of privoxy configuration type. The format consists of an attribute set of settings. Each setting can be either a value (integer, string, boolean or path) or a list of such values. ` | This option is mapped to the main Privoxy configuration file. Check out the Privoxy user manual at <https://www.privoxy.org/user-manual/config.html> for available settings and documentation. ::: {.note} Repeated settings can be represented by using a list. ::: |
+| `services.privoxy.settings.actionsfile` | `list of string` | List of paths to Privoxy action files. These paths may either be absolute or relative to the privoxy configuration directory. |
+| `services.privoxy.settings.enable-edit-actions` | `boolean` | Whether the web-based actions file editor may be used. |
+| `services.privoxy.settings.filterfile` | `list of string` | List of paths to Privoxy filter files. These paths may either be absolute or relative to the privoxy configuration directory. |
+| `services.privoxy.settings.listen-address` | `string or list of string` | Pair of address:port the proxy server is listening to. |
+| `services.privoxy.userActions` | `strings concatenated with "\n"` | Actions to be included in a `user.action` file. This will have a higher priority and can be used to override all other actions. |
+| `services.privoxy.userFilters` | `strings concatenated with "\n"` | Filters to be included in a `user.filter` file. This will have a higher priority and can be used to override all other filters definitions. |

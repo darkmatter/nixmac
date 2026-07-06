@@ -5,5 +5,5 @@
 All options under `services.rdnssd`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `services.rdnssd.enable` | | |
+| --- | --- | --- |
+| `services.rdnssd.enable` | `boolean` | Whether to enable the RDNSS daemon ({command}`rdnssd`), which configures DNS servers in {file}`/etc/resolv.conf` from RDNSS advertisements sent by IPv6 routers. |

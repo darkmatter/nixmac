@@ -5,7 +5,7 @@
 All options under `services.fractalart`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.fractalart.enable` | | |
-| `services.fractalart.height` | | |
-| `services.fractalart.width` | | |
+| --- | --- | --- |
+| `services.fractalart.enable` | `boolean` | Enable FractalArt for generating colorful wallpapers on login |
+| `services.fractalart.height` | `null or signed integer` | Screen height |
+| `services.fractalart.width` | `null or signed integer` | Screen width |

@@ -5,6 +5,29 @@
 All options under `services.restic`.
 
 | Option | Type | Description |
-| ------------------------- | ------------------------------ | --------------------------------- |
-| `services.restic.backups` | `attribute set of (submodule)` | Backup configurations for Restic. |
+| --- | --- | --- |
+| `services.restic.backups` | `attribute set of (submodule)` | Backup configurations for Restic. On Linux systems, a corresponding systemd user service (and optionally a systemd timer for automatic scheduling) will be created, along with a helper wrapper script. On non-Linux platforms, only the helper wrapper script will be created. |
+| `services.restic.backups.<name>.backupCleanupCommand` | `null or string` | A script that must run after finishing the backup process. This option is only supported on linux. |
+| `services.restic.backups.<name>.backupPrepareCommand` | `null or string` | A script that must run before starting the backup process. This option is only supported on linux. |
+| `services.restic.backups.<name>.checkOpts` | `list of string` | A list of options for 'restic check'. This option is only supported on linux. |
+| `services.restic.backups.<name>.createWrapper` | `boolean` | Whether to generate and add a script to the system path, that has the same environment variables set as the systemd service. This can be used to e.g. mount snapshots or perform other opterations, without having to manually specify most options. |
+| `services.restic.backups.<name>.dynamicFilesFrom` | `null or string` | A script that produces a list of files to back up. The results of this command, along with the paths specified via {option}`paths`, are given to the '--files-from' option. This option is only supported on linux. |
+| `services.restic.backups.<name>.environmentFile` | `null or string` | A file containing the credentials to access the repository, in the format of an EnvironmentFile as described by {manpage}`systemd.exec(5)`. See <https://restic.readthedocs.io/en/stable/030_preparing_a_new_repo.html> for the specific credentials you will need for your backend. |
+| `services.restic.backups.<name>.exclude` | `list of string` | Patterns to exclude when backing up. See <https://restic.readthedocs.io/en/stable/040_backup.html#excluding-files> for details on syntax. This option is only supported on linux. |
+| `services.restic.backups.<name>.extraBackupArgs` | `list of string` | Extra arguments passed to restic backup. This option is only supported on linux. |
+| `services.restic.backups.<name>.extraOptions` | `list of string` | Extra extended options to be passed to the restic `-o` flag. See the restic documentation for more details. |
+| `services.restic.backups.<name>.inhibitsSleep` | `boolean` | Prevents the system from sleeping while backing up. This uses systemd-inhibit to block system idling so you may need to enable polkitd with {option}`security.polkit.enable`. This option is only supported on linux. |
+| `services.restic.backups.<name>.initialize` | `boolean` | Create the repository if it does not already exist. This option is only supported on linux. |
+| `services.restic.backups.<name>.package` | `package` | The restic package to use. |
+| `services.restic.backups.<name>.passwordCommand` | `null or string` | Command which returns one of the repository's passwords. Since {env}`PATH` is set in the systemd service you need to provide the absolute path to the executable. |
+| `services.restic.backups.<name>.passwordFile` | `null or string` | A file containing the repository password. |
+| `services.restic.backups.<name>.paths` | `list of string` | Paths to back up, alongside those defined by the {option}`dynamicFilesFrom` option. If left empty and {option}`dynamicFilesFrom` is also not specified, no backup command will be run. This can be used to create a prune-only job. This option is only supported on linux. |
+| `services.restic.backups.<name>.progressFps` | `null or (nonnegative integer or floating point number, meaning >=0)` | Controls the frequency of progress reporting. |
+| `services.restic.backups.<name>.pruneOpts` | `list of string` | A list of policy options for 'restic forget --prune', to automatically prune old snapshots. See <https://restic.readthedocs.io/en/latest/060_forget.html#removing-snapshots-according-to-a-policy> for a full list of options. Note: The 'forget' command is run *after* the 'backup' command, so keep that in mind when constructing the --keep-\* options. This option is only supported on linux. |
+| `services.restic.backups.<name>.rcloneOptions` | `attribute set of (string or boolean or signed integer)` | Options to pass to rclone to control its behavior. See <https://rclone.org/docs/#options> for available options. When specifying option names, strip the leading `--`. To set a flag such as `--drive-use-trash`, which does not take a value, set the value to the Boolean `true`. |
+| `services.restic.backups.<name>.repository` | `null or string` | Repository to backup to. This should be in the form of a backend specification as detailed here <https://restic.readthedocs.io/en/stable/030_preparing_a_new_repo.html>. If your using the rclone backend, you can configure your remotes with {option}`programs.rclone.remotes` then use them in your backend specification. |
+| `services.restic.backups.<name>.repositoryFile` | `null or absolute path` | Path to a file containing the repository location to backup to. This should be in the same form as the {option}`repository` option. |
+| `services.restic.backups.<name>.runCheck` | `boolean` | Whether to run 'restic check' with the provided `checkOpts` options. This option is only supported on linux. |
+| `services.restic.backups.<name>.ssh-package` | `package` | The openssh package to use. |
+| `services.restic.backups.<name>.timerConfig` | `null or (attribute set of (boolean or signed integer or string or absolute path or list of (boolean or signed integer or string or absolute path)))` | When to run the backup. See {manpage}`systemd.timer(5)` for details. If null no timer is created and the backup will only run when explicitly started. This option is only supported on linux. |
 | `services.restic.enable` | `boolean` | Whether to enable restic. |

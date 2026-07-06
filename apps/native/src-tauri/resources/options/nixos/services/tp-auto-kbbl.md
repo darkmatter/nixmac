@@ -5,8 +5,8 @@
 All options under `services.tp-auto-kbbl`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.tp-auto-kbbl.arguments` | | |
-| `services.tp-auto-kbbl.device` | | |
-| `services.tp-auto-kbbl.enable` | | |
-| `services.tp-auto-kbbl.package` | | |
+| --- | --- | --- |
+| `services.tp-auto-kbbl.arguments` | `list of string` | List of arguments appended to `./tp-auto-kbbl --device [device] [arguments]` |
+| `services.tp-auto-kbbl.device` | `string` | Device watched for activities. |
+| `services.tp-auto-kbbl.enable` | `boolean` | Whether to enable auto toggle keyboard back-lighting on Thinkpads (and maybe other laptops) for Linux. |
+| `services.tp-auto-kbbl.package` | `package` | The tp-auto-kbbl package to use. |

@@ -5,12 +5,18 @@
 All options under `programs.sbt`.
 
 | Option | Type | Description |
-| --------------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `programs.sbt.baseConfigPath` | | |
-| `programs.sbt.baseUserConfigPath` | `string` | Where the sbt configuration files should be located, relative HOME . |
+| --- | --- | --- |
+| `programs.sbt.baseUserConfigPath` | `string` | Where the sbt configuration files should be located, relative {env}`HOME`. |
 | `programs.sbt.credentials` | `list of (submodule)` | A list of credentials to define in the sbt configuration directory. |
+| `programs.sbt.credentials.*.host` | `string` | The hostname of the repository you're authenticating to. |
+| `programs.sbt.credentials.*.passwordCommand` | `string` | The command that provides the password or authentication token for the repository. |
+| `programs.sbt.credentials.*.realm` | `string` | The realm of the repository you're authenticating to. |
+| `programs.sbt.credentials.*.user` | `string` | The user you're using to authenticate. |
 | `programs.sbt.enable` | `boolean` | Whether to enable sbt. |
 | `programs.sbt.package` | `package` | The sbt package to use. |
 | `programs.sbt.plugins` | `list of (submodule)` | A list of plugins to place in the sbt configuration directory. |
-| `programs.sbt.pluginsExtra` | `list of string` | A list of extra commands to put in plugins conf file. Use it in last resort when you can’t use the plugins option. |
-| `programs.sbt.repositories` | `list of (one of “local”, “maven-central”, “maven-local” or attribute set of string)` | A list of repositories to use when resolving dependencies. Defined as a list of pre-defined repository or custom repository as a set of name to URL. The list will be used populate the ~/.sbt/repositories file in the order specified. |
+| `programs.sbt.plugins.*.artifact` | `string` | The name of the artifact. |
+| `programs.sbt.plugins.*.org` | `string` | The organization the artifact is published under. |
+| `programs.sbt.plugins.*.version` | `string` | The version of the plugin. |
+| `programs.sbt.pluginsExtra` | `list of string` | A list of extra commands to put in plugins conf file. Use it in last resort when you can't use the `plugins` option. |
+| `programs.sbt.repositories` | `list of (one of "local", "maven-central", "maven-local" or attribute set of string)` | A list of repositories to use when resolving dependencies. Defined as a list of pre-defined repository or custom repository as a set of name to URL. The list will be used populate the `~/.sbt/repositories` file in the order specified. Pre-defined repositories must be one of `local`, `maven-local`, `maven-central`. Custom repositories are defined as `{ name-of-repo = "https://url.to.repo.com"}`. See <https://www.scala-sbt.org/1.x/docs/Launcher-Configuration.html#3.+Repositories+Section> about this configuration section and <https://www.scala-sbt.org/1.x/docs/Proxy-Repositories.html> to read about proxy repositories. |

@@ -5,11 +5,13 @@
 All options under `services.scanservjs`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.scanservjs.enable` | | |
-| `services.scanservjs.extraActions` | | |
-| `services.scanservjs.extraConfig` | | |
-| `services.scanservjs.extraDevicesConfig` | | |
-| `services.scanservjs.runAfterScan` | | |
-| `services.scanservjs.settings` | | |
-| `services.scanservjs.stateDir` | | |
+| --- | --- | --- |
+| `services.scanservjs.enable` | `boolean` | Whether to enable scanservjs. |
+| `services.scanservjs.extraActions` | `list of strings concatenated with "\n"` | Actions to add to config.local.js's `actions`. |
+| `services.scanservjs.extraConfig` | `strings concatenated with "\n"` | Extra code to add to config.local.js's `afterConfig`. |
+| `services.scanservjs.extraDevicesConfig` | `strings concatenated with "\n"` | Extra code to add to config.local.js's `afterDevices`. |
+| `services.scanservjs.runAfterScan` | `strings concatenated with "\n"` | Extra code to add to config.local.js's `afterScan`. |
+| `services.scanservjs.settings` | `open submodule of (JSON value)` | Config to set in config.local.js's `afterConfig`. |
+| `services.scanservjs.settings.host` | `string` | The IP to listen on. |
+| `services.scanservjs.settings.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to listen on. |
+| `services.scanservjs.stateDir` | `string` | State directory for scanservjs. |

@@ -5,6 +5,6 @@
 All options under `programs.miriway`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `programs.miriway.config` | | |
-| `programs.miriway.enable` | | |
+| --- | --- | --- |
+| `programs.miriway.config` | `strings concatenated with "\n"` | Miriway's config. This will be installed system-wide. The default will install the miriway package's barebones example config. |
+| `programs.miriway.enable` | `boolean` | Whether to enable Miriway, a Mir based Wayland compositor. You can manually launch Miriway by executing "exec miriway" on a TTY, or launch it from a display manager. Copy /etc/xdg/xdg-miriway/miriway-shell.config to ~/.config/miriway-shell.config to modify the system-wide configuration on a per-user basis. See <https://github.com/Miriway/Miriway>, and "miriway --help" for more information. |

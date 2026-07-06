@@ -5,8 +5,8 @@
 All options under `programs.cmus`.
 
 | Option | Type | Description |
-| --------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `programs.cmus.enable` | `boolean` | Whether to enable Enable cmus, the music player… |
-| `programs.cmus.extraConfig` | `strings concatenated with “\n”` | Extra configuration to add to cmus rc . |
+| --- | --- | --- |
+| `programs.cmus.enable` | `boolean` | Whether to enable Enable cmus, the music player.. |
+| `programs.cmus.extraConfig` | `strings concatenated with "\n"` | Extra configuration to add to cmus {file}`rc`. |
 | `programs.cmus.package` | `null or package` | The cmus package to use. |
-| `programs.cmus.theme` | `strings concatenated with “\n”` | Select color theme. A list of available color themes can be found here: https://github.com/cmus/cmus/tree/master/data . |
+| `programs.cmus.theme` | `strings concatenated with "\n"` | Select color theme. A list of available color themes can be found here: <https://github.com/cmus/cmus/tree/master/data>. |

@@ -5,6 +5,6 @@
 All options under `services.teamviewer`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.teamviewer.enable` | | |
-| `services.teamviewer.package` | | |
+| --- | --- | --- |
+| `services.teamviewer.enable` | `boolean` | Whether to enable TeamViewer daemon & system package. |
+| `services.teamviewer.package` | `package` | The teamviewer package to use. |

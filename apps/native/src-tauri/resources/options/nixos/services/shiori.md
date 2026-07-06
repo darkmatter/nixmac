@@ -5,11 +5,11 @@
 All options under `services.shiori`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.shiori.address` | | |
-| `services.shiori.databaseUrl` | | |
-| `services.shiori.enable` | | |
-| `services.shiori.environmentFile` | | |
-| `services.shiori.package` | | |
-| `services.shiori.port` | | |
-| `services.shiori.webRoot` | | |
+| --- | --- | --- |
+| `services.shiori.address` | `string` | The IP address on which Shiori will listen. If empty, listens on all interfaces. |
+| `services.shiori.databaseUrl` | `null or string` | The connection URL to connect to MySQL or PostgreSQL |
+| `services.shiori.enable` | `boolean` | Whether to enable Shiori simple bookmarks manager. |
+| `services.shiori.environmentFile` | `null or absolute path` | Path to file containing environment variables. Useful for passing down secrets. <https://github.com/go-shiori/shiori/blob/master/docs/Configuration.md#overall-configuration> |
+| `services.shiori.package` | `package` | The shiori package to use. |
+| `services.shiori.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port of the Shiori web application |
+| `services.shiori.webRoot` | `string` | The root of the Shiori web application |

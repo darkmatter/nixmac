@@ -5,16 +5,19 @@
 All options under `services.epgstation`.
 
 | Option | Type | Description |
-| ----------------------------------------------- | ---- | ----------- |
-| `services.epgstation.basicAuth` | | |
-| `services.epgstation.clientSocketioPort` | | |
-| `services.epgstation.database.name` | | |
-| `services.epgstation.database.passwordFile` | | |
-| `services.epgstation.enable` | | |
-| `services.epgstation.ffmpeg` | | |
-| `services.epgstation.openFirewall` | | |
-| `services.epgstation.package` | | |
-| `services.epgstation.port` | | |
-| `services.epgstation.settings` | | |
-| `services.epgstation.socketioPort` | | |
-| `services.epgstation.usePreconfiguredStreaming` | | |
+| --- | --- | --- |
+| `services.epgstation.database.name` | `string` | Name of the MySQL database that holds EPGStation's data. |
+| `services.epgstation.database.passwordFile` | `absolute path` | A file containing the password for the database named {option}`database.name`. |
+| `services.epgstation.enable` | `boolean` | Whether to enable EPGStation: DVR system for Mirakurun-managed TV tuners. |
+| `services.epgstation.ffmpeg` | `package` | The ffmpeg package to use. |
+| `services.epgstation.openFirewall` | `boolean` | Open ports in the firewall for the EPGStation web interface. ::: {.warning} Exposing EPGStation to the open internet is generally advised against. Only use it inside a trusted local network, or consider putting it behind a VPN if you want remote access. ::: |
+| `services.epgstation.package` | `package` | The epgstation package to use. |
+| `services.epgstation.settings` | `open submodule of (YAML 1.1 value)` | Options to add to config.yml. Documentation: <https://github.com/l3tnun/EPGStation/blob/master/doc/conf-manual.md> |
+| `services.epgstation.settings.clientSocketioPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Socket.io port that the web client is going to connect to. This may be different from {option}`services.epgstation.settings.socketioPort` if EPGStation is hidden behind a reverse proxy. |
+| `services.epgstation.settings.concurrentEncodeNum` | `positive integer, meaning >0` | The maximum number of encoding jobs that EPGStation would run at the same time. |
+| `services.epgstation.settings.encode` | `list of (attribute set)` | Encoding presets for recorded videos. |
+| `services.epgstation.settings.encodeProcessNum` | `positive integer, meaning >0` | The maximum number of processes that EPGStation would allow to run at the same time for encoding or streaming videos. |
+| `services.epgstation.settings.mirakurunPath` | `string` | URL to connect to Mirakurun. |
+| `services.epgstation.settings.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | HTTP port for EPGStation to listen on. |
+| `services.epgstation.settings.socketioPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Socket.io port for EPGStation to listen on. It is valid to share ports with {option}`services.epgstation.settings.port`. |
+| `services.epgstation.usePreconfiguredStreaming` | `boolean` | Use preconfigured default streaming options. Upstream defaults: <https://github.com/l3tnun/EPGStation/blob/master/config/config.yml.template> |

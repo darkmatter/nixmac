@@ -5,13 +5,15 @@
 All options under `services.mtr-exporter`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.mtr-exporter.address` | | |
-| `services.mtr-exporter.enable` | | |
-| `services.mtr-exporter.extraFlags` | | |
-| `services.mtr-exporter.jobs` | | |
-| `services.mtr-exporter.mtrFlags` | | |
-| `services.mtr-exporter.mtrPackage` | | |
-| `services.mtr-exporter.package` | | |
-| `services.mtr-exporter.port` | | |
-| `services.mtr-exporter.target` | | |
+| --- | --- | --- |
+| `services.mtr-exporter.address` | `string` | Listen address for MTR exporter. |
+| `services.mtr-exporter.enable` | `boolean` | Whether to enable a Prometheus exporter for MTR. |
+| `services.mtr-exporter.extraFlags` | `list of string` | Extra command line options to pass to MTR exporter. |
+| `services.mtr-exporter.jobs` | `non-empty (list of (submodule))` | List of MTR jobs. Will be added to /etc/mtr-exporter.conf |
+| `services.mtr-exporter.jobs.*.address` | `string` | Target address for MTR client. |
+| `services.mtr-exporter.jobs.*.flags` | `list of string` | Additional flags to pass to MTR. |
+| `services.mtr-exporter.jobs.*.name` | `string` | Name of ICMP pinging job. |
+| `services.mtr-exporter.jobs.*.schedule` | `string` | Schedule of MTR checks. Also accepts Cron format. |
+| `services.mtr-exporter.mtrPackage` | `package` | The mtr package to use. |
+| `services.mtr-exporter.package` | `package` | The mtr-exporter package to use. |
+| `services.mtr-exporter.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listen port for MTR exporter. |

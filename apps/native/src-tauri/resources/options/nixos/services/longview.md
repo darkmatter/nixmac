@@ -5,12 +5,12 @@
 All options under `services.longview`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.longview.apacheStatusUrl` | | |
-| `services.longview.apiKey` | | |
-| `services.longview.apiKeyFile` | | |
-| `services.longview.enable` | | |
-| `services.longview.mysqlPassword` | | |
-| `services.longview.mysqlPasswordFile` | | |
-| `services.longview.mysqlUser` | | |
-| `services.longview.nginxStatusUrl` | | |
+| --- | --- | --- |
+| `services.longview.apacheStatusUrl` | `string` | The Apache status page URL. If provided, Longview will gather statistics from this location. This requires Apache mod_status to be loaded and enabled. |
+| `services.longview.apiKey` | `string` | Longview API key. To get this, look in Longview settings which are found at <https://manager.linode.com/longview/>. Warning: this secret is stored in the world-readable Nix store! Use {option}`apiKeyFile` instead. |
+| `services.longview.apiKeyFile` | `null or absolute path` | A file containing the Longview API key. To get this, look in Longview settings which are found at <https://manager.linode.com/longview/>. {option}`apiKeyFile` takes precedence over {option}`apiKey`. |
+| `services.longview.enable` | `boolean` | If enabled, system metrics will be sent to Linode LongView. |
+| `services.longview.mysqlPassword` | `string` | The password corresponding to {option}`mysqlUser`. Warning: this is stored in cleartext in the Nix store! Use {option}`mysqlPasswordFile` instead. |
+| `services.longview.mysqlPasswordFile` | `null or absolute path` | A file containing the password corresponding to {option}`mysqlUser`. |
+| `services.longview.mysqlUser` | `string` | The user for connecting to the MySQL database. If provided, Longview will connect to MySQL and collect statistics about queries, etc. This user does not need to have been granted any extra privileges. |
+| `services.longview.nginxStatusUrl` | `string` | The Nginx status page URL. Longview will gather statistics from this URL. This requires the Nginx stub_status module to be enabled and configured at the given location. |

@@ -5,11 +5,11 @@
 All options under `services.hbase-standalone`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.hbase-standalone.dataDir` | | |
-| `services.hbase-standalone.enable` | | |
-| `services.hbase-standalone.group` | | |
-| `services.hbase-standalone.logDir` | | |
-| `services.hbase-standalone.package` | | |
-| `services.hbase-standalone.settings` | | |
-| `services.hbase-standalone.user` | | |
+| --- | --- | --- |
+| `services.hbase-standalone.dataDir` | `absolute path` | Specifies location of HBase database files. This location should be writable and readable for the user the HBase service runs as (hbase by default). |
+| `services.hbase-standalone.enable` | `boolean` | Whether to enable HBase master in standalone mode with embedded regionserver and zookeper. Do not use this configuration for production nor for evaluating HBase performance . |
+| `services.hbase-standalone.group` | `string` | Group account under which HBase runs. |
+| `services.hbase-standalone.logDir` | `absolute path` | Specifies the location of HBase log files. |
+| `services.hbase-standalone.package` | `package` | The hbase package to use. |
+| `services.hbase-standalone.settings` | `attribute set of (string or signed integer or boolean)` | configurations in hbase-site.xml, see <https://github.com/apache/hbase/blob/master/hbase-server/src/test/resources/hbase-site.xml> for details. |
+| `services.hbase-standalone.user` | `string` | User account under which HBase runs. |

@@ -5,19 +5,19 @@
 All options under `services.kasmweb`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---- | ----------- |
-| `services.kasmweb.datastorePath` | | |
-| `services.kasmweb.defaultAdminPassword` | | |
-| `services.kasmweb.defaultGuacToken` | | |
-| `services.kasmweb.defaultManagerToken` | | |
-| `services.kasmweb.defaultRegistrationToken` | | |
-| `services.kasmweb.defaultUserPassword` | | |
-| `services.kasmweb.enable` | | |
-| `services.kasmweb.listenAddress` | | |
-| `services.kasmweb.listenPort` | | |
-| `services.kasmweb.networkSubnet` | | |
-| `services.kasmweb.postgres.password` | | |
-| `services.kasmweb.postgres.user` | | |
-| `services.kasmweb.redisPassword` | | |
-| `services.kasmweb.sslCertificate` | | |
-| `services.kasmweb.sslCertificateKey` | | |
+| --- | --- | --- |
+| `services.kasmweb.datastorePath` | `string` | The directory used to store all data for kasmweb. |
+| `services.kasmweb.defaultAdminPassword` | `string` | default admin password to use. |
+| `services.kasmweb.defaultGuacToken` | `string` | default guac token to use. |
+| `services.kasmweb.defaultManagerToken` | `string` | default manager token to use. |
+| `services.kasmweb.defaultRegistrationToken` | `string` | default registration token to use. |
+| `services.kasmweb.defaultUserPassword` | `string` | default user password to use. |
+| `services.kasmweb.enable` | `boolean` | Whether to enable kasmweb. |
+| `services.kasmweb.listenAddress` | `string` | The address on which kasmweb should listen. |
+| `services.kasmweb.listenPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port on which kasmweb should listen. |
+| `services.kasmweb.networkSubnet` | `string` | The network subnet to use for the containers. |
+| `services.kasmweb.postgres.password` | `string` | password to use for the postgres database. |
+| `services.kasmweb.postgres.user` | `string` | Username to use for the postgres database. |
+| `services.kasmweb.redisPassword` | `string` | password to use for the redis cache. |
+| `services.kasmweb.sslCertificate` | `null or absolute path` | The SSL certificate to be used for kasmweb. |
+| `services.kasmweb.sslCertificateKey` | `null or absolute path` | The SSL certificate's key to be used for kasmweb. Make sure to specify this as a string and not a literal path, so that it is not accidentally included in your nixstore. |

@@ -5,15 +5,15 @@
 All options under `services.windmill`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `services.windmill.baseUrl` | | |
-| `services.windmill.database.createLocally` | | |
-| `services.windmill.database.name` | | |
-| `services.windmill.database.url` | | |
-| `services.windmill.database.urlPath` | | |
-| `services.windmill.database.user` | | |
-| `services.windmill.enable` | | |
-| `services.windmill.logLevel` | | |
-| `services.windmill.lspPort` | | |
-| `services.windmill.package` | | |
-| `services.windmill.serverPort` | | |
+| --- | --- | --- |
+| `services.windmill.baseUrl` | `string` | The base url that windmill will be served on. |
+| `services.windmill.database.createLocally` | `boolean` | Whether to create a local database automatically. |
+| `services.windmill.database.name` | `string` | Database name. |
+| `services.windmill.database.url` | `string` | Database url. Note that any secret here would be world-readable. Use `services.windmill.database.urlPath` unstead to include secrets in the url. |
+| `services.windmill.database.urlPath` | `null or absolute path` | Path to the file containing the database url windmill should connect to. This is not deducted from database user and name as it might contain a secret |
+| `services.windmill.database.user` | `string` | Database user. |
+| `services.windmill.enable` | `boolean` | Whether to enable windmill service. |
+| `services.windmill.logLevel` | `one of "error", "warn", "info", "debug", "trace"` | Log level |
+| `services.windmill.lspPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port the windmill lsp listens on. |
+| `services.windmill.package` | `package` | The windmill package to use. |
+| `services.windmill.serverPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port the windmill server listens on. |

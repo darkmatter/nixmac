@@ -5,7 +5,7 @@
 All options under `services.nextcloud-whiteboard-server`.
 
 | Option | Type | Description |
-| ----------------------------------------------- | ---- | ----------- |
-| `services.nextcloud-whiteboard-server.enable` | | |
-| `services.nextcloud-whiteboard-server.secrets` | | |
-| `services.nextcloud-whiteboard-server.settings` | | |
+| --- | --- | --- |
+| `services.nextcloud-whiteboard-server.enable` | `boolean` | Whether to enable Nextcloud backend server for the Whiteboard app. |
+| `services.nextcloud-whiteboard-server.secrets` | `list of string` | A list of files containing the various secrets. Should be in the format expected by systemd's `EnvironmentFile` directory. |
+| `services.nextcloud-whiteboard-server.settings` | `attribute set of string` | Settings to configure backend server. Especially the Nextcloud host url has to be set. The required environment variable `JWT_SECRET_KEY` should be set via the secrets option. |

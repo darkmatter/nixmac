@@ -5,5 +5,5 @@
 All options under `services.accounts-daemon`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.accounts-daemon.enable` | | |
+| --- | --- | --- |
+| `services.accounts-daemon.enable` | `boolean` | Whether to enable AccountsService, a DBus service for accessing the list of user accounts and information attached to those accounts. |

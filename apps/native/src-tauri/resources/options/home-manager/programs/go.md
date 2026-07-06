@@ -5,13 +5,13 @@
 All options under `programs.go`.
 
 | Option | Type | Description |
-| -------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.go.enable` | `boolean` | Whether to enable Go. |
-| `programs.go.env` | `open submodule of attribute set of string` | Environment variables for Go. All the available options can be found running ‘go env’. |
-| `programs.go.extraGoPaths` | | |
-| `programs.go.goBin` | | |
-| `programs.go.goPath` | | |
-| `programs.go.goPrivate` | | |
+| `programs.go.env` | `open submodule of attribute set of string` | Environment variables for Go. All the available options can be found running 'go env'. |
+| `programs.go.env.GOPATH` | `string or list of string` | List of directories that should be used by the Go tooling. |
+| `programs.go.env.GOPRIVATE` | `string or list of string` | Controls which modules the 'go' command considers to be private (not available publicly) and should therefore not use the proxy or checksum database. |
 | `programs.go.package` | `null or package` | The go package to use. |
 | `programs.go.packages` | `attribute set of absolute path` | Packages to add to GOPATH. |
 | `programs.go.telemetry` | `submodule` | Options to configure Go telemetry mode. |
+| `programs.go.telemetry.date` | `string` | The date indicating the date at which the modefile was updated, in YYYY-MM-DD format. It's used to reset the timeout before the next telemetry report is uploaded when telemetry mode is set to "on". |
+| `programs.go.telemetry.mode` | `null or one of "off", "local", "on"` | Go telemetry mode to be set. |

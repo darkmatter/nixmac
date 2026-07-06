@@ -5,18 +5,14 @@
 All options under `services.harmonia`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.harmonia.cache.enable` | | |
-| `services.harmonia.cache.settings` | | |
-| `services.harmonia.cache.signKeyPath` | | |
-| `services.harmonia.cache.signKeyPaths` | | |
-| `services.harmonia.daemon.dbPath` | | |
-| `services.harmonia.daemon.enable` | | |
-| `services.harmonia.daemon.logLevel` | | |
-| `services.harmonia.daemon.socketPath` | | |
-| `services.harmonia.daemon.storeDir` | | |
-| `services.harmonia.enable` | | |
-| `services.harmonia.package` | | |
-| `services.harmonia.settings` | | |
-| `services.harmonia.signKeyPath` | | |
-| `services.harmonia.signKeyPaths` | | |
+| --- | --- | --- |
+| `services.harmonia.cache.enable` | `boolean` | Whether to enable Harmonia: Nix binary cache written in Rust. |
+| `services.harmonia.cache.settings` | `TOML value` | Settings to merge with the default configuration. For the list of the default configuration, see <https://github.com/nix-community/harmonia/tree/master#configuration>. |
+| `services.harmonia.cache.signKeyPath` | `null or absolute path` | DEPRECATED: Use `services.harmonia.cache.signKeyPaths` instead. Path to the signing key to use for signing the cache |
+| `services.harmonia.cache.signKeyPaths` | `list of absolute path` | Paths to the signing keys to use for signing the cache |
+| `services.harmonia.daemon.dbPath` | `string` | Path to the Nix database |
+| `services.harmonia.daemon.enable` | `boolean` | Whether to enable Harmonia daemon: Nix daemon protocol implementation. |
+| `services.harmonia.daemon.logLevel` | `string` | Log level for the daemon |
+| `services.harmonia.daemon.socketPath` | `string` | Path where the daemon socket will be created |
+| `services.harmonia.daemon.storeDir` | `string` | Path to the Nix store directory |
+| `services.harmonia.package` | `package` | The harmonia package to use. |

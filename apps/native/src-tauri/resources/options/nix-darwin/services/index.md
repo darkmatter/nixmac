@@ -5,46 +5,44 @@
 Subcategories of `services`.
 
 | Key | Type | Description |
-| --------------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`activate-system`](activate-system.md) | category | 1 option |
-| [`aerospace`](aerospace.md) | category | 3 options |
-| [`autossh`](autossh.md) | category | 1 option |
-| `buildkite-agent` | option | |
-| `buildkite-agents` | `attribute set of (submodule)` | Attribute set of buildkite agents. The attribute key is combined with the hostname and a unique integer to create the final agent name. This can be overridden by setting the name attribute. |
+| --- | --- | --- |
+| [`aerospace`](aerospace.md) | category | 25 options |
+| [`autossh`](autossh.md) | category | 5 options |
+| [`buildkite-agents`](buildkite-agents.md) | category | 23 options |
 | [`cachix-agent`](cachix-agent.md) | category | 5 options |
-| [`chunkwm`](chunkwm.md) | category | 1 subcategory, 8 options |
+| [`chunkwm`](chunkwm.md) | category | 8 options |
 | [`dnscrypt-proxy`](dnscrypt-proxy.md) | category | 3 options |
 | [`dnsmasq`](dnsmasq.md) | category | 6 options |
 | [`emacs`](emacs.md) | category | 4 options |
 | [`eternal-terminal`](eternal-terminal.md) | category | 6 options |
-| `github-runners` | `attribute set of (submodule)` | Multiple GitHub Runners. |
-| [`gitlab-runner`](gitlab-runner.md) | category | 15 options |
-| [`hercules-ci-agent`](hercules-ci-agent.md) | category | 9 options |
+| [`github-runners`](github-runners.md) | category | 18 options |
+| [`gitlab-runner`](gitlab-runner.md) | category | 38 options |
+| [`hercules-ci-agent`](hercules-ci-agent.md) | category | 13 options |
 | [`ipfs`](ipfs.md) | category | 5 options |
 | [`jankyborders`](jankyborders.md) | category | 13 options |
 | [`karabiner-elements`](karabiner-elements.md) | category | 2 options |
 | [`khd`](khd.md) | category | 4 options |
 | [`kwm`](kwm.md) | category | 3 options |
 | [`lorri`](lorri.md) | category | 2 options |
-| [`mopidy`](mopidy.md) | category | 1 subcategory, 4 options |
+| [`mopidy`](mopidy.md) | category | 4 options |
 | [`netbird`](netbird.md) | category | 2 options |
 | [`netdata`](netdata.md) | category | 6 options |
 | [`nextdns`](nextdns.md) | category | 2 options |
-| [`nix-daemon`](nix-daemon.md) | category | 4 options |
+| [`nix-daemon`](nix-daemon.md) | category | 3 options |
 | [`ofborg`](ofborg.md) | category | 4 options |
 | [`offlineimap`](offlineimap.md) | category | 6 options |
-| [`openssh`](openssh.md) | category | 4 options |
+| [`openssh`](openssh.md) | category | 7 options |
 | [`postgresql`](postgresql.md) | category | 18 options |
 | [`privoxy`](privoxy.md) | category | 6 options |
-| [`prometheus`](prometheus.md) | category | 1 subcategory, 10 options |
+| [`prometheus`](prometheus.md) | category | 7 options |
 | [`redis`](redis.md) | category | 8 options |
 | [`sketchybar`](sketchybar.md) | category | 4 options |
 | [`skhd`](skhd.md) | category | 3 options |
 | [`spacebar`](spacebar.md) | category | 4 options |
 | [`spotifyd`](spotifyd.md) | category | 3 options |
 | [`synapse-bt`](synapse-bt.md) | category | 5 options |
-| [`synergy`](synergy.md) | category | 2 subcategories, 14 options |
-| [`tailscale`](tailscale.md) | category | 5 options |
+| [`synergy`](synergy.md) | category | 14 options |
+| [`tailscale`](tailscale.md) | category | 3 options |
 | [`telegraf`](telegraf.md) | category | 5 options |
-| [`trezord`](trezord.md) | category | 1 subcategory, 3 options |
+| [`trezord`](trezord.md) | category | 3 options |
 | [`yabai`](yabai.md) | category | 5 options |

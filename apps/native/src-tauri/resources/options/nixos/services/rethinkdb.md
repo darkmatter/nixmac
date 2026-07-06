@@ -5,9 +5,9 @@
 All options under `services.rethinkdb`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.rethinkdb.dbpath` | | |
-| `services.rethinkdb.enable` | | |
-| `services.rethinkdb.group` | | |
-| `services.rethinkdb.pidpath` | | |
-| `services.rethinkdb.user` | | |
+| --- | --- | --- |
+| `services.rethinkdb.dbpath` | `unspecified value` | Location where RethinkDB stores its data, 1 data directory per instance. |
+| `services.rethinkdb.enable` | `boolean` | Whether to enable RethinkDB server. |
+| `services.rethinkdb.group` | `unspecified value` | Group which rethinkdb user belongs to. |
+| `services.rethinkdb.pidpath` | `unspecified value` | Location where each instance's pid file is located. |
+| `services.rethinkdb.user` | `unspecified value` | User account under which RethinkDB runs. |

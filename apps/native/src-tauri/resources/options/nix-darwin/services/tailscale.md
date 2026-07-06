@@ -5,9 +5,7 @@
 All options under `services.tailscale`.
 
 | Option | Type | Description |
-| ------------------------------------- | --------- | ---------------------------------------------------------------------------------------------- |
-| `services.tailscale.domain` | | |
+| --- | --- | --- |
 | `services.tailscale.enable` | `boolean` | Whether to enable Tailscale client daemon. |
-| `services.tailscale.magicDNS` | | |
-| `services.tailscale.overrideLocalDns` | `boolean` | This option implements Override local DNS as it is not yet implemented in Tailscaled-on-macOS. |
+| `services.tailscale.overrideLocalDns` | `boolean` | This option implements `Override local DNS` as it is not yet implemented in Tailscaled-on-macOS. To use this option, in the Tailscale control panel: 1. at least one DNS server is added 2. `Override local DNS` is enabled As this option sets 100.100.100.100 as your sole DNS server, if the requirements above are not met, all non-MagicDNS queries WILL fail. |
 | `services.tailscale.package` | `package` | The package to use for tailscale |

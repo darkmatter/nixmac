@@ -5,22 +5,22 @@
 All options under `services.resilio`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.resilio.apiKey` | | |
-| `services.resilio.checkForUpdates` | | |
-| `services.resilio.deviceName` | | |
-| `services.resilio.directoryRoot` | | |
-| `services.resilio.downloadLimit` | | |
-| `services.resilio.enable` | | |
-| `services.resilio.enableWebUI` | | |
-| `services.resilio.encryptLAN` | | |
-| `services.resilio.httpListenAddr` | | |
-| `services.resilio.httpListenPort` | | |
-| `services.resilio.httpLogin` | | |
-| `services.resilio.httpPass` | | |
-| `services.resilio.listeningPort` | | |
-| `services.resilio.package` | | |
-| `services.resilio.sharedFolders` | | |
-| `services.resilio.storagePath` | | |
-| `services.resilio.uploadLimit` | | |
-| `services.resilio.useUpnp` | | |
+| --- | --- | --- |
+| `services.resilio.apiKey` | `string` | API key, which enables the developer API. |
+| `services.resilio.checkForUpdates` | `boolean` | Determines whether to check for updates and alert the user about them in the UI. |
+| `services.resilio.deviceName` | `string` | Name of the Resilio Sync device. |
+| `services.resilio.directoryRoot` | `string` | Default directory to add folders in the web UI. |
+| `services.resilio.downloadLimit` | `unsigned integer, meaning >=0` | Download speed limit. 0 is unlimited (default). |
+| `services.resilio.enable` | `boolean` | If enabled, start the Resilio Sync daemon. Once enabled, you can interact with the service through the Web UI, or configure it in your NixOS configuration. |
+| `services.resilio.enableWebUI` | `boolean` | Enable Web UI for administration. Bound to the specified `httpListenAddress` and `httpListenPort`. |
+| `services.resilio.encryptLAN` | `boolean` | Encrypt LAN data. |
+| `services.resilio.httpListenAddr` | `string` | HTTP address to bind to. |
+| `services.resilio.httpListenPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | HTTP port to bind on. |
+| `services.resilio.httpLogin` | `string` | HTTP web login username. |
+| `services.resilio.httpPass` | `string` | HTTP web login password. |
+| `services.resilio.listeningPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listening port. Defaults to 0 which randomizes the port. |
+| `services.resilio.package` | `package` | The resilio-sync package to use. |
+| `services.resilio.sharedFolders` | `list of attribute set of anything` | Shared folder list. If enabled, web UI must be disabled. Secrets can be generated using `rslsync --generate-secret`. If you would like to be able to modify the contents of this directories, it is recommended that you make your user a member of the `rslsync` group. Directories in this list should be in the `rslsync` group, and that group must have write access to the directory. It is also recommended that `chmod g+s` is applied to the directory so that any sub directories created will also belong to the `rslsync` group. Also, `setfacl -d -m group:rslsync:rwx` and `setfacl -m group:rslsync:rwx` should also be applied so that the sub directories are writable by the group. |
+| `services.resilio.storagePath` | `absolute path` | Where BitTorrent Sync will store it's database files (containing things like username info and licenses). Generally, you should not need to ever change this. |
+| `services.resilio.uploadLimit` | `unsigned integer, meaning >=0` | Upload speed limit. 0 is unlimited (default). |
+| `services.resilio.useUpnp` | `boolean` | Use Universal Plug-n-Play (UPnP) |

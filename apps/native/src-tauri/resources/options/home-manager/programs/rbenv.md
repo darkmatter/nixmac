@@ -5,10 +5,12 @@
 All options under `programs.rbenv`.
 
 | Option | Type | Description |
-| -------------------------------------- | --------------------- | --------------------------------------------------- |
+| --- | --- | --- |
 | `programs.rbenv.enable` | `boolean` | Whether to enable rbenv. |
 | `programs.rbenv.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.rbenv.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
 | `programs.rbenv.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
 | `programs.rbenv.package` | `package` | The rbenv package to use. |
-| `programs.rbenv.plugins` | `list of (submodule)` | rbenv plugins to install in $HOME/.rbenv/plugins/ . |
+| `programs.rbenv.plugins` | `list of (submodule)` | rbenv plugins to install in {file}`$HOME/.rbenv/plugins/`. See <https://github.com/rbenv/rbenv/wiki/Plugins> for the full list of plugins. |
+| `programs.rbenv.plugins.*.name` | `string` | Name of the plugin. |
+| `programs.rbenv.plugins.*.src` | `absolute path` | Path to the plugin folder. |

@@ -5,8 +5,8 @@
 All options under `programs.xplr`.
 
 | Option | Type | Description |
-| --------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.xplr.enable` | `boolean` | Whether to enable xplr, terminal UI based file explorer. |
-| `programs.xplr.extraConfig` | `strings concatenated with “\n”` | Extra xplr configuration. |
+| `programs.xplr.extraConfig` | `strings concatenated with "\n"` | Extra xplr configuration. |
 | `programs.xplr.package` | `null or package` | The xplr package to use. |
-| `programs.xplr.plugins` | `null or (attribute set of (package or string))` | An attribute set of plugin paths to be added to the [package.path] https://www.lua.org/manual/5.4/manual.html#pdf-package.path of the ~/config/xplr/init.lua configuration file. |
+| `programs.xplr.plugins` | `null or (attribute set of (package or string))` | An attribute set of plugin paths to be added to the [package.path]<https://www.lua.org/manual/5.4/manual.html#pdf-package.path> of the {file}`~/config/xplr/init.lua` configuration file. Must be a package or string representing the plugin directory's path. If the path string is not absolute, it will be relative to {file}`$XDG_CONFIG_HOME/xplr/init.lua`. |

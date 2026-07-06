@@ -5,9 +5,9 @@
 All options under `services.xl2tpd`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.xl2tpd.clientIpRange` | | |
-| `services.xl2tpd.enable` | | |
-| `services.xl2tpd.extraPppdOptions` | | |
-| `services.xl2tpd.extraXl2tpOptions` | | |
-| `services.xl2tpd.serverIp` | | |
+| --- | --- | --- |
+| `services.xl2tpd.clientIpRange` | `string` | The range from which client IPs are drawn. |
+| `services.xl2tpd.enable` | `boolean` | Whether to enable xl2tpd, the Layer 2 Tunnelling Protocol Daemon. |
+| `services.xl2tpd.extraPppdOptions` | `strings concatenated with "\n"` | Adds extra lines to the pppd options file. |
+| `services.xl2tpd.extraXl2tpOptions` | `strings concatenated with "\n"` | Adds extra lines to the xl2tpd configuration file. |
+| `services.xl2tpd.serverIp` | `string` | The server-side IP address. |

@@ -5,11 +5,11 @@
 All options under `services.lanraragi`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.lanraragi.enable` | | |
-| `services.lanraragi.openFirewall` | | |
-| `services.lanraragi.package` | | |
-| `services.lanraragi.passwordFile` | | |
-| `services.lanraragi.port` | | |
-| `services.lanraragi.redis.passwordFile` | | |
-| `services.lanraragi.redis.port` | | |
+| --- | --- | --- |
+| `services.lanraragi.enable` | `boolean` | Whether to enable LANraragi. |
+| `services.lanraragi.openFirewall` | `boolean` | Open ports in the firewall for LANraragi's web interface. |
+| `services.lanraragi.package` | `package` | The lanraragi package to use. |
+| `services.lanraragi.passwordFile` | `null or absolute path` | A file containing the password for LANraragi's admin interface. |
+| `services.lanraragi.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port for LANraragi's web interface. |
+| `services.lanraragi.redis.passwordFile` | `null or absolute path` | A file containing the password for LANraragi's Redis server. |
+| `services.lanraragi.redis.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port for LANraragi's Redis server. |

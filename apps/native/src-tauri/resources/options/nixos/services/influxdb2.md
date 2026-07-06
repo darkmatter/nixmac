@@ -5,16 +5,35 @@
 All options under `services.influxdb2`.
 
 | Option | Type | Description |
-| -------------------------------------------------------- | ---- | ----------- |
-| `services.influxdb2.enable` | | |
-| `services.influxdb2.package` | | |
-| `services.influxdb2.provision.enable` | | |
-| `services.influxdb2.provision.initialSetup.bucket` | | |
-| `services.influxdb2.provision.initialSetup.organization` | | |
-| `services.influxdb2.provision.initialSetup.passwordFile` | | |
-| `services.influxdb2.provision.initialSetup.retention` | | |
-| `services.influxdb2.provision.initialSetup.tokenFile` | | |
-| `services.influxdb2.provision.initialSetup.username` | | |
-| `services.influxdb2.provision.organizations` | | |
-| `services.influxdb2.provision.users` | | |
-| `services.influxdb2.settings` | | |
+| --- | --- | --- |
+| `services.influxdb2.enable` | `boolean` | Whether to enable the influxdb2 server. |
+| `services.influxdb2.package` | `package` | The influxdb2 package to use. |
+| `services.influxdb2.provision.enable` | `boolean` | Whether to enable initial database setup and provisioning. |
+| `services.influxdb2.provision.initialSetup.bucket` | `string` | Primary bucket name |
+| `services.influxdb2.provision.initialSetup.organization` | `string` | Primary organization name |
+| `services.influxdb2.provision.initialSetup.passwordFile` | `absolute path` | Password for primary user. Don't use a file from the nix store! |
+| `services.influxdb2.provision.initialSetup.retention` | `unsigned integer, meaning >=0` | The duration in seconds for which the bucket will retain data (0 is infinite). |
+| `services.influxdb2.provision.initialSetup.tokenFile` | `absolute path` | API Token to set for the admin user. Don't use a file from the nix store! |
+| `services.influxdb2.provision.initialSetup.username` | `string` | Primary username |
+| `services.influxdb2.provision.organizations` | `attribute set of (submodule)` | Organizations to provision. |
+| `services.influxdb2.provision.organizations.<name>.auths` | `attribute set of (submodule)` | API tokens to provision for the user in this organization. |
+| `services.influxdb2.provision.organizations.<name>.auths.<name>.allAccess` | `boolean` | Grants all permissions in the associated organization. |
+| `services.influxdb2.provision.organizations.<name>.auths.<name>.description` | `null or string` | Optional description for the API token. Note that the actual token will always be created with a descriptionregardless of whether this is given or not. The name is always added plus a unique suffix to later identify the token to track whether it has already been created. |
+| `services.influxdb2.provision.organizations.<name>.auths.<name>.id` | `string` | A unique identifier for this authentication token. Since influx doesn't store names for tokens, this will be hashed and appended to the description to identify the token. |
+| `services.influxdb2.provision.organizations.<name>.auths.<name>.operator` | `boolean` | Grants all permissions in all organizations. |
+| `services.influxdb2.provision.organizations.<name>.auths.<name>.present` | `boolean` | Whether to ensure that this user is present or absent. |
+| `services.influxdb2.provision.organizations.<name>.auths.<name>.readBuckets` | `list of string` | The organization's buckets which should be allowed to be read |
+| `services.influxdb2.provision.organizations.<name>.auths.<name>.readPermissions` | `list of (one of "authorizations", "buckets", "dashboards", "orgs", "tasks", "telegrafs", "users", "variables", "secrets", "labels", "views", "documents", "notificationRules", "notificationEndpoints", "checks", "dbrp", "annotations", "sources", "scrapers", "notebooks", "remotes", "replications")` | The read permissions to include for this token. Access is usually granted only for resources in the associated organization. Available permissions are `authorizations`, `buckets`, `dashboards`, `orgs`, `tasks`, `telegrafs`, `users`, `variables`, `secrets`, `labels`, `views`, `documents`, `notificationRules`, `notificationEndpoints`, `checks`, `dbrp`, `annotations`, `sources`, `scrapers`, `notebooks`, `remotes`, `replications`. Refer to `influx auth create --help` for a full list with descriptions. `buckets` grants read access to all associated buckets. Use `readBuckets` to define more granular access permissions. |
+| `services.influxdb2.provision.organizations.<name>.auths.<name>.tokenFile` | `null or absolute path` | The token value. If not given, influx will automatically generate one. |
+| `services.influxdb2.provision.organizations.<name>.auths.<name>.writeBuckets` | `list of string` | The organization's buckets which should be allowed to be written |
+| `services.influxdb2.provision.organizations.<name>.auths.<name>.writePermissions` | `list of (one of "authorizations", "buckets", "dashboards", "orgs", "tasks", "telegrafs", "users", "variables", "secrets", "labels", "views", "documents", "notificationRules", "notificationEndpoints", "checks", "dbrp", "annotations", "sources", "scrapers", "notebooks", "remotes", "replications")` | The read permissions to include for this token. Access is usually granted only for resources in the associated organization. Available permissions are `authorizations`, `buckets`, `dashboards`, `orgs`, `tasks`, `telegrafs`, `users`, `variables`, `secrets`, `labels`, `views`, `documents`, `notificationRules`, `notificationEndpoints`, `checks`, `dbrp`, `annotations`, `sources`, `scrapers`, `notebooks`, `remotes`, `replications`. Refer to `influx auth create --help` for a full list with descriptions. `buckets` grants write access to all associated buckets. Use `writeBuckets` to define more granular access permissions. |
+| `services.influxdb2.provision.organizations.<name>.buckets` | `attribute set of (submodule)` | Buckets to provision in this organization. |
+| `services.influxdb2.provision.organizations.<name>.buckets.<name>.description` | `null or string` | Optional description for the bucket. |
+| `services.influxdb2.provision.organizations.<name>.buckets.<name>.present` | `boolean` | Whether to ensure that this bucket is present or absent. |
+| `services.influxdb2.provision.organizations.<name>.buckets.<name>.retention` | `unsigned integer, meaning >=0` | The duration in seconds for which the bucket will retain data (0 is infinite). |
+| `services.influxdb2.provision.organizations.<name>.description` | `null or string` | Optional description for the organization. |
+| `services.influxdb2.provision.organizations.<name>.present` | `boolean` | Whether to ensure that this organization is present or absent. |
+| `services.influxdb2.provision.users` | `attribute set of (submodule)` | Users to provision. |
+| `services.influxdb2.provision.users.<name>.passwordFile` | `null or absolute path` | Password for the user. If unset, the user will not be able to log in until a password is set by an operator! Don't use a file from the nix store! |
+| `services.influxdb2.provision.users.<name>.present` | `boolean` | Whether to ensure that this user is present or absent. |
+| `services.influxdb2.settings` | `JSON value` | configuration options for influxdb2, see <https://docs.influxdata.com/influxdb/v2.0/reference/config-options> for details. |

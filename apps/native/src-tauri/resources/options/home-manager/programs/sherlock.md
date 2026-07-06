@@ -5,12 +5,12 @@
 All options under `programs.sherlock`.
 
 | Option | Type | Description |
-| ---------------------------------- | -------------------------------- | ------------------------------------------------------------------------- |
-| `programs.sherlock.aliases` | `JSON value` | Defines custom aliases. |
-| `programs.sherlock.enable` | `boolean` | Enable Sherlock, a fast and lightweight application launcher for Wayland. |
-| `programs.sherlock.ignore` | `strings concatenated with “\n”` | A list of desktop entry IDs to ignore. |
-| `programs.sherlock.launchers` | `JSON value` | Defines fallback launchers. |
+| --- | --- | --- |
+| `programs.sherlock.aliases` | `JSON value` | Defines custom aliases. Written to `sherlock_alias.json`. See <https://github.com/Skxxtz/sherlock/blob/main/docs/aliases.md> for more information. |
+| `programs.sherlock.enable` | `boolean` | Enable Sherlock, a fast and lightweight application launcher for Wayland. See <https://github.com/Skxxtz/sherlock> for more information. |
+| `programs.sherlock.ignore` | `strings concatenated with "\n"` | A list of desktop entry IDs to ignore. Written to `sherlockignore`. See <https://github.com/Skxxtz/sherlock/blob/main/docs/sherlockignore.md> for more information. |
+| `programs.sherlock.launchers` | `JSON value` | Defines fallback launchers. Written to `fallback.json`. See <https://github.com/Skxxtz/sherlock/blob/main/docs/launchers.md> for more information. |
 | `programs.sherlock.package` | `null or package` | The sherlock package to use. |
-| `programs.sherlock.settings` | `TOML value` | Configuration for Sherlock. |
-| `programs.sherlock.style` | `strings concatenated with “\n”` | Custom CSS to style the Sherlock UI. |
+| `programs.sherlock.settings` | `TOML value` | Configuration for Sherlock. Written to `config.toml`. See <https://github.com/Skxxtz/sherlock/blob/main/docs/config.md> for available options. |
+| `programs.sherlock.style` | `strings concatenated with "\n"` | Custom CSS to style the Sherlock UI. Written to `main.css`. |
 | `programs.sherlock.systemd.enable` | `boolean` | Whether to enable sherlock as a daemon. |

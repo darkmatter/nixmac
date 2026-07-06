@@ -5,12 +5,12 @@
 All options under `services.matrix-appservice-discord`.
 
 | Option | Type | Description |
-| -------------------------------------------------------- | ---- | ----------- |
-| `services.matrix-appservice-discord.enable` | | |
-| `services.matrix-appservice-discord.environmentFile` | | |
-| `services.matrix-appservice-discord.localpart` | | |
-| `services.matrix-appservice-discord.package` | | |
-| `services.matrix-appservice-discord.port` | | |
-| `services.matrix-appservice-discord.serviceDependencies` | | |
-| `services.matrix-appservice-discord.settings` | | |
-| `services.matrix-appservice-discord.url` | | |
+| --- | --- | --- |
+| `services.matrix-appservice-discord.enable` | `boolean` | Whether to enable a bridge between Matrix and Discord. |
+| `services.matrix-appservice-discord.environmentFile` | `null or absolute path` | File containing environment variables to be passed to the matrix-appservice-discord service, in which secret tokens can be specified securely by defining values for `APPSERVICE_DISCORD_AUTH_CLIENT_I_D` and `APPSERVICE_DISCORD_AUTH_BOT_TOKEN`. |
+| `services.matrix-appservice-discord.localpart` | `null or string` | The user_id localpart to assign to the AS. |
+| `services.matrix-appservice-discord.package` | `package` | The matrix-appservice-discord package to use. |
+| `services.matrix-appservice-discord.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number on which the bridge should listen for internal communication with the Matrix homeserver. |
+| `services.matrix-appservice-discord.serviceDependencies` | `list of string` | List of Systemd services to require and wait for when starting the application service, such as the Matrix homeserver if it's running on the same host. |
+| `services.matrix-appservice-discord.settings` | `attribute set` | {file}`config.yaml` configuration as a Nix attribute set. Configuration options should match those described in [config.sample.yaml](https://github.com/Half-Shot/matrix-appservice-discord/blob/master/config/config.sample.yaml). {option}`config.bridge.domain` and {option}`config.bridge.homeserverUrl` should be set to match the public host name of the Matrix homeserver for webhooks and avatars to work. Secret tokens should be specified using {option}`environmentFile` instead of this world-readable attribute set. |
+| `services.matrix-appservice-discord.url` | `string` | The URL where the application service is listening for HS requests. |

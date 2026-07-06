@@ -5,7 +5,7 @@
 All options under `services.peerflix`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.peerflix.downloadDir` | | |
-| `services.peerflix.enable` | | |
-| `services.peerflix.stateDir` | | |
+| --- | --- | --- |
+| `services.peerflix.downloadDir` | `absolute path` | Peerflix temporary download directory. |
+| `services.peerflix.enable` | `boolean` | Whether to enable peerflix service. |
+| `services.peerflix.stateDir` | `absolute path` | Peerflix state directory. |

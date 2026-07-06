@@ -5,7 +5,7 @@
 All options under `programs.pubs`.
 
 | Option | Type | Description |
-| --------------------------- | -------------------------------- | ----------------------------------------------------- |
+| --- | --- | --- |
 | `programs.pubs.enable` | `boolean` | Whether to enable pubs. |
-| `programs.pubs.extraConfig` | `strings concatenated with “\n”` | Configuration using syntax written to $HOME/.pubsrc . |
+| `programs.pubs.extraConfig` | `strings concatenated with "\n"` | Configuration using syntax written to {file}`$HOME/.pubsrc`. |
 | `programs.pubs.package` | `package` | The pubs package to use. |

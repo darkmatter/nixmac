@@ -5,6 +5,6 @@
 All options under `services.prosody-filer`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.prosody-filer.enable` | | |
-| `services.prosody-filer.settings` | | |
+| --- | --- | --- |
+| `services.prosody-filer.enable` | `boolean` | Whether to enable Prosody Filer XMPP upload file server. |
+| `services.prosody-filer.settings` | `TOML value` | Configuration for Prosody Filer. Refer to <https://github.com/ThomasLeister/prosody-filer#configure-prosody-filer> for details on supported values. |

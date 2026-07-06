@@ -5,8 +5,8 @@
 All options under `services.clatd`.
 
 | Option | Type | Description |
-| ------------------------------------------------ | ---- | ----------- |
-| `services.clatd.enable` | | |
-| `services.clatd.enableNetworkManagerIntegration` | | |
-| `services.clatd.package` | | |
-| `services.clatd.settings` | | |
+| --- | --- | --- |
+| `services.clatd.enable` | `boolean` | Whether to enable clatd. |
+| `services.clatd.enableNetworkManagerIntegration` | `boolean` | Whether to enable NetworkManager integration. |
+| `services.clatd.package` | `package` | The clatd package to use. |
+| `services.clatd.settings` | `open submodule of attribute set of (atom (null, bool, int, float or string))` | Configuration of clatd. See [clatd Documentation](https://github.com/toreanderson/clatd/blob/master/README.pod#configuration). |

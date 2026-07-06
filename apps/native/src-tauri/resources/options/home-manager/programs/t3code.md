@@ -5,12 +5,12 @@
 All options under `programs.t3code`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `programs.t3code.clientSettings` | | |
-| `programs.t3code.enable` | | |
-| `programs.t3code.keybindings` | | |
-| `programs.t3code.mutableClientSettings` | | |
-| `programs.t3code.mutableKeybindings` | | |
-| `programs.t3code.mutableUserSettings` | | |
-| `programs.t3code.package` | | |
-| `programs.t3code.userSettings` | | |
+| --- | --- | --- |
+| `programs.t3code.clientSettings` | `JSON value` | Configuration written to t3code's {file}`client-settings.json`. |
+| `programs.t3code.enable` | `boolean` | Whether to enable T3 Code, a minimal web GUI for coding agents. |
+| `programs.t3code.keybindings` | `JSON value` | Configuration written to t3code's {file}`keybindings.json`. |
+| `programs.t3code.mutableClientSettings` | `boolean` | Whether client settings ({file}`client-settings.json`) can be updated by t3code. |
+| `programs.t3code.mutableKeybindings` | `boolean` | Whether user keybindings ({file}`keybindings.json`) can be updated by t3code. |
+| `programs.t3code.mutableUserSettings` | `boolean` | Whether user settings ({file}`settings.json`) can be updated by t3code. |
+| `programs.t3code.package` | `null or package` | The t3code package to install. |
+| `programs.t3code.userSettings` | `JSON value` | Configuration written to t3code's {file}`settings.json`. |

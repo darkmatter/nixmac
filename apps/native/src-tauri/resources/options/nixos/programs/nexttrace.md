@@ -5,6 +5,6 @@
 All options under `programs.nexttrace`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `programs.nexttrace.enable` | | |
-| `programs.nexttrace.package` | | |
+| --- | --- | --- |
+| `programs.nexttrace.enable` | `boolean` | Whether to enable Nexttrace to the global environment and configure a setcap wrapper for it. |
+| `programs.nexttrace.package` | `package` | The nexttrace package to use. |

@@ -5,8 +5,8 @@
 All options under `services.openntpd`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.openntpd.enable` | | |
-| `services.openntpd.extraConfig` | | |
-| `services.openntpd.extraOptions` | | |
-| `services.openntpd.servers` | | |
+| --- | --- | --- |
+| `services.openntpd.enable` | `boolean` | Whether to enable OpenNTP time synchronization server. |
+| `services.openntpd.extraConfig` | `strings concatenated with "\n"` | Additional text appended to {file}`openntpd.conf`. |
+| `services.openntpd.extraOptions` | `strings concatenated with " "` | Extra options used when launching openntpd. |
+| `services.openntpd.servers` | `list of string` | The set of NTP servers from which to synchronise. |

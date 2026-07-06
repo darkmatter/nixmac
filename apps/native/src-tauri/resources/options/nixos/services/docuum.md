@@ -5,9 +5,9 @@
 All options under `services.docuum`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.docuum.deletionChunkSize` | | |
-| `services.docuum.enable` | | |
-| `services.docuum.keep` | | |
-| `services.docuum.minAge` | | |
-| `services.docuum.threshold` | | |
+| --- | --- | --- |
+| `services.docuum.deletionChunkSize` | `signed integer` | Removes specified quantity of images at a time. |
+| `services.docuum.enable` | `boolean` | Whether to enable docuum daemon. |
+| `services.docuum.keep` | `list of string` | Prevents deletion of images for which repository:tag matches the specified regex. |
+| `services.docuum.minAge` | `null or string` | Sets the minimum age of images to be considered for deletion. |
+| `services.docuum.threshold` | `string` | Threshold for deletion in bytes, like `10 GB`, `10 GiB`, `10GB` or percentage-based thresholds like `50%` |

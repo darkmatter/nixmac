@@ -5,7 +5,7 @@
 All options under `services.pulseeffects`.
 
 | Option | Type | Description |
-| ------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------- |
-| `services.pulseeffects.enable` | `boolean` | Whether to enable Pulseeffects daemon Note, it is necessary to add |
+| --- | --- | --- |
+| `services.pulseeffects.enable` | `boolean` | Whether to enable Pulseeffects daemon Note, it is necessary to add `nix programs.dconf.enable = true; ` to your system configuration for the daemon to work correctly. |
 | `services.pulseeffects.package` | `package` | The pulseeffects-legacy package to use. |
 | `services.pulseeffects.preset` | `string` | Which preset to use when starting pulseeffects. Will likely need to launch pulseeffects to initially create preset. |

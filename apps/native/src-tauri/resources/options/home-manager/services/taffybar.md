@@ -5,6 +5,6 @@
 All options under `services.taffybar`.
 
 | Option | Type | Description |
-| --------------------------- | --------- | ---------------------------- |
+| --- | --- | --- |
 | `services.taffybar.enable` | `boolean` | Whether to enable Taffybar. |
 | `services.taffybar.package` | `package` | The taffybar package to use. |

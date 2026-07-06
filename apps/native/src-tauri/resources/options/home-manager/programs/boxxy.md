@@ -5,7 +5,14 @@
 All options under `programs.boxxy`.
 
 | Option | Type | Description |
-| ------------------------ | ---------------------------------------------- | -------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.boxxy.enable` | `boolean` | Whether to enable boxxy: Boxes in badly behaving applications. |
 | `programs.boxxy.package` | `null or package` | The boxxy package to use. |
 | `programs.boxxy.rules` | `list of (open submodule of (YAML 1.1 value))` | List of boxxy rules |
+| `programs.boxxy.rules.*.context` | `list of string` | Apply redirection ONLY when in a certain directory. |
+| `programs.boxxy.rules.*.env` | `attribute set of string` | Give certain environment variables for said match. |
+| `programs.boxxy.rules.*.mode` | `one of "file", "directory"` | Does the current path redirect a file or a directory? |
+| `programs.boxxy.rules.*.name` | `string` | Unique identifier of the boxxy rule. This can be any single-line string. |
+| `programs.boxxy.rules.*.only` | `list of string` | Apply redirection ONLY to specified executable names. |
+| `programs.boxxy.rules.*.rewrite` | `string` | Where that file/directory should be rewritten to. |
+| `programs.boxxy.rules.*.target` | `string` | What directory/file to redirect. |

@@ -5,7 +5,7 @@
 All options under `services.apcupsd`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.apcupsd.configText` | | |
-| `services.apcupsd.enable` | | |
-| `services.apcupsd.hooks` | | |
+| --- | --- | --- |
+| `services.apcupsd.configText` | `strings concatenated with "\n"` | Contents of the runtime configuration file, apcupsd.conf. The default settings makes apcupsd autodetect USB UPSes, limit network access to localhost and shutdown the system when the battery level is below 50 percent, or when the UPS has calculated that it has 5 minutes or less of remaining power-on time. See man apcupsd.conf for details. |
+| `services.apcupsd.enable` | `boolean` | Whether to enable the APC UPS daemon. apcupsd monitors your UPS and permits orderly shutdown of your computer in the event of a power failure. User manual: http://www.apcupsd.com/manual/manual.html. Note that apcupsd runs as root (to allow shutdown of computer). You can check the status of your UPS with the "apcaccess" command. |
+| `services.apcupsd.hooks` | `attribute set of strings concatenated with "\n"` | Each attribute in this option names an apcupsd event and the string value it contains will be executed in a shell, in response to that event (prior to the default action). See "man apccontrol" for the list of events and what they represent. A hook script can stop apccontrol from doing its default action by exiting with value 99. Do not do this unless you know what you're doing. |

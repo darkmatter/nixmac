@@ -5,13 +5,13 @@
 All options under `services.cloudflare-dyndns`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `services.cloudflare-dyndns.apiTokenFile` | | |
-| `services.cloudflare-dyndns.deleteMissing` | | |
-| `services.cloudflare-dyndns.domains` | | |
-| `services.cloudflare-dyndns.enable` | | |
-| `services.cloudflare-dyndns.frequency` | | |
-| `services.cloudflare-dyndns.ipv4` | | |
-| `services.cloudflare-dyndns.ipv6` | | |
-| `services.cloudflare-dyndns.package` | | |
-| `services.cloudflare-dyndns.proxied` | | |
+| --- | --- | --- |
+| `services.cloudflare-dyndns.apiTokenFile` | `absolute path not in the Nix store` | The path to a file containing the CloudFlare API token. |
+| `services.cloudflare-dyndns.deleteMissing` | `boolean` | Whether to delete the record when no IP address is found. |
+| `services.cloudflare-dyndns.domains` | `list of string` | List of domain names to update records for. |
+| `services.cloudflare-dyndns.enable` | `boolean` | Whether to enable Cloudflare Dynamic DNS Client. |
+| `services.cloudflare-dyndns.frequency` | `null or string` | Run cloudflare-dyndns with the given frequency (see {manpage}`systemd.time(7)` for the format). If null, do not run automatically. |
+| `services.cloudflare-dyndns.ipv4` | `boolean` | Whether to enable setting IPv4 A records. |
+| `services.cloudflare-dyndns.ipv6` | `boolean` | Whether to enable setting IPv6 AAAA records. |
+| `services.cloudflare-dyndns.package` | `package` | The cloudflare-dyndns package to use. |
+| `services.cloudflare-dyndns.proxied` | `boolean` | Whether this is a DNS-only record, or also being proxied through CloudFlare. |

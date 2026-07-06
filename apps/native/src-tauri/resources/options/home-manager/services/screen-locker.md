@@ -5,18 +5,15 @@
 All options under `services.screen-locker`.
 
 | Option | Type | Description |
-| -------------------------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.screen-locker.enable` | `boolean` | Whether to enable screen locker for X session. |
-| `services.screen-locker.enableDetectSleep` | | |
-| `services.screen-locker.inactiveInterval` | `signed integer` | Inactive time interval in minutes after which session will be locked. The minimum is 1 minute, and the maximum is 1 hour. If xautolock.enable is true, it will use this setting. See https://linux.die.net/man/1/xautolock . Otherwise, this will be used with xset to configure the X server’s screensaver timeout. |
+| `services.screen-locker.inactiveInterval` | `signed integer` | Inactive time interval in minutes after which session will be locked. The minimum is 1 minute, and the maximum is 1 hour. If {option}`xautolock.enable` is true, it will use this setting. See <https://linux.die.net/man/1/xautolock>. Otherwise, this will be used with {command}`xset` to configure the X server's screensaver timeout. |
 | `services.screen-locker.lockCmd` | `string` | Locker command to run. |
 | `services.screen-locker.lockCmdEnv` | `list of string` | Environment variables to source a with the locker command (lockCmd). |
-| `services.screen-locker.xautolock.detectSleep` | `boolean` | Whether to reset xautolock timers when awaking from sleep. No effect if xautolock.enable is false. |
+| `services.screen-locker.xautolock.detectSleep` | `boolean` | Whether to reset xautolock timers when awaking from sleep. No effect if {option}`xautolock.enable` is false. |
 | `services.screen-locker.xautolock.enable` | `boolean` | Use xautolock for time-based locking. |
-| `services.screen-locker.xautolock.extraOptions` | `list of string` | Extra command-line arguments to pass to xautolock . No effect if xautolock.enable is false. |
+| `services.screen-locker.xautolock.extraOptions` | `list of string` | Extra command-line arguments to pass to {command}`xautolock`. No effect if {option}`xautolock.enable` is false. |
 | `services.screen-locker.xautolock.package` | `package` | The xautolock package to use. |
-| `services.screen-locker.xautolockExtraOptions` | | |
-| `services.screen-locker.xss-lock.extraOptions` | `list of string` | Extra command-line arguments to pass to xss-lock . |
+| `services.screen-locker.xss-lock.extraOptions` | `list of string` | Extra command-line arguments to pass to {command}`xss-lock`. |
 | `services.screen-locker.xss-lock.package` | `package` | The xss-lock package to use. |
-| `services.screen-locker.xss-lock.screensaverCycle` | `signed integer` | The X server’s screensaver cycle value expressed as seconds. This will be used with xset to configure the cycle along with timeout. |
-| `services.screen-locker.xssLockExtraOptions` | | |
+| `services.screen-locker.xss-lock.screensaverCycle` | `signed integer` | The X server's screensaver cycle value expressed as seconds. This will be used with {command}`xset` to configure the cycle along with timeout. |

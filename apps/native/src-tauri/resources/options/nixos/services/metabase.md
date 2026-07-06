@@ -5,12 +5,12 @@
 All options under `services.metabase`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.metabase.enable` | | |
-| `services.metabase.listen.ip` | | |
-| `services.metabase.listen.port` | | |
-| `services.metabase.openFirewall` | | |
-| `services.metabase.package` | | |
-| `services.metabase.ssl.enable` | | |
-| `services.metabase.ssl.keystore` | | |
-| `services.metabase.ssl.port` | | |
+| --- | --- | --- |
+| `services.metabase.enable` | `boolean` | Whether to enable Metabase service. |
+| `services.metabase.listen.ip` | `string` | IP address that Metabase should listen on. |
+| `services.metabase.listen.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listen port for Metabase. |
+| `services.metabase.openFirewall` | `boolean` | Open ports in the firewall for Metabase. |
+| `services.metabase.package` | `package` | The metabase package to use. |
+| `services.metabase.ssl.enable` | `boolean` | Whether to enable SSL (https) support. |
+| `services.metabase.ssl.keystore` | `null or absolute path` | [Java KeyStore](https://www.digitalocean.com/community/tutorials/java-keytool-essentials-working-with-java-keystores) file containing the certificates. |
+| `services.metabase.ssl.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listen port over SSL (https) for Metabase. |

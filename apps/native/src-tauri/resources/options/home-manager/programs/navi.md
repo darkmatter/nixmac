@@ -5,10 +5,10 @@
 All options under `programs.navi`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.navi.enable` | `boolean` | Whether to enable Navi. |
 | `programs.navi.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.navi.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
 | `programs.navi.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
 | `programs.navi.package` | `package` | The navi package to use. |
-| `programs.navi.settings` | `YAML 1.1 value` | Configuration written to $XDG_CONFIG_HOME/navi/config.yaml on Linux or $HOME/Library/Application Support/navi/config.yaml on Darwin. See https://github.com/denisidoro/navi/blob/master/docs/config_file.md for more information. |
+| `programs.navi.settings` | `YAML 1.1 value` | Configuration written to {file}`$XDG_CONFIG_HOME/navi/config.yaml` on Linux or {file}`$HOME/Library/Application Support/navi/config.yaml` on Darwin. See <https://github.com/denisidoro/navi/blob/master/docs/config_file.md> for more information. |

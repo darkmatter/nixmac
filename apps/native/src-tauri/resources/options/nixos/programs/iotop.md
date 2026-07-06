@@ -5,6 +5,7 @@
 All options under `programs.iotop`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `programs.iotop.enable` | | |
-| `programs.iotop.package` | | |
+| --- | --- | --- |
+| `programs.iotop.enable` | `boolean` | Whether to enable iotop + setcap wrapper. |
+| `programs.iotop.enableDelayacct` | `boolean` | Whether to enable the task_delayacct kernel task delay accounting in order to show all statistics. |
+| `programs.iotop.package` | `package` | The iotop package to use. |

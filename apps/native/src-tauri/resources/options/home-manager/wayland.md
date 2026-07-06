@@ -5,72 +5,168 @@
 All options under `wayland`.
 
 | Option | Type | Description |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `wayland.systemd.target` | `string` | The systemd target that will automatically start the graphical Wayland services. This option is a generalization of individual systemd.target or systemdTarget , and affect all Wayland services by default. |
-| `wayland.windowManager.hyprland.configType` | | |
-| `wayland.windowManager.hyprland.enable` | `boolean` | Whether to enable configuration for Hyprland, a tiling Wayland compositor that doesn’t sacrifice on its looks. |
-| `wayland.windowManager.hyprland.extraConfig` | `strings concatenated with “\n”` | Extra configuration lines to add to ~/.config/hypr/hyprland.conf . |
-| `wayland.windowManager.hyprland.extraLuaFiles` | | |
-| `wayland.windowManager.hyprland.finalPackage` | `null or package (read only)` | The Hyprland package after applying configuration. |
-| `wayland.windowManager.hyprland.finalPortalPackage` | `null or package (read only)` | The xdg-desktop-portal-hyprland package after overriding its hyprland input. |
+| --- | --- | --- |
+| `wayland.systemd.target` | `string` | The systemd target that will automatically start the graphical Wayland services. This option is a generalization of individual `systemd.target` or `systemdTarget`, and affect all Wayland services by default. When setting this value to `"sway-session.target"`, make sure to also enable {option}`wayland.windowManager.sway.systemd.enable`, otherwise the service may never be started. |
+| `wayland.windowManager.hyprland.configType` | `one of "hyprlang", "lua"` | The type of Hyprland configuration to generate. `hyprlang` writes {file}`$XDG_CONFIG_HOME/hypr/hyprland.conf`. `lua` writes {file}`$XDG_CONFIG_HOME/hypr/hyprland.lua`. |
+| `wayland.windowManager.hyprland.enable` | `boolean` | Whether to enable configuration for Hyprland, a tiling Wayland compositor that doesn't sacrifice on its looks. ::: {.note} This module configures Hyprland and adds it to your user's {env}`PATH`, but does not make certain system-level changes. NixOS users should enable the NixOS module with {option}`programs.hyprland.enable`, which makes system-level changes such as adding a desktop session entry. ::: |
+| `wayland.windowManager.hyprland.extraConfig` | `strings concatenated with "\n"` | Extra configuration content appended to the generated Hyprland file. |
+| `wayland.windowManager.hyprland.extraLuaFiles` | `attribute set of ((submodule) or (absolute path or strings concatenated with "\n") convertible to it)` | Extra Lua files written under {file}`$XDG_CONFIG_HOME/hypr`. Attribute names are used as Lua module names and converted to file names with a {file}`.lua` suffix added when missing. For example, `bindings` writes {file}`$XDG_CONFIG_HOME/hypr/bindings.lua`, while `lib.helpers` writes {file}`$XDG_CONFIG_HOME/hypr/lib/helpers.lua`. Files with {option}`autoLoad` enabled generate `require(...)` calls in {file}`$XDG_CONFIG_HOME/hypr/hyprland.lua` after adding the Hypr config directory to Lua's `package.path`. Use {option}`autoLoad = false` for helper modules that are imported by other Lua files. This option only affects generated files when {option}`wayland.windowManager.hyprland.configType` is `"lua"`. |
+| `wayland.windowManager.hyprland.extraLuaFiles.<name>.autoLoad` | `boolean` | Whether to generate a `require(...)` call for this file in {file}`$XDG_CONFIG_HOME/hypr/hyprland.lua`. |
+| `wayland.windowManager.hyprland.extraLuaFiles.<name>.content` | `absolute path or strings concatenated with "\n"` | Lua file content, set either by specifying a path to a Lua file or by providing a multi-line Lua string. |
+| `wayland.windowManager.hyprland.finalPackage` | `null or package` | The Hyprland package after applying configuration. |
+| `wayland.windowManager.hyprland.finalPortalPackage` | `null or package` | The xdg-desktop-portal-hyprland package after overriding its hyprland input. |
 | `wayland.windowManager.hyprland.importantPrefixes` | `list of string` | List of prefix of attributes to source at the top of the config. |
 | `wayland.windowManager.hyprland.package` | `null or package` | The hyprland package to use. Set this to null if you use the NixOS module to install Hyprland. |
 | `wayland.windowManager.hyprland.plugins` | `list of (package or absolute path)` | List of Hyprland plugins to use. Can either be packages or absolute plugin paths. |
 | `wayland.windowManager.hyprland.portalPackage` | `null or package` | The xdg-desktop-portal-hyprland package to use. |
-| `wayland.windowManager.hyprland.settings` | `Hyprland configuration value` | Hyprland configuration written in Nix. Entries with the same key should be written as lists. Variables’ and colors’ names should be quoted. See https://wiki.hypr.land for more examples. |
+| `wayland.windowManager.hyprland.settings` | `Hyprland configuration value` | Hyprland configuration written in Nix. Entries with the same key should be written as lists. Variables' and colors' names should be quoted. See <https://wiki.hypr.land> for more examples. ::: {.note} Use the [](#opt-wayland.windowManager.hyprland.plugins) option to declare plugins. ::: When {option}`wayland.windowManager.hyprland.configType` is `"lua"`, each attribute maps to an `hl.<name>(...)` call. List values generate one call per element. Attribute values with an `_args` list generate multi-argument calls. Attribute values with `_var` generate a Lua local variable instead of an `hl.<name>(...)` call. If no `name` is set, the attribute name is used as the Lua variable name. Values created with `lib.generators.mkLuaInline` are rendered as raw Lua expressions. |
 | `wayland.windowManager.hyprland.sourceFirst` | `boolean` | Whether to enable putting source entries at the top of the configuration . |
-| `wayland.windowManager.hyprland.submaps` | `attribute set of (submodule)` | Attribute set of Hyprland submaps. |
-| `wayland.windowManager.hyprland.systemd.enable` | `boolean` | Whether to enable hyprland-session.target on hyprland startup. This links to graphical-session.target . Some important environment variables will be imported to systemd and D-Bus user environment before reaching the target, including |
-| `wayland.windowManager.hyprland.systemd.enableXdgAutostart` | `boolean` | Whether to enable autostart of applications using systemd-xdg-autostart-generator (8) . |
+| `wayland.windowManager.hyprland.submaps` | `attribute set of (submodule)` | Attribute set of Hyprland submaps. See <https://wiki.hypr.land/Configuring/Basics/Binds/#submaps> to learn about submaps. |
+| `wayland.windowManager.hyprland.submaps.<name>.onDispatch` | `string` | Submap to use after a dispatch. Can either be a name or `reset` to disable submap after any dispatch. |
+| `wayland.windowManager.hyprland.submaps.<name>.settings` | `Hyprland binds` | Hyprland binds to be put in the submap. String entries render only when {option}`wayland.windowManager.hyprland.configType` is `"hyprlang"`. Attribute set entries render only when {option}`wayland.windowManager.hyprland.configType` is `"lua"`. Attribute values with an `_args` list generate multi-argument calls. Values created with `lib.generators.mkLuaInline` are rendered as raw Lua expressions. |
+| `wayland.windowManager.hyprland.systemd.enable` | `boolean` | Whether to enable {file}`hyprland-session.target` on hyprland startup. This links to `graphical-session.target`. Some important environment variables will be imported to systemd and D-Bus user environment before reaching the target, including - `DISPLAY` - `HYPRLAND_INSTANCE_SIGNATURE` - `WAYLAND_DISPLAY` - `XDG_CURRENT_DESKTOP` - `XDG_SESSION_TYPE` |
+| `wayland.windowManager.hyprland.systemd.enableXdgAutostart` | `boolean` | Whether to enable autostart of applications using {manpage}`systemd-xdg-autostart-generator(8)`. |
 | `wayland.windowManager.hyprland.systemd.extraCommands` | `list of string` | Extra commands to be run after D-Bus activation. |
 | `wayland.windowManager.hyprland.systemd.variables` | `list of string` | Environment variables to be imported in the systemd & D-Bus user environment. |
-| `wayland.windowManager.hyprland.xwayland.enable` | `boolean` | Whether or not to enable XWayland. |
+| `wayland.windowManager.hyprland.xwayland.enable` | `boolean` | Whether or not to enable XWayland. Overrides the `enableXWayland` option of the Hyprland package. In newer versions of Hyprland, you can use the {option}`wayland.windowManager.hyprland.settings.xwayland` option to avoid recompiling Hyprland. |
 | `wayland.windowManager.labwc.autostart` | `list of string` | Command to autostart when labwc start. |
 | `wayland.windowManager.labwc.enable` | `boolean` | Whether to enable Labwc, a wayland window-stacking compositor. |
 | `wayland.windowManager.labwc.environment` | `list of string` | Environment variable to add when labwc start. |
-| `wayland.windowManager.labwc.extraConfig` | `strings concatenated with “\n”` | Extra lines appended to $XDG_CONFIG_HOME/labwc/rc.xml . |
+| `wayland.windowManager.labwc.extraConfig` | `strings concatenated with "\n"` | Extra lines appended to {file}`$XDG_CONFIG_HOME/labwc/rc.xml`. |
 | `wayland.windowManager.labwc.menu` | `list of (XML value)` | Config to configure labwc menu |
-| `wayland.windowManager.labwc.package` | `null or package` | The labwc package to use. Set to null to use Nixos labwc package. |
-| `wayland.windowManager.labwc.rc` | `open submodule of (XML value)` | Config to configure labwc options. Use “@attributes” for attributes. See https://labwc.github.io/labwc-config.5.html for configuration. |
-| `wayland.windowManager.labwc.systemd.enable` | `boolean` | Whether to enable labwc-session.target on labwc startup. This links to graphical-session.target . Some important environment variables will be imported to systemd and D-Bus user environment before reaching the target, including |
+| `wayland.windowManager.labwc.package` | `null or package` | The labwc package to use. Set to `null` to use Nixos labwc package. |
+| `wayland.windowManager.labwc.rc` | `open submodule of (XML value)` | Config to configure labwc options. Use "@attributes" for attributes. See <https://labwc.github.io/labwc-config.5.html> for configuration. |
+| `wayland.windowManager.labwc.systemd.enable` | `boolean` | Whether to enable {file}`labwc-session.target` on labwc startup. This links to {file}`graphical-session.target`. Some important environment variables will be imported to systemd and D-Bus user environment before reaching the target, including - `DISPLAY` - `WAYLAND_DISPLAY` - `XDG_CURRENT_DESKTOP` |
 | `wayland.windowManager.labwc.systemd.extraCommands` | `list of string` | Extra commands to be run after D-Bus activation. |
 | `wayland.windowManager.labwc.systemd.variables` | `list of string` | Environment variables to be imported in the systemd & D-Bus user environment. |
 | `wayland.windowManager.labwc.xwayland.enable` | `boolean` | Whether to enable XWayland. |
 | `wayland.windowManager.river.enable` | `boolean` | Whether to enable the river window manager. |
-| `wayland.windowManager.river.extraConfig` | `strings concatenated with “\n”` | Extra lines appended to $XDG_CONFIG_HOME/river/init . |
+| `wayland.windowManager.river.extraConfig` | `strings concatenated with "\n"` | Extra lines appended to {file}`$XDG_CONFIG_HOME/river/init`. |
 | `wayland.windowManager.river.extraSessionVariables` | `attribute set` | Extra session variables set when running the compositor. |
-| `wayland.windowManager.river.package` | `null or package` | The river-classic package to use. Set to null to not add any river package to your path. This should be done if you want to use the NixOS river module to install river. |
-| `wayland.windowManager.river.settings` | `River configuration value` | General settings given to riverctl . |
-| `wayland.windowManager.river.systemd.enable` | `boolean` | Whether to enable river-session.target on river startup. This links to graphical-session.target }. Some important environment variables will be imported to systemd and D-Bus user environment before reaching the target, including |
+| `wayland.windowManager.river.package` | `null or package` | The river-classic package to use. Set to `null` to not add any river package to your path. This should be done if you want to use the NixOS river module to install river. |
+| `wayland.windowManager.river.settings` | `River configuration value` | General settings given to `riverctl`. |
+| `wayland.windowManager.river.systemd.enable` | `boolean` | Whether to enable {file}`river-session.target` on river startup. This links to {file}`graphical-session.target`}. Some important environment variables will be imported to systemd and D-Bus user environment before reaching the target, including - `DISPLAY` - `WAYLAND_DISPLAY` - `XDG_CURRENT_DESKTOP` - `NIXOS_OZONE_WL` - `XCURSOR_THEME` - `XCURSOR_SIZE` |
 | `wayland.windowManager.river.systemd.extraCommands` | `list of string` | Extra commands to be run after D-Bus activation. |
 | `wayland.windowManager.river.systemd.variables` | `list of string` | Environment variables to be imported in the systemd & D-Bus user environment. |
 | `wayland.windowManager.river.xwayland.enable` | `boolean` | Whether to enable XWayland. |
 | `wayland.windowManager.sway.checkConfig` | `boolean` | If enabled, validates the generated config file. |
 | `wayland.windowManager.sway.config` | `null or (submodule)` | Sway configuration options. |
+| `wayland.windowManager.sway.config.assigns` | `attribute set of list of attribute set of (string or boolean)` | An attribute set that assigns applications to workspaces based on criteria. |
+| `wayland.windowManager.sway.config.bars` | `list of (submodule)` | Sway bars settings blocks. Set to empty list to remove bars completely. |
+| `wayland.windowManager.sway.config.bars.*.colors` | `submodule` | Bar color settings. All color classes can be specified using submodules with 'border', 'background', 'text', fields and RGB color hex-codes as values. See default values for the reference. Note that 'background', 'status', and 'separator' parameters take a single RGB value. See <https://i3wm.org/docs/userguide.html#_colors>. |
+| `wayland.windowManager.sway.config.bars.*.colors.activeWorkspace` | `null or (submodule)` | Border, background and text color for a workspace button when the workspace is active. |
+| `wayland.windowManager.sway.config.bars.*.colors.background` | `null or string` | Background color of the bar. |
+| `wayland.windowManager.sway.config.bars.*.colors.bindingMode` | `null or (submodule)` | Border, background and text color for the binding mode indicator |
+| `wayland.windowManager.sway.config.bars.*.colors.focusedBackground` | `null or string` | Background color of the bar on the currently focused monitor output. |
+| `wayland.windowManager.sway.config.bars.*.colors.focusedSeparator` | `null or string` | Text color to be used for the separator on the currently focused monitor output. |
+| `wayland.windowManager.sway.config.bars.*.colors.focusedStatusline` | `null or string` | Text color to be used for the statusline on the currently focused monitor output. |
+| `wayland.windowManager.sway.config.bars.*.colors.focusedWorkspace` | `null or (submodule)` | Border, background and text color for a workspace button when the workspace has focus. |
+| `wayland.windowManager.sway.config.bars.*.colors.inactiveWorkspace` | `null or (submodule)` | Border, background and text color for a workspace button when the workspace does not have focus and is not active. |
+| `wayland.windowManager.sway.config.bars.*.colors.separator` | `null or string` | Text color to be used for the separator. |
+| `wayland.windowManager.sway.config.bars.*.colors.statusline` | `null or string` | Text color to be used for the statusline. |
+| `wayland.windowManager.sway.config.bars.*.colors.urgentWorkspace` | `null or (submodule)` | Border, background and text color for a workspace button when the workspace contains a window with the urgency hint set. |
+| `wayland.windowManager.sway.config.bars.*.command` | `string` | Command that will be used to start a bar. |
+| `wayland.windowManager.sway.config.bars.*.extraConfig` | `strings concatenated with "\n"` | Extra configuration lines for this bar. |
+| `wayland.windowManager.sway.config.bars.*.fonts` | `(list of string) or (submodule)` | Font configuration for this bar. |
+| `wayland.windowManager.sway.config.bars.*.hiddenState` | `null or one of "hide", "show"` | The default bar mode when 'bar.mode' == 'hide'. |
+| `wayland.windowManager.sway.config.bars.*.id` | `null or string` | Specifies the bar ID for the configured bar instance. If this option is missing, the ID is set to bar-x, where x corresponds to the position of the embedding bar block in the config file. |
+| `wayland.windowManager.sway.config.bars.*.mode` | `null or one of "dock", "hide", "invisible"` | Bar visibility mode. |
+| `wayland.windowManager.sway.config.bars.*.position` | `null or one of "top", "bottom"` | The edge of the screen swaybar should show up. |
+| `wayland.windowManager.sway.config.bars.*.statusCommand` | `null or string` | Command that will be used to get status lines. |
+| `wayland.windowManager.sway.config.bars.*.trayOutput` | `null or string` | Where to output tray. |
+| `wayland.windowManager.sway.config.bars.*.trayPadding` | `null or signed integer` | Sets the pixel padding of the system tray. This padding will surround the tray on all sides and between each item. |
+| `wayland.windowManager.sway.config.bars.*.workspaceButtons` | `null or boolean` | Whether workspace buttons should be shown or not. |
+| `wayland.windowManager.sway.config.bars.*.workspaceNumbers` | `null or boolean` | Whether workspace numbers should be displayed within the workspace buttons. |
+| `wayland.windowManager.sway.config.bindkeysToCode` | `boolean` | Whether to make use of {option}`--to-code` in keybindings. |
+| `wayland.windowManager.sway.config.bindswitches` | `attribute set of (submodule)` | Binds <switch> to execute the sway command command on state changes. Supported switches are lid (laptop lid) and tablet (tablet mode) switches. Valid values for state are on, off and toggle. These switches are on when the device lid is shut and when tablet mode is active respectively. toggle is also supported to run a command both when the switch is toggled on or off. See sway(5). |
+| `wayland.windowManager.sway.config.bindswitches.<name>.action` | `string` | The sway command to execute on state changes |
+| `wayland.windowManager.sway.config.bindswitches.<name>.locked` | `boolean` | Unless the flag --locked is set, the command will not be run when a screen locking program is active. If there is a matching binding with and without --locked, the one with will be preferred when locked and the one without will be preferred when unlocked. |
+| `wayland.windowManager.sway.config.bindswitches.<name>.reload` | `boolean` | If the --reload flag is given, the binding will also be executed when the config is reloaded. toggle bindings will not be executed on reload. The --locked flag will operate as normal so if the config is reloaded while locked and --locked is not given, the binding will not be executed. |
+| `wayland.windowManager.sway.config.colors` | `submodule` | Color settings. All color classes can be specified using submodules with 'border', 'background', 'text', 'indicator' and 'childBorder' fields and RGB color hex-codes as values. See default values for the reference. Note that 'sway.config.colors.background' parameter takes a single RGB value. See <https://i3wm.org/docs/userguide.html#_changing_colors>. |
+| `wayland.windowManager.sway.config.colors.background` | `string` | Background color of the window. Only applications which do not cover the whole area expose the color. |
+| `wayland.windowManager.sway.config.colors.focused` | `submodule` | A window which currently has the focus. |
+| `wayland.windowManager.sway.config.colors.focusedInactive` | `submodule` | A window which is the focused one of its container, but it does not have the focus at the moment. |
+| `wayland.windowManager.sway.config.colors.placeholder` | `submodule` | Background and text color are used to draw placeholder window contents (when restoring layouts). Border and indicator are ignored. |
+| `wayland.windowManager.sway.config.colors.unfocused` | `submodule` | A window which is not focused. |
+| `wayland.windowManager.sway.config.colors.urgent` | `submodule` | A window which has its urgency hint activated. |
+| `wayland.windowManager.sway.config.defaultWorkspace` | `null or string` | The default workspace to show when sway is launched. This must to correspond to the value of the keybinding of the default workspace. |
+| `wayland.windowManager.sway.config.down` | `string` | Home row direction key for moving down. |
+| `wayland.windowManager.sway.config.floating` | `submodule` | Floating window settings. |
+| `wayland.windowManager.sway.config.floating.border` | `signed integer` | Floating windows border width. |
+| `wayland.windowManager.sway.config.floating.criteria` | `list of attribute set of (string or boolean)` | List of criteria for windows that should be opened in a floating mode. |
+| `wayland.windowManager.sway.config.floating.modifier` | `string` | Modifier key or keys that can be used to drag floating windows. |
+| `wayland.windowManager.sway.config.floating.titlebar` | `boolean` | Whether to show floating window titlebars. |
+| `wayland.windowManager.sway.config.focus` | `submodule` | Focus related settings. |
+| `wayland.windowManager.sway.config.focus.followMouse` | `one of "yes", "no", "always" or boolean` | Whether focus should follow the mouse. |
+| `wayland.windowManager.sway.config.focus.forceWrapping` | `boolean` | Whether to force focus wrapping in tabbed or stacked containers. This option is deprecated, use {option}`focus.wrapping` instead. |
+| `wayland.windowManager.sway.config.focus.mouseWarping` | `boolean or one of "container", "output"` | Whether mouse cursor should be warped to the center of the window when switching focus to a window on a different output. |
+| `wayland.windowManager.sway.config.focus.newWindow` | `one of "smart", "urgent", "focus", "none"` | This option modifies focus behavior on new window activation. See <https://i3wm.org/docs/userguide.html#focus_on_window_activation> |
+| `wayland.windowManager.sway.config.focus.wrapping` | `one of "yes", "no", "force", "workspace"` | Whether the window focus commands automatically wrap around the edge of containers. See <https://i3wm.org/docs/userguide.html#_focus_wrapping> |
+| `wayland.windowManager.sway.config.fonts` | `(list of string) or (submodule)` | Font configuration for window titles, nagbar... |
+| `wayland.windowManager.sway.config.gaps` | `null or (submodule)` | Gaps related settings. |
+| `wayland.windowManager.sway.config.gaps.bottom` | `null or signed integer` | Bottom gaps value. |
+| `wayland.windowManager.sway.config.gaps.horizontal` | `null or signed integer` | Horizontal gaps value. |
+| `wayland.windowManager.sway.config.gaps.inner` | `null or signed integer` | Inner gaps value. |
+| `wayland.windowManager.sway.config.gaps.left` | `null or signed integer` | Left gaps value. |
+| `wayland.windowManager.sway.config.gaps.outer` | `null or signed integer` | Outer gaps value. |
+| `wayland.windowManager.sway.config.gaps.right` | `null or signed integer` | Right gaps value. |
+| `wayland.windowManager.sway.config.gaps.smartBorders` | `one of "on", "off", "no_gaps"` | This option controls whether to disable container borders on workspace with a single container. |
+| `wayland.windowManager.sway.config.gaps.smartGaps` | `boolean or one of "on", "off", "inverse_outer"` | This option controls whether to disable all gaps (outer and inner) on workspace with a single container. |
+| `wayland.windowManager.sway.config.gaps.top` | `null or signed integer` | Top gaps value. |
+| `wayland.windowManager.sway.config.gaps.vertical` | `null or signed integer` | Vertical gaps value. |
+| `wayland.windowManager.sway.config.input` | `attribute set of attribute set of string` | An attribute set that defines input modules. See {manpage}`sway-input(5)` for options. |
+| `wayland.windowManager.sway.config.keybindings` | `attribute set of (null or string)` | An attribute set that assigns a key press to an action using a key symbol. See <https://i3wm.org/docs/userguide.html#keybindings>. Consider to use `lib.mkOptionDefault` function to extend or override default keybindings instead of specifying all of them from scratch. |
+| `wayland.windowManager.sway.config.keycodebindings` | `attribute set of (null or string)` | An attribute set that assigns keypress to an action using key code. See <https://i3wm.org/docs/userguide.html#keybindings>. |
+| `wayland.windowManager.sway.config.left` | `string` | Home row direction key for moving left. |
+| `wayland.windowManager.sway.config.menu` | `string` | Default launcher to use. |
+| `wayland.windowManager.sway.config.modes` | `attribute set of attribute set of string` | An attribute set that defines binding modes and keybindings inside them Only basic keybinding is supported (bindsym keycomb action), for more advanced setup use 'sway.extraConfig'. |
+| `wayland.windowManager.sway.config.modifier` | `one of "Shift", "Control", "Mod1", "Mod2", "Mod3", "Mod4", "Mod5" or string` | Modifier key that is used for all default keybindings. |
+| `wayland.windowManager.sway.config.output` | `attribute set of attribute set of string` | An attribute set that defines output modules. See {manpage}`sway-output(5)` for options. |
+| `wayland.windowManager.sway.config.right` | `string` | Home row direction key for moving right. |
+| `wayland.windowManager.sway.config.seat` | `attribute set of attribute set of string` | An attribute set that defines seat modules. See {manpage}`sway-input(5)` for options. |
+| `wayland.windowManager.sway.config.startup` | `list of (submodule)` | Commands that should be executed at startup. See <https://i3wm.org/docs/userguide.html#_automatically_starting_applications_on_i3_startup>. |
+| `wayland.windowManager.sway.config.startup.*.always` | `boolean` | Whether to run command on each sway restart. |
+| `wayland.windowManager.sway.config.startup.*.command` | `string` | Command that will be executed on startup. |
+| `wayland.windowManager.sway.config.terminal` | `string` | Default terminal to run. |
+| `wayland.windowManager.sway.config.up` | `string` | Home row direction key for moving up. |
+| `wayland.windowManager.sway.config.window` | `submodule` | Window titlebar and border settings. |
+| `wayland.windowManager.sway.config.window.border` | `signed integer` | Window border width. |
+| `wayland.windowManager.sway.config.window.commands` | `list of (submodule)` | List of commands that should be executed on specific windows. See {option}`for_window` swaywm option documentation. |
+| `wayland.windowManager.sway.config.window.commands.*.command` | `string` | Swaywm command to execute. |
+| `wayland.windowManager.sway.config.window.commands.*.criteria` | `attribute set of (string or boolean)` | Criteria of the windows on which command should be executed. A value of `true` is equivalent to using an empty criteria (which is different from an empty string criteria). |
+| `wayland.windowManager.sway.config.window.hideEdgeBorders` | `one of "none", "vertical", "horizontal", "both", "smart", "smart_no_gaps", "--i3 none", "--i3 vertical", "--i3 horizontal", "--i3 both", "--i3 smart", "--i3 smart_no_gaps"` | Hide window borders adjacent to the screen edges. |
+| `wayland.windowManager.sway.config.window.titlebar` | `boolean` | Whether to show window titlebars. |
+| `wayland.windowManager.sway.config.workspaceAutoBackAndForth` | `boolean` | Assume you are on workspace "1: www" and switch to "2: IM" using mod+2 because somebody sent you a message. You don’t need to remember where you came from now, you can just press $mod+2 again to switch back to "1: www". |
+| `wayland.windowManager.sway.config.workspaceLayout` | `one of "default", "stacking", "tabbed"` | The mode in which new containers on workspace level will start. |
+| `wayland.windowManager.sway.config.workspaceOutputAssign` | `list of (submodule)` | Assign workspaces to outputs. |
+| `wayland.windowManager.sway.config.workspaceOutputAssign.*.output` | `string or list of string` | Name(s) of the output(s) from {command}`  swaymsg -t get_outputs`. |
+| `wayland.windowManager.sway.config.workspaceOutputAssign.*.workspace` | `string` | Name of the workspace to assign. |
 | `wayland.windowManager.sway.enable` | `boolean` | Whether to enable sway wayland compositor. |
-| `wayland.windowManager.sway.extraConfig` | `strings concatenated with “\n”` | Extra configuration lines to add to ~/.config/sway/config. |
-| `wayland.windowManager.sway.extraConfigEarly` | `strings concatenated with “\n”` | Like extraConfig, except lines are added to ~/.config/sway/config before all other configuration. |
+| `wayland.windowManager.sway.extraConfig` | `strings concatenated with "\n"` | Extra configuration lines to add to ~/.config/sway/config. |
+| `wayland.windowManager.sway.extraConfigEarly` | `strings concatenated with "\n"` | Like extraConfig, except lines are added to ~/.config/sway/config before all other configuration. |
 | `wayland.windowManager.sway.extraOptions` | `list of string` | Command line arguments passed to launch Sway. Please DO NOT report issues if you use an unsupported GPU (proprietary drivers). |
-| `wayland.windowManager.sway.extraSessionCommands` | `strings concatenated with “\n”` | Shell commands executed just before Sway is started. |
-| `wayland.windowManager.sway.package` | `null or package` | Sway package to use. Will override the options ‘wrapperFeatures’, ‘extraSessionCommands’, and ‘extraOptions’. Set to null to not add any Sway package to your path. This should be done if you want to use the NixOS Sway module to install Sway. Beware setting to null will also disable reloading Sway when new config is activated. |
+| `wayland.windowManager.sway.extraSessionCommands` | `strings concatenated with "\n"` | Shell commands executed just before Sway is started. |
+| `wayland.windowManager.sway.package` | `null or package` | Sway package to use. Will override the options 'wrapperFeatures', 'extraSessionCommands', and 'extraOptions'. Set to `null` to not add any Sway package to your path. This should be done if you want to use the NixOS Sway module to install Sway. Beware setting to `null` will also disable reloading Sway when new config is activated. |
 | `wayland.windowManager.sway.swaynag.enable` | `boolean` | Whether to enable configuration of swaynag, a lightweight error bar for sway. |
-| `wayland.windowManager.sway.swaynag.settings` | `attribute set of attribute set of (Swaynag config atom (null, bool, int, float, str))` | Configuration written to $XDG_CONFIG_HOME/swaynag/config . |
-| `wayland.windowManager.sway.systemd.dbusImplementation` | `one of “dbus”, “broker”` | The D-Bus implementation used on the system. This affects which tool is used to import environment variables when starting the Sway session. On NixOS, this should match the value of the option services.dbus.implementation (NixOS) . When set to dbus , dbus-update-activation-environment --systemd <variables> is run. Otherwise, when set to broker , systemctl --user import-environment <variables> is run. See https://github.com/swaywm/sway/wiki#systemd-and-dbus-activation-environments for more documentation. |
-| `wayland.windowManager.sway.systemd.enable` | `boolean` | Whether to enable sway-session.target on sway startup. This links to graphical-session.target . Some important environment variables will be imported to systemd and dbus user environment before reaching the target, including |
+| `wayland.windowManager.sway.swaynag.settings` | `attribute set of attribute set of (Swaynag config atom (null, bool, int, float, str))` | Configuration written to {file}`$XDG_CONFIG_HOME/swaynag/config`. See {manpage}`swaynag(5)` for a list of available options and an example configuration. Note, configurations declared under `<config>` will override the default type values of swaynag. |
+| `wayland.windowManager.sway.systemd.dbusImplementation` | `one of "dbus", "broker"` | The D-Bus implementation used on the system. This affects which tool is used to import environment variables when starting the Sway session. On NixOS, this should match the value of the option [`services.dbus.implementation` (NixOS)](https://nixos.org/manual/nixos/stable/options#opt-services.dbus.implementation). When set to `dbus`, `dbus-update-activation-environment --systemd <variables>` is run. Otherwise, when set to `broker`, `systemctl --user import-environment <variables>` is run. See <https://github.com/swaywm/sway/wiki#systemd-and-dbus-activation-environments> for more documentation. |
+| `wayland.windowManager.sway.systemd.enable` | `boolean` | Whether to enable {file}`sway-session.target` on sway startup. This links to {file}`graphical-session.target`. Some important environment variables will be imported to systemd and dbus user environment before reaching the target, including * {env}`DISPLAY` * {env}`WAYLAND_DISPLAY` * {env}`SWAYSOCK` * {env}`XDG_CURRENT_DESKTOP` * {env}`XDG_SESSION_TYPE` * {env}`NIXOS_OZONE_WL` * {env}`XCURSOR_THEME` * {env}`XCURSOR_SIZE` You can extend this list using the `systemd.variables` option. |
 | `wayland.windowManager.sway.systemd.extraCommands` | `list of string` | Extra commands to run after D-Bus activation. |
 | `wayland.windowManager.sway.systemd.variables` | `list of string` | Environment variables imported into the systemd and D-Bus user environment. |
-| `wayland.windowManager.sway.systemd.xdgAutostart` | `boolean` | Whether to enable autostart of applications using systemd-xdg-autostart-generator (8) . |
-| `wayland.windowManager.sway.systemdIntegration` | | |
+| `wayland.windowManager.sway.systemd.xdgAutostart` | `boolean` | Whether to enable autostart of applications using {manpage}`systemd-xdg-autostart-generator(8)` . |
 | `wayland.windowManager.sway.wrapperFeatures` | `submodule` | Attribute set of features to enable in the wrapper. |
+| `wayland.windowManager.sway.wrapperFeatures.base` | `boolean` | Whether to make use of the base wrapper to execute extra session commands and prepend a dbus-run-session to the sway command. |
+| `wayland.windowManager.sway.wrapperFeatures.gtk` | `boolean` | Whether to make use of the wrapGAppsHook wrapper to execute sway with required environment variables for GTK applications. |
 | `wayland.windowManager.sway.xwayland` | `boolean` | Enable xwayland, which is needed for the default configuration of sway. |
 | `wayland.windowManager.wayfire.enable` | `boolean` | Whether to enable Wayfire, a wayland compositor based on wlroots. |
-| `wayland.windowManager.wayfire.package` | `null or package` | The wayfire package to use. Set to null to not add any wayfire package to your path. This should be done if you want to use the NixOS wayfire module to install wayfire. |
+| `wayland.windowManager.wayfire.package` | `null or package` | The wayfire package to use. Set to `null` to not add any wayfire package to your path. This should be done if you want to use the NixOS wayfire module to install wayfire. |
 | `wayland.windowManager.wayfire.plugins` | `list of package` | Additional plugins to use with wayfire |
-| `wayland.windowManager.wayfire.settings` | `open submodule of attribute set of attribute set of (string or absolute path or boolean or signed integer or floating point number)` | Wayfire configuration written in Nix. |
-| `wayland.windowManager.wayfire.systemd.enable` | `boolean` | Whether to enable wayfire-session.target on wayfire startup. This links to graphical-session.target }. Some important environment variables will be imported to systemd and D-Bus user environment before reaching the target, including |
+| `wayland.windowManager.wayfire.settings` | `open submodule of attribute set of attribute set of (string or absolute path or boolean or signed integer or floating point number)` | Wayfire configuration written in Nix. See <https://github.com/WayfireWM/wayfire/wiki/Configuration> |
+| `wayland.windowManager.wayfire.settings.core.plugins` | `strings concatenated with " "` | Load the specified plugins |
+| `wayland.windowManager.wayfire.systemd.enable` | `boolean` | Whether to enable {file}`wayfire-session.target` on wayfire startup. This links to {file}`graphical-session.target`}. Some important environment variables will be imported to systemd and D-Bus user environment before reaching the target, including - `DISPLAY` - `WAYLAND_DISPLAY` - `XDG_CURRENT_DESKTOP` - `NIXOS_OZONE_WL` - `XCURSOR_THEME` - `XCURSOR_SIZE` |
 | `wayland.windowManager.wayfire.systemd.extraCommands` | `list of string` | Extra commands to be run after D-Bus activation. |
 | `wayland.windowManager.wayfire.systemd.variables` | `list of string` | Environment variables to be imported in the systemd & D-Bus user environment. |
 | `wayland.windowManager.wayfire.wf-shell.enable` | `boolean` | Whether to enable Manage wf-shell Configuration. |
 | `wayland.windowManager.wayfire.wf-shell.package` | `package` | The wf-shell package to use. |
-| `wayland.windowManager.wayfire.wf-shell.settings` | `attribute set of attribute set of (string or absolute path or boolean or signed integer or floating point number)` | Wf-shell configuration written in Nix. |
+| `wayland.windowManager.wayfire.wf-shell.settings` | `attribute set of attribute set of (string or absolute path or boolean or signed integer or floating point number)` | Wf-shell configuration written in Nix. See <https://github.com/WayfireWM/wf-shell/blob/master/wf-shell.ini.example> |
 | `wayland.windowManager.wayfire.xwayland.enable` | `boolean` | Whether to enable XWayland. |

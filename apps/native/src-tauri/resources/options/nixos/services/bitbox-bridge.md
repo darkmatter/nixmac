@@ -5,8 +5,8 @@
 All options under `services.bitbox-bridge`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.bitbox-bridge.enable` | | |
-| `services.bitbox-bridge.package` | | |
-| `services.bitbox-bridge.port` | | |
-| `services.bitbox-bridge.runOnMount` | | |
+| --- | --- | --- |
+| `services.bitbox-bridge.enable` | `boolean` | Whether to enable Bitbox bridge daemon, for use with Bitbox hardware wallets.. |
+| `services.bitbox-bridge.package` | `package` | The bitbox-bridge package to use. |
+| `services.bitbox-bridge.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listening port for the bitbox-bridge. |
+| `services.bitbox-bridge.runOnMount` | `boolean` | Run bitbox-bridge.service only when hardware wallet is plugged, also registers the systemd device unit. This option is enabled by default to save power, when false, bitbox-bridge service runs all the time instead. |

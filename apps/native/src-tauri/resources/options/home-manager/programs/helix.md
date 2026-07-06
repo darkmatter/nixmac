@@ -5,13 +5,13 @@
 All options under `programs.helix`.
 
 | Option | Type | Description |
-| ------------------------------ | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `programs.helix.defaultEditor` | `boolean` | Whether to configure hx as the default editor using the EDITOR and VISUAL environment variables. |
+| --- | --- | --- |
+| `programs.helix.defaultEditor` | `boolean` | Whether to configure {command}`hx` as the default editor using the {env}`EDITOR` and {env}`VISUAL` environment variables. |
 | `programs.helix.enable` | `boolean` | Whether to enable helix text editor. |
-| `programs.helix.extraConfig` | `strings concatenated with “\n”` | Extra lines to be appended to the config file. Use this if you would like to maintain order for helix settings (eg. for minor modes) |
+| `programs.helix.extraConfig` | `strings concatenated with "\n"` | Extra lines to be appended to the config file. Use this if you would like to maintain order for helix settings (eg. for minor modes) |
 | `programs.helix.extraPackages` | `list of package` | Extra packages available to hx. |
-| `programs.helix.ignores` | `list of string` | List of paths that should be globally ignored for file picker. Supports the usual ignore and negative ignore (unignore) rules used in .gitignore files. |
-| `programs.helix.languages` | `(TOML value) or (list of (TOML value)) convertible to it` | Language specific configuration at $XDG_CONFIG_HOME/helix/languages.toml . |
-| `programs.helix.package` | `package` | The helix package to use. |
-| `programs.helix.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/helix/config.toml . |
-| `programs.helix.themes` | `attribute set of (TOML value or absolute path or strings concatenated with “\n”)` | Each theme is written to $XDG_CONFIG_HOME/helix/themes/theme-name.toml . Where the name of each attribute is the theme-name (in the example “base16”). |
+| `programs.helix.ignores` | `list of string` | List of paths that should be globally ignored for file picker. Supports the usual ignore and negative ignore (unignore) rules used in `.gitignore` files. |
+| `programs.helix.languages` | `(TOML value) or (list of (TOML value)) convertible to it` | Language specific configuration at {file}`$XDG_CONFIG_HOME/helix/languages.toml`. See <https://docs.helix-editor.com/languages.html> for more information. |
+| `programs.helix.package` | `null or package` | The helix package to use. |
+| `programs.helix.settings` | `TOML value` | Configuration written to {file}`$XDG_CONFIG_HOME/helix/config.toml`. See <https://docs.helix-editor.com/configuration.html> for the full list of options. |
+| `programs.helix.themes` | `attribute set of (TOML value or absolute path or strings concatenated with "\n")` | Each theme is written to {file}`$XDG_CONFIG_HOME/helix/themes/theme-name.toml`. Where the name of each attribute is the theme-name (in the example "base16"). See <https://docs.helix-editor.com/themes.html> for the full list of options. |

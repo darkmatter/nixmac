@@ -5,7 +5,7 @@
 All options under `services.ulogd`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.ulogd.enable` | | |
-| `services.ulogd.logLevel` | | |
-| `services.ulogd.settings` | | |
+| --- | --- | --- |
+| `services.ulogd.enable` | `boolean` | Whether to enable ulogd, a userspace logging daemon for netfilter/iptables related logging. |
+| `services.ulogd.logLevel` | `one of 1, 3, 5, 7, 8` | Log level (1 = debug, 3 = info, 5 = notice, 7 = error, 8 = fatal) |
+| `services.ulogd.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string) or a list of them for duplicate keys)` | Configuration for ulogd. See {file}`/share/doc/ulogd/` in `pkgs.ulogd.doc`. |

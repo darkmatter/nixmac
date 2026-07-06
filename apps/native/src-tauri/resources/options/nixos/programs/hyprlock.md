@@ -5,6 +5,6 @@
 All options under `programs.hyprlock`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `programs.hyprlock.enable` | | |
-| `programs.hyprlock.package` | | |
+| --- | --- | --- |
+| `programs.hyprlock.enable` | `boolean` | Whether to enable hyprlock, Hyprland's GPU-accelerated screen locking utility. |
+| `programs.hyprlock.package` | `package` | The hyprlock package to use. |

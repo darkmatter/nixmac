@@ -5,26 +5,26 @@
 All options under `services.etcd`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.etcd.advertiseClientUrls` | | |
-| `services.etcd.certFile` | | |
-| `services.etcd.clientCertAuth` | | |
-| `services.etcd.dataDir` | | |
-| `services.etcd.discovery` | | |
-| `services.etcd.enable` | | |
-| `services.etcd.extraConf` | | |
-| `services.etcd.initialAdvertisePeerUrls` | | |
-| `services.etcd.initialCluster` | | |
-| `services.etcd.initialClusterState` | | |
-| `services.etcd.initialClusterToken` | | |
-| `services.etcd.keyFile` | | |
-| `services.etcd.listenClientUrls` | | |
-| `services.etcd.listenPeerUrls` | | |
-| `services.etcd.name` | | |
-| `services.etcd.openFirewall` | | |
-| `services.etcd.package` | | |
-| `services.etcd.peerCertFile` | | |
-| `services.etcd.peerClientCertAuth` | | |
-| `services.etcd.peerKeyFile` | | |
-| `services.etcd.peerTrustedCaFile` | | |
-| `services.etcd.trustedCaFile` | | |
+| --- | --- | --- |
+| `services.etcd.advertiseClientUrls` | `list of string` | Etcd list of this member's client URLs to advertise to the rest of the cluster. |
+| `services.etcd.certFile` | `null or absolute path` | Cert file to use for clients |
+| `services.etcd.clientCertAuth` | `boolean` | Whether to use certs for client authentication |
+| `services.etcd.dataDir` | `absolute path` | Etcd data directory. |
+| `services.etcd.discovery` | `string` | Etcd discovery url |
+| `services.etcd.enable` | `boolean` | Whether to enable etcd. |
+| `services.etcd.extraConf` | `attribute set of string` | Etcd extra configuration. See <https://github.com/coreos/etcd/blob/master/Documentation/op-guide/configuration.md#configuration-flags> |
+| `services.etcd.initialAdvertisePeerUrls` | `list of string` | Etcd list of this member's peer URLs to advertise to rest of the cluster. |
+| `services.etcd.initialCluster` | `list of string` | Etcd initial cluster configuration for bootstrapping. |
+| `services.etcd.initialClusterState` | `one of "new", "existing"` | Etcd initial cluster configuration for bootstrapping. |
+| `services.etcd.initialClusterToken` | `string` | Etcd initial cluster token for etcd cluster during bootstrap. |
+| `services.etcd.keyFile` | `null or absolute path` | Key file to use for clients |
+| `services.etcd.listenClientUrls` | `list of string` | Etcd list of URLs to listen on for client traffic. |
+| `services.etcd.listenPeerUrls` | `list of string` | Etcd list of URLs to listen on for peer traffic. |
+| `services.etcd.name` | `string` | Etcd unique node name. |
+| `services.etcd.openFirewall` | `boolean` | Open etcd ports in the firewall. Ports opened: - 2379/tcp for client requests - 2380/tcp for peer communication |
+| `services.etcd.package` | `package` | The etcd package to use. |
+| `services.etcd.peerCertFile` | `null or absolute path` | Cert file to use for peer to peer communication |
+| `services.etcd.peerClientCertAuth` | `boolean` | Whether to check all incoming peer requests from the cluster for valid client certificates signed by the supplied CA |
+| `services.etcd.peerKeyFile` | `null or absolute path` | Key file to use for peer to peer communication |
+| `services.etcd.peerTrustedCaFile` | `null or absolute path` | Certificate authority file to use for peer to peer communication |
+| `services.etcd.trustedCaFile` | `null or absolute path` | Certificate authority file to use for clients |

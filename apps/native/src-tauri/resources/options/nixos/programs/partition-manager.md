@@ -5,6 +5,6 @@
 All options under `programs.partition-manager`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `programs.partition-manager.enable` | | |
-| `programs.partition-manager.package` | | |
+| --- | --- | --- |
+| `programs.partition-manager.enable` | `boolean` | Whether to enable KDE Partition Manager. |
+| `programs.partition-manager.package` | `package` | The partitionmanager package to use. |

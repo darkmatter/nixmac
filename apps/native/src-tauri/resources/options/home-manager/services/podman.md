@@ -5,27 +5,107 @@
 All options under `services.podman`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| `services.podman._configFiles` | | |
+| --- | --- | --- |
 | `services.podman.autoUpdate.enable` | `boolean` | Automatically update the podman images. |
-| `services.podman.autoUpdate.onCalendar` | `string` | The systemd OnCalendar expression for the update. See systemd.time (7) for a description of the format. |
+| `services.podman.autoUpdate.onCalendar` | `string` | The systemd `OnCalendar` expression for the update. See {manpage}`systemd.time(7)` for a description of the format. |
 | `services.podman.builds` | `attribute set of (submodule)` | Defines Podman build quadlet configurations. |
+| `services.podman.builds.<name>.authFile` | `null or absolute path` | Path of the authentication file. |
+| `services.podman.builds.<name>.autoStart` | `boolean` | Whether to start the build on boot. Requires user lingering. |
+| `services.podman.builds.<name>.description` | `null or string` | The description of the build. |
+| `services.podman.builds.<name>.environment` | `attribute set of (null or boolean or signed integer or string or absolute path or list of (null or boolean or signed integer or string or absolute path))` | Environment variables to set in the build. |
+| `services.podman.builds.<name>.extraConfig` | `attribute set of attribute set of ((attribute set of (null or boolean or signed integer or string or absolute path or list of (null or boolean or signed integer or string or absolute path))) or list of (null or boolean or signed integer or string or absolute path) or null or boolean or signed integer or string or absolute path)` | INI sections and values to populate the Build Quadlet. |
+| `services.podman.builds.<name>.extraPodmanArgs` | `list of string` | Extra arguments to pass to the podman build command. |
+| `services.podman.builds.<name>.file` | `string` | Path to a Containerfile which contains instructions to build the image. |
+| `services.podman.builds.<name>.labels` | `attribute set of string` | The labels to apply to the build. |
+| `services.podman.builds.<name>.tags` | `list of string` | Name associated with the build. First tag will always be "homemanager/<name>". |
+| `services.podman.builds.<name>.tlsVerify` | `boolean` | Require HTTPS and verification of certificates when contacting registries. |
+| `services.podman.builds.<name>.workingDirectory` | `null or absolute path` | WorkingDirectory of the systemd unit file. |
 | `services.podman.containers` | `attribute set of (submodule)` | Defines Podman container quadlet configurations. |
+| `services.podman.containers.<name>.addCapabilities` | `list of string` | The capabilities to add to the container. |
+| `services.podman.containers.<name>.autoStart` | `boolean` | Whether to start the container on boot (requires user lingering). |
+| `services.podman.containers.<name>.autoUpdate` | `one of <null>, "registry", "local"` | The autoupdate policy for the container. |
+| `services.podman.containers.<name>.description` | `null or string` | The description of the container. |
+| `services.podman.containers.<name>.devices` | `list of string` | The devices to mount into the container |
+| `services.podman.containers.<name>.dropCapabilities` | `list of string` | The capabilities to drop from the container. |
+| `services.podman.containers.<name>.entrypoint` | `null or string` | The container entrypoint. |
+| `services.podman.containers.<name>.environment` | `attribute set of (null or boolean or signed integer or string or absolute path or list of (null or boolean or signed integer or string or absolute path))` | Environment variables to set in the container. |
+| `services.podman.containers.<name>.environmentFile` | `list of string` | Paths to files containing container environment variables. |
+| `services.podman.containers.<name>.exec` | `null or string` | The command to run after the container start. |
+| `services.podman.containers.<name>.extraConfig` | `attribute set of attribute set of ((attribute set of (null or boolean or signed integer or string or absolute path or list of (null or boolean or signed integer or string or absolute path))) or list of (null or boolean or signed integer or string or absolute path) or null or boolean or signed integer or string or absolute path)` | INI sections and values to populate the Container Quadlet. |
+| `services.podman.containers.<name>.extraPodmanArgs` | `list of string` | Extra arguments to pass to the podman run command. |
+| `services.podman.containers.<name>.group` | `null or signed integer or string` | The group ID inside the container. |
+| `services.podman.containers.<name>.image` | `string` | The container image. |
+| `services.podman.containers.<name>.ip4` | `null or string` | Set an IPv4 address for the container. |
+| `services.podman.containers.<name>.ip6` | `null or string` | Set an IPv6 address for the container. |
+| `services.podman.containers.<name>.labels` | `attribute set of string` | The labels to apply to the container. |
+| `services.podman.containers.<name>.network` | `string or list of string` | The network mode or network/s to connect the container to. Equivalent to `podman run --network=<option>`. |
+| `services.podman.containers.<name>.networkAlias` | `list of string` | Network aliases for the container. |
+| `services.podman.containers.<name>.ports` | `list of string` | A mapping of ports between host and container |
+| `services.podman.containers.<name>.user` | `null or signed integer or string` | The user ID inside the container. |
+| `services.podman.containers.<name>.userNS` | `null or string` | Use a user namespace for the container. |
+| `services.podman.containers.<name>.volumes` | `list of string` | The volumes to mount into the container. |
 | `services.podman.enable` | `boolean` | Whether to enable Podman, a daemonless container engine. |
 | `services.podman.enableTypeChecks` | `boolean` | Whether to enable type checks for podman quadlets. |
-| `services.podman.extraPackages` | | |
+| `services.podman.extraPackages` | `list of package` | Extra packages added to {env}`PATH` when creating Podman machines. |
 | `services.podman.images` | `attribute set of (submodule)` | Defines Podman image quadlet configurations. |
-| `services.podman.internal.builtQuadlets` | | |
-| `services.podman.internal.quadletDefinitions` | | |
+| `services.podman.images.<name>.authFile` | `null or absolute path` | Path of the authentication file used to connect to registry. |
+| `services.podman.images.<name>.autoStart` | `boolean` | Whether to pull the image on boot. Requires user lingering. |
+| `services.podman.images.<name>.certDir` | `null or absolute path` | Path of certificates (\*.{crt,cert,key}) used to connect to registry. |
+| `services.podman.images.<name>.decryptionKeyFile` | `null or absolute path` | Path to key used for decryption of images. |
+| `services.podman.images.<name>.description` | `null or string` | The description of the image. |
+| `services.podman.images.<name>.extraConfig` | `attribute set of attribute set of ((attribute set of (null or boolean or signed integer or string or absolute path or list of (null or boolean or signed integer or string or absolute path))) or list of (null or boolean or signed integer or string or absolute path) or null or boolean or signed integer or string or absolute path)` | INI sections and values to populate the Image Quadlet. |
+| `services.podman.images.<name>.extraPodmanArgs` | `list of string` | Extra arguments to pass to the podman image pull command. |
+| `services.podman.images.<name>.image` | `string` | Image to pull. |
+| `services.podman.images.<name>.password` | `null or string` | Password used to connect to registry. (Will be visible in nix store) |
+| `services.podman.images.<name>.tag` | `null or string` | FQIN of referenced Image when source is a file or directory archive. |
+| `services.podman.images.<name>.tlsVerify` | `boolean` | Require HTTPS and verification of certificates when contacting registries. |
+| `services.podman.images.<name>.username` | `null or string` | Username used to connect to registry. |
 | `services.podman.machines` | `attribute set of (submodule)` | Declarative podman machine configurations. |
+| `services.podman.machines.<name>.autoStart` | `boolean` | Whether to automatically start this machine on login. |
+| `services.podman.machines.<name>.cpus` | `null or (positive integer, meaning >0)` | Number of CPUs to allocate to the machine. If null, uses podman's default. |
+| `services.podman.machines.<name>.diskSize` | `null or (positive integer, meaning >0)` | Disk size in GB for the machine. If null, uses podman's default. |
+| `services.podman.machines.<name>.image` | `null or string` | Bootable image to use for the machine. If null, uses podman's default. |
+| `services.podman.machines.<name>.memory` | `null or (positive integer, meaning >0)` | Memory in MB to allocate to the machine. If null, uses podman's default. |
+| `services.podman.machines.<name>.rootful` | `null or boolean` | Whether to run the machine in rootful mode. If null, uses podman's default. Rootful mode runs containers as root inside the VM. |
+| `services.podman.machines.<name>.swap` | `null or (positive integer, meaning >0)` | Swap size in MB for the machine. If null, uses podman's default. |
+| `services.podman.machines.<name>.timezone` | `null or string` | Timezone to set in the machine. If null, uses podman's default. |
+| `services.podman.machines.<name>.username` | `null or string` | Username used in the machine image. If null, uses podman's default. |
+| `services.podman.machines.<name>.volumes` | `list of string` | Volumes to mount in the machine, specified as source:target pairs. |
+| `services.podman.machines.<name>.watchdogInterval` | `positive integer, meaning >0` | Interval in seconds to check if the machine is running |
 | `services.podman.networks` | `attribute set of (submodule)` | Defines Podman network quadlet configurations. |
+| `services.podman.networks.<name>.autoStart` | `boolean` | Whether to start the network on boot (requires user lingering). |
+| `services.podman.networks.<name>.description` | `null or string` | The description of the network. |
+| `services.podman.networks.<name>.driver` | `null or string` | The network driver to use. |
+| `services.podman.networks.<name>.extraConfig` | `attribute set of attribute set of ((attribute set of (null or boolean or signed integer or string or absolute path or list of (null or boolean or signed integer or string or absolute path))) or list of (null or boolean or signed integer or string or absolute path) or null or boolean or signed integer or string or absolute path)` | INI sections and values to populate the Network Quadlet |
+| `services.podman.networks.<name>.extraPodmanArgs` | `list of string` | Extra arguments to pass to the podman network create command. |
+| `services.podman.networks.<name>.gateway` | `null or string` | The gateway IP to use for the network. |
+| `services.podman.networks.<name>.internal` | `null or boolean` | Whether the network should be internal |
+| `services.podman.networks.<name>.labels` | `attribute set of string` | The labels to apply to the network. |
+| `services.podman.networks.<name>.subnet` | `null or string` | The subnet to use for the network. |
 | `services.podman.package` | `package` | The podman package to use. |
 | `services.podman.settings.containers` | `TOML value` | containers.conf configuration |
 | `services.podman.settings.mounts` | `list of string` | mounts.conf configuration |
-| `services.podman.settings.policy` | `attribute set` | Signature verification policy file. If this option is empty the default policy file from skopeo will be used. |
+| `services.podman.settings.policy` | `attribute set` | Signature verification policy file. If this option is empty the default policy file from `skopeo` will be used. |
 | `services.podman.settings.registries.block` | `list of string` | List of blocked repositories. |
 | `services.podman.settings.registries.insecure` | `list of string` | List of insecure repositories. |
+| `services.podman.settings.registries.registry` | `list of (submodule)` | List of per-registry configuration entries. Prefer this over the deprecated `insecure` and `block` lists. |
+| `services.podman.settings.registries.registry.*.blocked` | `null or boolean` | Whether the registry is blocked. |
+| `services.podman.settings.registries.registry.*.insecure` | `null or boolean` | Whether the registry is insecure. |
+| `services.podman.settings.registries.registry.*.location` | `string` | Registry location. |
 | `services.podman.settings.registries.search` | `list of string` | List of repositories to search. |
 | `services.podman.settings.storage` | `TOML value` | storage.conf configuration |
-| `services.podman.useDefaultMachine` | `boolean (read only)` | Whether to create and use the default podman machine. |
+| `services.podman.useDefaultMachine` | `boolean` | Whether to create and use the default podman machine. The default machine will be named `podman-machine-default` and configured with podmans default values. |
 | `services.podman.volumes` | `attribute set of (submodule)` | Defines Podman volume quadlet configurations. |
+| `services.podman.volumes.<name>.autoStart` | `boolean` | Whether to create the volume on boot. |
+| `services.podman.volumes.<name>.copy` | `boolean` | Copy content of the image located at the mountpoint of the volume on first run. |
+| `services.podman.volumes.<name>.description` | `null or string` | The description of the volume. |
+| `services.podman.volumes.<name>.device` | `null or string` | The path of a device which is mounted for the volume. |
+| `services.podman.volumes.<name>.driver` | `null or string` | The volume driver to use. |
+| `services.podman.volumes.<name>.extraConfig` | `attribute set of attribute set of ((attribute set of (null or boolean or signed integer or string or absolute path or list of (null or boolean or signed integer or string or absolute path))) or list of (null or boolean or signed integer or string or absolute path) or null or boolean or signed integer or string or absolute path)` | INI sections and values to populate the Volume Quadlet. |
+| `services.podman.volumes.<name>.extraPodmanArgs` | `list of string` | Extra arguments to pass to the podman volume create command. |
+| `services.podman.volumes.<name>.group` | `null or signed integer or string` | The group ID owning the volume inside the container. |
+| `services.podman.volumes.<name>.image` | `null or string` | Specifies the image the volume is based on when Driver is set to the image. |
+| `services.podman.volumes.<name>.labels` | `attribute set of string` | The labels to apply to the volume. |
+| `services.podman.volumes.<name>.preserve` | `boolean` | Whether the volume should be preserved if it is removed from the configuration. Setting this to false will cause the volume to be deleted if the volume is removed from the configuration |
+| `services.podman.volumes.<name>.type` | `null or string` | Filesystem type of Device. (used as -t in mount commands) |
+| `services.podman.volumes.<name>.user` | `null or signed integer or string` | The user ID owning the volume inside the container. |

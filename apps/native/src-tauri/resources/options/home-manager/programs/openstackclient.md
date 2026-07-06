@@ -5,8 +5,8 @@
 All options under `programs.openstackclient`.
 
 | Option | Type | Description |
-| --------------------------------------- | ------------------------------------ | ------------------------------------------------------ |
-| `programs.openstackclient.clouds` | `open submodule of (YAML 1.1 value)` | Configuration needed to connect to one or more clouds. |
+| --- | --- | --- |
+| `programs.openstackclient.clouds` | `open submodule of (YAML 1.1 value)` | Configuration needed to connect to one or more clouds. Do not include passwords here as they will be publicly readable in the Nix store. Configuration written to {file}`$XDG_CONFIG_HOME/openstack/clouds.yaml`. See <https://docs.openstack.org/python-openstackclient/latest/configuration/index.html#clouds-yaml>. |
 | `programs.openstackclient.enable` | `boolean` | Whether to enable OpenStack command-line client. |
 | `programs.openstackclient.package` | `null or package` | The openstackclient package to use. |
-| `programs.openstackclient.publicClouds` | `open submodule of (YAML 1.1 value)` | Public information about clouds. |
+| `programs.openstackclient.publicClouds` | `open submodule of (YAML 1.1 value)` | Public information about clouds. Configuration written to {file}`$XDG_CONFIG_HOME/openstack/clouds-public.yaml`. See <https://docs.openstack.org/python-openstackclient/latest/configuration/index.html#clouds-public-yaml>. |

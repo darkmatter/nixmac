@@ -5,7 +5,7 @@
 All options under `programs.nm-applet`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `programs.nm-applet.enable` | | |
-| `programs.nm-applet.indicator` | | |
-| `programs.nm-applet.package` | | |
+| --- | --- | --- |
+| `programs.nm-applet.enable` | `boolean` | Whether to enable nm-applet, a NetworkManager control applet for GNOME. |
+| `programs.nm-applet.indicator` | `boolean` | Whether to use indicator instead of status icon. It is needed for Appindicator environments, like Enlightenment. |
+| `programs.nm-applet.package` | `package` | The networkmanagerapplet package to use. |

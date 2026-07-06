@@ -5,7 +5,7 @@
 All options under `services.gnome-keyring`.
 
 | Option | Type | Description |
-| ----------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `services.gnome-keyring.components` | `list of (one of “pkcs11”, “secrets”, “ssh”)` | The GNOME keyring components to start. If empty then the default set of components will be started. |
+| --- | --- | --- |
+| `services.gnome-keyring.components` | `list of (one of "pkcs11", "secrets", "ssh")` | The GNOME keyring components to start. If empty then the default set of components will be started. |
 | `services.gnome-keyring.enable` | `boolean` | Whether to enable GNOME Keyring. |
 | `services.gnome-keyring.package` | `package` | The gnome-keyring package to use. |

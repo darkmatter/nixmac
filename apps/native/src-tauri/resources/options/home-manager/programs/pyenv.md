@@ -5,10 +5,10 @@
 All options under `programs.pyenv`.
 
 | Option | Type | Description |
-| -------------------------------------- | --------------- | ---------------------------------------- |
+| --- | --- | --- |
 | `programs.pyenv.enable` | `boolean` | Whether to enable pyenv. |
 | `programs.pyenv.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.pyenv.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
 | `programs.pyenv.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
 | `programs.pyenv.package` | `package` | The pyenv package to use. |
-| `programs.pyenv.rootDirectory` | `absolute path` | The pyenv root directory ( PYENV_ROOT ). |
+| `programs.pyenv.rootDirectory` | `absolute path` | The pyenv root directory ({env}`PYENV_ROOT`). ::: {.note} This deviates from upstream, which uses {file}`$HOME/.pyenv`. The default path in Home Manager is set according to the XDG base directory specification. ::: |

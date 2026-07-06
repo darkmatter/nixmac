@@ -5,27 +5,37 @@
 All options under `services.icingaweb2`.
 
 | Option | Type | Description |
-| -------------------------------------------------------------------- | ---- | ----------- |
-| `services.icingaweb2.authentications` | | |
-| `services.icingaweb2.enable` | | |
-| `services.icingaweb2.generalConfig` | | |
-| `services.icingaweb2.groupBackends` | | |
-| `services.icingaweb2.libraryPaths` | | |
-| `services.icingaweb2.modulePackages` | | |
-| `services.icingaweb2.modules.doc.enable` | | |
-| `services.icingaweb2.modules.migrate.enable` | | |
-| `services.icingaweb2.modules.monitoring.backends` | | |
-| `services.icingaweb2.modules.monitoring.enable` | | |
-| `services.icingaweb2.modules.monitoring.generalConfig.mutable` | | |
-| `services.icingaweb2.modules.monitoring.generalConfig.protectedVars` | | |
-| `services.icingaweb2.modules.monitoring.mutableBackends` | | |
-| `services.icingaweb2.modules.monitoring.mutableTransports` | | |
-| `services.icingaweb2.modules.monitoring.transports` | | |
-| `services.icingaweb2.modules.setup.enable` | | |
-| `services.icingaweb2.modules.test.enable` | | |
-| `services.icingaweb2.modules.translation.enable` | | |
-| `services.icingaweb2.pool` | | |
-| `services.icingaweb2.resources` | | |
-| `services.icingaweb2.roles` | | |
-| `services.icingaweb2.timezone` | | |
-| `services.icingaweb2.virtualHost` | | |
+| --- | --- | --- |
+| `services.icingaweb2.authentications` | `null or (attribute set)` | authentication.ini contents. Will automatically be converted to a .ini file. If the value is null, no authentication.ini is created and you can modify it manually (e.g. via the web interface). |
+| `services.icingaweb2.enable` | `boolean` | Whether to enable the icingaweb2 web interface. |
+| `services.icingaweb2.generalConfig` | `null or (attribute set)` | config.ini contents. Will automatically be converted to a .ini file. If you don't set global.module_path, the module will take care of it. If the value is null, no config.ini is created and you can modify it manually (e.g. via the web interface). Note that you need to update module_path manually. |
+| `services.icingaweb2.groupBackends` | `null or (attribute set)` | groups.ini contents. Will automatically be converted to a .ini file. If the value is null, no groups.ini is created and you can modify it manually (e.g. via the web interface). |
+| `services.icingaweb2.libraryPaths` | `attribute set of package` | Libraries to add to the Icingaweb2 library path. The name of the attribute is the name of the library, the value is the package to add. |
+| `services.icingaweb2.modulePackages` | `attribute set of package` | Name-package attrset of Icingaweb 2 modules packages to enable. If you enable modules manually (e.g. via the web ui), they will not be touched. |
+| `services.icingaweb2.modules.doc.enable` | `boolean` | Whether to enable the icingaweb2 doc module. |
+| `services.icingaweb2.modules.migrate.enable` | `boolean` | Whether to enable the icingaweb2 migrate module. |
+| `services.icingaweb2.modules.monitoring.backends` | `attribute set of (submodule)` | Monitoring backends to define |
+| `services.icingaweb2.modules.monitoring.backends.<name>.disabled` | `boolean` | Disable this backend |
+| `services.icingaweb2.modules.monitoring.backends.<name>.resource` | `string` | Name of the IDO resource |
+| `services.icingaweb2.modules.monitoring.enable` | `boolean` | Whether to enable the icingaweb2 monitoring module. |
+| `services.icingaweb2.modules.monitoring.generalConfig.mutable` | `boolean` | Make config.ini of the monitoring module mutable (e.g. via the web interface). |
+| `services.icingaweb2.modules.monitoring.generalConfig.protectedVars` | `list of string` | List of string patterns for custom variables which should be excluded from user’s view. |
+| `services.icingaweb2.modules.monitoring.mutableBackends` | `boolean` | Make backends.ini of the monitoring module mutable (e.g. via the web interface). |
+| `services.icingaweb2.modules.monitoring.mutableTransports` | `boolean` | Make commandtransports.ini of the monitoring module mutable (e.g. via the web interface). |
+| `services.icingaweb2.modules.monitoring.transports` | `attribute set of (submodule)` | Command transports to define |
+| `services.icingaweb2.modules.monitoring.transports.<name>.host` | `string` | Host for the api or remote transport |
+| `services.icingaweb2.modules.monitoring.transports.<name>.instance` | `null or string` | Assign a icinga instance to this transport |
+| `services.icingaweb2.modules.monitoring.transports.<name>.password` | `string` | Password for the api transport |
+| `services.icingaweb2.modules.monitoring.transports.<name>.path` | `string` | Path to the socket for local or remote transports |
+| `services.icingaweb2.modules.monitoring.transports.<name>.port` | `null or string` | Port to connect to for the api or remote transport |
+| `services.icingaweb2.modules.monitoring.transports.<name>.resource` | `string` | SSH identity resource for the remote transport |
+| `services.icingaweb2.modules.monitoring.transports.<name>.type` | `one of "api", "local", "remote"` | Type of this transport |
+| `services.icingaweb2.modules.monitoring.transports.<name>.username` | `string` | Username for the api or remote transport |
+| `services.icingaweb2.modules.setup.enable` | `boolean` | Whether to enable the icingaweb2 setup module. |
+| `services.icingaweb2.modules.test.enable` | `boolean` | Whether to enable the icingaweb2 test module. |
+| `services.icingaweb2.modules.translation.enable` | `boolean` | Whether to enable the icingaweb2 translation module. |
+| `services.icingaweb2.pool` | `string` | Name of existing PHP-FPM pool that is used to run Icingaweb2. If not specified, a pool will automatically created with default values. |
+| `services.icingaweb2.resources` | `null or (attribute set)` | resources.ini contents. Will automatically be converted to a .ini file. If the value is null, no resources.ini is created and you can modify it manually (e.g. via the web interface). Note that if you set passwords here, they will go into the nix store. |
+| `services.icingaweb2.roles` | `null or (attribute set)` | roles.ini contents. Will automatically be converted to a .ini file. If the value is null, no roles.ini is created and you can modify it manually (e.g. via the web interface). |
+| `services.icingaweb2.timezone` | `string` | PHP-compliant timezone specification |
+| `services.icingaweb2.virtualHost` | `null or string` | Name of the nginx virtualhost to use and setup. If null, no virtualhost is set up. |

@@ -5,30 +5,30 @@
 All options under `services.komodo-periphery`.
 
 | Option | Type | Description |
-| ----------------------------------------------------- | ---- | ----------- |
-| `services.komodo-periphery.allowedIps` | | |
-| `services.komodo-periphery.bindIp` | | |
-| `services.komodo-periphery.configFile` | | |
-| `services.komodo-periphery.containerStatsPollingRate` | | |
-| `services.komodo-periphery.disableContainerExec` | | |
-| `services.komodo-periphery.disableTerminals` | | |
-| `services.komodo-periphery.enable` | | |
-| `services.komodo-periphery.environment` | | |
-| `services.komodo-periphery.environmentFile` | | |
-| `services.komodo-periphery.excludeDiskMounts` | | |
-| `services.komodo-periphery.extraSettings` | | |
-| `services.komodo-periphery.group` | | |
-| `services.komodo-periphery.includeDiskMounts` | | |
-| `services.komodo-periphery.legacyComposeCli` | | |
-| `services.komodo-periphery.logging.level` | | |
-| `services.komodo-periphery.logging.otlpEndpoint` | | |
-| `services.komodo-periphery.logging.stdio` | | |
-| `services.komodo-periphery.package` | | |
-| `services.komodo-periphery.passkeys` | | |
-| `services.komodo-periphery.port` | | |
-| `services.komodo-periphery.rootDirectory` | | |
-| `services.komodo-periphery.ssl.certFile` | | |
-| `services.komodo-periphery.ssl.enable` | | |
-| `services.komodo-periphery.ssl.keyFile` | | |
-| `services.komodo-periphery.statsPollingRate` | | |
-| `services.komodo-periphery.user` | | |
+| --- | --- | --- |
+| `services.komodo-periphery.allowedIps` | `list of string` | IP addresses or subnets allowed to call the periphery API. Empty list allows all. |
+| `services.komodo-periphery.bindIp` | `string` | IP address to bind to. |
+| `services.komodo-periphery.configFile` | `null or absolute path` | Path to the periphery configuration file. If null, a configuration file will be generated from the module options. |
+| `services.komodo-periphery.containerStatsPollingRate` | `string` | Container stats polling interval. |
+| `services.komodo-periphery.disableContainerExec` | `boolean` | Disable remote container shell access through Periphery. |
+| `services.komodo-periphery.disableTerminals` | `boolean` | Disable remote shell access through Periphery. |
+| `services.komodo-periphery.enable` | `boolean` | Whether to enable Periphery, a multi-server Docker and Git deployment agent by Komodo. |
+| `services.komodo-periphery.environment` | `attribute set of string` | Environment variables to set for the service. |
+| `services.komodo-periphery.environmentFile` | `null or absolute path` | Environment file for additional configuration via environment variables. |
+| `services.komodo-periphery.excludeDiskMounts` | `list of string` | Exclude these mount paths from disk reporting. |
+| `services.komodo-periphery.extraSettings` | `TOML value` | Extra settings to add to the generated TOML config. |
+| `services.komodo-periphery.group` | `string` | Group under which the Periphery agent runs. |
+| `services.komodo-periphery.includeDiskMounts` | `list of string` | Only include these mount paths in disk reporting. |
+| `services.komodo-periphery.legacyComposeCli` | `boolean` | Use `docker-compose` instead of `docker compose`. |
+| `services.komodo-periphery.logging.level` | `one of "off", "error", "warn", "info", "debug", "trace"` | Logging verbosity level. |
+| `services.komodo-periphery.logging.otlpEndpoint` | `string` | OpenTelemetry OTLP endpoint for traces. |
+| `services.komodo-periphery.logging.stdio` | `one of "standard", "json", "none"` | Logging format for stdout/stderr. |
+| `services.komodo-periphery.package` | `package` | The komodo package to use. |
+| `services.komodo-periphery.passkeys` | `list of string` | Passkeys required to access the periphery API. WARNING: These will be stored in the Nix store in plain text! |
+| `services.komodo-periphery.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port for the Periphery agent to listen on. |
+| `services.komodo-periphery.rootDirectory` | `absolute path` | Root directory for Komodo Periphery data. |
+| `services.komodo-periphery.ssl.certFile` | `absolute path` | Path to SSL certificate file. |
+| `services.komodo-periphery.ssl.enable` | `boolean` | Whether to enable SSL/TLS support. |
+| `services.komodo-periphery.ssl.keyFile` | `absolute path` | Path to SSL key file. |
+| `services.komodo-periphery.statsPollingRate` | `string` | System stats polling interval. |
+| `services.komodo-periphery.user` | `string` | User under which the Periphery agent runs. |

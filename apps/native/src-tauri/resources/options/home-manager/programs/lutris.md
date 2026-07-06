@@ -5,12 +5,17 @@
 All options under `programs.lutris`.
 
 | Option | Type | Description |
-| ------------------------------------ | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.lutris.defaultWinePackage` | `null or package` | The wine/proton package to set as the default for lutris. It must still be set under proton/winePackages. |
-| `programs.lutris.enable` | `boolean` | Whether to enable lutris… |
+| `programs.lutris.enable` | `boolean` | Whether to enable lutris.. |
 | `programs.lutris.extraPackages` | `list of package` | List of packages to pass as extraPkgs to lutris. Please note runners are not detected properly this way, use a proper option for those. |
 | `programs.lutris.package` | `package` | The lutris package to use. |
 | `programs.lutris.protonPackages` | `list of package` | List of proton packages to be added for lutris to use with umu-launcher. |
-| `programs.lutris.runners` | `attribute set of (submodule)` | Attribute set of Lutris runners along with their configurations. Each runner must be named exactly as lutris expects on lutris --list-runners . Note that runners added here won’t be configurable through Lutris using the GUI. |
-| `programs.lutris.steamPackage` | `null or package` | This must be the same you use for your system, or two instances will conflict, for example, if you configure steam through the nixos module, a good value is “osConfig.programs.steam.package” |
+| `programs.lutris.runners` | `attribute set of (submodule)` | Attribute set of Lutris runners along with their configurations. Each runner must be named exactly as lutris expects on `lutris --list-runners`. Note that runners added here won't be configurable through Lutris using the GUI. |
+| `programs.lutris.runners.<name>.package` | `null or package` | The package to use for this runner, nix will try to find the executable for this package. A more specific path can be set by using settings.runner.runner_executable instead. Incompatible with certain runners, such as wine. |
+| `programs.lutris.runners.<name>.settings` | `submodule` | Settings passed directly to lutris for this runner's config at XDG_CONFIG/lutris/runners. |
+| `programs.lutris.runners.<name>.settings.runner` | `open submodule of (YAML 1.1 value)` | Runner specific options. For references, you must look for the file of said runner on lutris' source code. |
+| `programs.lutris.runners.<name>.settings.runner.runner_executable` | `string or absolute path` | Specific option to point to a runner executable directly, don't set runner.package if you set this. Incompatible with certain runners such as wine. |
+| `programs.lutris.runners.<name>.settings.system` | `open submodule of (YAML 1.1 value)` | Lutris system options for this runner. Reference for system options: https://github.com/lutris/lutris/blob/master/lutris/sysoptions.py#L78 |
+| `programs.lutris.steamPackage` | `null or package` | This must be the same you use for your system, or two instances will conflict, for example, if you configure steam through the nixos module, a good value is "osConfig.programs.steam.package" |
 | `programs.lutris.winePackages` | `list of package` | List of wine packages to be added for lutris to use. |

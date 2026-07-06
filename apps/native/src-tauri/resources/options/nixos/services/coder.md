@@ -5,22 +5,22 @@
 All options under `services.coder`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.coder.accessUrl` | | |
-| `services.coder.database.createLocally` | | |
-| `services.coder.database.database` | | |
-| `services.coder.database.host` | | |
-| `services.coder.database.password` | | |
-| `services.coder.database.sslmode` | | |
-| `services.coder.database.username` | | |
-| `services.coder.enable` | | |
-| `services.coder.environment.extra` | | |
-| `services.coder.environment.file` | | |
-| `services.coder.group` | | |
-| `services.coder.homeDir` | | |
-| `services.coder.listenAddress` | | |
-| `services.coder.package` | | |
-| `services.coder.tlsCert` | | |
-| `services.coder.tlsKey` | | |
-| `services.coder.user` | | |
-| `services.coder.wildcardAccessUrl` | | |
+| --- | --- | --- |
+| `services.coder.accessUrl` | `null or string` | Access URL should be a external IP address or domain with DNS records pointing to Coder. |
+| `services.coder.database.createLocally` | `boolean` | Create the database and database user locally. |
+| `services.coder.database.database` | `string` | Name of database. |
+| `services.coder.database.host` | `string` | Hostname hosting the database. |
+| `services.coder.database.password` | `null or string` | Password for accessing the database. |
+| `services.coder.database.sslmode` | `null or string` | Password for accessing the database. |
+| `services.coder.database.username` | `string` | Username for accessing the database. |
+| `services.coder.enable` | `boolean` | Whether to enable Coder service. |
+| `services.coder.environment.extra` | `attribute set` | Extra environment variables to pass run Coder's server with. See Coder documentation. |
+| `services.coder.environment.file` | `null or absolute path` | Systemd environment file to add to Coder. |
+| `services.coder.group` | `string` | Group under which the coder service runs. ::: {.note} If left as the default value this group will automatically be created on system activation, otherwise it needs to be configured manually. ::: |
+| `services.coder.homeDir` | `string` | Home directory for coder user. |
+| `services.coder.listenAddress` | `string` | Listen address. |
+| `services.coder.package` | `package` | The coder package to use. |
+| `services.coder.tlsCert` | `null or absolute path` | The path to the TLS certificate. |
+| `services.coder.tlsKey` | `null or absolute path` | The path to the TLS key. |
+| `services.coder.user` | `string` | User under which the coder service runs. ::: {.note} If left as the default value this user will automatically be created on system activation, otherwise it needs to be configured manually. ::: |
+| `services.coder.wildcardAccessUrl` | `null or string` | If you are providing TLS certificates directly to the Coder server, you must use a single certificate for the root and wildcard domains. |

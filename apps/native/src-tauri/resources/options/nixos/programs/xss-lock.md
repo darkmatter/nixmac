@@ -5,7 +5,7 @@
 All options under `programs.xss-lock`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `programs.xss-lock.enable` | | |
-| `programs.xss-lock.extraOptions` | | |
-| `programs.xss-lock.lockerCommand` | | |
+| --- | --- | --- |
+| `programs.xss-lock.enable` | `boolean` | Whether to enable xss-lock. |
+| `programs.xss-lock.extraOptions` | `list of string` | Additional command-line arguments to pass to {command}`xss-lock`. |
+| `programs.xss-lock.lockerCommand` | `strings concatenated with " "` | Locker to be used with xsslock |

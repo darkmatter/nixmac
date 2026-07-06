@@ -5,7 +5,7 @@
 All options under `services.tailscale-systray`.
 
 | Option | Type | Description |
-| ------------------------------------ | --------- | ------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.tailscale-systray.enable` | `boolean` | Whether to enable Official Tailscale systray application for Linux. |
 | `services.tailscale-systray.package` | `package` | The tailscale package to use. |
-| `services.tailscale-systray.theme` | | |
+| `services.tailscale-systray.theme` | `null or one of "dark", "dark:nobg", "light", "light:nobg"` | Color theme to use for the Tailscale icon. |

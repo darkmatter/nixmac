@@ -5,16 +5,16 @@
 All options under `services.taskchampion-sync-server`.
 
 | Option | Type | Description |
-| ----------------------------------------------------- | ---- | ----------- |
-| `services.taskchampion-sync-server.allowClientIds` | | |
-| `services.taskchampion-sync-server.dataDir` | | |
-| `services.taskchampion-sync-server.dynamicUser` | | |
-| `services.taskchampion-sync-server.enable` | | |
-| `services.taskchampion-sync-server.group` | | |
-| `services.taskchampion-sync-server.host` | | |
-| `services.taskchampion-sync-server.openFirewall` | | |
-| `services.taskchampion-sync-server.package` | | |
-| `services.taskchampion-sync-server.port` | | |
-| `services.taskchampion-sync-server.snapshot.days` | | |
-| `services.taskchampion-sync-server.snapshot.versions` | | |
-| `services.taskchampion-sync-server.user` | | |
+| --- | --- | --- |
+| `services.taskchampion-sync-server.allowClientIds` | `list of string` | Client IDs to allow (can be repeated; if not specified, all clients are allowed) |
+| `services.taskchampion-sync-server.dataDir` | `absolute path` | Directory in which to store data |
+| `services.taskchampion-sync-server.dynamicUser` | `boolean` | Whether to use dynamic user |
+| `services.taskchampion-sync-server.enable` | `boolean` | Whether to enable TaskChampion Sync Server for Taskwarrior 3. |
+| `services.taskchampion-sync-server.group` | `string` | Unix Group to run the server under |
+| `services.taskchampion-sync-server.host` | `string` | Host address on which to serve |
+| `services.taskchampion-sync-server.openFirewall` | `boolean` | Whether to enable Open firewall port for taskchampion-sync-server. |
+| `services.taskchampion-sync-server.package` | `package` | The taskchampion-sync-server package to use. |
+| `services.taskchampion-sync-server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which to serve |
+| `services.taskchampion-sync-server.snapshot.days` | `positive integer, meaning >0` | Target number of days between snapshots |
+| `services.taskchampion-sync-server.snapshot.versions` | `positive integer, meaning >0` | Target number of versions between snapshots |
+| `services.taskchampion-sync-server.user` | `string` | Unix User to run the server under |

@@ -5,26 +5,26 @@
 All options under `services.ebusd`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.ebusd.configpath` | | |
-| `services.ebusd.device` | | |
-| `services.ebusd.enable` | | |
-| `services.ebusd.extraArguments` | | |
-| `services.ebusd.logs.all` | | |
-| `services.ebusd.logs.bus` | | |
-| `services.ebusd.logs.device` | | |
-| `services.ebusd.logs.main` | | |
-| `services.ebusd.logs.network` | | |
-| `services.ebusd.logs.other` | | |
-| `services.ebusd.logs.update` | | |
-| `services.ebusd.mqtt.enable` | | |
-| `services.ebusd.mqtt.home-assistant` | | |
-| `services.ebusd.mqtt.host` | | |
-| `services.ebusd.mqtt.password` | | |
-| `services.ebusd.mqtt.port` | | |
-| `services.ebusd.mqtt.retain` | | |
-| `services.ebusd.mqtt.user` | | |
-| `services.ebusd.package` | | |
-| `services.ebusd.port` | | |
-| `services.ebusd.readonly` | | |
-| `services.ebusd.scanconfig` | | |
+| --- | --- | --- |
+| `services.ebusd.configpath` | `string` | Directory to read CSV config files from. This can be a local folder or a URL. |
+| `services.ebusd.device` | `string` | Use DEV as eBUS device [/dev/ttyUSB0]. This can be either: enh:DEVICE or enh:IP:PORT for enhanced device (only adapter v3 and newer), ens:DEVICE for enhanced high speed serial device (only adapter v3 and newer with firmware since 20220731), DEVICE for serial device (normal speed, for all other serial adapters like adapter v2 as well as adapter v3 in non-enhanced mode), or [udp:]IP:PORT for network device. Source: <https://github.com/john30/ebusd/wiki/2.-Run#device-options> |
+| `services.ebusd.enable` | `boolean` | Whether to enable ebusd, a daemon for communication with eBUS heating systems. |
+| `services.ebusd.extraArguments` | `list of string` | Extra arguments to the ebus daemon |
+| `services.ebusd.logs.all` | `one of "none", "error", "notice", "info", "debug"` | Only write log for matching `AREA`s (all|main|network|bus|device|update|other) below or equal to `LEVEL` (none|error|notice|info|debug) |
+| `services.ebusd.logs.bus` | `one of "none", "error", "notice", "info", "debug"` | Only write log for matching `AREA`s (all|main|network|bus|device|update|other) below or equal to `LEVEL` (none|error|notice|info|debug) |
+| `services.ebusd.logs.device` | `one of "none", "error", "notice", "info", "debug"` | Only write log for matching `AREA`s (all|main|network|bus|device|update|other) below or equal to `LEVEL` (none|error|notice|info|debug) |
+| `services.ebusd.logs.main` | `one of "none", "error", "notice", "info", "debug"` | Only write log for matching `AREA`s (all|main|network|bus|device|update|other) below or equal to `LEVEL` (none|error|notice|info|debug) |
+| `services.ebusd.logs.network` | `one of "none", "error", "notice", "info", "debug"` | Only write log for matching `AREA`s (all|main|network|bus|device|update|other) below or equal to `LEVEL` (none|error|notice|info|debug) |
+| `services.ebusd.logs.other` | `one of "none", "error", "notice", "info", "debug"` | Only write log for matching `AREA`s (all|main|network|bus|device|update|other) below or equal to `LEVEL` (none|error|notice|info|debug) |
+| `services.ebusd.logs.update` | `one of "none", "error", "notice", "info", "debug"` | Only write log for matching `AREA`s (all|main|network|bus|device|update|other) below or equal to `LEVEL` (none|error|notice|info|debug) |
+| `services.ebusd.mqtt.enable` | `boolean` | Whether to enable support for MQTT. |
+| `services.ebusd.mqtt.home-assistant` | `boolean` | Adds the Home Assistant topics to MQTT, read more at [MQTT Integration](https://github.com/john30/ebusd/wiki/MQTT-integration) |
+| `services.ebusd.mqtt.host` | `string` | Connect to MQTT broker on HOST. |
+| `services.ebusd.mqtt.password` | `string` | The MQTT password. |
+| `services.ebusd.mqtt.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port on which to connect to MQTT |
+| `services.ebusd.mqtt.retain` | `boolean` | Whether to enable set the retain flag on all topics instead of only selected global ones. |
+| `services.ebusd.mqtt.user` | `string` | The MQTT user to use |
+| `services.ebusd.package` | `package` | The ebusd package to use. |
+| `services.ebusd.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port on which to listen on |
+| `services.ebusd.readonly` | `boolean` | Only read from device, never write to it |
+| `services.ebusd.scanconfig` | `string` | Pick CSV config files matching initial scan ("none" or empty for no initial scan message, "full" for full scan, or a single hex address to scan, default is to send a broadcast ident message). If combined with --checkconfig, you can add scan message data as arguments for checking a particular scan configuration, e.g. "FF08070400/0AB5454850303003277201". For further details on this option, see [Automatic configuration](https://github.com/john30/ebusd/wiki/4.7.-Automatic-configuration). |

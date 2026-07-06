@@ -5,6 +5,6 @@
 All options under `services.saned`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.saned.enable` | | |
-| `services.saned.extraConfig` | | |
+| --- | --- | --- |
+| `services.saned.enable` | `boolean` | Enable saned network daemon for remote connection to scanners. saned would be run from `scanner` user; to allow access to hardware that doesn't have `scanner` group you should add needed groups to this user. |
+| `services.saned.extraConfig` | `strings concatenated with "\n"` | Extra saned configuration lines. |

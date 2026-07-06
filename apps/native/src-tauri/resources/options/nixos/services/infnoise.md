@@ -5,6 +5,6 @@
 All options under `services.infnoise`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.infnoise.enable` | | |
-| `services.infnoise.fillDevRandom` | | |
+| --- | --- | --- |
+| `services.infnoise.enable` | `boolean` | Whether to enable the Infinite Noise TRNG driver. |
+| `services.infnoise.fillDevRandom` | `boolean` | Whether to run the infnoise driver as a daemon to refill /dev/random. If disabled, you can use the `infnoise` command-line tool to manually obtain randomness. |

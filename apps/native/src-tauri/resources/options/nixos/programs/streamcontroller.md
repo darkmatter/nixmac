@@ -5,6 +5,6 @@
 All options under `programs.streamcontroller`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `programs.streamcontroller.enable` | | |
-| `programs.streamcontroller.package` | | |
+| --- | --- | --- |
+| `programs.streamcontroller.enable` | `boolean` | Whether to enable StreamController. |
+| `programs.streamcontroller.package` | `package` | The StreamController package to use |

@@ -5,6 +5,6 @@
 All options under `programs.amnezia-vpn`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `programs.amnezia-vpn.enable` | | |
-| `programs.amnezia-vpn.package` | | |
+| --- | --- | --- |
+| `programs.amnezia-vpn.enable` | `boolean` | Whether to enable The AmneziaVPN client. |
+| `programs.amnezia-vpn.package` | `package` | The amnezia-vpn package to use. |

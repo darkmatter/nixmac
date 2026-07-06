@@ -5,28 +5,28 @@
 All options under `services.cloudflare-ddns`.
 
 | Option | Type | Description |
-| --------------------------------------------- | ---- | ----------- |
-| `services.cloudflare-ddns.cacheExpiration` | | |
-| `services.cloudflare-ddns.credentialsFile` | | |
-| `services.cloudflare-ddns.deleteOnStop` | | |
-| `services.cloudflare-ddns.detectionTimeout` | | |
-| `services.cloudflare-ddns.domains` | | |
-| `services.cloudflare-ddns.enable` | | |
-| `services.cloudflare-ddns.group` | | |
-| `services.cloudflare-ddns.healthchecks` | | |
-| `services.cloudflare-ddns.ip4Domains` | | |
-| `services.cloudflare-ddns.ip6Domains` | | |
-| `services.cloudflare-ddns.package` | | |
-| `services.cloudflare-ddns.provider.ipv4` | | |
-| `services.cloudflare-ddns.provider.ipv6` | | |
-| `services.cloudflare-ddns.proxied` | | |
-| `services.cloudflare-ddns.recordComment` | | |
-| `services.cloudflare-ddns.shoutrrr` | | |
-| `services.cloudflare-ddns.ttl` | | |
-| `services.cloudflare-ddns.updateCron` | | |
-| `services.cloudflare-ddns.updateOnStart` | | |
-| `services.cloudflare-ddns.updateTimeout` | | |
-| `services.cloudflare-ddns.uptimeKuma` | | |
-| `services.cloudflare-ddns.user` | | |
-| `services.cloudflare-ddns.wafListDescription` | | |
-| `services.cloudflare-ddns.wafLists` | | |
+| --- | --- | --- |
+| `services.cloudflare-ddns.cacheExpiration` | `string` | Duration for which API responses (like Zone ID, Record IDs) are cached. Uses Go's duration format (e.g., "6h", "1h30m"). |
+| `services.cloudflare-ddns.credentialsFile` | `absolute path` | Path to a file containing the Cloudflare API authentication token. The file content should be in the format `CLOUDFLARE_API_TOKEN=YOUR_SECRET_TOKEN`. The service user needs read access to this file. Ensure permissions are secure (e.g., `0400` or `0440`) and ownership is appropriate Using `CLOUDFLARE_API_TOKEN` is preferred over the deprecated `CF_API_TOKEN`. |
+| `services.cloudflare-ddns.deleteOnStop` | `boolean` | Whether to delete the managed DNS records and clear WAF lists when the service is stopped gracefully. Warning: Setting this to true with `updateCron = "@once"` will cause immediate deletion. |
+| `services.cloudflare-ddns.detectionTimeout` | `string` | Timeout for detecting the public IP address. |
+| `services.cloudflare-ddns.domains` | `list of string` | List of domain names (FQDNs) to manage. Wildcards like `*.example.com` are supported. These domains will be managed for both IPv4 and IPv6 unless overridden by `ip4Domains` or `ip6Domains`, or if the respective providers are disabled. This corresponds to the `DOMAINS` environment variable. |
+| `services.cloudflare-ddns.enable` | `boolean` | Whether to enable Cloudflare Dynamic DNS service. |
+| `services.cloudflare-ddns.group` | `string` | Group under which the service runs. |
+| `services.cloudflare-ddns.healthchecks` | `null or string` | URL for Healthchecks.io monitoring endpoint (optional). |
+| `services.cloudflare-ddns.ip4Domains` | `null or (list of string)` | Explicit list of domains to manage only for IPv4. If set, overrides `domains` for IPv4. Corresponds to the `IP4_DOMAINS` environment variable. |
+| `services.cloudflare-ddns.ip6Domains` | `null or (list of string)` | Explicit list of domains to manage only for IPv6. If set, overrides `domains` for IPv6. Corresponds to the `IP6_DOMAINS` environment variable. |
+| `services.cloudflare-ddns.package` | `package` | The cloudflare-ddns package to use. |
+| `services.cloudflare-ddns.provider.ipv4` | `string` | IP detection provider for IPv4. Common values: `cloudflare.trace`, `cloudflare.doh`, `local`, `url:URL`, `none`. Use `none` to disable IPv4 updates. See cloudflare-ddns documentation for all options. |
+| `services.cloudflare-ddns.provider.ipv6` | `string` | IP detection provider for IPv6. Common values: `cloudflare.trace`, `cloudflare.doh`, `local`, `url:URL`, `none`. Use `none` to disable IPv6 updates. See cloudflare-ddns documentation for all options. |
+| `services.cloudflare-ddns.proxied` | `string` | Whether the managed DNS records should be proxied through Cloudflare ('orange cloud'). Accepts boolean values (`true`, `false`) or a domain expression. See cloudflare-ddns documentation for expression syntax (e.g., "is(a.com) || sub(b.org)"). |
+| `services.cloudflare-ddns.recordComment` | `string` | Comment to add to managed DNS records. |
+| `services.cloudflare-ddns.shoutrrr` | `null or (list of string)` | List of Shoutrrr notification service URLs (optional). |
+| `services.cloudflare-ddns.ttl` | `positive integer, meaning >0` | Time To Live (TTL) for the DNS records in seconds. Must be 1 (for automatic) or between 30 and 86400. |
+| `services.cloudflare-ddns.updateCron` | `string` | Cron expression for how often to check and update IPs. Use "@once" to run only once and then exit. |
+| `services.cloudflare-ddns.updateOnStart` | `boolean` | Whether to perform an update check immediately on service start. |
+| `services.cloudflare-ddns.updateTimeout` | `string` | Timeout for updating records via the Cloudflare API. |
+| `services.cloudflare-ddns.uptimeKuma` | `null or string` | URL for Uptime Kuma push monitor endpoint (optional). |
+| `services.cloudflare-ddns.user` | `string` | User account under which the service runs. |
+| `services.cloudflare-ddns.wafListDescription` | `string` | Description for managed WAF lists (used when creating or verifying lists). |
+| `services.cloudflare-ddns.wafLists` | `list of string` | List of WAF IP Lists to manage, in the format `account-id/list-name`. (Experimental feature as of cloudflare-ddns 1.14.0). |

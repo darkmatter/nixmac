@@ -5,12 +5,12 @@
 All options under `services.quassel`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.quassel.certificateFile` | | |
-| `services.quassel.dataDir` | | |
-| `services.quassel.enable` | | |
-| `services.quassel.interfaces` | | |
-| `services.quassel.package` | | |
-| `services.quassel.portNumber` | | |
-| `services.quassel.requireSSL` | | |
-| `services.quassel.user` | | |
+| --- | --- | --- |
+| `services.quassel.certificateFile` | `null or string` | Path to the certificate used for SSL connections with clients. |
+| `services.quassel.dataDir` | `string` | The directory holding configuration files, the SQlite database and the SSL Cert. |
+| `services.quassel.enable` | `boolean` | Whether to enable the Quassel IRC client daemon. |
+| `services.quassel.interfaces` | `list of string` | The interfaces the Quassel daemon will be listening to. If `[ 127.0.0.1 ]`, only clients on the local host can connect to it; if `[ 0.0.0.0 ]`, clients can access it from any network interface. |
+| `services.quassel.package` | `package` | The quasselDaemon package to use. |
+| `services.quassel.portNumber` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port number the Quassel daemon will be listening to. |
+| `services.quassel.requireSSL` | `boolean` | Require SSL for connections from clients. |
+| `services.quassel.user` | `null or string` | The existing user the Quassel daemon should run as. If left empty, a default "quassel" user will be created. |

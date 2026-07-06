@@ -5,10 +5,10 @@
 All options under `services.hqplayerd`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.hqplayerd.auth.password` | | |
-| `services.hqplayerd.auth.username` | | |
-| `services.hqplayerd.config` | | |
-| `services.hqplayerd.enable` | | |
-| `services.hqplayerd.licenseFile` | | |
-| `services.hqplayerd.openFirewall` | | |
+| --- | --- | --- |
+| `services.hqplayerd.auth.password` | `null or string` | Password used for HQPlayer's WebUI. Without this you will need to manually create the credentials after first start by going to http://your.ip/8088/auth |
+| `services.hqplayerd.auth.username` | `null or string` | Username used for HQPlayer's WebUI. Without this you will need to manually create the credentials after first start by going to http://your.ip/8088/auth |
+| `services.hqplayerd.config` | `null or strings concatenated with "\n"` | HQplayer daemon configuration, written to /etc/hqplayer/hqplayerd.xml. Refer to share/doc/hqplayerd/readme.txt in the hqplayerd derivation for possible values. |
+| `services.hqplayerd.enable` | `boolean` | Whether to enable HQPlayer Embedded. |
+| `services.hqplayerd.licenseFile` | `null or absolute path` | Path to the HQPlayer license key file. Without this, the service will run in trial mode and restart every 30 minutes. |
+| `services.hqplayerd.openFirewall` | `boolean` | Opens ports needed for the WebUI and controller API. |

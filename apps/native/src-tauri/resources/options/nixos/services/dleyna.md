@@ -5,5 +5,5 @@
 All options under `services.dleyna`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `services.dleyna.enable` | | |
+| --- | --- | --- |
+| `services.dleyna.enable` | `boolean` | Whether to enable dleyna-renderer and dleyna-server service, a DBus service for handling DLNA servers and renderers. |

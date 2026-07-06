@@ -5,18 +5,50 @@
 All options under `services.moodle`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.moodle.database.createLocally` | | |
-| `services.moodle.database.host` | | |
-| `services.moodle.database.name` | | |
-| `services.moodle.database.passwordFile` | | |
-| `services.moodle.database.port` | | |
-| `services.moodle.database.socket` | | |
-| `services.moodle.database.type` | | |
-| `services.moodle.database.user` | | |
-| `services.moodle.enable` | | |
-| `services.moodle.extraConfig` | | |
-| `services.moodle.initialPassword` | | |
-| `services.moodle.package` | | |
-| `services.moodle.poolConfig` | | |
-| `services.moodle.virtualHost` | | |
+| --- | --- | --- |
+| `services.moodle.database.createLocally` | `boolean` | Create the database and database user locally. |
+| `services.moodle.database.host` | `string` | Database host address. |
+| `services.moodle.database.name` | `string` | Database name. |
+| `services.moodle.database.passwordFile` | `null or absolute path` | A file containing the password corresponding to {option}`database.user`. |
+| `services.moodle.database.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Database host port. |
+| `services.moodle.database.socket` | `null or absolute path` | Path to the unix socket file to use for authentication. |
+| `services.moodle.database.type` | `one of "mysql", "pgsql"` | Database engine to use. |
+| `services.moodle.database.user` | `string` | Database user. |
+| `services.moodle.enable` | `boolean` | Whether to enable Moodle web application. |
+| `services.moodle.extraConfig` | `strings concatenated with "\n"` | Any additional text to be appended to the config.php configuration file. This is a PHP script. For configuration details, see <https://docs.moodle.org/37/en/Configuration_file>. |
+| `services.moodle.initialPassword` | `string` | Specifies the initial password for the admin, i.e. the password assigned if the user does not already exist. The password specified here is world-readable in the Nix store, so it should be changed promptly. |
+| `services.moodle.package` | `package` | The moodle package to use. |
+| `services.moodle.poolConfig` | `attribute set of (string or signed integer or boolean)` | Options for the Moodle PHP pool. See the documentation on `php-fpm.conf` for details on configuration directives. |
+| `services.moodle.virtualHost` | `submodule` | Apache configuration can be done by adapting {option}`services.httpd.virtualHosts`. See [](#opt-services.httpd.virtualHosts) for further information. |
+| `services.moodle.virtualHost.acmeRoot` | `null or string` | Directory for the acme challenge which is PUBLIC, don't put certs or keys in here. Set to null to inherit from config.security.acme. |
+| `services.moodle.virtualHost.addSSL` | `boolean` | Whether to enable HTTPS in addition to plain HTTP. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443). |
+| `services.moodle.virtualHost.adminAddr` | `null or string` | E-mail address of the server administrator. |
+| `services.moodle.virtualHost.documentRoot` | `null or absolute path` | The path of Apache's document root directory. If left undefined, an empty directory in the Nix store will be used as root. |
+| `services.moodle.virtualHost.enableACME` | `boolean` | Whether to ask Let's Encrypt to sign a certificate for this vhost. Alternately, you can use an existing certificate through {option}`useACMEHost`. |
+| `services.moodle.virtualHost.enableUserDir` | `boolean` | Whether to enable serving {file}`~/public_html` as `/~«username»`. |
+| `services.moodle.virtualHost.extraConfig` | `strings concatenated with "\n"` | These lines go to httpd.conf verbatim. They will go after directories and directory aliases defined by default. |
+| `services.moodle.virtualHost.forceSSL` | `boolean` | Whether to add a separate nginx server block that permanently redirects (301) all plain HTTP traffic to HTTPS. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443), where the non-SSL listens are used for the redirect vhosts. |
+| `services.moodle.virtualHost.globalRedirect` | `null or string` | If set, all requests for this host are redirected permanently to the given URL. |
+| `services.moodle.virtualHost.hostName` | `string` | Canonical hostname for the server. |
+| `services.moodle.virtualHost.http2` | `boolean` | Whether to enable HTTP 2. HTTP/2 is supported in all multi-processing modules that come with httpd. *However, if you use the prefork mpm, there will be severe restrictions.* Refer to <https://httpd.apache.org/docs/2.4/howto/http2.html#mpm-config> for details. |
+| `services.moodle.virtualHost.listen` | `list of (submodule)` | Listen addresses and ports for this virtual host. ::: {.note} This option overrides `addSSL`, `forceSSL` and `onlySSL`. If you only want to set the addresses manually and not the ports, take a look at `listenAddresses`. ::: |
+| `services.moodle.virtualHost.listen.*.ip` | `string` | IP to listen on. 0.0.0.0 for IPv4 only, * for all. |
+| `services.moodle.virtualHost.listen.*.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on |
+| `services.moodle.virtualHost.listen.*.ssl` | `boolean` | Whether to enable SSL (https) support. |
+| `services.moodle.virtualHost.listenAddresses` | `non-empty (list of string)` | Listen addresses for this virtual host. Compared to `listen` this only sets the addresses and the ports are chosen automatically. |
+| `services.moodle.virtualHost.locations` | `attribute set of (submodule)` | Declarative location config. See <https://httpd.apache.org/docs/2.4/mod/core.html#location> for details. |
+| `services.moodle.virtualHost.locations.<name>.alias` | `null or absolute path` | Alias directory for requests. See <https://httpd.apache.org/docs/2.4/mod/mod_alias.html#alias>. |
+| `services.moodle.virtualHost.locations.<name>.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the location verbatim. |
+| `services.moodle.virtualHost.locations.<name>.index` | `null or string` | Adds DirectoryIndex directive. See <https://httpd.apache.org/docs/2.4/mod/mod_dir.html#directoryindex>. |
+| `services.moodle.virtualHost.locations.<name>.priority` | `signed integer` | Order of this location block in relation to the others in the vhost. The semantics are the same as with `lib.mkOrder`. Smaller values have a greater priority. |
+| `services.moodle.virtualHost.locations.<name>.proxyPass` | `null or string` | Sets up a simple reverse proxy as described by <https://httpd.apache.org/docs/2.4/howto/reverse_proxy.html#simple>. |
+| `services.moodle.virtualHost.logFormat` | `string` | Log format for Apache's log files. Possible values are: combined, common, referer, agent. |
+| `services.moodle.virtualHost.onlySSL` | `boolean` | Whether to enable HTTPS and reject plain HTTP connections. This will set defaults for `listen` to listen on all interfaces on port 443. |
+| `services.moodle.virtualHost.robotsEntries` | `strings concatenated with "\n"` | Specification of pages to be ignored by web crawlers. See <http://www.robotstxt.org/> for details. |
+| `services.moodle.virtualHost.servedDirs` | `list of (attribute set)` | This option provides a simple way to serve static directories. |
+| `services.moodle.virtualHost.servedFiles` | `list of (attribute set)` | This option provides a simple way to serve individual, static files. ::: {.note} This option has been deprecated and will be removed in a future version of NixOS. You can achieve the same result by making use of the `locations.<name>.alias` option. ::: |
+| `services.moodle.virtualHost.serverAliases` | `list of string` | Additional names of virtual hosts served by this virtual host configuration. |
+| `services.moodle.virtualHost.sslServerCert` | `absolute path` | Path to server SSL certificate. |
+| `services.moodle.virtualHost.sslServerChain` | `null or absolute path` | Path to server SSL chain file. |
+| `services.moodle.virtualHost.sslServerKey` | `absolute path` | Path to server SSL certificate key. |
+| `services.moodle.virtualHost.useACMEHost` | `null or string` | A host of an existing Let's Encrypt certificate to use. This is useful if you have many subdomains and want to avoid hitting the [rate limit](https://letsencrypt.org/docs/rate-limits). Alternately, you can generate a certificate through {option}`enableACME`. *Note that this option does not create any certificates, nor it does add subdomains to existing ones – you will need to create them manually using [](#opt-security.acme.certs).* |

@@ -5,6 +5,6 @@
 All options under `services.go-autoconfig`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.go-autoconfig.enable` | | |
-| `services.go-autoconfig.settings` | | |
+| --- | --- | --- |
+| `services.go-autoconfig.enable` | `boolean` | Whether to enable IMAP/SMTP autodiscover feature for mail clients. |
+| `services.go-autoconfig.settings` | `open submodule of (YAML 1.1 value)` | Configuration for go-autoconfig. See <https://github.com/L11R/go-autoconfig/blob/master/config.yml> for more information. |

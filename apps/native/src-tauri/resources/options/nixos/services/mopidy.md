@@ -5,10 +5,9 @@
 All options under `services.mopidy`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.mopidy.configuration` | | |
-| `services.mopidy.dataDir` | | |
-| `services.mopidy.enable` | | |
-| `services.mopidy.extensionPackages` | | |
-| `services.mopidy.extraConfigFiles` | | |
-| `services.mopidy.settings` | | |
+| --- | --- | --- |
+| `services.mopidy.dataDir` | `string` | The directory where Mopidy stores its state. |
+| `services.mopidy.enable` | `boolean` | Whether to enable Mopidy, a music player daemon. |
+| `services.mopidy.extensionPackages` | `list of package` | Mopidy extensions that should be loaded by the service. |
+| `services.mopidy.extraConfigFiles` | `list of string` | Extra config file read by Mopidy when the service starts. Later files in the list overrides earlier configuration. |
+| `services.mopidy.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | The configuration that Mopidy should use. See the upstream documentation <https://docs.mopidy.com/stable/config/> for details. |

@@ -5,12 +5,26 @@
 All options under `services.tlsrpt`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.tlsrpt.collectd.extraFlags` | | |
-| `services.tlsrpt.collectd.settings` | | |
-| `services.tlsrpt.configurePostfix` | | |
-| `services.tlsrpt.enable` | | |
-| `services.tlsrpt.fetcher.settings` | | |
-| `services.tlsrpt.package` | | |
-| `services.tlsrpt.reportd.extraFlags` | | |
-| `services.tlsrpt.reportd.settings` | | |
+| --- | --- | --- |
+| `services.tlsrpt.collectd.extraFlags` | `list of string` | List of extra flags to pass to the tlsrpt-reportd executable. See {manpage}`tlsrpt-collectd(1)` for possible flags. |
+| `services.tlsrpt.collectd.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Flags from {manpage}`tlsrpt-collectd(1)` as key-value pairs. |
+| `services.tlsrpt.collectd.settings.log_level` | `one of "debug", "info", "warning", "error", "critical"` | Level of log messages to emit. |
+| `services.tlsrpt.collectd.settings.socketmode` | `string` | Permissions on the UNIX socket. |
+| `services.tlsrpt.collectd.settings.socketname` | `absolute path` | Path at which the UNIX socket will be created. |
+| `services.tlsrpt.collectd.settings.storage` | `string` | Storage backend definition. |
+| `services.tlsrpt.configurePostfix` | `boolean` | Whether to configure permissions to allow integration with Postfix. |
+| `services.tlsrpt.enable` | `boolean` | Whether to enable the TLSRPT services. |
+| `services.tlsrpt.fetcher.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Flags from {manpage}`tlsrpt-fetcher(1)` as key-value pairs. |
+| `services.tlsrpt.fetcher.settings.log_level` | `one of "debug", "info", "warning", "error", "critical"` | Level of log messages to emit. |
+| `services.tlsrpt.fetcher.settings.storage` | `string` | Path to the collectd sqlite database. |
+| `services.tlsrpt.package` | `package` | The tlsrpt-reporter package to use. |
+| `services.tlsrpt.reportd.extraFlags` | `list of string` | List of extra flags to pass to the tlsrpt-reportd executable. See {manpage}`tlsrpt-report(1)` for possible flags. |
+| `services.tlsrpt.reportd.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Flags from {manpage}`tlsrpt-reportd(1)` as key-value pairs. |
+| `services.tlsrpt.reportd.settings.contact_info` | `string` | Contact information embedded into the reports. |
+| `services.tlsrpt.reportd.settings.dbname` | `string` | Path to the sqlite database. |
+| `services.tlsrpt.reportd.settings.fetchers` | `string` | Comma-separated list of fetcher programs that retrieve collectd data. |
+| `services.tlsrpt.reportd.settings.http_script` | `null or string` | Call to an HTTPS client, that accepts the URL on the commandline and the request body from stdin. |
+| `services.tlsrpt.reportd.settings.log_level` | `one of "debug", "info", "warning", "error", "critical"` | Level of log messages to emit. |
+| `services.tlsrpt.reportd.settings.organization_name` | `string` | Name of the organization sending out the reports. |
+| `services.tlsrpt.reportd.settings.sender_address` | `string` | Sender address used for reports. |
+| `services.tlsrpt.reportd.settings.sendmail_script` | `null or string` | Path to a sendmail-compatible executable for delivery reports. |

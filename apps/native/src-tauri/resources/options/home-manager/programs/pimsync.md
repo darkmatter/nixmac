@@ -5,7 +5,7 @@
 All options under `programs.pimsync`.
 
 | Option | Type | Description |
-| --------------------------- | ---------- | ------------------------------------------------------------ |
+| --- | --- | --- |
 | `programs.pimsync.enable` | `boolean` | Whether to enable pimsync. |
 | `programs.pimsync.package` | `package` | The pimsync package to use. |
-| `programs.pimsync.settings` | `anything` | Settings to be added to pimsync.conf. See pimsync.conf (5) . |
+| `programs.pimsync.settings` | `anything` | Settings to be added to pimsync.conf. See {manpage}`pimsync.conf(5)`. |

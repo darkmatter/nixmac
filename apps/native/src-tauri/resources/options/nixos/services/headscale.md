@@ -5,29 +5,59 @@
 All options under `services.headscale`.
 
 | Option | Type | Description |
-| --------------------------------------------------- | ---- | ----------- |
-| `services.headscale.address` | | |
-| `services.headscale.configFile` | | |
-| `services.headscale.derp.autoUpdate` | | |
-| `services.headscale.derp.auto_update_enable` | | |
-| `services.headscale.derp.paths` | | |
-| `services.headscale.derp.updateFrequency` | | |
-| `services.headscale.derp.urls` | | |
-| `services.headscale.enable` | | |
-| `services.headscale.ephemeralNodeInactivityTimeout` | | |
-| `services.headscale.group` | | |
-| `services.headscale.logLevel` | | |
-| `services.headscale.openIdConnect.clientId` | | |
-| `services.headscale.openIdConnect.clientSecretFile` | | |
-| `services.headscale.openIdConnect.domainMap` | | |
-| `services.headscale.openIdConnect.issuer` | | |
-| `services.headscale.package` | | |
-| `services.headscale.port` | | |
-| `services.headscale.serverUrl` | | |
-| `services.headscale.settings` | | |
-| `services.headscale.tls.certFile` | | |
-| `services.headscale.tls.keyFile` | | |
-| `services.headscale.tls.letsencrypt.challengeType` | | |
-| `services.headscale.tls.letsencrypt.hostname` | | |
-| `services.headscale.tls.letsencrypt.httpListen` | | |
-| `services.headscale.user` | | |
+| --- | --- | --- |
+| `services.headscale.address` | `string` | Listening address of headscale. |
+| `services.headscale.configFile` | `absolute path` | Path to the configuration file of headscale. |
+| `services.headscale.enable` | `boolean` | Whether to enable headscale, Open Source coordination server for Tailscale. |
+| `services.headscale.group` | `string` | Group under which headscale runs. ::: {.note} If left as the default value this group will automatically be created on system activation, otherwise you are responsible for ensuring the user exists before the headscale service starts. ::: |
+| `services.headscale.package` | `package` | The headscale package to use. |
+| `services.headscale.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listening port of headscale. |
+| `services.headscale.settings` | `open submodule of (YAML 1.1 value)` | Overrides to {file}`config.yaml` as a Nix attribute set. Check the [example config](https://github.com/juanfont/headscale/blob/main/config-example.yaml) for possible options. |
+| `services.headscale.settings.database.postgres.host` | `null or string` | Database host address. |
+| `services.headscale.settings.database.postgres.name` | `null or string` | Database name. |
+| `services.headscale.settings.database.postgres.password_file` | `null or absolute path` | A file containing the password corresponding to {option}`database.user`. |
+| `services.headscale.settings.database.postgres.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Database host port. |
+| `services.headscale.settings.database.postgres.user` | `null or string` | Database user. |
+| `services.headscale.settings.database.sqlite.path` | `null or string` | Path to the sqlite3 database file. |
+| `services.headscale.settings.database.sqlite.write_ahead_log` | `boolean` | Enable WAL mode for SQLite. This is recommended for production environments. <https://www.sqlite.org/wal.html> |
+| `services.headscale.settings.database.type` | `one of "sqlite", "sqlite3", "postgres"` | Database engine to use. Please note that using Postgres is highly discouraged as it is only supported for legacy reasons. All new development, testing and optimisations are done with SQLite in mind. |
+| `services.headscale.settings.derp.auto_update_enabled` | `boolean` | Whether to automatically update DERP maps on a set frequency. |
+| `services.headscale.settings.derp.paths` | `list of absolute path` | List of file paths containing DERP maps. See [How Tailscale works](https://tailscale.com/blog/how-tailscale-works/) for more information on DERP maps. |
+| `services.headscale.settings.derp.server.private_key_path` | `absolute path` | Path to derp private key file, generated automatically if it does not exist. |
+| `services.headscale.settings.derp.update_frequency` | `string` | Frequency to update DERP maps. |
+| `services.headscale.settings.derp.urls` | `list of string` | List of urls containing DERP maps. See [How Tailscale works](https://tailscale.com/blog/how-tailscale-works/) for more information on DERP maps. |
+| `services.headscale.settings.dns.base_domain` | `string` | Defines the base domain to create the hostnames for MagicDNS. This domain must be different from the {option}`server_url` domain. {option}`base_domain` must be a FQDN, without the trailing dot. The FQDN of the hosts will be `hostname.base_domain` (e.g. `myhost.tailnet.example.com`). |
+| `services.headscale.settings.dns.extra_records` | `null or (list of (submodule))` | Extra DNS records to expose to clients. |
+| `services.headscale.settings.dns.extra_records.*.name` | `string` | DNS record name. |
+| `services.headscale.settings.dns.extra_records.*.type` | `one of "A", "AAAA"` | DNS record type. |
+| `services.headscale.settings.dns.extra_records.*.value` | `string` | DNS record value (IP address). |
+| `services.headscale.settings.dns.magic_dns` | `boolean` | Whether to use [MagicDNS](https://tailscale.com/kb/1081/magicdns/). |
+| `services.headscale.settings.dns.nameservers.global` | `list of string` | List of nameservers to pass to Tailscale clients. |
+| `services.headscale.settings.dns.override_local_dns` | `boolean` | Whether to [override clients' DNS servers](https://tailscale.com/kb/1054/dns#override-dns-servers). |
+| `services.headscale.settings.dns.search_domains` | `list of string` | Search domains to inject to Tailscale clients. |
+| `services.headscale.settings.dns.split` | `attribute set of list of string` | Split DNS configuration (map of domains and which DNS server to use for each). See <https://tailscale.com/kb/1054/dns/>. |
+| `services.headscale.settings.ephemeral_node_inactivity_timeout` | `string` | Time before an inactive ephemeral node is deleted. |
+| `services.headscale.settings.log.format` | `string` | headscale log format. |
+| `services.headscale.settings.log.level` | `string` | headscale log level. |
+| `services.headscale.settings.noise.private_key_path` | `absolute path` | Path to noise private key file, generated automatically if it does not exist. |
+| `services.headscale.settings.oidc.allowed_domains` | `list of string` | Allowed principal domains. if an authenticated user's domain is not in this list authentication request will be rejected. |
+| `services.headscale.settings.oidc.allowed_users` | `list of string` | Users allowed to authenticate even if not in allowedDomains. |
+| `services.headscale.settings.oidc.client_id` | `string` | OpenID Connect client ID. |
+| `services.headscale.settings.oidc.client_secret_path` | `null or string` | Path to OpenID Connect client secret file. Expands environment variables in format ${VAR}. |
+| `services.headscale.settings.oidc.extra_params` | `attribute set of string` | Custom query parameters to send with the Authorize Endpoint request. |
+| `services.headscale.settings.oidc.issuer` | `string` | URL to OpenID issuer. |
+| `services.headscale.settings.oidc.pkce.enabled` | `boolean` | Enable or disable PKCE (Proof Key for Code Exchange) support. PKCE adds an additional layer of security to the OAuth 2.0 authorization code flow by preventing authorization code interception attacks See https://datatracker.ietf.org/doc/html/rfc7636 |
+| `services.headscale.settings.oidc.pkce.method` | `string` | PKCE method to use: - plain: Use plain code verifier - S256: Use SHA256 hashed code verifier (default, recommended) |
+| `services.headscale.settings.oidc.scope` | `list of string` | Scopes used in the OIDC flow. |
+| `services.headscale.settings.policy.mode` | `one of "file", "database"` | The mode can be "file" or "database" that defines where the ACL policies are stored and read from. |
+| `services.headscale.settings.policy.path` | `null or absolute path` | If the mode is set to "file", the path to a HuJSON file containing ACL policies. |
+| `services.headscale.settings.prefixes.allocation` | `one of "sequential", "random"` | Strategy used for allocation of IPs to nodes, available options: - sequential (default): assigns the next free IP from the previous given IP. - random: assigns the next free IP from a pseudo-random IP generator (crypto/rand). |
+| `services.headscale.settings.prefixes.v4` | `string` | Each prefix consists of either an IPv4 or IPv6 address, and the associated prefix length, delimited by a slash. It must be within IP ranges supported by the Tailscale client - i.e., subnets of 100.64.0.0/10 and fd7a:115c:a1e0::/48. |
+| `services.headscale.settings.prefixes.v6` | `string` | Each prefix consists of either an IPv4 or IPv6 address, and the associated prefix length, delimited by a slash. It must be within IP ranges supported by the Tailscale client - i.e., subnets of 100.64.0.0/10 and fd7a:115c:a1e0::/48. |
+| `services.headscale.settings.server_url` | `string` | The url clients will connect to. |
+| `services.headscale.settings.tls_cert_path` | `null or absolute path` | Path to already created certificate. |
+| `services.headscale.settings.tls_key_path` | `null or absolute path` | Path to key for already created certificate. |
+| `services.headscale.settings.tls_letsencrypt_challenge_type` | `one of "TLS-ALPN-01", "HTTP-01"` | Type of ACME challenge to use, currently supported types: `HTTP-01` or `TLS-ALPN-01`. |
+| `services.headscale.settings.tls_letsencrypt_hostname` | `null or string` | Domain name to request a TLS certificate for. |
+| `services.headscale.settings.tls_letsencrypt_listen` | `null or string` | When HTTP-01 challenge is chosen, letsencrypt must set up a verification endpoint, and it will be listening on: `:http = port 80`. |
+| `services.headscale.user` | `string` | User account under which headscale runs. ::: {.note} If left as the default value this user will automatically be created on system activation, otherwise you are responsible for ensuring the user exists before the headscale service starts. ::: |

@@ -5,21 +5,21 @@
 All options under `services.vwifi`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.vwifi.client.enable` | | |
-| `services.vwifi.client.extraArgs` | | |
-| `services.vwifi.client.serverAddress` | | |
-| `services.vwifi.client.serverPort` | | |
-| `services.vwifi.client.spy` | | |
-| `services.vwifi.module.enable` | | |
-| `services.vwifi.module.macPrefix` | | |
-| `services.vwifi.module.numRadios` | | |
-| `services.vwifi.package` | | |
-| `services.vwifi.server.enable` | | |
-| `services.vwifi.server.extraArgs` | | |
-| `services.vwifi.server.openFirewall` | | |
-| `services.vwifi.server.ports.control` | | |
-| `services.vwifi.server.ports.spy` | | |
-| `services.vwifi.server.ports.tcp` | | |
-| `services.vwifi.server.ports.vhost` | | |
-| `services.vwifi.server.vsock.enable` | | |
+| --- | --- | --- |
+| `services.vwifi.client.enable` | `boolean` | Whether to enable vwifi client. |
+| `services.vwifi.client.extraArgs` | `list of string` | Extra arguments to pass to vwifi-client. You can use this if you want to bring the radios up using vwifi-client instead of at boot. |
+| `services.vwifi.client.serverAddress` | `null or string` | The address of the server. If set to null, will try to use the vsock protocol. Note that this assumes that the server is spawned on the host and passed through to QEMU, with something like: -device vhost-vsock-pci,id=vwifi0,guest-cid=42 |
+| `services.vwifi.client.serverPort` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The server port port. Set to null if we should leave it unset. |
+| `services.vwifi.client.spy` | `boolean` | Whether to enable spy mode, useful for wireless monitors. |
+| `services.vwifi.module.enable` | `boolean` | Whether to enable mac80211_hwsim module. |
+| `services.vwifi.module.macPrefix` | `string matching the pattern ^(([0-9A-Fa-f]{2}:){0,5}[0-9A-Fa-f]{2})$` | The prefix for MAC addresses to use, without the trailing ':'. If one radio is created, you can specify the whole MAC address here. The default is defined in vwifi/src/config.h. |
+| `services.vwifi.module.numRadios` | `signed integer` | The number of virtual radio interfaces to create. |
+| `services.vwifi.package` | `package` | The vwifi package to use. |
+| `services.vwifi.server.enable` | `boolean` | Whether to enable vwifi server. |
+| `services.vwifi.server.extraArgs` | `list of string` | Extra arguments to pass to vwifi-server. You can use this for things including changing the ports or inducing packet loss. |
+| `services.vwifi.server.openFirewall` | `boolean` | Whether to enable opening the firewall for the TCP and spy ports. |
+| `services.vwifi.server.ports.control` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The control interface port. Set to null if we should leave it unset. |
+| `services.vwifi.server.ports.spy` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The spy interface port. Set to null if we should leave it unset. |
+| `services.vwifi.server.ports.tcp` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The TCP server port. Set to null if we should leave it unset. |
+| `services.vwifi.server.ports.vhost` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The vhost port. Set to null if we should leave it unset. |
+| `services.vwifi.server.vsock.enable` | `boolean` | Whether to enable vsock kernel module. |

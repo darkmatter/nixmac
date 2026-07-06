@@ -5,7 +5,7 @@
 All options under `services.davmail`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.davmail.config` | | |
-| `services.davmail.enable` | | |
-| `services.davmail.url` | | |
+| --- | --- | --- |
+| `services.davmail.config` | `davmail config type (str, int, bool or attribute set thereof)` | Davmail configuration. Refer to <http://davmail.sourceforge.net/serversetup.html> and <http://davmail.sourceforge.net/advanced.html> for details on supported values. |
+| `services.davmail.enable` | `boolean` | Whether to enable davmail, an MS Exchange gateway. |
+| `services.davmail.url` | `string` | Outlook Web Access URL to access the exchange server, i.e. the base webmail URL. |

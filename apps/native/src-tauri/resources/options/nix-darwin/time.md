@@ -5,5 +5,5 @@
 All options under `time`.
 
 | Option | Type | Description |
-| --------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `time.timeZone` | `null or string` | The time zone used when displaying times and dates. See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones or run sudo systemsetup -listtimezones for a comprehensive list of possible values for this setting. |
+| --- | --- | --- |
+| `time.timeZone` | `null or string` | The time zone used when displaying times and dates. See <https://en.wikipedia.org/wiki/List_of_tz_database_time_zones> or run {command}`sudo systemsetup -listtimezones` for a comprehensive list of possible values for this setting. |

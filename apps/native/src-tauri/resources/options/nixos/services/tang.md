@@ -5,8 +5,8 @@
 All options under `services.tang`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.tang.enable` | | |
-| `services.tang.ipAddressAllow` | | |
-| `services.tang.listenStream` | | |
-| `services.tang.package` | | |
+| --- | --- | --- |
+| `services.tang.enable` | `boolean` | Whether to enable tang. |
+| `services.tang.ipAddressAllow` | `list of string` | Whitelist a list of address prefixes. Preferably, internal addresses should be used. |
+| `services.tang.listenStream` | `list of string` | Addresses and/or ports on which tang should listen. For detailed syntax see ListenStream in {manpage}`systemd.socket(5)`. |
+| `services.tang.package` | `package` | The tang package to use. |

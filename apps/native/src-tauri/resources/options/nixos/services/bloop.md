@@ -5,6 +5,6 @@
 All options under `services.bloop`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.bloop.extraOptions` | | |
-| `services.bloop.install` | | |
+| --- | --- | --- |
+| `services.bloop.extraOptions` | `list of string` | Specifies additional command line argument to pass to bloop java process. |
+| `services.bloop.install` | `boolean` | Whether to install a user service for the Bloop server. The service must be manually started for each user with "systemctl --user start bloop". |

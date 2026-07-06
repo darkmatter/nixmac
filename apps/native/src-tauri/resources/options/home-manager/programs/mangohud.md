@@ -5,9 +5,9 @@
 All options under `programs.mangohud`.
 
 | Option | Type | Description |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.mangohud.enable` | `boolean` | Whether to enable Mangohud. |
 | `programs.mangohud.enableSessionWide` | `boolean` | Sets environment variables so that MangoHud is started on any application that supports it. |
 | `programs.mangohud.package` | `package` | The mangohud package to use. |
-| `programs.mangohud.settings` | `attribute set of (boolean or signed integer or floating point number or string or absolute path or list of (signed integer or string))` | Configuration written to $XDG_CONFIG_HOME/MangoHud/MangoHud.conf . See https://github.com/flightlessmango/MangoHud/blob/master/data/MangoHud.conf for the default configuration. |
-| `programs.mangohud.settingsPerApplication` | `attribute set of attribute set of (boolean or signed integer or floating point number or string or absolute path or list of (signed integer or string))` | Sets MangoHud settings per application. Configuration written to $XDG_CONFIG_HOME/MangoHud/{application_name}.conf . See https://github.com/flightlessmango/MangoHud/blob/master/data/MangoHud.conf for the default configuration. |
+| `programs.mangohud.settings` | `attribute set of (boolean or signed integer or floating point number or string or absolute path or list of (signed integer or string))` | Configuration written to {file}`$XDG_CONFIG_HOME/MangoHud/MangoHud.conf`. See <https://github.com/flightlessmango/MangoHud/blob/master/data/MangoHud.conf> for the default configuration. |
+| `programs.mangohud.settingsPerApplication` | `attribute set of attribute set of (boolean or signed integer or floating point number or string or absolute path or list of (signed integer or string))` | Sets MangoHud settings per application. Configuration written to {file}`$XDG_CONFIG_HOME/MangoHud/{application_name}.conf`. See <https://github.com/flightlessmango/MangoHud/blob/master/data/MangoHud.conf> for the default configuration. |

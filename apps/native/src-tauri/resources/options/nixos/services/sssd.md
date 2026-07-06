@@ -5,11 +5,11 @@
 All options under `services.sssd`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.sssd.config` | | |
-| `services.sssd.enable` | | |
-| `services.sssd.environmentFile` | | |
-| `services.sssd.kcm` | | |
-| `services.sssd.settings` | | |
-| `services.sssd.sshAuthorizedKeysIntegration` | | |
-| `services.sssd.subIDsIntegration` | | |
+| --- | --- | --- |
+| `services.sssd.config` | `strings concatenated with "\n"` | Contents of {file}`sssd.conf`. |
+| `services.sssd.enable` | `boolean` | Whether to enable the System Security Services Daemon. |
+| `services.sssd.environmentFile` | `null or absolute path` | Environment file as defined in {manpage}`systemd.exec(5)`. Secrets may be passed to the service without adding them to the world-readable Nix store, by specifying placeholder variables as the option value in Nix and setting these variables accordingly in the environment file. `  # snippet of sssd-related config   [domain/LDAP]   ldap_default_authtok = $SSSD_LDAP_DEFAULT_AUTHTOK` `  # contents of the environment file   SSSD_LDAP_DEFAULT_AUTHTOK=verysecretpassword` |
+| `services.sssd.kcm` | `boolean` | Whether to use SSS as a Kerberos Cache Manager (KCM). Kerberos will be configured to cache credentials in SSS. |
+| `services.sssd.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Contents of {file}`sssd.conf`. |
+| `services.sssd.sshAuthorizedKeysIntegration` | `boolean` | Whether to make sshd look up authorized keys from SSS. For this to work, the `ssh` SSS service must be enabled in the sssd configuration. |
+| `services.sssd.subIDsIntegration` | `boolean` | Whether to use SSS as a source for subuid and subgid. |
