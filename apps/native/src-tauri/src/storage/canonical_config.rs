@@ -249,6 +249,9 @@ mod tests {
             String::from_utf8_lossy(&output.stderr)
         );
         assert!(!injected_marker.exists());
-        assert_eq!(fs::read_link(link).expect("read symlink"), PathBuf::from(target));
+        assert_eq!(
+            fs::read_link(link).expect("read symlink"),
+            PathBuf::from(target)
+        );
     }
 }
